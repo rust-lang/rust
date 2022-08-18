@@ -10,7 +10,16 @@ use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::TraitEngineExt;
 
 declare_lint! {
-    /// Checks for `for` loops over `Option` or `Result` values.
+    /// The `for_loop_over_fallibles` lint checks for `for` loops over `Option` or `Result` values.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let opt = Some(1);
+    /// for x in opt { /* ... */}
+    /// ```
+    ///
+    /// {{produces}}
     ///
     /// ### Explanation
     ///
@@ -25,27 +34,6 @@ declare_lint! {
     /// The "intended" use of `IntoIterator` implementations for `Option` and `Result` is passing them to
     /// generic code that expects something implementing `IntoIterator`. For example using `.chain(option)`
     /// to optionally add a value to an iterator.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// # let recv = || None::<i32>;
-    /// for x in opt { /* ... */}
-    /// for x in res { /* ... */ }
-    /// for x in recv() { /* ... */ }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust
-    /// # let opt = Some(1);
-    /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// # let recv = || None::<i32>;
-    /// if let Some(x) = opt { /* ... */}
-    /// if let Ok(x) = res { /* ... */ }
-    /// while let Some(x) = recv() { /* ... */ }
-    /// ```
     pub FOR_LOOP_OVER_FALLIBLES,
     Warn,
     "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
