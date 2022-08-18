@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![feature(lint_reasons)]
+#![feature(custom_inner_attributes, lint_reasons)]
 
 #[warn(clippy::all, clippy::needless_borrow)]
 #[allow(unused_variables, clippy::unnecessary_mut_passed)]
@@ -127,6 +127,20 @@ fn main() {
             0
         }
     }
+
+    let _ = std::process::Command::new("ls").args(["-a", "-l"]).status().unwrap();
+    let _ = std::path::Path::new(".").join(".");
+    deref_target_is_x(X);
+    multiple_constraints([[""]]);
+    multiple_constraints_normalizes_to_same(X, X);
+    let _ = Some("").unwrap_or("");
+
+    only_sized(&""); // Don't lint. `Sized` is only bound
+    let _ = std::any::Any::type_id(&""); // Don't lint. `Any` is only bound
+    let _ = Box::new(&""); // Don't lint. Type parameter appears in return type
+    ref_as_ref_path(&""); // Don't lint. Argument type is not a type parameter
+    refs_only(&()); // Don't lint. `&T` implements trait, but `T` doesn't
+    multiple_constraints_normalizes_to_different(&[[""]], &[""]); // Don't lint. Projected type appears in arguments
 }
 
 #[allow(clippy::needless_borrowed_reference)]
@@ -181,5 +195,106 @@ mod issue9160 {
         fn calls_mut_field(&mut self) -> T {
             (self.f)()
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct X;
+
+impl std::ops::Deref for X {
+    type Target = X;
+    fn deref(&self) -> &Self::Target {
+        self
+    }
+}
+
+fn deref_target_is_x<T>(_: T)
+where
+    T: std::ops::Deref<Target = X>,
+{
+}
+
+fn multiple_constraints<T, U, V, X, Y>(_: T)
+where
+    T: IntoIterator<Item = U> + IntoIterator<Item = X>,
+    U: IntoIterator<Item = V>,
+    V: AsRef<str>,
+    X: IntoIterator<Item = Y>,
+    Y: AsRef<std::ffi::OsStr>,
+{
+}
+
+fn multiple_constraints_normalizes_to_same<T, U, V>(_: T, _: V)
+where
+    T: std::ops::Deref<Target = U>,
+    U: std::ops::Deref<Target = V>,
+{
+}
+
+fn only_sized<T>(_: T) {}
+
+fn ref_as_ref_path<T: 'static>(_: &'static T)
+where
+    &'static T: AsRef<std::path::Path>,
+{
+}
+
+trait RefsOnly {
+    type Referent;
+}
+
+impl<T> RefsOnly for &T {
+    type Referent = T;
+}
+
+fn refs_only<T, U>(_: T)
+where
+    T: RefsOnly<Referent = U>,
+{
+}
+
+fn multiple_constraints_normalizes_to_different<T, U, V>(_: T, _: U)
+where
+    T: IntoIterator<Item = U>,
+    U: IntoIterator<Item = V>,
+    V: AsRef<str>,
+{
+}
+
+// https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
+#[allow(dead_code)]
+mod copyable_iterator {
+    #[derive(Clone, Copy)]
+    struct Iter;
+    impl Iterator for Iter {
+        type Item = ();
+        fn next(&mut self) -> Option<Self::Item> {
+            None
+        }
+    }
+    fn takes_iter(_: impl Iterator) {}
+    fn dont_warn(mut x: Iter) {
+        takes_iter(&mut x);
+    }
+    fn warn(mut x: &mut Iter) {
+        takes_iter(&mut x)
+    }
+}
+
+mod under_msrv {
+    #![allow(dead_code)]
+    #![clippy::msrv = "1.52.0"]
+
+    fn foo() {
+        let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
+    }
+}
+
+mod meets_msrv {
+    #![allow(dead_code)]
+    #![clippy::msrv = "1.53.0"]
+
+    fn foo() {
+        let _ = std::process::Command::new("ls").args(["-a", "-l"]).status().unwrap();
     }
 }
