@@ -95,3 +95,11 @@ pub(crate) struct MaxNumNodesExceeded {
     pub span: Span,
     pub s: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::unallowed_fn_pointer_call)]
+pub(crate) struct UnallowedFnPointerCall {
+    #[primary_span]
+    pub span: Span,
+    pub kind: ConstContext,
+}

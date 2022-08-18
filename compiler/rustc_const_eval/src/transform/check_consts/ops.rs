@@ -25,7 +25,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use super::ConstCx;
 use crate::errors::{
     MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
-    TransientMutBorrowErr, TransientMutBorrowErrRaw,
+    TransientMutBorrowErr, TransientMutBorrowErrRaw, UnallowedFnPointerCall,
 };
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
@@ -97,10 +97,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.struct_span_err(
-            span,
-            &format!("function pointer calls are not allowed in {}s", ccx.const_kind()),
-        )
+        ccx.tcx.sess.create_err(UnallowedFnPointerCall { span, kind: ccx.const_kind() })
     }
 }
 
