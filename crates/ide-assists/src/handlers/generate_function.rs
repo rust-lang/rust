@@ -62,7 +62,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
 
     let fn_name = &*name_ref.text();
     let TargetInfo { target_module, adt_name, target, file, insert_offset } =
-        fn_target_info(path, ctx, &call, fn_name)?;
+        fn_target_info(ctx, path, &call, fn_name)?;
     let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
     let label = format!("Generate {} function", function_builder.fn_name);
@@ -87,8 +87,8 @@ struct TargetInfo {
 }
 
 fn fn_target_info(
-    path: ast::Path,
     ctx: &AssistContext<'_>,
+    path: ast::Path,
     call: &CallExpr,
     fn_name: &str,
 ) -> Option<TargetInfo> {
