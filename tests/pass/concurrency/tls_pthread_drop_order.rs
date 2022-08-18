@@ -1,7 +1,5 @@
 //@ignore-target-windows: No libc on Windows
 
-#![feature(rustc_private)]
-
 use std::mem;
 use std::ptr;
 

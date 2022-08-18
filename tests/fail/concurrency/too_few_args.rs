@@ -2,8 +2,6 @@
 
 //! The thread function must have exactly one argument.
 
-#![feature(rustc_private)]
-
 use std::{mem, ptr};
 
 extern "C" fn thread_start() -> *mut libc::c_void {

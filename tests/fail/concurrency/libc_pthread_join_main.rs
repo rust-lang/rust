@@ -2,8 +2,6 @@
 
 // Joining the main thread is undefined behavior.
 
-#![feature(rustc_private)]
-
 use std::{ptr, thread};
 
 fn main() {

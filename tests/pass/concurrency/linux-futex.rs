@@ -1,8 +1,6 @@
 //@only-target-linux
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(rustc_private)]
-
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::atomic::AtomicI32;

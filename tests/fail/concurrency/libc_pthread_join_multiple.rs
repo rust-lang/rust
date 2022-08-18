@@ -2,8 +2,6 @@
 
 // Joining the same thread from multiple threads is undefined behavior.
 
-#![feature(rustc_private)]
-
 use std::thread;
 use std::{mem, ptr};
 
