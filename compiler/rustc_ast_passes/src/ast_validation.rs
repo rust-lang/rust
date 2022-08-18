@@ -372,19 +372,9 @@ impl<'a> AstValidator<'a> {
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
-                    self.err_handler()
-                        .struct_span_err(
-                            attr.span,
-                            "documentation comments cannot be applied to function parameters",
-                        )
-                        .span_label(attr.span, "doc comments are not allowed here")
-                        .emit();
+                    self.session.emit_err(DocCommentOnFnParam { span: attr.span });
                 } else {
-                    self.err_handler().span_err(
-                        attr.span,
-                        "allow, cfg, cfg_attr, deny, expect, \
-                forbid, and warn are the only allowed built-in attributes in function parameters",
-                    );
+                    self.session.emit_err(ForbiddenAttrOnFnParam { span: attr.span });
                 }
             });
     }

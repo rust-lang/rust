@@ -126,3 +126,18 @@ pub struct CVarArgsNotLast {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::doc_comment_on_fn_param)]
+pub struct DocCommentOnFnParam {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::forbidden_attr_on_fn_param)]
+pub struct ForbiddenAttrOnFnParam {
+    #[primary_span]
+    pub span: Span,
+}

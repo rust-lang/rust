@@ -46,3 +46,10 @@ ast_passes_c_var_args_without_named_arg =
 
 ast_passes_c_var_args_not_last =
     `...` must be the last argument of a C-variadic function
+
+ast_passes_doc_comment_on_fn_param =
+    documentation comments cannot be applied to function parameters
+    .label = doc comments are not allowed here
+
+ast_passes_forbidden_attr_on_fn_param =
+    allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
