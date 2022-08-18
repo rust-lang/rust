@@ -168,14 +168,14 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
     `slug`) for the note's message
     - Defaults to `note`.
   - If applied to a `Span` field, creates a spanned note.
-- `#[help]` or `#[help = "..."]` (_Optional_)
+- `#[help]` or `#[help(...)]` (_Optional_)
   - _Applied to struct or `Span`/`()` fields._
   - Adds a help subdiagnostic.
   - Value is the Fluent attribute (relative to the Fluent message specified by
     `slug`) for the help's message.
     - Defaults to `help`.
   - If applied to a `Span` field, creates a spanned help.
-- `#[label]` or `#[label = "..."]` (_Optional_)
+- `#[label]` or `#[label(...)]` (_Optional_)
   - _Applied to `Span` fields._
   - Adds a label subdiagnostic.
   - Value is the Fluent attribute (relative to the Fluent message specified by
