@@ -1852,14 +1852,14 @@ impl fmt::Display for Symbol {
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
-    fn encode(&self, s: &mut S) {
+    default fn encode(&self, s: &mut S) {
         s.emit_str(self.as_str());
     }
 }
 
 impl<D: Decoder> Decodable<D> for Symbol {
     #[inline]
-    fn decode(d: &mut D) -> Symbol {
+    default fn decode(d: &mut D) -> Symbol {
         Symbol::intern(&d.read_str())
     }
 }

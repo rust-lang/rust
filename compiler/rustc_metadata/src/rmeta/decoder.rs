@@ -637,6 +637,35 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     }
 }
 
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
+        let tag = d.read_u8();
+
+        match tag {
+            SYMBOL_STR => {
+                let s = d.read_str();
+                Symbol::intern(s)
+            }
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = d.read_usize();
+                let old_pos = d.opaque.position();
+
+                // move to str ofset and read
+                d.opaque.set_position(pos);
+                let s = d.read_str();
+                let sym = Symbol::intern(s);
+
+                // restore position
+                d.opaque.set_position(old_pos);
+
+                sym
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)

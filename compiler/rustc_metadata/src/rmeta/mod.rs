@@ -445,6 +445,10 @@ const TAG_VALID_SPAN_LOCAL: u8 = 0;
 const TAG_VALID_SPAN_FOREIGN: u8 = 1;
 const TAG_PARTIAL_SPAN: u8 = 2;
 
+// Tags for encoding Symbol's
+const SYMBOL_STR: u8 = 0;
+const SYMBOL_OFFSET: u8 = 1;
+
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);
     decoder::provide(providers);
