@@ -1,4 +1,4 @@
-use super::errors::InvalidAbi;
+use super::errors::{InvalidAbi, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
@@ -1339,11 +1339,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 let is_param = *is_param.get_or_insert_with(compute_is_param);
                 if !is_param {
-                    self.diagnostic().span_err(
-                        bound.span(),
-                        "`?Trait` bounds are only permitted at the \
-                        point where a type parameter is declared",
-                    );
+                    self.tcx.sess.emit_err(MisplacedRelaxTraitBound { span: bound.span() });
                 }
             }
         }

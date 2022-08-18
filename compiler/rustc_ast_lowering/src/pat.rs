@@ -1,4 +1,6 @@
-use super::errors::{ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding};
+use super::errors::{
+    ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
+};
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 use crate::ImplTraitPosition;
@@ -330,8 +332,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
-                self.diagnostic()
-                    .span_err(expr.span, "arbitrary expressions aren't allowed in patterns");
+                self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
                 return self.arena.alloc(self.expr_err(expr.span));
             }
         }

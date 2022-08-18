@@ -1,7 +1,8 @@
 use super::errors::{
     AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
-    GeneratorTooManyParameters, RustcBoxAttributeError, UnderscoreExprLhsAssign,
+    GeneratorTooManyParameters, NotSupportedForLifetimeBinderAsyncClosure, RustcBoxAttributeError,
+    UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -916,10 +917,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
         if let &ClosureBinder::For { span, .. } = binder {
-            self.tcx.sess.span_err(
-                span,
-                "`for<...>` binders on `async` closures are not currently supported",
-            );
+            self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
