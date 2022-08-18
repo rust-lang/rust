@@ -78,11 +78,11 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
                     }
                 }
 
-                static_method_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
+                assoc_fn_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
-                static_method_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
+                assoc_fn_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
             }
             _ => {
                 return None;
@@ -394,7 +394,7 @@ fn get_method_target(
     Some((target.clone(), get_insert_offset(&target)))
 }
 
-fn static_method_target(
+fn assoc_fn_target(
     ctx: &AssistContext<'_>,
     call: &CallExpr,
     adt: hir::Adt,
