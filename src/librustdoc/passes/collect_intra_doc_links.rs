@@ -477,7 +477,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // If there's no `::`, it's not an associated item.
             // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
             .ok_or_else(|| {
-                debug!("found no `::`, assumming {} was correctly not in scope", item_name);
+                debug!("found no `::`, assuming {} was correctly not in scope", item_name);
                 UnresolvedPath {
                     item_id,
                     module_id,
@@ -1256,7 +1256,7 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: ResolutionInfo,
         diag: DiagnosticInfo<'_>,
-        // If errors are cached then they are only reported on first ocurrence
+        // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {

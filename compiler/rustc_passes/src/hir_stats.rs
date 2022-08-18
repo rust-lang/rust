@@ -49,7 +49,7 @@ impl Node {
 ///
 /// For example, `ast::Visitor` has `visit_ident`, but `Ident`s are always
 /// stored inline within other AST nodes, so we don't implement `visit_ident`
-/// here. In constrast, we do implement `visit_expr` because `ast::Expr` is
+/// here. In contrast, we do implement `visit_expr` because `ast::Expr` is
 /// always stored as `P<ast::Expr>`, and every such expression should be
 /// measured separately.
 ///

@@ -441,7 +441,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 }
                 PathResult::Indeterminate => indeterminate = true,
                 // We can only be sure that a path doesn't exist after having tested all the
-                // posibilities, only at that time we can return false.
+                // possibilities, only at that time we can return false.
                 PathResult::Failed { .. } => {}
                 PathResult::Module(_) => panic!("unexpected path resolution"),
             }

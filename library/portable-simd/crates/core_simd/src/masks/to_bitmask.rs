@@ -70,7 +70,7 @@ impl_integer_intrinsic! {
     impl ToBitMask<BitMask=u64> for Mask<_, 64>
 }
 
-/// Returns the minimum numnber of bytes in a bitmask with `lanes` lanes.
+/// Returns the minimum number of bytes in a bitmask with `lanes` lanes.
 #[cfg(feature = "generic_const_exprs")]
 pub const fn bitmask_len(lanes: usize) -> usize {
     (lanes + 7) / 8

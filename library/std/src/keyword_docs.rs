@@ -1921,7 +1921,7 @@ mod type_keyword {}
 /// and [proposal]s exist to use `unsafe {}` blocks inside such functions when
 /// making `unsafe` operations.
 ///
-/// See the [Rustnomicon] and the [Reference] for more informations.
+/// See the [Rustnomicon] and the [Reference] for more information.
 ///
 /// # Examples
 ///
@@ -2113,7 +2113,7 @@ mod use_keyword {}
 /// Add constraints that must be upheld to use an item.
 ///
 /// `where` allows specifying constraints on lifetime and generic parameters.
-/// The [RFC] introducing `where` contains detailed informations about the
+/// The [RFC] introducing `where` contains detailed information about the
 /// keyword.
 ///
 /// # Examples
@@ -2355,7 +2355,7 @@ mod dyn_keyword {}
 /// println!("f = {f} and i = {i}");
 /// ```
 ///
-/// See the [Reference][union] for more informations on `union`s.
+/// See the [Reference][union] for more information on `union`s.
 ///
 /// [`struct`]: keyword.struct.html
 /// [union]: ../reference/items/unions.html

@@ -756,7 +756,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // * the element type and length of the single array field, if
                 // the first field is of array type, or
                 //
-                // * the homogenous field type and the number of fields.
+                // * the homogeneous field type and the number of fields.
                 let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
                     // First ADT field is an array:
 

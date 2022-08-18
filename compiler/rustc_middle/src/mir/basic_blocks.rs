@@ -86,7 +86,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     ///
     /// You will only ever need this if you have also called [`BasicBlocks::as_mut_preserves_cfg`].
     /// All other methods that allow you to mutate the basic blocks also call this method
-    /// themselves, thereby avoiding any risk of accidentaly cache invalidation.
+    /// themselves, thereby avoiding any risk of accidentally cache invalidation.
     pub fn invalidate_cfg_cache(&mut self) {
         self.predecessor_cache.invalidate();
         self.switch_source_cache.invalidate();

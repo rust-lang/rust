@@ -1498,17 +1498,17 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.iter_local_def_id()
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.def_path_table()
@@ -1517,10 +1517,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path_hash_to_def_index_map(
         self,
     ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
-        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.def_path_hash_to_def_index_map()

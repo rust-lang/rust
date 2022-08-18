@@ -320,7 +320,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (a_offset, b_offset) =
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
-                            // Neither poiner points to an allocation.
+                            // Neither pointer points to an allocation.
                             // If these are inequal or null, this *will* fail the deref check below.
                             (a, b)
                         }

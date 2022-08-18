@@ -450,7 +450,7 @@ impl<'a> PeekIter<'a> {
     fn new(iter: TokenIter<'a>) -> Self {
         Self { stored: VecDeque::new(), peek_pos: 0, iter }
     }
-    /// Returns the next item after the current one. It doesn't interfer with `peek_next` output.
+    /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
     fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
         if self.stored.is_empty() {
             if let Some(next) = self.iter.next() {
@@ -459,7 +459,7 @@ impl<'a> PeekIter<'a> {
         }
         self.stored.front()
     }
-    /// Returns the next item after the last one peeked. It doesn't interfer with `peek` output.
+    /// Returns the next item after the last one peeked. It doesn't interfere with `peek` output.
     fn peek_next(&mut self) -> Option<&(TokenKind, &'a str)> {
         self.peek_pos += 1;
         if self.peek_pos - 1 < self.stored.len() {

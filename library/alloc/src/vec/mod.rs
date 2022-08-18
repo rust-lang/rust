@@ -436,7 +436,7 @@ impl<T> Vec<T> {
     /// an explanation of the difference between length and capacity, see
     /// *[Capacity and reallocation]*.
     ///
-    /// If it is imporant to know the exact allocated capacity of a `Vec`,
+    /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
     /// For `Vec<T>` where `T` is a zero-sized type, there will be no allocation
@@ -591,7 +591,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// an explanation of the difference between length and capacity, see
     /// *[Capacity and reallocation]*.
     ///
-    /// If it is imporant to know the exact allocated capacity of a `Vec`,
+    /// If it is important to know the exact allocated capacity of a `Vec`,
     /// always use the [`capacity`] method after construction.
     ///
     /// For `Vec<T, A>` where `T` is a zero-sized type, there will be no allocation

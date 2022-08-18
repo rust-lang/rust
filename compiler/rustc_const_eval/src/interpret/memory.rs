@@ -437,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         msg,
                     })
                 }
-                // Ensure we never consider the null pointer dereferencable.
+                // Ensure we never consider the null pointer dereferenceable.
                 if M::Provenance::OFFSET_IS_ADDR {
                     assert_ne!(ptr.addr(), Size::ZERO);
                 }
@@ -914,7 +914,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRefMut<'a, 'tcx, Prov, Extra> {
         self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
     }
 
-    /// Mark the entire referenced range as uninitalized
+    /// Mark the entire referenced range as uninitialized
     pub fn write_uninit(&mut self) -> InterpResult<'tcx> {
         Ok(self
             .alloc

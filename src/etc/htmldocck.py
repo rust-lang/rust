@@ -386,7 +386,7 @@ def check_tree_attr(tree, path, attr, pat, regexp):
     return ret
 
 
-# Returns the number of occurences matching the regex (`regexp`) and the text (`pat`).
+# Returns the number of occurrences matching the regex (`regexp`) and the text (`pat`).
 def check_tree_text(tree, path, pat, regexp, stop_at_first):
     path = normalize_xpath(path)
     match_count = 0

@@ -115,7 +115,7 @@ impl Node {
         matches!(self, Node::Trait(..))
     }
 
-    /// Trys to find the associated item that implements `trait_item_def_id`
+    /// Tries to find the associated item that implements `trait_item_def_id`
     /// defined in this node.
     ///
     /// If this returns `None`, the item can potentially still be found in

@@ -40,6 +40,6 @@ fn main() {
     //
     // (At least in theory; part of the reason this test fails is that
     // the constructed MIR throws in extra &mut reborrows which
-    // flummoxes our attmpt to delay the activation point here.)
+    // flummoxes our attempt to delay the activation point here.)
     delay.push(2);
 }

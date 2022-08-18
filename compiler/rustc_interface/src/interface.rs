@@ -176,7 +176,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         let ident = arg.ident().expect("multi-segment cfg key");
                                         names_valid.insert(ident.name.to_string());
                                     } else {
-                                        error!("`names()` arguments must be simple identifers");
+                                        error!("`names()` arguments must be simple identifiers");
                                     }
                                 }
                                 continue 'specs;
@@ -204,7 +204,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                         continue 'specs;
                                     } else {
                                         error!(
-                                            "`values()` first argument must be a simple identifer"
+                                            "`values()` first argument must be a simple identifier"
                                         );
                                     }
                                 } else if args.is_empty() {

@@ -86,7 +86,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 
 // Because we are compiling this code with `-C panic=abort`, this wouldn't normally be needed.
 // However, `core` and `alloc` are both compiled with `-C panic=unwind`, which means that functions
-// in these libaries will refer to `rust_eh_personality` if LLVM can not *prove* the contents won't
+// in these libraries will refer to `rust_eh_personality` if LLVM can not *prove* the contents won't
 // unwind. So, for this test case we will define the symbol.
 #[lang = "eh_personality"]
 extern fn rust_eh_personality() {}

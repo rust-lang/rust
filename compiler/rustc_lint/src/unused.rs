@@ -268,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 },
                 ty::Closure(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_closure)
                             .set_arg("count", plural_len)
@@ -281,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Generator(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_generator)
                             .set_arg("count", plural_len)
@@ -310,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         ) -> bool {
             if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
                 cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                    // FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+                    // FIXME(davidtwco): this isn't properly translatable because of the pre/post
                     // strings
                     let mut err = lint.build(fluent::lint::unused_def);
                     err.set_arg("pre", descr_pre_path);

@@ -540,7 +540,7 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
         .unwrap_or((Conv::Rust, &[]));
 
-    // Decorate symbols with prefices, suffices and total number of bytes of arguments.
+    // Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
     // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
     let (prefix, suffix) = match conv {
         Conv::X86Fastcall => ("@", "@"),

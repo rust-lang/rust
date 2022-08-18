@@ -497,7 +497,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let expr_place = return_if_err!(self.mc.cat_expr(expr));
         f(self);
         if let Some(els) = els {
-            // borrowing because we need to test the descriminant
+            // borrowing because we need to test the discriminant
             self.maybe_read_scrutinee(expr, expr_place.clone(), from_ref(pat).iter());
             self.walk_block(els)
         }

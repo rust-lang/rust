@@ -138,7 +138,7 @@ impl Mutex {
                 }
             }
 
-            // The state has changed or a wakeup occured, try to lock the mutex.
+            // The state has changed or a wakeup occurred, try to lock the mutex.
             match self.futex.compare_exchange(UNLOCKED, owned_state, Acquire, Relaxed) {
                 Ok(_) => return,
                 Err(updated) => state = updated,

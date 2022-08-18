@@ -342,7 +342,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let ret_place = codegen_place(fx, destination);
 
-    // Handle special calls like instrinsics and empty drop glue.
+    // Handle special calls like intrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
         let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
             .unwrap()

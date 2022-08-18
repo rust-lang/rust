@@ -3,7 +3,7 @@
 // rust-lang/rust#75225
 //
 // Since Rust 2018 we encourage writing out <'_> explicitly to make it clear
-// that borrowing is occuring. Make sure rustdoc is following the same idiom.
+// that borrowing is occurring. Make sure rustdoc is following the same idiom.
 
 #![crate_name = "foo"]
 

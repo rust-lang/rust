@@ -1,4 +1,4 @@
-// Test various uses of structs with distint variances to make sure
+// Test various uses of structs with distinct variances to make sure
 // they permit lifetimes to be approximated as expected.
 
 #![allow(dead_code)]

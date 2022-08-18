@@ -416,7 +416,7 @@ pub(crate) mod rustc {
                 // begin with the field's visibility
                 tree = tree.then(Self::def(Def::Field(field_def)));
 
-                // compute the field's layout charactaristics
+                // compute the field's layout characteristics
                 let field_layout = layout_of(tcx, field_ty)?.clamp_align(min_align, max_align);
 
                 // next comes the field's padding
