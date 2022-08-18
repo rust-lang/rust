@@ -84,39 +84,41 @@ fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     }
 }
 
-fn line_program_add_file(
-    line_program: &mut LineProgram,
-    line_strings: &mut LineStringTable,
-    file: &SourceFile,
-) -> FileId {
-    match &file.name {
-        FileName::Real(path) => {
-            let (dir_path, file_name) = split_path_dir_and_file(path.remapped_path_if_available());
-            let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
-            let file_name = osstr_as_utf8_bytes(file_name);
+impl DebugContext {
+    pub(crate) fn add_source_file(&mut self, source_file: &SourceFile) -> FileId {
+        let line_program: &mut LineProgram = &mut self.dwarf.unit.line_program;
+        let line_strings: &mut LineStringTable = &mut self.dwarf.line_strings;
 
-            let dir_id = if !dir_name.is_empty() {
-                let dir_name = LineString::new(dir_name, line_program.encoding(), line_strings);
-                line_program.add_directory(dir_name)
-            } else {
-                line_program.default_directory()
-            };
-            let file_name = LineString::new(file_name, line_program.encoding(), line_strings);
+        match &source_file.name {
+            FileName::Real(path) => {
+                let (dir_path, file_name) =
+                    split_path_dir_and_file(path.remapped_path_if_available());
+                let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
+                let file_name = osstr_as_utf8_bytes(file_name);
 
-            let info = make_file_info(file.src_hash);
+                let dir_id = if !dir_name.is_empty() {
+                    let dir_name = LineString::new(dir_name, line_program.encoding(), line_strings);
+                    line_program.add_directory(dir_name)
+                } else {
+                    line_program.default_directory()
+                };
+                let file_name = LineString::new(file_name, line_program.encoding(), line_strings);
 
-            line_program.file_has_md5 &= info.is_some();
-            line_program.add_file(file_name, dir_id, info)
-        }
-        // FIXME give more appropriate file names
-        filename => {
-            let dir_id = line_program.default_directory();
-            let dummy_file_name = LineString::new(
-                filename.prefer_remapped().to_string().into_bytes(),
-                line_program.encoding(),
-                line_strings,
-            );
-            line_program.add_file(dummy_file_name, dir_id, None)
+                let info = make_file_info(source_file.src_hash);
+
+                line_program.file_has_md5 &= info.is_some();
+                line_program.add_file(file_name, dir_id, info)
+            }
+            // FIXME give more appropriate file names
+            filename => {
+                let dir_id = line_program.default_directory();
+                let dummy_file_name = LineString::new(
+                    filename.prefer_remapped().to_string().into_bytes(),
+                    line_program.encoding(),
+                    line_strings,
+                );
+                line_program.add_file(dummy_file_name, dir_id, None)
+            }
         }
     }
 }
@@ -130,11 +132,7 @@ impl FunctionDebugContext {
     ) {
         let (file, line, column) = get_span_loc(tcx, span, span);
 
-        let file_id = line_program_add_file(
-            &mut debug_context.dwarf.unit.line_program,
-            &mut debug_context.dwarf.line_strings,
-            &file,
-        );
+        let file_id = debug_context.add_source_file(&file);
 
         let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
@@ -151,15 +149,12 @@ impl FunctionDebugContext {
         function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let line_program = &mut debug_context.dwarf.unit.line_program;
-
-        let line_strings = &mut debug_context.dwarf.line_strings;
         let mut last_span = None;
         let mut last_file = None;
-        let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
+        let mut create_row_for_span = |debug_context: &mut DebugContext, span: Span| {
             if let Some(last_span) = last_span {
                 if span == last_span {
-                    line_program.generate_row();
+                    debug_context.dwarf.unit.line_program.generate_row();
                     return;
                 }
             }
@@ -177,33 +172,37 @@ impl FunctionDebugContext {
                 true
             };
             if current_file_changed {
-                let file_id = line_program_add_file(line_program, line_strings, &file);
-                line_program.row().file = file_id;
+                let file_id = debug_context.add_source_file(&file);
+                debug_context.dwarf.unit.line_program.row().file = file_id;
                 last_file = Some(file);
             }
 
-            line_program.row().line = line;
-            line_program.row().column = col;
-            line_program.generate_row();
+            debug_context.dwarf.unit.line_program.row().line = line;
+            debug_context.dwarf.unit.line_program.row().column = col;
+            debug_context.dwarf.unit.line_program.generate_row();
         };
 
-        line_program.begin_sequence(Some(Address::Symbol { symbol, addend: 0 }));
+        debug_context
+            .dwarf
+            .unit
+            .line_program
+            .begin_sequence(Some(Address::Symbol { symbol, addend: 0 }));
 
         let mut func_end = 0;
 
         let mcr = context.mach_compile_result.as_ref().unwrap();
         for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
-            line_program.row().address_offset = u64::from(start);
+            debug_context.dwarf.unit.line_program.row().address_offset = u64::from(start);
             if !loc.is_default() {
                 let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
-                create_row_for_span(line_program, source_info.span);
+                create_row_for_span(debug_context, source_info.span);
             } else {
-                create_row_for_span(line_program, function_span);
+                create_row_for_span(debug_context, function_span);
             }
             func_end = end;
         }
 
-        line_program.end_sequence(u64::from(func_end));
+        debug_context.dwarf.unit.line_program.end_sequence(u64::from(func_end));
 
         let func_end = mcr.buffer.total_size();
 
