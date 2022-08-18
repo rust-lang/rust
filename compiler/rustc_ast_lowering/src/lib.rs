@@ -332,6 +332,15 @@ impl FnDeclKind {
             _ => false,
         }
     }
+
+    fn async_fn_allowed(&self, tcx: TyCtxt<'_>) -> bool {
+        match self {
+            FnDeclKind::Fn | FnDeclKind::Inherent => true,
+            FnDeclKind::Impl if tcx.features().async_fn_in_trait => true,
+            FnDeclKind::Trait if tcx.features().async_fn_in_trait => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -1692,14 +1701,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }));
 
         let output = if let Some((ret_id, span)) = make_ret_async {
-            if !kind.impl_trait_allowed(self.tcx) {
+            if !kind.async_fn_allowed(self.tcx) {
                 match kind {
                     FnDeclKind::Trait | FnDeclKind::Impl => {
                         self.tcx
                             .sess
                             .create_feature_err(
                                 TraitFnAsync { fn_span, span },
-                                sym::return_position_impl_trait_in_trait,
+                                sym::async_fn_in_trait,
                             )
                             .emit();
                     }
@@ -1917,9 +1926,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let future_bound = this.lower_async_fn_output_type_to_future_bound(
                     output,
                     span,
-                    ImplTraitContext::ReturnPositionOpaqueTy {
-                        origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                        in_trait,
+                    if in_trait && !this.tcx.features().return_position_impl_trait_in_trait {
+                        ImplTraitContext::Disallowed(ImplTraitPosition::TraitReturn)
+                    } else {
+                        ImplTraitContext::ReturnPositionOpaqueTy {
+                            origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                            in_trait,
+                        }
                     },
                 );
 
