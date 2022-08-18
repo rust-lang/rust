@@ -20,7 +20,6 @@ struct CodegenedFunction<'tcx> {
     func: Function,
     clif_comments: CommentWriter,
     source_info_set: IndexSet<SourceInfo>,
-    local_map: IndexVec<mir::Local, CPlace<'tcx>>,
 }
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
@@ -112,7 +111,6 @@ fn codegen_fn<'tcx>(
     let instance = fx.instance;
     let clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
-    let local_map = fx.local_map;
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
@@ -130,15 +128,7 @@ fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction {
-        instance,
-        symbol_name,
-        func_id,
-        func,
-        clif_comments,
-        source_info_set,
-        local_map,
-    }
+    CodegenedFunction { instance, symbol_name, func_id, func, clif_comments, source_info_set }
 }
 
 fn compile_fn<'tcx>(
@@ -227,10 +217,8 @@ fn compile_fn<'tcx>(
                 codegened_func.instance,
                 codegened_func.func_id,
                 codegened_func.symbol_name.name,
-                isa,
                 context,
                 &codegened_func.source_info_set,
-                codegened_func.local_map,
             );
         }
         unwind_context.add_function(codegened_func.func_id, &context, isa);
