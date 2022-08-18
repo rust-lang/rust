@@ -28,5 +28,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         assert!(this.tcx.sess.target.os == "freebsd");
 
         match dlsym {}
+
+        //trace!("{:?}", this.dump_place(**dest));
+        //this.go_to_block(ret);
+        //Ok(())
     }
 }

@@ -232,13 +232,15 @@ pub struct PrimitiveLayouts<'tcx> {
     pub u32: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
-    pub mut_raw_ptr: TyAndLayout<'tcx>,
+    pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
+    pub const_raw_ptr: TyAndLayout<'tcx>, // *const ()
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
         let tcx = layout_cx.tcx;
         let mut_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
+        let const_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
         Ok(Self {
             unit: layout_cx.layout_of(tcx.mk_unit())?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
@@ -251,6 +253,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
             mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
+            const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
         })
     }
 }
@@ -431,6 +434,17 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
     }
 
+    fn alloc_extern_static(
+        this: &mut MiriEvalContext<'mir, 'tcx>,
+        name: &str,
+        val: ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
+        let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
+        this.write_immediate(*val, &place.into())?;
+        Self::add_extern_static(this, name, place.ptr);
+        Ok(())
+    }
+
     /// Sets up the "extern statics" for this machine.
     fn init_extern_statics(this: &mut MiriEvalContext<'mir, 'tcx>) -> InterpResult<'tcx> {
         match this.tcx.sess.target.os.as_ref() {
@@ -447,10 +461,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                 // syscall that we do support).
                 for name in &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"]
                 {
-                    let layout = this.machine.layouts.usize;
-                    let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
-                    this.write_scalar(Scalar::from_machine_usize(0, this), &place.into())?;
-                    Self::add_extern_static(this, name, place.ptr);
+                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
+                    Self::alloc_extern_static(this, name, val)?;
                 }
             }
             "freebsd" => {
@@ -461,13 +473,27 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                     this.machine.env_vars.environ.unwrap().ptr,
                 );
             }
+            "android" => {
+                // "signal"
+                let layout = this.machine.layouts.const_raw_ptr;
+                let dlsym = Dlsym::from_str("signal".as_bytes(), &this.tcx.sess.target.os)?
+                    .expect("`signal` must be an actual dlsym on android");
+                let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
+                let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
+                Self::alloc_extern_static(this, "signal", val)?;
+                // A couple zero-initialized pointer-sized extern statics.
+                // Most of them are for weak symbols, which we all set to null (indicating that the
+                // symbol is not supported, and triggering fallback code.)
+                for name in &["bsd_signal"] {
+                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
+                    Self::alloc_extern_static(this, name, val)?;
+                }
+            }
             "windows" => {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
-                let layout = this.machine.layouts.u8;
-                let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
-                this.write_scalar(Scalar::from_u8(0), &place.into())?;
-                Self::add_extern_static(this, "_tls_used", place.ptr);
+                let val = ImmTy::from_int(0, this.machine.layouts.u8);
+                Self::alloc_extern_static(this, "_tls_used", val)?;
             }
             _ => {} // No "extern statics" supported on this target
         }

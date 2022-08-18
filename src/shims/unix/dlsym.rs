@@ -2,15 +2,17 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
+use shims::unix::android::dlsym as android;
 use shims::unix::freebsd::dlsym as freebsd;
 use shims::unix::linux::dlsym as linux;
 use shims::unix::macos::dlsym as macos;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {
+    Android(android::Dlsym),
+    FreeBsd(freebsd::Dlsym),
     Linux(linux::Dlsym),
     MacOs(macos::Dlsym),
-    FreeBsd(freebsd::Dlsym),
 }
 
 impl Dlsym {
@@ -18,10 +20,11 @@ impl Dlsym {
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str<'tcx>(name: &str, target_os: &str) -> InterpResult<'tcx, Option<Dlsym>> {
         Ok(match target_os {
+            "android" => android::Dlsym::from_str(name)?.map(Dlsym::Android),
+            "freebsd" => freebsd::Dlsym::from_str(name)?.map(Dlsym::FreeBsd),
             "linux" => linux::Dlsym::from_str(name)?.map(Dlsym::Linux),
             "macos" => macos::Dlsym::from_str(name)?.map(Dlsym::MacOs),
-            "freebsd" => freebsd::Dlsym::from_str(name)?.map(Dlsym::FreeBsd),
-            _ => unreachable!(),
+            _ => panic!("unsupported Unix OS {target_os}"),
         })
     }
 }
@@ -41,10 +44,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_abi(abi, Abi::C { unwind: false })?;
 
         match dlsym {
-            Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
-            Dlsym::MacOs(dlsym) => macos::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
+            Dlsym::Android(dlsym) =>
+                android::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
             Dlsym::FreeBsd(dlsym) =>
                 freebsd::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
+            Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
+            Dlsym::MacOs(dlsym) => macos::EvalContextExt::call_dlsym(this, dlsym, args, dest, ret),
         }
     }
 }

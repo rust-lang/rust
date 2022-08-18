@@ -24,6 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
+        #[rustfmt::skip]
         match link_name.as_str() {
             // Environment related shims
             "getenv" => {
@@ -588,11 +589,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Platform-specific shims
             _ => {
-                match this.tcx.sess.target.os.as_ref() {
+                let target_os = &*this.tcx.sess.target.os;
+                match target_os {
+                    "android" => return shims::unix::android::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
+                    "freebsd" => return shims::unix::freebsd::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
                     "linux" => return shims::unix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
                     "macos" => return shims::unix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
-                    "freebsd" => return shims::unix::freebsd::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest),
-                    _ => unreachable!(),
+                    _ => panic!("unsupported Unix OS {target_os}"),
                 }
             }
         };
