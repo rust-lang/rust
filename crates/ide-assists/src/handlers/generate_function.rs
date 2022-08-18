@@ -104,13 +104,10 @@ fn fn_target_info(
     call: &CallExpr,
     fn_name: &str,
 ) -> Option<TargetInfo> {
-    let target_module;
-    let adt_name = None;
-    let (target, file, insert_offset) = match path.qualifier() {
+    match path.qualifier() {
         Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
             Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
-                target_module = Some(module);
-                get_fn_target(ctx, &target_module, call.clone())?
+                get_fn_target_info(ctx, &Some(module), call.clone())
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
                 if let hir::Adt::Enum(_) = adt {
@@ -120,22 +117,16 @@ fn fn_target_info(
                     }
                 }
 
-                return assoc_fn_target_info(ctx, call, adt, fn_name);
+                assoc_fn_target_info(ctx, call, adt, fn_name)
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
-                return assoc_fn_target_info(ctx, call, adt, fn_name);
+                assoc_fn_target_info(ctx, call, adt, fn_name)
             }
-            _ => {
-                return None;
-            }
+            _ => None,
         },
-        _ => {
-            target_module = None;
-            get_fn_target(ctx, &target_module, call.clone())?
-        }
-    };
-    Some(TargetInfo::new(target_module, adt_name, target, file, insert_offset))
+        _ => get_fn_target_info(ctx, &None, call.clone()),
+    }
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
@@ -389,6 +380,15 @@ fn make_return_type(
     };
     let ret_type = ret_ty.map(make::ret_type);
     (ret_type, should_focus_return_type)
+}
+
+fn get_fn_target_info(
+    ctx: &AssistContext<'_>,
+    target_module: &Option<Module>,
+    call: CallExpr,
+) -> Option<TargetInfo> {
+    let (target, file, insert_offset) = get_fn_target(ctx, target_module, call)?;
+    Some(TargetInfo::new(*target_module, None, target, file, insert_offset))
 }
 
 fn get_fn_target(
