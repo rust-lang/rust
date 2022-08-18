@@ -103,3 +103,20 @@ ast_lowering_register_conflict =
 ast_lowering_register1 = register `{$reg1_name}`
 
 ast_lowering_register2 = register `{$reg2_name}`
+
+ast_lowering_sub_tuple_binding =
+    `{$ident_name} @` is not allowed in a {$ctx}
+    .label = this is only allowed in slice patterns
+    .help = remove this and bind each tuple field independently
+
+ast_lowering_sub_tuple_binding_suggestion = if you don't need to use the contents of {$ident}, discard the tuple's remaining fields
+
+ast_lowering_extra_double_dot =
+    `..` can only be used once per {$ctx} pattern
+    .label = can only be used once per {$ctx} pattern
+
+ast_lowering_previously_used_here = previously used here
+
+ast_lowering_misplaced_double_dot =
+    `..` patterns are not allowed here
+    .note = only allowed in tuple, tuple struct, and slice patterns
