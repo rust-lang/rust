@@ -5,7 +5,7 @@ LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     NonTrivialDrop,
-   |     ^^^^^^^^^^^^^^ expected an implementor of trait `~const Destruct`
+   |     ^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `NonTrivialDrop`
    |
    = note: the trait bound `NonTrivialDrop: ~const Destruct` is not satisfied
 note: required by a bound in `check`
@@ -52,7 +52,7 @@ LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an implementor of trait `~const Destruct`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `ConstDropImplWithBounds<NonTrivialDrop>`
    |
 note: required for `ConstDropImplWithBounds<NonTrivialDrop>` to implement `~const Destruct`
   --> $DIR/const-drop-fail.rs:28:25

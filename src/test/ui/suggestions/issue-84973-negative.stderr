@@ -17,7 +17,7 @@ error[E0277]: the trait bound `f32: Tr` is not satisfied
   --> $DIR/issue-84973-negative.rs:11:9
    |
 LL |     bar(b);
-   |     --- ^ expected an implementor of trait `Tr`
+   |     --- ^ the trait `Tr` is not implemented for `f32`
    |     |
    |     required by a bound introduced by this call
    |

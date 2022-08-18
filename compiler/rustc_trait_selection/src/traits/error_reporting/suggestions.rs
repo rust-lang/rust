@@ -973,6 +973,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     || ref_inner_ty_satisfies_pred
                 {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        // We don't want a borrowing suggestion on the fields in structs,
+                        // ```
+                        // struct Foo {
+                        //  the_foos: Vec<Foo>
+                        // }
+                        // ```
+                        if !matches!(
+                            span.ctxt().outer_expn_data().kind,
+                            ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
+                        ) {
+                            return false;
+                        }
+                        if snippet.starts_with('&') {
+                            // This is already a literal borrow and the obligation is failing
+                            // somewhere else in the obligation chain. Do not suggest non-sense.
+                            return false;
+                        }
                         // We have a very specific type of error, where just borrowing this argument
                         // might solve the problem. In cases like this, the important part is the
                         // original type obligation, not the last one that failed, which is arbitrary.
@@ -986,50 +1003,33 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.message =
                                 vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
                         }
-                        if snippet.starts_with('&') {
-                            // This is already a literal borrow and the obligation is failing
-                            // somewhere else in the obligation chain. Do not suggest non-sense.
-                            return false;
-                        }
                         err.span_label(
                             span,
-                            &format!(
-                                "expected an implementor of trait `{}`",
+                            format!(
+                                "the trait `{}` is not implemented for `{}`",
                                 old_pred.print_modifiers_and_trait_path(),
+                                old_pred.self_ty().skip_binder(),
                             ),
                         );
 
-                        // This if is to prevent a special edge-case
-                        if matches!(
-                            span.ctxt().outer_expn_data().kind,
-                            ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
-                        ) {
-                            // We don't want a borrowing suggestion on the fields in structs,
-                            // ```
-                            // struct Foo {
-                            //  the_foos: Vec<Foo>
-                            // }
-                            // ```
-
-                            if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
-                                err.span_suggestions(
-                                    span.shrink_to_lo(),
-                                    "consider borrowing here",
-                                    ["&".to_string(), "&mut ".to_string()].into_iter(),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    &format!(
-                                        "consider{} borrowing here",
-                                        if is_mut { " mutably" } else { "" }
-                                    ),
-                                    format!("&{}", if is_mut { "mut " } else { "" }),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+                        if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
+                            err.span_suggestions(
+                                span.shrink_to_lo(),
+                                "consider borrowing here",
+                                ["&".to_string(), "&mut ".to_string()].into_iter(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                &format!(
+                                    "consider{} borrowing here",
+                                    if is_mut { " mutably" } else { "" }
+                                ),
+                                format!("&{}", if is_mut { "mut " } else { "" }),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                         return true;
                     }

@@ -1753,9 +1753,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                        .into_iter()
+                        .flatten()
                     {
-                        if let Some(param) = param
-                            && self.point_at_arg_if_possible(
+                        if self.point_at_arg_if_possible(
                                 error,
                                 def_id,
                                 param,
@@ -1784,17 +1785,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ..
             }) => {
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    .into_iter()
+                    .flatten()
                 {
-                    if let Some(param) = param
-                        && self.point_at_arg_if_possible(
-                            error,
-                            def_id,
-                            param,
-                            hir_id,
-                            segment.ident.span,
-                            args,
-                        )
-                    {
+                    if self.point_at_arg_if_possible(
+                        error,
+                        def_id,
+                        param,
+                        hir_id,
+                        segment.ident.span,
+                        args,
+                    ) {
                         return true;
                     }
                 }
@@ -1903,6 +1904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
                     error.obligation.cause.span = expr_field
+                        .expr
                         .span
                         .find_ancestor_in_same_ctxt(error.obligation.cause.span)
                         .unwrap_or(expr_field.span);
