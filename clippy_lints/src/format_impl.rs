@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::macros::{is_format_macro, root_macro_call_first_node, FormatArgsArg, FormatArgsExpn};
+use clippy_utils::macros::{is_format_macro, root_macro_call_first_node, FormatArg, FormatArgsExpn};
 use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -168,10 +168,9 @@ fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>,
         if let macro_def_id = outer_macro.def_id;
         if let Some(format_args) = FormatArgsExpn::find_nested(cx, expr, outer_macro.expn);
         if is_format_macro(cx, macro_def_id);
-        if let Some(args) = format_args.args();
         then {
-            for arg in args {
-                if arg.format_trait != impl_trait.name {
+            for arg in format_args.args {
+                if arg.format.r#trait != impl_trait.name {
                     continue;
                 }
                 check_format_arg_self(cx, expr, &arg, impl_trait);
@@ -180,11 +179,11 @@ fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>,
     }
 }
 
-fn check_format_arg_self(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &FormatArgsArg<'_>, impl_trait: FormatTrait) {
+fn check_format_arg_self(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &FormatArg<'_>, impl_trait: FormatTrait) {
     // Handle multiple dereferencing of references e.g. &&self
     // Handle dereference of &self -> self that is equivalent (i.e. via *self in fmt() impl)
     // Since the argument to fmt is itself a reference: &self
-    let reference = peel_ref_operators(cx, arg.value);
+    let reference = peel_ref_operators(cx, arg.param.value);
     let map = cx.tcx.hir();
     // Is the reference self?
     if path_to_local(reference).map(|x| map.name(x)) == Some(kw::SelfLower) {

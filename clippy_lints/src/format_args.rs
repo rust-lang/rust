@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
-use clippy_utils::macros::{is_format_macro, FormatArgsArg, FormatArgsExpn};
+use clippy_utils::macros::{is_format_macro, FormatArgsExpn};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
+use itertools::Itertools;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
@@ -74,20 +75,16 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             if let Some(macro_def_id) = outermost_expn_data.macro_def_id;
             if is_format_macro(cx, macro_def_id);
             if let ExpnKind::Macro(_, name) = outermost_expn_data.kind;
-            if let Some(args) = format_args.args();
             then {
-                for (i, arg) in args.iter().enumerate() {
-                    if arg.format_trait != sym::Display {
+                for arg in &format_args.args {
+                    if arg.format.has_string_formatting() {
                         continue;
                     }
-                    if arg.has_string_formatting() {
+                    if is_aliased(&format_args, arg.param.value.hir_id) {
                         continue;
                     }
-                    if is_aliased(&args, i) {
-                        continue;
-                    }
-                    check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.value);
-                    check_to_string_in_format_args(cx, name, arg.value);
+                    check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.param.value);
+                    check_to_string_in_format_args(cx, name, arg.param.value);
                 }
             }
         }
@@ -167,12 +164,12 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
     }
 }
 
-// Returns true if `args[i]` "refers to" or "is referred to by" another argument.
-fn is_aliased(args: &[FormatArgsArg<'_>], i: usize) -> bool {
-    let value = args[i].value;
-    args.iter()
-        .enumerate()
-        .any(|(j, arg)| i != j && std::ptr::eq(value, arg.value))
+// Returns true if `hir_id` is referred to by multiple format params
+fn is_aliased(args: &FormatArgsExpn<'_>, hir_id: HirId) -> bool {
+    args.params()
+        .filter(|param| param.value.hir_id == hir_id)
+        .at_most_one()
+        .is_err()
 }
 
 fn count_needed_derefs<'tcx, I>(mut ty: Ty<'tcx>, mut iter: I) -> (usize, Ty<'tcx>)
