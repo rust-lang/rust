@@ -820,8 +820,6 @@ pub(crate) trait AttributesExt {
 
     fn inner_docs(&self) -> bool;
 
-    fn other_attrs(&self) -> Vec<ast::Attribute>;
-
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
 
@@ -846,10 +844,6 @@ impl AttributesExt for [ast::Attribute] {
     /// FIXME(#78591): Support both inner and outer attributes on the same item.
     fn inner_docs(&self) -> bool {
         self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
-    }
-
-    fn other_attrs(&self) -> Vec<ast::Attribute> {
-        self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {

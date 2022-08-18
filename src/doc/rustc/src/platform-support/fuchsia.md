@@ -121,7 +121,10 @@ following files inside:
 
 **`package/meta/package`**
 ```json
-{"name":"hello_fuchsia","version":0}
+{
+  "name": "hello_fuchsia",
+  "version": "0"
+}
 ```
 
 The `package` file describes our package's name and version number. Every
@@ -232,10 +235,17 @@ ${SDK_PATH}/tools/${ARCH}/ffx product-bundle get workstation_eng.qemu-${ARCH}
 ${SDK_PATH}/tools/${ARCH}/ffx emu start workstation_eng.qemu-${ARCH} --headless
 ```
 
-Then, once the emulator has been started:
+Once the emulator is running, start a package repository server to serve our
+package to the emulator:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/ffx target repository register
+${SDK_PATH}/tools/${ARCH}/ffx repository server start
+```
+
+Once the repository server is up and running, register our repository:
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx target repository register --repository hello-fuchsia
 ```
 
 And watch the logs from the emulator in a separate terminal:
@@ -252,6 +262,10 @@ ${SDK_PATH}/tools/${ARCH}/ffx component run fuchsia-pkg://hello-fuchsia/hello_fu
 
 On reruns of the component, the `--recreate` argument may also need to be
 passed.
+
+```sh
+${SDK_PATH}/tools/${ARCH}/ffx component run --recreate fuchsia-pkg://hello-fuchsia/hello_fuchsia#meta/hello_fuchsia.cm
+```
 
 ## Testing
 

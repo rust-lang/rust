@@ -21,7 +21,6 @@ pub fn expand_deriving_hash(
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

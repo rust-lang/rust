@@ -25,7 +25,6 @@ pub fn expand_deriving_default(
     let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: Path::new(vec![kw::Default, sym::Default]),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

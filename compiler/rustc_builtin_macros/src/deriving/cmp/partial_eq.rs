@@ -98,7 +98,6 @@ pub fn expand_deriving_partial_eq(
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

@@ -146,7 +146,6 @@ fn mk_ty_param(
     cx: &ExtCtxt<'_>,
     span: Span,
     name: Symbol,
-    attrs: &[ast::Attribute],
     bounds: &[Path],
     self_ident: Ident,
     self_generics: &Generics,
@@ -158,7 +157,7 @@ fn mk_ty_param(
             cx.trait_bound(path)
         })
         .collect();
-    cx.typaram(span, Ident::new(name, span), attrs.to_owned(), bounds, None)
+    cx.typaram(span, Ident::new(name, span), bounds, None)
 }
 
 /// Bounds on type parameters.
@@ -183,7 +182,7 @@ impl Bounds {
             .iter()
             .map(|t| {
                 let (name, ref bounds) = *t;
-                mk_ty_param(cx, span, name, &[], &bounds, self_ty, self_generics)
+                mk_ty_param(cx, span, name, &bounds, self_ty, self_generics)
             })
             .collect();
 
