@@ -286,8 +286,10 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_trait_fn_not_async(&self, fn_span: Span, asyncness: Async) {
-        if let Async::Yes { span, .. } = asyncness {
-            self.session.emit_err(TraitFnAsync { fn_span, span });
+        if !self.session.features_untracked().async_fn_in_trait {
+            if let Async::Yes { span, .. } = asyncness {
+                self.session.emit_err(TraitFnAsync { fn_span, span });
+            }
         }
     }
 
