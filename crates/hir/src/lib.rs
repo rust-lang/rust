@@ -2778,20 +2778,32 @@ impl Type {
         self.ty.is_unknown()
     }
 
-    /// Checks that particular type `ty` implements `std::future::Future`.
+    /// Checks that particular type `ty` implements `std::future::IntoFuture` or
+    /// `std::future::Future`.
     /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
-        let std_future_trait = db
-            .lang_item(self.env.krate, SmolStr::new_inline("future_trait"))
-            .and_then(|it| it.as_trait());
-        let std_future_trait = match std_future_trait {
+    pub fn impls_into_future(&self, db: &dyn HirDatabase) -> bool {
+        let trait_ = db
+            .lang_item(self.env.krate, SmolStr::new_inline("into_future"))
+            .and_then(|it| {
+                let into_future_fn = it.as_function()?;
+                let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
+                let into_future_trait = assoc_item.containing_trait_or_trait_impl(db)?;
+                Some(into_future_trait.id)
+            })
+            .or_else(|| {
+                let future_trait =
+                    db.lang_item(self.env.krate, SmolStr::new_inline("future_trait"))?;
+                future_trait.as_trait()
+            });
+
+        let trait_ = match trait_ {
             Some(it) => it,
             None => return false,
         };
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), std_future_trait)
+        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), trait_)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.

@@ -138,6 +138,31 @@ fn not_send() -> Box<dyn Future<Output = ()> + 'static> {
 }
 
 #[test]
+fn into_future_trait() {
+    check_types(
+        r#"
+//- minicore: future
+struct Futurable;
+impl core::future::IntoFuture for Futurable {
+    type Output = u64;
+    type IntoFuture = IntFuture;
+}
+
+struct IntFuture;
+impl core::future::Future for IntFuture {
+    type Output = u64;
+}
+
+fn test() {
+    let r = Futurable;
+    let v = r.await;
+    v;
+} //^ u64
+"#,
+    );
+}
+
+#[test]
 fn infer_try() {
     check_types(
         r#"
