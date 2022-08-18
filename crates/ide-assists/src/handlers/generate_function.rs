@@ -61,9 +61,31 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     }
 
     let fn_name = &*name_ref.text();
+    let (target_module, adt_name, target, file, insert_offset) =
+        fn_target_info(path, ctx, &call, fn_name)?;
+    let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
+    let text_range = call.syntax().text_range();
+    let label = format!("Generate {} function", function_builder.fn_name);
+    add_func_to_accumulator(
+        acc,
+        ctx,
+        text_range,
+        function_builder,
+        insert_offset,
+        file,
+        adt_name,
+        label,
+    )
+}
+
+fn fn_target_info(
+    path: ast::Path,
+    ctx: &AssistContext<'_>,
+    call: &CallExpr,
+    fn_name: &str,
+) -> Option<(Option<Module>, Option<hir::Name>, GeneratedFunctionTarget, FileId, TextSize)> {
     let mut target_module = None;
     let mut adt_name = None;
-
     let (target, file, insert_offset) = match path.qualifier() {
         Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
             Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
@@ -78,11 +100,11 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
                     }
                 }
 
-                assoc_fn_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
+                assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
-                assoc_fn_target(ctx, &call, adt, &mut target_module, fn_name, &mut adt_name)?
+                assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?
             }
             _ => {
                 return None;
@@ -93,19 +115,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
             get_fn_target(ctx, &target_module, call.clone())?
         }
     };
-    let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
-    let text_range = call.syntax().text_range();
-    let label = format!("Generate {} function", function_builder.fn_name);
-    add_func_to_accumulator(
-        acc,
-        ctx,
-        text_range,
-        function_builder,
-        insert_offset,
-        file,
-        adt_name,
-        label,
-    )
+    Some((target_module, adt_name, target, file, insert_offset))
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
