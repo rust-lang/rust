@@ -14,11 +14,11 @@ use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
 struct CodegenedFunction<'tcx> {
-    instance: Instance<'tcx>,
     symbol_name: SymbolName<'tcx>,
     func_id: FuncId,
     func: Function,
     clif_comments: CommentWriter,
+    function_span: Span,
     source_info_set: IndexSet<SourceInfo>,
 }
 
@@ -108,8 +108,8 @@ fn codegen_fn<'tcx>(
     tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
-    let instance = fx.instance;
     let clif_comments = fx.clif_comments;
+    let function_span = fx.mir.span;
     let source_info_set = fx.source_info_set;
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
@@ -128,7 +128,7 @@ fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction { instance, symbol_name, func_id, func, clif_comments, source_info_set }
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, function_span, source_info_set }
 }
 
 fn compile_fn<'tcx>(
@@ -214,10 +214,10 @@ fn compile_fn<'tcx>(
     cx.profiler.verbose_generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             debug_context.define_function(
-                codegened_func.instance,
                 codegened_func.func_id,
                 codegened_func.symbol_name.name,
                 context,
+                codegened_func.function_span,
                 &codegened_func.source_info_set,
             );
         }

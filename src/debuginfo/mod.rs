@@ -97,14 +97,13 @@ impl<'tcx> DebugContext<'tcx> {
 
     pub(crate) fn define_function(
         &mut self,
-        instance: Instance<'tcx>,
         func_id: FuncId,
         name: &str,
         context: &Context,
+        function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
         let symbol = func_id.as_u32() as usize;
-        let mir = self.tcx.instance_mir(instance.def);
 
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
@@ -116,7 +115,8 @@ impl<'tcx> DebugContext<'tcx> {
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
-        let end = self.create_debug_lines(symbol, entry_id, context, mir.span, source_info_set);
+        let end =
+            self.create_debug_lines(symbol, entry_id, context, function_span, source_info_set);
 
         self.unit_range_list.0.push(Range::StartLength {
             begin: Address::Symbol { symbol, addend: 0 },
