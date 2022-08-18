@@ -58,3 +58,36 @@ ast_passes_fn_param_forbidden_self =
     `self` parameter is only allowed in associated functions
     .label = not semantically valid as function parameter
     .note = associated functions are those in `impl` or `trait` definitions
+
+ast_passes_forbidden_default =
+    `default` is only allowed on items in trait impls
+    .label = `default` because of this
+
+ast_passes_assoc_const_without_body =
+    associated constant in `impl` without body
+    .suggestion = provide a definition for the constant
+
+ast_passes_assoc_fn_without_body =
+    associated function in `impl` without body
+    .suggestion = provide a definition for the function
+
+ast_passes_assoc_type_without_body =
+    associated type in `impl` without body
+    .suggestion = provide a definition for the type
+
+ast_passes_const_without_body =
+    free constant item without body
+    .suggestion = provide a definition for the constant
+
+ast_passes_static_without_body =
+    free static item without body
+    .suggestion = provide a definition for the static
+
+ast_passes_ty_alias_without_body =
+    free type alias without body
+    .suggestion = provide a definition for the type
+
+ast_passes_fn_without_body =
+    free function without a body
+    .suggestion = provide a definition for the function
+    .extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block

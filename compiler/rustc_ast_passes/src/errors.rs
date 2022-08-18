@@ -1,7 +1,6 @@
 //! Errors emitted by ast_passes.
 
-use rustc_errors::fluent;
-use rustc_errors::{AddSubdiagnostic, Diagnostic};
+use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -149,4 +148,101 @@ pub struct FnParamForbiddenSelf {
     #[primary_span]
     #[label]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::forbidden_default)]
+pub struct ForbiddenDefault {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub def_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::assoc_const_without_body)]
+pub struct AssocConstWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::assoc_fn_without_body)]
+pub struct AssocFnWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::assoc_type_without_body)]
+pub struct AssocTypeWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " = <type>;", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::const_without_body)]
+pub struct ConstWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::static_without_body)]
+pub struct StaticWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::ty_alias_without_body)]
+pub struct TyAliasWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " = <type>;", applicability = "has-placeholders")]
+    pub replace_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::fn_without_body)]
+pub struct FnWithoutBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders")]
+    pub replace_span: Span,
+    #[subdiagnostic]
+    pub extern_block_suggestion: Option<ExternBlockSuggestion>,
+}
+
+pub struct ExternBlockSuggestion {
+    pub start_span: Span,
+    pub end_span: Span,
+    pub abi: Option<Symbol>,
+}
+
+impl AddSubdiagnostic for ExternBlockSuggestion {
+    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+        let start_suggestion = if let Some(abi) = self.abi {
+            format!("extern \"{}\" {{", abi)
+        } else {
+            "extern {".to_owned()
+        };
+        let end_suggestion = " }".to_owned();
+
+        diag.multipart_suggestion(
+            fluent::ast_passes::extern_block_suggestion,
+            vec![(self.start_span, start_suggestion), (self.end_span, end_suggestion)],
+            Applicability::MaybeIncorrect,
+        );
+    }
 }

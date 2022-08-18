@@ -13,7 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -390,47 +390,20 @@ impl<'a> AstValidator<'a> {
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
         if let Defaultness::Default(def_span) = defaultness {
             let span = self.session.source_map().guess_head_span(span);
-            self.err_handler()
-                .struct_span_err(span, "`default` is only allowed on items in trait impls")
-                .span_label(def_span, "`default` because of this")
-                .emit();
+            self.session.emit_err(ForbiddenDefault { span, def_span });
         }
     }
 
-    fn error_item_without_body(&self, sp: Span, ctx: &str, msg: &str, sugg: &str) {
-        self.error_item_without_body_with_help(sp, ctx, msg, sugg, |_| ());
-    }
-
-    fn error_item_without_body_with_help(
-        &self,
-        sp: Span,
-        ctx: &str,
-        msg: &str,
-        sugg: &str,
-        help: impl FnOnce(&mut Diagnostic),
-    ) {
+    /// If `sp` ends with a semicolon, returns it as a `Span`
+    /// Otherwise, returns `sp.shrink_to_hi()`
+    fn ending_semi_or_hi(&self, sp: Span) -> Span {
         let source_map = self.session.source_map();
         let end = source_map.end_point(sp);
-        let replace_span = if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
+
+        if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
             end
         } else {
             sp.shrink_to_hi()
-        };
-        let mut err = self.err_handler().struct_span_err(sp, msg);
-        err.span_suggestion(
-            replace_span,
-            &format!("provide a definition for the {}", ctx),
-            sugg,
-            Applicability::HasPlaceholders,
-        );
-        help(&mut err);
-        err.emit();
-    }
-
-    fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
-        if body.is_none() {
-            let msg = format!("associated {} in `impl` without body", ctx);
-            self.error_item_without_body(sp, ctx, &msg, sugg);
         }
     }
 
@@ -1123,37 +1096,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(item.span, defaultness);
 
                 if body.is_none() {
-                    let msg = "free function without a body";
-                    let ext = sig.header.ext;
-
-                    let f = |e: &mut Diagnostic| {
-                        if let Extern::Implicit(start_span) | Extern::Explicit(_, start_span) = &ext
-                        {
-                            let start_suggestion = if let Extern::Explicit(abi, _) = ext {
-                                format!("extern \"{}\" {{", abi.symbol_unescaped)
-                            } else {
-                                "extern {".to_owned()
-                            };
-
-                            let end_suggestion = " }".to_owned();
-                            let end_span = item.span.shrink_to_hi();
-
-                            e
-                            .multipart_suggestion(
-                                "if you meant to declare an externally defined function, use an `extern` block",
-                                vec![(*start_span, start_suggestion), (end_span, end_suggestion)],
-                                Applicability::MaybeIncorrect,
-                             );
-                        }
-                    };
-
-                    self.error_item_without_body_with_help(
-                        item.span,
-                        "function",
-                        msg,
-                        " { <body> }",
-                        f,
-                    );
+                    self.session.emit_err(FnWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                        extern_block_suggestion: match sig.header.ext {
+                            Extern::None => None,
+                            Extern::Implicit(start_span) => Some(ExternBlockSuggestion {
+                                start_span,
+                                end_span: item.span.shrink_to_hi(),
+                                abi: None,
+                            }),
+                            Extern::Explicit(abi, start_span) => Some(ExternBlockSuggestion {
+                                start_span,
+                                end_span: item.span.shrink_to_hi(),
+                                abi: Some(abi.symbol_unescaped),
+                            }),
+                        },
+                    });
                 }
 
                 self.visit_vis(&item.vis);
@@ -1259,12 +1218,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Const(def, .., None) => {
                 self.check_defaultness(item.span, def);
-                let msg = "free constant item without body";
-                self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
+                self.session.emit_err(ConstWithoutBody {
+                    span: item.span,
+                    replace_span: self.ending_semi_or_hi(item.span),
+                });
             }
             ItemKind::Static(.., None) => {
-                let msg = "free static item without body";
-                self.error_item_without_body(item.span, "static", msg, " = <expr>;");
+                self.session.emit_err(StaticWithoutBody {
+                    span: item.span,
+                    replace_span: self.ending_semi_or_hi(item.span),
+                });
             }
             ItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1275,8 +1238,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.check_defaultness(item.span, defaultness);
                 if ty.is_none() {
-                    let msg = "free type alias without body";
-                    self.error_item_without_body(item.span, "type", msg, " = <type>;");
+                    self.session.emit_err(TyAliasWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                    });
                 }
                 self.check_type_no_bounds(bounds, "this context");
                 if where_clauses.1.0 {
@@ -1580,10 +1545,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
                 AssocItemKind::Const(_, _, body) => {
-                    self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
+                    if body.is_none() {
+                        self.session.emit_err(AssocConstWithoutBody {
+                            span: item.span,
+                            replace_span: self.ending_semi_or_hi(item.span),
+                        });
+                    }
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
-                    self.check_impl_item_provided(item.span, body, "function", " { <body> }");
+                    if body.is_none() {
+                        self.session.emit_err(AssocFnWithoutBody {
+                            span: item.span,
+                            replace_span: self.ending_semi_or_hi(item.span),
+                        });
+                    }
                 }
                 AssocItemKind::TyAlias(box TyAlias {
                     generics,
@@ -1593,7 +1568,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ty,
                     ..
                 }) => {
-                    self.check_impl_item_provided(item.span, ty, "type", " = <type>;");
+                    if ty.is_none() {
+                        self.session.emit_err(AssocTypeWithoutBody {
+                            span: item.span,
+                            replace_span: self.ending_semi_or_hi(item.span),
+                        });
+                    }
                     self.check_type_no_bounds(bounds, "`impl`s");
                     if ty.is_some() {
                         self.check_gat_where(
