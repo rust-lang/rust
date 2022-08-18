@@ -275,8 +275,14 @@ fn create_struct_def(
     // copy attributes from enum
     ted::insert_all(
         ted::Position::first_child_of(strukt.syntax()),
-        enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
+        enum_
+            .attrs()
+            .flat_map(|it| {
+                vec![it.syntax().clone_for_update().into(), make::tokens::single_newline().into()]
+            })
+            .collect(),
     );
+
     strukt
 }
 
@@ -458,10 +464,14 @@ enum En<T> { Var(Var<T>) }"#,
     fn test_extract_struct_carries_over_attributes() {
         check_assist(
             extract_struct_from_enum_variant,
-            r#"#[derive(Debug)]
+            r#"
+#[derive(Debug)]
 #[derive(Clone)]
 enum Enum { Variant{ field: u32$0 } }"#,
-            r#"#[derive(Debug)]#[derive(Clone)] struct Variant{ field: u32 }
+            r#"
+#[derive(Debug)]
+#[derive(Clone)]
+struct Variant{ field: u32 }
 
 #[derive(Debug)]
 #[derive(Clone)]
