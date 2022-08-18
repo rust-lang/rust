@@ -1,12 +1,13 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
+
+use crate::errors::{SafeTraitImplementedAsUnsafe, UnsafeTraitImplementedWithoutUnsafeKeyword, AttributeRequiresUnsafeKeyword};
 
 pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Impl));
@@ -19,36 +20,15 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
         match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
-                    tcx.sess,
-                    item.span,
-                    E0199,
-                    "implementing the trait `{}` is not unsafe",
-                    trait_ref.print_only_trait_path()
-                )
-                .emit();
+                tcx.sess.emit_err(SafeTraitImplementedAsUnsafe { span: item.span, trait_name: trait_ref.print_only_trait_path().to_string() });
             }
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
-                    tcx.sess,
-                    item.span,
-                    E0200,
-                    "the trait `{}` requires an `unsafe impl` declaration",
-                    trait_ref.print_only_trait_path()
-                )
-                .emit();
+                tcx.sess.emit_err(UnsafeTraitImplementedWithoutUnsafeKeyword { span: item.span, trait_name: trait_ref.print_only_trait_path().to_string() });
             }
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                struct_span_err!(
-                    tcx.sess,
-                    item.span,
-                    E0569,
-                    "requires an `unsafe impl` declaration due to `#[{}]` attribute",
-                    attr_name
-                )
-                .emit();
+                tcx.sess.emit_err(AttributeRequiresUnsafeKeyword { span: item.span, attr_name });
             }
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {

@@ -340,3 +340,28 @@ pub struct ExternCrateNotIdiomatic {
     pub msg_code: String,
     pub suggestion_code: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::safe_trait_implemented_as_unsafe, code = "E0199")]
+pub struct SafeTraitImplementedAsUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub trait_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::unsafe_trait_implemented_without_unsafe_keyword, code = "E0200")]
+pub struct UnsafeTraitImplementedWithoutUnsafeKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::attribute_requires_unsafe_keyword, code = "E0569")]
+pub struct AttributeRequiresUnsafeKeyword<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: &'a str,
+}

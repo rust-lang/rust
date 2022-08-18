@@ -131,3 +131,12 @@ typeck_unused_extern_crate =
 typeck_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
+
+typeck_safe_trait_implemented_as_unsafe =
+    implementing the trait `{$trait_name}` is not unsafe
+
+typeck_unsafe_trait_implemented_without_unsafe_keyword =
+    the trait `{$trait_name}` requires an `unsafe impl` declaration
+
+typeck_attribute_requires_unsafe_keyword =
+    requires an `unsafe impl` declaration due to `#[{$attr_name}]` attribute
