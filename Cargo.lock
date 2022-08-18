@@ -4253,8 +4253,10 @@ name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_macros",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -4995,9 +4997,9 @@ checksum = "da73c8f77aebc0e40c300b93f0a5f1bece7a248a36eee287d4e095f35c7b7d6e"
 
 [[package]]
 name = "snapbox"
-version = "0.3.3"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44d199ccf8f606592df2d145db26f2aa45344e23c64b074cc5a4047f1d99b0f7"
+checksum = "767a1d5da232b6959cd1bd5c9e8db8a7cce09c3038e89deedb49a549a2aefd93"
 dependencies = [
  "concolor",
  "content_inspector",
@@ -5013,9 +5015,9 @@ dependencies = [
 
 [[package]]
 name = "snapbox-macros"
-version = "0.3.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a253e6f894cfa440cba00600a249fa90869d8e0ec45ab274a456e043a0ce8f2"
+checksum = "c01dea7e04cbb27ef4c86e9922184608185f7cd95c1763bc30d727cda4a5e930"
 
 [[package]]
 name = "socket2"

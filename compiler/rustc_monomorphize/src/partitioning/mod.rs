@@ -108,6 +108,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
+use crate::errors::{FatalError, SpanFatalError};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -149,7 +150,10 @@ fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
 
     match strategy {
         "default" => Box::new(default::DefaultPartitioning),
-        _ => tcx.sess.fatal("unknown partitioning strategy"),
+        _ => {
+            let error_message = "unknown partitioning strategy".to_string();
+            tcx.sess.emit_fatal(FatalError { error_message: error_message.clone() });
+        }
     }
 }
 
@@ -334,9 +338,9 @@ where
             let error_message = format!("symbol `{}` is already defined", sym1);
 
             if let Some(span) = span {
-                tcx.sess.span_fatal(span, &error_message)
+                tcx.sess.emit_fatal(SpanFatalError { span, error_message: error_message.clone() });
             } else {
-                tcx.sess.fatal(&error_message)
+                tcx.sess.emit_fatal(FatalError { error_message: error_message.clone() });
             }
         }
     }
