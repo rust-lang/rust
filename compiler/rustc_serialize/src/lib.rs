@@ -18,6 +18,8 @@ Core encoding and decoding interfaces.
 #![feature(new_uninit)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 
