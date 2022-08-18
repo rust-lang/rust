@@ -1,5 +1,3 @@
-//ignore-windows: Uses POSIX APIs
-
 use std::mem;
 
 struct Arena(());
