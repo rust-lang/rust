@@ -161,6 +161,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             msg: String,
             fallback_label: String,
             span: Span,
+            span_label: Option<(Span, &'a str)>,
             could_be_expr: bool,
             suggestion: Option<(Span, &'a str, String)>,
         }
@@ -172,6 +173,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 msg: format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
                 fallback_label: format!("not a {expected}"),
                 span,
+                span_label: match res {
+                    Res::Def(kind, def_id) if kind == DefKind::TyParam => {
+                        self.def_span(def_id).map(|span| (span, "found this type pararmeter"))
+                    }
+                    _ => None,
+                },
                 could_be_expr: match res {
                     Res::Def(DefKind::Fn, _) => {
                         // Verify whether this is a fn call or an Fn used as a type.
@@ -251,6 +258,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     format!("not found in {mod_str}")
                 },
                 span: item_span,
+                span_label: None,
                 could_be_expr: false,
                 suggestion,
             }
@@ -261,6 +269,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
 
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
+
+        if let Some((span, label)) = base_error.span_label {
+            err.span_label(span, label);
+        }
 
         if let Some(sugg) = base_error.suggestion {
             err.span_suggestion_verbose(sugg.0, sugg.1, sugg.2, Applicability::MaybeIncorrect);
