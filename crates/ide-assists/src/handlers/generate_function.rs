@@ -92,8 +92,8 @@ fn fn_target_info(
     call: &CallExpr,
     fn_name: &str,
 ) -> Option<TargetInfo> {
-    let mut target_module = None;
-    let mut adt_name = None;
+    let target_module;
+    let adt_name = None;
     let (target, file, insert_offset) = match path.qualifier() {
         Some(qualifier) => match ctx.sema.resolve_path(&qualifier) {
             Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) => {
@@ -108,11 +108,11 @@ fn fn_target_info(
                     }
                 }
 
-                assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?
+                return assoc_fn_target_info(ctx, call, adt, fn_name);
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
-                assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?
+                return assoc_fn_target_info(ctx, call, adt, fn_name);
             }
             _ => {
                 return None;
@@ -412,6 +412,18 @@ fn get_method_target(
     Some((target.clone(), get_insert_offset(&target)))
 }
 
+fn assoc_fn_target_info(
+    ctx: &AssistContext<'_>,
+    call: &CallExpr,
+    adt: hir::Adt,
+    fn_name: &str,
+) -> Option<TargetInfo> {
+    let mut target_module = None;
+    let mut adt_name = None;
+    let (target, file, insert_offset) =
+        assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?;
+    Some(TargetInfo { target_module, adt_name, target, file, insert_offset })
+}
 fn assoc_fn_target(
     ctx: &AssistContext<'_>,
     call: &CallExpr,
