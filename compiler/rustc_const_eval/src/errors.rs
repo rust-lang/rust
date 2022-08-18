@@ -87,3 +87,11 @@ pub(crate) struct TransientMutBorrowErrRaw {
     pub span: Span,
     pub kind: ConstContext,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::const_evaL_max_num_nodes_exceeded)]
+pub(crate) struct MaxNumNodesExceeded {
+    #[primary_span]
+    pub span: Span,
+    pub s: String,
+}

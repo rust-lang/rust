@@ -29,3 +29,5 @@ const_eval_mut_deref =
 const_eval_transient_mut_borrow = mutable references are not allowed in {$kind}s
 
 const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {$kind}s
+
+const_evaL_max_num_nodes_exceeded = maximum number of nodes exceeded in constant {$s}

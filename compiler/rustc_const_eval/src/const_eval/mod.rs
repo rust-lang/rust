@@ -1,15 +1,15 @@
 // Not in interpret to make sure we do not use private implementation details
 
+use crate::errors::MaxNumNodesExceeded;
+use crate::interpret::{
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
+    Scalar,
+};
 use rustc_hir::Mutability;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
-
-use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
-    Scalar,
-};
 
 mod error;
 mod eval_queries;
@@ -77,7 +77,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let msg = format!("maximum number of nodes exceeded in constant {}", &s);
                     let mut diag = match tcx.hir().span_if_local(did) {
-                        Some(span) => tcx.sess.struct_span_err(span, &msg),
+                        Some(span) => tcx.sess.create_err(MaxNumNodesExceeded { span, s }),
                         None => tcx.sess.struct_err(&msg),
                     };
                     diag.emit();
