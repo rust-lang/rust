@@ -1,8 +1,6 @@
 //@ignore-target-windows: No libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(rustc_private)]
-
 fn main() {
     test_file_open_missing_needed_mode();
 }

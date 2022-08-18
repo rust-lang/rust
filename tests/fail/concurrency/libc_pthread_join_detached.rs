@@ -2,8 +2,6 @@
 
 // Joining a detached thread is undefined behavior.
 
-#![feature(rustc_private)]
-
 use std::{mem, ptr};
 
 extern "C" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {

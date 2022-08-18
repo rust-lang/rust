@@ -2,8 +2,6 @@
 //
 // Check that if we pass NULL attribute, then we get the default mutex type.
 
-#![feature(rustc_private)]
-
 fn main() {
     unsafe {
         let mut mutex: libc::pthread_mutex_t = std::mem::zeroed();

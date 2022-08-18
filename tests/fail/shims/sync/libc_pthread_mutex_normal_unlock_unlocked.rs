@@ -1,7 +1,5 @@
 //@ignore-target-windows: No libc on Windows
 
-#![feature(rustc_private)]
-
 fn main() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();

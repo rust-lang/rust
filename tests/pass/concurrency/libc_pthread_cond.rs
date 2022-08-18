@@ -2,8 +2,6 @@
 //@ignore-target-apple: pthread_condattr_setclock is not supported on MacOS.
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(rustc_private)]
-
 /// Test that conditional variable timeouts are working properly with both
 /// monotonic and system clocks.
 use std::mem::MaybeUninit;

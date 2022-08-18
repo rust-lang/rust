@@ -1,7 +1,5 @@
 //ignore-windows: Uses POSIX APIs
 
-#![feature(rustc_private)]
-
 use std::mem;
 
 struct Arena(());

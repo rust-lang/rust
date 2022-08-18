@@ -2,8 +2,6 @@
 //@compile-flags: -Zmiri-isolation-error=warn-nobacktrace
 //@normalize-stderr-test: "(stat(x)?)" -> "$$STAT"
 
-#![feature(rustc_private)]
-
 use std::ffi::CString;
 use std::fs::{self, File};
 use std::io::{Error, ErrorKind};

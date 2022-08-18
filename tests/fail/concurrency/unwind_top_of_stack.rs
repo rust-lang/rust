@@ -3,7 +3,7 @@
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.
 
-#![feature(rustc_private, c_unwind)]
+#![feature(c_unwind)]
 
 use std::{mem, ptr};
 

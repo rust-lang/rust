@@ -1,5 +1,4 @@
 //@only-target-linux
-#![feature(rustc_private)]
 
 use std::ptr;
 

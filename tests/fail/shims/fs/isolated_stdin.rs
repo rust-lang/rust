@@ -1,7 +1,5 @@
 //@ignore-target-windows: No libc on Windows
 
-#![feature(rustc_private)]
-
 fn main() -> std::io::Result<()> {
     let mut bytes = [0u8; 512];
     unsafe {

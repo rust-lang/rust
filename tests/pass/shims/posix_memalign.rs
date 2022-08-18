@@ -1,6 +1,5 @@
 //@ignore-target-windows: No libc on Windows
 
-#![feature(rustc_private)]
 #![feature(pointer_is_aligned)]
 #![feature(strict_provenance)]
 

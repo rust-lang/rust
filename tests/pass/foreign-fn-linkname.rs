@@ -1,5 +1,4 @@
 //ignore-windows: Uses POSIX APIs
-#![feature(rustc_private)]
 
 use std::ffi::CString;
 
