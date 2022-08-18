@@ -280,25 +280,20 @@ fn module_codegen(
         cgu.is_primary(),
     );
 
-    let global_asm_object_file = match crate::global_asm::compile_global_asm(
+    let global_asm_object_file = crate::global_asm::compile_global_asm(
         &global_asm_config,
         cgu.name().as_str(),
         &cx.global_asm,
-    ) {
-        Ok(global_asm_object_file) => global_asm_object_file,
-        Err(err) => tcx.sess.fatal(&err),
-    };
+    )?;
 
-    let debug_context = cx.debug_context;
-    let unwind_context = cx.unwind_context;
     tcx.sess.time("write object file", || {
         emit_cgu(
             &global_asm_config.output_filenames,
-            &tcx.sess.prof,
+            &cx.profiler,
             cgu.name().as_str().to_string(),
             module,
-            debug_context,
-            unwind_context,
+            cx.debug_context,
+            cx.unwind_context,
             global_asm_object_file,
         )
     })
