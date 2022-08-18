@@ -61,7 +61,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     }
 
     let fn_name = &*name_ref.text();
-    let (target_module, adt_name, target, file, insert_offset) =
+    let TargetInfo { target_module, adt_name, target, file, insert_offset } =
         fn_target_info(path, ctx, &call, fn_name)?;
     let function_builder = FunctionBuilder::from_call(ctx, &call, fn_name, target_module, target)?;
     let text_range = call.syntax().text_range();
@@ -78,12 +78,20 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     )
 }
 
+struct TargetInfo {
+    target_module: Option<Module>,
+    adt_name: Option<hir::Name>,
+    target: GeneratedFunctionTarget,
+    file: FileId,
+    insert_offset: TextSize,
+}
+
 fn fn_target_info(
     path: ast::Path,
     ctx: &AssistContext<'_>,
     call: &CallExpr,
     fn_name: &str,
-) -> Option<(Option<Module>, Option<hir::Name>, GeneratedFunctionTarget, FileId, TextSize)> {
+) -> Option<TargetInfo> {
     let mut target_module = None;
     let mut adt_name = None;
     let (target, file, insert_offset) = match path.qualifier() {
@@ -115,7 +123,7 @@ fn fn_target_info(
             get_fn_target(ctx, &target_module, call.clone())?
         }
     };
-    Some((target_module, adt_name, target, file, insert_offset))
+    Some(TargetInfo { target_module, adt_name, target, file, insert_offset })
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
