@@ -5,7 +5,7 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
-note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>`
+note: required for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>` to implement `Trait`
   --> $DIR/abstract-const-as-cast-3.rs:8:22
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
@@ -32,7 +32,7 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
-note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>`
+note: required for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>` to implement `Trait`
   --> $DIR/abstract-const-as-cast-3.rs:8:22
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
@@ -77,7 +77,7 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
-note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>`
+note: required for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>` to implement `Trait`
   --> $DIR/abstract-const-as-cast-3.rs:8:22
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}
@@ -104,7 +104,7 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
-note: required because of the requirements on the impl of `Trait` for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>`
+note: required for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>` to implement `Trait`
   --> $DIR/abstract-const-as-cast-3.rs:8:22
    |
 LL | impl<const O: usize> Trait for HasCastInTraitImpl<O, { O as u128 }> {}

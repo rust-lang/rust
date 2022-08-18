@@ -4,7 +4,7 @@ error[E0277]: the trait bound `B: Bar` is not satisfied
 LL |         MyBaz(bar)
    |         ^^^^^^^^^^ the trait `Bar` is not implemented for `B`
    |
-note: required because of the requirements on the impl of `Baz` for `MyBaz<B>`
+note: required for `MyBaz<B>` to implement `Baz`
   --> $DIR/issue-90400-2.rs:31:14
    |
 LL | impl<B: Bar> Baz for MyBaz<B> {

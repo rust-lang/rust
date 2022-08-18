@@ -43,7 +43,7 @@ LL | trait MapLike<K, V> {
 LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
-   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>>` for `Box<BTreeMap<u8, u8>>`
+   = note: required for `Box<BTreeMap<u8, u8>>` to implement `CoerceUnsized<Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>>`
    = note: required by cast to type `Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>`
 
 error: aborting due to 3 previous errors

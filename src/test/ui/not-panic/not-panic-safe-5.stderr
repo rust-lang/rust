@@ -5,7 +5,7 @@ LL |     assert::<*const UnsafeCell<i32>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
    |
    = help: the trait `RefUnwindSafe` is not implemented for `UnsafeCell<i32>`
-   = note: required because of the requirements on the impl of `UnwindSafe` for `*const UnsafeCell<i32>`
+   = note: required for `*const UnsafeCell<i32>` to implement `UnwindSafe`
 note: required by a bound in `assert`
   --> $DIR/not-panic-safe-5.rs:6:14
    |

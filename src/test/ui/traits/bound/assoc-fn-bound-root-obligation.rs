@@ -5,7 +5,7 @@ fn strip_lf(s: &str) -> &str {
     //~| NOTE required by a bound introduced by this call
     //~| HELP the trait `FnMut<(char,)>` is not implemented for `u8`
     //~| HELP the following other types implement trait `Pattern<'a>`:
-    //~| NOTE required because of the requirements on the impl of `Pattern<'_>` for `u8`
+    //~| NOTE required for `u8` to implement `Pattern<'_>`
 
 }
 

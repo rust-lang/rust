@@ -5,7 +5,7 @@ LL |     let _: Box<dyn for<'b> Wrap<'b>> = Box::new(Wrapper(process));
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<P as Process<'_>>::Item` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `<P as Process<'_>>::Item`
-note: required because of the requirements on the impl of `for<'b> Wrap<'b>` for `Wrapper<P>`
+note: required for `Wrapper<P>` to implement `for<'b> Wrap<'b>`
   --> $DIR/issue-22872.rs:7:13
    |
 LL | impl<'b, P> Wrap<'b> for Wrapper<P>

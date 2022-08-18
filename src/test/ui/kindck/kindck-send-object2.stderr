@@ -5,7 +5,7 @@ LL |     assert_send::<&'static dyn Dummy>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'static)` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `(dyn Dummy + 'static)`
-   = note: required because of the requirements on the impl of `Send` for `&'static (dyn Dummy + 'static)`
+   = note: required for `&'static (dyn Dummy + 'static)` to implement `Send`
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-object2.rs:3:18
    |
@@ -19,7 +19,7 @@ LL |     assert_send::<Box<dyn Dummy>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Dummy` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `dyn Dummy`
-   = note: required because of the requirements on the impl of `Send` for `Unique<dyn Dummy>`
+   = note: required for `Unique<dyn Dummy>` to implement `Send`
    = note: required because it appears within the type `Box<dyn Dummy>`
 note: required by a bound in `assert_send`
   --> $DIR/kindck-send-object2.rs:3:18
