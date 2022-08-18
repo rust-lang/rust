@@ -131,3 +131,5 @@ typeck_unused_extern_crate =
 typeck_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
+
+typeck_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
