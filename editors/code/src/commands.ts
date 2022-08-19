@@ -817,6 +817,12 @@ export function openDocs(ctx: Ctx): Cmd {
     };
 }
 
+export function cancelFlycheck(ctx: Ctx): Cmd {
+    return async () => {
+        await ctx.client.sendRequest(ra.cancelFlycheck);
+    };
+}
+
 export function resolveCodeAction(ctx: Ctx): Cmd {
     const client = ctx.client;
     return async (params: lc.CodeAction) => {
