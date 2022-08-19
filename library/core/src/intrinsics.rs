@@ -2139,7 +2139,7 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
+    !ptr.is_null() && ptr.is_aligned()
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
