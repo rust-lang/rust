@@ -3,6 +3,7 @@ use std::{
     convert::TryInto as _,
     env, fmt, fs,
     path::{Path, PathBuf},
+    process,
     str::FromStr,
 };
 
@@ -124,7 +125,12 @@ fn filter_dates(
 }
 
 fn main() {
-    let root_dir = env::args().nth(1).unwrap_or(".".into());
+    let mut args = env::args();
+    if args.len() == 1 {
+        eprintln!("error: expected root Markdown directory as CLI argument");
+        process::exit(1);
+    }
+    let root_dir = args.nth(1).unwrap();
     let root_dir_path = Path::new(&root_dir);
     let glob_pat = format!("{}/**/*.md", root_dir);
     let today_chrono = Utc::today();
