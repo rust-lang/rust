@@ -32,9 +32,9 @@ cfg_if::cfg_if! {
     }
 }
 
-// Android with api less than 21 define sig* functions inline, so it is not
-// available for dynamic link. Implementing sigemptyset and sigaddset allow us
-// to support older Android version (independent of libc version).
+// Android with api less than 21 define sig* functions inline, so they are not
+// available for dynamic linking. Implementing these functions allows us
+// to support older Android versions (independent of libc version).
 // The following implementations are based on
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
@@ -43,8 +43,58 @@ cfg_if::cfg_if! {
             set.write_bytes(0u8, 1);
             return 0;
         }
+
+        const LONG_BIT: usize = crate::mem::size_of::<libc::c_ulong>() * 8;
+
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+            let bit = (signum - 1) as usize;
+            let raw = match to_bitmap_slice_mut(set, bit) {
+                Ok(raw) => raw,
+                Err(val) => return val,
+            };
+            raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
+            return 0;
+        }
+
+        #[allow(dead_code)]
+        pub unsafe fn sigdelset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+            let bit = (signum - 1) as usize;
+            let raw = match to_bitmap_slice_mut(set, bit) {
+                Ok(raw) => raw,
+                Err(val) => return val,
+            };
+            raw[bit / LONG_BIT] &= !(1 << (bit % LONG_BIT));
+            return 0;
+        }
+
+        #[allow(dead_code)]
+        pub unsafe fn sigismember(set: *const libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+            // Can't use to_bitmap_slice_mut because it's *mut, not *const.
+            use crate::{
+                mem::size_of,
+                slice,
+            };
+            use libc::{c_ulong, sigset_t};
+
+            let bit = (signum - 1) as usize;
+            if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
+                crate::sys::unix::os::set_errno(libc::EINVAL);
+                return -1;
+            }
+            let raw: &[c_ulong] = slice::from_raw_parts(
+                set as *const c_ulong,
+                size_of::<sigset_t>() / size_of::<c_ulong>(),
+            );
+
+            return ((raw[bit / LONG_BIT] >> (bit % LONG_BIT)) & 1) as i32;
+        }
+
+        // SAFETY: returned slice lives as long as set.
+        unsafe fn to_bitmap_slice_mut<'a>(
+            set: *mut libc::sigset_t,
+            bit: usize,
+        ) -> Result<&'a mut [libc::c_ulong], libc::c_int> {
             use crate::{
                 mem::{align_of, size_of},
                 slice,
@@ -59,21 +109,19 @@ cfg_if::cfg_if! {
                     && (size_of::<sigset_t>() % size_of::<c_ulong>()) == 0
             );
 
-            let bit = (signum - 1) as usize;
             if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
                 crate::sys::unix::os::set_errno(libc::EINVAL);
-                return -1;
+                return Err(-1);
             }
             let raw = slice::from_raw_parts_mut(
                 set as *mut c_ulong,
                 size_of::<sigset_t>() / size_of::<c_ulong>(),
             );
-            const LONG_BIT: usize = size_of::<c_ulong>() * 8;
-            raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
-            return 0;
+
+            Ok(raw)
         }
     } else {
-        pub use libc::{sigemptyset, sigaddset};
+        pub use libc::{sigemptyset, sigaddset, sigdelset, sigismember};
     }
 }
 
