@@ -1,0 +1,67 @@
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:14:9
+   |
+LL |     let peekable = std::iter::empty::<u32>().peekable();
+   |         ^^^^^^^^
+   |
+   = note: `-D clippy::unused-peekable` implied by `-D warnings`
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:18:9
+   |
+LL |     let new_local = old_local;
+   |         ^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:22:9
+   |
+LL |     let by_mut_ref = &mut by_mut_ref_test;
+   |         ^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:29:9
+   |
+LL |     let peekable_from_fn = returns_peekable();
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:32:13
+   |
+LL |     let mut peekable_using_iterator_method = std::iter::empty::<u32>().peekable();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:37:9
+   |
+LL |     let passed_along_ref = std::iter::empty::<u32>().peekable();
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:42:9
+   |
+LL |     let _by_ref = by_ref_test.by_ref();
+   |         ^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:44:13
+   |
+LL |     let mut peekable_in_for_loop = std::iter::empty::<u32>().peekable();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: aborting due to 8 previous errors
+

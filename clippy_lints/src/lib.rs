@@ -381,6 +381,7 @@ mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_async;
 mod unused_io_amount;
+mod unused_peekable;
 mod unused_rounding;
 mod unused_self;
 mod unused_unit;
@@ -894,6 +895,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(manual_instant_elapsed::ManualInstantElapsed));
     store.register_late_pass(|| Box::new(partialeq_to_none::PartialeqToNone));
     store.register_late_pass(|| Box::new(manual_empty_string_creations::ManualEmptyStringCreations));
+    store.register_late_pass(|| Box::new(unused_peekable::UnusedPeekable));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

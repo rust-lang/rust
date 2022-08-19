@@ -575,6 +575,7 @@ store.register_lints(&[
     unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
     unused_async::UNUSED_ASYNC,
     unused_io_amount::UNUSED_IO_AMOUNT,
+    unused_peekable::UNUSED_PEEKABLE,
     unused_rounding::UNUSED_ROUNDING,
     unused_self::UNUSED_SELF,
     unused_unit::UNUSED_UNIT,
