@@ -271,7 +271,6 @@ impl<'s> LintLevelsBuilder<'s> {
         self.cur = self.sets.list.push(LintSet { specs: FxHashMap::default(), parent: prev });
 
         let sess = self.sess;
-        // let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.has_name(sym::automatically_derived) {
                 self.current_specs_mut().insert(
@@ -500,7 +499,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     &CheckLintNameResult::NoTool => {
                         sess.emit_err(UnknownTool {
                             span: tool_ident.map(|ident| ident.span),
-                            tool_name: tool_name.unwrap().to_string(),
+                            tool_name: tool_name.unwrap(),
                             lint_name: pprust::path_to_string(&meta_item.path),
                             is_nightly_build: sess.is_nightly_build().then_some(()),
                         });

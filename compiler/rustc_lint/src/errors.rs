@@ -25,7 +25,7 @@ pub enum MalformedAttributeSub {
 pub struct UnknownTool {
     #[primary_span]
     pub span: Option<Span>,
-    pub tool_name: String,
+    pub tool_name: Symbol,
     pub lint_name: String,
     #[help]
     pub is_nightly_build: Option<()>,
