@@ -120,6 +120,10 @@ config_data! {
         /// Cargo, you might also want to change
         /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
         ///
+        /// If there are multiple linked projects, this command is invoked for
+        /// each of them, with the working directory being the project root
+        /// (i.e., the folder containing the `Cargo.toml`).
+        ///
         /// An example command would be:
         ///
         /// ```bash
