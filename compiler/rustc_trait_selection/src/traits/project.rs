@@ -554,6 +554,18 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     .flatten()
                     .unwrap_or_else(|| ty::Term::Ty(ty.super_fold_with(self)))
                 };
+                // For cases like #95134 we would like to catch overflows early
+                // otherwise they slip away away and cause ICE.
+                let recursion_limit = self.tcx().recursion_limit();
+                if !recursion_limit.value_within_limit(self.depth) {
+                    let obligation = Obligation::with_depth(
+                        self.cause.clone(),
+                        recursion_limit.0,
+                        self.param_env,
+                        ty,
+                    );
+                    self.selcx.infcx().report_overflow_error(&obligation, true);
+                }
                 debug!(
                     ?self.depth,
                     ?ty,
