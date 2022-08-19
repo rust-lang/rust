@@ -41,6 +41,7 @@ fluent_messages! {
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",
     passes => "../locales/en-US/passes.ftl",
+    plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
 }
