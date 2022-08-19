@@ -6,7 +6,6 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::SymbolName;
 use rustc_span::SourceFile;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
@@ -246,7 +245,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
     pub(crate) instance: Instance<'tcx>,
-    pub(crate) symbol_name: SymbolName<'tcx>,
+    pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
     pub(crate) fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
 
