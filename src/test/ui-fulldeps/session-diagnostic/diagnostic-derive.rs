@@ -52,7 +52,7 @@ struct WrongStructAttrStyle {}
 #[derive(SessionDiagnostic)]
 #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic kind not specified
+//~^^ ERROR diagnostic slug not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
@@ -103,7 +103,6 @@ struct WrongPlaceField {
 #[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
 //~^ ERROR specified multiple times
 //~^^ ERROR specified multiple times
-//~^^^ ERROR specified multiple times
 struct ErrorSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
@@ -111,7 +110,6 @@ struct ErrorSpecifiedTwice {}
 #[warning(typeck::ambiguous_lifetime_bound, code = "E0293")]
 //~^ ERROR specified multiple times
 //~^^ ERROR specified multiple times
-//~^^^ ERROR specified multiple times
 struct WarnSpecifiedAfterError {}
 
 #[derive(SessionDiagnostic)]
@@ -125,7 +123,7 @@ struct CodeSpecifiedTwice {}
 struct SlugSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-struct KindNotProvided {} //~ ERROR diagnostic kind not specified
+struct KindNotProvided {} //~ ERROR diagnostic slug not specified
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0456")]
