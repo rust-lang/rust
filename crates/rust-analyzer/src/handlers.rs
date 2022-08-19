@@ -1777,7 +1777,7 @@ fn run_rustfmt(
 
     let line_index = snap.file_line_index(file_id)?;
 
-    let mut rustfmt = match snap.config.rustfmt() {
+    let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.args(extra_args);
@@ -1842,12 +1842,12 @@ fn run_rustfmt(
         }
     };
 
-    let mut rustfmt = rustfmt
+    let mut rustfmt = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .context(format!("Failed to spawn {:?}", rustfmt))?;
+        .context(format!("Failed to spawn {:?}", command))?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
@@ -1866,7 +1866,11 @@ fn run_rustfmt(
                 // formatting because otherwise an error is surfaced to the user on top of the
                 // syntax error diagnostics they're already receiving. This is especially jarring
                 // if they have format on save enabled.
-                tracing::info!("rustfmt exited with status 1, assuming parse error and ignoring");
+                tracing::warn!(
+                    ?command,
+                    %captured_stderr,
+                    "rustfmt exited with status 1"
+                );
                 Ok(None)
             }
             _ => {
