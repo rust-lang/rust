@@ -291,8 +291,8 @@ impl Class {
         match (self, other) {
             (Self::Self_(_), Self::Self_(_))
             | (Self::Macro(_), Self::Macro(_))
-            | (Self::Ident(_), Self::Ident(_))
-            | (Self::Decoration(_), Self::Decoration(_)) => true,
+            | (Self::Ident(_), Self::Ident(_)) => true,
+            (Self::Decoration(c1), Self::Decoration(c2)) => c1 == c2,
             (x, y) => x == y,
         }
     }
