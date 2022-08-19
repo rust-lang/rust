@@ -129,9 +129,6 @@ decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
         diag,
         help,
         note,
@@ -149,9 +146,6 @@ decl_derive!(
 decl_derive!(
     [LintDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
         diag,
         help,
         note,

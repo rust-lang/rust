@@ -141,7 +141,7 @@ impl DiagnosticDeriveBuilder {
         let name = name.as_str();
         let meta = attr.parse_meta()?;
 
-        let is_diag = matches!(name, "error" | "warning" | "lint" | "diag");
+        let is_diag = name == "diag";
 
         let nested = match meta {
             // Most attributes are lists, like `#[diag(..)]` for most cases or
@@ -163,20 +163,9 @@ impl DiagnosticDeriveBuilder {
         // Check the kind before doing any further processing so that there aren't misleading
         // "no kind specified" errors if there are failures later.
         match name {
-            "error" | "warning" => {
-                if self.kind == DiagnosticDeriveKind::LintDiagnostic {
-                    span_err(span, "only `#[lint(..)]` is supported")
-                        .help("use the `#[lint(...)]` attribute to create a lint")
-                        .emit();
-                }
-            }
-            "lint" => {
-                if self.kind == DiagnosticDeriveKind::SessionDiagnostic {
-                    span_err(span, "only `#[error(..)]` and `#[warning(..)]` are supported")
-                        .help("use the `#[error(...)]` attribute to create a error")
-                        .emit();
-                }
-            }
+            "error" | "warning" | "lint" => throw_invalid_attr!(attr, &meta, |diag| {
+                diag.help("`error`, `warning` and `lint` have been replaced by `diag`")
+            }),
             "diag" | "help" | "note" | "warn_" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
                 diag.help("only `diag`, `help`, `note` and `warn_` are valid attributes")

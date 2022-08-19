@@ -6,7 +6,7 @@ use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::field_multiply_specified_in_initializer, code = "E0062")]
+#[diag(typeck::field_multiply_specified_in_initializer, code = "E0062")]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
     #[label]
@@ -17,7 +17,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::unrecognized_atomic_operation, code = "E0092")]
+#[diag(typeck::unrecognized_atomic_operation, code = "E0092")]
 pub struct UnrecognizedAtomicOperation<'a> {
     #[primary_span]
     #[label]
@@ -26,7 +26,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::wrong_number_of_generic_arguments_to_intrinsic, code = "E0094")]
+#[diag(typeck::wrong_number_of_generic_arguments_to_intrinsic, code = "E0094")]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[primary_span]
     #[label]
@@ -37,7 +37,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::unrecognized_intrinsic_function, code = "E0093")]
+#[diag(typeck::unrecognized_intrinsic_function, code = "E0093")]
 pub struct UnrecognizedIntrinsicFunction {
     #[primary_span]
     #[label]
@@ -46,7 +46,7 @@ pub struct UnrecognizedIntrinsicFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::lifetimes_or_bounds_mismatch_on_trait, code = "E0195")]
+#[diag(typeck::lifetimes_or_bounds_mismatch_on_trait, code = "E0195")]
 pub struct LifetimesOrBoundsMismatchOnTrait {
     #[primary_span]
     #[label]
@@ -58,7 +58,7 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::drop_impl_on_wrong_item, code = "E0120")]
+#[diag(typeck::drop_impl_on_wrong_item, code = "E0120")]
 pub struct DropImplOnWrongItem {
     #[primary_span]
     #[label]
@@ -66,7 +66,7 @@ pub struct DropImplOnWrongItem {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::field_already_declared, code = "E0124")]
+#[diag(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
@@ -77,7 +77,7 @@ pub struct FieldAlreadyDeclared {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::copy_impl_on_type_with_dtor, code = "E0184")]
+#[diag(typeck::copy_impl_on_type_with_dtor, code = "E0184")]
 pub struct CopyImplOnTypeWithDtor {
     #[primary_span]
     #[label]
@@ -85,14 +85,14 @@ pub struct CopyImplOnTypeWithDtor {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::multiple_relaxed_default_bounds, code = "E0203")]
+#[diag(typeck::multiple_relaxed_default_bounds, code = "E0203")]
 pub struct MultipleRelaxedDefaultBounds {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::copy_impl_on_non_adt, code = "E0206")]
+#[diag(typeck::copy_impl_on_non_adt, code = "E0206")]
 pub struct CopyImplOnNonAdt {
     #[primary_span]
     #[label]
@@ -100,7 +100,7 @@ pub struct CopyImplOnNonAdt {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::trait_object_declared_with_no_traits, code = "E0224")]
+#[diag(typeck::trait_object_declared_with_no_traits, code = "E0224")]
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
     pub span: Span,
@@ -109,14 +109,14 @@ pub struct TraitObjectDeclaredWithNoTraits {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0227")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0227")]
 pub struct AmbiguousLifetimeBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::assoc_type_binding_not_allowed, code = "E0229")]
+#[diag(typeck::assoc_type_binding_not_allowed, code = "E0229")]
 pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
     #[label]
@@ -124,14 +124,14 @@ pub struct AssocTypeBindingNotAllowed {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::functional_record_update_on_non_struct, code = "E0436")]
+#[diag(typeck::functional_record_update_on_non_struct, code = "E0436")]
 pub struct FunctionalRecordUpdateOnNonStruct {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::typeof_reserved_keyword_used, code = "E0516")]
+#[diag(typeck::typeof_reserved_keyword_used, code = "E0516")]
 pub struct TypeofReservedKeywordUsed<'tcx> {
     pub ty: Ty<'tcx>,
     #[primary_span]
@@ -142,7 +142,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::return_stmt_outside_of_fn_body, code = "E0572")]
+#[diag(typeck::return_stmt_outside_of_fn_body, code = "E0572")]
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
@@ -153,14 +153,14 @@ pub struct ReturnStmtOutsideOfFnBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::yield_expr_outside_of_generator, code = "E0627")]
+#[diag(typeck::yield_expr_outside_of_generator, code = "E0627")]
 pub struct YieldExprOutsideOfGenerator {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::struct_expr_non_exhaustive, code = "E0639")]
+#[diag(typeck::struct_expr_non_exhaustive, code = "E0639")]
 pub struct StructExprNonExhaustive {
     #[primary_span]
     pub span: Span,
@@ -168,14 +168,14 @@ pub struct StructExprNonExhaustive {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::method_call_on_unknown_type, code = "E0699")]
+#[diag(typeck::method_call_on_unknown_type, code = "E0699")]
 pub struct MethodCallOnUnknownType {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::value_of_associated_struct_already_specified, code = "E0719")]
+#[diag(typeck::value_of_associated_struct_already_specified, code = "E0719")]
 pub struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
     #[label]
@@ -187,7 +187,7 @@ pub struct ValueOfAssociatedStructAlreadySpecified {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::address_of_temporary_taken, code = "E0745")]
+#[diag(typeck::address_of_temporary_taken, code = "E0745")]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
     #[label]
@@ -233,7 +233,7 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::unconstrained_opaque_type)]
+#[diag(typeck::unconstrained_opaque_type)]
 #[note]
 pub struct UnconstrainedOpaqueType {
     #[primary_span]
@@ -309,7 +309,7 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::manual_implementation, code = "E0183")]
+#[diag(typeck::manual_implementation, code = "E0183")]
 #[help]
 pub struct ManualImplementation {
     #[primary_span]
@@ -319,21 +319,21 @@ pub struct ManualImplementation {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::substs_on_overridden_impl)]
+#[diag(typeck::substs_on_overridden_impl)]
 pub struct SubstsOnOverriddenImpl {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(typeck::unused_extern_crate)]
+#[diag(typeck::unused_extern_crate)]
 pub struct UnusedExternCrate {
     #[suggestion(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(typeck::extern_crate_not_idiomatic)]
+#[diag(typeck::extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
     #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
     pub span: Span,
@@ -342,7 +342,7 @@ pub struct ExternCrateNotIdiomatic {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::expected_used_symbol)]
+#[diag(typeck::expected_used_symbol)]
 pub struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
