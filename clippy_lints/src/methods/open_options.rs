@@ -3,43 +3,19 @@ use clippy_utils::paths;
 use clippy_utils::ty::match_type;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint::LateContext;
 use rustc_span::source_map::{Span, Spanned};
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for duplicate open options as well as combinations
-    /// that make no sense.
-    ///
-    /// ### Why is this bad?
-    /// In the best case, the code will be harder to read than
-    /// necessary. I don't know the worst case.
-    ///
-    /// ### Example
-    /// ```rust
-    /// use std::fs::OpenOptions;
-    ///
-    /// OpenOptions::new().read(true).truncate(true);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub NONSENSICAL_OPEN_OPTIONS,
-    correctness,
-    "nonsensical combination of options for opening a file"
-}
+use super::NONSENSICAL_OPEN_OPTIONS;
 
-declare_lint_pass!(OpenOptions => [NONSENSICAL_OPEN_OPTIONS]);
-
-impl<'tcx> LateLintPass<'tcx> for OpenOptions {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(path, [self_arg, ..], _) = &e.kind {
-            let obj_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
-                let mut options = Vec::new();
-                get_open_options(cx, self_arg, &mut options);
-                check_open_options(cx, &options, e.span);
-            }
-        }
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
+    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && match_type(cx, cx.tcx.type_of(impl_id), &paths::OPEN_OPTIONS)
+    {
+        let mut options = Vec::new();
+        get_open_options(cx, recv, &mut options);
+        check_open_options(cx, &options, e.span);
     }
 }
 

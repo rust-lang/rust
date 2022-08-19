@@ -1,10 +1,10 @@
 error: emptying a vector with `resize`
-  --> $DIR/vec_resize_to_zero.rs:5:5
+  --> $DIR/vec_resize_to_zero.rs:7:5
    |
-LL |     vec![1, 2, 3, 4, 5].resize(0, 5);
-   |     ^^^^^^^^^^^^^^^^^^^^------------
-   |                         |
-   |                         help: ...or you can empty the vector with: `clear()`
+LL |     v.resize(0, 5);
+   |     ^^------------
+   |       |
+   |       help: ...or you can empty the vector with: `clear()`
    |
    = note: `-D clippy::vec-resize-to-zero` implied by `-D warnings`
    = help: the arguments may be inverted...
