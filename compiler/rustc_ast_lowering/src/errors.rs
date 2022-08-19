@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic};
+use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic, DiagnosticArgFromDisplay};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -73,10 +73,10 @@ impl AddSubdiagnostic for AssocTyParenthesesSub {
 
 #[derive(SessionDiagnostic)]
 #[error(ast_lowering::misplaced_impl_trait, code = "E0562")]
-pub struct MisplacedImplTrait {
+pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
-    pub position: String,
+    pub position: DiagnosticArgFromDisplay<'a>,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
@@ -196,8 +196,8 @@ pub struct InvalidAbiClobberAbi {
 pub struct InvalidRegister<'a> {
     #[primary_span]
     pub op_span: Span,
-    pub s: Symbol,
-    pub e: &'a str,
+    pub reg: Symbol,
+    pub error: &'a str,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
@@ -205,8 +205,8 @@ pub struct InvalidRegister<'a> {
 pub struct InvalidRegisterClass<'a> {
     #[primary_span]
     pub op_span: Span,
-    pub s: Symbol,
-    pub e: &'a str,
+    pub reg_class: Symbol,
+    pub error: &'a str,
 }
 
 #[derive(SessionDiagnostic)]

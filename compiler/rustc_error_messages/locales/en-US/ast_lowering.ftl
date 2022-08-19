@@ -69,10 +69,10 @@ ast_lowering_invalid_abi_clobber_abi =
     .note = the following ABIs are supported on this target: {$supported_abis}
 
 ast_lowering_invalid_register =
-    invalid register `{$s}`: {$e}
+    invalid register `{$reg}`: {$error}
 
 ast_lowering_invalid_register_class =
-    invalid register class `{$s}`: {$e}
+    invalid register class `{$reg_class}`: {$error}
 
 ast_lowering_invalid_asm_template_modifier_reg_class =
     invalid asm template modifier for this register class
