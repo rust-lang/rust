@@ -1,11 +1,8 @@
-// @has "$.index[*][?(@.name=='EnumStruct')].visibility" \"public\"
-// @has "$.index[*][?(@.name=='EnumStruct')].kind" \"enum\"
+// @is "$.index[*][?(@.name=='EnumStruct')].visibility" \"public\"
+// @is "$.index[*][?(@.name=='EnumStruct')].kind" \"enum\"
 pub enum EnumStruct {
-    // @has "$.index[*][?(@.name=='VariantS')].inner.kind" \"struct\"
-    // @has "$.index[*][?(@.name=='x')].kind" \"struct_field\"
-    // @has "$.index[*][?(@.name=='y')].kind" \"struct_field\"
-    VariantS {
-        x: u32,
-        y: String,
-    },
+    // @is "$.index[*][?(@.name=='VariantS')].inner.kind" \"named_fields\"
+    // @is "$.index[*][?(@.name=='x')].kind" \"field\"
+    // @is "$.index[*][?(@.name=='y')].kind" \"field\"
+    VariantS { x: u32, y: String },
 }

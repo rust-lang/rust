@@ -6,7 +6,7 @@ use std::collections::HashMap;
 // @has "$.index[*][?(@.name=='WithGenerics')].inner.generics.params[0].kind.type"
 // @has "$.index[*][?(@.name=='WithGenerics')].inner.generics.params[1].name" \"U\"
 // @has "$.index[*][?(@.name=='WithGenerics')].inner.generics.params[1].kind.type"
-// @has "$.index[*][?(@.name=='WithGenerics')].inner.kind" \"struct\"
+// @has "$.index[*][?(@.name=='WithGenerics')].inner.kind" \"named_fields\"
 // @has "$.index[*][?(@.name=='WithGenerics')].inner.fields_stripped" true
 pub struct WithGenerics<T, U> {
     stuff: Vec<T>,

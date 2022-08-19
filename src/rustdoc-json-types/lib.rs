@@ -230,7 +230,8 @@ pub enum ItemEnum {
 
     Union(Union),
     Struct(Struct),
-    StructField(Type),
+    /// The name of the field is given in the enclosing [`Item`]
+    Field(Type),
     Enum(Enum),
     Variant(Variant),
 
@@ -283,6 +284,7 @@ pub struct Module {
 pub struct Union {
     pub generics: Generics,
     pub fields_stripped: bool,
+    /// Will all be [`ItemEnum::Field`]
     pub fields: Vec<Id>,
     pub impls: Vec<Id>,
 }
@@ -292,6 +294,7 @@ pub struct Struct {
     pub kind: StructKind,
     pub generics: Generics,
     pub fields_stripped: bool,
+    /// Will all be [`ItemEnum::Field`]
     pub fields: Vec<Id>,
     pub impls: Vec<Id>,
 }
@@ -300,6 +303,7 @@ pub struct Struct {
 pub struct Enum {
     pub generics: Generics,
     pub variants_stripped: bool,
+    /// Will all be [`ItemEnum::Variant`]
     pub variants: Vec<Id>,
     pub impls: Vec<Id>,
 }
@@ -307,15 +311,60 @@ pub struct Enum {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Variant {
     pub kind: StructKind,
+    /// Will all be [`ItemEnum::Field`]
     pub fields: Vec<Id>,
     pub fields_stripped: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// The kind used for literals of a struct or enum.
 pub enum StructKind {
-    Struct,
+    /// A "normal" struct, with named fields.
+    ///
+    /// Eg:
+    ///
+    /// ```rust
+    /// pub struct A {
+    ///     x: i32,
+    /// }
+    /// pub struct B {}
+    /// pub enum C {
+    ///     Variant { x: i32 },
+    /// }
+    /// pub enum D {
+    ///     Variant {},
+    /// }
+    /// ```
+    NamedFields,
+    /// Unnamed fields, accessed with a number.
+    ///
+    /// Eg:
+    ///
+    /// ```rust
+    /// pub struct A(i32);
+    /// pub struct B();
+    /// pub enum C {
+    ///     Variant(i32),
+    /// }
+    /// pub enum D {
+    ///     Variant(),
+    /// }
+    /// ```
     Tuple,
+    /// No fields, and no parentheses.
+    ///
+    /// Note: Cases without fields but with parentheses will have a different
+    /// kind, as seen in the examples above.
+    ///
+    /// Eg:
+    ///
+    /// ```rust
+    /// pub struct A;
+    /// pub enum B {
+    ///     Variant,
+    /// }
+    /// ```
     Unit,
 }
 

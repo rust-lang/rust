@@ -215,7 +215,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::PrimitiveType(_) => true,
                 types::ItemEnum::ExternCrate { .. }
                 | types::ItemEnum::Import(_)
-                | types::ItemEnum::StructField(_)
+                | types::ItemEnum::Field(_)
                 | types::ItemEnum::Variant(_)
                 | types::ItemEnum::Function(_)
                 | types::ItemEnum::TraitAlias(_)

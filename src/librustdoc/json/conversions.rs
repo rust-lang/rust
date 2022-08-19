@@ -243,7 +243,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
         StructItem(s) => ItemEnum::Struct(s.into_tcx(tcx)),
         UnionItem(u) => ItemEnum::Union(u.into_tcx(tcx)),
-        StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
+        StructFieldItem(f) => ItemEnum::Field(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
         FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
@@ -325,7 +325,7 @@ impl FromWithTcx<clean::Union> for Union {
 
 pub(crate) fn from_ctor_kind(struct_type: CtorKind) -> StructKind {
     match struct_type {
-        CtorKind::Fictive => StructKind::Struct,
+        CtorKind::Fictive => StructKind::NamedFields,
         CtorKind::Fn => StructKind::Tuple,
         CtorKind::Const => StructKind::Unit,
     }
@@ -652,7 +652,7 @@ impl FromWithTcx<clean::Variant> for Variant {
                 fields_stripped: fields.iter().any(|i| i.is_stripped()),
             },
             Struct(s) => Variant {
-                kind: StructKind::Struct,
+                kind: StructKind::NamedFields,
                 fields: ids(&s.fields, tcx),
                 fields_stripped: s.has_stripped_entries(),
             },
