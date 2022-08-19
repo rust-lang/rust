@@ -326,18 +326,10 @@ impl Command {
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
-            use crate::mem::MaybeUninit;
             use crate::sys::cvt_nz;
-            // Reset signal handling so the child process starts in a
-            // standardized state. libstd ignores SIGPIPE, and signal-handling
-            // libraries often set a mask. Child processes inherit ignored
-            // signals and the signal mask from their parent, but most
-            // UNIX programs do not reset these things on their own, so we
-            // need to clean things up now to avoid confusing the program
-            // we're about to run.
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            // Set the signal mask.
+            let signal_mask = self.get_signal_mask()?;
+            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, &signal_mask.sigset, ptr::null_mut()))?;
 
             #[cfg(target_os = "android")] // see issue #88585
             {
@@ -529,11 +521,12 @@ impl Command {
                 cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
             }
 
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
-            cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
-            cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
+            let signal_mask = self.get_signal_mask()?;
+            cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), &signal_mask.sigset))?;
+
+            let mut sig_default = SignalSet::empty()?;
+            sig_default.insert(libc::SIGPIPE)?;
+            cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), &sig_default.sigset))?;
 
             flags |= libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;

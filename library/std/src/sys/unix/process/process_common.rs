@@ -9,9 +9,11 @@ use crate::fmt;
 use crate::io;
 use crate::path::Path;
 use crate::ptr;
+use crate::sync::OnceLock;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
+use crate::sys::{cvt, cvt_nz};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
 
@@ -152,6 +154,7 @@ pub struct Command {
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
     pgroup: Option<pid_t>,
+    signal_mask: OnceLock<SignalSet>,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -196,6 +199,49 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+pub struct SignalSet {
+    pub sigset: libc::sigset_t,
+}
+
+impl SignalSet {
+    #[allow(dead_code)]
+    pub fn new_from_current() -> io::Result<Self> {
+        let mut set = crate::mem::MaybeUninit::<libc::sigset_t>::uninit();
+        // pthread_sigmask returns the errno rather than setting it directly.
+        unsafe {
+            cvt_nz(libc::pthread_sigmask(libc::SIG_BLOCK, ptr::null(), set.as_mut_ptr()))?;
+            Ok(Self { sigset: set.assume_init() })
+        }
+    }
+
+    pub fn empty() -> io::Result<Self> {
+        let mut set = crate::mem::MaybeUninit::<libc::sigset_t>::uninit();
+        unsafe {
+            cvt(sigemptyset(set.as_mut_ptr()))?;
+            Ok(Self { sigset: set.assume_init() })
+        }
+    }
+
+    pub fn insert(&mut self, signal: i32) -> io::Result<&mut Self> {
+        unsafe {
+            cvt(sigaddset(&mut self.sigset, signal))?;
+        }
+        Ok(self)
+    }
+
+    pub fn remove(&mut self, signal: i32) -> io::Result<&mut Self> {
+        unsafe {
+            cvt(sigdelset(&mut self.sigset, signal))?;
+        }
+        Ok(self)
+    }
+
+    pub fn contains(&self, signal: i32) -> io::Result<bool> {
+        let contains = unsafe { cvt(sigismember(&self.sigset, signal))? };
+        Ok(contains != 0)
+    }
+}
+
 impl Command {
     #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
@@ -216,6 +262,7 @@ impl Command {
             stdout: None,
             stderr: None,
             pgroup: None,
+            mask: None,
         }
     }
 
@@ -239,6 +286,7 @@ impl Command {
             stderr: None,
             create_pidfd: false,
             pgroup: None,
+            signal_mask: OnceLock::new(),
         }
     }
 
@@ -276,6 +324,10 @@ impl Command {
     }
     pub fn pgroup(&mut self, pgroup: pid_t) {
         self.pgroup = Some(pgroup);
+    }
+    pub fn signal_mask(&mut self) -> io::Result<&mut SignalSet> {
+        self.signal_mask.get_or_try_init(SignalSet::empty)?;
+        Ok(self.signal_mask.get_mut().unwrap())
     }
 
     #[cfg(target_os = "linux")]
@@ -343,6 +395,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_pgroup(&self) -> Option<pid_t> {
         self.pgroup
+    }
+    #[allow(dead_code)]
+    pub fn get_signal_mask(&self) -> io::Result<&SignalSet> {
+        self.signal_mask.get_or_try_init(SignalSet::empty)
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {

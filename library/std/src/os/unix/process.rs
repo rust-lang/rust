@@ -179,6 +179,107 @@ pub trait CommandExt: Sealed {
     /// ```
     #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
+
+    /// Blocks the given signal for the child process at the time it is started.
+    ///
+    /// The set of blocked signals for a process is known as its signal mask.
+    /// Use this method to block some signals.
+    ///
+    /// This method corresponds to calling [`sigaddset`] with the given signal.
+    ///
+    /// # Notes
+    ///
+    /// Rust's current default is to not block any signals in child processes. This may change in
+    /// the future to inheriting the current process's signal mask.
+    ///
+    /// This method is idempotent: blocking a signal that's already blocked results in
+    /// success and has no effect.
+    ///
+    /// Blocking some signals like `SIGSEGV` can lead to undefined behavior in
+    /// the child. See the [`pthread_sigmask`] man page for more information.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `InvalidInput` error if the signal is invalid.
+    ///
+    /// # Examples
+    ///
+    /// Start a process with `SIGINT` blocked:
+    ///
+    /// ```no_run
+    /// #![feature(process_sigmask)]
+    /// #
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("sleep")
+    ///     .arg("10")
+    ///     // On most platforms, SIGINT is signal 2.
+    ///     .block_signal(2)?
+    ///     .spawn()?;
+    /// #
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// [`sigaddset`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/sigaddset.html
+    /// [`pthread_sigmask`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_sigmask.html
+    #[unstable(feature = "process_sigmask", issue = "none")]
+    fn block_signal(&mut self, signal: i32) -> io::Result<&mut process::Command>;
+
+    /// Unblocks the given signal for the child process at the time it is started.
+    ///
+    /// The set of blocked signals for a process is known as its signal mask.
+    /// Use this method to unblock a signal.
+    ///
+    /// This method corresponds to calling [`sigdelset`] with the given signal.
+    ///
+    /// # Notes
+    ///
+    /// Rust's current default is to not block any signals in child processes. This may change in
+    /// the future to inheriting the current process's signal mask.
+    ///
+    /// This method is idempotent: unblocking a signal that's already unblocked results in
+    /// success and has no effect.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `InvalidInput` error if the signal is invalid.
+    ///
+    /// # Examples
+    ///
+    /// Start a process with `SIGHUP` unblocked:
+    ///
+    /// ```no_run
+    /// #![feature(process_sigmask)]
+    /// #
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("sleep")
+    ///     .arg("10")
+    ///     // On most platforms, SIGHUP is signal 1.
+    ///     .unblock_signal(1)?
+    ///     .spawn()?;
+    /// #
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    ///
+    /// [`sigdelset`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/sigdelset.html
+    /// [`pthread_sigmask`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_sigmask.html
+    #[unstable(feature = "process_sigmask", issue = "none")]
+    fn unblock_signal(&mut self, signal: i32) -> io::Result<&mut process::Command>;
+
+    /// Returns true if a signal will be blocked in the child process at the time it is started.
+    ///
+    /// This method corresponds to calling [`sigismember`] with the given signal.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `InvalidInput` error if the signal is invalid.
+    ///
+    /// [`sigismember`]: https://pubs.opengroup.org/onlinepubs/9699919799/functions/sigismember.html
+    #[unstable(feature = "process_sigmask", issue = "none")]
+    fn will_block_signal(&self, signal: i32) -> io::Result<bool>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -223,6 +324,20 @@ impl CommandExt for process::Command {
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
         self.as_inner_mut().pgroup(pgroup);
         self
+    }
+
+    fn block_signal(&mut self, signal: i32) -> io::Result<&mut process::Command> {
+        self.as_inner_mut().signal_mask()?.insert(signal)?;
+        Ok(self)
+    }
+
+    fn unblock_signal(&mut self, signal: i32) -> io::Result<&mut process::Command> {
+        self.as_inner_mut().signal_mask()?.remove(signal)?;
+        Ok(self)
+    }
+
+    fn will_block_signal(&self, signal: i32) -> io::Result<bool> {
+        self.as_inner().get_signal_mask()?.contains(signal)
     }
 }
 
