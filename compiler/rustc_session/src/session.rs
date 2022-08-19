@@ -525,9 +525,11 @@ impl Session {
             Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         }
     }
+    #[rustc_lint_diagnostics]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().span_warn(sp, msg)
     }
+    #[rustc_lint_diagnostics]
     pub fn span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -536,6 +538,7 @@ impl Session {
     ) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
+    #[rustc_lint_diagnostics]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().warn(msg)
     }
@@ -566,9 +569,11 @@ impl Session {
         self.diagnostic().delay_good_path_bug(msg)
     }
 
+    #[rustc_lint_diagnostics]
     pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().note_without_error(msg)
     }
+    #[rustc_lint_diagnostics]
     pub fn span_note_without_error<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -576,6 +581,7 @@ impl Session {
     ) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
+    #[rustc_lint_diagnostics]
     pub fn struct_note_without_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
