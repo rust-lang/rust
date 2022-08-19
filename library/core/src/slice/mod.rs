@@ -2905,7 +2905,7 @@ impl<T> [T] {
         // `prev_ptr_write` is never less than 0 and is inside the slice.
         // This fulfils the requirements for dereferencing `ptr_read`, `prev_ptr_write`
         // and `ptr_write`, and for using `ptr.add(next_read)`, `ptr.add(next_write - 1)`
-        // and `prev_ptr_write.offset(1)`.
+        // and `prev_ptr_write.add(1)`.
         //
         // `next_write` is also incremented at most once per loop at most meaning
         // no element is skipped when it may need to be swapped.

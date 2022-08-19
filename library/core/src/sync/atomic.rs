@@ -1555,7 +1555,7 @@ impl<T> AtomicPtr<T> {
     /// previous pointer.
     ///
     /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
+    /// perform `ptr = ptr.wrapping_byte_add(val)`.
     ///
     /// `fetch_byte_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -1592,7 +1592,7 @@ impl<T> AtomicPtr<T> {
     /// previous pointer.
     ///
     /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
+    /// perform `ptr = ptr.wrapping_byte_sub(val)`.
     ///
     /// `fetch_byte_sub` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
