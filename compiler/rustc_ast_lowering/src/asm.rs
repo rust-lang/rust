@@ -124,22 +124,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .iter()
             .map(|(op, op_sp)| {
                 let lower_reg = |reg| match reg {
-                    InlineAsmRegOrRegClass::Reg(s) => {
+                    InlineAsmRegOrRegClass::Reg(reg) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmReg::parse(asm_arch, s).unwrap_or_else(|e| {
-                                sess.emit_err(InvalidRegister { op_span: *op_sp, s, e });
+                            asm::InlineAsmReg::parse(asm_arch, reg).unwrap_or_else(|error| {
+                                sess.emit_err(InvalidRegister { op_span: *op_sp, reg, error });
                                 asm::InlineAsmReg::Err
                             })
                         } else {
                             asm::InlineAsmReg::Err
                         })
                     }
-                    InlineAsmRegOrRegClass::RegClass(s) => {
+                    InlineAsmRegOrRegClass::RegClass(reg_class) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmRegClass::parse(asm_arch, s).unwrap_or_else(|e| {
-                                sess.emit_err(InvalidRegisterClass { op_span: *op_sp, s, e });
-                                asm::InlineAsmRegClass::Err
-                            })
+                            asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
+                                |error| {
+                                    sess.emit_err(InvalidRegisterClass {
+                                        op_span: *op_sp,
+                                        reg_class,
+                                        error,
+                                    });
+                                    asm::InlineAsmRegClass::Err
+                                },
+                            )
                         } else {
                             asm::InlineAsmRegClass::Err
                         })

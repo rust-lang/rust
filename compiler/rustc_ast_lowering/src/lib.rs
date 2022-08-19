@@ -51,7 +51,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Handler, StashKey};
+use rustc_errors::{DiagnosticArgFromDisplay, Handler, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -1334,7 +1334,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Disallowed(position) => {
                         self.tcx.sess.emit_err(MisplacedImplTrait {
                             span: t.span,
-                            position: position.to_string(),
+                            position: DiagnosticArgFromDisplay(&position),
                         });
                         hir::TyKind::Err
                     }
