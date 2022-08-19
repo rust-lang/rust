@@ -641,6 +641,15 @@ impl Handler {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
+    /// Construct a builder with the `msg` at the level appropriate for the specific `EmissionGuarantee`.
+    #[rustc_lint_diagnostics]
+    pub fn struct_diagnostic<G: EmissionGuarantee>(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, G> {
+        G::make_diagnostic_builder(self, msg)
+    }
+
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
