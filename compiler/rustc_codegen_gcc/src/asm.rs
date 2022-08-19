@@ -593,6 +593,8 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
             InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => "a",
             InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => "d",
@@ -667,6 +669,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::Avr(_) => unimplemented!(),
         InlineAsmRegClass::Bpf(_) => unimplemented!(),
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) => cx.type_i32(),
@@ -804,6 +808,7 @@ fn modifier_to_gcc(arch: InlineAsmArch, reg: InlineAsmRegClass, modifier: Option
             }
         }
         InlineAsmRegClass::Hexagon(_) => None,
+        InlineAsmRegClass::LoongArch(_) => None,
         InlineAsmRegClass::Mips(_) => None,
         InlineAsmRegClass::Nvptx(_) => None,
         InlineAsmRegClass::PowerPC(_) => None,
