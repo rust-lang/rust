@@ -219,3 +219,9 @@ impl IntoDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
         diag
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(session::optimization_fuel_exhausted)]
+pub struct OptimisationFuelExhausted {
+    pub msg: String,
+}
