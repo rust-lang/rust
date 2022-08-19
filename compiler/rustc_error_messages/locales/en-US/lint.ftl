@@ -393,3 +393,6 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
+
+lint_unknown_tool = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
+    .help = add `#![register_tool({$tool_name})]` to the crate root

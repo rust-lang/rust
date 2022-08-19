@@ -1,3 +1,6 @@
+// #![deny(rustc::diagnostic_outside_of_impl)]
+// #![deny(rustc::untranslatable_diagnostic)]
+//
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc_ast as ast;
@@ -22,6 +25,8 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
+
+use crate::errors::UnknownTool;
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
@@ -485,22 +490,12 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
 
                     &CheckLintNameResult::NoTool => {
-                        let mut err = struct_span_err!(
-                            sess,
-                            tool_ident.map_or(DUMMY_SP, |ident| ident.span),
-                            E0710,
-                            "unknown tool name `{}` found in scoped lint: `{}::{}`",
-                            tool_name.unwrap(),
-                            tool_name.unwrap(),
-                            pprust::path_to_string(&meta_item.path),
-                        );
-                        if sess.is_nightly_build() {
-                            err.help(&format!(
-                                "add `#![register_tool({})]` to the crate root",
-                                tool_name.unwrap()
-                            ));
-                        }
-                        err.emit();
+                        sess.emit_err(UnknownTool {
+                            span: tool_ident.map(|ident| ident.span),
+                            tool_name: tool_name.unwrap().to_string(),
+                            lint_name: pprust::path_to_string(&meta_item.path),
+                            is_nightly_build: sess.is_nightly_build().then_some(()),
+                        });
                         continue;
                     }
 

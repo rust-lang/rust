@@ -36,6 +36,8 @@
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
+// #![deny(rustc::diagnostic_outside_of_impl)]
+// #![deny(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -47,6 +49,7 @@ pub mod builtin;
 mod context;
 mod early;
 mod enum_intrinsics_non_enums;
+mod errors;
 mod expect;
 pub mod hidden_unicode_codepoints;
 mod internal;
