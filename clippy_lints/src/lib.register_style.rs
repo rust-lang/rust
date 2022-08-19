@@ -44,6 +44,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(main_recursion::MAIN_RECURSION),
     LintId::of(manual_async_fn::MANUAL_ASYNC_FN),
     LintId::of(manual_bits::MANUAL_BITS),
+    LintId::of(manual_empty_string_creations::MANUAL_EMPTY_STRING_CREATIONS),
     LintId::of(manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
     LintId::of(map_clone::MAP_CLONE),
     LintId::of(match_result_ok::MATCH_RESULT_OK),
