@@ -1,3 +1,4 @@
+use crate::errors;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
@@ -59,19 +60,14 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = tcx.dep_graph.encode(&tcx.sess.prof) {
-                        sess.err(&format!(
-                            "failed to write dependency graph to `{}`: {}",
-                            staging_dep_graph_path.display(),
-                            err
-                        ));
+                        sess.emit_err(errors::WriteDepGraph { path: &staging_dep_graph_path, err });
                     }
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
-                        sess.err(&format!(
-                            "failed to move dependency graph from `{}` to `{}`: {}",
-                            staging_dep_graph_path.display(),
-                            dep_graph_path.display(),
-                            err
-                        ));
+                        sess.emit_err(errors::MoveDepGraph {
+                            from: &staging_dep_graph_path,
+                            to: &dep_graph_path,
+                            err,
+                        });
                     }
                 });
             },
@@ -163,11 +159,7 @@ pub fn build_dep_graph(
     let mut encoder = match FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
         Err(err) => {
-            sess.err(&format!(
-                "failed to create dependency graph at `{}`: {}",
-                path_buf.display(),
-                err
-            ));
+            sess.emit_err(errors::CreateDepGraph { path: &path_buf, err });
             return None;
         }
     };

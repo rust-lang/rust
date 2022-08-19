@@ -37,6 +37,7 @@ fluent_messages! {
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
     expand => "../locales/en-US/expand.ftl",
+    incremental => "../locales/en-US/incremental.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",

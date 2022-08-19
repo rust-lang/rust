@@ -1,5 +1,6 @@
 //! Code to save/load the dep-graph from files.
 
+use crate::errors;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
@@ -8,7 +9,7 @@ use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::Decodable;
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::data::*;
 use super::file_format;
@@ -27,11 +28,10 @@ pub enum LoadResult<T> {
     },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// An error occurred.
-    Error {
-        #[allow(missing_docs)]
-        message: String,
-    },
+    /// Loading the dep graph failed.
+    LoadDepGraph(PathBuf, std::io::Error),
+    /// Decoding loaded incremental cache failed.
+    DecodeIncrCache(Box<dyn std::any::Any + Send>),
 }
 
 impl<T: Default> LoadResult<T> {
@@ -40,36 +40,31 @@ impl<T: Default> LoadResult<T> {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
             (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
-                sess.fatal(
-                    "We asserted that the incremental cache should not be loaded, \
-                         but it was loaded.",
-                );
+                sess.emit_fatal(errors::AssertNotLoaded);
             }
             (
                 Some(IncrementalStateAssertion::Loaded),
-                LoadResult::Error { .. } | LoadResult::DataOutOfDate,
+                LoadResult::LoadDepGraph(..)
+                | LoadResult::DecodeIncrCache(..)
+                | LoadResult::DataOutOfDate,
             ) => {
-                sess.fatal(
-                    "We asserted that an existing incremental cache directory should \
-                         be successfully loaded, but it was not.",
-                );
+                sess.emit_fatal(errors::AssertLoaded);
             }
             _ => {}
         };
 
         match self {
-            LoadResult::Error { message } => {
-                sess.warn(&message);
+            LoadResult::LoadDepGraph(path, err) => {
+                sess.emit_warning(errors::LoadDepGraph { path, err });
+                Default::default()
+            }
+            LoadResult::DecodeIncrCache(err) => {
+                sess.emit_warning(errors::DecodeIncrCache { err: format!("{err:?}") });
                 Default::default()
             }
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.err(&format!(
-                        "Failed to delete invalidated or incompatible \
-                         incremental compilation session directory contents `{}`: {}.",
-                        dep_graph_path(sess).display(),
-                        err
-                    ));
+                    sess.emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
                 }
                 Default::default()
             }
@@ -90,9 +85,7 @@ fn load_data(
             // compiler version. Neither is an error.
             LoadResult::DataOutOfDate
         }
-        Err(err) => LoadResult::Error {
-            message: format!("could not load dep-graph from `{}`: {}", path.display(), err),
-        },
+        Err(err) => LoadResult::LoadDepGraph(path.to_path_buf(), err),
     }
 }
 
@@ -114,9 +107,9 @@ impl<T> MaybeAsync<LoadResult<T>> {
     pub fn open(self) -> LoadResult<T> {
         match self {
             MaybeAsync::Sync(result) => result,
-            MaybeAsync::Async(handle) => handle.join().unwrap_or_else(|e| LoadResult::Error {
-                message: format!("could not decode incremental cache: {:?}", e),
-            }),
+            MaybeAsync::Async(handle) => {
+                handle.join().unwrap_or_else(|e| LoadResult::DecodeIncrCache(e))
+            }
         }
     }
 }
@@ -185,7 +178,8 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
         match load_data(report_incremental_info, &path, nightly_build) {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-            LoadResult::Error { message } => LoadResult::Error { message },
+            LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
+            LoadResult::DecodeIncrCache(err) => LoadResult::DecodeIncrCache(err),
             LoadResult::Ok { data: (bytes, start_pos) } => {
                 let mut decoder = MemDecoder::new(&bytes, start_pos);
                 let prev_commandline_args_hash = u64::decode(&mut decoder);
