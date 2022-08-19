@@ -13,7 +13,7 @@ use ide_db::{
 use itertools::{izip, Itertools};
 use syntax::{
     ast::{self, edit_in_place::Indent, HasArgList, PathExpr},
-    ted, AstNode, SyntaxKind,
+    ted, AstNode, NodeOrToken, SyntaxKind,
 };
 
 use crate::{
@@ -311,15 +311,12 @@ fn inline(
     } else {
         fn_body.clone_for_update()
     };
-    // TODO: use if-let chains - https://github.com/rust-lang/rust/pull/94927
-    if let Some(i) = body.syntax().ancestors().find_map(ast::Impl::cast) {
-        if let Some(st) = i.self_ty() {
-            for tok in body.syntax().descendants_with_tokens().filter_map(|t| t.into_token()) {
-                if tok.kind() == SyntaxKind::SELF_TYPE_KW {
-                    ted::replace(tok, st.syntax());
-                }
-            }
-        }
+    if let Some(t) = body.syntax().ancestors().find_map(ast::Impl::cast).and_then(|i| i.self_ty()) {
+        body.syntax()
+            .descendants_with_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+            .for_each(|tok| ted::replace(tok, t.syntax()));
     }
     let usages_for_locals = |local| {
         Definition::Local(local)
