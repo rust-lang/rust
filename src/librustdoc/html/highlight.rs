@@ -141,7 +141,7 @@ fn write_pending_elems(
     if !done {
         // We only want to "open" the tag ourselves if we have more than one pending and if the current
         // parent tag is not the same as our pending content.
-        let open_tag_ourselves = pending_elems.len() > 1;
+        let open_tag_ourselves = pending_elems.len() > 1 && current_class.is_some();
         let close_tag = if open_tag_ourselves {
             enter_span(out, current_class.unwrap(), &href_context)
         } else {
@@ -158,6 +158,18 @@ fn write_pending_elems(
     *current_class = None;
 }
 
+fn handle_exit_span(
+    out: &mut Buffer,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
+    pending_elems: &mut Vec<(&str, Option<Class>)>,
+    closing_tags: &mut Vec<(&str, Class)>,
+) {
+    let class = closing_tags.last().expect("ExitSpan without EnterSpan").1;
+    // We flush everything just in case...
+    write_pending_elems(out, href_context, pending_elems, &mut Some(class), closing_tags);
+    exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan").0);
+}
+
 /// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
 /// basically (since it's `Option<Class>`). The following rules apply:
 ///
@@ -171,7 +183,7 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
         (Some(Class::Ident(_)), None) | (None, Some(Class::Ident(_))) => true,
         (Some(_), None) | (None, Some(_)) => text.trim().is_empty(),
-        _ => false,
+        (None, None) => true,
     }
 }
 
@@ -196,6 +208,9 @@ fn write_code(
     let src = src.replace("\r\n", "\n");
     // It contains the closing tag and the associated `Class`.
     let mut closing_tags: Vec<(&'static str, Class)> = Vec::new();
+    // This is used because we don't automatically generate the closing tag on `ExitSpan` in
+    // case an `EnterSpan` event with the same class follows.
+    let mut pending_exit_span: Option<Class> = None;
     // The following two variables are used to group HTML elements with same `class` attributes
     // to reduce the DOM size.
     let mut current_class: Option<Class> = None;
@@ -211,9 +226,21 @@ fn write_code(
     .highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => {
+                // If we received a `ExitSpan` event and then have a non-compatible `Class`, we
+                // need to close the `<span>`.
+                if let Some(pending) = pending_exit_span &&
+                    !can_merge(Some(pending), class, text) {
+                        handle_exit_span(
+                            out,
+                            &href_context,
+                            &mut pending_elems,
+                            &mut closing_tags,
+                        );
+                        pending_exit_span = None;
+                        current_class = class.map(Class::dummy);
                 // If the two `Class` are different, time to flush the current content and start
                 // a new one.
-                if !can_merge(current_class, class, text) {
+                } else if !can_merge(current_class, class, text) {
                     write_pending_elems(
                         out,
                         &href_context,
@@ -228,30 +255,48 @@ fn write_code(
                 pending_elems.push((text, class));
             }
             Highlight::EnterSpan { class } => {
-                // We flush everything just in case...
-                write_pending_elems(
-                    out,
-                    &href_context,
-                    &mut pending_elems,
-                    &mut current_class,
-                    &closing_tags,
-                );
-                closing_tags.push((enter_span(out, class, &href_context), class))
+                let mut should_add = true;
+                if pending_exit_span.is_some() {
+                    if !can_merge(Some(class), pending_exit_span, "") {
+                        handle_exit_span(out, &href_context, &mut pending_elems, &mut closing_tags);
+                    } else {
+                        should_add = false;
+                    }
+                } else {
+                    // We flush everything just in case...
+                    write_pending_elems(
+                        out,
+                        &href_context,
+                        &mut pending_elems,
+                        &mut current_class,
+                        &closing_tags,
+                    );
+                }
+                current_class = None;
+                pending_exit_span = None;
+                if should_add {
+                    let closing_tag = enter_span(out, class, &href_context);
+                    closing_tags.push((closing_tag, class));
+                }
             }
             Highlight::ExitSpan => {
-                // We flush everything just in case...
-                write_pending_elems(
-                    out,
-                    &href_context,
-                    &mut pending_elems,
-                    &mut current_class,
-                    &closing_tags,
-                );
-                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan").0)
+                current_class = None;
+                pending_exit_span =
+                    Some(closing_tags.last().as_ref().expect("ExitSpan without EnterSpan").1);
             }
         };
     });
-    write_pending_elems(out, &href_context, &mut pending_elems, &mut current_class, &closing_tags);
+    if pending_exit_span.is_some() {
+        handle_exit_span(out, &href_context, &mut pending_elems, &mut closing_tags);
+    } else {
+        write_pending_elems(
+            out,
+            &href_context,
+            &mut pending_elems,
+            &mut current_class,
+            &closing_tags,
+        );
+    }
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
@@ -761,7 +806,7 @@ impl<'a> Classifier<'a> {
             TokenKind::CloseBracket => {
                 if self.in_attribute {
                     self.in_attribute = false;
-                    sink(Highlight::Token { text: "]", class: Some(Class::Attribute) });
+                    sink(Highlight::Token { text: "]", class: None });
                     sink(Highlight::ExitSpan);
                     return;
                 }
