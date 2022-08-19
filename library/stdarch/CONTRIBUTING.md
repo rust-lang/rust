@@ -9,7 +9,7 @@ $ cd stdarch
 $ TARGET="<your-target-arch>" ci/run.sh
 ```
 
-Where `<your-target-arch>` is the target triple as used by `rustup`, e.g. `x86_x64-unknown-linux-gnu` (without any preceding `nightly-` or similar).
+Where `<your-target-arch>` is the target triple as used by `rustup`, e.g. `x86_64-unknown-linux-gnu` (without any preceding `nightly-` or similar).
 Also remember that this repository requires the nightly channel of Rust!
 The above tests do in fact require nightly rust to be the default on your system, to set that use `rustup default nightly` (and `rustup default stable` to revert).
 
