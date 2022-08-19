@@ -613,7 +613,6 @@ pub struct NonExportedMacroInvalidAttrs {
 #[derive(LintDiagnostic)]
 #[lint(passes::unused_duplicate)]
 pub struct UnusedDuplicate {
-    #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub this: Span,
     #[note]

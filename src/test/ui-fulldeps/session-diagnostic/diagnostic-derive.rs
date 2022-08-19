@@ -551,6 +551,14 @@ struct LintsGood {
 struct ErrorsBad {
 }
 
+#[derive(LintDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound)]
+struct PrimarySpanOnLint {
+    #[primary_span]
+    //~^ ERROR `#[primary_span]` is not a valid attribute
+    span: Span,
+}
+
 #[derive(SessionDiagnostic)]
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithMultiSpan {

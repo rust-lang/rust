@@ -340,11 +340,20 @@ impl DiagnosticDeriveBuilder {
                 Ok(quote! {})
             }
             "primary_span" => {
-                report_error_if_not_applied_to_span(attr, &info)?;
+                match self.kind {
+                    DiagnosticDeriveKind::SessionDiagnostic => {
+                        report_error_if_not_applied_to_span(attr, &info)?;
 
-                Ok(quote! {
-                    #diag.set_span(#binding);
-                })
+                        Ok(quote! {
+                            #diag.set_span(#binding);
+                        })
+                    }
+                    DiagnosticDeriveKind::LintDiagnostic => {
+                        throw_invalid_attr!(attr, &meta, |diag| {
+                            diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
+                        })
+                    }
+                }
             }
             "label" => {
                 report_error_if_not_applied_to_span(attr, &info)?;
