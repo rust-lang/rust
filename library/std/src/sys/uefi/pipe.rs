@@ -9,36 +9,43 @@ use crate::{
 pub struct AnonPipe(uefi_pipe::Pipe);
 
 impl AnonPipe {
+    #[inline]
     pub(crate) fn new<K: AsRef<OsStr>>(key: K) -> Self {
         AnonPipe(uefi_pipe::Pipe::new(key.as_ref().to_ffi_string()))
     }
 
+    #[inline]
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
 
+    #[inline]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
+    #[inline]
     pub fn is_read_vectored(&self) -> bool {
         false
     }
 
+    #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
 
+    #[inline]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
+    #[inline]
     pub fn is_write_vectored(&self) -> bool {
         false
     }
 
     pub fn diverge(&self) -> ! {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -71,10 +78,12 @@ pub(crate) mod uefi_pipe {
     }
 
     impl Pipe {
+        #[inline]
         pub fn new(key: Ucs2Key) -> Self {
             Pipe { key }
         }
 
+        #[inline]
         pub fn clear(&self) -> io::Result<()> {
             unsafe {
                 Self::write_raw(

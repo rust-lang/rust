@@ -66,26 +66,32 @@ pub struct DirBuilder {
 }
 
 impl FileAttr {
+    #[inline]
     pub fn size(&self) -> u64 {
         self.size
     }
 
+    #[inline]
     pub fn perm(&self) -> FilePermissions {
         self.perm
     }
 
+    #[inline]
     pub fn file_type(&self) -> FileType {
         self.file_type
     }
 
+    #[inline]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(self.file_times.modification_time)
     }
 
+    #[inline]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(self.file_times.last_accessed_time)
     }
 
+    #[inline]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(self.created_time)
     }
@@ -107,10 +113,12 @@ impl From<&file::Info> for FileAttr {
 }
 
 impl FilePermissions {
+    #[inline]
     pub fn readonly(&self) -> bool {
         self.attr & file::READ_ONLY != 0
     }
 
+    #[inline]
     pub fn set_readonly(&mut self, readonly: bool) {
         if readonly {
             self.attr |= file::READ_ONLY;
@@ -121,22 +129,26 @@ impl FilePermissions {
 }
 
 impl FileType {
+    #[inline]
     pub fn is_dir(&self) -> bool {
         self.attr & file::DIRECTORY != 0
     }
 
     // Not sure if Archive is a file
+    #[inline]
     pub fn is_file(&self) -> bool {
         !self.is_dir()
     }
 
     // Doesn't seem like symlink can be detected/supported.
+    #[inline]
     pub fn is_symlink(&self) -> bool {
         false
     }
 }
 
 impl fmt::Debug for ReadDir {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.path, f)
     }
@@ -163,39 +175,48 @@ impl Iterator for ReadDir {
 }
 
 impl FileTimes {
+    #[inline]
     pub fn set_accessed(&mut self, t: SystemTime) {
         self.last_accessed_time = t;
     }
+
+    #[inline]
     pub fn set_modified(&mut self, t: SystemTime) {
         self.modification_time = t;
     }
 }
 
 impl Default for FileTimes {
+    #[inline]
     fn default() -> Self {
         Self { last_accessed_time: UNIX_EPOCH, modification_time: UNIX_EPOCH }
     }
 }
 
 impl DirEntry {
+    #[inline]
     pub fn path(&self) -> PathBuf {
         self.path.clone()
     }
 
+    #[inline]
     pub fn file_name(&self) -> OsString {
         self.name.clone()
     }
 
+    #[inline]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(self.attr)
     }
 
+    #[inline]
     pub fn file_type(&self) -> io::Result<FileType> {
         Ok(self.attr.file_type())
     }
 }
 
 impl OpenOptions {
+    #[inline]
     pub fn new() -> OpenOptions {
         // These options open file in readonly mode
         OpenOptions {
@@ -207,6 +228,7 @@ impl OpenOptions {
         }
     }
 
+    #[inline]
     pub fn read(&mut self, read: bool) {
         if read {
             self.open_mode |= file::MODE_READ;
@@ -215,6 +237,7 @@ impl OpenOptions {
         }
     }
 
+    #[inline]
     pub fn write(&mut self, write: bool) {
         if write {
             self.open_mode |= file::MODE_WRITE;
@@ -228,10 +251,12 @@ impl OpenOptions {
         self.append = append;
     }
 
+    #[inline]
     pub fn truncate(&mut self, truncate: bool) {
         self.truncate = truncate;
     }
 
+    #[inline]
     pub fn create(&mut self, create: bool) {
         if create {
             self.open_mode |= file::MODE_CREATE;
@@ -274,14 +299,17 @@ impl File {
         Ok(FileAttr::from(info.as_ref()))
     }
 
+    #[inline]
     pub fn fsync(&self) -> io::Result<()> {
         self.ptr.flush()
     }
 
+    #[inline]
     pub fn datasync(&self) -> io::Result<()> {
         self.fsync()
     }
 
+    #[inline]
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         self.ptr.set_file_size(size)
     }
@@ -292,10 +320,12 @@ impl File {
         Ok(buf_len)
     }
 
+    #[inline]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
 
+    #[inline]
     pub fn is_read_vectored(&self) -> bool {
         false
     }
@@ -313,18 +343,22 @@ impl File {
         Ok(())
     }
 
+    #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.ptr.write(buf)
     }
 
+    #[inline]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
+    #[inline]
     pub fn is_write_vectored(&self) -> bool {
         false
     }
 
+    #[inline]
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
@@ -343,6 +377,7 @@ impl File {
         unsupported()
     }
 
+    #[inline]
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         self.ptr.set_file_attr(perm.attr)
     }
@@ -353,6 +388,7 @@ impl File {
 }
 
 impl DirBuilder {
+    #[inline]
     pub fn new() -> DirBuilder {
         DirBuilder {
             attr: file::DIRECTORY,
@@ -459,6 +495,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 // Shoule be same as stat since symlinks are not implemented anyway
+#[inline]
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     stat(p)
 }
@@ -531,6 +568,7 @@ mod uefi_fs {
     }
 
     impl FileProtocol {
+        #[inline]
         fn new(inner: NonNull<file::Protocol>) -> FileProtocol {
             FileProtocol { inner }
         }
@@ -686,10 +724,12 @@ mod uefi_fs {
             Ok(buffer_size)
         }
 
+        #[inline]
         pub fn read<T>(&self, buf: &mut [T], buffer_size: &mut usize) -> io::Result<()> {
             unsafe { Self::read_raw(self.inner.as_ptr(), buffer_size, buf.as_mut_ptr().cast()) }
         }
 
+        #[inline]
         pub fn flush(&self) -> io::Result<()> {
             unsafe { Self::flush_raw(self.inner.as_ptr()) }
         }

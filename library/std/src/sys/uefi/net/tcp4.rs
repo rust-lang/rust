@@ -59,6 +59,7 @@ impl Tcp4Protocol {
         unsafe { Self::config_raw(self.protocol.as_ptr(), config) }
     }
 
+    #[inline]
     pub fn reset(&self) -> io::Result<()> {
         unsafe { Self::config_raw(self.protocol.as_ptr(), crate::ptr::null_mut()) }
     }
@@ -361,6 +362,7 @@ impl Tcp4Protocol {
         ))
     }
 
+    #[inline]
     fn new(
         protocol: NonNull<tcp4::Protocol>,
         service_binding: ServiceBinding,

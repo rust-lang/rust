@@ -43,6 +43,7 @@ pub fn args() -> Args {
 /// This function was tested for equivalence to the C/C++ parsing rules using an
 /// extensive test suite available at
 /// <https://github.com/ChrisDenton/winarg/tree/std>.
+#[inline]
 fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
     lp_cmd_line: Option<Ucs2Units<'a>>,
     exe_name: F,
@@ -146,6 +147,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
 }
 
 impl fmt::Debug for Args {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.parsed_args_list.as_slice().fmt(f)
     }
@@ -153,21 +155,27 @@ impl fmt::Debug for Args {
 
 impl Iterator for Args {
     type Item = OsString;
+
+    #[inline]
     fn next(&mut self) -> Option<OsString> {
         self.parsed_args_list.next()
     }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.parsed_args_list.size_hint()
     }
 }
 
 impl DoubleEndedIterator for Args {
+    #[inline]
     fn next_back(&mut self) -> Option<OsString> {
         self.parsed_args_list.next_back()
     }
 }
 
 impl ExactSizeIterator for Args {
+    #[inline]
     fn len(&self) -> usize {
         self.parsed_args_list.len()
     }

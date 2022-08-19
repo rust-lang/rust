@@ -117,24 +117,28 @@ impl TcpProtocol {
         Ok((stream, SocketAddr::from(socket_addr)))
     }
 
+    #[inline]
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.receive(buf),
         }
     }
 
+    #[inline]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.receive_vectored(bufs),
         }
     }
 
+    #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.transmit(buf),
         }
     }
 
+    #[inline]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.transmit_vectored(bufs),
@@ -151,12 +155,14 @@ impl TcpProtocol {
         }
     }
 
+    #[inline]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         match self {
             TcpProtocol::V4(x) => Ok(x.remote_socket()?.into()),
         }
     }
 
+    #[inline]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         match self {
             TcpProtocol::V4(x) => Ok(x.station_socket()?.into()),
@@ -195,6 +201,7 @@ impl TcpProtocol {
 }
 
 impl From<tcp4::Tcp4Protocol> for TcpProtocol {
+    #[inline]
     fn from(t: tcp4::Tcp4Protocol) -> Self {
         Self::V4(t)
     }

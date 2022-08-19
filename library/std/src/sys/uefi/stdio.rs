@@ -13,6 +13,7 @@ const MAX_BUFFER_SIZE: usize = 8192;
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
 
 impl Stdin {
+    #[inline]
     pub const fn new() -> Stdin {
         Stdin(())
     }
@@ -116,6 +117,7 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
+    #[inline]
     pub const fn new() -> Stdout {
         Stdout(())
     }
@@ -138,12 +140,14 @@ impl io::Write for Stdout {
         unsafe { simple_text_output_write(con_out.as_ptr(), buf) }
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
 
 impl Stderr {
+    #[inline]
     pub const fn new() -> Stderr {
         Stderr(())
     }
@@ -167,15 +171,18 @@ impl io::Write for Stderr {
         unsafe { simple_text_output_write(std_err.as_ptr(), buf) }
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
 
+#[inline]
 pub fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(r_efi::efi::Status::DEVICE_ERROR.as_usize() as i32)
 }
 
+#[inline]
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
 }
@@ -228,6 +235,7 @@ unsafe fn simple_text_output_write(
 }
 
 // Returns error if `SystemTable->ConIn` is null.
+#[inline]
 fn get_con_in(
     st: NonNull<uefi::raw::SystemTable>,
 ) -> io::Result<NonNull<simple_text_input::Protocol>> {
@@ -235,12 +243,14 @@ fn get_con_in(
     NonNull::new(con_in).ok_or(io::error::const_io_error!(io::ErrorKind::NotFound, "ConIn"))
 }
 
+#[inline]
 fn get_wait_for_event() -> io::Result<BootWaitForEvent> {
     let boot_services = uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
     Ok(unsafe { (*boot_services.as_ptr()).wait_for_event })
 }
 
 // Returns error if `SystemTable->ConOut` is null.
+#[inline]
 fn get_con_out(
     st: NonNull<uefi::raw::SystemTable>,
 ) -> io::Result<NonNull<simple_text_output::Protocol>> {
@@ -249,6 +259,7 @@ fn get_con_out(
 }
 
 // Returns error if `SystemTable->StdErr` is null.
+#[inline]
 fn get_std_err(
     st: NonNull<uefi::raw::SystemTable>,
 ) -> io::Result<NonNull<simple_text_output::Protocol>> {

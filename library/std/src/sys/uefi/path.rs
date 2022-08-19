@@ -32,7 +32,6 @@ unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
     unsafe { crate::mem::transmute(bytes) }
 }
 
-#[inline]
 pub fn parse_prefix(p: &OsStr) -> Option<Prefix<'_>> {
     let pos = p.bytes().iter().take_while(|b| !is_sep_byte(**b)).count();
     if pos == 0 || pos == p.bytes().len() {

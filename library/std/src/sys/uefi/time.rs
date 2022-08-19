@@ -64,14 +64,17 @@ impl Instant {
         panic!("Failed to create Instant")
     }
 
+    #[inline]
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.0.checked_sub(other.0)
     }
 
+    #[inline]
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant(self.0.checked_add(*other)?))
     }
 
+    #[inline]
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant(self.0.checked_sub(*other)?))
     }
@@ -95,20 +98,24 @@ impl SystemTime {
         }
     }
 
+    #[inline]
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
     }
 
+    #[inline]
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_add(*other)?))
     }
 
+    #[inline]
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_sub(*other)?))
     }
 }
 
 impl From<r_efi::system::Time> for SystemTime {
+    #[inline]
     fn from(t: r_efi::system::Time) -> Self {
         SystemTime(uefi_time_to_duration(t))
     }

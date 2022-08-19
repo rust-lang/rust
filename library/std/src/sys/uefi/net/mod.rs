@@ -19,6 +19,7 @@ mod uefi_service_binding {
     }
 
     impl ServiceBinding {
+        #[inline]
         pub fn new(
             service_binding_guid: r_efi::efi::Guid,
             handle: NonNull<crate::ffi::c_void>,
