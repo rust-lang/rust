@@ -588,8 +588,6 @@ impl Session {
         }
     }
 
-    // #[allow(rustc::untranslatable_diagnostic)]
-    // #[allow(rustc::diagnostic_outside_of_impl)]
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
@@ -597,8 +595,6 @@ impl Session {
         self.diagnostic().span_warn(sp, msg)
     }
 
-    // #[allow(rustc::untranslatable_diagnostic)]
-    // #[allow(rustc::diagnostic_outside_of_impl)]
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
@@ -661,8 +657,6 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    // #[allow(rustc::untranslatable_diagnostic)]
-    // #[allow(rustc::diagnostic_outside_of_impl)]
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
