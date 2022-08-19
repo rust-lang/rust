@@ -48,15 +48,15 @@ impl_lint_pass!(RedundantStaticLifetimes => [REDUNDANT_STATIC_LIFETIMES]);
 
 impl RedundantStaticLifetimes {
     // Recursively visit types
-    fn visit_type(&mut self, ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
+    fn visit_type(ty: &Ty, cx: &EarlyContext<'_>, reason: &str) {
         match ty.kind {
             // Be careful of nested structures (arrays and tuples)
             TyKind::Array(ref ty, _) | TyKind::Slice(ref ty) => {
-                self.visit_type(ty, cx, reason);
+                Self::visit_type(ty, cx, reason);
             },
             TyKind::Tup(ref tup) => {
                 for tup_ty in tup {
-                    self.visit_type(tup_ty, cx, reason);
+                    Self::visit_type(tup_ty, cx, reason);
                 }
             },
             // This is what we are looking for !
@@ -87,7 +87,7 @@ impl RedundantStaticLifetimes {
                         _ => {},
                     }
                 }
-                self.visit_type(&borrow_type.ty, cx, reason);
+                Self::visit_type(&borrow_type.ty, cx, reason);
             },
             _ => {},
         }
@@ -102,13 +102,13 @@ impl EarlyLintPass for RedundantStaticLifetimes {
 
         if !item.span.from_expansion() {
             if let ItemKind::Const(_, ref var_type, _) = item.kind {
-                self.visit_type(var_type, cx, "constants have by default a `'static` lifetime");
+                Self::visit_type(var_type, cx, "constants have by default a `'static` lifetime");
                 // Don't check associated consts because `'static` cannot be elided on those (issue
                 // #2438)
             }
 
             if let ItemKind::Static(ref var_type, _, _) = item.kind {
-                self.visit_type(var_type, cx, "statics have by default a `'static` lifetime");
+                Self::visit_type(var_type, cx, "statics have by default a `'static` lifetime");
             }
         }
     }

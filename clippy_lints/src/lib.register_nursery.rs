@@ -24,7 +24,6 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(mutex_atomic::MUTEX_INTEGER),
     LintId::of(non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY),
     LintId::of(nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES),
-    LintId::of(only_used_in_recursion::ONLY_USED_IN_RECURSION),
     LintId::of(option_if_let_else::OPTION_IF_LET_ELSE),
     LintId::of(redundant_pub_crate::REDUNDANT_PUB_CRATE),
     LintId::of(regex::TRIVIAL_REGEX),

@@ -1,122 +1,113 @@
 #![warn(clippy::only_used_in_recursion)]
 
-fn simple(a: usize, b: usize) -> usize {
-    if a == 0 { 1 } else { simple(a - 1, b) }
+fn _simple(x: u32) -> u32 {
+    x
 }
 
-fn with_calc(a: usize, b: isize) -> usize {
-    if a == 0 { 1 } else { with_calc(a - 1, -b + 1) }
+fn _simple2(x: u32) -> u32 {
+    _simple(x)
 }
 
-fn tuple((a, b): (usize, usize)) -> usize {
-    if a == 0 { 1 } else { tuple((a - 1, b + 1)) }
+fn _one_unused(flag: u32, a: usize) -> usize {
+    if flag == 0 { 0 } else { _one_unused(flag - 1, a) }
 }
 
-fn let_tuple(a: usize, b: usize) -> usize {
-    let (c, d) = (a, b);
-    if c == 0 { 1 } else { let_tuple(c - 1, d + 1) }
+fn _two_unused(flag: u32, a: u32, b: i32) -> usize {
+    if flag == 0 { 0 } else { _two_unused(flag - 1, a, b) }
 }
 
-fn array([a, b]: [usize; 2]) -> usize {
-    if a == 0 { 1 } else { array([a - 1, b + 1]) }
+fn _with_calc(flag: u32, a: i64) -> usize {
+    if flag == 0 {
+        0
+    } else {
+        _with_calc(flag - 1, (-a + 10) * 5)
+    }
 }
 
-fn index(a: usize, mut b: &[usize], c: usize) -> usize {
-    if a == 0 { 1 } else { index(a - 1, b, c + b[0]) }
+// Don't lint
+fn _used_with_flag(flag: u32, a: u32) -> usize {
+    if flag == 0 { 0 } else { _used_with_flag(flag ^ a, a - 1) }
 }
 
-fn break_(a: usize, mut b: usize, mut c: usize) -> usize {
-    let c = loop {
-        b += 1;
-        c += 1;
-        if c == 10 {
-            break b;
-        }
-    };
-
-    if a == 0 { 1 } else { break_(a - 1, c, c) }
+fn _used_with_unused(flag: u32, a: i32, b: i32) -> usize {
+    if flag == 0 {
+        0
+    } else {
+        _used_with_unused(flag - 1, -a, a + b)
+    }
 }
 
-// this has a side effect
-fn mut_ref(a: usize, b: &mut usize) -> usize {
-    *b = 1;
-    if a == 0 { 1 } else { mut_ref(a - 1, b) }
+fn _codependent_unused(flag: u32, a: i32, b: i32) -> usize {
+    if flag == 0 {
+        0
+    } else {
+        _codependent_unused(flag - 1, a * b, a + b)
+    }
 }
 
-fn mut_ref2(a: usize, b: &mut usize) -> usize {
-    let mut c = *b;
-    if a == 0 { 1 } else { mut_ref2(a - 1, &mut c) }
-}
-
-fn not_primitive(a: usize, b: String) -> usize {
-    if a == 0 { 1 } else { not_primitive(a - 1, b) }
-}
-
-// this doesn't have a side effect,
-// but `String` is not primitive.
-fn not_primitive_op(a: usize, b: String, c: &str) -> usize {
-    if a == 1 { 1 } else { not_primitive_op(a, b + c, c) }
+fn _not_primitive(flag: u32, b: String) -> usize {
+    if flag == 0 { 0 } else { _not_primitive(flag - 1, b) }
 }
 
 struct A;
 
 impl A {
-    fn method(a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { A::method(a - 1, b - 1) }
+    fn _method(flag: usize, a: usize) -> usize {
+        if flag == 0 { 0 } else { Self::_method(flag - 1, a) }
     }
 
-    fn method2(&self, a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { self.method2(a - 1, b + 1) }
+    fn _method_self(&self, flag: usize, a: usize) -> usize {
+        if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
     }
 }
 
 trait B {
-    fn hello(a: usize, b: usize) -> usize;
-
-    fn hello2(&self, a: usize, b: usize) -> usize;
+    fn method(flag: u32, a: usize) -> usize;
+    fn method_self(&self, flag: u32, a: usize) -> usize;
 }
 
 impl B for A {
-    fn hello(a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { A::hello(a - 1, b + 1) }
+    fn method(flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { Self::method(flag - 1, a) }
     }
 
-    fn hello2(&self, a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { self.hello2(a - 1, b + 1) }
+    fn method_self(&self, flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
+    }
+}
+
+impl B for () {
+    fn method(flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { a }
+    }
+
+    fn method_self(&self, flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { a }
+    }
+}
+
+impl B for u32 {
+    fn method(flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { <() as B>::method(flag, a) }
+    }
+
+    fn method_self(&self, flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { ().method_self(flag, a) }
     }
 }
 
 trait C {
-    fn hello(a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { Self::hello(a - 1, b + 1) }
+    fn method(flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { Self::method(flag - 1, a) }
     }
 
-    fn hello2(&self, a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { self.hello2(a - 1, b + 1) }
+    fn method_self(&self, flag: u32, a: usize) -> usize {
+        if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
     }
 }
 
-fn ignore(a: usize, _: usize) -> usize {
-    if a == 1 { 1 } else { ignore(a - 1, 0) }
-}
-
-fn ignore2(a: usize, _b: usize) -> usize {
-    if a == 1 { 1 } else { ignore2(a - 1, _b) }
-}
-
-fn f1(a: u32) -> u32 {
-    a
-}
-
-fn f2(a: u32) -> u32 {
-    f1(a)
-}
-
-fn inner_fn(a: u32) -> u32 {
-    fn inner_fn(a: u32) -> u32 {
-        a
-    }
-    inner_fn(a)
+fn _ignore(flag: usize, _a: usize) -> usize {
+    if flag == 0 { 0 } else { _ignore(flag - 1, _a) }
 }
 
 fn main() {}
