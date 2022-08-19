@@ -5,9 +5,7 @@ use crate::marker::PhantomData;
 use crate::num::NonZeroI32;
 use crate::os::uefi::io::status_to_io_error;
 use crate::path::Path;
-use crate::sys::fs::File;
-use crate::sys::pipe::AnonPipe;
-use crate::sys::unsupported;
+use crate::sys::uefi::{fs::File, pipe::AnonPipe, unsupported};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
@@ -334,13 +332,13 @@ mod uefi_command {
                 uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
             let system_handle =
                 uefi::env::get_system_handle().ok_or(common::SYSTEM_HANDLE_ERROR)?;
-            let path = uefi::path::DevicePath::try_from(p)?;
+            let mut path = super::super::path::device_path_from_os_str(p)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {
                 ((*boot_services.as_ptr()).load_image)(
                     r_efi::efi::Boolean::FALSE,
                     system_handle.as_ptr(),
-                    path.as_ptr(),
+                    path.as_mut(),
                     crate::ptr::null_mut(),
                     0,
                     child_handle.as_mut_ptr(),

@@ -2,7 +2,13 @@
 
 use crate::ffi::OsStr;
 use crate::io;
+use crate::os::uefi::ffi::OsStrExt;
 use crate::path::{Path, PathBuf, Prefix};
+use crate::ptr::NonNull;
+use crate::sys::uefi::common;
+use crate::sys_common::ucs2;
+
+use r_efi::protocols::{device_path, device_path_from_text, device_path_to_text};
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
@@ -56,4 +62,64 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         // If Device Path Prefix present, then path should already be absolute
         Some(_) => Ok(path.to_path_buf()),
     }
+}
+
+pub(crate) fn device_path_to_path(path: &mut device_path::Protocol) -> io::Result<PathBuf> {
+    use crate::alloc::{Allocator, Global, Layout};
+
+    let device_path_to_text_handles = common::locate_handles(device_path_to_text::PROTOCOL_GUID)?;
+    for handle in device_path_to_text_handles {
+        let protocol: NonNull<device_path_to_text::Protocol> =
+            match common::open_protocol(handle, device_path_to_text::PROTOCOL_GUID) {
+                Ok(x) => x,
+                Err(_) => continue,
+            };
+        let path_ucs2 = unsafe {
+            ((*protocol.as_ptr()).convert_device_path_to_text)(
+                path,
+                r_efi::efi::Boolean::FALSE,
+                r_efi::efi::Boolean::FALSE,
+            )
+        };
+        let ucs2_iter = match unsafe { ucs2::Ucs2Units::new(path_ucs2) } {
+            None => break,
+            Some(x) => x,
+        };
+
+        let path: String = ucs2_iter
+            .map_while(|x| ucs2::Ucs2Char::from_u16(x.get()))
+            .map(|x| char::from(x))
+            .collect();
+
+        let layout = unsafe {
+            Layout::from_size_align_unchecked(crate::mem::size_of::<u16>() * path.len(), 8usize)
+        };
+        // Deallocate returned UCS-2 String
+        unsafe { Global.deallocate(NonNull::new_unchecked(path_ucs2 as *mut u16).cast(), layout) }
+        return Ok(PathBuf::from(path));
+    }
+    Err(crate::io::error::const_io_error!(
+        crate::io::ErrorKind::InvalidData,
+        "Failed to Convert to text representation",
+    ))
+}
+
+pub(crate) fn device_path_from_os_str(path: &OsStr) -> io::Result<Box<device_path::Protocol>> {
+    let device_path_from_text_handles =
+        common::locate_handles(device_path_from_text::PROTOCOL_GUID)?;
+    for handle in device_path_from_text_handles {
+        let protocol: NonNull<device_path_from_text::Protocol> =
+            match common::open_protocol(handle, device_path_from_text::PROTOCOL_GUID) {
+                Ok(x) => x,
+                Err(_) => continue,
+            };
+        let device_path = unsafe {
+            ((*protocol.as_ptr()).convert_text_to_device_path)(path.to_ffi_string().as_mut_ptr())
+        };
+        return unsafe { Ok(Box::from_raw(device_path)) };
+    }
+    Err(crate::io::error::const_io_error!(
+        crate::io::ErrorKind::InvalidData,
+        "Failed to Convert to text representation",
+    ))
 }

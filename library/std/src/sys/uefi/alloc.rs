@@ -5,7 +5,7 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::os::uefi;
 
-const POOL_ALIGNMENT: usize = 8;
+pub(crate) const POOL_ALIGNMENT: usize = 8;
 // FIXME: Maybe allow chaing the MEMORY_TYPE. However, since allocation is done even before main,
 // there will be a few allocations with the default MEMORY_TYPE.
 const MEMORY_TYPE: u32 = r_efi::efi::LOADER_DATA;

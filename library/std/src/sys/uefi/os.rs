@@ -73,7 +73,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     let mut protocol_guid = loaded_image_device_path::PROTOCOL_GUID;
     match common::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
-        Some(x) => PathBuf::try_from(x),
+        Some(mut x) => unsafe { super::path::device_path_to_path(x.as_mut()) },
         None => Err(io::error::const_io_error!(
             io::ErrorKind::Uncategorized,
             "Failed to Acquire EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL",

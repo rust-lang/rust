@@ -1,12 +1,14 @@
-use super::super::common;
 use super::uefi_service_binding::ServiceBinding;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv4Addr, SocketAddrV4};
 use crate::os::uefi;
 use crate::os::uefi::io::status_to_io_error;
-use crate::os::uefi::raw::VariableSizeType;
-use crate::ptr::NonNull;
+use crate::ptr::{addr_of_mut, NonNull};
+use crate::sys::uefi::{
+    alloc::POOL_ALIGNMENT,
+    common::{self, VariableBox},
+};
 use r_efi::efi::Status;
 use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 
@@ -123,25 +125,28 @@ impl Tcp4Protocol {
             fragment_buffer: buf.as_ptr() as *mut crate::ffi::c_void,
         };
 
-        let transmit_data: VariableSizeType<tcp4::TransmitData> = VariableSizeType::from_size(
-            crate::mem::size_of::<tcp4::TransmitData>()
-                + crate::mem::size_of::<tcp4::FragmentData>(),
-        )?;
-
-        // Initialize VariableSizeType
-        unsafe {
-            (*transmit_data.as_ptr()).push = r_efi::efi::Boolean::from(true);
-            (*transmit_data.as_ptr()).urgent = r_efi::efi::Boolean::from(false);
-            (*transmit_data.as_ptr()).data_length = buf_size;
-            (*transmit_data.as_ptr()).fragment_count = 1;
-            crate::ptr::copy(
-                [fragment_table].as_ptr(),
-                (*transmit_data.as_ptr()).fragment_table.as_mut_ptr(),
-                1,
+        let layout = unsafe {
+            crate::alloc::Layout::from_size_align_unchecked(
+                crate::mem::size_of::<tcp4::TransmitData>()
+                    + crate::mem::size_of::<tcp4::FragmentData>(),
+                POOL_ALIGNMENT,
             )
         };
+        let mut transmit_data = VariableBox::<tcp4::TransmitData>::try_new_uninit(layout)
+            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
 
-        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_ptr() };
+        // Initialize TransmitData
+        unsafe {
+            let ptr = transmit_data.as_mut_ptr();
+            addr_of_mut!((*ptr).push).write(r_efi::efi::Boolean::TRUE);
+            addr_of_mut!((*ptr).urgent).write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*ptr).data_length).write(buf_size);
+            addr_of_mut!((*ptr).fragment_count).write(1);
+            (*ptr).fragment_table.as_mut_ptr().copy_from([fragment_table].as_ptr(), 1);
+        };
+        let mut transmit_data = unsafe { transmit_data.assume_init() };
+
+        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut() };
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
@@ -173,25 +178,32 @@ impl Tcp4Protocol {
             })
             .collect();
 
-        let transmit_data: VariableSizeType<tcp4::TransmitData> = VariableSizeType::from_size(
-            crate::mem::size_of::<tcp4::TransmitData>() + crate::mem::size_of_val(&fragment_tables),
-        )?;
-        let fragment_tables_len = fragment_tables.len();
-
-        // Initialize VariableSizeType
-        unsafe {
-            (*transmit_data.as_ptr()).push = r_efi::efi::Boolean::from(true);
-            (*transmit_data.as_ptr()).urgent = r_efi::efi::Boolean::from(false);
-            (*transmit_data.as_ptr()).data_length = buf_size as u32;
-            (*transmit_data.as_ptr()).fragment_count = fragment_tables_len as u32;
-            crate::ptr::copy(
-                fragment_tables.as_ptr(),
-                (*transmit_data.as_ptr()).fragment_table.as_mut_ptr(),
-                fragment_tables_len,
+        let layout = unsafe {
+            crate::alloc::Layout::from_size_align_unchecked(
+                crate::mem::size_of::<tcp4::TransmitData>()
+                    + crate::mem::size_of_val(&fragment_tables),
+                POOL_ALIGNMENT,
             )
         };
+        let mut transmit_data = VariableBox::<tcp4::TransmitData>::try_new_uninit(layout)
+            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        let fragment_tables_len = fragment_tables.len();
 
-        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_ptr() };
+        // Initialize TransmitData
+        unsafe {
+            let ptr = transmit_data.as_mut_ptr();
+            addr_of_mut!((*ptr).push).write(r_efi::efi::Boolean::TRUE);
+            addr_of_mut!((*ptr).urgent).write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*ptr).data_length).write(buf_size as u32);
+            addr_of_mut!((*ptr).fragment_count).write(fragment_tables_len as u32);
+            (*ptr)
+                .fragment_table
+                .as_mut_ptr()
+                .copy_from(fragment_tables.as_ptr(), fragment_tables_len);
+        };
+        let mut transmit_data = unsafe { transmit_data.assume_init() };
+
+        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut() };
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
@@ -218,23 +230,25 @@ impl Tcp4Protocol {
             fragment_buffer: buf.as_mut_ptr().cast(),
         };
 
-        let receive_data: VariableSizeType<tcp4::ReceiveData> = VariableSizeType::from_size(
-            crate::mem::size_of::<tcp4::ReceiveData>()
-                + crate::mem::size_of::<tcp4::FragmentData>(),
-        )?;
-
-        unsafe {
-            (*receive_data.as_ptr()).urgent_flag = r_efi::efi::Boolean::from(false);
-            (*receive_data.as_ptr()).data_length = buf_size;
-            (*receive_data.as_ptr()).fragment_count = 1;
-            crate::ptr::copy(
-                [fragment_table].as_ptr(),
-                (*receive_data.as_ptr()).fragment_table.as_mut_ptr(),
-                1,
+        let layout = unsafe {
+            crate::alloc::Layout::from_size_align_unchecked(
+                crate::mem::size_of::<tcp4::ReceiveData>()
+                    + crate::mem::size_of::<tcp4::FragmentData>(),
+                POOL_ALIGNMENT,
             )
+        };
+        let mut receive_data = VariableBox::<tcp4::ReceiveData>::try_new_uninit(layout)
+            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        unsafe {
+            let ptr = receive_data.as_mut_ptr();
+            addr_of_mut!((*ptr).urgent_flag).write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*ptr).data_length).write(buf_size);
+            addr_of_mut!((*ptr).fragment_count).write(1);
+            (*ptr).fragment_table.as_mut_ptr().copy_from([fragment_table].as_ptr(), 1);
         }
+        let mut receive_data = unsafe { receive_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_ptr() };
+        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut() };
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
@@ -268,22 +282,28 @@ impl Tcp4Protocol {
             .collect();
         let fragment_tables_len = fragment_tables.len();
 
-        let receive_data: VariableSizeType<tcp4::ReceiveData> = VariableSizeType::from_size(
-            crate::mem::size_of::<tcp4::ReceiveData>() + crate::mem::size_of_val(&fragment_tables),
-        )?;
-
-        unsafe {
-            (*receive_data.as_ptr()).urgent_flag = r_efi::efi::Boolean::from(false);
-            (*receive_data.as_ptr()).data_length = buf_size;
-            (*receive_data.as_ptr()).fragment_count = fragment_tables_len as u32;
-            crate::ptr::copy(
-                fragment_tables.as_ptr(),
-                (*receive_data.as_ptr()).fragment_table.as_mut_ptr(),
-                fragment_tables_len,
+        let layout = unsafe {
+            crate::alloc::Layout::from_size_align_unchecked(
+                crate::mem::size_of::<tcp4::ReceiveData>()
+                    + crate::mem::size_of_val(&fragment_tables),
+                POOL_ALIGNMENT,
             )
+        };
+        let mut receive_data = VariableBox::<tcp4::ReceiveData>::try_new_uninit(layout)
+            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        unsafe {
+            let ptr = receive_data.as_mut_ptr();
+            addr_of_mut!((*ptr).urgent_flag).write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*ptr).data_length).write(buf_size);
+            addr_of_mut!((*ptr).fragment_count).write(fragment_tables_len as u32);
+            (*ptr)
+                .fragment_table
+                .as_mut_ptr()
+                .copy_from(fragment_tables.as_ptr(), fragment_tables_len);
         }
+        let mut receive_data = unsafe { receive_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_ptr() };
+        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut() };
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
