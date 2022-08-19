@@ -436,9 +436,9 @@ impl CString {
     ///
     /// unsafe {
     ///     assert_eq!(b'f', *ptr as u8);
-    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
-    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
-    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///     assert_eq!(b'o', *ptr.add(1) as u8);
+    ///     assert_eq!(b'o', *ptr.add(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.add(3) as u8);
     ///
     ///     // retake pointer to free memory
     ///     let _ = CString::from_raw(ptr);
