@@ -43,7 +43,6 @@ use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use rustc_target::json::ToJson;
 
-use std::borrow::Cow;
 use std::cmp::max;
 use std::env;
 use std::ffi::OsString;
@@ -1205,27 +1204,18 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         handler.emit_diagnostic(&mut d);
     }
 
-    let mut xs: Vec<Cow<'static, str>> = vec![
-        "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {bug_report_url}").into(),
-        format!(
-            "rustc {} running on {}",
-            util::version_str!().unwrap_or("unknown_version"),
-            config::host_triple()
-        )
-        .into(),
-    ];
+    handler.emit_note(session_diagnostics::Ice);
+    handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+    handler.emit_note(session_diagnostics::IceVersion {
+        version: util::version_str!().unwrap_or("unknown_version"),
+        triple: config::host_triple(),
+    });
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-        xs.push(format!("compiler flags: {}", flags.join(" ")).into());
-
+        handler.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
         if excluded_cargo_defaults {
-            xs.push("some of the compiler flags provided by cargo are hidden".into());
+            handler.emit_note(session_diagnostics::IceExcludeCargoDefaults);
         }
-    }
-
-    for note in &xs {
-        handler.note_without_error(note.as_ref());
     }
 
     // If backtraces are enabled, also print the query stack
