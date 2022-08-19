@@ -2,12 +2,8 @@
 
 use super::raw::{BootServices, RuntimeServices, SystemTable};
 use crate::ffi::c_void;
-use crate::io;
-use crate::mem::MaybeUninit;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
-use r_efi::efi::{Guid, Handle};
-use r_efi::system;
 
 static GLOBAL_SYSTEM_TABLE: AtomicPtr<SystemTable> = AtomicPtr::new(crate::ptr::null_mut());
 static GLOBAL_SYSTEM_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
@@ -15,7 +11,8 @@ static GLOBAL_SYSTEM_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null
 /// Initializes Global Atomic Pointers to SystemTable and Handle.
 /// Should only be called once in the program execution under normal circumstances.
 /// The caller should ensure that the pointers are valid.
-pub(crate) fn init_globals(handle: NonNull<c_void>, system_table: NonNull<SystemTable>) {
+#[unstable(feature = "uefi_std", issue = "100499")]
+pub fn init_globals(handle: NonNull<c_void>, system_table: NonNull<SystemTable>) {
     GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::SeqCst);
     GLOBAL_SYSTEM_HANDLE.store(handle.as_ptr(), Ordering::SeqCst);
 }
@@ -46,85 +43,4 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     let system_table = get_system_table()?;
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
-}
-
-/// Open Protocol on a handle
-/// Implemented using `EFI_BOOT_SERVICES.OpenProtocol()`
-pub(crate) fn open_protocol<T>(
-    handle: NonNull<c_void>,
-    mut protocol_guid: Guid,
-) -> io::Result<NonNull<T>> {
-    let boot_services = get_boot_services()
-        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get BootServices"))?;
-    let system_handle = get_system_handle()
-        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get System Handle"))?;
-    let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
-
-    let r = unsafe {
-        ((*boot_services.as_ptr()).open_protocol)(
-            handle.as_ptr(),
-            &mut protocol_guid,
-            protocol.as_mut_ptr().cast(),
-            system_handle.as_ptr(),
-            crate::ptr::null_mut(),
-            system::OPEN_PROTOCOL_GET_PROTOCOL,
-        )
-    };
-
-    if r.is_error() {
-        Err(super::io::status_to_io_error(r))
-    } else {
-        NonNull::new(unsafe { protocol.assume_init() })
-            .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Protocol"))
-    }
-}
-
-// Locate handles with a particular protocol GUID
-/// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
-pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
-    fn inner(
-        guid: &mut Guid,
-        boot_services: NonNull<BootServices>,
-        buf_size: &mut usize,
-        buf: *mut Handle,
-    ) -> io::Result<()> {
-        let r = unsafe {
-            ((*boot_services.as_ptr()).locate_handle)(
-                r_efi::efi::BY_PROTOCOL,
-                guid,
-                crate::ptr::null_mut(),
-                buf_size,
-                buf,
-            )
-        };
-
-        if r.is_error() { Err(super::io::status_to_io_error(r)) } else { Ok(()) }
-    }
-
-    let boot_services = get_boot_services().ok_or(io::error::const_io_error!(
-        io::ErrorKind::Other,
-        "Unable to acquire boot services"
-    ))?;
-    let mut buf_len = 0usize;
-
-    match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
-        Ok(()) => unreachable!(),
-        Err(e) => match e.kind() {
-            io::ErrorKind::FileTooLarge => {}
-            _ => return Err(e),
-        },
-    }
-
-    // The returned buf_len is in bytes
-    let mut buf: Vec<Handle> = Vec::with_capacity(buf_len / crate::mem::size_of::<Handle>());
-    match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
-        Ok(()) => {
-            // SAFETY: This is safe because the call will succeed only if buf_len >= required
-            // length. Also, on success, the `buf_len` is updated with the size of bufferv (in
-            // bytes) written
-            unsafe { buf.set_len(buf_len / crate::mem::size_of::<Handle>()) };
-            Ok(buf.iter().filter_map(|x| NonNull::new(*x)).collect())
-        }
-        Err(e) => Err(e),
-    }
 }

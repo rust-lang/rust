@@ -51,10 +51,9 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
 // Impementation of Pipes using variables in UEFI. Might evolve into a Protocol or something in the
 // future
 pub(crate) mod uefi_pipe {
-    use super::super::common;
+    use super::super::common::{self, status_to_io_error};
     use crate::io;
     use crate::os::uefi;
-    use crate::os::uefi::io::status_to_io_error;
 
     type Ucs2Key = Vec<u16>;
 

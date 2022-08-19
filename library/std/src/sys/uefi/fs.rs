@@ -518,11 +518,10 @@ mod uefi_fs {
     use crate::io;
     use crate::mem::MaybeUninit;
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
-    use crate::os::uefi::io::status_to_io_error;
     use crate::path::{Path, PathBuf};
     use crate::ptr::NonNull;
     use crate::sys::uefi::alloc::POOL_ALIGNMENT;
-    use crate::sys::uefi::common::{self, VariableBox};
+    use crate::sys::uefi::common::{self, status_to_io_error, VariableBox};
     use r_efi::protocols::file;
 
     // Wrapper around File Protocol. Automatically closes file/directories on being dropped.
@@ -592,14 +591,13 @@ mod uefi_fs {
         fn get_volume_from_prefix(prefix: &OsStr) -> io::Result<Self> {
             use r_efi::protocols::{device_path, simple_file_system};
 
-            let handles =
-                match crate::os::uefi::env::locate_handles(simple_file_system::PROTOCOL_GUID) {
-                    Ok(x) => x,
-                    Err(e) => return Err(e),
-                };
+            let handles = match common::locate_handles(simple_file_system::PROTOCOL_GUID) {
+                Ok(x) => x,
+                Err(e) => return Err(e),
+            };
             for handle in handles {
                 let mut volume_device_path =
-                    match crate::os::uefi::env::open_protocol(handle, device_path::PROTOCOL_GUID) {
+                    match common::open_protocol(handle, device_path::PROTOCOL_GUID) {
                         Ok(x) => x,
                         Err(_) => continue,
                     };

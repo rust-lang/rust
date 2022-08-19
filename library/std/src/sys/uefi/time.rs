@@ -1,3 +1,4 @@
+use super::common;
 use crate::mem::MaybeUninit;
 use crate::os::uefi;
 use crate::ptr::NonNull;
@@ -17,11 +18,11 @@ const NS_PER_SEC: u64 = 1_000_000_000;
 
 impl Instant {
     pub fn now() -> Instant {
-        if let Ok(handles) = crate::os::uefi::env::locate_handles(timestamp::PROTOCOL_GUID) {
+        if let Ok(handles) = common::locate_handles(timestamp::PROTOCOL_GUID) {
             // First try using `EFI_TIMESTAMP_PROTOCOL` if present
             for handle in handles {
                 let protocol: NonNull<timestamp::Protocol> =
-                    match uefi::env::open_protocol(handle, timestamp::PROTOCOL_GUID) {
+                    match common::open_protocol(handle, timestamp::PROTOCOL_GUID) {
                         Ok(x) => x,
                         Err(_) => continue,
                     };

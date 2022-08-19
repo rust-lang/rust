@@ -1,13 +1,12 @@
 use super::uefi_service_binding::ServiceBinding;
+use super::{ipv4_from_r_efi, ipv4_to_r_efi};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
-use crate::net::{Ipv4Addr, SocketAddrV4};
-use crate::os::uefi;
-use crate::os::uefi::io::status_to_io_error;
+use crate::net::SocketAddrV4;
 use crate::ptr::{addr_of_mut, NonNull};
 use crate::sys::uefi::{
     alloc::POOL_ALIGNMENT,
-    common::{self, VariableBox},
+    common::{self, status_to_io_error, VariableBox},
 };
 use r_efi::efi::Status;
 use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
@@ -43,10 +42,10 @@ impl Tcp4Protocol {
             time_to_live: TIME_TO_LIVE,
             access_point: tcp4::AccessPoint {
                 use_default_address: r_efi::efi::Boolean::from(use_default_address),
-                station_address: r_efi::efi::Ipv4Address::from(station_addr.ip()),
+                station_address: ipv4_to_r_efi(station_addr.ip()),
                 station_port: station_addr.port(),
-                subnet_mask: r_efi::efi::Ipv4Address::from(subnet_mask),
-                remote_address: r_efi::efi::Ipv4Address::from(remote_addr.ip()),
+                subnet_mask: ipv4_to_r_efi(subnet_mask),
+                remote_address: ipv4_to_r_efi(remote_addr.ip()),
                 remote_port: remote_addr.port(),
                 active_flag: r_efi::efi::Boolean::from(active_flag),
             },
@@ -349,7 +348,7 @@ impl Tcp4Protocol {
     pub fn remote_socket(&self) -> io::Result<SocketAddrV4> {
         let config_data = self.get_config_data()?;
         Ok(SocketAddrV4::new(
-            Ipv4Addr::from(config_data.access_point.remote_address),
+            ipv4_from_r_efi(config_data.access_point.remote_address),
             config_data.access_point.remote_port,
         ))
     }
@@ -357,7 +356,7 @@ impl Tcp4Protocol {
     pub fn station_socket(&self) -> io::Result<SocketAddrV4> {
         let config_data = self.get_config_data()?;
         Ok(SocketAddrV4::new(
-            Ipv4Addr::from(config_data.access_point.station_address),
+            ipv4_from_r_efi(config_data.access_point.station_address),
             config_data.access_point.station_port,
         ))
     }
@@ -374,7 +373,7 @@ impl Tcp4Protocol {
         service_binding: ServiceBinding,
         child_handle: NonNull<crate::ffi::c_void>,
     ) -> io::Result<Self> {
-        let tcp4_protocol = uefi::env::open_protocol(child_handle, tcp4::PROTOCOL_GUID)?;
+        let tcp4_protocol = common::open_protocol(child_handle, tcp4::PROTOCOL_GUID)?;
         Ok(Self::new(tcp4_protocol, service_binding, child_handle))
     }
 

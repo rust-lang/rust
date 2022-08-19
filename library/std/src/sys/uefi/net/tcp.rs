@@ -2,10 +2,10 @@
 //! In the future, should probably desing networking around SIMPLE_NETWOR_PROTOCOL
 
 use super::{tcp4, uefi_service_binding};
+use crate::sys::uefi::common;
 use crate::{
     io::{self, IoSlice, IoSliceMut},
     net::{Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4},
-    os::uefi,
     sys::unsupported,
 };
 use r_efi::protocols;
@@ -19,7 +19,7 @@ impl TcpProtocol {
         match addr {
             SocketAddr::V4(x) => {
                 let handles =
-                    uefi::env::locate_handles(protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
+                    common::locate_handles(protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
 
                 // Try all handles
                 for handle in handles {
@@ -64,7 +64,7 @@ impl TcpProtocol {
         match addr {
             SocketAddr::V4(addr) => {
                 let handles =
-                    uefi::env::locate_handles(protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
+                    common::locate_handles(protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
 
                 // Try all handles
                 for handle in handles {

@@ -1,5 +1,4 @@
-use super::common;
-use crate::os::uefi::io::status_to_io_error;
+use super::common::{self, status_to_io_error};
 use crate::sys_common::ucs2;
 use crate::{io, os::uefi, ptr::NonNull};
 use r_efi::protocols::{simple_text_input, simple_text_output};

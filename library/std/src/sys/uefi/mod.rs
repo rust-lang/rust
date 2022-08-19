@@ -70,7 +70,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     use r_efi::efi::Status;
 
     if let Ok(code) = usize::try_from(code) {
-        uefi::io::status_to_io_error(Status::from_usize(code)).kind()
+        common::status_to_io_error(Status::from_usize(code)).kind()
     } else {
         ErrorKind::Uncategorized
     }
@@ -126,10 +126,9 @@ unsafe fn get_random() -> Option<u64> {
     use r_efi::protocols::rng;
 
     let mut buf = [0u8; 8];
-    let handles = uefi::env::locate_handles(rng::PROTOCOL_GUID).ok()?;
+    let handles = common::locate_handles(rng::PROTOCOL_GUID).ok()?;
     for handle in handles {
-        if let Ok(protocol) = uefi::env::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID)
-        {
+        if let Ok(protocol) = common::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID) {
             let r = unsafe {
                 ((*protocol.as_ptr()).get_rng)(
                     protocol.as_ptr(),

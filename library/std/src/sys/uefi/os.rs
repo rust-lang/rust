@@ -1,4 +1,7 @@
-use super::{common, unsupported};
+use super::{
+    common::{self, status_to_io_error},
+    unsupported,
+};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
@@ -6,7 +9,6 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
 use crate::os::uefi::ffi::OsStrExt;
-use crate::os::uefi::io::status_to_io_error;
 use crate::path::{self, PathBuf};
 
 // Return EFI_ABORTED as Status
@@ -160,12 +162,11 @@ pub fn getpid() -> u32 {
 // Implement variables using Variable Services in EFI_RUNTIME_SERVICES
 pub(crate) mod uefi_vars {
     // It is possible to directly store and use UTF-8 data. So no need to convert to and from UCS-2
-    use super::super::common;
+    use super::super::common::{self, status_to_io_error};
     use crate::ffi::{OsStr, OsString};
     use crate::io;
     use crate::os::uefi;
     use crate::os::uefi::ffi::OsStrExt;
-    use crate::os::uefi::io::status_to_io_error;
 
     // Using Shell Variable Guid from edk2/ShellPkg
     const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(

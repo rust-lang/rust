@@ -3,9 +3,8 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::num::NonZeroI32;
-use crate::os::uefi::io::status_to_io_error;
 use crate::path::Path;
-use crate::sys::uefi::{fs::File, pipe::AnonPipe, unsupported};
+use crate::sys::uefi::{common::status_to_io_error, fs::File, pipe::AnonPipe, unsupported};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
@@ -312,13 +311,12 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 }
 
 mod uefi_command {
-    use super::super::common;
+    use super::super::common::{self, status_to_io_error};
     use crate::ffi::OsStr;
     use crate::io;
     use crate::mem::{ManuallyDrop, MaybeUninit};
     use crate::os::uefi;
     use crate::os::uefi::ffi::OsStrExt;
-    use crate::os::uefi::io::status_to_io_error;
     use crate::ptr::NonNull;
     use r_efi::protocols::loaded_image;
 
