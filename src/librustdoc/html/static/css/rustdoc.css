@@ -693,8 +693,13 @@ h2.location a {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
 	overflow-wrap: break-word;
+	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+	   more aggressively when we want them to. */
 	overflow-wrap: anywhere;
+	background-color: var(--main-background-color);
 }
 
 .in-band > code, .in-band > .code-header {
@@ -731,13 +736,13 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td {
 	padding: .5em;
-	border: 1px dashed;
+	border: 1px dashed var(--border-color);
 }
 
 .docblock table th {
 	padding: .5em;
 	text-align: left;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 }
 
 .fields + table {
@@ -834,20 +839,6 @@ nav.sub {
 }
 .source nav.sub {
 	margin-left: 32px;
-}
-nav.main {
-	padding: 20px 0;
-	text-align: center;
-}
-nav.main .current {
-	border-top: 1px solid;
-	border-bottom: 1px solid;
-}
-nav.main .separator {
-	border: 1px solid;
-	display: inline-block;
-	height: 23px;
-	margin: 0 20px;
 }
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
@@ -974,7 +965,7 @@ table,
 	max-width: 100%;
 	/* contents can overflow because of max-width limit, then show ellipsis */
 	text-overflow: ellipsis;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 4px;
 	outline: none;
 	cursor: pointer;
@@ -1027,11 +1018,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	-moz-box-sizing: border-box !important;
 	box-sizing: border-box !important;
 	outline: none;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
 	width: 100%;
+	background-color: var(--button-background-color);
 }
 
 .search-results {
@@ -1087,7 +1079,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: block;
 	margin-top: 7px;
 	border-radius: 3px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	font-size: 1rem;
 }
 
@@ -1096,7 +1088,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	content: '';
 	position: absolute;
 	right: 11px;
-	border: solid;
+	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
 	display: inline-block;
 	padding: 4px;
@@ -1132,13 +1124,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	text-align: center;
 	display: block;
 	margin: 10px 0;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
 #help-button span.bottom {
 	clear: both;
-	border-top: 1px solid;
+	border-top: 1px solid var(--border-color);
 }
 .side-by-side {
 	text-align: initial;
@@ -1331,6 +1323,7 @@ h3.variant {
 	border-radius: 6px;
 	margin-left: 5px;
 	font-size: 1rem;
+	border: 1px solid var(--border-color);
 }
 
 .tooltip.ignore::after {
@@ -1496,7 +1489,7 @@ pre.rust {
 #source-sidebar > .title {
 	font-size: 1.5rem;
 	text-align: center;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
 #sidebar-toggle > button {
@@ -1524,11 +1517,12 @@ pre.rust {
 
 #copy-path {
 	height: 34px;
+	background-color: var(--main-background-color);
 }
 #settings-menu > a, #help-button > button, #copy-path {
 	padding: 5px;
 	width: 33px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	cursor: pointer;
 }
@@ -1539,6 +1533,7 @@ pre.rust {
 	padding: 5px;
 	height: 100%;
 	display: block;
+	background-color: var(--button-background-color);
 }
 
 @keyframes rotating {
@@ -1588,37 +1583,13 @@ input:checked + .slider {
 	border: 0;
 }
 
-#theme-choices {
-	display: none;
-	position: absolute;
-	left: 0;
-	top: 28px;
-	border: 1px solid;
-	border-radius: 3px;
-	z-index: 1;
-	cursor: pointer;
-}
-
-#theme-choices > button {
-	border: none;
-	width: 100%;
-	padding: 4px 8px;
-	text-align: center;
-	background: rgba(0,0,0,0);
-	overflow-wrap: normal;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top: 1px solid;
-}
-
 kbd {
 	display: inline-block;
 	padding: 3px 5px;
 	font: 15px monospace;
 	line-height: 10px;
 	vertical-align: middle;
-	border: solid 1px;
+	border: solid 1px var(--border-color);
 	border-radius: 3px;
 	cursor: default;
 }

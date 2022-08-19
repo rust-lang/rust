@@ -14,6 +14,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrollbar-thumb-background-color: #5c6773;
 	--scrollbar-color: #5c6773 #24292f;
 	--headings-border-bottom-color: #5c6773;
+	--border-color: #5c6773;
+	--button-background-color: #141920;
 }
 
 .slider {
@@ -34,10 +36,6 @@ h1.fqn  a {
 }
 h4 {
 	border: none;
-}
-
-.in-band {
-	background-color: #0f1419;
 }
 
 .docblock code {
@@ -82,10 +80,6 @@ pre, .rustdoc.source .example-wrap {
 	background-color: rgba(255, 236, 164, 0.06);
 	padding-right: 4px;
 	border-right: 1px solid #ffb44c;
-}
-
-.docblock table td, .docblock table th {
-	border-color: #5c6773;
 }
 
 .search-results a:hover {
@@ -151,13 +145,6 @@ pre, .rustdoc.source .example-wrap {
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
 
-nav.main .current {
-	border-top-color: #5c6773;
-	border-bottom-color: #5c6773;
-}
-nav.main .separator {
-	border: 1px solid #5c6773;
-}
 a {
 	color: #39AFD7;
 }
@@ -182,17 +169,6 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-.search-input {
-	background-color: #141920;
-	border-color: #424c57;
-}
-
-#crate-search {
-	/* Without the `!important`, the border-color is ignored for `<select>`...
-	   It cannot be in the group above because `.search-input` has a different border color on
-	   hover. */
-	border-color: #5c6773 !important;
-}
 #crate-search-div::after {
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
 	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
@@ -205,7 +181,7 @@ details.rustdoc-toggle > summary::before {
 }
 
 .search-input {
-	color: #ffffff;
+	color: #fff;
 }
 
 .module-item .stab,
@@ -333,7 +309,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
-	border: 1px solid #5c6773;
 }
 
 .tooltip::before {
@@ -342,11 +317,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .notable-traits-tooltiptext {
 	background-color: #314559;
-	border-color: #5c6773;
-}
-
-.notable-traits-tooltiptext .notable {
-	border-bottom-color: #5c6773;
 }
 
 #titles > button.selected {
@@ -449,33 +419,18 @@ a.result-keyword:focus {}
 .sidebar a.current.tymethod {}
 .sidebar a.current.keyword {}
 
-@media (max-width: 700px) {
-	.sidebar-elems {
-		border-right-color: #5c6773;
-	}
-}
-
 kbd {
 	color: #c5c5c5;
 	background-color: #314559;
-	border-color: #5c6773;
-	border-bottom-color: #5c6773;
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
 #settings-menu > a, #help-button > button {
-	border-color: #5c6773;
-	background-color: #0f1419;
 	color: #fff;
 }
 
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-.popover, .popover::before,
-#help-button span.top, #help-button span.bottom {
-	border-color: #5c6773;
 }
 
 #copy-path {
@@ -493,19 +448,6 @@ kbd {
 	border-color: #e0e0e0;
 }
 
-#theme-choices {
-	border-color: #5c6773;
-	background-color: #0f1419;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top-color: #5c6773;
-}
-
-#theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(110, 110, 110, 0.33);
-}
-
 .search-results .result-name span.alias {
 	color: #c5c5c5;
 }
@@ -515,7 +457,6 @@ kbd {
 
 #source-sidebar > .title {
 	color: #fff;
-	border-bottom-color: #5c6773;
 }
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
 #source-sidebar div.files > a:focus, details.dir-entry summary:focus {

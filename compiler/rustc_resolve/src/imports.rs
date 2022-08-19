@@ -31,7 +31,7 @@ use std::{mem, ptr};
 type Res = def::Res<NodeId>;
 
 /// Contains data for specific kinds of imports.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum ImportKind<'a> {
     Single {
         /// `source` in `use prefix::source as target`.
@@ -60,6 +60,44 @@ pub enum ImportKind<'a> {
         target: Ident,
     },
     MacroUse,
+}
+
+/// Manually implement `Debug` for `ImportKind` because the `source/target_bindings`
+/// contain `Cell`s which can introduce infinite loops while printing.
+impl<'a> std::fmt::Debug for ImportKind<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use ImportKind::*;
+        match self {
+            Single {
+                ref source,
+                ref target,
+                ref type_ns_only,
+                ref nested,
+                ref additional_ids,
+                // Ignore the following to avoid an infinite loop while printing.
+                source_bindings: _,
+                target_bindings: _,
+            } => f
+                .debug_struct("Single")
+                .field("source", source)
+                .field("target", target)
+                .field("type_ns_only", type_ns_only)
+                .field("nested", nested)
+                .field("additional_ids", additional_ids)
+                .finish_non_exhaustive(),
+            Glob { ref is_prelude, ref max_vis } => f
+                .debug_struct("Glob")
+                .field("is_prelude", is_prelude)
+                .field("max_vis", max_vis)
+                .finish(),
+            ExternCrate { ref source, ref target } => f
+                .debug_struct("ExternCrate")
+                .field("source", source)
+                .field("target", target)
+                .finish(),
+            MacroUse => f.debug_struct("MacroUse").finish(),
+        }
+    }
 }
 
 /// One import.

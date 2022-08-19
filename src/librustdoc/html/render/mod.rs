@@ -1985,7 +1985,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             {
                 let mut derefs = FxHashSet::default();
                 derefs.insert(did);
-                sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
+                sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
 
             let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
@@ -2057,6 +2057,7 @@ fn sidebar_deref_methods(
     impl_: &Impl,
     v: &[Impl],
     derefs: &mut FxHashSet<DefId>,
+    used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();
 
@@ -2089,13 +2090,10 @@ fn sidebar_deref_methods(
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
             debug!("found inner_impl: {:?}", impls);
-            let mut used_links = FxHashSet::default();
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(|i| {
-                    get_methods(i.inner_impl(), true, &mut used_links, deref_mut, cx.tcx())
-                })
+                .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 let id = if let Some(target_def_id) = real_target.def_id(c) {
@@ -2124,7 +2122,14 @@ fn sidebar_deref_methods(
                         .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
                         .unwrap_or(false)
                 }) {
-                    sidebar_deref_methods(cx, out, target_deref_impl, target_impls, derefs);
+                    sidebar_deref_methods(
+                        cx,
+                        out,
+                        target_deref_impl,
+                        target_impls,
+                        derefs,
+                        used_links,
+                    );
                 }
             }
         }
