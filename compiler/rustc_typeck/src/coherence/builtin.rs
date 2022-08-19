@@ -47,9 +47,11 @@ impl<'tcx> Checker<'tcx> {
 }
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
-    // Destructors only work on nominal types.
-    if let ty::Adt(..) | ty::Error(_) = tcx.type_of(impl_did).kind() {
-        return;
+    // Destructors only work on local ADT types.
+    match tcx.type_of(impl_did).kind() {
+        ty::Adt(def, _) if def.did().is_local() => return,
+        ty::Error(_) => return,
+        _ => {}
     }
 
     let sp = match tcx.hir().expect_item(impl_did).kind {
