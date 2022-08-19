@@ -369,6 +369,8 @@ pub(super) fn dump_mir_results<'tcx>(
     };
 }
 
+#[allow(rustc::diagnostic_outside_of_impl)]
+#[allow(rustc::untranslatable_diagnostic)]
 pub(super) fn dump_annotation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     body: &Body<'tcx>,

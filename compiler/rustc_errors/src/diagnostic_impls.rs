@@ -159,12 +159,6 @@ impl IntoDiagnosticArg for ast::Path {
     }
 }
 
-impl IntoDiagnosticArg for &ast::Path {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(pprust::path_to_string(self)))
-    }
-}
-
 impl IntoDiagnosticArg for ast::token::Token {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(pprust::token_to_string(&self))
@@ -180,6 +174,18 @@ impl IntoDiagnosticArg for ast::token::TokenKind {
 impl IntoDiagnosticArg for type_ir::FloatTy {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(self.name_str()))
+    }
+}
+
+impl IntoDiagnosticArg for std::ffi::CString {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
+    }
+}
+
+impl IntoDiagnosticArg for rustc_data_structures::small_c_str::SmallCStr {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string_lossy().into_owned()))
     }
 }
 

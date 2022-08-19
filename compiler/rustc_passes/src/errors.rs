@@ -1565,3 +1565,10 @@ pub(crate) struct ProcMacroUnsafe {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_skipping_const_checks)]
+pub struct SkippingConstChecks {
+    #[primary_span]
+    pub span: Span,
+}
