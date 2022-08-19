@@ -1353,12 +1353,7 @@ impl Literal {
     /// Byte string literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn byte_string(bytes: &[u8]) -> Literal {
-        let string = bytes
-            .iter()
-            .cloned()
-            .flat_map(std::ascii::escape_default)
-            .map(Into::<char>::into)
-            .collect::<String>();
+        let string = bytes.escape_ascii().to_string();
         Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 

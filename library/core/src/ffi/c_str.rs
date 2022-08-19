@@ -1,7 +1,6 @@
-use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
-use crate::fmt::{self, Write};
+use crate::fmt;
 use crate::intrinsics;
 use crate::ops;
 use crate::slice;
@@ -161,11 +160,7 @@ impl fmt::Display for FromBytesUntilNulError {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"")?;
-        for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
-            f.write_char(byte as char)?;
-        }
-        write!(f, "\"")
+        write!(f, "\"{}\"", self.to_bytes().escape_ascii())
     }
 }
 

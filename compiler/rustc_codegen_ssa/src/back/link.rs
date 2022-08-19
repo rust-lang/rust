@@ -44,7 +44,7 @@ use std::io::{BufWriter, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
-use std::{ascii, char, env, fmt, fs, io, mem, str};
+use std::{env, fmt, fs, io, mem, str};
 
 pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -552,14 +552,6 @@ fn link_staticlib<'a>(
     Ok(())
 }
 
-fn escape_stdout_stderr_string(s: &[u8]) -> String {
-    str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
-        let mut x = "Non-UTF-8 output: ".to_string();
-        x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
-        x
-    })
-}
-
 /// Use `thorin` (rust implementation of a dwarf packaging utility) to link DWARF objects into a
 /// DWARF package.
 fn link_dwarf_object<'a>(
@@ -866,7 +858,7 @@ fn link_natively<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                let escaped_output = escape_stdout_stderr_string(&output);
+                let escaped_output = escape_string(&output);
                 let mut err = sess.struct_err(&format!(
                     "linking with `{}` failed: {}",
                     linker_path.display(),
@@ -934,8 +926,8 @@ fn link_natively<'a>(
 
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
+            info!("linker stderr:\n{}", escape_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_string(&prog.stdout));
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
@@ -1065,11 +1057,10 @@ fn strip_symbols_in_osx<'a>(sess: &'a Session, out_filename: &Path, option: Opti
 }
 
 fn escape_string(s: &[u8]) -> String {
-    str::from_utf8(s).map(|s| s.to_owned()).unwrap_or_else(|_| {
-        let mut x = "Non-UTF-8 output: ".to_string();
-        x.extend(s.iter().flat_map(|&b| ascii::escape_default(b)).map(char::from));
-        x
-    })
+    match str::from_utf8(s) {
+        Ok(s) => s.to_owned(),
+        Err(_) => format!("Non-UTF-8 output: {}", s.escape_ascii()),
+    }
 }
 
 fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {

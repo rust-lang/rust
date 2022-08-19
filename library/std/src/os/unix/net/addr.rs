@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, mem, ptr};
+use crate::{fmt, io, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -62,18 +62,6 @@ enum AddressKind<'a> {
     Unnamed,
     Pathname(&'a Path),
     Abstract(&'a [u8]),
-}
-
-struct AsciiEscaped<'a>(&'a [u8]);
-
-impl<'a> fmt::Display for AsciiEscaped<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "\"")?;
-        for byte in self.0.iter().cloned().flat_map(ascii::escape_default) {
-            write!(fmt, "{}", byte as char)?;
-        }
-        write!(fmt, "\"")
-    }
 }
 
 /// An address associated with a Unix socket.
@@ -343,7 +331,7 @@ impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
-            AddressKind::Abstract(name) => write!(fmt, "{} (abstract)", AsciiEscaped(name)),
+            AddressKind::Abstract(name) => write!(fmt, "\"{}\" (abstract)", name.escape_ascii()),
             AddressKind::Pathname(path) => write!(fmt, "{path:?} (pathname)"),
         }
     }
