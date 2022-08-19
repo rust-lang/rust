@@ -43,6 +43,7 @@ fluent_messages! {
     passes => "../locales/en-US/passes.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    rustc_mir_dataflow => "../locales/en-US/rustc_mir_dataflow.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

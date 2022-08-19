@@ -1,5 +1,8 @@
 //! A solver for dataflow problems.
 
+use crate::errors::{
+    DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
+};
 use crate::framework::BitSetExt;
 
 use std::ffi::OsString;
@@ -347,7 +350,7 @@ impl RustcMirAttrs {
                     match path.file_name() {
                         Some(_) => Ok(path),
                         None => {
-                            tcx.sess.span_err(attr.span(), "path must end in a filename");
+                            tcx.sess.emit_err(PathMustEndInFilename { span: attr.span() });
                             Err(())
                         }
                     }
@@ -356,7 +359,7 @@ impl RustcMirAttrs {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {
-                        tcx.sess.span_err(attr.span(), "unknown formatter");
+                        tcx.sess.emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
                     }
                 })
@@ -377,8 +380,7 @@ impl RustcMirAttrs {
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.sess
-                .span_err(attr.span(), &format!("duplicate values for `{}`", attr.name_or_empty()));
+            tcx.sess.emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
 
             return Err(());
         }
@@ -387,8 +389,7 @@ impl RustcMirAttrs {
             *field = Some(mapper(s)?);
             Ok(())
         } else {
-            tcx.sess
-                .span_err(attr.span(), &format!("`{}` requires an argument", attr.name_or_empty()));
+            tcx.sess.emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
             Err(())
         }
     }

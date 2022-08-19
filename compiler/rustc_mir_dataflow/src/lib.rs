@@ -7,6 +7,8 @@
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -33,6 +35,7 @@ use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
 pub mod elaborate_drops;
+mod errors;
 mod framework;
 pub mod impls;
 pub mod move_paths;
