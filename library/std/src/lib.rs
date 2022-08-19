@@ -284,6 +284,7 @@
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
+#![feature(pointer_byte_offsets)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
 #![feature(provide_any)]
