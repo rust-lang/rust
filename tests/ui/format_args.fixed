@@ -1,8 +1,6 @@
 // run-rustfix
 
-#![allow(unreachable_code)]
-#![allow(unused_macros)]
-#![allow(unused_variables)]
+#![allow(unused)]
 #![allow(clippy::assertions_on_constants)]
 #![allow(clippy::eq_op)]
 #![allow(clippy::print_literal)]
@@ -114,4 +112,13 @@ fn main() {
     println!("error: something failed at {}", my_other_macro!());
     // https://github.com/rust-lang/rust-clippy/issues/7903
     println!("{foo}{foo:?}", foo = "foo".to_string());
+}
+
+fn issue8643(vendor_id: usize, product_id: usize, name: &str) {
+    println!(
+        "{:<9}  {:<10}  {}",
+        format!("0x{:x}", vendor_id),
+        format!("0x{:x}", product_id),
+        name
+    );
 }
