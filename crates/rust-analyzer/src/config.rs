@@ -45,7 +45,8 @@ mod patch_old_style;
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
 
 // Defines the server-side configuration of the rust-analyzer. We generate
-// *parts* of VS Code's `package.json` config from this.
+// *parts* of VS Code's `package.json` config from this. Run `cargo test` to
+// re-generate that file.
 //
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
