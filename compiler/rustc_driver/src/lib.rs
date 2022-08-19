@@ -1205,6 +1205,9 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
+// FIXME(translation): need struct diagnostics implemented on `Handler`
+#[allow(rustc::untranslatable_diagnostic)]
+#[allow(rustc::diagnostic_outside_of_impl)]
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
