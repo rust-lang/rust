@@ -13,7 +13,7 @@ use ide_db::{
 use itertools::{izip, Itertools};
 use syntax::{
     ast::{self, edit_in_place::Indent, HasArgList, PathExpr},
-    ted, AstNode,
+    ted, AstNode, SyntaxKind,
 };
 
 use crate::{
@@ -311,6 +311,16 @@ fn inline(
     } else {
         fn_body.clone_for_update()
     };
+    // TODO: use if-let chains - https://github.com/rust-lang/rust/pull/94927
+    if let Some(i) = body.syntax().ancestors().find_map(ast::Impl::cast) {
+        if let Some(st) = i.self_ty() {
+            for tok in body.syntax().descendants_with_tokens().filter_map(|t| t.into_token()) {
+                if tok.kind() == SyntaxKind::SELF_TYPE_KW {
+                    ted::replace(tok, st.syntax());
+                }
+            }
+        }
+    }
     let usages_for_locals = |local| {
         Definition::Local(local)
             .usages(sema)
@@ -345,6 +355,7 @@ fn inline(
             }
         })
         .collect();
+
     if function.self_param(sema.db).is_some() {
         let this = || make::name_ref("this").syntax().clone_for_update();
         if let Some(self_local) = params[0].2.as_local(sema.db) {
@@ -1187,6 +1198,31 @@ fn bar() -> u32 {
       let x = 0;
       x
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type() {
+        check_assist(
+            inline_call,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(114514) }
+}
+fn main() {
+    A::f$0();
+}
+"#,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(114514) }
+}
+fn main() {
+    A(114514);
 }
 "#,
         )
