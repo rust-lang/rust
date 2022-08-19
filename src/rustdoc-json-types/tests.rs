@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn test_struct_info_roundtrip() {
     let s = ItemEnum::Struct(Struct {
-        struct_type: StructType::Plain,
+        kind: StructKind::Struct,
         generics: Generics { params: vec![], where_predicates: vec![] },
         fields_stripped: false,
         fields: vec![],

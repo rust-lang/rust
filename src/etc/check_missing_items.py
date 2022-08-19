@@ -143,11 +143,7 @@ while work_list:
             set(item["inner"]["variants"]) | set(item["inner"]["impls"])
         ) - visited
     elif item["kind"] == "variant":
-        if item["inner"]["variant_kind"] == "tuple":
-            for ty in item["inner"]["variant_inner"]:
-                check_type(ty)
-        elif item["inner"]["variant_kind"] == "struct":
-            work_list |= set(item["inner"]["variant_inner"]) - visited
+        work_list |= set(item["inner"]["fields"]) - visited
     elif item["kind"] in ("function", "method"):
         check_generics(item["inner"]["generics"])
         check_decl(item["inner"]["decl"])

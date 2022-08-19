@@ -238,7 +238,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
 
     match *item.kind {
         ModuleItem(m) => {
-            ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx), is_stripped: false })
+            ItemEnum::Module(Module { is_crate, items: ids(&m.items, tcx), is_stripped: false })
         }
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
         StructItem(s) => ItemEnum::Struct(s.into_tcx(tcx)),
@@ -282,7 +282,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             match *inner {
                 ModuleItem(m) => ItemEnum::Module(Module {
                     is_crate,
-                    items: ids(m.items, tcx),
+                    items: ids(&m.items, tcx),
                     is_stripped: true,
                 }),
                 // `convert_item` early returns `None` for stripped items we're not including
@@ -301,10 +301,10 @@ impl FromWithTcx<clean::Struct> for Struct {
         let fields_stripped = struct_.has_stripped_entries();
         let clean::Struct { struct_type, generics, fields } = struct_;
         Struct {
-            struct_type: from_ctor_kind(struct_type),
+            kind: from_ctor_kind(struct_type),
             generics: generics.into_tcx(tcx),
             fields_stripped,
-            fields: ids(fields, tcx),
+            fields: ids(&fields, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -317,17 +317,17 @@ impl FromWithTcx<clean::Union> for Union {
         Union {
             generics: generics.into_tcx(tcx),
             fields_stripped,
-            fields: ids(fields, tcx),
+            fields: ids(&fields, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
 
-pub(crate) fn from_ctor_kind(struct_type: CtorKind) -> StructType {
+pub(crate) fn from_ctor_kind(struct_type: CtorKind) -> StructKind {
     match struct_type {
-        CtorKind::Fictive => StructType::Plain,
-        CtorKind::Fn => StructType::Tuple,
-        CtorKind::Const => StructType::Unit,
+        CtorKind::Fictive => StructKind::Struct,
+        CtorKind::Fn => StructKind::Tuple,
+        CtorKind::Const => StructKind::Unit,
     }
 }
 
@@ -551,7 +551,7 @@ impl FromWithTcx<clean::Trait> for Trait {
         Trait {
             is_auto,
             is_unsafe,
-            items: ids(items, tcx),
+            items: ids(&items, tcx),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_tcx(tcx),
             implementations: Vec::new(), // Added in JsonRenderer::item
@@ -591,7 +591,7 @@ impl FromWithTcx<clean::Impl> for Impl {
                 .collect(),
             trait_: trait_.map(|path| path.into_tcx(tcx)),
             for_: for_.into_tcx(tcx),
-            items: ids(items, tcx),
+            items: ids(&items, tcx),
             negative: negative_polarity,
             synthetic,
             blanket_impl: blanket_impl.map(|x| x.into_tcx(tcx)),
@@ -634,22 +634,8 @@ impl FromWithTcx<clean::Enum> for Enum {
         Enum {
             generics: generics.into_tcx(tcx),
             variants_stripped,
-            variants: ids(variants, tcx),
+            variants: ids(&variants, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
-        }
-    }
-}
-
-impl FromWithTcx<clean::VariantStruct> for Struct {
-    fn from_tcx(struct_: clean::VariantStruct, tcx: TyCtxt<'_>) -> Self {
-        let fields_stripped = struct_.has_stripped_entries();
-        let clean::VariantStruct { struct_type, fields } = struct_;
-        Struct {
-            struct_type: from_ctor_kind(struct_type),
-            generics: Generics { params: vec![], where_predicates: vec![] },
-            fields_stripped,
-            fields: ids(fields, tcx),
-            impls: Vec::new(),
         }
     }
 }
@@ -657,19 +643,19 @@ impl FromWithTcx<clean::VariantStruct> for Struct {
 impl FromWithTcx<clean::Variant> for Variant {
     fn from_tcx(variant: clean::Variant, tcx: TyCtxt<'_>) -> Self {
         use clean::Variant::*;
+
         match variant {
-            CLike => Variant::Plain,
-            Tuple(fields) => Variant::Tuple(
-                fields
-                    .into_iter()
-                    .filter_map(|f| match *f.kind {
-                        clean::StructFieldItem(ty) => Some(ty.into_tcx(tcx)),
-                        clean::StrippedItem(_) => None,
-                        _ => unreachable!(),
-                    })
-                    .collect(),
-            ),
-            Struct(s) => Variant::Struct(ids(s.fields, tcx)),
+            CLike => Variant { kind: StructKind::Unit, fields: Vec::new(), fields_stripped: false },
+            Tuple(fields) => Variant {
+                kind: StructKind::Tuple,
+                fields: ids(&fields, tcx),
+                fields_stripped: fields.iter().any(|i| i.is_stripped()),
+            },
+            Struct(s) => Variant {
+                kind: StructKind::Struct,
+                fields: ids(&s.fields, tcx),
+                fields_stripped: s.has_stripped_entries(),
+            },
         }
     }
 }
@@ -773,7 +759,7 @@ impl FromWithTcx<ItemType> for ItemKind {
     }
 }
 
-fn ids(items: impl IntoIterator<Item = clean::Item>, tcx: TyCtxt<'_>) -> Vec<Id> {
+fn ids<'a>(items: impl IntoIterator<Item = &'a clean::Item>, tcx: TyCtxt<'_>) -> Vec<Id> {
     items
         .into_iter()
         .filter(|x| !x.is_stripped() && !x.is_keyword())
