@@ -235,6 +235,11 @@
                 "command": "rust-analyzer.moveItemDown",
                 "title": "Move item down",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.cancelFlycheck",
+                "title": "Cancel running flychecks",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [

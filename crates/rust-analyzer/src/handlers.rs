@@ -51,6 +51,12 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     Ok(())
 }
 
+pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> Result<()> {
+    let _p = profile::span("handle_stop_flycheck");
+    state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
+    Ok(())
+}
+
 pub(crate) fn handle_analyzer_status(
     snap: GlobalStateSnapshot,
     params: lsp_ext::AnalyzerStatusParams,
