@@ -394,5 +394,13 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
 
+lint_malformed_attribute = malformed lint attribute input
+
+lint_bad_attribute_argument = bad attribute argument
+
+lint_reason_must_be_string_literal = reason must be a string literal
+
+lint_reason_must_come_last = reason in lint attribute must come last
+
 lint_unknown_tool = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root

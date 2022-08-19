@@ -26,7 +26,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
-use crate::errors::UnknownTool;
+use crate::errors::{MalformedAttribute, MalformedAttributeSub, UnknownTool};
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
@@ -271,7 +271,7 @@ impl<'s> LintLevelsBuilder<'s> {
         self.cur = self.sets.list.push(LintSet { specs: FxHashMap::default(), parent: prev });
 
         let sess = self.sess;
-        let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
+        // let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.has_name(sym::automatically_derived) {
                 self.current_specs_mut().insert(
@@ -322,20 +322,27 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 reason = Some(rationale);
                             } else {
-                                bad_attr(name_value.span)
-                                    .span_label(name_value.span, "reason must be a string literal")
-                                    .emit();
+                                sess.emit_err(MalformedAttribute {
+                                    span: name_value.span,
+                                    sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
+                                        name_value.span,
+                                    ),
+                                });
                             }
                             // found reason, reslice meta list to exclude it
                             metas.pop().unwrap();
                         } else {
-                            bad_attr(item.span)
-                                .span_label(item.span, "bad attribute argument")
-                                .emit();
+                            sess.emit_err(MalformedAttribute {
+                                span: item.span,
+                                sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                            });
                         }
                     }
                     ast::MetaItemKind::List(_) => {
-                        bad_attr(item.span).span_label(item.span, "bad attribute argument").emit();
+                        sess.emit_err(MalformedAttribute {
+                            span: item.span,
+                            sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                        });
                     }
                 }
             }
@@ -353,20 +360,21 @@ impl<'s> LintLevelsBuilder<'s> {
                 let meta_item = match li {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
-                        let mut err = bad_attr(sp);
-                        let mut add_label = true;
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
-                                    err.span_label(sp, "reason in lint attribute must come last");
-                                    add_label = false;
+                                    sess.emit_err(MalformedAttribute {
+                                        span: sp,
+                                        sub: MalformedAttributeSub::ReasonMustComeLast(sp),
+                                    });
+                                    continue;
                                 }
                             }
                         }
-                        if add_label {
-                            err.span_label(sp, "bad attribute argument");
-                        }
-                        err.emit();
+                        sess.emit_err(MalformedAttribute {
+                            span: sp,
+                            sub: MalformedAttributeSub::BadAttributeArgument(sp),
+                        });
                         continue;
                     }
                 };
