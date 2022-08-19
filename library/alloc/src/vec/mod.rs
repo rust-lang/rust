@@ -542,8 +542,8 @@ impl<T> Vec<T> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
@@ -702,8 +702,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
@@ -1393,7 +1393,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 if index < len {
                     // Shift everything over to make space. (Duplicating the
                     // `index`th element into two consecutive places.)
-                    ptr::copy(p, p.offset(1), len - index);
+                    ptr::copy(p, p.add(1), len - index);
                 } else if index == len {
                     // No elements need shifting.
                 } else {
@@ -1455,7 +1455,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
-                ptr::copy(ptr.offset(1), ptr, len - index - 1);
+                ptr::copy(ptr.add(1), ptr, len - index - 1);
             }
             self.set_len(len - 1);
             ret
@@ -2408,7 +2408,7 @@ impl<T, A: Allocator> Vec<T, A> {
             // Write all elements except the last one
             for _ in 1..n {
                 ptr::write(ptr, value.next());
-                ptr = ptr.offset(1);
+                ptr = ptr.add(1);
                 // Increment the length in every step in case next() panics
                 local_len.increment_len(1);
             }

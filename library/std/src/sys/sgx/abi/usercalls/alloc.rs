@@ -334,8 +334,8 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
                     mfence
                     lfence
                     ",
-                    val = in(reg_byte) *src.offset(off as isize),
-                    dst = in(reg) dst.offset(off as isize),
+                    val = in(reg_byte) *src.add(off),
+                    dst = in(reg) dst.add(off),
                     seg_sel = in(reg) &mut seg_sel,
                     options(nostack, att_syntax)
                 );
@@ -359,8 +359,8 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
     assert!(is_enclave_range(src, len));
     assert!(is_user_range(dst, len));
     assert!(len < isize::MAX as usize);
-    assert!(!(src as usize).overflowing_add(len).1);
-    assert!(!(dst as usize).overflowing_add(len).1);
+    assert!(!src.addr().overflowing_add(len).1);
+    assert!(!dst.addr().overflowing_add(len).1);
 
     if len < 8 {
         // Can't align on 8 byte boundary: copy safely byte per byte
@@ -384,22 +384,22 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
 
         unsafe {
             // Copy small0
-            let small0_size = (8 - dst as usize % 8) as u8;
+            let small0_size = (8 - dst.addr() % 8) as u8 as usize;
             let small0_src = src;
             let small0_dst = dst;
-            copy_bytewise_to_userspace(small0_src as _, small0_dst, small0_size as _);
+            copy_bytewise_to_userspace(small0_src, small0_dst, small0_size);
 
             // Copy big
-            let small1_size = ((len - small0_size as usize) % 8) as u8;
-            let big_size = len - small0_size as usize - small1_size as usize;
-            let big_src = src.offset(small0_size as _);
-            let big_dst = dst.offset(small0_size as _);
-            copy_aligned_quadwords_to_userspace(big_src as _, big_dst, big_size);
+            let small1_size = ((len - small0_size) % 8) as u8 as usize;
+            let big_size = len - small0_size - small1_size;
+            let big_src = src.add(small0_size);
+            let big_dst = dst.add(small0_size);
+            copy_aligned_quadwords_to_userspace(big_src, big_dst, big_size);
 
             // Copy small1
-            let small1_src = src.offset(big_size as isize + small0_size as isize);
-            let small1_dst = dst.offset(big_size as isize + small0_size as isize);
-            copy_bytewise_to_userspace(small1_src, small1_dst, small1_size as _);
+            let small1_src = src.add(big_size + small0_size);
+            let small1_dst = dst.add(big_size + small0_size);
+            copy_bytewise_to_userspace(small1_src, small1_dst, small1_size);
         }
     }
 }

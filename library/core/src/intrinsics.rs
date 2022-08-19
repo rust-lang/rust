@@ -2211,7 +2211,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///     unsafe {
 ///         // The call to offset is always safe because `Vec` will never
 ///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
 ///         let src_ptr = src.as_ptr();
 ///
 ///         // Truncate `src` without dropping its contents. We do this first,
