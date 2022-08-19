@@ -4518,7 +4518,7 @@ mod tests {
         // Make sure p is **not** aligned to 16-byte boundary
         if (p as usize) & 0xf == 0 {
             ofs = 1;
-            p = p.offset(1);
+            p = p.add(1);
         }
 
         _mm_storeu_pd(p, *black_box(&a));
@@ -4606,7 +4606,7 @@ mod tests {
         let mut offset = 0;
         if (d as usize) & 0xf == 0 {
             offset = 1;
-            d = d.offset(offset as isize);
+            d = d.add(offset);
         }
 
         let r = _mm_loadu_pd(d);

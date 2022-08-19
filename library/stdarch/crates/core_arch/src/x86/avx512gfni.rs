@@ -829,21 +829,21 @@ mod tests {
     #[target_feature(enable = "sse2")]
     unsafe fn load_m128i_word<T>(data: &[T], word_index: usize) -> __m128i {
         let byte_offset = word_index * 16 / size_of::<T>();
-        let pointer = data.as_ptr().offset(byte_offset as isize) as *const __m128i;
+        let pointer = data.as_ptr().add(byte_offset) as *const __m128i;
         _mm_loadu_si128(black_box(pointer))
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn load_m256i_word<T>(data: &[T], word_index: usize) -> __m256i {
         let byte_offset = word_index * 32 / size_of::<T>();
-        let pointer = data.as_ptr().offset(byte_offset as isize) as *const __m256i;
+        let pointer = data.as_ptr().add(byte_offset) as *const __m256i;
         _mm256_loadu_si256(black_box(pointer))
     }
 
     #[target_feature(enable = "avx512f")]
     unsafe fn load_m512i_word<T>(data: &[T], word_index: usize) -> __m512i {
         let byte_offset = word_index * 64 / size_of::<T>();
-        let pointer = data.as_ptr().offset(byte_offset as isize) as *const i32;
+        let pointer = data.as_ptr().add(byte_offset) as *const i32;
         _mm512_loadu_si512(black_box(pointer))
     }
 

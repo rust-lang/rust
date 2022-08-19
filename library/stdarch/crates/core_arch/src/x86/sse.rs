@@ -1185,9 +1185,9 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
 ///
 /// ```text
 /// let a0 = *p;
-/// let a1 = *p.offset(1);
-/// let a2 = *p.offset(2);
-/// let a3 = *p.offset(3);
+/// let a1 = *p.add(1);
+/// let a2 = *p.add(2);
+/// let a3 = *p.add(3);
 /// __m128::new(a3, a2, a1, a0)
 /// ```
 ///
@@ -1241,9 +1241,9 @@ pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 /// ```text
 /// let x = a.extract(0);
 /// *p = x;
-/// *p.offset(1) = x;
-/// *p.offset(2) = x;
-/// *p.offset(3) = x;
+/// *p.add(1) = x;
+/// *p.add(2) = x;
+/// *p.add(3) = x;
 /// ```
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store1_ps)
@@ -1317,9 +1317,9 @@ pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 ///
 /// ```text
 /// *p = a.extract(3);
-/// *p.offset(1) = a.extract(2);
-/// *p.offset(2) = a.extract(1);
-/// *p.offset(3) = a.extract(0);
+/// *p.add(1) = a.extract(2);
+/// *p.add(2) = a.extract(1);
+/// *p.add(3) = a.extract(0);
 /// ```
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storer_ps)
@@ -3006,9 +3006,9 @@ mod tests {
 
         let unalignment = (p as usize) & 0xf;
         if unalignment != 0 {
-            let delta = ((16 - unalignment) >> 2) as isize;
+            let delta = (16 - unalignment) >> 2;
             fixup = delta as f32;
-            p = p.offset(delta);
+            p = p.add(delta);
         }
 
         let r = _mm_load_ps(p);
@@ -3019,7 +3019,7 @@ mod tests {
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_loadu_ps() {
         let vals = &[1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let p = vals.as_ptr().offset(3);
+        let p = vals.as_ptr().add(3);
         let r = _mm_loadu_ps(black_box(p));
         assert_eq_m128(r, _mm_setr_ps(4.0, 5.0, 6.0, 7.0));
     }
@@ -3036,9 +3036,9 @@ mod tests {
 
         let unalignment = (p as usize) & 0xf;
         if unalignment != 0 {
-            let delta = ((16 - unalignment) >> 2) as isize;
+            let delta = (16 - unalignment) >> 2;
             fixup = delta as f32;
-            p = p.offset(delta);
+            p = p.add(delta);
         }
 
         let r = _mm_loadr_ps(p);
@@ -3057,7 +3057,7 @@ mod tests {
     unsafe fn test_mm_store_ss() {
         let mut vals = [0.0f32; 8];
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
-        _mm_store_ss(vals.as_mut_ptr().offset(1), a);
+        _mm_store_ss(vals.as_mut_ptr().add(1), a);
 
         assert_eq!(vals[0], 0.0);
         assert_eq!(vals[1], 1.0);
@@ -3152,7 +3152,7 @@ mod tests {
         // Make sure p is **not** aligned to 16-byte boundary
         if (p as usize) & 0xf == 0 {
             ofs = 1;
-            p = p.offset(1);
+            p = p.add(1);
         }
 
         _mm_storeu_ps(p, *black_box(&a));

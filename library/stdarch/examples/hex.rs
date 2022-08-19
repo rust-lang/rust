@@ -76,7 +76,7 @@ unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a s
     let ascii_a = _mm256_set1_epi8((b'a' - 9 - 1) as i8);
     let and4bits = _mm256_set1_epi8(0xf);
 
-    let mut i = 0_isize;
+    let mut i = 0_usize;
     while src.len() >= 32 {
         let invec = _mm256_loadu_si256(src.as_ptr() as *const _);
 
@@ -96,18 +96,17 @@ unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a s
         let res2 = _mm256_unpackhi_epi8(masked2, masked1);
 
         // Store everything into the right destination now
-        let base = dst.as_mut_ptr().offset(i * 2);
-        let base1 = base.offset(0) as *mut _;
-        let base2 = base.offset(16) as *mut _;
-        let base3 = base.offset(32) as *mut _;
-        let base4 = base.offset(48) as *mut _;
+        let base = dst.as_mut_ptr().add(i * 2);
+        let base1 = base.add(0) as *mut _;
+        let base2 = base.add(16) as *mut _;
+        let base3 = base.add(32) as *mut _;
+        let base4 = base.add(48) as *mut _;
         _mm256_storeu2_m128i(base3, base1, res1);
         _mm256_storeu2_m128i(base4, base2, res2);
         src = &src[32..];
         i += 32;
     }
 
-    let i = i as usize;
     let _ = hex_encode_sse41(src, &mut dst[i * 2..]);
 
     Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
@@ -122,7 +121,7 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
     let ascii_a = _mm_set1_epi8((b'a' - 9 - 1) as i8);
     let and4bits = _mm_set1_epi8(0xf);
 
-    let mut i = 0_isize;
+    let mut i = 0_usize;
     while src.len() >= 16 {
         let invec = _mm_loadu_si128(src.as_ptr() as *const _);
 
@@ -141,13 +140,12 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
         let res1 = _mm_unpacklo_epi8(masked2, masked1);
         let res2 = _mm_unpackhi_epi8(masked2, masked1);
 
-        _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
-        _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _, res2);
+        _mm_storeu_si128(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
+        _mm_storeu_si128(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
         src = &src[16..];
         i += 16;
     }
 
-    let i = i as usize;
     let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
 
     Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
@@ -163,7 +161,7 @@ unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'
     let ascii_a = u8x16_splat(b'a' - 9 - 1);
     let and4bits = u8x16_splat(0xf);
 
-    let mut i = 0_isize;
+    let mut i = 0_usize;
     while src.len() >= 16 {
         let invec = v128_load(src.as_ptr() as *const _);
 
@@ -189,13 +187,12 @@ unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'
             masked2, masked1,
         );
 
-        v128_store(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
-        v128_store(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _, res2);
+        v128_store(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
+        v128_store(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
         src = &src[16..];
         i += 16;
     }
 
-    let i = i as usize;
     let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
 
     Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
