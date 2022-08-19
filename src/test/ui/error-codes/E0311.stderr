@@ -1,0 +1,45 @@
+error[E0311]: the parameter type `U` may not live long enough
+  --> $DIR/E0311.rs:13:21
+   |
+LL |         let u_ref = self.borrow_mut();
+   |                     ^^^^^^^^^^^^^^^^^
+   |
+note: the parameter type `U` must be valid for the anonymous lifetime defined here...
+  --> $DIR/E0311.rs:12:26
+   |
+LL |     fn nested_borrow_mut(&mut self) -> &mut V {
+   |                          ^^^^^^^^^
+note: ...so that the type `U` will meet its required lifetime bounds
+  --> $DIR/E0311.rs:13:21
+   |
+LL |         let u_ref = self.borrow_mut();
+   |                     ^^^^^^^^^^^^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     U: BorrowMut<V> + 'a, // Error is caused by missing lifetime here
+   |                     ++++
+
+error[E0311]: the parameter type `U` may not live long enough
+  --> $DIR/E0311.rs:14:9
+   |
+LL |         u_ref.borrow_mut()
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+note: the parameter type `U` must be valid for the anonymous lifetime defined here...
+  --> $DIR/E0311.rs:12:26
+   |
+LL |     fn nested_borrow_mut(&mut self) -> &mut V {
+   |                          ^^^^^^^^^
+note: ...so that the type `U` will meet its required lifetime bounds
+  --> $DIR/E0311.rs:14:9
+   |
+LL |         u_ref.borrow_mut()
+   |         ^^^^^^^^^^^^^^^^^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     U: BorrowMut<V> + 'a, // Error is caused by missing lifetime here
+   |                     ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0311`.
