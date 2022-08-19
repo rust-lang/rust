@@ -9,6 +9,8 @@
 	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
 	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 	--headings-border-bottom-color: #ddd;
+	--border-color: #e0e0e0;
+	--button-background-color: #fff;
 }
 
 .slider {
@@ -19,10 +21,6 @@
 }
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.in-band {
-	background-color: white;
 }
 
 .rust-logo {
@@ -39,10 +37,6 @@ input:focus + .slider {
 .line-numbers span { color: #c67e2d; }
 .line-numbers .line-highlighted {
 	background-color: #FDFFD3 !important;
-}
-
-.docblock table td, .docblock table th {
-	border-color: #ddd;
 }
 
 .search-results a:hover {
@@ -123,14 +117,6 @@ a.result-keyword:focus { background-color: #afc6e4; }
 .sidebar a.current.tymethod { color: #a67736; }
 .sidebar a.current.keyword { color: #356da4; }
 
-nav.main .current {
-	border-top-color: #000;
-	border-bottom-color: #000;
-}
-nav.main .separator {
-	border: 1px solid #000;
-}
-
 a {
 	color: #3873AD;
 }
@@ -144,16 +130,6 @@ details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
-.search-input {
-	background-color: white;
-	border-color: #e0e0e0;
-}
-#crate-search {
-	/* Without the `!important`, the border-color is ignored for `<select>`...
-	   It cannot be in the group above because `.search-input` has a different border color on
-	   hover. */
-	border-color: #e0e0e0 !important;
-}
 #crate-search-div::after {
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
 	filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg) brightness(114%) contrast(76%);
@@ -279,11 +255,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .notable-traits-tooltiptext {
 	background-color: #eee;
-	border-color: #999;
-}
-
-.notable-traits-tooltiptext .notable {
-	border-bottom-color: #DDDDDD;
 }
 
 #titles > button:not(.selected) {
@@ -300,33 +271,15 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: #888;
 }
 
-@media (max-width: 700px) {
-	.sidebar-elems {
-		border-right-color: #000;
-	}
-}
-
 kbd {
 	color: #000;
 	background-color: #fafbfc;
-	border-color: #d1d5da;
-	border-bottom-color: #c6cbd1;
 	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#settings-menu > a, #help-button > button {
-	border-color: #e0e0e0;
-	background-color: #fff;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
 #help-button > button:hover, #help-button > button:focus {
 	border-color: #717171;
-}
-
-.popover, .popover::before,
-#help-button span.top, #help-button span.bottom {
-	border-color: #e0e0e0;
 }
 
 #copy-path {
@@ -339,19 +292,6 @@ kbd {
 	filter: invert(35%);
 }
 
-#theme-choices {
-	border-color: #ccc;
-	background-color: #fff;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top-color: #e0e0e0;
-}
-
-#theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: #eee;
-}
-
 .search-results .result-name span.alias {
 	color: #000;
 }
@@ -359,9 +299,6 @@ kbd {
 	color: #999;
 }
 
-#source-sidebar > .title {
-	border-bottom-color: #ccc;
-}
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
 #source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #E0E0E0;
