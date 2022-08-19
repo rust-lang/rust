@@ -251,7 +251,7 @@ fn t10() {
         non_narrow_chars,
         normalized_pos,
         start_pos,
-        end_pos,
+        0,
     );
 
     assert!(
