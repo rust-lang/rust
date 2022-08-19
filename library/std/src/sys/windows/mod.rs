@@ -250,7 +250,7 @@ where
                 // Therefore k never equals n.
                 unreachable!();
             } else {
-                // Safety: First `k` bytes are initialized.
+                // Safety: First `k` values are initialized.
                 let slice: &[u16] = MaybeUninit::slice_assume_init_ref(&buf[..k]);
                 return Ok(f2(slice));
             }
