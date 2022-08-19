@@ -26,9 +26,11 @@ extern crate rustc_driver;
 
 use std::any::Any;
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -120,18 +122,20 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
-struct CodegenCx<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct CodegenCx {
+    profiler: SelfProfilerRef,
+    output_filenames: Arc<OutputFilenames>,
+    should_write_ir: bool,
     global_asm: String,
     inline_asm_index: Cell<usize>,
-    debug_context: Option<DebugContext<'tcx>>,
+    debug_context: Option<DebugContext>,
     unwind_context: UnwindContext,
     cgu_name: Symbol,
 }
 
-impl<'tcx> CodegenCx<'tcx> {
+impl CodegenCx {
     fn new(
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         backend_config: BackendConfig,
         isa: &dyn TargetIsa,
         debug_info: bool,
@@ -147,7 +151,9 @@ impl<'tcx> CodegenCx<'tcx> {
             None
         };
         CodegenCx {
-            tcx,
+            profiler: tcx.prof.clone(),
+            output_filenames: tcx.output_filenames(()).clone(),
+            should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
             inline_asm_index: Cell::new(0),
             debug_context,

@@ -120,7 +120,7 @@ fn emit_cgu(
     prof: &SelfProfilerRef,
     name: String,
     module: ObjectModule,
-    debug: Option<DebugContext<'_>>,
+    debug: Option<DebugContext>,
     unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
 ) -> Result<ModuleCodegenResult, String> {
@@ -256,8 +256,9 @@ fn module_codegen(
     for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx.sess.time("codegen fn", || {
+                tcx.sess.time("codegen fn", || {
                     crate::base::codegen_and_compile_fn(
+                        tcx,
                         &mut cx,
                         &mut cached_context,
                         &mut module,
@@ -279,25 +280,20 @@ fn module_codegen(
         cgu.is_primary(),
     );
 
-    let global_asm_object_file = match crate::global_asm::compile_global_asm(
+    let global_asm_object_file = crate::global_asm::compile_global_asm(
         &global_asm_config,
         cgu.name().as_str(),
         &cx.global_asm,
-    ) {
-        Ok(global_asm_object_file) => global_asm_object_file,
-        Err(err) => tcx.sess.fatal(&err),
-    };
+    )?;
 
-    let debug_context = cx.debug_context;
-    let unwind_context = cx.unwind_context;
     tcx.sess.time("write object file", || {
         emit_cgu(
             &global_asm_config.output_filenames,
-            &tcx.sess.prof,
+            &cx.profiler,
             cgu.name().as_str().to_string(),
             module,
-            debug_context,
-            unwind_context,
+            cx.debug_context,
+            cx.unwind_context,
             global_asm_object_file,
         )
     })
