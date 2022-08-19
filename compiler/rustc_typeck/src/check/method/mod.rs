@@ -47,7 +47,7 @@ pub struct MethodCallee<'tcx> {
     pub sig: ty::FnSig<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, TypeVisitable)]
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
@@ -69,7 +69,7 @@ pub enum MethodError<'tcx> {
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
-#[derive(Debug)]
+#[derive(Debug, TypeVisitable)]
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates:
@@ -82,6 +82,7 @@ pub struct NoMatchData<'tcx> {
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(TypeVisitable)]
 pub enum CandidateSource {
     Impl(DefId),
     Trait(DefId /* trait id */),

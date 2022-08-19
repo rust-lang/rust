@@ -53,6 +53,7 @@ mod candidate_assembly;
 mod confirmation;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(TypeVisitable)]
 pub enum IntercrateAmbiguityCause {
     DownstreamCrate { trait_desc: String, self_desc: Option<String> },
     UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
@@ -2691,6 +2692,7 @@ impl<'o, 'tcx> fmt::Debug for TraitObligationStack<'o, 'tcx> {
     }
 }
 
+#[derive(Debug, Clone, TypeVisitable)]
 pub enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,

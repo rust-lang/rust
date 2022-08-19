@@ -43,6 +43,7 @@ pub enum Conflict {
     Downstream,
 }
 
+#[derive(Debug, TypeVisitable)]
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,

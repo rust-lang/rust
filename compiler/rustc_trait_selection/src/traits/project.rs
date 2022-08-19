@@ -154,6 +154,7 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
 ///     MismatchedProjectionTypes<'tcx>,
 /// >
 /// ```
+#[derive(Debug, Clone, TypeVisitable)]
 pub(super) enum ProjectAndUnifyResult<'tcx> {
     /// The projection bound holds subject to the given obligations. If the
     /// projection cannot be normalized because the required trait bound does

@@ -88,7 +88,7 @@ pub enum Reveal {
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, Debug, PartialEq, Eq, Lift)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift, TypeVisitable)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -186,6 +186,7 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(TypeVisitable)]
 pub struct UnifyReceiverContext<'tcx> {
     pub assoc_item: ty::AssocItem,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -193,6 +194,7 @@ pub struct UnifyReceiverContext<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift, Default)]
+#[derive(TypeVisitable)]
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::MiscObligation` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
@@ -221,6 +223,7 @@ impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(TypeVisitable)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
     MiscObligation,
@@ -415,6 +418,7 @@ pub enum ObligationCauseCode<'tcx> {
 /// we can walk in order to obtain precise spans for any
 /// 'nested' types (e.g. `Foo` in `Option<Foo>`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TypeVisitable)]
 pub enum WellFormedLoc {
     /// Use the type of the provided definition.
     Ty(LocalDefId),
@@ -432,6 +436,7 @@ pub enum WellFormedLoc {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(TypeVisitable)]
 pub struct ImplDerivedObligationCause<'tcx> {
     pub derived: DerivedObligationCause<'tcx>,
     pub impl_def_id: DefId,
@@ -479,6 +484,7 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(TypeVisitable)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_block_id: Option<hir::HirId>,
     pub arm_ty: Ty<'tcx>,
@@ -505,6 +511,7 @@ pub struct IfExpressionCause<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(TypeVisitable)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait predicate of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to

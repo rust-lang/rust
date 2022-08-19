@@ -9,10 +9,11 @@ use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
-
+use smallvec::SmallVec;
 use std::fmt;
 use std::mem::ManuallyDrop;
 use std::ops::ControlFlow;
@@ -189,6 +190,7 @@ TrivialTypeTraversalAndLiftImpls! {
     bool,
     usize,
     ::rustc_target::abi::VariantIdx,
+    u16,
     u32,
     u64,
     String,
@@ -198,7 +200,9 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
     ::rustc_span::symbol::Symbol,
+    ::rustc_span::symbol::Ident,
     ::rustc_hir::def::Res,
+    ::rustc_hir::def::DefKind,
     ::rustc_hir::def_id::DefId,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::HirId,
@@ -844,6 +848,30 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for Vec<T> {
     }
 }
 
+impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &T {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        T::visit_with(self, visitor)
+    }
+}
+
+impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &[T] {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &ty::List<T> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx, T: TypeVisitable<'tcx>, const N: usize> TypeVisitable<'tcx> for SmallVec<[T; N]> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<[T]> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|t| t.try_fold_with(folder))
@@ -901,23 +929,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::Existentia
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
-{
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|p| p.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
-    }
-}
-
-impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<ProjectionKind> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 
@@ -1156,12 +1170,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|p| p.visit_with(visitor))
-    }
-}
-
 impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|x| x.try_fold_with(folder))
@@ -1169,6 +1177,12 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> 
 }
 
 impl<'tcx, T: TypeVisitable<'tcx>, I: Idx> TypeVisitable<'tcx> for IndexVec<I, T> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for FxIndexSet<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }

@@ -1,4 +1,5 @@
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
@@ -99,69 +100,74 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<'tcx>,
+        E: TypeVisitable<'tcx>,
     {
         let variable_lengths = self.variable_lengths();
-        let (mut fudger, value) = self.probe(|_| {
-            match f() {
-                Ok(value) => {
-                    let value = self.resolve_vars_if_possible(value);
 
-                    // At this point, `value` could in principle refer
-                    // to inference variables that have been created during
-                    // the snapshot. Once we exit `probe()`, those are
-                    // going to be popped, so we will have to
-                    // eliminate any references to them.
+        let snapshot = self.start_snapshot();
 
-                    let mut inner = self.inner.borrow_mut();
-                    let type_vars =
-                        inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
-                    let int_vars = vars_since_snapshot(
-                        &mut inner.int_unification_table(),
-                        variable_lengths.int_var_len,
-                    );
-                    let float_vars = vars_since_snapshot(
-                        &mut inner.float_unification_table(),
-                        variable_lengths.float_var_len,
-                    );
-                    let region_vars = inner
-                        .unwrap_region_constraints()
-                        .vars_since_snapshot(variable_lengths.region_constraints_len);
-                    let const_vars = const_vars_since_snapshot(
-                        &mut inner.const_unification_table(),
-                        variable_lengths.const_var_len,
-                    );
+        match f() {
+            Ok(value) => {
+                let value = self.resolve_vars_if_possible(value);
 
-                    let fudger = InferenceFudger {
+                // At this point, `value` could in principle refer
+                // to inference variables that have been created during
+                // the snapshot. Once we exit the snapshot, those are
+                // going to be popped, so we will have to
+                // eliminate any references to them.
+
+                let mut inner = self.inner.borrow_mut();
+                let type_vars =
+                    inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
+                let int_vars = vars_since_snapshot(
+                    &mut inner.int_unification_table(),
+                    variable_lengths.int_var_len,
+                );
+                let float_vars = vars_since_snapshot(
+                    &mut inner.float_unification_table(),
+                    variable_lengths.float_var_len,
+                );
+                let region_vars = inner
+                    .unwrap_region_constraints()
+                    .vars_since_snapshot(variable_lengths.region_constraints_len);
+                let const_vars = const_vars_since_snapshot(
+                    &mut inner.const_unification_table(),
+                    variable_lengths.const_var_len,
+                );
+                drop(inner);
+
+                self.rollback_to("fudge_inference_if_ok -- ok", snapshot);
+
+                // At this point, we need to replace any of the now-popped
+                // type/region variables that appear in `value` with a fresh
+                // variable of the appropriate kind. We can't do this during
+                // the probe because they would just get popped then too. =)
+
+                // Micro-optimization: if no variables have been created, then
+                // `value` can't refer to any of them. =) So we can just return it.
+                if type_vars.0.is_empty()
+                    && int_vars.is_empty()
+                    && float_vars.is_empty()
+                    && region_vars.0.is_empty()
+                    && const_vars.0.is_empty()
+                {
+                    Ok(value)
+                } else {
+                    Ok(value.fold_with(&mut InferenceFudger {
                         infcx: self,
                         type_vars,
                         int_vars,
                         float_vars,
                         region_vars,
                         const_vars,
-                    };
-
-                    Ok((fudger, value))
+                    }))
                 }
-                Err(e) => Err(e),
             }
-        })?;
-
-        // At this point, we need to replace any of the now-popped
-        // type/region variables that appear in `value` with a fresh
-        // variable of the appropriate kind. We can't do this during
-        // the probe because they would just get popped then too. =)
-
-        // Micro-optimization: if no variables have been created, then
-        // `value` can't refer to any of them. =) So we can just return it.
-        if fudger.type_vars.0.is_empty()
-            && fudger.int_vars.is_empty()
-            && fudger.float_vars.is_empty()
-            && fudger.region_vars.0.is_empty()
-            && fudger.const_vars.0.is_empty()
-        {
-            Ok(value)
-        } else {
-            Ok(value.fold_with(&mut fudger))
+            Err(e) => {
+                debug_assert!(!e.needs_infer(), "fudge_inference_if_ok: leaking infer vars: {e:?}");
+                self.rollback_to("fudge_inference_if_ok -- error", snapshot);
+                return Err(e);
+            }
         }
     }
 }

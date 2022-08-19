@@ -152,6 +152,7 @@ enum CandidateKind<'tcx> {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(TypeVisitable)]
 enum ProbeResult {
     NoMatch,
     BadReturnType,
@@ -171,6 +172,7 @@ enum ProbeResult {
 /// (at most) one of these. Either the receiver has type `T` and we convert it to `&T` (or with
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
 #[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(TypeVisitable)]
 pub enum AutorefOrPtrAdjustment {
     /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
     /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
@@ -195,6 +197,7 @@ impl AutorefOrPtrAdjustment {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(TypeVisitable)]
 pub struct Pick<'tcx> {
     pub item: ty::AssocItem,
     pub kind: PickKind<'tcx>,
@@ -213,6 +216,7 @@ pub struct Pick<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(TypeVisitable)]
 pub enum PickKind<'tcx> {
     InherentImplPick,
     ObjectPick,
@@ -226,6 +230,7 @@ pub enum PickKind<'tcx> {
 pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(TypeVisitable)]
 pub enum Mode {
     // An expression of the form `receiver.method_name(...)`.
     // Autoderefs are performed on `receiver`, lookup is done based on the
@@ -327,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
-    fn probe_op<OP, R>(
+    fn probe_op<OP, R: TypeVisitable<'tcx>>(
         &'a self,
         span: Span,
         mode: Mode,

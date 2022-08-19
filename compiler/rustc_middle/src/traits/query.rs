@@ -97,7 +97,7 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable, TypeVisitable)]
 pub struct NoSolution;
 
 pub type Fallible<T> = Result<T, NoSolution>;
@@ -178,7 +178,7 @@ impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
     }
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub struct CandidateStep<'tcx> {
     pub self_ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
     pub autoderefs: usize,
@@ -191,7 +191,7 @@ pub struct CandidateStep<'tcx> {
     pub unsize: bool,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable, TypeVisitable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
     /// The valid autoderef steps that could be find.
     pub steps: &'tcx [CandidateStep<'tcx>],
@@ -202,7 +202,7 @@ pub struct MethodAutoderefStepsResult<'tcx> {
     pub reached_recursion_limit: bool,
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub struct MethodAutoderefBadTy<'tcx> {
     pub reached_raw_pointer: bool,
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,

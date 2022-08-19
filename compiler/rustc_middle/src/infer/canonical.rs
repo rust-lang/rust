@@ -301,9 +301,12 @@ TrivialTypeTraversalAndLiftImpls! {
     }
 }
 
-TrivialTypeTraversalImpls! {
-    for <'tcx> {
-        crate::infer::canonical::CanonicalVarInfos<'tcx>,
+impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
+    fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
+        self,
+        _: &mut F,
+    ) -> ::std::result::Result<CanonicalVarInfos<'tcx>, F::Error> {
+        Ok(self)
     }
 }
 

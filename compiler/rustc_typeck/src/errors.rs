@@ -1,6 +1,5 @@
 //! Errors emitted by typeck.
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed};
-use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};

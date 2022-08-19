@@ -175,6 +175,7 @@ pub enum SelectionCandidate<'tcx> {
 ///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, HashStable)]
+#[derive(TypeVisitable)]
 pub enum EvaluationResult {
     /// Evaluation successful.
     EvaluatedToOk,

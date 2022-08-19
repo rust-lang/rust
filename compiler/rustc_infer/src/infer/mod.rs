@@ -71,7 +71,7 @@ pub mod type_variable;
 mod undo_log;
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
 pub struct InferOk<'tcx, T> {
     pub value: T,
     pub obligations: PredicateObligations<'tcx>,
@@ -844,6 +844,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>,
+        E: TypeVisitable<'tcx>,
     {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
@@ -852,7 +853,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Ok(_) => {
                 self.commit_from(snapshot);
             }
-            Err(_) => {
+            Err(ref e) => {
+                debug_assert!(!e.needs_infer(), "commit_if_ok: leaking infer vars: {e:?}");
                 self.rollback_to("commit_if_ok -- error", snapshot);
             }
         }
@@ -864,9 +866,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn probe<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
+        R: TypeVisitable<'tcx>,
     {
         let snapshot = self.start_snapshot();
+
         let r = f(&snapshot);
+
+        debug_assert!(!r.needs_infer(), "probe: leaking infer vars: {r:?}");
         self.rollback_to("probe", snapshot);
         r
     }
@@ -876,6 +882,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn probe_maybe_skip_leak_check<R, F>(&self, should_skip: bool, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
+        R: TypeVisitable<'tcx>,
     {
         let snapshot = self.start_snapshot();
         let was_skip_leak_check = self.skip_leak_check.get();
@@ -883,6 +890,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.skip_leak_check.set(true);
         }
         let r = f(&snapshot);
+
+        debug_assert!(!r.needs_infer(), "probe_maybe_skip_leak_check: leaking infer vars: {r:?}");
         self.rollback_to("probe", snapshot);
         self.skip_leak_check.set(was_skip_leak_check);
         r
