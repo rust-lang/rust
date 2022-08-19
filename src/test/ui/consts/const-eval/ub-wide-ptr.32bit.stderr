@@ -278,26 +278,36 @@ LL | const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, 
                ╾allocN─╼ ╾allocN─╼                         │ ╾──╼╾──╼
            }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-wide-ptr.rs:147:62
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:147:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: null pointer is a dangling pointer (it has no provenance)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered null pointer, but expected a vtable pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ╾allocN─╼ 00 00 00 00                         │ ╾──╼....
+           }
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-wide-ptr.rs:150:65
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-wide-ptr.rs:149:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using allocN as vtable pointer but it does not point to a vtable
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered allocN, but expected a vtable pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ╾allocN─╼ ╾allocN─╼                         │ ╾──╼╾──╼
+           }
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:157:5
+  --> $DIR/ub-wide-ptr.rs:155:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: null pointer is a dangling pointer (it has no provenance)
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ub-wide-ptr.rs:161:5
+  --> $DIR/ub-wide-ptr.rs:159:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using allocN as vtable pointer but it does not point to a vtable

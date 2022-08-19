@@ -298,7 +298,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(val, dest)
             }
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
-                let (old_data, old_vptr) = self.read_immediate(src)?.to_scalar_pair()?;
+                let val = self.read_immediate(src)?;
+                if data_a.principal() == data_b.principal() {
+                    // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
+                    return self.write_immediate(*val, dest);
+                }
+                let (old_data, old_vptr) = val.to_scalar_pair()?;
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
