@@ -122,16 +122,16 @@ expect-as-precondition style error messages remember to focus on the word
 "should" as in "env variable should be set by blah" or "the given binary
 should be available and executable by the current user".
 
-[`panic_any`]: crate::panic::panic_any
+[`panic_any`]: ../../std/panic/fn.panic_any.html
 [`PanicInfo`]: crate::panic::PanicInfo
-[`catch_unwind`]: crate::panic::catch_unwind
-[`resume_unwind`]: crate::panic::resume_unwind
+[`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+[`resume_unwind`]: ../../std/panic/fn.resume_unwind.html
 [`downcast`]: crate::error::Error
-[`Termination`]: crate::process::Termination
+[`Termination`]: ../../std/process/trait.Termination.html
 [`Try`]: crate::ops::Try
-[panic hook]: crate::panic::set_hook
-[`set_hook`]: crate::panic::set_hook
-[`take_hook`]: crate::panic::take_hook
+[panic hook]: ../../std/panic/fn.set_hook.html
+[`set_hook`]: ../../std/panic/fn.set_hook.html
+[`take_hook`]: ../../std/panic/fn.take_hook.html
 [panic-handler]: <https://doc.rust-lang.org/nomicon/panic-handler.html>
 [`match`]: ../../std/keyword.match.html
 [`?`]: ../../std/result/index.html#the-question-mark-operator-
