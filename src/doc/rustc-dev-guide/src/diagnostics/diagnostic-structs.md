@@ -113,7 +113,7 @@ In the end, the `SessionDiagnostic` derive will generate an implementation of
 `SessionDiagnostic` that looks like the following:
 
 ```rust,ignore
-impl SessionDiagnostic for FieldAlreadyDeclared {
+impl SessionDiagnostic<'_> for FieldAlreadyDeclared {
     fn into_diagnostic(self, sess: &'_ rustc_session::Session) -> DiagnosticBuilder<'_> {
         let mut diag = sess.struct_err(rustc_errors::fluent::typeck::field_already_declared);
         diag.set_span(self.span);
