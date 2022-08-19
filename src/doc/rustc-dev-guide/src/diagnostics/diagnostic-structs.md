@@ -17,7 +17,7 @@ shown below:
 
 ```rust,ignore
 #[derive(SessionDiagnostic)]
-#[error(typeck::field_already_declared, code = "E0124")]
+#[diag(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
@@ -29,21 +29,19 @@ pub struct FieldAlreadyDeclared {
 ```
 
 `SessionDiagnostic` can only be applied to structs. Every `SessionDiagnostic`
-has to have one attribute applied to the struct itself: either `#[error(..)]`
-for defining errors, or `#[warning(..)]` for defining warnings.
+has to have one attribute, `#[diag(...)]`, applied to the struct itself.
 
 If an error has an error code (e.g. "E0624"), then that can be specified using
 the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
 porting a diagnostic that uses `DiagnosticBuilder` to use `SessionDiagnostic`
 then you should keep the code if there was one.
 
-Both `#[error(..)]` and `#[warning(..)]` must provide a slug as the first
-positional argument (a path to an item in `rustc_errors::fluent::*`). A slug
-uniquely identifies the diagnostic and is also how the compiler knows what
-error message to emit (in the default locale of the compiler, or in the locale
-requested by the user). See [translation documentation](./translation.md) to
-learn more about how translatable error messages are written and how slug
-items are generated.
+`#[diag(..)]` must provide a slug as the first positional argument (a path to an
+item in `rustc_errors::fluent::*`). A slug uniquely identifies the diagnostic
+and is also how the compiler knows what error message to emit (in the default
+locale of the compiler, or in the locale requested by the user). See
+[translation documentation](./translation.md) to learn more about how
+translatable error messages are written and how slug items are generated.
 
 In our example, the Fluent message for the "field already declared" diagnostic
 looks like this:
@@ -146,13 +144,10 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
 `#[derive(SessionDiagnostic)]` and `#[derive(LintDiagnostic)]` support the
 following attributes:
 
-- `#[error(slug, code = "...")]`, `#[warning(slug, code = "...")]`,
-  `#[fatal(slug, code = "...")]` or `#[lint(slug, code = "...")]`
+- `#[diag(slug, code = "...")]`
   - _Applied to struct._
   - _Mandatory_
-  - Defines the struct to be representing an error, fatal error, a warning or a
-    lint. Errors, fatal errors and warnings only supported by
-    `SessionDiagnostic`, and lints by `LintDiagnostic`.
+  - Defines the text and error code to be associated with the diagnostic.
   - Slug (_Mandatory_)
     - Uniquely identifies the diagnostic and corresponds to its Fluent message,
       mandatory.
@@ -218,7 +213,7 @@ following attributes:
     `#[derive(SessionSubdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
 - `#[primary_span]` (_Optional_)
-  - _Applied to `Span` fields._
+  - _Applied to `Span` fields on `SessionSubdiagnostic`s. Not used for `LintDiagnostic`s._
   - Indicates the primary span of the diagnostic.
 - `#[skip_arg]` (_Optional_)
   - _Applied to any field._
