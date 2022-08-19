@@ -32,4 +32,6 @@ const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in 
 
 const_evaL_max_num_nodes_exceeded = maximum number of nodes exceeded in constant {$s}
 
-const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {$const_kind}s
+const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {$kind}s
+
+const_eval_unstable_const_fn = `{$def_id}` is not yet stable as a const fn

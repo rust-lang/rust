@@ -103,3 +103,11 @@ pub(crate) struct UnallowedFnPointerCall {
     pub span: Span,
     pub kind: ConstContext,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(const_eval::unstable_const_fn)]
+pub(crate) struct UnstableConstFn {
+    #[primary_span]
+    pub span: Span,
+    pub def_id: String,
+}

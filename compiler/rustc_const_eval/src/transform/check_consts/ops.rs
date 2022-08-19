@@ -25,7 +25,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use super::ConstCx;
 use crate::errors::{
     MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
-    TransientMutBorrowErr, TransientMutBorrowErrRaw, UnallowedFnPointerCall,
+    TransientMutBorrowErr, TransientMutBorrowErrRaw, UnallowedFnPointerCall, UnstableConstFn,
 };
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
@@ -351,10 +351,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
-        let mut err = ccx.tcx.sess.struct_span_err(
-            span,
-            &format!("`{}` is not yet stable as a const fn", ccx.tcx.def_path_str(def_id)),
-        );
+        let mut err =
+            ccx.tcx.sess.create_err(UnstableConstFn { span, def_id: ccx.tcx.def_path_str(def_id) });
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
