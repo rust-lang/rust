@@ -22,7 +22,11 @@ const PTHREAD_SELF_SIZE: usize = 1024;
 //  its been initialized is minimized)
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn _start_thread(entry: u64) {
+pub extern "C" fn _start_thread(entry_low: i32, entry_high: i32) {
+    let entry_low: u64 = (entry_low as u64) & 0xFFFFFFFF;
+    let entry_high: u64 = (entry_high as u64) << 32;
+    let entry = entry_low + entry_high;
+
     let cb = unsafe {
         let cb = entry as *mut ThreadCallback;
         Box::from_raw(cb)
@@ -56,12 +60,20 @@ fn _start_thread_internal(cb: Box<ThreadCallback>) {
     stack_pool_push(cb.stack);
 }
 
+// The reactor will execute any callbacks registered to it when its invoked
+// by a calling thread
+static REACTOR: SyncLazy<Mutex<Vec<ReactorCallback>>> = SyncLazy::new(|| Default::default());
+
 // Callback when reactor work needs to be processed
 // (making sure the function is never inlined means its use of the stack before
 //  its been initialized is minimized)
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn _react(entry: u64) {
+pub extern "C" fn _react(entry_low: i32, entry_high: i32) {
+    let entry_low: u64 = (entry_low as u64) & 0xFFFFFFFF;
+    let entry_high: u64 = (entry_high as u64) << 32;
+    let entry = entry_low + entry_high;
+
     let cb = unsafe {
         let cb = entry as *mut ReactorCallback;
         mem::ManuallyDrop::new(Box::from_raw(cb))

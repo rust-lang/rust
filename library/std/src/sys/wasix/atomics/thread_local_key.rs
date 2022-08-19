@@ -6,7 +6,15 @@ pub type Key = u32;
 // exits or when the thread local variable is destroyed)
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn _thread_local_destroy(user_data: u64, val: u64) {
+pub extern "C" fn _thread_local_destroy(user_data_low: i32, user_data_high: i32, val_low: i32, val_high: i32) {
+    let user_data_low: u64 = (user_data_low as u64) & 0xFFFFFFFF;
+    let user_data_high: u64 = (user_data_high as u64) << 32;
+    let user_data = user_data_low + user_data_high;
+
+    let val_low: u64 = (val_low as u64) & 0xFFFFFFFF;
+    let val_high: u64 = (val_high as u64) << 32;
+    let val = val_low + val_high;
+
     if user_data != 0 {
         unsafe {
             #[cfg(target_arch = "wasm32")]
