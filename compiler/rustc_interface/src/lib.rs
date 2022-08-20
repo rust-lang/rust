@@ -7,6 +7,7 @@
 #![allow(rustc::potential_query_instability)]
 
 mod callbacks;
+mod errors;
 pub mod interface;
 mod passes;
 mod proc_macro_decls;

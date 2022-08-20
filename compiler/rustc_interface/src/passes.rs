@@ -1,3 +1,4 @@
+use crate::errors::{EmojiIdentifier, FerrisIdentifier};
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
@@ -13,7 +14,6 @@ use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::StableCrateId;
 use rustc_hir::definitions::Definitions;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
-use rustc_macros::SessionDiagnostic;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -31,7 +31,7 @@ use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{FileName, Span};
+use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tracing::{info, warn};
@@ -262,23 +262,6 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     ) {
         pre_expansion_lint(sess, self.0, registered_tools, (node_id, attrs, items), name);
     }
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(interface::ferris_identifier)]
-struct FerrisIdentifier {
-    #[primary_span]
-    spans: Vec<Span>,
-    #[suggestion(code = "ferris", applicability = "maybe-incorrect")]
-    first_span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[diag(interface::emoji_identifier)]
-struct EmojiIdentifier {
-    #[primary_span]
-    spans: Vec<Span>,
-    ident: Symbol,
 }
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
