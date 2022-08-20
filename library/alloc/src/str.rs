@@ -71,6 +71,8 @@ pub use core::str::{RSplit, Split};
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use core::str::{Utf8Chunk, Utf8Chunks};
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.

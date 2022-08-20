@@ -258,6 +258,7 @@
 #![feature(staged_api)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
+#![feature(utf8_chunks)]
 //
 // Library features (core):
 #![feature(array_error_internals)]
