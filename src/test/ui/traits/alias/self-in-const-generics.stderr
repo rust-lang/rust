@@ -1,8 +1,8 @@
-error[E0038]: the trait alias `SelfInput` cannot be made into an object
-  --> $DIR/self-in-generics.rs:12:19
+error[E0038]: the trait alias `BB` cannot be made into an object
+  --> $DIR/self-in-const-generics.rs:9:16
    |
-LL | pub fn f(_f: &dyn SelfInput) {}
-   |                   ^^^^^^^^^
+LL | fn foo(x: &dyn BB) {}
+   |                ^^
    |
    = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
 

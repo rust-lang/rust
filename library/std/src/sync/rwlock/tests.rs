@@ -19,7 +19,7 @@ fn smoke() {
 #[test]
 fn frob() {
     const N: u32 = 10;
-    const M: usize = 1000;
+    const M: usize = if cfg!(miri) { 100 } else { 1000 };
 
     let r = Arc::new(RwLock::new(()));
 
