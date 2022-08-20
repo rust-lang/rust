@@ -29,6 +29,23 @@ assert-css: (
     {"color": "rgb(120, 135, 151)"},
 )
 
+// Checking the `<a>` container.
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(0, 150, 207)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+
+// Checking color and background on hover.
+move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']",
+    {"color": "rgb(255, 255, 255)"},
+)
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(255, 255, 255)", "background-color": "rgb(60, 60, 60)"},
+)
+
 // Dark theme
 local-storage: {
     "rustdoc-theme": "dark",
@@ -54,6 +71,23 @@ assert-css: (
     {"color": "rgb(221, 221, 221)"},
 )
 
+// Checking the `<a>` container.
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+
+// Checking color and background on hover.
+move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']",
+    {"color": "rgb(221, 221, 221)"},
+)
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(221, 221, 221)", "background-color": "rgb(119, 119, 119)"},
+)
+
 // Light theme
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
@@ -73,6 +107,23 @@ assert-css: (
 assert-css: (
     "//*[@class='result-name']//*[text()='(keyword)']",
     {"color": "rgb(0, 0, 0)"},
+)
+
+// Checking the `<a>` container.
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
+)
+
+// Checking color and background on hover.
+move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']",
+    {"color": "rgb(0, 0, 0)"},
+)
+assert-css: (
+    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    {"color": "rgb(0, 0, 0)", "background-color": "rgb(221, 221, 221)"},
 )
 
 // Check the alias more specifically in the dark theme.
