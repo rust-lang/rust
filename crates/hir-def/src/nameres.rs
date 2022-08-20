@@ -511,14 +511,6 @@ impl DefMap {
         self.diagnostics.as_slice()
     }
 
-    pub fn push_diagnostic(&mut self, d: DefDiagnostic) {
-        self.diagnostics.push(d)
-    }
-
-    pub fn push_diagnostics(&mut self, i: impl Iterator<Item = DefDiagnostic>) {
-        self.diagnostics.extend(i)
-    }
-
     pub fn recursion_limit(&self) -> Option<u32> {
         self.recursion_limit
     }
