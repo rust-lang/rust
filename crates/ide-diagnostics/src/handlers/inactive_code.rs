@@ -106,7 +106,6 @@ fn f() {
 
     #[test]
     fn inactive_assoc_item() {
-        // FIXME these currently don't work, hence the *
         check(
             r#"
 struct Foo;
