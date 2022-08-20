@@ -30,6 +30,10 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# We are disabling CI LLVM since this builder needs to build LLD, which is
+# currently unsupported when downloading pre-built LLVM.
+ENV NO_DOWNLOAD_CI_LLVM 1
+
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
   --set build.nodejs=/node-v15.14.0-linux-x64/bin/node \
