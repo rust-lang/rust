@@ -3212,6 +3212,56 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `unstable_syntax_pre_expansion` lint detects the use of unstable
+    /// syntax that is discarded during attribute expansion.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[cfg(FALSE)]
+    /// macro foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The input to active attributes such as `#[cfg]` or procedural macro
+    /// attributes is required to be valid syntax. Previously, the compiler only
+    /// gated the use of unstable syntax features after resolving `#[cfg]` gates
+    /// and expanding procedural macros.
+    ///
+    /// To avoid relying on unstable syntax, move the use of unstable syntax
+    /// into a position where the compiler does not parse the syntax, such as a
+    /// functionlike macro.
+    ///
+    /// ```rust
+    /// # #![deny(unstable_syntax_pre_expansion)]
+    ///
+    /// macro_rules! identity {
+    ///    ( $($tokens:tt)* ) => { $($tokens)* }
+    /// }
+    ///
+    /// #[cfg(FALSE)]
+    /// identity! {
+    ///    macro foo() {}
+    /// }
+    /// ```
+    ///
+    /// This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #65860] for more details.
+    ///
+    /// [issue #65860]: https://github.com/rust-lang/rust/issues/65860
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub UNSTABLE_SYNTAX_PRE_EXPANSION,
+    Warn,
+    "unstable syntax can change at any point in the future, causing a hard error!",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #65860 <https://github.com/rust-lang/rust/issues/65860>",
+    };
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3280,6 +3330,7 @@ declare_lint_pass! {
         POINTER_STRUCTURAL_MATCH,
         NONTRIVIAL_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
+        UNSTABLE_SYNTAX_PRE_EXPANSION,
         INLINE_NO_SANITIZE,
         BAD_ASM_STYLE,
         ASM_SUB_REGISTER,
