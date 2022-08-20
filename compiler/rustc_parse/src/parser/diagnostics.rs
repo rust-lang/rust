@@ -640,6 +640,15 @@ impl<'a> Parser<'a> {
                     appl,
                 );
             }
+
+            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    &format!("write `fn` instead of `{symbol}` to declare a function"),
+                    "fn",
+                    appl,
+                );
+            }
         }
 
         // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
