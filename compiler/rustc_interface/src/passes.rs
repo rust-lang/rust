@@ -1,4 +1,8 @@
-use crate::errors::{EmojiIdentifier, FerrisIdentifier};
+use crate::errors::{
+    CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
+    GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
+    MixedProcMacroCrate, OutDirError, ProcMacroDocWithoutArg, TempsDirError,
+};
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
@@ -375,10 +379,10 @@ pub fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.err("cannot mix `bin` crate type with others");
+            sess.emit_err(MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.err("cannot mix `proc-macro` crate type with others");
+            sess.emit_err(MixedProcMacroCrate);
         }
     }
 
@@ -389,13 +393,7 @@ pub fn configure_and_expand(
     // However, we do emit a warning, to let such users know that they should
     // start passing '--crate-type proc-macro'
     if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
-        let mut msg = sess.diagnostic().struct_warn(
-            "Trying to document proc macro crate \
-             without passing '--crate-type proc-macro to rustdoc",
-        );
-
-        msg.warn("The generated documentation may be incorrect");
-        msg.emit();
+        sess.emit_warning(ProcMacroDocWithoutArg);
     } else {
         krate = sess.time("maybe_create_a_macro_crate", || {
             let is_test_crate = sess.opts.test;
@@ -649,11 +647,12 @@ fn write_out_deps(
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
         }
-        Err(e) => sess.fatal(&format!(
-            "error writing dependencies to `{}`: {}",
-            deps_filename.display(),
-            e
-        )),
+        Err(e) => {
+            sess.emit_fatal(ErrorWritingDependencies {
+                path: (&deps_filename.display()).into(),
+                error: (&e).into(),
+            });
+        }
     }
 }
 
@@ -683,20 +682,15 @@ pub fn prepare_outputs(
     if let Some(ref input_path) = compiler.input_path {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                let reported = sess.err(&format!(
-                    "the input file \"{}\" would be overwritten by the generated \
-                        executable",
-                    input_path.display()
-                ));
+                let reported = sess
+                    .emit_err(InputFileWouldBeOverWritten { path: (&input_path.display()).into() });
                 return Err(reported);
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                let reported = sess.err(&format!(
-                    "the generated executable for the input file \"{}\" conflicts with the \
-                        existing directory \"{}\"",
-                    input_path.display(),
-                    dir_path.display()
-                ));
+                let reported = sess.emit_err(GeneratedFileConflictsWithDirectory {
+                    input_path: (&input_path.display()).into(),
+                    dir_path: (&dir_path.display()).into(),
+                });
                 return Err(reported);
             }
         }
@@ -704,8 +698,7 @@ pub fn prepare_outputs(
 
     if let Some(ref dir) = compiler.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            let reported =
-                sess.err("failed to find or create the directory specified by `--temps-dir`");
+            let reported = sess.emit_err(TempsDirError);
             return Err(reported);
         }
     }
@@ -718,8 +711,7 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                let reported =
-                    sess.err("failed to find or create the directory specified by `--out-dir`");
+                let reported = sess.emit_err(OutDirError);
                 return Err(reported);
             }
         }
@@ -1003,7 +995,7 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(e) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
-            tcx.sess.err(&format!("could not emit MIR: {}", e));
+            tcx.sess.emit_err(CantEmitMIR { error: (&e).into() });
             tcx.sess.abort_if_errors();
         }
     }
