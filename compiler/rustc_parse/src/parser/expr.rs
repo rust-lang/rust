@@ -2251,7 +2251,15 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
-        self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, None)
+        let cond =
+            self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, None)?;
+
+        if let ExprKind::Let(..) = cond.kind {
+            // Remove the last feature gating of a `let` expression since it's stable.
+            self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+        }
+
+        Ok(cond)
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
@@ -2280,6 +2288,7 @@ impl<'a> Parser<'a> {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
         let span = lo.to(expr.span);
+        self.sess.gated_spans.gate(sym::let_chains, span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span)))
     }
 
@@ -2571,13 +2580,15 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         // Used to check the `let_chains` and `if_let_guard` features mostly by scaning
         // `&&` tokens.
-        fn check_let_expr(expr: &Expr) -> bool {
+        fn check_let_expr(expr: &Expr) -> (bool, bool) {
             match expr.kind {
                 ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ref lhs, ref rhs) => {
-                    check_let_expr(lhs) || check_let_expr(rhs)
+                    let lhs_rslt = check_let_expr(lhs);
+                    let rhs_rslt = check_let_expr(rhs);
+                    (lhs_rslt.0 || rhs_rslt.0, false)
                 }
-                ExprKind::Let(..) => true,
-                _ => false,
+                ExprKind::Let(..) => (true, true),
+                _ => (false, true),
             }
         }
         let attrs = self.parse_outer_attributes()?;
@@ -2592,7 +2603,12 @@ impl<'a> Parser<'a> {
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
                 let cond = this.parse_expr_res(Restrictions::ALLOW_LET, None)?;
-                if check_let_expr(&cond) {
+                let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
+                if has_let_expr {
+                    if does_not_have_bin_op {
+                        // Remove the last feature gating of a `let` expression since it's stable.
+                        this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                    }
                     let span = if_span.to(cond.span);
                     this.sess.gated_spans.gate(sym::if_let_guard, span);
                 }

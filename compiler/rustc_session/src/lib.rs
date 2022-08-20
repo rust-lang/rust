@@ -1,4 +1,5 @@
 #![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]

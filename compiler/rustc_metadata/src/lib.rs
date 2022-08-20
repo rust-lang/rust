@@ -4,6 +4,7 @@
 #![feature(generators)]
 #![feature(generic_associated_types)]
 #![feature(iter_from_generator)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]

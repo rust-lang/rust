@@ -1,5 +1,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]

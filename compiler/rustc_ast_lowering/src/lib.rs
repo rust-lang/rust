@@ -31,6 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(box_patterns)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]

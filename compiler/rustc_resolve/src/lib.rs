@@ -11,6 +11,7 @@
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]

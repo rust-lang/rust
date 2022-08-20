@@ -17,6 +17,7 @@
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
 #![cfg_attr(bootstrap, feature(label_break_value))]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
