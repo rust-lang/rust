@@ -1,0 +1,22 @@
+error[E0507]: cannot move out of `*opt` which is behind a shared reference
+  --> $DIR/option_as_ref.rs:4:5
+   |
+LL |     opt.map(|x| x.to_string()).unwrap_or_else(String::new)
+   |     ^^^^----------------------
+   |     |   |
+   |     |   `*opt` moved due to this method call
+   |     move occurs because `*opt` has type `Option<Box<i32>>`, which does not implement the `Copy` trait
+   |
+note: this function takes ownership of the receiver `self`, which moves `*opt`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
+   |                            ^^^^
+help: consider calling `.as_ref()` to borrow the type's contents
+   |
+LL |     opt.as_ref().map(|x| x.to_string()).unwrap_or_else(String::new)
+   |         +++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.
