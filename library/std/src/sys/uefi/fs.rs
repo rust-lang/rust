@@ -5,7 +5,7 @@ use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 use crate::path::{Path, PathBuf};
-use crate::sys::time::{SystemTime, UNIX_EPOCH};
+use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use r_efi::protocols::file;
 
@@ -20,7 +20,8 @@ pub struct FileAttr {
     perm: FilePermissions,
     file_type: FileType,
     created_time: SystemTime,
-    file_times: FileTimes,
+    last_accessed_time: SystemTime,
+    modification_time: SystemTime,
 }
 
 pub struct ReadDir {
@@ -55,8 +56,8 @@ pub struct FileType {
 
 #[derive(Copy, Clone, Debug)]
 pub struct FileTimes {
-    last_accessed_time: SystemTime,
-    modification_time: SystemTime,
+    last_accessed_time: Option<SystemTime>,
+    modification_time: Option<SystemTime>,
 }
 
 #[derive(Debug)]
@@ -83,12 +84,12 @@ impl FileAttr {
 
     #[inline]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(self.file_times.modification_time)
+        Ok(self.modification_time)
     }
 
     #[inline]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(self.file_times.last_accessed_time)
+        Ok(self.last_accessed_time)
     }
 
     #[inline]
@@ -103,11 +104,9 @@ impl From<&file::Info> for FileAttr {
             size: info.file_size,
             perm: FilePermissions { attr: info.attribute },
             file_type: FileType { attr: info.attribute },
-            file_times: FileTimes {
-                last_accessed_time: SystemTime::from(info.last_access_time),
-                modification_time: SystemTime::from(info.modification_time),
-            },
             created_time: SystemTime::from(info.create_time),
+            last_accessed_time: SystemTime::from(info.last_access_time),
+            modification_time: SystemTime::from(info.modification_time),
         }
     }
 }
@@ -177,19 +176,19 @@ impl Iterator for ReadDir {
 impl FileTimes {
     #[inline]
     pub fn set_accessed(&mut self, t: SystemTime) {
-        self.last_accessed_time = t;
+        self.last_accessed_time = Some(t);
     }
 
     #[inline]
     pub fn set_modified(&mut self, t: SystemTime) {
-        self.modification_time = t;
+        self.modification_time = Some(t);
     }
 }
 
 impl Default for FileTimes {
     #[inline]
     fn default() -> Self {
-        Self { last_accessed_time: UNIX_EPOCH, modification_time: UNIX_EPOCH }
+        Self { last_accessed_time: None, modification_time: None }
     }
 }
 
@@ -382,8 +381,9 @@ impl File {
         self.ptr.set_file_attr(perm.attr)
     }
 
-    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
-        unsupported()
+    #[inline]
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        self.ptr.set_file_times(times)
     }
 }
 
@@ -548,6 +548,7 @@ fn cascade_delete(file: uefi_fs::FileProtocol, path: &Path) -> io::Result<()> {
 }
 
 mod uefi_fs {
+    use super::FileTimes;
     use super::{DirEntry, FileAttr};
     use crate::default::Default;
     use crate::ffi::OsStr;
@@ -891,6 +892,34 @@ mod uefi_fs {
             }
         }
 
+        pub fn set_file_times(&self, file_times: FileTimes) -> io::Result<()> {
+            let mut old_info = self.get_file_info()?;
+
+            if let Some(t) = file_times.last_accessed_time {
+                old_info.last_access_time = super::super::time::uefi_time_from_duration(
+                    t.get_duration(),
+                    old_info.last_access_time.daylight,
+                    old_info.last_access_time.timezone,
+                );
+            }
+            if let Some(t) = file_times.modification_time {
+                old_info.modification_time = super::super::time::uefi_time_from_duration(
+                    t.get_duration(),
+                    old_info.modification_time.daylight,
+                    old_info.modification_time.timezone,
+                );
+            }
+
+            unsafe {
+                Self::set_info_raw(
+                    self.inner.as_ptr(),
+                    file::INFO_ID,
+                    old_info.layout().size(),
+                    old_info.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                )
+            }
+        }
+
         // Delete a file.
         pub fn delete(self) -> io::Result<()> {
             // Deleting the file makes the pointer invalid. Thus calling drop on it later will
@@ -899,6 +928,7 @@ mod uefi_fs {
             unsafe { Self::delete_raw(file.inner.as_ptr()) }
         }
 
+        #[inline]
         unsafe fn open_raw(
             rootfs: *mut file::Protocol,
             file_opened: *mut *mut file::Protocol,
@@ -910,21 +940,25 @@ mod uefi_fs {
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn set_position_raw(protocol: *mut file::Protocol, pos: u64) -> io::Result<()> {
             let r = unsafe { ((*protocol).set_position)(protocol, pos) };
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn get_position_raw(protocol: *mut file::Protocol, pos: *mut u64) -> io::Result<()> {
             let r = unsafe { ((*protocol).get_position)(protocol, pos) };
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn flush_raw(protocol: *mut file::Protocol) -> io::Result<()> {
             let r = unsafe { ((*protocol).flush)(protocol) };
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn write_raw(
             protocol: *mut file::Protocol,
             buf_size: *mut usize,
@@ -939,6 +973,7 @@ mod uefi_fs {
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn read_raw(
             protocol: *mut file::Protocol,
             buf_size: *mut usize,
@@ -948,6 +983,7 @@ mod uefi_fs {
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn get_info_raw(
             protocol: *mut file::Protocol,
             mut info_guid: r_efi::efi::Guid,
@@ -958,6 +994,7 @@ mod uefi_fs {
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn set_info_raw(
             protocol: *mut file::Protocol,
             mut info_guid: r_efi::efi::Guid,
@@ -968,6 +1005,7 @@ mod uefi_fs {
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
+        #[inline]
         unsafe fn delete_raw(protocol: *mut file::Protocol) -> io::Result<()> {
             let r = unsafe { ((*protocol).delete)(protocol) };
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
@@ -975,6 +1013,7 @@ mod uefi_fs {
     }
 
     impl Drop for FileProtocol {
+        #[inline]
         fn drop(&mut self) {
             let protocol = self.inner.as_ptr();
             // Always returns EFI_SUCCESS

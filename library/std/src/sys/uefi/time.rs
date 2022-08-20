@@ -14,7 +14,12 @@ pub struct Instant(Duration);
 pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::ZERO);
+
 const NS_PER_SEC: u64 = 1_000_000_000;
+const SEC_IN_MIN: u64 = 60;
+const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
+const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;
+const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
 
 impl Instant {
     pub fn now() -> Instant {
@@ -112,6 +117,10 @@ impl SystemTime {
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime(self.0.checked_sub(*other)?))
     }
+
+    pub(crate) fn get_duration(&self) -> Duration {
+        self.0
+    }
 }
 
 impl From<r_efi::system::Time> for SystemTime {
@@ -123,10 +132,6 @@ impl From<r_efi::system::Time> for SystemTime {
 
 // FIXME: Don't know how to use Daylight Saving thing
 fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
-    const SEC_IN_MIN: u64 = 60;
-    const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
-    const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;
-    const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
     const MONTH_DAYS: [u64; 12] = [0, 31, 59, 90, 120, 151, 181, 211, 242, 272, 303, 333];
 
     let localtime_epoch: u64 = u64::from(t.year - 1970) * SEC_IN_YEAR
@@ -140,6 +145,42 @@ fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
     let utc_epoch: u64 = ((localtime_epoch as i64) + timezone_epoch) as u64;
 
     Duration::new(utc_epoch, t.nanosecond)
+}
+
+// This algorithm is taken from: http://howardhinnant.github.io/date_algorithms.html
+pub fn uefi_time_from_duration(dur: Duration, daylight: u8, timezone: i16) -> r_efi::system::Time {
+    let secs = dur.as_secs();
+
+    let days = secs / SEC_IN_DAY;
+    let remaining_secs = secs % SEC_IN_DAY;
+
+    let z = days + 719468;
+    let era = z / 146097;
+    let doe = z - (era * 146097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let mut y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+
+    if m <= 2 {
+        y += 1;
+    }
+
+    r_efi::system::Time {
+        year: y as u16,
+        month: m as u8,
+        day: d as u8,
+        hour: (remaining_secs / SEC_IN_HOUR) as u8,
+        minute: ((remaining_secs % SEC_IN_HOUR) / SEC_IN_MIN) as u8,
+        second: ((remaining_secs % SEC_IN_HOUR) % SEC_IN_MIN) as u8,
+        pad1: 0,
+        nanosecond: dur.subsec_nanos(),
+        timezone,
+        daylight,
+        pad2: 0,
+    }
 }
 
 // Returns the Frequency in Mhz
