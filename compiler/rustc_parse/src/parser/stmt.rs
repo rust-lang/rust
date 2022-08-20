@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
             None => unreachable!(),
         };
 
-        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot

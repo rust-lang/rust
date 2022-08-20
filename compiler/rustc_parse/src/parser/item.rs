@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
             return Ok(None);
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
-            (Ident::empty(), ItemKind::MacCall(self.parse_item_macro(vis)?))
+            (Ident::empty(), ItemKind::MacCall(P(self.parse_item_macro(vis)?)))
         } else {
             return Ok(None);
         };
