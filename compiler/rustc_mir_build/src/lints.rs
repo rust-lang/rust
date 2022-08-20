@@ -1,3 +1,4 @@
+use crate::errors::UnconditionalRecursion;
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
@@ -36,15 +37,9 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         let sp = tcx.def_span(def_id);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
-            let mut db = lint.build("function cannot return without recursing");
-            db.span_label(sp, "cannot return without recursing");
-            // offer some help to the programmer.
-            for call_span in vis.reachable_recursive_calls {
-                db.span_label(call_span, "recursive call site");
-            }
-            db.help("a `loop` may express intention better if this is on purpose");
-            db.emit();
+        tcx.emit_spanned_lint(UNCONDITIONAL_RECURSION, hir_id, sp, UnconditionalRecursion {
+            span: sp,
+            call_sites: vis.reachable_recursive_calls,
         });
     }
 }
