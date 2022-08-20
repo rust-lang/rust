@@ -92,6 +92,7 @@ pub struct Command {
     argv: Argv,
     env: CommandEnv,
 
+    program_kind: ProgramKind,
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
@@ -148,15 +149,40 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ProgramKind {
+    /// A program that would be looked up on the PATH (e.g. `ls`)
+    PathLookup,
+    /// A relative path (e.g. `my-dir/foo`, `../foo`, `./foo`)
+    Relative,
+    /// An absolute path.
+    Absolute,
+}
+
+impl ProgramKind {
+    fn new(program: &OsStr) -> Self {
+        if program.bytes().starts_with(b"/") {
+            Self::Absolute
+        } else if program.bytes().contains(&b'/') {
+            // If the program has more than one component in it, it is a relative path.
+            Self::Relative
+        } else {
+            Self::PathLookup
+        }
+    }
+}
+
 impl Command {
     #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -174,11 +200,13 @@ impl Command {
     #[cfg(target_os = "linux")]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -252,6 +280,11 @@ impl Command {
 
     pub fn get_program(&self) -> &OsStr {
         OsStr::from_bytes(self.program.as_bytes())
+    }
+
+    #[allow(dead_code)]
+    pub fn get_program_kind(&self) -> ProgramKind {
+        self.program_kind
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {

@@ -122,3 +122,27 @@ fn test_process_group_no_posix_spawn() {
         t!(cat.wait());
     }
 }
+
+#[test]
+fn test_program_kind() {
+    let vectors = &[
+        ("foo", ProgramKind::PathLookup),
+        ("foo.out", ProgramKind::PathLookup),
+        ("./foo", ProgramKind::Relative),
+        ("../foo", ProgramKind::Relative),
+        ("dir/foo", ProgramKind::Relative),
+        // Note that paths on Unix can't contain / in them, so this is actually the directory "fo\\"
+        // followed by the file "o".
+        ("fo\\/o", ProgramKind::Relative),
+        ("/foo", ProgramKind::Absolute),
+        ("/dir/../foo", ProgramKind::Absolute),
+    ];
+
+    for (program, expected_kind) in vectors {
+        assert_eq!(
+            ProgramKind::new(program.as_ref()),
+            *expected_kind,
+            "actual != expected program kind for input {program}",
+        );
+    }
+}
