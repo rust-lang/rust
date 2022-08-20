@@ -2079,7 +2079,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             diag.span_suggestion(
                                 span,
                                 *msg,
-                                format!("{}.as_ref()", snippet),
+                                // HACK: fix issue# 100605, suggesting convert from &Option<T> to Option<&T>, remove the extra `&`
+                                format!("{}.as_ref()", snippet.trim_start_matches('&')),
                                 Applicability::MachineApplicable,
                             );
                         }
