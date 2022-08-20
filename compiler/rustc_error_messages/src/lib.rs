@@ -58,6 +58,7 @@ fluent_messages! {
     metadata => "../locales/en-US/metadata.ftl",
     middle => "../locales/en-US/middle.ftl",
     mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
+    mir_build => "../locales/en-US/mir_build.ftl",
     monomorphize => "../locales/en-US/monomorphize.ftl",
     parse => "../locales/en-US/parse.ftl",
     passes => "../locales/en-US/passes.ftl",

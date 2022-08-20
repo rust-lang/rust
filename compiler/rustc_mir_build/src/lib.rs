@@ -19,6 +19,7 @@ extern crate rustc_middle;
 
 mod build;
 mod check_unsafety;
+mod errors;
 mod lints;
 pub mod thir;
 
