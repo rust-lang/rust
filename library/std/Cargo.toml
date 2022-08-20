@@ -39,7 +39,7 @@ rand = "0.7"
 dlmalloc = { version = "0.2.3", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
-fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+fortanix-sgx-abi = { version = "0.5.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(target_os = "hermit")'.dependencies]
 hermit-abi = { version = "0.2.0", features = ['rustc-dep-of-std'] }

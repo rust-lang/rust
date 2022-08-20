@@ -145,6 +145,7 @@
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(utf8_chunks)]
 #![feature(std_internals)]
 //
 // Language features:
