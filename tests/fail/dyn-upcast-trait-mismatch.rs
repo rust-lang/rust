@@ -51,8 +51,7 @@ impl Baz for i32 {
 
 fn main() {
     let baz: &dyn Baz = &1;
-    // We already fail on the implicit upcast inserted here.
     let baz_fake: &dyn Bar = unsafe { std::mem::transmute(baz) };
-    //~^ERROR: upcast on a pointer whose vtable does not match its type
     let _err = baz_fake as &dyn Foo;
+    //~^ERROR: upcast on a pointer whose vtable does not match its type
 }
