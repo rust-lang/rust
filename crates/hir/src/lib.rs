@@ -531,7 +531,7 @@ impl Module {
                     if def_map[m.id.local_id].origin.is_inline() {
                         m.diagnostics(db, acc)
                     }
-                },
+                }
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
