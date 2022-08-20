@@ -1,5 +1,45 @@
+use rustc_errors::{fluent, AddSubdiagnostic};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
+
+#[derive(SessionDiagnostic)]
+#[error(lint::overruled_attribute, code = "E0453")]
+pub struct OverruledAttribute {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub overruled: Span,
+    pub lint_level: String,
+    pub lint_source: Symbol,
+    #[subdiagnostic]
+    pub sub: OverruledAttributeSub,
+}
+//
+pub enum OverruledAttributeSub {
+    DefaultSource { id: String },
+    NodeSource { span: Span, reason: Option<Symbol> },
+    CommandLineSource,
+}
+
+impl AddSubdiagnostic for OverruledAttributeSub {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self {
+            OverruledAttributeSub::DefaultSource { id } => {
+                diag.note(fluent::lint::default_source);
+                diag.set_arg("id", id);
+            }
+            OverruledAttributeSub::NodeSource { span, reason } => {
+                diag.span_label(span, fluent::lint::node_source);
+                if let Some(rationale) = reason {
+                    diag.note(rationale.as_str());
+                }
+            }
+            OverruledAttributeSub::CommandLineSource => {
+                diag.note(fluent::lint::command_line_source);
+            }
+        }
+    }
+}
 
 #[derive(SessionDiagnostic)]
 #[error(lint::malformed_attribute, code = "E0452")]

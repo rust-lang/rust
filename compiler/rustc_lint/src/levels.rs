@@ -6,7 +6,7 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
@@ -26,7 +26,10 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
-use crate::errors::{MalformedAttribute, MalformedAttributeSub, UnknownTool};
+use crate::errors::{
+    MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
+    UnknownTool,
+};
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
@@ -191,16 +194,26 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
                 };
                 if !fcw_warning {
-                    let mut diag_builder = struct_span_err!(
-                        self.sess,
-                        src.span(),
-                        E0453,
-                        "{}({}) incompatible with previous forbid",
-                        level.as_str(),
-                        src.name(),
-                    );
-                    decorate_diag(&mut diag_builder);
-                    diag_builder.emit();
+                    self.sess.emit_err(OverruledAttribute {
+                        span: src.span(),
+                        overruled: src.span(),
+                        lint_level: level.as_str().to_string(),
+                        lint_source: src.name(),
+                        sub: match old_src {
+                            LintLevelSource::Default => {
+                                OverruledAttributeSub::DefaultSource { id: id.to_string() }
+                            }
+                            LintLevelSource::Node(_, forbid_source_span, reason) => {
+                                OverruledAttributeSub::NodeSource {
+                                    span: forbid_source_span,
+                                    reason,
+                                }
+                            }
+                            LintLevelSource::CommandLine(_, _) => {
+                                OverruledAttributeSub::CommandLineSource
+                            }
+                        },
+                    });
                 } else {
                     self.struct_lint(
                         FORBIDDEN_LINT_GROUPS,

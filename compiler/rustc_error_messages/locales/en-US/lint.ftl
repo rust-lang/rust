@@ -394,6 +394,16 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
 
+lint_overruled_attribute = {$lint_level}({$lint_source}) incompatible with previous forbid
+    .label = overruled by previous forbid
+
+lint_default_source = `forbid` lint level is the default for {$id}
+
+lint_node_source = `forbid` level set here
+    .note = {$reason}
+
+lint_command_line_source = `forbid` lint level was set on command line
+
 lint_malformed_attribute = malformed lint attribute input
 
 lint_bad_attribute_argument = bad attribute argument
