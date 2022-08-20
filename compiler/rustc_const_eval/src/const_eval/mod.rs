@@ -1,6 +1,6 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use crate::errors::MaxNumNodesExceeded;
+use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
     Scalar,
@@ -77,7 +77,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let msg = format!("maximum number of nodes exceeded in constant {}", &s);
                     let mut diag = match tcx.hir().span_if_local(did) {
-                        Some(span) => tcx.sess.create_err(MaxNumNodesExceeded { span, s }),
+                        Some(span) => tcx.sess.create_err(MaxNumNodesInConstErr { span, s }),
                         None => tcx.sess.struct_err(&msg),
                     };
                     diag.emit();

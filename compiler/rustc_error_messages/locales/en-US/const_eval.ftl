@@ -30,11 +30,11 @@ const_eval_transient_mut_borrow = mutable references are not allowed in {$kind}s
 
 const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {$kind}s
 
-const_evaL_max_num_nodes_exceeded = maximum number of nodes exceeded in constant {$s}
+const_evaL_max_num_nodes_in_const_err = maximum number of nodes exceeded in constant {$s}
 
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {$kind}s
 
-const_eval_unstable_const_fn = `{$def_id}` is not yet stable as a const fn
+const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 
 const_eval_unallowed_mutable_refs =
     mutable references are not allowed in the final value of {$kind}s
@@ -65,9 +65,7 @@ const_eval_unallowed_heap_allocations =
     allocations are not allowed in {$kind}s
     .label = allocation not allowed in {$kind}s
     .teach_note = 
-        The value of statics and constants must be known at compile time, and they live for the entire 
-        lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and 
-        therefore cannot be done at compile time.
+        The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {$kind}s

@@ -345,8 +345,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
-        let mut err =
-            ccx.tcx.sess.create_err(UnstableConstFn { span, def_id: ccx.tcx.def_path_str(def_id) });
+        let mut err = ccx
+            .tcx
+            .sess
+            .create_err(UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
@@ -517,17 +519,6 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        // let raw = match self.0 {
-        //     hir::BorrowKind::Raw => "raw ",
-        //     hir::BorrowKind::Ref => "",
-        // };
-
-        // ccx.tcx.sess.create_err(UnallowedMutableRefs {
-        //     span,
-        //     raw,
-        //     kind: ccx.const_kind(),
-        //     teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
-        // })
         match self.0 {
             hir::BorrowKind::Raw => ccx.tcx.sess.create_err(UnallowedMutableRefsRaw {
                 span,

@@ -89,8 +89,8 @@ pub(crate) struct TransientMutBorrowErrRaw {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::const_evaL_max_num_nodes_exceeded)]
-pub(crate) struct MaxNumNodesExceeded {
+#[error(const_eval::const_evaL_max_num_nodes_in_const_err)]
+pub(crate) struct MaxNumNodesInConstErr {
     #[primary_span]
     pub span: Span,
     pub s: String,
@@ -109,7 +109,7 @@ pub(crate) struct UnallowedFnPointerCall {
 pub(crate) struct UnstableConstFn {
     #[primary_span]
     pub span: Span,
-    pub def_id: String,
+    pub def_path: String,
 }
 
 #[derive(SessionDiagnostic)]
@@ -160,6 +160,7 @@ pub(crate) struct UnallowedOpInConstContext {
 #[error(const_eval::unallowed_heap_allocations, code = "E0010")]
 pub(crate) struct UnallowedHeapAllocations {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub kind: ConstContext,
     #[note(const_eval::teach_note)]
@@ -178,6 +179,7 @@ pub(crate) struct UnallowedInlineAsm {
 #[error(const_eval::interior_mutable_data_refer, code = "E0492")]
 pub(crate) struct InteriorMutableDataRefer {
     #[primary_span]
+    #[label]
     pub span: Span,
     #[help]
     pub opt_help: Option<()>,
