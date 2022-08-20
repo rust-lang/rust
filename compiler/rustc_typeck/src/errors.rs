@@ -340,3 +340,10 @@ pub struct ExternCrateNotIdiomatic {
     pub msg_code: String,
     pub suggestion_code: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::expected_used_symbol)]
+pub struct ExpectedUsedSymbol {
+    #[primary_span]
+    pub span: Span,
+}

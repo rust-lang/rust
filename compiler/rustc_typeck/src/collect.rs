@@ -2836,12 +2836,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
                 }
                 Some(_) => {
-                    tcx.sess
-                        .struct_span_err(
-                            attr.span,
-                            "expected `used`, `used(compiler)` or `used(linker)`",
-                        )
-                        .emit();
+                    tcx.sess.emit_err(errors::ExpectedUsedSymbol { span: attr.span });
                 }
                 None => {
                     // Unfortunately, unconditionally using `llvm.used` causes
