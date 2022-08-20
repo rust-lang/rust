@@ -1617,6 +1617,10 @@ impl<'tcx> Region<'tcx> {
             _ => self.is_free(),
         }
     }
+
+    pub fn is_var(self) -> bool {
+        matches!(self.kind(), ty::ReVar(_))
+    }
 }
 
 /// Type utilities
