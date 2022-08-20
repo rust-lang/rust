@@ -309,6 +309,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     return;
                 }
 
+                sym::ptr_mask => {
+                    let usize_type = self.context.new_type::<usize>();
+                    let void_ptr_type = self.context.new_type::<*const ()>();
+
+                    let ptr = args[0].immediate();
+                    let mask = args[1].immediate();
+
+                    let addr = self.bitcast(ptr, usize_type);
+                    let masked = self.and(addr, mask);
+                    self.bitcast(masked, void_ptr_type)
+                },
+                
                 _ if name_str.starts_with("simd_") => {
                     match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                         Ok(llval) => llval,

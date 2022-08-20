@@ -559,6 +559,21 @@ impl<T: ?Sized> *const T {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *const T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
+        from_raw_parts::<T>(this, metadata(self))
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///

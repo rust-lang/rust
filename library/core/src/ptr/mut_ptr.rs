@@ -575,6 +575,21 @@ impl<T: ?Sized> *mut T {
         )
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *mut T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask) as *mut ();
+        from_raw_parts_mut::<T>(this, metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a unique reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_mut`]
     /// must be used instead.

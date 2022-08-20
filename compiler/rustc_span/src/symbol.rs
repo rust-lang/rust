@@ -1112,6 +1112,7 @@ symbols! {
         ptr,
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,
+        ptr_mask,
         ptr_null,
         ptr_null_mut,
         ptr_offset_from,
