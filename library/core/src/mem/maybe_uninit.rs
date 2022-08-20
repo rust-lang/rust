@@ -298,6 +298,32 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
     }
 
+    /// Converts a mutable reference into a `MaybeUninit<T>` reference.
+    /// It is safe to call [`assume_init_drop`] on the return value of this function.
+    ///
+    /// Note that writing to a `MaybeUninit<T>` will never call `T`'s drop code.
+    /// It is your responsibility to make sure `T` gets dropped before writing a new value.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_from_mut)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut v: Vec<u8> = vec![1, 2, 3, 4];
+    /// let uninit = MaybeUninit::from_mut(&mut v);
+    /// ```
+    #[unstable(feature = "maybe_uninit_from_mut", issue = "none")]
+    #[rustc_const_unstable(feature = "maybe_uninit_from_mut", issue = "none")]
+    #[must_use = "this conversion does nothing unless it's used"]
+    #[inline(always)]
+    pub const fn from_mut(val: &mut T) -> &mut MaybeUninit<T> {
+        let ptr = val as *mut T as *mut MaybeUninit<T>;
+
+        // SAFETY: `MaybeUninit` is `repr(transparent)` and `ptr` already points to a valid `&mut T`.
+        unsafe { &mut *ptr }
+    }
+
     /// Creates a new `MaybeUninit<T>` in an uninitialized state.
     ///
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
