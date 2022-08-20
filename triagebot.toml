@@ -362,12 +362,12 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakar
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
