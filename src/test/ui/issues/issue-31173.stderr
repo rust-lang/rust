@@ -18,15 +18,15 @@ error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std:
 LL |         .collect();
    |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]>>` due to unsatisfied trait bounds
    |
-  ::: $SRC_DIR/core/src/iter/adapters/cloned.rs:LL:COL
-   |
-LL | pub struct Cloned<I> {
-   | -------------------- doesn't satisfy `_: Iterator`
-   |
   ::: $SRC_DIR/core/src/iter/adapters/take_while.rs:LL:COL
    |
 LL | pub struct TakeWhile<I, P> {
    | -------------------------- doesn't satisfy `<_ as Iterator>::Item = &_`
+   |
+  ::: $SRC_DIR/core/src/iter/adapters/cloned.rs:LL:COL
+   |
+LL | pub struct Cloned<I> {
+   | -------------------- doesn't satisfy `_: Iterator`
    |
    = note: the following trait bounds were not satisfied:
            `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]> as Iterator>::Item = &_`

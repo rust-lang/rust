@@ -58,7 +58,6 @@ unsafe fn allow_level() {
     VOID = ();
 
     unsafe { unsf() }
-    //~^ ERROR unnecessary `unsafe` block
 }
 
 unsafe fn nested_allow_level() {
@@ -70,7 +69,6 @@ unsafe fn nested_allow_level() {
         VOID = ();
 
         unsafe { unsf() }
-        //~^ ERROR unnecessary `unsafe` block
     }
 }
 

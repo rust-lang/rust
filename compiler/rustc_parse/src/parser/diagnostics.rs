@@ -334,6 +334,35 @@ struct InInTypo {
     sugg_span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[error(parser::invalid_variable_declaration)]
+pub struct InvalidVariableDeclaration {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: InvalidVariableDeclarationSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum InvalidVariableDeclarationSub {
+    #[suggestion(
+        parser::switch_mut_let_order,
+        applicability = "maybe-incorrect",
+        code = "let mut"
+    )]
+    SwitchMutLetOrder(#[primary_span] Span),
+    #[suggestion(
+        parser::missing_let_before_mut,
+        applicability = "machine-applicable",
+        code = "let mut"
+    )]
+    MissingLet(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_auto, applicability = "machine-applicable", code = "let")]
+    UseLetNotAuto(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_var, applicability = "machine-applicable", code = "let")]
+    UseLetNotVar(#[primary_span] Span),
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -608,6 +637,15 @@ impl<'a> Parser<'a> {
                     self.prev_token.span,
                     "write `pub` instead of `public` to make the item public",
                     "pub",
+                    appl,
+                );
+            }
+
+            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    &format!("write `fn` instead of `{symbol}` to declare a function"),
+                    "fn",
                     appl,
                 );
             }

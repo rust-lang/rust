@@ -28,6 +28,8 @@
 #![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

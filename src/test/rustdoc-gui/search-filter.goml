@@ -69,7 +69,7 @@ click: "#settings-menu"
 wait-for: "#settings"
 click: "#theme-dark"
 wait-for-css: ("#crate-search", {
-    "border": "1px solid rgb(210, 210, 210)",
+    "border": "1px solid rgb(224, 224, 224)",
     "color": "rgb(221, 221, 221)",
     "background-color": "rgb(53, 53, 53)",
 })

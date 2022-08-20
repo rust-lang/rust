@@ -31,14 +31,6 @@ LL | fn bad4() { unsafe { callback(||{}) } }
    |             ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe-thir.rs:25:20
-   |
-LL | unsafe fn bad5() { unsafe { unsf() } }
-   | ----------------   ^^^^^^ unnecessary `unsafe` block
-   | |
-   | because it's nested under this `unsafe` fn
-
-error: unnecessary `unsafe` block
   --> $DIR/lint-unused-unsafe-thir.rs:28:9
    |
 LL |     unsafe {                             // don't put the warning here
@@ -54,13 +46,5 @@ LL |     unsafe {
 LL |         unsafe {
    |         ^^^^^^ unnecessary `unsafe` block
 
-error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe-thir.rs:34:5
-   |
-LL | unsafe fn bad7() {
-   | ---------------- because it's nested under this `unsafe` fn
-LL |     unsafe {
-   |     ^^^^^^ unnecessary `unsafe` block
-
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

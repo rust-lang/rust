@@ -22,6 +22,7 @@ LL |     field2: SafeEnum::Variant4("str".to_string())
    |                                      ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:94:5

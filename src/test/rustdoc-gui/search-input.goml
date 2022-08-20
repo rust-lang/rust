@@ -3,9 +3,8 @@ goto: file://|DOC_PATH|/test_docs/index.html
 local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
 reload:
 
-assert-css: (".search-input", {"border-color": "rgb(224, 224, 224)"})
+assert-css: (".search-input", {"border-color": "rgb(240, 240, 240)"})
 click: ".search-input"
-focus: ".search-input"
 assert-css: (".search-input", {"border-color": "rgb(0, 141, 253)"})
 
 local-storage: {"rustdoc-theme": "light"}
@@ -18,6 +17,6 @@ assert-css: (".search-input", {"border-color": "rgb(102, 175, 233)"})
 local-storage: {"rustdoc-theme": "ayu"}
 reload:
 
-assert-css: (".search-input", {"border-color": "rgb(66, 76, 87)"})
+assert-css: (".search-input", {"border-color": "rgb(92, 103, 115)"})
 click: ".search-input"
-assert-css: (".search-input", {"border-color": "rgb(66, 76, 87)"})
+assert-css: (".search-input", {"border-color": "rgb(92, 103, 115)"})

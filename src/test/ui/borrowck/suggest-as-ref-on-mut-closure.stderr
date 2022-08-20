@@ -5,6 +5,7 @@ LL |     cb.map(|cb| cb());
    |     ^^^--------------
    |     |  |
    |     |  `*cb` moved due to this method call
+   |     help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |     move occurs because `*cb` has type `Option<&mut dyn FnMut()>`, which does not implement the `Copy` trait
    |
 note: this function takes ownership of the receiver `self`, which moves `*cb`
@@ -12,10 +13,6 @@ note: this function takes ownership of the receiver `self`, which moves `*cb`
    |
 LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
    |                            ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
-   |
-LL |     cb.as_ref().map(|cb| cb());
-   |        +++++++++
 
 error[E0596]: cannot borrow `*cb` as mutable, as it is behind a `&` reference
   --> $DIR/suggest-as-ref-on-mut-closure.rs:12:26

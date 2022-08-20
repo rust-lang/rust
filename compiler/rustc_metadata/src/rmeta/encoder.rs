@@ -17,7 +17,6 @@ use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -67,13 +66,10 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // The indices (into the `SourceMap`'s `MonotonicVec`)
     // of all of the `SourceFiles` that we need to serialize.
     // When we serialize a `Span`, we insert the index of its
-    // `SourceFile` into the `GrowableBitSet`.
-    //
-    // This needs to be a `GrowableBitSet` and not a
-    // regular `BitSet` because we may actually import new `SourceFiles`
-    // during metadata encoding, due to executing a query
-    // with a result containing a foreign `Span`.
-    required_source_files: Option<GrowableBitSet<usize>>,
+    // `SourceFile` into the `FxIndexSet`.
+    // The order inside the `FxIndexSet` is used as on-disk
+    // order of `SourceFiles`, and encoded inside `Span`s.
+    required_source_files: Option<FxIndexSet<usize>>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
     symbol_table: FxHashMap<Symbol, usize>,
@@ -240,16 +236,14 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             s.source_file_cache =
                 (source_map.files()[source_file_index].clone(), source_file_index);
         }
+        let (ref source_file, source_file_index) = s.source_file_cache;
+        debug_assert!(source_file.contains(span.lo));
 
-        if !s.source_file_cache.0.contains(span.hi) {
+        if !source_file.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_PARTIAL_SPAN.encode(s);
         }
-
-        let source_files = s.required_source_files.as_mut().expect("Already encoded SourceMap!");
-        // Record the fact that we need to encode the data for this `SourceFile`
-        source_files.insert(s.source_file_cache.1);
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -267,7 +261,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, hi) = if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
+        let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -277,28 +271,40 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             //
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
-            let external_start_pos = {
+            let metadata_index = {
                 // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*s.source_file_cache.0.external_src.lock() {
-                    ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
+                match &*source_file.external_src.lock() {
+                    ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
                     src => panic!("Unexpected external source {:?}", src),
                 }
             };
-            let lo = (span.lo - s.source_file_cache.0.start_pos) + external_start_pos;
-            let hi = (span.hi - s.source_file_cache.0.start_pos) + external_start_pos;
 
-            (TAG_VALID_SPAN_FOREIGN, lo, hi)
+            (TAG_VALID_SPAN_FOREIGN, metadata_index)
         } else {
-            (TAG_VALID_SPAN_LOCAL, span.lo, span.hi)
+            // Record the fact that we need to encode the data for this `SourceFile`
+            let source_files =
+                s.required_source_files.as_mut().expect("Already encoded SourceMap!");
+            let (metadata_index, _) = source_files.insert_full(source_file_index);
+            let metadata_index: u32 =
+                metadata_index.try_into().expect("cannot export more than U32_MAX files");
+
+            (TAG_VALID_SPAN_LOCAL, metadata_index)
         };
 
-        tag.encode(s);
-        lo.encode(s);
+        // Encode the start position relative to the file start, so we profit more from the
+        // variable-length integer encoding.
+        let lo = span.lo - source_file.start_pos;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
-        let len = hi - lo;
+        let len = span.hi - span.lo;
+
+        tag.encode(s);
+        lo.encode(s);
         len.encode(s);
+
+        // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
+        metadata_index.encode(s);
 
         if tag == TAG_VALID_SPAN_FOREIGN {
             // This needs to be two lines to avoid holding the `s.source_file_cache`
@@ -469,7 +475,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
-    fn encode_source_map(&mut self) -> LazyArray<rustc_span::SourceFile> {
+    fn encode_source_map(&mut self) -> LazyTable<u32, LazyValue<rustc_span::SourceFile>> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
@@ -480,66 +486,64 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let working_directory = &self.tcx.sess.opts.working_dir;
 
-        let adapted = all_source_files
-            .iter()
-            .enumerate()
-            .filter(|(idx, source_file)| {
-                // Only serialize `SourceFile`s that were used
-                // during the encoding of a `Span`
-                required_source_files.contains(*idx) &&
-                // Don't serialize imported `SourceFile`s, unless
-                // we're in a proc-macro crate.
-                (!source_file.is_imported() || self.is_proc_macro)
-            })
-            .map(|(_, source_file)| {
-                // At export time we expand all source file paths to absolute paths because
-                // downstream compilation sessions can have a different compiler working
-                // directory, so relative paths from this or any other upstream crate
-                // won't be valid anymore.
-                //
-                // At this point we also erase the actual on-disk path and only keep
-                // the remapped version -- as is necessary for reproducible builds.
-                match source_file.name {
-                    FileName::Real(ref original_file_name) => {
-                        let adapted_file_name =
-                            source_map.path_mapping().to_embeddable_absolute_path(
-                                original_file_name.clone(),
-                                working_directory,
-                            );
+        let mut adapted = TableBuilder::default();
 
-                        if adapted_file_name != *original_file_name {
-                            let mut adapted: SourceFile = (**source_file).clone();
-                            adapted.name = FileName::Real(adapted_file_name);
-                            adapted.name_hash = {
-                                let mut hasher: StableHasher = StableHasher::new();
-                                adapted.name.hash(&mut hasher);
-                                hasher.finish::<u128>()
-                            };
-                            Lrc::new(adapted)
-                        } else {
-                            // Nothing to adapt
-                            source_file.clone()
-                        }
+        // Only serialize `SourceFile`s that were used during the encoding of a `Span`.
+        //
+        // The order in which we encode source files is important here: the on-disk format for
+        // `Span` contains the index of the corresponding `SourceFile`.
+        for (on_disk_index, &source_file_index) in required_source_files.iter().enumerate() {
+            let source_file = &all_source_files[source_file_index];
+            // Don't serialize imported `SourceFile`s, unless we're in a proc-macro crate.
+            assert!(!source_file.is_imported() || self.is_proc_macro);
+
+            // At export time we expand all source file paths to absolute paths because
+            // downstream compilation sessions can have a different compiler working
+            // directory, so relative paths from this or any other upstream crate
+            // won't be valid anymore.
+            //
+            // At this point we also erase the actual on-disk path and only keep
+            // the remapped version -- as is necessary for reproducible builds.
+            let mut source_file = match source_file.name {
+                FileName::Real(ref original_file_name) => {
+                    let adapted_file_name = source_map
+                        .path_mapping()
+                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
+
+                    if adapted_file_name != *original_file_name {
+                        let mut adapted: SourceFile = (**source_file).clone();
+                        adapted.name = FileName::Real(adapted_file_name);
+                        adapted.name_hash = {
+                            let mut hasher: StableHasher = StableHasher::new();
+                            adapted.name.hash(&mut hasher);
+                            hasher.finish::<u128>()
+                        };
+                        Lrc::new(adapted)
+                    } else {
+                        // Nothing to adapt
+                        source_file.clone()
                     }
-                    // expanded code, not from a file
-                    _ => source_file.clone(),
                 }
-            })
-            .map(|mut source_file| {
-                // We're serializing this `SourceFile` into our crate metadata,
-                // so mark it as coming from this crate.
-                // This also ensures that we don't try to deserialize the
-                // `CrateNum` for a proc-macro dependency - since proc macro
-                // dependencies aren't loaded when we deserialize a proc-macro,
-                // trying to remap the `CrateNum` would fail.
-                if self.is_proc_macro {
-                    Lrc::make_mut(&mut source_file).cnum = LOCAL_CRATE;
-                }
-                source_file
-            })
-            .collect::<Vec<_>>();
+                // expanded code, not from a file
+                _ => source_file.clone(),
+            };
 
-        self.lazy_array(adapted.iter().map(|rc| &**rc))
+            // We're serializing this `SourceFile` into our crate metadata,
+            // so mark it as coming from this crate.
+            // This also ensures that we don't try to deserialize the
+            // `CrateNum` for a proc-macro dependency - since proc macro
+            // dependencies aren't loaded when we deserialize a proc-macro,
+            // trying to remap the `CrateNum` would fail.
+            if self.is_proc_macro {
+                Lrc::make_mut(&mut source_file).cnum = LOCAL_CRATE;
+            }
+
+            let on_disk_index: u32 =
+                on_disk_index.try_into().expect("cannot export more than U32_MAX files");
+            adapted.set(on_disk_index, self.lazy(source_file));
+        }
+
+        adapted.encode(&mut self.opaque)
     }
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
@@ -2261,7 +2265,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
-    let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
+    let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
     let hygiene_ctxt = HygieneEncodeContext::default();

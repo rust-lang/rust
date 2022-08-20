@@ -676,6 +676,9 @@ impl CrateStore for CStore {
     }
 
     fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
-        self.get_crate_data(cnum).imported_source_files(sess);
+        let cdata = self.get_crate_data(cnum);
+        for file_index in 0..cdata.root.source_map.size() {
+            cdata.imported_source_file(file_index as u32, sess);
+        }
     }
 }

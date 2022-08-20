@@ -4,6 +4,8 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![allow(rustc::default_hash_types)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 #![recursion_limit = "128"]
 
 use synstructure::decl_derive;
