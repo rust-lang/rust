@@ -2027,6 +2027,11 @@ impl Symbol {
     pub fn can_be_raw(self) -> bool {
         self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
+
+    /// Is this symbol was interned in compiler's `symbols!` macro
+    pub fn is_preinterned(self) -> bool {
+        self.as_u32() < PREINTERNED_SYMBOLS_COUNT
+    }
 }
 
 impl Ident {
