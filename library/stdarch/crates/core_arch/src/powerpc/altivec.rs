@@ -51,6 +51,8 @@ types! {
 
 #[allow(improper_ctypes)]
 extern "C" {
+    #[link_name = "llvm.ppc.altivec.lvx"]
+    fn lvx(p: *const i8) -> vector_unsigned_int;
     #[link_name = "llvm.ppc.altivec.vperm"]
     fn vperm(
         a: vector_signed_int,
@@ -442,8 +444,7 @@ mod sealed {
     #[inline(always)]
     unsafe fn load(off: i32, p: *const i8) -> u32x4 {
         let addr = p.offset(off as isize);
-
-        *(addr as *const u32x4)
+        transmute(lvx(addr))
     }
 
     pub trait VectorLd {
