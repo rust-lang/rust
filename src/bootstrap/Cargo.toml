@@ -39,7 +39,7 @@ cmake = "0.1.38"
 fd-lock = "3.0.6"
 filetime = "0.2"
 getopts = "0.2.19"
-cc = "1.0.69"
+cc = "1.0.73"
 libc = "0.2"
 hex = "0.4"
 serde = { version = "1.0.8", features = ["derive"] }
