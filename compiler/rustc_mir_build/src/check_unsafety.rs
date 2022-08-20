@@ -1,4 +1,5 @@
 use crate::build::ExprCategory;
+use crate::errors::*;
 use rustc_middle::thir::visit::{self, Visitor};
 
 use rustc_errors::struct_span_err;
@@ -83,22 +84,8 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             }
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
-                let (description, note) = kind.description_and_note(self.tcx);
                 // unsafe_op_in_unsafe_fn is disallowed
-                self.tcx.struct_span_lint_hir(
-                    UNSAFE_OP_IN_UNSAFE_FN,
-                    self.hir_context,
-                    span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} is unsafe and requires unsafe block (error E0133)",
-                            description,
-                        ))
-                        .span_label(span, kind.simple_description())
-                        .note(note)
-                        .emit();
-                    },
-                )
+                kind.emit_unsafe_op_in_unsafe_fn_lint(self.tcx, self.hir_context, span);
             }
             SafetyContext::Safe => {
                 let (description, note) = kind.description_and_note(self.tcx);
@@ -539,6 +526,88 @@ enum UnsafeOpKind {
 use UnsafeOpKind::*;
 
 impl UnsafeOpKind {
+    pub fn emit_unsafe_op_in_unsafe_fn_lint(
+        &self,
+        tcx: TyCtxt<'_>,
+        hir_id: hir::HirId,
+        span: Span,
+    ) {
+        match self {
+            CallToUnsafeFunction(did) if did.is_some() => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
+                    span,
+                    function: &tcx.def_path_str(did.unwrap()),
+                },
+            ),
+            CallToUnsafeFunction(..) => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless { span },
+            ),
+            UseOfInlineAssembly => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeUseOfInlineAssemblyRequiresUnsafe { span },
+            ),
+            InitializingTypeWith => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeInitializingTypeWithRequiresUnsafe { span },
+            ),
+            UseOfMutableStatic => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeUseOfMutableStaticRequiresUnsafe { span },
+            ),
+            UseOfExternStatic => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeUseOfExternStaticRequiresUnsafe { span },
+            ),
+            DerefOfRawPointer => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeDerefOfRawPointerRequiresUnsafe { span },
+            ),
+            AccessToUnionField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeAccessToUnionFieldRequiresUnsafe { span },
+            ),
+            MutationOfLayoutConstrainedField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeMutationOfLayoutConstrainedFieldRequiresUnsafe { span },
+            ),
+            BorrowOfLayoutConstrainedField => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeBorrowOfLayoutConstrainedFieldRequiresUnsafe { span },
+            ),
+            CallToFunctionWith(did) => tcx.emit_spanned_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeCallToFunctionWithRequiresUnsafe {
+                    span,
+                    function: &tcx.def_path_str(*did),
+                },
+            ),
+        }
+    }
+
     pub fn simple_description(&self) -> &'static str {
         match self {
             CallToUnsafeFunction(..) => "call to unsafe function",
