@@ -671,7 +671,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It only make sense when suggesting dereferences for arguments
-        let ObligationCauseCode::FunctionArgumentObligation { .. } = obligation.cause.code() else {
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() else {
             return false;
         };
         let param_env = obligation.param_env;
@@ -702,19 +702,22 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(steps).filter(|_| self.predicate_may_hold(&obligation))
                 }) {
                     if steps > 0 {
-                        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            // Don't care about `&mut` because `DerefMut` is used less
-                            // often and user will not expect autoderef happens.
-                            if src.starts_with('&') && !src.starts_with("&mut ") {
-                                let derefs = "*".repeat(steps);
-                                err.span_suggestion(
-                                    span,
-                                    "consider dereferencing here",
-                                    format!("&{}{}", derefs, &src[1..]),
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
+                        // Don't care about `&mut` because `DerefMut` is used less
+                        // often and user will not expect autoderef happens.
+                        if let Some(hir::Node::Expr(hir::Expr {
+                            kind:
+                                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr),
+                            ..
+                        })) = self.tcx.hir().find(*arg_hir_id)
+                        {
+                            let derefs = "*".repeat(steps);
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_lo(),
+                                "consider dereferencing here",
+                                derefs,
+                                Applicability::MachineApplicable,
+                            );
+                            return true;
                         }
                     }
                 } else if real_trait_pred != trait_pred {
