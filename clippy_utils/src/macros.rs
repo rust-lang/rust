@@ -567,7 +567,7 @@ pub enum FormatParamKind {
     Numbered,
     /// A named parameter with a named `value_arg`, such as the `x` in `format!("{x}", x = 1)`.
     Named(Symbol),
-    /// An implicit named paramter, such as the `y` in `format!("{y}")`.
+    /// An implicit named parameter, such as the `y` in `format!("{y}")`.
     NamedInline(Symbol),
 }
 
@@ -584,7 +584,7 @@ pub enum FormatParamKind {
 pub struct FormatParam<'tcx> {
     /// The expression this parameter refers to.
     pub value: &'tcx Expr<'tcx>,
-    /// How this paramter refers to its `value`.
+    /// How this parameter refers to its `value`.
     pub kind: FormatParamKind,
     /// Span of the parameter, may be zero width. Includes the whitespace of implicit parameters.
     ///
