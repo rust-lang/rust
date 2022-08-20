@@ -631,8 +631,23 @@ impl<'tcx> OrphanChecker<'tcx> {
         ControlFlow::CONTINUE
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn found_uncovered_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
         if self.search_first_local_ty {
+            return ControlFlow::CONTINUE;
+        };
+
+        // Fully concrete projections are OK, so check
+        // and only exit if there's generics
+        if let ty::Projection(proj) = *t.kind() {
+            for typ in proj.trait_ref(self.tcx).substs.types() {
+                if let ty::Param(..) = *typ.kind() {
+                    debug!(
+                        "found_uncovered_ty: type parameter found in projection, exit orphan check"
+                    );
+                    return ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t));
+                }
+            }
             ControlFlow::CONTINUE
         } else {
             ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
