@@ -1,0 +1,86 @@
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:19:27
+   |
+LL |     let _ = "hesuo worpd".replace('s', "l").replace('u', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['s', 'u'], "l")`
+   |
+   = note: `-D clippy::collapsible-str-replace` implied by `-D warnings`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:21:27
+   |
+LL |     let _ = "hesuo worpd".replace('s', l).replace('u', l);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['s', 'u'], l)`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:23:27
+   |
+LL |     let _ = "hesuo worpd".replace('s', "l").replace('u', "l").replace('p', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['s', 'u', 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:26:10
+   |
+LL |           .replace('s', "l")
+   |  __________^
+LL | |         .replace('u', "l")
+LL | |         .replace('p', "l")
+LL | |         .replace('d', "l");
+   | |__________________________^ help: replace with: `replace(['s', 'u', 'p', 'd'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:31:27
+   |
+LL |     let _ = "hesuo world".replace(s, "l").replace('u', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([s, 'u'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:33:27
+   |
+LL |     let _ = "hesuo worpd".replace(s, "l").replace('u', "l").replace('p', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([s, 'u', 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:35:27
+   |
+LL |     let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace('p', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([s, u, 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:37:27
+   |
+LL |     let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace(p, "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([s, u, p], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:39:27
+   |
+LL |     let _ = "hesuo worlp".replace('s', "l").replace('u', "l").replace('p', "d");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['s', 'u'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:41:45
+   |
+LL |     let _ = "hesuo worpd".replace('s', "x").replace('u', "l").replace('p', "l");
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['u', 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:44:47
+   |
+LL |     let _ = "hesudo worpd".replace("su", "l").replace('d', "l").replace('p', "l");
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(['d', 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:46:28
+   |
+LL |     let _ = "hesudo worpd".replace(d, "l").replace('p', "l").replace("su", "l");
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([d, 'p'], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:48:27
+   |
+LL |     let _ = "hesuo world".replace(get_filter(), "l").replace('s', "l");
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace([get_filter(), 's'], "l")`
+
+error: aborting due to 13 previous errors
+

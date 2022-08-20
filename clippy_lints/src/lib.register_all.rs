@@ -154,6 +154,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::CHARS_NEXT_CMP),
     LintId::of(methods::CLONE_DOUBLE_REF),
     LintId::of(methods::CLONE_ON_COPY),
+    LintId::of(methods::COLLAPSIBLE_STR_REPLACE),
     LintId::of(methods::ERR_EXPECT),
     LintId::of(methods::EXPECT_FUN_CALL),
     LintId::of(methods::EXTEND_WITH_DRAIN),
