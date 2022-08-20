@@ -448,6 +448,7 @@ const TAG_PARTIAL_SPAN: u8 = 2;
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
+const SYMBOL_PREINTERNED: u8 = 2;
 
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);

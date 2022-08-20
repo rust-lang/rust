@@ -42,6 +42,7 @@ const TAG_EXPN_DATA: u8 = 1;
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
+const SYMBOL_PREINTERNED: u8 = 2;
 
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -745,6 +746,10 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
 
                 sym
             }
+            SYMBOL_PREINTERNED => {
+                let symbol_index = d.read_u32();
+                Symbol::new_from_decoded(symbol_index)
+            }
             _ => unreachable!(),
         }
     }
@@ -939,17 +944,24 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Span {
 // copy&paste impl from rustc_metadata
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Symbol {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
-        match s.symbol_table.entry(*self) {
-            Entry::Vacant(o) => {
-                s.encoder.emit_u8(SYMBOL_STR);
-                let pos = s.encoder.position();
-                o.insert(pos);
-                s.emit_str(self.as_str());
-            }
-            Entry::Occupied(o) => {
-                let x = o.get().clone();
-                s.emit_u8(SYMBOL_OFFSET);
-                s.emit_usize(x);
+        // if symbol preinterned, emit tag and symbol index
+        if self.is_preinterned() {
+            s.encoder.emit_u8(SYMBOL_PREINTERNED);
+            s.encoder.emit_u32(self.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match s.symbol_table.entry(*self) {
+                Entry::Vacant(o) => {
+                    s.encoder.emit_u8(SYMBOL_STR);
+                    let pos = s.encoder.position();
+                    o.insert(pos);
+                    s.emit_str(self.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = o.get().clone();
+                    s.emit_u8(SYMBOL_OFFSET);
+                    s.emit_usize(x);
+                }
             }
         }
     }

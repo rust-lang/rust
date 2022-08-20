@@ -1803,6 +1803,11 @@ impl Symbol {
         Symbol(SymbolIndex::from_u32(n))
     }
 
+    /// for use in Decoder only
+    pub fn new_from_decoded(n: u32) -> Self {
+        Self::new(n)
+    }
+
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
