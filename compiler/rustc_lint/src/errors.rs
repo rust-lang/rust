@@ -1,5 +1,6 @@
-use rustc_errors::{fluent, AddSubdiagnostic};
+use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_session::{lint::Level, parse::ParseSess, SessionDiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -79,4 +80,83 @@ pub struct BuiltinEllpisisInclusiveRangePatterns {
     #[suggestion_short(code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
     pub replace: String,
+}
+
+pub struct RequestedLevel {
+    pub level: Level,
+    pub lint_name: String,
+}
+
+impl AddSubdiagnostic for RequestedLevel {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        diag.note(fluent::lint::requested_level);
+        diag.set_arg(
+            "level",
+            match self.level {
+                Level::Allow => "-A",
+                Level::Warn => "-W",
+                Level::ForceWarn(_) => "--force-warn",
+                Level::Deny => "-D",
+                Level::Forbid => "-F",
+                Level::Expect(_) => {
+                    unreachable!("lints with the level of `expect` should not run this code");
+                }
+            },
+        );
+        diag.set_arg("lint_name", self.lint_name);
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[error(lint::unsupported_group, code = "E0602")]
+pub struct UnsupportedGroup {
+    pub lint_group: String,
+}
+
+pub struct CheckNameUnknown {
+    pub lint_name: String,
+    pub suggestion: Option<Symbol>,
+    pub sub: RequestedLevel,
+}
+
+impl SessionDiagnostic<'_> for CheckNameUnknown {
+    fn into_diagnostic(
+        self,
+        sess: &ParseSess,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(fluent::lint::check_name_unknown);
+        diag.code(rustc_errors::error_code!(E0602));
+        if let Some(suggestion) = self.suggestion {
+            diag.help(fluent::lint::help);
+            diag.set_arg("suggestion", suggestion);
+        }
+        diag.set_arg("lint_name", self.lint_name);
+        diag.subdiagnostic(self.sub);
+        diag
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[error(lint::check_name_unknown_tool, code = "E0602")]
+pub struct CheckNameUnknownTool {
+    pub tool_name: Symbol,
+    #[subdiagnostic]
+    pub sub: RequestedLevel,
+}
+
+#[derive(SessionDiagnostic)]
+#[warning(lint::check_name_warning)]
+pub struct CheckNameWarning {
+    pub msg: String,
+    #[subdiagnostic]
+    pub sub: RequestedLevel,
+}
+
+#[derive(SessionDiagnostic)]
+#[warning(lint::check_name_deprecated)]
+pub struct CheckNameDeprecated {
+    pub lint_name: String,
+    pub new_name: String,
+    #[subdiagnostic]
+    pub sub: RequestedLevel,
 }
