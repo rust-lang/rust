@@ -66,6 +66,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, Binder, List, Region, Subst, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable,
@@ -2661,66 +2662,91 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
     pub fn same_type_modulo_infer(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
+        SameTypeModuloInfer(self).relate(a, b).is_ok()
+    }
+}
+
+struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'a, 'tcx>);
+
+impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.0.tcx
+    }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        // Unused, only for consts which we treat as always equal
+        ty::ParamEnv::empty()
+    }
+
+    fn tag(&self) -> &'static str {
+        "SameTypeModuloInfer"
+    }
+
+    fn a_is_expected(&self) -> bool {
+        true
+    }
+
+    fn relate_with_variance<T: relate::Relate<'tcx>>(
+        &mut self,
+        _variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<'tcx>,
+        a: T,
+        b: T,
+    ) -> relate::RelateResult<'tcx, T> {
+        self.relate(a, b)
+    }
+
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         match (a.kind(), b.kind()) {
-            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) => {
-                if def_a != def_b {
-                    return false;
-                }
-
-                substs_a
-                    .types()
-                    .zip(substs_b.types())
-                    .all(|(a, b)| self.same_type_modulo_infer(a, b))
-            }
-            (&ty::FnDef(did_a, substs_a), &ty::FnDef(did_b, substs_b)) => {
-                if did_a != did_b {
-                    return false;
-                }
-
-                substs_a
-                    .types()
-                    .zip(substs_b.types())
-                    .all(|(a, b)| self.same_type_modulo_infer(a, b))
-            }
-            (&ty::Int(_) | &ty::Uint(_), &ty::Infer(ty::InferTy::IntVar(_)))
+            (ty::Int(_) | ty::Uint(_), ty::Infer(ty::InferTy::IntVar(_)))
             | (
-                &ty::Infer(ty::InferTy::IntVar(_)),
-                &ty::Int(_) | &ty::Uint(_) | &ty::Infer(ty::InferTy::IntVar(_)),
+                ty::Infer(ty::InferTy::IntVar(_)),
+                ty::Int(_) | ty::Uint(_) | ty::Infer(ty::InferTy::IntVar(_)),
             )
-            | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
+            | (ty::Float(_), ty::Infer(ty::InferTy::FloatVar(_)))
             | (
-                &ty::Infer(ty::InferTy::FloatVar(_)),
-                &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
+                ty::Infer(ty::InferTy::FloatVar(_)),
+                ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
             )
-            | (&ty::Infer(ty::InferTy::TyVar(_)), _)
-            | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
-            (&ty::Ref(_, ty_a, mut_a), &ty::Ref(_, ty_b, mut_b)) => {
-                mut_a == mut_b && self.same_type_modulo_infer(ty_a, ty_b)
-            }
-            (&ty::RawPtr(a), &ty::RawPtr(b)) => {
-                a.mutbl == b.mutbl && self.same_type_modulo_infer(a.ty, b.ty)
-            }
-            (&ty::Slice(a), &ty::Slice(b)) => self.same_type_modulo_infer(a, b),
-            (&ty::Array(a_ty, a_ct), &ty::Array(b_ty, b_ct)) => {
-                self.same_type_modulo_infer(a_ty, b_ty) && a_ct == b_ct
-            }
-            (&ty::Tuple(a), &ty::Tuple(b)) => {
-                if a.len() != b.len() {
-                    return false;
-                }
-                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
-            }
-            (&ty::FnPtr(a), &ty::FnPtr(b)) => {
-                let a = a.skip_binder().inputs_and_output;
-                let b = b.skip_binder().inputs_and_output;
-                if a.len() != b.len() {
-                    return false;
-                }
-                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
-            }
-            // FIXME(compiler-errors): This needs to be generalized more
-            _ => a == b,
+            | (ty::Infer(ty::InferTy::TyVar(_)), _)
+            | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
+            (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
+            _ => relate::super_relate_tys(self, a, b),
         }
+    }
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        if (a.is_var() && b.is_free_or_static()) || (b.is_var() && a.is_free_or_static()) || a == b
+        {
+            Ok(a)
+        } else {
+            Err(TypeError::Mismatch)
+        }
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> relate::RelateResult<'tcx, ty::Binder<'tcx, T>>
+    where
+        T: relate::Relate<'tcx>,
+    {
+        Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
+    }
+
+    fn consts(
+        &mut self,
+        a: ty::Const<'tcx>,
+        _b: ty::Const<'tcx>,
+    ) -> relate::RelateResult<'tcx, ty::Const<'tcx>> {
+        // FIXME(compiler-errors): This could at least do some first-order
+        // relation
+        Ok(a)
     }
 }
 
