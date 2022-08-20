@@ -1,5 +1,5 @@
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
 #[error(lint::malformed_attribute, code = "E0452")]
