@@ -16,3 +16,14 @@ borrowck_higher_ranked_subtype_error =
   
 generic_does_not_live_long_enough =
     `{$kind}` does not live long enough
+    
+borrowck_move_borrowed = 
+    cannot move out of `{$desc}` beacause it is borrowed
+    
+borrowck_var_better_not_mut = 
+    variable does not need to be mutable
+    .suggestion = remove this `mut`
+
+borrowck_const_not_used_in_type_alias = 
+    const parameter `{$ct}` is part of concrete type but not \
+          used in parameter list for the `impl Trait` type alias

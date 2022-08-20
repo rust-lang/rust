@@ -1,6 +1,14 @@
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+
+#[derive(SessionDiagnostic)]
+#[error(borrowck::move_borrowed, code = "E0505")]
+pub(crate) struct MoveBorrowed<'cx> {
+    #[primary_span]
+    pub span: Span,
+    pub desc: &'cx str,
+}
 
 #[derive(SessionDiagnostic)]
 #[error(borrowck::move_unsized, code = "E0161")]
@@ -39,6 +47,21 @@ pub(crate) struct HigherRankedSubtypeError {
 #[error(borrowck::generic_does_not_live_long_enough)]
 pub(crate) struct GenericDoesNotLiveLongEnough {
     pub kind: String,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(borrowck::var_better_not_mut)]
+pub(crate) struct VarBetterNotMut {
+    #[suggestion_short(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(borrowck::const_not_used_in_type_alias)]
+pub(crate) struct ConstNotUsedTraitAlias {
+    pub ct: String,
     #[primary_span]
     pub span: Span,
 }
