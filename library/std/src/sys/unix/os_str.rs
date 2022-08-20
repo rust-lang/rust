@@ -11,7 +11,7 @@ use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::{AsInner, IntoInner};
 
-use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
+use core::str::Utf8Chunks;
 
 #[cfg(test)]
 #[path = "../unix/os_str/tests.rs"]
@@ -29,26 +29,32 @@ pub struct Slice {
 }
 
 impl fmt::Debug for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Writes out a valid unicode string with the correct escape sequences
-
-        formatter.write_str("\"")?;
-        for Utf8LossyChunk { valid, broken } in Utf8Lossy::from_bytes(&self.inner).chunks() {
-            for c in valid.chars().flat_map(|c| c.escape_debug()) {
-                formatter.write_char(c)?
-            }
-
-            for b in broken {
-                write!(formatter, "\\x{:02X}", b)?;
-            }
-        }
-        formatter.write_str("\"")
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&Utf8Chunks::new(&self.inner).debug(), f)
     }
 }
 
 impl fmt::Display for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // If we're the empty string then our iterator won't actually yield
+        // anything, so perform the formatting manually
+        if self.inner.is_empty() {
+            return "".fmt(f);
+        }
+
+        for chunk in Utf8Chunks::new(&self.inner) {
+            let valid = chunk.valid();
+            // If we successfully decoded the whole chunk as a valid string then
+            // we can return a direct formatting of the string which will also
+            // respect various formatting flags if possible.
+            if chunk.invalid().is_empty() {
+                return valid.fmt(f);
+            }
+
+            f.write_str(valid)?;
+            f.write_char(char::REPLACEMENT_CHARACTER)?;
+        }
+        Ok(())
     }
 }
 
