@@ -70,3 +70,13 @@ pub struct UnknownTool {
     #[help]
     pub is_nightly_build: Option<()>,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(lint::builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
+pub struct BuiltinEllpisisInclusiveRangePatterns {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion_short(code = "{replace}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub replace: String,
+}
