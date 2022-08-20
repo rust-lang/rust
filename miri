@@ -29,6 +29,10 @@ Format all sources and tests. <flags> are passed to `rustfmt`.
 ./miri clippy <flags>:
 Runs clippy on all sources. <flags> are passed to `cargo clippy`.
 
+./miri cargo <flags>:
+Runs just `cargo <flags>` with the Miri-specific environment variables.
+Mainly meant to be invoked by rust-analyzer.
+
 ./miri many-seeds <command>:
 Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
 variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
@@ -44,7 +48,7 @@ MIRI_SYSROOT:
 If already set, the "sysroot setup" step is skipped.
 
 CARGO_EXTRA_FLAGS:
-Pass extra flags to all cargo invocations.
+Pass extra flags to all cargo invocations. (Ignored by `./miri cargo`.)
 EOF
 )
 
@@ -217,6 +221,11 @@ clippy)
     $CARGO clippy $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml --all-targets "$@"
     $CARGO clippy $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/ui_test/Cargo.toml --all-targets "$@"
     $CARGO clippy $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml "$@"
+    ;;
+cargo)
+    # We carefully kept the working dir intact, so this will run cargo *on the workspace in the
+    # current working dir*, not on the main Miri workspace. That is exactly what RA needs.
+    $CARGO "$@"
     ;;
 *)
     if [ -n "$COMMAND" ]; then
