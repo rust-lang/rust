@@ -587,8 +587,35 @@ pub fn temp_dir() -> PathBuf {
         if cfg!(target_os = "android") {
             PathBuf::from("/data/local/tmp")
         } else if cfg!(target_vendor = "apple") {
-            // on Apple devices, /tmp is a symlink
-            PathBuf::from("/private/tmp")
+            extern "C" {
+                fn confstr(
+                    name: libc::c_int,
+                    buf: *mut libc::c_char,
+                    len: libc::size_t,
+                ) -> libc::size_t;
+            }
+            let tmpdir = unsafe { libc::getenv(b"TMPDIR".as_ptr() as *const libc::c_char) };
+            if tmpdir.is_null() {
+                let mut buf: Vec<u8> = vec![0; libc::PATH_MAX as usize];
+                const _CS_DARWIN_USER_TEMP_DIR: libc::c_int = 65537;
+                let s = unsafe {
+                    confstr(
+                        _CS_DARWIN_USER_TEMP_DIR,
+                        buf.as_mut_ptr() as *mut libc::c_char,
+                        libc::PATH_MAX as usize,
+                    )
+                };
+                if s == 0 {
+                    return PathBuf::from("/private/tmp");
+                }
+                let l = buf.iter().position(|&c| c == 0).unwrap();
+                buf.truncate(l as usize);
+                buf.shrink_to_fit();
+                return PathBuf::from(OsString::from_vec(buf));
+            }
+
+            let p = unsafe { CStr::from_ptr(tmpdir).to_bytes().to_vec() };
+            PathBuf::from(OsString::from_vec(p))
         } else {
             PathBuf::from("/tmp")
         }
