@@ -13,7 +13,7 @@ fn test_full() {
 #[test]
 fn test() {
     let nthreads = 8;
-    let nmsgs = 1000;
+    let nmsgs = if cfg!(miri) { 100 } else { 1000 };
     let q = Queue::new();
     match q.pop() {
         Empty => {}

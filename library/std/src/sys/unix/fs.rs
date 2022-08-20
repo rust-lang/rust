@@ -829,6 +829,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     )))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
@@ -840,6 +841,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     ))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
