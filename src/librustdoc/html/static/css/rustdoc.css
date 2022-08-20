@@ -1164,6 +1164,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .stab .emoji {
 	font-size: 1.25rem;
+	margin-right: 0.3rem;
 }
 
 /* Black one-pixel outline around emoji shapes */
