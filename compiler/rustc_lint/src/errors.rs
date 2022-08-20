@@ -61,8 +61,8 @@ pub enum MalformedAttributeSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::unknown_tool, code = "E0710")]
-pub struct UnknownTool {
+#[error(lint::unknown_tool_in_scoped_lint, code = "E0710")]
+pub struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
     pub tool_name: Symbol,

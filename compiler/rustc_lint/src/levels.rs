@@ -28,7 +28,7 @@ use tracing::debug;
 
 use crate::errors::{
     MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
-    UnknownTool,
+    UnknownToolInScopedLint,
 };
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
@@ -510,7 +510,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
 
                     &CheckLintNameResult::NoTool => {
-                        sess.emit_err(UnknownTool {
+                        sess.emit_err(UnknownToolInScopedLint {
                             span: tool_ident.map(|ident| ident.span),
                             tool_name: tool_name.unwrap(),
                             lint_name: pprust::path_to_string(&meta_item.path),

@@ -412,5 +412,5 @@ lint_reason_must_be_string_literal = reason must be a string literal
 
 lint_reason_must_come_last = reason in lint attribute must come last
 
-lint_unknown_tool = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
+lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
