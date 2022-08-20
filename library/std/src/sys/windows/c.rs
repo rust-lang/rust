@@ -228,8 +228,6 @@ pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
 pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 pub const MSG_PEEK: c_int = 0x2;
 
-pub const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = 0x800;
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct linger {
@@ -1032,7 +1030,6 @@ extern "system" {
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-    pub fn LoadLibraryExA(lplibfilename: *const i8, hfile: HANDLE, dwflags: u32) -> HINSTANCE;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
     pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
