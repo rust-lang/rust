@@ -2638,3 +2638,7 @@ impl_fn_for_zst! {
         unsafe { from_utf8_unchecked(bytes) }
     };
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl !crate::error::Error for &str {}
