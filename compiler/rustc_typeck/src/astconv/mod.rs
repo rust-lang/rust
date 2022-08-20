@@ -35,7 +35,7 @@ use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECT
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
@@ -1453,21 +1453,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .enumerate()
                     .skip(1) // Remove `Self` for `ExistentialPredicate`.
                     .map(|(index, arg)| {
-                        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                            debug!(?ty);
-                            if ty == dummy_self {
-                                let param = &generics.params[index];
-                                missing_type_params.push(param.name);
-                                tcx.ty_error().into()
-                            } else if ty.walk().any(|arg| arg == dummy_self.into()) {
-                                references_self = true;
-                                tcx.ty_error().into()
-                            } else {
-                                arg
-                            }
-                        } else {
-                            arg
+                        if arg == dummy_self.into() {
+                            let param = &generics.params[index];
+                            missing_type_params.push(param.name);
+                            return tcx.ty_error().into();
+                        } else if arg.walk().any(|arg| arg == dummy_self.into()) {
+                            references_self = true;
+                            return tcx.ty_error().into();
                         }
+                        arg
                     })
                     .collect();
                 let substs = tcx.intern_substs(&substs[..]);
@@ -1506,13 +1500,34 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
 
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
-            bound.map_bound(|b| {
-                if b.projection_ty.self_ty() != dummy_self {
-                    tcx.sess.delay_span_bug(
-                        DUMMY_SP,
-                        &format!("trait_ref_to_existential called on {:?} with non-dummy Self", b),
-                    );
+            bound.map_bound(|mut b| {
+                assert_eq!(b.projection_ty.self_ty(), dummy_self);
+
+                // Like for trait refs, verify that `dummy_self` did not leak inside default type
+                // parameters.
+                let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
+                    if arg.walk().any(|arg| arg == dummy_self.into()) {
+                        return true;
+                    }
+                    false
+                });
+                if references_self {
+                    tcx.sess
+                        .delay_span_bug(span, "trait object projection bounds reference `Self`");
+                    let substs: Vec<_> = b
+                        .projection_ty
+                        .substs
+                        .iter()
+                        .map(|arg| {
+                            if arg.walk().any(|arg| arg == dummy_self.into()) {
+                                return tcx.ty_error().into();
+                            }
+                            arg
+                        })
+                        .collect();
+                    b.projection_ty.substs = tcx.intern_substs(&substs[..]);
                 }
+
                 ty::ExistentialProjection::erase_self_ty(tcx, b)
             })
         });
