@@ -88,7 +88,7 @@ fn warn_then_suggest(cx: &LateContext<'_>, span: Span) {
     );
 }
 
-/// Tries to parse an expression as a method call, emiting the warning if necessary.
+/// Tries to parse an expression as a method call, emitting the warning if necessary.
 fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegment<'_>, args: &[Expr<'_>]) {
     if args.is_empty() {
         // When parsing TryFrom::try_from(...).expect(...), we will have more than 1 arg.
@@ -106,7 +106,7 @@ fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegmen
     }
 }
 
-/// Tries to parse an expression as a function call, emiting the warning if necessary.
+/// Tries to parse an expression as a function call, emitting the warning if necessary.
 fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, args: &[Expr<'_>]) {
     if args.len() != 1 {
         return;
