@@ -882,6 +882,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             obligation.cause.code()
         {
             &parent_code
+        } else if let ObligationCauseCode::ItemObligation(_) = obligation.cause.code() {
+            obligation.cause.code()
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
         {
@@ -930,10 +932,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
                     self.predicate_must_hold_modulo_regions(&obligation)
                 };
-                let imm_result = mk_result(trait_pred_and_imm_ref);
-                let mut_result = mk_result(trait_pred_and_mut_ref);
+                let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
+                let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
 
-                if imm_result || mut_result {
+                let (ref_inner_ty_satisfies_pred, ref_inner_ty_mut) =
+                if let ObligationCauseCode::ItemObligation(_) = obligation.cause.code()
+                    && let ty::Ref(_, ty, mutability) = old_pred.self_ty().skip_binder().kind()
+                {
+                    (
+                        mk_result(old_pred.map_bound(|trait_pred| (trait_pred, *ty))),
+                        matches!(mutability, hir::Mutability::Mut),
+                    )
+                } else {
+                    (false, false)
+                };
+
+                if imm_ref_self_ty_satisfies_pred
+                    || mut_ref_self_ty_satisfies_pred
+                    || ref_inner_ty_satisfies_pred
+                {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         // We have a very specific type of error, where just borrowing this argument
                         // might solve the problem. In cases like this, the important part is the
@@ -973,7 +990,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // }
                             // ```
 
-                            if imm_result && mut_result {
+                            if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
                                 err.span_suggestions(
                                     span.shrink_to_lo(),
                                     "consider borrowing here",
@@ -981,13 +998,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
+                                let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
                                 err.span_suggestion_verbose(
                                     span.shrink_to_lo(),
                                     &format!(
                                         "consider{} borrowing here",
-                                        if mut_result { " mutably" } else { "" }
+                                        if is_mut { " mutably" } else { "" }
                                     ),
-                                    format!("&{}", if mut_result { "mut " } else { "" }),
+                                    format!("&{}", if is_mut { "mut " } else { "" }),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -1001,7 +1019,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_) = code
+        | ObligationCauseCode::ItemObligation(..) = code
         {
             try_borrowing(poly_trait_pred, &never_suggest_borrow)
         } else {
