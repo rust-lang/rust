@@ -1,6 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
+use hir::ConstContext;
 use rustc_errors::{
     error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -330,6 +331,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
+
+        if let ConstContext::Static(_) = ccx.const_kind() {
+            err.note("consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell");
+        }
 
         err
     }
