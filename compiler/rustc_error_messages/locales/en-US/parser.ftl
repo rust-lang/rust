@@ -21,7 +21,7 @@ parser_maybe_recover_from_bad_qpath_stage_2 =
 
 parser_incorrect_semicolon =
     expected item, found `;`
-    .suggestion = remove this semicolon
+    .suggestion = remove this semicolon for implicit return
     .help = {$name} declarations are not followed by a semicolon
 
 parser_incorrect_use_of_await =
