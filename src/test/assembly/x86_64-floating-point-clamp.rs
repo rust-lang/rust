@@ -20,6 +20,6 @@ pub fn clamp12_demo(a: f32) -> f32 {
     // CHECK-NEXT: maxss   xmm1, xmm0
     // CHECK-NEXT: movss   xmm0
     // CHECK-NEXT: minss   xmm0, xmm1
-    // CHECK-NEXT: ret
+    // CHECK: ret
     a.clamp(1.0, 2.0)
 }
