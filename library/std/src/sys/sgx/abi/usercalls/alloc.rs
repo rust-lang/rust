@@ -305,6 +305,34 @@ where
     }
 }
 
+// Split a memory region ptr..ptr + len into three parts:
+//   +--------+
+//   | small0 | Chunk smaller than 8 bytes
+//   +--------+
+//   |   big  | Chunk 8-byte aligned, and size a multiple of 8 bytes
+//   +--------+
+//   | small1 | Chunk smaller than 8 bytes
+//   +--------+
+fn region_as_aligned_chunks(ptr: *const u8, len: usize) -> (usize, usize, usize) {
+    let small0_size = if ptr as usize % 8 == 0 { 0 } else { 8 - ptr as usize % 8 };
+    let small1_size = (len - small0_size as usize) % 8;
+    let big_size = len - small0_size as usize - small1_size as usize;
+
+    (small0_size, big_size, small1_size)
+}
+
+unsafe fn copy_quadwords(src: *const u8, dst: *mut u8, len: usize) {
+    unsafe {
+        asm!(
+            "rep movsq (%rsi), (%rdi)",
+            inout("rcx") len / 8 => _,
+            inout("rdi") dst => _,
+            inout("rsi") src => _,
+            options(att_syntax, nostack, preserves_flags)
+        );
+    }
+}
+
 /// Copies `len` bytes of data from enclave pointer `src` to userspace `dst`
 ///
 /// This function mitigates stale data vulnerabilities by ensuring all writes to untrusted memory are either:
@@ -343,17 +371,6 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
         }
     }
 
-    unsafe fn copy_aligned_quadwords_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
-        unsafe {
-            asm!(
-                "rep movsq (%rsi), (%rdi)",
-                inout("rcx") len / 8 => _,
-                inout("rdi") dst => _,
-                inout("rsi") src => _,
-                options(att_syntax, nostack, preserves_flags)
-            );
-        }
-    }
     assert!(!src.is_null());
     assert!(!dst.is_null());
     assert!(is_enclave_range(src, len));
@@ -370,7 +387,7 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
     } else if len % 8 == 0 && dst as usize % 8 == 0 {
         // Copying 8-byte aligned quadwords: copy quad word per quad word
         unsafe {
-            copy_aligned_quadwords_to_userspace(src, dst, len);
+            copy_quadwords(src, dst, len);
         }
     } else {
         // Split copies into three parts:
@@ -381,25 +398,121 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
         //   +--------+
         //   | small1 | Chunk smaller than 8 bytes
         //   +--------+
+        let (small0_size, big_size, small1_size) = region_as_aligned_chunks(dst, len);
 
         unsafe {
             // Copy small0
-            let small0_size = (8 - dst as usize % 8) as u8;
-            let small0_src = src;
-            let small0_dst = dst;
-            copy_bytewise_to_userspace(small0_src as _, small0_dst, small0_size as _);
+            copy_bytewise_to_userspace(src, dst, small0_size as _);
 
             // Copy big
-            let small1_size = ((len - small0_size as usize) % 8) as u8;
-            let big_size = len - small0_size as usize - small1_size as usize;
             let big_src = src.offset(small0_size as _);
             let big_dst = dst.offset(small0_size as _);
-            copy_aligned_quadwords_to_userspace(big_src as _, big_dst, big_size);
+            copy_quadwords(big_src as _, big_dst, big_size);
 
             // Copy small1
             let small1_src = src.offset(big_size as isize + small0_size as isize);
             let small1_dst = dst.offset(big_size as isize + small0_size as isize);
             copy_bytewise_to_userspace(small1_src, small1_dst, small1_size as _);
+        }
+    }
+}
+
+/// Copies `len` bytes of data from userspace pointer `src` to enclave pointer `dst`
+///
+/// This function mitigates AEPIC leak vulnerabilities by ensuring all reads from untrusted memory are 8-byte aligned
+///
+/// # Panics
+/// This function panics if:
+///
+/// * The `src` pointer is null
+/// * The `dst` pointer is null
+/// * The `src` memory range is not in user memory
+/// * The `dst` memory range is not in enclave memory
+///
+/// # References
+///  - https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00657.html
+///  - https://www.intel.com/content/www/us/en/developer/articles/technical/software-security-guidance/advisory-guidance/stale-data-read-from-xapic.html
+pub(crate) unsafe fn copy_from_userspace(src: *const u8, dst: *mut u8, len: usize) {
+    // Copies memory region `src..src + len` to the enclave at `dst`. The source memory region
+    // is:
+    //  - strictly less than 8 bytes in size and may be
+    //  - located at a misaligned memory location
+    fn copy_misaligned_chunk_to_enclave(src: *const u8, dst: *mut u8, len: usize) {
+        let mut tmp_buff = [0u8; 16];
+
+        unsafe {
+            // Compute an aligned memory region to read from
+            // +--------+ <-- aligned_src + aligned_len (8B-aligned)
+            // |  pad1  |
+            // +--------+ <-- src + len (misaligned)
+            // |        |
+            // |        |
+            // |        |
+            // +--------+ <-- src (misaligned)
+            // |  pad0  |
+            // +--------+ <-- aligned_src (8B-aligned)
+            let pad0_size = src as usize % 8;
+            let aligned_src = src.sub(pad0_size);
+
+            let pad1_size = 8 - (src.add(len) as usize % 8);
+            let aligned_len = pad0_size + len + pad1_size;
+
+            debug_assert!(len < 8);
+            debug_assert_eq!(aligned_src as usize % 8, 0);
+            debug_assert_eq!(aligned_len % 8, 0);
+            debug_assert!(aligned_len <= 16);
+
+            // Copy the aligned buffer to a temporary buffer
+            // Note: copying from a slightly different memory location is a bit odd. In this case it
+            // can't lead to page faults or inadvertent copying from the enclave as we only ensured
+            // that the `src` pointer is aligned at an 8 byte boundary. As pages are 4096 bytes
+            // aligned, `aligned_src` must be on the same page as `src`. A similar argument can be made
+            // for `src + len`
+            copy_quadwords(aligned_src as _, tmp_buff.as_mut_ptr(), aligned_len);
+
+            // Copy the correct parts of the temporary buffer to the destination
+            ptr::copy(tmp_buff.as_ptr().add(pad0_size), dst, len);
+        }
+    }
+
+    assert!(!src.is_null());
+    assert!(!dst.is_null());
+    assert!(is_user_range(src, len));
+    assert!(is_enclave_range(dst, len));
+    assert!(!(src as usize).overflowing_add(len + 8).1);
+    assert!(!(dst as usize).overflowing_add(len + 8).1);
+
+    if len < 8 {
+        copy_misaligned_chunk_to_enclave(src, dst, len);
+    } else if len % 8 == 0 && src as usize % 8 == 0 {
+        // Copying 8-byte aligned quadwords: copy quad word per quad word
+        unsafe {
+            copy_quadwords(src, dst, len);
+        }
+    } else {
+        // Split copies into three parts:
+        //   +--------+
+        //   | small0 | Chunk smaller than 8 bytes
+        //   +--------+
+        //   |   big  | Chunk 8-byte aligned, and size a multiple of 8 bytes
+        //   +--------+
+        //   | small1 | Chunk smaller than 8 bytes
+        //   +--------+
+        let (small0_size, big_size, small1_size) = region_as_aligned_chunks(dst, len);
+
+        unsafe {
+            // Copy small0
+            copy_misaligned_chunk_to_enclave(src, dst, small0_size);
+
+            // Copy big
+            let big_src = src.add(small0_size);
+            let big_dst = dst.add(small0_size);
+            copy_quadwords(big_src, big_dst, big_size);
+
+            // Copy small1
+            let small1_src = src.add(big_size + small0_size);
+            let small1_dst = dst.add(big_size + small0_size);
+            copy_misaligned_chunk_to_enclave(small1_src, small1_dst, small1_size);
         }
     }
 }
@@ -468,7 +581,7 @@ where
     pub fn copy_to_enclave(&self, dest: &mut T) {
         unsafe {
             assert_eq!(mem::size_of_val(dest), mem::size_of_val(&*self.0.get()));
-            ptr::copy(
+            copy_from_userspace(
                 self.0.get() as *const T as *const u8,
                 dest as *mut T as *mut u8,
                 mem::size_of_val(dest),
@@ -494,7 +607,11 @@ where
 {
     /// Copies the value from user memory into enclave memory.
     pub fn to_enclave(&self) -> T {
-        unsafe { ptr::read(self.0.get()) }
+        unsafe {
+            let mut data: T = mem::MaybeUninit::uninit().assume_init();
+            copy_from_userspace(self.0.get() as _, &mut data as *mut T as _, mem::size_of::<T>());
+            data
+        }
     }
 }
 
