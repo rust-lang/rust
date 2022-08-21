@@ -132,7 +132,6 @@ typeck_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
 
-<<<<<<< HEAD
 typeck_safe_trait_implemented_as_unsafe =
     implementing the trait `{$trait_name}` is not unsafe
 

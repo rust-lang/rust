@@ -342,8 +342,7 @@ pub struct ExternCrateNotIdiomatic {
 }
 
 #[derive(SessionDiagnostic)]
-<<<<<<< HEAD
-#[error(typeck::safe_trait_implemented_as_unsafe, code = "E0199")]
+#[diag(typeck::safe_trait_implemented_as_unsafe, code = "E0199")]
 pub struct SafeTraitImplementedAsUnsafe {
     #[primary_span]
     pub span: Span,
@@ -351,7 +350,7 @@ pub struct SafeTraitImplementedAsUnsafe {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::unsafe_trait_implemented_without_unsafe_keyword, code = "E0200")]
+#[diag(typeck::unsafe_trait_implemented_without_unsafe_keyword, code = "E0200")]
 pub struct UnsafeTraitImplementedWithoutUnsafeKeyword {
     #[primary_span]
     pub span: Span,
@@ -359,7 +358,7 @@ pub struct UnsafeTraitImplementedWithoutUnsafeKeyword {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::attribute_requires_unsafe_keyword, code = "E0569")]
+#[diag(typeck::attribute_requires_unsafe_keyword, code = "E0569")]
 pub struct AttributeRequiresUnsafeKeyword<'a> {
     #[primary_span]
     pub span: Span,
@@ -370,7 +369,7 @@ pub struct AttributeRequiresUnsafeKeyword<'a> {
 pub enum UnconstrainedParameterType {
     Type,
     Lifetime,
-    Const
+    Const,
 }
 
 pub struct TypeParameterNotConstrainedForImpl {
@@ -408,7 +407,7 @@ impl<'a> SessionDiagnostic<'a> for TypeParameterNotConstrainedForImpl {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::associated_items_not_distinct, code = "E0201")]
+#[diag(typeck::associated_items_not_distinct, code = "E0201")]
 pub struct AssociatedItemsNotDistinct {
     #[primary_span]
     #[label]
@@ -446,7 +445,7 @@ pub enum AssociatedTypeNotDefinedInTraitComment {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::associated_items_not_defined_in_trait, code = "E0220")]
+#[diag(typeck::associated_items_not_defined_in_trait, code = "E0220")]
 pub struct AssociatedTypeNotDefinedInTrait<'a> {
     #[primary_span]
     pub span: Span,
@@ -457,7 +456,7 @@ pub struct AssociatedTypeNotDefinedInTrait<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::enum_discriminant_overflow, code = "E0370")]
+#[diag(typeck::enum_discriminant_overflow, code = "E0370")]
 pub struct EnumDiscriminantOverflow {
     #[primary_span]
     #[label]
@@ -470,7 +469,7 @@ pub struct EnumDiscriminantOverflow {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::rustc_paren_sugar_not_enabled)]
+#[diag(typeck::rustc_paren_sugar_not_enabled)]
 pub struct RustcParenSugarNotEnabled {
     #[primary_span]
     pub span: Span,
@@ -499,49 +498,49 @@ impl<'a, 'b> SessionDiagnostic<'a> for AttributeOnNonForeignFunction<'b> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ffi_const_and_ffi_pure_on_same_function, code = "E0757")]
+#[diag(typeck::ffi_const_and_ffi_pure_on_same_function, code = "E0757")]
 pub struct FFIConstAndFFIPureOnSameFunction {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::cmse_nonsecure_entry_requires_c_abi, code = "E0776")]
+#[diag(typeck::cmse_nonsecure_entry_requires_c_abi, code = "E0776")]
 pub struct CMSENonSecureEntryRequiresCAbi {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::cmse_nonsecure_entry_requires_trust_zone_m_ext, code = "E0775")]
+#[diag(typeck::cmse_nonsecure_entry_requires_trust_zone_m_ext, code = "E0775")]
 pub struct CMSENonSecureEntryRequiresTrustZoneMExt {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::track_caller_requires_cabi, code = "E0737")]
+#[diag(typeck::track_caller_requires_cabi, code = "E0737")]
 pub struct TrackCallerRequiresCAbi {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::export_name_contains_null_characters, code = "E0648")]
+#[diag(typeck::export_name_contains_null_characters, code = "E0648")]
 pub struct ExportNameContainsNullCharacters {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::instruction_set_unsupported_on_target, code = "E0779")]
+#[diag(typeck::instruction_set_unsupported_on_target, code = "E0779")]
 pub struct InstructionSetUnsupportedOnTarget {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::varargs_on_non_cabi_function, code = "E0045")]
+#[diag(typeck::varargs_on_non_cabi_function, code = "E0045")]
 pub struct VarargsOnNonCabiFunction {
     #[primary_span]
     #[label]
@@ -549,7 +548,7 @@ pub struct VarargsOnNonCabiFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::generic_params_on_main_function, code = "E0131")]
+#[diag(typeck::generic_params_on_main_function, code = "E0131")]
 pub struct GenericParamsOnMainFunction {
     #[primary_span]
     pub span: Span,
@@ -558,7 +557,7 @@ pub struct GenericParamsOnMainFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::when_clause_on_main_function, code = "E0646")]
+#[diag(typeck::when_clause_on_main_function, code = "E0646")]
 pub struct WhenClauseOnMainFunction {
     #[primary_span]
     pub span: Span,
@@ -567,7 +566,7 @@ pub struct WhenClauseOnMainFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::async_main_function, code = "E0752")]
+#[diag(typeck::async_main_function, code = "E0752")]
 pub struct AsyncMainFunction {
     #[primary_span]
     pub span: Span,
@@ -576,14 +575,14 @@ pub struct AsyncMainFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::generic_return_type_on_main, code = "E0131")]
+#[diag(typeck::generic_return_type_on_main, code = "E0131")]
 pub struct GenericReturnTypeOnMain {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::type_parameter_on_start_function, code = "E0132")]
+#[diag(typeck::type_parameter_on_start_function, code = "E0132")]
 pub struct TypeParameterOnStartFunction {
     #[primary_span]
     #[label]
@@ -591,7 +590,7 @@ pub struct TypeParameterOnStartFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::where_clause_on_start_function, code = "E0647")]
+#[diag(typeck::where_clause_on_start_function, code = "E0647")]
 pub struct WhereClauseOnStartFunction {
     #[primary_span]
     pub span: Span,
@@ -600,7 +599,7 @@ pub struct WhereClauseOnStartFunction {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::async_start_function, code = "E0752")]
+#[diag(typeck::async_start_function, code = "E0752")]
 pub struct AsyncStartFunction {
     #[primary_span]
     #[label]
@@ -633,7 +632,7 @@ pub enum AmbiguousAssociatedTypeFixSuggestion<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_associated_type, code = "E0223")]
+#[diag(typeck::ambiguous_associated_type, code = "E0223")]
 pub struct AmbiguousAssociatedType<'a> {
     #[primary_span]
     pub span: Span,
@@ -662,7 +661,7 @@ pub enum EnumVariantNotFoundFixOrInfo<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::enum_variant_not_found, code = "E0599")]
+#[diag(typeck::enum_variant_not_found, code = "E0599")]
 pub struct EnumVariantNotFound<'a> {
     #[primary_span]
     pub span: Span,
@@ -674,6 +673,7 @@ pub struct EnumVariantNotFound<'a> {
     pub self_type: &'a str,
 }
 
+#[derive(SessionDiagnostic)]
 #[diag(typeck::expected_used_symbol)]
 pub struct ExpectedUsedSymbol {
     #[primary_span]
