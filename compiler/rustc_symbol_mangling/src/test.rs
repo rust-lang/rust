@@ -62,16 +62,16 @@ impl SymbolNamesTest<'_> {
             let mangled = tcx.symbol_name(instance);
             tcx.sess.emit_err(InvalidSymbolName {
                 span: attr.span,
-                mangled_formatted: &format!("{mangled}"),
+                mangled_formatted: format!("{mangled}"),
             });
             if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
                 tcx.sess.emit_err(InvalidTraitItem {
                     span: attr.span,
-                    demangling_formatted: &format!("{demangling}"),
+                    demangling_formatted: format!("{demangling}"),
                 });
                 tcx.sess.emit_err(AltInvalidTraitItem {
                     span: attr.span,
-                    alt_demangling_formatted: &format!("{:#}", demangling),
+                    alt_demangling_formatted: format!("{:#}", demangling),
                 });
             }
         }
