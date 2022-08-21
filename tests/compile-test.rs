@@ -413,11 +413,13 @@ fn check_rustfix_coverage() {
     if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
         assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
 
-        for rs_path in missing_coverage_contents.lines() {
-            if Path::new(rs_path).starts_with("tests/ui/crashes") {
+        for rs_file in missing_coverage_contents.lines() {
+            let rs_path = Path::new(rs_file);
+            if rs_path.starts_with("tests/ui/crashes") {
                 continue;
             }
-            let filename = Path::new(rs_path).strip_prefix("tests/ui/").unwrap();
+            assert!(rs_path.starts_with("tests/ui/"), "{:?}", rs_file);
+            let filename = rs_path.strip_prefix("tests/ui/").unwrap();
             assert!(
                 RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS
                     .binary_search_by_key(&filename, Path::new)
@@ -425,7 +427,7 @@ fn check_rustfix_coverage() {
                 "`{}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation. \
                 Please either add `// run-rustfix` at the top of the file or add the file to \
                 `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` in `tests/compile-test.rs`.",
-                rs_path,
+                rs_file,
             );
         }
     }
