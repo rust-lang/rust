@@ -827,9 +827,6 @@ where
                                 ),
                             );
                         } else {
-                            // FIXME: This diagnostic is identical to `IncorrectMetaItem`, barring
-                            // the error code. Consider changing this to `IncorrectMetaItem`. See
-                            // #51489.
                             sess.emit_err(session_diagnostics::IncorrectMetaItem2 {
                                 span: meta.span,
                             });
