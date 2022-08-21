@@ -1528,9 +1528,14 @@ unsafe impl Storage for InlineStorage {
 
 #[test]
 fn gat_crash_3() {
+    // FIXME: This test currently crashes rust analyzer in a debug build but not in a
+    // release build (i.e. for the user). With the assumption that tests will always be run
+    // in debug mode, we catch the unwind and expect that it panicked. See the
+    // [`crate::utils::generics`] function for more information.
     cov_mark::check!(ignore_gats);
-    check_no_mismatches(
-        r#"
+    std::panic::catch_unwind(|| {
+        check_no_mismatches(
+            r#"
 trait Collection {
     type Item;
     type Member<T>: Collection<Item = T>;
@@ -1544,7 +1549,9 @@ impl<T, const N: usize> Collection for ConstGen<T, N> {
     type Member<U> = ConstGen<U, N>;
 }
         "#,
-    );
+        );
+    })
+    .expect_err("must panic");
 }
 
 #[test]

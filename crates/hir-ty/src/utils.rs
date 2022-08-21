@@ -183,9 +183,12 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
             parent_params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
         return if has_consts || parent_has_consts {
             // XXX: treat const generic associated types as not existing to avoid crashes
-            // (#11769, #12193)
-            // Note: also crashes when the parent has const generics (also even if the GAT
+            // (#11769)
+            //
+            // Note: Also crashes when the parent has const generics (also even if the GAT
             // doesn't use them), see `tests::regression::gat_crash_3` for an example.
+            // Avoids that by disabling GATs when the parent (i.e. `impl` block) has
+            // const generics (#12193).
             //
             // Chalk expects the inner associated type's parameters to come
             // *before*, not after the trait's generics as we've always done it.
