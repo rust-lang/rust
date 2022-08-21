@@ -185,19 +185,15 @@ struct IterFunctionVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
         for (expr, hir_id) in block.stmts.iter().filter_map(get_expr_and_hir_id_from_stmt) {
-            if is_loop(expr) {
+            if check_loop_kind(expr).is_some() {
                 continue;
             }
             self.visit_block_expr(expr, hir_id);
         }
         if let Some(expr) = block.expr {
-            if is_loop(expr) {
-                if let Some(higher::WhileLet { let_expr, .. }) = higher::WhileLet::hir(expr) {
-                    self.visit_block_expr(let_expr, None);
-                } else if let Some(higher::While { condition, .. }) = higher::While::hir(expr) {
-                    self.visit_block_expr(condition, None);
-                } else if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr) {
-                    self.visit_block_expr(arg, None);
+            if let Some(loop_kind) = check_loop_kind(expr) {
+                if let LoopKind::Conditional(block_expr) = loop_kind {
+                    self.visit_block_expr(block_expr, None);
                 }
             } else {
                 self.visit_block_expr(expr, None);
@@ -278,21 +274,26 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     }
 }
 
-fn is_loop(expr: &Expr<'_>) -> bool {
-    if let Some(higher::WhileLet { .. }) = higher::WhileLet::hir(expr) {
-        return true;
+enum LoopKind<'tcx> {
+    Conditional(&'tcx Expr<'tcx>),
+    Loop,
+}
+
+fn check_loop_kind<'tcx>(expr: &Expr<'tcx>) -> Option<LoopKind<'tcx>> {
+    if let Some(higher::WhileLet { let_expr, .. }) = higher::WhileLet::hir(expr) {
+        return Some(LoopKind::Conditional(let_expr));
     }
-    if let Some(higher::While { .. }) = higher::While::hir(expr) {
-        return true;
+    if let Some(higher::While { condition, .. }) = higher::While::hir(expr) {
+        return Some(LoopKind::Conditional(condition));
     }
-    if let Some(higher::ForLoop { .. }) = higher::ForLoop::hir(expr) {
-        return true;
+    if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr) {
+        return Some(LoopKind::Conditional(arg));
     }
     if let ExprKind::Loop { .. } = expr.kind {
-        return true;
+        return Some(LoopKind::Loop);
     }
 
-    false
+    None
 }
 
 impl<'tcx> IterFunctionVisitor<'_, 'tcx> {
