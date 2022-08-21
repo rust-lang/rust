@@ -135,16 +135,16 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
 }
 
 #[repr(C)]
-pub(crate) union PtrRepr<T: ?Sized> {
-    pub(crate) const_ptr: *const T,
-    pub(crate) mut_ptr: *mut T,
-    pub(crate) components: PtrComponents<T>,
+union PtrRepr<T: ?Sized> {
+    const_ptr: *const T,
+    mut_ptr: *mut T,
+    components: PtrComponents<T>,
 }
 
 #[repr(C)]
-pub(crate) struct PtrComponents<T: ?Sized> {
-    pub(crate) data_address: *const (),
-    pub(crate) metadata: <T as Pointee>::Metadata,
+struct PtrComponents<T: ?Sized> {
+    data_address: *const (),
+    metadata: <T as Pointee>::Metadata,
 }
 
 // Manual impl needed to avoid `T: Copy` bound.
