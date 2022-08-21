@@ -396,13 +396,18 @@ impl Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
+        #[cfg(unix)]
+        // keep this consistent with the equivalent check in x.py:
+        // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => match env::var_os("USER") {
-                Some(user) => user != sudo_user,
-                None => false,
-            },
+            Some(_sudo_user) => {
+                let uid = unsafe { libc::getuid() };
+                uid == 0
+            }
             None => false,
         };
+        #[cfg(not(unix))]
+        let is_sudo = false;
 
         let ignore_git = config.ignore_git;
         let rust_info = channel::GitInfo::new(ignore_git, &src);
