@@ -14,6 +14,8 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
 
+use crate::session_diagnostics;
+
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
@@ -25,46 +27,38 @@ enum AttrError {
     NonIdentFeature,
     MissingFeature,
     MultipleStabilityLevels,
-    UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
+    UnsupportedLiteral(UnsupportedLiteralReason, /* is_bytestr */ bool),
+}
+
+pub(crate) enum UnsupportedLiteralReason {
+    Generic,
+    CfgString,
+    DeprecatedString,
+    DeprecatedKvPair,
 }
 
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
-    let diag = &sess.span_diagnostic;
     match error {
         AttrError::MultipleItem(item) => {
-            struct_span_err!(diag, span, E0538, "multiple '{}' items", item).emit();
+            sess.emit_err(session_diagnostics::MultipleItem { span, item });
         }
         AttrError::UnknownMetaItem(item, expected) => {
-            let expected = expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
-            struct_span_err!(diag, span, E0541, "unknown meta item '{}'", item)
-                .span_label(span, format!("expected one of {}", expected.join(", ")))
-                .emit();
+            sess.emit_err(session_diagnostics::UnknownMetaItem { span, item, expected });
         }
         AttrError::MissingSince => {
-            struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+            sess.emit_err(session_diagnostics::MissingSince { span });
         }
         AttrError::NonIdentFeature => {
-            struct_span_err!(diag, span, E0546, "'feature' is not an identifier").emit();
+            sess.emit_err(session_diagnostics::NonIdentFeature { span });
         }
         AttrError::MissingFeature => {
-            struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
+            sess.emit_err(session_diagnostics::MissingFeature { span });
         }
         AttrError::MultipleStabilityLevels => {
-            struct_span_err!(diag, span, E0544, "multiple stability levels").emit();
+            sess.emit_err(session_diagnostics::MultipleStabilityLevels { span });
         }
-        AttrError::UnsupportedLiteral(msg, is_bytestr) => {
-            let mut err = struct_span_err!(diag, span, E0565, "{}", msg);
-            if is_bytestr {
-                if let Ok(lint_str) = sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion(
-                        span,
-                        "consider removing the prefix",
-                        &lint_str[1..],
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-            err.emit();
+        AttrError::UnsupportedLiteral(reason, is_bytestr) => {
+            sess.emit_err(session_diagnostics::UnsupportedLiteral { span, reason, is_bytestr });
         }
     }
 }
@@ -326,7 +320,7 @@ where
                             handle_errors(
                                 &sess.parse_sess,
                                 meta.span(),
-                                AttrError::UnsupportedLiteral("unsupported literal", false),
+                                AttrError::UnsupportedLiteral(UnsupportedLiteralReason::Generic, false),
                             );
                             continue 'outer;
                         };
@@ -494,7 +488,10 @@ where
                                 handle_errors(
                                     &sess.parse_sess,
                                     lit.span,
-                                    AttrError::UnsupportedLiteral("unsupported literal", false),
+                                    AttrError::UnsupportedLiteral(
+                                        UnsupportedLiteralReason::Generic,
+                                        false,
+                                    ),
                                 );
                                 continue 'outer;
                             }
@@ -711,7 +708,7 @@ pub fn eval_condition(
                     handle_errors(
                         sess,
                         mi.span(),
-                        AttrError::UnsupportedLiteral("unsupported literal", false),
+                        AttrError::UnsupportedLiteral(UnsupportedLiteralReason::Generic, false),
                     );
                     return false;
                 }
@@ -790,7 +787,7 @@ pub fn eval_condition(
                 sess,
                 lit.span,
                 AttrError::UnsupportedLiteral(
-                    "literal in `cfg` predicate value must be a string",
+                    UnsupportedLiteralReason::CfgString,
                     lit.kind.is_bytestr(),
                 ),
             );
@@ -870,8 +867,7 @@ where
                                 &sess.parse_sess,
                                 lit.span,
                                 AttrError::UnsupportedLiteral(
-                                    "literal in `deprecated` \
-                                    value must be a string",
+                                    UnsupportedLiteralReason::DeprecatedString,
                                     lit.kind.is_bytestr(),
                                 ),
                             );
@@ -934,7 +930,7 @@ where
                                 &sess.parse_sess,
                                 lit.span,
                                 AttrError::UnsupportedLiteral(
-                                    "item in `deprecated` must be a key/value pair",
+                                    UnsupportedLiteralReason::DeprecatedKvPair,
                                     false,
                                 ),
                             );

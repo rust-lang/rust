@@ -10,6 +10,7 @@
 extern crate rustc_macros;
 
 mod builtin;
+mod session_diagnostics;
 
 pub use builtin::*;
 pub use IntType::*;
