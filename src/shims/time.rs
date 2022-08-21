@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::thread::Time;
 use crate::*;
-use thread::Time;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {

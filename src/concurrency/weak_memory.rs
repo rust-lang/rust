@@ -87,6 +87,7 @@ use crate::*;
 use super::{
     data_race::{GlobalState as DataRaceState, ThreadClockSet},
     range_object_map::{AccessType, RangeObjectMap},
+    vector_clock::{VClock, VTimestamp, VectorIdx},
 };
 
 pub type AllocExtra = StoreBufferAlloc;

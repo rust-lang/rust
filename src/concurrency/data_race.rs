@@ -54,7 +54,10 @@ use rustc_target::abi::{Align, Size};
 
 use crate::*;
 
-use super::weak_memory::EvalContextExt as _;
+use super::{
+    vector_clock::{VClock, VTimestamp, VectorIdx},
+    weak_memory::EvalContextExt as _,
+};
 
 pub type AllocExtra = VClockAlloc;
 

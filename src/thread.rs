@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
-use crate::sync::SynchronizationState;
+use crate::concurrency::sync::SynchronizationState;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
