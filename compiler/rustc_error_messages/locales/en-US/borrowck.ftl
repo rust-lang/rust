@@ -25,5 +25,4 @@ borrowck_var_better_not_mut =
     .suggestion = remove this `mut`
 
 borrowck_const_not_used_in_type_alias = 
-    const parameter `{$ct}` is part of concrete type but not \
-          used in parameter list for the `impl Trait` type alias
+    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
