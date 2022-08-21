@@ -725,6 +725,10 @@ fn print_crate_info(
             | TargetFeatures => {
                 codegen_backend.print(*req, sess);
             }
+            RustcPath => match env::current_exe() {
+                Ok(exe) => println!("{}", exe.display()),
+                Err(_) => early_error(ErrorOutputType::default(), "failed to get rustc path"),
+            },
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}
             LinkArgs => {}
