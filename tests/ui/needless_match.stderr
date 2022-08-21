@@ -110,7 +110,7 @@ LL | |         };
    | |_________^ help: replace it with: `ce`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:252:17
+  --> $DIR/needless_match.rs:253:17
    |
 LL |           let _ = match e {
    |  _________________^
@@ -120,7 +120,7 @@ LL | |         };
    | |_________^ help: replace it with: `e`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:258:17
+  --> $DIR/needless_match.rs:259:17
    |
 LL |           let _ = match e {
    |  _________________^
