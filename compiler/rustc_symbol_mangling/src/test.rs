@@ -4,7 +4,7 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use crate::errors::{AltInvalidTraitItem, InvalidSymbolName, InvalidTraitItem};
+use crate::errors::{AltInvalidTraitItem, InvalidDefPath, InvalidSymbolName, InvalidTraitItem};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
@@ -77,8 +77,10 @@ impl SymbolNamesTest<'_> {
         }
 
         for attr in tcx.get_attrs(def_id.to_def_id(), DEF_PATH) {
-            let path = with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id()));
-            tcx.sess.span_err(attr.span, &format!("def-path({})", path));
+            tcx.sess.emit_err(InvalidDefPath {
+                span: attr.span,
+                def_path: with_no_trimmed_paths!(tcx.def_path_str(def_id.to_def_id())),
+            });
         }
     }
 }

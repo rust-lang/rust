@@ -26,3 +26,11 @@ pub struct AltInvalidTraitItem {
     pub span: Span,
     pub alt_demangling_formatted: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(symbol_mangling::invalid_def_path)]
+pub struct InvalidDefPath {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
