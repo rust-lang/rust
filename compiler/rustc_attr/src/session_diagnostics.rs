@@ -8,14 +8,14 @@ use rustc_span::{Span, Symbol};
 use crate::UnsupportedLiteralReason;
 
 #[derive(SessionDiagnostic)]
-#[error(attr::expected_one_cfg_pattern, code = "E0536")]
+#[diag(attr::expected_one_cfg_pattern, code = "E0536")]
 pub(crate) struct ExpectedOneCfgPattern {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_predicate, code = "E0537")]
+#[diag(attr::invalid_predicate, code = "E0537")]
 pub(crate) struct InvalidPredicate {
     #[primary_span]
     pub span: Span,
@@ -24,7 +24,7 @@ pub(crate) struct InvalidPredicate {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::multiple_item, code = "E0538")]
+#[diag(attr::multiple_item, code = "E0538")]
 pub(crate) struct MultipleItem {
     #[primary_span]
     pub span: Span,
@@ -33,7 +33,7 @@ pub(crate) struct MultipleItem {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::incorrect_meta_item, code = "E0539")]
+#[diag(attr::incorrect_meta_item, code = "E0539")]
 pub(crate) struct IncorrectMetaItem {
     #[primary_span]
     pub span: Span,
@@ -63,28 +63,28 @@ impl<'a> SessionDiagnostic<'a> for UnknownMetaItem<'_> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::missing_since, code = "E0542")]
+#[diag(attr::missing_since, code = "E0542")]
 pub(crate) struct MissingSince {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::missing_note, code = "E0543")]
+#[diag(attr::missing_note, code = "E0543")]
 pub(crate) struct MissingNote {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::multiple_stability_levels, code = "E0544")]
+#[diag(attr::multiple_stability_levels, code = "E0544")]
 pub(crate) struct MultipleStabilityLevels {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_issue_string, code = "E0545")]
+#[diag(attr::invalid_issue_string, code = "E0545")]
 pub(crate) struct InvalidIssueString {
     #[primary_span]
     pub span: Span,
@@ -142,21 +142,21 @@ impl InvalidIssueStringCause {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::missing_feature, code = "E0546")]
+#[diag(attr::missing_feature, code = "E0546")]
 pub(crate) struct MissingFeature {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::non_ident_feature, code = "E0546")]
+#[diag(attr::non_ident_feature, code = "E0546")]
 pub(crate) struct NonIdentFeature {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::missing_issue, code = "E0547")]
+#[diag(attr::missing_issue, code = "E0547")]
 pub(crate) struct MissingIssue {
     #[primary_span]
     pub span: Span,
@@ -165,7 +165,7 @@ pub(crate) struct MissingIssue {
 // FIXME: This diagnostic is identical to `IncorrectMetaItem`, barring the error code. Consider
 // changing this to `IncorrectMetaItem`. See #51489.
 #[derive(SessionDiagnostic)]
-#[error(attr::incorrect_meta_item, code = "E0551")]
+#[diag(attr::incorrect_meta_item, code = "E0551")]
 pub(crate) struct IncorrectMetaItem2 {
     #[primary_span]
     pub span: Span,
@@ -174,14 +174,14 @@ pub(crate) struct IncorrectMetaItem2 {
 // FIXME: Why is this the same error code as `InvalidReprHintNoParen` and `InvalidReprHintNoValue`?
 // It is more similar to `IncorrectReprFormatGeneric`.
 #[derive(SessionDiagnostic)]
-#[error(attr::incorrect_repr_format_packed_one_or_zero_arg, code = "E0552")]
+#[diag(attr::incorrect_repr_format_packed_one_or_zero_arg, code = "E0552")]
 pub(crate) struct IncorrectReprFormatPackedOneOrZeroArg {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_repr_hint_no_paren, code = "E0552")]
+#[diag(attr::invalid_repr_hint_no_paren, code = "E0552")]
 pub(crate) struct InvalidReprHintNoParen {
     #[primary_span]
     pub span: Span,
@@ -190,7 +190,7 @@ pub(crate) struct InvalidReprHintNoParen {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_repr_hint_no_value, code = "E0552")]
+#[diag(attr::invalid_repr_hint_no_value, code = "E0552")]
 pub(crate) struct InvalidReprHintNoValue {
     #[primary_span]
     pub span: Span,
@@ -234,8 +234,9 @@ impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
         diag
     }
 }
+
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_repr_align_need_arg, code = "E0589")]
+#[diag(attr::invalid_repr_align_need_arg, code = "E0589")]
 pub(crate) struct InvalidReprAlignNeedArg {
     #[primary_span]
     #[suggestion(code = "align(...)", applicability = "has-placeholders")]
@@ -243,7 +244,7 @@ pub(crate) struct InvalidReprAlignNeedArg {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::invalid_repr_generic, code = "E0589")]
+#[diag(attr::invalid_repr_generic, code = "E0589")]
 pub(crate) struct InvalidReprGeneric<'a> {
     #[primary_span]
     pub span: Span,
@@ -253,14 +254,14 @@ pub(crate) struct InvalidReprGeneric<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::incorrect_repr_format_align_one_arg, code = "E0693")]
+#[diag(attr::incorrect_repr_format_align_one_arg, code = "E0693")]
 pub(crate) struct IncorrectReprFormatAlignOneArg {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::incorrect_repr_format_generic, code = "E0693")]
+#[diag(attr::incorrect_repr_format_generic, code = "E0693")]
 pub(crate) struct IncorrectReprFormatGeneric<'a> {
     #[primary_span]
     pub span: Span,
@@ -303,28 +304,28 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::rustc_promotable_pairing, code = "E0717")]
+#[diag(attr::rustc_promotable_pairing, code = "E0717")]
 pub(crate) struct RustcPromotablePairing {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::rustc_allowed_unstable_pairing, code = "E0789")]
+#[diag(attr::rustc_allowed_unstable_pairing, code = "E0789")]
 pub(crate) struct RustcAllowedUnstablePairing {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::cfg_predicate_identifier)]
+#[diag(attr::cfg_predicate_identifier)]
 pub(crate) struct CfgPredicateIdentifier {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::deprecated_item_suggestion)]
+#[diag(attr::deprecated_item_suggestion)]
 #[note]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
@@ -335,21 +336,21 @@ pub(crate) struct DeprecatedItemSuggestion {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::expected_single_version_literal)]
+#[diag(attr::expected_single_version_literal)]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::expected_version_literal)]
+#[diag(attr::expected_version_literal)]
 pub(crate) struct ExpectedVersionLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::expects_feature_list)]
+#[diag(attr::expects_feature_list)]
 pub(crate) struct ExpectsFeatureList {
     #[primary_span]
     pub span: Span,
@@ -358,7 +359,7 @@ pub(crate) struct ExpectsFeatureList {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::expects_features)]
+#[diag(attr::expects_features)]
 pub(crate) struct ExpectsFeatures {
     #[primary_span]
     pub span: Span,
@@ -367,14 +368,14 @@ pub(crate) struct ExpectsFeatures {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(attr::soft_no_args)]
+#[diag(attr::soft_no_args)]
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[warning(attr::unknown_version_literal)]
+#[diag(attr::unknown_version_literal)]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]
     pub span: Span,
