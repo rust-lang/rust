@@ -5,8 +5,8 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
-use super::super::{ByKey, ByPartialEq, Dedup};
+use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Dedup, DedupBy, DedupByKey};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -1726,12 +1726,12 @@ pub trait Iterator {
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
-    fn dedup(self) -> Dedup<Self, ByPartialEq>
+    fn dedup(self) -> Dedup<Self>
     where
         Self: Sized,
         Self::Item: PartialEq,
     {
-        Dedup::new(self, ByPartialEq::new())
+        Dedup::new(self)
     }
 
     /// Removes all but the first of consecutive elements in the iterator
@@ -1773,7 +1773,7 @@ pub trait Iterator {
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
-    fn dedup_by<F>(self, same_bucket: F) -> Dedup<Self, F>
+    fn dedup_by<F>(self, same_bucket: F) -> DedupBy<Self, F>
     where
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> bool,
@@ -1817,13 +1817,13 @@ pub trait Iterator {
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
-    fn dedup_by_key<F, K>(self, key: F) -> Dedup<Self, ByKey<F>>
+    fn dedup_by_key<F, K>(self, key: F) -> DedupByKey<Self, F, K>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> K,
         K: PartialEq,
     {
-        Dedup::new(self, ByKey::new(key))
+        Dedup::new(self, key)
     }
 
     /// Borrows an iterator, rather than consuming it.

@@ -418,13 +418,13 @@ pub use self::adapters::StepBy;
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-pub use self::adapters::{ByKey, ByPartialEq, Dedup};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{
     Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
     Skip, SkipWhile, Take, TakeWhile, Zip,
 };
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+pub use self::adapters::{Dedup, DedupBy, DedupByKey};
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub use self::adapters::{Intersperse, IntersperseWith};
 

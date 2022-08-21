@@ -2,96 +2,88 @@
 
 use crate::iter::{InPlaceIterable, SourceIter};
 
-/// A wrapper type around a key function.
-///
-/// This struct acts like a function which given a key function returns true
-/// if and only if both arguments evaluate to the same key.
-///
-/// This `struct` is created by [`Iterator::dedup_by_key`].
-/// See its documentation for more.
-///
-/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
-#[derive(Debug, Clone, Copy)]
-pub struct ByKey<F> {
-    key: F,
-}
-
-impl<F> ByKey<F> {
-    #[inline]
-    pub(crate) fn new(key: F) -> Self {
-        Self { key }
-    }
-}
-
-impl<F, T, K> FnOnce<(&T, &T)> for ByKey<F>
-where
-    F: FnMut(&T) -> K,
-    K: PartialEq,
-{
-    type Output = bool;
-    #[inline]
-    extern "rust-call" fn call_once(mut self, args: (&T, &T)) -> Self::Output {
-        (self.key)(args.0) == (self.key)(args.1)
-    }
-}
-
-impl<F, T, K> FnMut<(&T, &T)> for ByKey<F>
-where
-    F: FnMut(&T) -> K,
-    K: PartialEq,
-{
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
-        (self.key)(args.0) == (self.key)(args.1)
-    }
-}
-
-/// A zero-sized type for checking partial equality.
-///
-/// This struct acts exactly like the function [`PartialEq::eq`], but its
-/// type is always known during compile time.
+/// An iterator that removes all but the first of consecutive elements in a
+/// given iterator according to the [`PartialEq`] trait implementation.
 ///
 /// This `struct` is created by [`Iterator::dedup`].
 /// See its documentation for more.
 ///
 /// [`Iterator::dedup`]: Iterator::dedup
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
-pub struct ByPartialEq;
+#[derive(Debug, Clone)]
+pub struct Dedup<I>
+where
+    I: Iterator,
+{
+    inner: I,
+    last: Option<Option<I::Item>>,
+}
 
-impl ByPartialEq {
+impl<I> Dedup<I>
+where
+    I: Iterator,
+{
     #[inline]
-    pub(crate) fn new() -> Self {
-        Self
+    pub(crate) fn new(inner: I) -> Self {
+        Self { inner, last: None }
     }
 }
 
-impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
-    type Output = bool;
+impl<I> Iterator for Dedup<I>
+where
+    I: Iterator,
+    I::Item: PartialEq,
+{
+    type Item = I::Item;
+
     #[inline]
-    extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
-        args.0 == args.1
+    fn next(&mut self) -> Option<Self::Item> {
+        let Self { inner, last } = self;
+        let last = last.get_or_insert_with(|| inner.next());
+        let last_item = last.as_ref()?;
+        let next = inner.find(|next_item| next_item != last_item);
+        crate::mem::replace(last, next)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let min = matches!(self.last, Some(Some(_))).into();
+        let max = self.inner.size_hint().1.map(|max| max + min);
+        (min, max)
     }
 }
 
-impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> SourceIter for Dedup<I>
+where
+    I: SourceIter + Iterator,
+{
+    type Source = I::Source;
+
     #[inline]
-    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
-        args.0 == args.1
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner) }
     }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> InPlaceIterable for Dedup<I>
+where
+    I: Iterator,
+    I: InPlaceIterable,
+    I::Item: PartialEq,
+{
 }
 
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator satisfying a given equality relation.
 ///
-/// This `struct` is created by [`Iterator::dedup`], [`Iterator::dedup_by`]
-/// and [`Iterator::dedup_by_key`]. See its documentation for more.
+/// This `struct` is created by [`Iterator::dedup_by`].
+/// See its documentation for more.
 ///
-/// [`Iterator::dedup`]: Iterator::dedup
 /// [`Iterator::dedup_by`]: Iterator::dedup_by
-/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
 #[derive(Debug, Clone)]
-pub struct Dedup<I, F>
+pub struct DedupBy<I, F>
 where
     I: Iterator,
 {
@@ -100,7 +92,7 @@ where
     last: Option<Option<I::Item>>,
 }
 
-impl<I, F> Dedup<I, F>
+impl<I, F> DedupBy<I, F>
 where
     I: Iterator,
 {
@@ -110,7 +102,7 @@ where
     }
 }
 
-impl<I, F> Iterator for Dedup<I, F>
+impl<I, F> Iterator for DedupBy<I, F>
 where
     I: Iterator,
     F: FnMut(&I::Item, &I::Item) -> bool,
@@ -135,7 +127,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F> SourceIter for Dedup<I, F>
+unsafe impl<I, F> SourceIter for DedupBy<I, F>
 where
     I: SourceIter + Iterator,
 {
@@ -149,9 +141,87 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F> InPlaceIterable for Dedup<I, F>
+unsafe impl<I, F> InPlaceIterable for DedupBy<I, F>
 where
     I: InPlaceIterable,
     F: FnMut(&I::Item, &I::Item) -> bool,
+{
+}
+
+/// An iterator that removes all but the first of consecutive elements in a
+/// given iterator that resolve to the same key.
+///
+/// This `struct` is created by  [`Iterator::dedup_by_key`].
+/// See its documentation for more.
+///
+/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
+#[derive(Debug, Clone)]
+pub struct DedupByKey<I, F, K>
+where
+    I: Iterator,
+    F: FnMut(&I::Item) -> K,
+{
+    inner: I,
+    key: F,
+    last: Option<Option<I::Item>>,
+}
+
+impl<I, F, K> DedupByKey<I, F, K>
+where
+    I: Iterator,
+    F: FnMut(&I::Item) -> K,
+{
+    #[inline]
+    pub(crate) fn new(inner: I, key: F) -> Self {
+        Self { inner, key, last: None }
+    }
+}
+
+impl<I, F, K> Iterator for DedupByKey<I, F, K>
+where
+    I: Iterator,
+    F: FnMut(&I::Item) -> K,
+    K: PartialEq,
+{
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let Self { inner, last, key } = self;
+        let last = last.get_or_insert_with(|| inner.next());
+        let last_item = last.as_ref()?;
+        let next = inner.find(|next_item| key(next_item) != key(last_item));
+        crate::mem::replace(last, next)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let min = matches!(self.last, Some(Some(_))).into();
+        let max = self.inner.size_hint().1.map(|max| max + min);
+        (min, max)
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, F, K> SourceIter for DedupByKey<I, F, K>
+where
+    I: SourceIter + Iterator,
+    F: FnMut(&I::Item) -> K,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, F, K> InPlaceIterable for DedupByKey<I, F, K>
+where
+    I: InPlaceIterable,
+    F: FnMut(&I::Item) -> K,
+    K: PartialEq,
 {
 }
