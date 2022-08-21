@@ -33,16 +33,11 @@ attr_invalid_meta_item =
 
 attr_invalid_issue_string =
     `issue` must be a non-zero numeric string or "none"
-attr_must_not_be_zero =
-    `issue` must not be "0", use "none" instead
-attr_empty =
-    cannot parse integer from empty string
-attr_invalid_digit =
-    invalid digit found in string
-attr_pos_overflow =
-    number too large to fit in target type
-attr_neg_overflow =
-    number too small to fit in target type
+    .must_not_be_zero = `issue` must not be "0", use "none" instead
+    .empty = cannot parse integer from empty string
+    .invalid_digit = invalid digit found in string
+    .pos_overflow = number too large to fit in target type
+    .neg_overflow = number too small to fit in target type
 
 attr_missing_issue =
     missing 'issue'
