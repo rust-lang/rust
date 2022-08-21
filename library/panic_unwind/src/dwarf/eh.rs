@@ -75,7 +75,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
 
     let call_site_encoding = reader.read::<u8>();
     let call_site_table_length = reader.read_uleb128();
-    let action_table = reader.ptr.offset(call_site_table_length as isize);
+    let action_table = reader.ptr.add(call_site_table_length as usize);
     let ip = context.ip;
 
     if !USING_SJLJ_EXCEPTIONS {

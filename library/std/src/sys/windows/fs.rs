@@ -512,7 +512,7 @@ impl File {
                     ));
                 }
             };
-            let subst_ptr = path_buffer.offset(subst_off as isize);
+            let subst_ptr = path_buffer.add(subst_off.into());
             let mut subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
             // We should not let it leak through.
@@ -1345,10 +1345,10 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
         let v = br"\??\";
         let v = v.iter().map(|x| *x as u16);
         for c in v.chain(original.as_os_str().encode_wide()) {
-            *buf.offset(i) = c;
+            *buf.add(i) = c;
             i += 1;
         }
-        *buf.offset(i) = 0;
+        *buf.add(i) = 0;
         i += 1;
         (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
         (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
