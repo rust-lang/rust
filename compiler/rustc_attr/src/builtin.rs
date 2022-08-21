@@ -3,7 +3,6 @@
 use rustc_ast as ast;
 use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
@@ -14,7 +13,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
 
-use crate::session_diagnostics;
+use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
@@ -276,7 +275,7 @@ where
                     *item = Some(v);
                     true
                 } else {
-                    sess.emit_err(session_diagnostics::InvalidMetaItem { span: meta.span });
+                    sess.emit_err(session_diagnostics::IncorrectMetaItem { span: meta.span });
                     false
                 }
             };
@@ -788,7 +787,6 @@ where
     I: Iterator<Item = &'a Attribute>,
 {
     let mut depr: Option<(Deprecation, Span)> = None;
-    let diagnostic = &sess.parse_sess.span_diagnostic;
     let is_rustc = sess.features_untracked().staged_api;
 
     'outer: for attr in attrs_iter {
@@ -829,8 +827,12 @@ where
                                 ),
                             );
                         } else {
-                            struct_span_err!(diagnostic, meta.span, E0551, "incorrect meta item")
-                                .emit();
+                            // FIXME: This diagnostic is identical to `IncorrectMetaItem`, barring
+                            // the error code. Consider changing this to `IncorrectMetaItem`. See
+                            // #51489.
+                            sess.emit_err(session_diagnostics::IncorrectMetaItem2 {
+                                span: meta.span,
+                            });
                         }
 
                         false
@@ -971,19 +973,9 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
                     sym::align => {
-                        let mut err = struct_span_err!(
-                            diagnostic,
-                            item.span(),
-                            E0589,
-                            "invalid `repr(align)` attribute: `align` needs an argument"
-                        );
-                        err.span_suggestion(
-                            item.span(),
-                            "supply an argument here",
-                            "align(...)",
-                            Applicability::HasPlaceholders,
-                        );
-                        err.emit();
+                        sess.emit_err(session_diagnostics::InvalidReprAlignNeedArg {
+                            span: item.span(),
+                        });
                         recognised = true;
                         None
                     }
@@ -1012,57 +1004,44 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
-                    struct_span_err!(
-                                diagnostic,
-                                item.span(),
-                                E0552,
-                                "invalid representation hint: `{}` does not take a parenthesized argument list",
-                                name.to_ident_string(),
-                            ).emit();
+                    sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
+                        span: item.span(),
+                        name: name.to_ident_string(),
+                    });
                 }
                 if let Some(literal_error) = literal_error {
-                    struct_span_err!(
-                        diagnostic,
-                        item.span(),
-                        E0589,
-                        "invalid `repr({})` attribute: {}",
-                        name.to_ident_string(),
-                        literal_error
-                    )
-                    .emit();
+                    sess.emit_err(session_diagnostics::InvalidReprGeneric {
+                        span: item.span(),
+                        repr_arg: name.to_ident_string(),
+                        error_part: literal_error,
+                    });
                 }
             } else if let Some(meta_item) = item.meta_item() {
                 if let MetaItemKind::NameValue(ref value) = meta_item.kind {
                     if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
                         let name = meta_item.name_or_empty().to_ident_string();
                         recognised = true;
-                        let mut err = struct_span_err!(
-                            diagnostic,
-                            item.span(),
-                            E0693,
-                            "incorrect `repr({})` attribute format",
-                            name,
-                        );
-                        match value.kind {
-                            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                err.span_suggestion(
-                                    item.span(),
-                                    "use parentheses instead",
-                                    format!("{}({})", name, int),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                            ast::LitKind::Str(s, _) => {
-                                err.span_suggestion(
-                                    item.span(),
-                                    "use parentheses instead",
-                                    format!("{}({})", name, s),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                            _ => {}
-                        }
-                        err.emit();
+                        sess.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
+                            span: item.span(),
+                            repr_arg: &name,
+                            cause: match value.kind {
+                                ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                                    Some(IncorrectReprFormatGenericCause::Int {
+                                        span: item.span(),
+                                        name: &name,
+                                        int,
+                                    })
+                                }
+                                ast::LitKind::Str(symbol, _) => {
+                                    Some(IncorrectReprFormatGenericCause::Symbol {
+                                        span: item.span(),
+                                        name: &name,
+                                        symbol,
+                                    })
+                                }
+                                _ => None,
+                            },
+                        });
                     } else {
                         if matches!(
                             meta_item.name_or_empty(),
@@ -1070,51 +1049,33 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
-                            struct_span_err!(
-                                diagnostic,
-                                meta_item.span,
-                                E0552,
-                                "invalid representation hint: `{}` does not take a value",
-                                meta_item.name_or_empty().to_ident_string(),
-                            )
-                            .emit();
+                            sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
+                                span: meta_item.span,
+                                name: meta_item.name_or_empty().to_ident_string(),
+                            });
                         }
                     }
                 } else if let MetaItemKind::List(_) = meta_item.kind {
                     if meta_item.has_name(sym::align) {
                         recognised = true;
-                        struct_span_err!(
-                            diagnostic,
-                            meta_item.span,
-                            E0693,
-                            "incorrect `repr(align)` attribute format: \
-                                 `align` takes exactly one argument in parentheses"
-                        )
-                        .emit();
+                        sess.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
+                            span: meta_item.span,
+                        });
                     } else if meta_item.has_name(sym::packed) {
                         recognised = true;
-                        struct_span_err!(
-                            diagnostic,
-                            meta_item.span,
-                            E0552,
-                            "incorrect `repr(packed)` attribute format: \
-                                 `packed` takes exactly one parenthesized argument, \
-                                 or no parentheses at all"
-                        )
-                        .emit();
+                        sess.emit_err(session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
+                            span: meta_item.span,
+                        });
                     } else if matches!(
                         meta_item.name_or_empty(),
                         sym::C | sym::simd | sym::transparent
                     ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                     {
                         recognised = true;
-                        struct_span_err!(
-                                diagnostic,
-                                meta_item.span,
-                                E0552,
-                                "invalid representation hint: `{}` does not take a parenthesized argument list",
-                                meta_item.name_or_empty().to_ident_string(),
-                            ).emit();
+                        sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
+                            span: meta_item.span,
+                            name: meta_item.name_or_empty().to_ident_string(),
+                        });
                     }
                 }
             }
@@ -1211,10 +1172,10 @@ fn allow_unstable<'a>(
     let list = attrs
         .filter_map(move |attr| {
             attr.meta_item_list().or_else(|| {
-                sess.diagnostic().span_err(
-                    attr.span,
-                    &format!("`{}` expects a list of feature names", symbol.to_ident_string()),
-                );
+                sess.emit_err(session_diagnostics::ExpectsFeatureList {
+                    span: attr.span,
+                    name: symbol.to_ident_string(),
+                });
                 None
             })
         })
@@ -1223,10 +1184,10 @@ fn allow_unstable<'a>(
     list.into_iter().filter_map(move |it| {
         let name = it.ident().map(|ident| ident.name);
         if name.is_none() {
-            sess.diagnostic().span_err(
-                it.span(),
-                &format!("`{}` expects feature names", symbol.to_ident_string()),
-            );
+            sess.emit_err(session_diagnostics::ExpectsFeatures {
+                span: it.span(),
+                name: symbol.to_ident_string(),
+            });
         }
         name
     })

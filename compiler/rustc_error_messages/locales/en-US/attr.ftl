@@ -28,7 +28,7 @@ attr_unsupported_literal_deprecated_kv_pair =
 attr_unsupported_literal_suggestion =
     consider removing the prefix
 
-attr_invalid_meta_item =
+attr_incorrect_meta_item =
     incorrect meta item
 
 attr_invalid_issue_string =
@@ -76,3 +76,32 @@ attr_deprecated_item_suggestion =
 
 attr_missing_note =
     missing 'note'
+
+attr_invalid_repr_align_need_arg =
+    invalid `repr(align)` attribute: `align` needs an argument
+    .suggestion = supply an argument here
+
+attr_invalid_repr_generic =
+    invalid `repr({$repr_arg})` attribute: {$error_part}
+
+attr_invalid_repr_hint_no_paren =
+    invalid representation hint: `{$name}` does not take a parenthesized argument list
+
+attr_invalid_repr_hint_no_value =
+    invalid representation hint: `{$name}` does not take a value
+
+attr_incorrect_repr_format_generic =
+    incorrect `repr({$repr_arg})` attribute format
+    .suggestion = use parentheses instead
+
+attr_incorrect_repr_format_align_one_arg =
+    incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+
+attr_incorrect_repr_format_packed_one_or_zero_arg =
+    incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
+
+attr_expects_feature_list =
+    `{$name}` expects a list of feature names
+
+attr_expects_features =
+    `{$name}` expects feature names
