@@ -778,12 +778,10 @@ impl Step for RustAnalyzerProcMacroSrv {
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
-       $toolstate:ident,
        $path:expr,
        $tool_name:expr,
        stable = $stable:expr,
        $(in_tree = $in_tree:expr,)?
-       $(submodule = $submodule:literal,)?
        $(tool_std = $tool_std:literal,)?
        $extra_deps:block;)+) => {
         $(
@@ -828,7 +826,6 @@ macro_rules! tool_extended {
             #[allow(unused_mut)]
             fn run(mut $sel, $builder: &Builder<'_>) -> Option<PathBuf> {
                 $extra_deps
-                $( $builder.update_submodule(&Path::new("src").join("tools").join($submodule)); )?
                 $builder.ensure(ToolBuild {
                     compiler: $sel.compiler,
                     target: $sel.target,
@@ -854,12 +851,12 @@ macro_rules! tool_extended {
 // Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
-    Miri, miri, "src/tools/miri", "miri", stable=false, {};
-    CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
-    Rls, rls, "src/tools/rls", "rls", stable=true, {
+    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
+    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
+    Clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
+    Miri, "src/tools/miri", "miri", stable=false, {};
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+    Rls, "src/tools/rls", "rls", stable=true, {
         builder.ensure(Clippy {
             compiler: self.compiler,
             target: self.target,
@@ -870,8 +867,8 @@ tool_extended!((self, builder),
     // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
     // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
     // and this is close enough for now.
-    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
+    RustDemangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
+    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
 );
 
 impl<'a> Builder<'a> {
