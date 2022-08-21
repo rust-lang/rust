@@ -473,8 +473,7 @@ pub(crate) fn check_attr_crate_type(
                     return;
                 }
 
-                if let ast::MetaItemKind::NameValue(spanned) = a.meta_kind().unwrap() {
-                    let span = spanned.span;
+                if let ast::MetaItemKind::NameValue(_lit, lit_span) = a.meta_kind().unwrap() {
                     let lev_candidate = find_best_match_for_name(
                         &CRATE_TYPES.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
                         n,
@@ -484,10 +483,10 @@ pub(crate) fn check_attr_crate_type(
                         lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::UNKNOWN_CRATE_TYPES,
                             ast::CRATE_NODE_ID,
-                            span,
+                            lit_span,
                             "invalid `crate_type` value",
                             BuiltinLintDiagnostics::UnknownCrateTypes(
-                                span,
+                                lit_span,
                                 "did you mean".to_string(),
                                 format!("\"{}\"", candidate),
                             ),
@@ -496,7 +495,7 @@ pub(crate) fn check_attr_crate_type(
                         lint_buffer.buffer_lint(
                             lint::builtin::UNKNOWN_CRATE_TYPES,
                             ast::CRATE_NODE_ID,
-                            span,
+                            lit_span,
                             "invalid `crate_type` value",
                         );
                     }

@@ -3126,7 +3126,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     InlineAttr::None
                 }
             }
-            Some(MetaItemKind::NameValue(_)) => ia,
+            Some(MetaItemKind::NameValue(..)) => ia,
             None => ia,
         }
     });
@@ -3155,7 +3155,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     OptimizeAttr::None
                 }
             }
-            Some(MetaItemKind::NameValue(_)) => ia,
+            Some(MetaItemKind::NameValue(..)) => ia,
             None => ia,
         }
     });

@@ -372,7 +372,7 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             vis.visit_span(eq_span);
             vis.visit_expr(expr);
         }
-        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+        MacArgs::Eq(_, MacArgsEq::Hir(lit, _)) => {
             unreachable!("in literal form when visiting mac args eq: {:?}", lit)
         }
     }
@@ -617,7 +617,7 @@ pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
     match li {
         NestedMetaItem::MetaItem(mi) => vis.visit_meta_item(mi),
-        NestedMetaItem::Literal(_lit) => {}
+        NestedMetaItem::Literal(_lit, _lit_span) => {}
     }
 }
 
@@ -626,7 +626,7 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     match kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(mis) => visit_vec(mis, |mi| vis.visit_meta_list_item(mi)),
-        MetaItemKind::NameValue(_s) => {}
+        MetaItemKind::NameValue(_s, _) => {}
     }
     vis.visit_span(span);
 }

@@ -1218,7 +1218,7 @@ pub fn expr_to_spanned_string<'a>(
         ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::ByteStr(_) => {
-                let mut err = cx.struct_span_err(l.span, err_msg);
+                let mut err = cx.struct_span_err(expr.span, err_msg);
                 err.span_suggestion(
                     expr.span.shrink_to_lo(),
                     "consider removing the leading `b`",
@@ -1228,7 +1228,7 @@ pub fn expr_to_spanned_string<'a>(
                 Some((err, true))
             }
             ast::LitKind::Err => None,
-            _ => Some((cx.struct_span_err(l.span, err_msg), false)),
+            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,
         _ => Some((cx.struct_span_err(expr.span, err_msg), false)),

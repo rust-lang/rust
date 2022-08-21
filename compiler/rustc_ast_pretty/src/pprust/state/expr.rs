@@ -320,7 +320,7 @@ impl<'a> State<'a> {
                 self.print_expr_addr_of(k, m, expr);
             }
             ast::ExprKind::Lit(ref lit) => {
-                self.print_literal(lit);
+                self.print_literal(lit, expr.span);
             }
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 let prec = AssocOp::As.precedence() as i8;

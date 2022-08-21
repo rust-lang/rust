@@ -109,7 +109,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                             }
                             match &meta_item.kind {
                                 MetaItemKind::List(..) => {}
-                                MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                                MetaItemKind::NameValue(lit, _) if !lit.kind.is_str() => {
                                     error!("argument value must be a string");
                                 }
                                 MetaItemKind::NameValue(..) | MetaItemKind::Word => {

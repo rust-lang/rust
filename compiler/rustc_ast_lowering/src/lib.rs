@@ -928,12 +928,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Lit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
                         kind: LitKind::Err,
-                        span: DUMMY_SP,
                     }
                 };
-                MacArgs::Eq(eq_span, MacArgsEq::Hir(lit))
+                MacArgs::Eq(eq_span, MacArgsEq::Hir(lit, expr.span))
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(ref lit)) => {
+            MacArgs::Eq(_, MacArgsEq::Hir(ref lit, _)) => {
                 unreachable!("in literal form when lowering mac args eq: {:?}", lit)
             }
         }

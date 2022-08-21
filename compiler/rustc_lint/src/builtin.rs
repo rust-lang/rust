@@ -99,9 +99,10 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind {
-            if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind {
+            let pierced_expr = pierce_parens(cond);
+            if let ast::ExprKind::Lit(ref lit) = pierced_expr.kind {
                 if let ast::LitKind::Bool(true) = lit.kind {
-                    if !lit.span.from_expansion() {
+                    if !pierced_expr.span.from_expansion() {
                         let condition_span = e.span.with_hi(cond.span.hi());
                         cx.struct_span_lint(WHILE_TRUE, condition_span, |lint| {
                             lint.build(fluent::lint::builtin_while_true)

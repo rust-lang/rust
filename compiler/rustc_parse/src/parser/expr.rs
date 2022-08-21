@@ -1402,7 +1402,7 @@ impl<'a> Parser<'a> {
     fn parse_lit_expr(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         match self.parse_opt_lit() {
-            Some(literal) => {
+            Some((literal, _)) => {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal));
                 self.maybe_recover_from_bad_qpath(expr)
             }
@@ -1718,23 +1718,23 @@ impl<'a> Parser<'a> {
     /// Returns a string literal if the next token is a string literal.
     /// In case of error returns `Some(lit)` if the next token is a literal with a wrong kind,
     /// and returns `None` if the next token is not literal at all.
-    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
+    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<(Lit, Span)>> {
         match self.parse_opt_lit() {
-            Some(lit) => match lit.kind {
+            Some((lit, span)) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
                     symbol: lit.token_lit.symbol,
                     suffix: lit.token_lit.suffix,
-                    span: lit.span,
+                    span: span,
                     symbol_unescaped,
                 }),
-                _ => Err(Some(lit)),
+                _ => Err(Some((lit, span))),
             },
             None => Err(None),
         }
     }
 
-    pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
+    pub(super) fn parse_lit(&mut self) -> PResult<'a, (Lit, Span)> {
         self.parse_opt_lit().ok_or_else(|| {
             if let token::Interpolated(inner) = &self.token.kind {
                 let expr = match inner.as_ref() {
@@ -1759,7 +1759,7 @@ impl<'a> Parser<'a> {
 
     /// Matches `lit = true | false | token_lit`.
     /// Returns `None` if the next token is not a literal.
-    pub(super) fn parse_opt_lit(&mut self) -> Option<Lit> {
+    pub(super) fn parse_opt_lit(&mut self) -> Option<(Lit, Span)> {
         let mut recovered = None;
         if self.token == token::Dot {
             // Attempt to recover `.4` as `0.4`. We don't currently have any syntax where
@@ -1784,9 +1784,9 @@ impl<'a> Parser<'a> {
 
         let token = recovered.as_ref().unwrap_or(&self.token);
         match Lit::from_token(token) {
-            Ok(lit) => {
+            Ok((lit, span)) => {
                 self.bump();
-                Some(lit)
+                Some((lit, span))
             }
             Err(LitError::NotLiteral) => None,
             Err(err) => {
@@ -1801,7 +1801,7 @@ impl<'a> Parser<'a> {
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
                 let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                Some(Lit::from_token_lit(lit, span).unwrap_or_else(|_| unreachable!()))
+                Some((Lit::from_token_lit(lit).unwrap_or_else(|_| unreachable!()), span))
             }
         }
     }
@@ -1929,8 +1929,8 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
-        let lit = self.parse_lit()?;
-        let expr = self.mk_expr(lit.span, ExprKind::Lit(lit));
+        let (lit, span) = self.parse_lit()?;
+        let expr = self.mk_expr(span, ExprKind::Lit(lit));
 
         if minus_present {
             Ok(self.mk_expr(lo.to(self.prev_token.span), self.mk_unary(UnOp::Neg, expr)))

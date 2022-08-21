@@ -76,11 +76,11 @@ pub(crate) fn format_expr(
             None,
         ),
         ast::ExprKind::Lit(ref l) => {
-            if let Some(expr_rw) = rewrite_literal(context, l, shape) {
+            if let Some(expr_rw) = rewrite_literal(context, l, expr.span, shape) {
                 Some(expr_rw)
             } else {
                 if let LitKind::StrRaw(_) = l.token_lit.kind {
-                    Some(context.snippet(l.span).trim().into())
+                    Some(context.snippet(expr.span).trim().into())
                 } else {
                     None
                 }
@@ -276,7 +276,7 @@ pub(crate) fn format_expr(
                 match lhs.kind {
                     ast::ExprKind::Lit(ref lit) => match lit.kind {
                         ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                            context.snippet(lit.span).ends_with('.')
+                            context.snippet(lhs.span).ends_with('.')
                         }
                         _ => false,
                     },
@@ -1184,14 +1184,15 @@ pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
 
 pub(crate) fn rewrite_literal(
     context: &RewriteContext<'_>,
-    l: &ast::Lit,
+    lit: &ast::Lit,
+    span: Span,
     shape: Shape,
 ) -> Option<String> {
-    match l.kind {
-        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
+    match lit.kind {
+        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, span, shape),
+        ast::LitKind::Int(..) => rewrite_int_lit(context, lit, span, shape),
         _ => wrap_str(
-            context.snippet(l.span).to_owned(),
+            context.snippet(span).to_owned(),
             context.config.max_width(),
             shape,
         ),
@@ -1224,8 +1225,12 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
     )
 }
 
-fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
-    let span = lit.span;
+fn rewrite_int_lit(
+    context: &RewriteContext<'_>,
+    lit: &ast::Lit,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
     let symbol = lit.token_lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {

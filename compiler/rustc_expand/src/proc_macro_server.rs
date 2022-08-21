@@ -502,11 +502,11 @@ impl server::TokenStream for Rustc<'_, '_> {
             ast::ExprKind::Lit(l) if l.token_lit.kind == token::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
                     token::Ident(l.token_lit.symbol, false),
-                    l.span,
+                    expr.span,
                 ))
             }
             ast::ExprKind::Lit(l) => {
-                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token_lit), l.span))
+                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token_lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(l) => match l.token_lit {
@@ -517,7 +517,7 @@ impl server::TokenStream for Rustc<'_, '_> {
                             tokenstream::TokenTree::token_alone(token::BinOp(token::Minus), e.span),
                             tokenstream::TokenTree::token_alone(
                                 token::Literal(l.token_lit),
-                                l.span,
+                                e.span,
                             ),
                         ]))
                     }

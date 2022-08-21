@@ -939,7 +939,7 @@ pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
         MacArgs::Empty => {}
         MacArgs::Delimited(_dspan, _delim, _tokens) => {}
         MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => visitor.visit_expr(expr),
-        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+        MacArgs::Eq(_, MacArgsEq::Hir(lit, _)) => {
             unreachable!("in literal form when walking mac args eq: {:?}", lit)
         }
     }

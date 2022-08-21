@@ -10,6 +10,7 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::Span;
 use std::iter;
 
 declare_clippy_lint! {
@@ -237,7 +238,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit);
+            self.check_lit(cx, lit, expr.span);
         }
     }
 }
@@ -252,12 +253,12 @@ impl LiteralDigitGrouping {
         }
     }
 
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit, span: Span) {
         if_chain! {
-            if let Some(src) = snippet_opt(cx, lit.span);
+            if let Some(src) = snippet_opt(cx, span);
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, lit);
             then {
-                if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
+                if !Self::check_for_mistyped_suffix(cx, span, &mut num_lit) {
                     return;
                 }
 
@@ -293,14 +294,14 @@ impl LiteralDigitGrouping {
                         | WarningType::InconsistentDigitGrouping
                         | WarningType::UnusualByteGroupings
                         | WarningType::LargeDigitGroups => {
-                            !lit.span.from_expansion()
+                            !span.from_expansion()
                         }
                         WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
                             true
                         }
                     };
                     if should_warn {
-                        warning_type.display(num_lit.format(), cx, lit.span);
+                        warning_type.display(num_lit.format(), cx, span);
                     }
                 }
             }
@@ -459,7 +460,7 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit);
+            self.check_lit(cx, lit, expr.span);
         }
     }
 }
@@ -469,11 +470,11 @@ impl DecimalLiteralRepresentation {
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }
-    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit, span: Span) {
         // Lint integral literals.
         if_chain! {
             if let LitKind::Int(val, _) = lit.kind;
-            if let Some(src) = snippet_opt(cx, lit.span);
+            if let Some(src) = snippet_opt(cx, span);
             if let Some(num_lit) = NumericLiteral::from_lit(&src, lit);
             if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
@@ -481,7 +482,7 @@ impl DecimalLiteralRepresentation {
                 let hex = format!("{:#X}", val);
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                    warning_type.display(num_lit.format(), cx, lit.span);
+                    warning_type.display(num_lit.format(), cx, span);
                 });
             }
         }

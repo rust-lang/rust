@@ -52,7 +52,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                 if let ast::ExprKind::Lit(lit) = &expr.kind {
                     if !lit.kind.is_unsuffixed() {
                         let mut err = sess.span_diagnostic.struct_span_err(
-                            lit.span,
+                            expr.span,
                             "suffixed literals are not allowed in attributes",
                         );
                         err.help(
@@ -61,7 +61,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                         );
                         return Err(err);
                     } else {
-                        MetaItemKind::NameValue(lit.clone())
+                        MetaItemKind::NameValue(lit.clone(), expr.span)
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
@@ -76,7 +76,9 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     return Err(err);
                 }
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
+            MacArgs::Eq(_, MacArgsEq::Hir(lit, lit_span)) => {
+                MetaItemKind::NameValue(lit.clone(), *lit_span)
+            }
         },
     })
 }
@@ -101,7 +103,7 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     match meta {
         MetaItemKind::Word => template.word,
         MetaItemKind::List(..) => template.list.is_some(),
-        MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
+        MetaItemKind::NameValue(lit, _) if lit.kind.is_str() => template.name_value_str.is_some(),
         MetaItemKind::NameValue(..) => false,
     }
 }

@@ -457,7 +457,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
                 if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
                     break;
                 }
-                let span = opt_lit.map_or(p.token.span, |lit| lit.span);
+                let span = opt_lit.map_or(p.token.span, |(_lit, span)| span);
                 let mut err =
                     p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
                 err.span_label(span, "not a string literal");

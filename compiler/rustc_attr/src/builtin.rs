@@ -480,10 +480,10 @@ where
                                     continue 'outer;
                                 }
                             },
-                            NestedMetaItem::Literal(lit) => {
+                            NestedMetaItem::Literal(_, lit_span) => {
                                 handle_errors(
                                     &sess.parse_sess,
-                                    lit.span,
+                                    *lit_span,
                                     AttrError::UnsupportedLiteral(
                                         UnsupportedLiteralReason::Generic,
                                         false,
@@ -654,11 +654,11 @@ pub fn eval_condition(
         ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
-                    (sym, span)
+                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), .. }, lit_span)] => {
+                    (sym, lit_span)
                 }
                 [
-                    NestedMetaItem::Literal(Lit { span, .. })
+                    NestedMetaItem::Literal(_, span)
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
                     sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
@@ -755,10 +755,10 @@ pub fn eval_condition(
             sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
-        MetaItemKind::NameValue(ref lit) if !lit.kind.is_str() => {
+        MetaItemKind::NameValue(ref lit, lit_span) if !lit.kind.is_str() => {
             handle_errors(
                 sess,
-                lit.span,
+                lit_span,
                 AttrError::UnsupportedLiteral(
                     UnsupportedLiteralReason::CfgString,
                     lit.kind.is_bytestr(),
@@ -834,10 +834,10 @@ where
                         *item = Some(v);
                         true
                     } else {
-                        if let Some(lit) = meta.name_value_literal() {
+                        if let Some((lit, lit_span)) = meta.name_value_literal_and_span() {
                             handle_errors(
                                 &sess.parse_sess,
-                                lit.span,
+                                lit_span,
                                 AttrError::UnsupportedLiteral(
                                     UnsupportedLiteralReason::DeprecatedString,
                                     lit.kind.is_bytestr(),
@@ -895,10 +895,10 @@ where
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Literal(_, lit_span) => {
                             handle_errors(
                                 &sess.parse_sess,
-                                lit.span,
+                                *lit_span,
                                 AttrError::UnsupportedLiteral(
                                     UnsupportedLiteralReason::DeprecatedKvPair,
                                     false,
@@ -1032,7 +1032,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     });
                 }
             } else if let Some(meta_item) = item.meta_item() {
-                if let MetaItemKind::NameValue(ref value) = meta_item.kind {
+                if let MetaItemKind::NameValue(ref value, _) = meta_item.kind {
                     if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
                         let name = meta_item.name_or_empty().to_ident_string();
                         recognised = true;

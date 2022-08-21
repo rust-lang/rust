@@ -319,12 +319,12 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
-        let lit = self.parse_lit()?;
+    pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, (ast::Lit, Span)> {
+        let (lit, lit_span) = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.struct_span_err(lit.span, "suffixed literals are not allowed in attributes")
+            self.struct_span_err(lit_span, "suffixed literals are not allowed in attributes")
                 .help(
                     "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
                     use an unsuffixed version (`1`, `1.0`, etc.)",
@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
                 .emit();
         }
 
-        Ok(lit)
+        Ok((lit, lit_span))
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
@@ -400,7 +400,8 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
-            ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
+            let (lit, lit_span) = self.parse_unsuffixed_lit()?;
+            ast::MetaItemKind::NameValue(lit, lit_span)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
@@ -413,7 +414,7 @@ impl<'a> Parser<'a> {
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_lit() {
-            Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
+            Ok((lit, lit_span)) => return Ok(ast::NestedMetaItem::Literal(lit, lit_span)),
             Err(err) => err.cancel(),
         }
 

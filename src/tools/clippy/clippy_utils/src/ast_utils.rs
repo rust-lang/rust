@@ -706,7 +706,7 @@ pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
         (Empty, Empty) => true,
         (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
         (Eq(_, MacArgsEq::Ast(le)), Eq(_, MacArgsEq::Ast(re))) => eq_expr(le, re),
-        (Eq(_, MacArgsEq::Hir(ll)), Eq(_, MacArgsEq::Hir(rl))) => ll.kind == rl.kind,
+        (Eq(_, MacArgsEq::Hir(ll, _)), Eq(_, MacArgsEq::Hir(rl, _))) => ll.kind == rl.kind,
         _ => false,
     }
 }

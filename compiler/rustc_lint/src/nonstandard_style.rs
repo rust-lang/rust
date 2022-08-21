@@ -345,13 +345,13 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 .find_by_name(&cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
-                    meta.name_value_literal().and_then(|lit| {
+                    meta.name_value_literal_and_span().and_then(|(lit, lit_span)| {
                         if let ast::LitKind::Str(name, ..) = lit.kind {
                             // Discard the double quotes surrounding the literal.
                             let sp = cx
                                 .sess()
                                 .source_map()
-                                .span_to_snippet(lit.span)
+                                .span_to_snippet(lit_span)
                                 .ok()
                                 .and_then(|snippet| {
                                     let left = snippet.find('"')?;
@@ -359,12 +359,12 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                                         snippet.rfind('"').map(|pos| snippet.len() - pos)?;
 
                                     Some(
-                                        lit.span
-                                            .with_lo(lit.span.lo() + BytePos(left as u32 + 1))
-                                            .with_hi(lit.span.hi() - BytePos(right as u32)),
+                                        lit_span
+                                            .with_lo(lit_span.lo() + BytePos(left as u32 + 1))
+                                            .with_hi(lit_span.hi() - BytePos(right as u32)),
                                     )
                                 })
-                                .unwrap_or(lit.span);
+                                .unwrap_or(lit_span);
 
                             Some(Ident::new(name, sp))
                         } else {

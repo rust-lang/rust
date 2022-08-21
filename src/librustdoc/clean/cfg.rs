@@ -50,8 +50,8 @@ impl Cfg {
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
-            NestedMetaItem::Literal(ref lit) => {
-                Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
+            NestedMetaItem::Literal(_, lit_span) => {
+                Err(InvalidCfgError { msg: "unexpected literal", span: *lit_span })
             }
         }
     }
@@ -74,7 +74,7 @@ impl Cfg {
                 let cfg = Cfg::Cfg(name, None);
                 if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
             }
-            MetaItemKind::NameValue(ref lit) => match lit.kind {
+            MetaItemKind::NameValue(ref lit, lit_span) => match lit.kind {
                 LitKind::Str(value, _) => {
                     let cfg = Cfg::Cfg(name, Some(value));
                     if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
@@ -83,7 +83,7 @@ impl Cfg {
                     // FIXME: if the main #[cfg] syntax decided to support non-string literals,
                     // this should be changed as well.
                     msg: "value of cfg option should be a string literal",
-                    span: lit.span,
+                    span: lit_span,
                 }),
             },
             MetaItemKind::List(ref items) => {

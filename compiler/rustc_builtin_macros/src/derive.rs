@@ -46,9 +46,9 @@ impl MultiItemModifier for Expander {
                     .into_iter()
                     .filter_map(|nested_meta| match nested_meta {
                         NestedMetaItem::MetaItem(meta) => Some(meta),
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Literal(lit, lit_span) => {
                             // Reject `#[derive("Debug")]`.
-                            report_unexpected_literal(sess, &lit);
+                            report_unexpected_literal(sess, &lit, lit_span);
                             None
                         }
                     })
@@ -125,15 +125,15 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
     bad_target
 }
 
-fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
+fn report_unexpected_literal(sess: &Session, lit: &ast::Lit, span: Span) {
     let help_msg = match lit.token_lit.kind {
         token::Str if rustc_lexer::is_ident(lit.token_lit.symbol.as_str()) => {
             format!("try using `#[derive({})]`", lit.token_lit.symbol)
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };
-    struct_span_err!(sess, lit.span, E0777, "expected path to a trait, found literal",)
-        .span_label(lit.span, "not a trait")
+    struct_span_err!(sess, span, E0777, "expected path to a trait, found literal",)
+        .span_label(span, "not a trait")
         .help(&help_msg)
         .emit();
 }

@@ -316,7 +316,7 @@ impl<'s> LintLevelsBuilder<'s> {
             if let Some(item) = tail_li.meta_item() {
                 match item.kind {
                     ast::MetaItemKind::Word => {} // actual lint names handled later
-                    ast::MetaItemKind::NameValue(ref name_value) => {
+                    ast::MetaItemKind::NameValue(ref name_value, name_value_span) => {
                         if item.path == sym::reason {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
@@ -331,9 +331,9 @@ impl<'s> LintLevelsBuilder<'s> {
                                 reason = Some(rationale);
                             } else {
                                 sess.emit_err(MalformedAttribute {
-                                    span: name_value.span,
+                                    span: name_value_span,
                                     sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
-                                        name_value.span,
+                                        name_value_span,
                                     ),
                                 });
                             }
@@ -369,7 +369,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
                         if let Some(item) = li.meta_item() {
-                            if let ast::MetaItemKind::NameValue(_) = item.kind {
+                            if let ast::MetaItemKind::NameValue(..) = item.kind {
                                 if item.path == sym::reason {
                                     sess.emit_err(MalformedAttribute {
                                         span: sp,

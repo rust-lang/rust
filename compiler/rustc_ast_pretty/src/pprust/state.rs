@@ -370,8 +370,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_literal(&mut self, lit: &ast::Lit) {
-        self.maybe_print_comment(lit.span.lo());
+    fn print_literal(&mut self, lit: &ast::Lit, span: Span) {
+        self.maybe_print_comment(span.lo());
         self.word(lit.token_lit.to_string())
     }
 
@@ -479,11 +479,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 let token_str = self.expr_to_string(expr);
                 self.word(token_str);
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            MacArgs::Eq(_, MacArgsEq::Hir(lit, lit_span)) => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
-                let token_str = self.literal_to_string(lit);
+                let token_str = self.literal_to_string(lit, *lit_span);
                 self.word(token_str);
             }
         }
@@ -493,7 +493,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
         match item {
             ast::NestedMetaItem::MetaItem(ref mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Literal(ref lit) => self.print_literal(lit),
+            ast::NestedMetaItem::Literal(ref lit, lit_span) => self.print_literal(lit, *lit_span),
         }
     }
 
@@ -501,11 +501,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.ibox(INDENT_UNIT);
         match item.kind {
             ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
-            ast::MetaItemKind::NameValue(ref value) => {
+            ast::MetaItemKind::NameValue(ref lit, lit_span) => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
-                self.print_literal(value);
+                self.print_literal(lit, lit_span);
             }
             ast::MetaItemKind::List(ref items) => {
                 self.print_path(&item.path, false, 0);
@@ -825,8 +825,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_expr(e))
     }
 
-    fn literal_to_string(&self, lit: &ast::Lit) -> String {
-        Self::to_string(|s| s.print_literal(lit))
+    fn literal_to_string(&self, lit: &ast::Lit, span: Span) -> String {
+        Self::to_string(|s| s.print_literal(lit, span))
     }
 
     fn tt_to_string(&self, tt: &TokenTree) -> String {
@@ -1733,7 +1733,7 @@ impl<'a> State<'a> {
             }
             ast::Extern::Explicit(abi, _) => {
                 self.word_nbsp("extern");
-                self.print_literal(&abi.as_lit());
+                self.print_literal(&abi.as_lit(), abi.span);
                 self.nbsp();
             }
         }

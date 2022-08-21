@@ -330,7 +330,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     fn expr_lit(&self, span: Span, lit_kind: ast::LitKind) -> P<ast::Expr> {
-        let lit = ast::Lit::from_lit_kind(lit_kind, span);
+        let lit = ast::Lit::from_lit_kind(lit_kind);
         self.expr(span, ast::ExprKind::Lit(lit))
     }
 

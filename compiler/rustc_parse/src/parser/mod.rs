@@ -1381,12 +1381,12 @@ impl<'a> Parser<'a> {
     fn parse_abi(&mut self) -> Option<StrLit> {
         match self.parse_str_lit() {
             Ok(str_lit) => Some(str_lit),
-            Err(Some(lit)) => match lit.kind {
+            Err(Some((lit, span))) => match lit.kind {
                 ast::LitKind::Err => None,
                 _ => {
-                    self.struct_span_err(lit.span, "non-string ABI literal")
+                    self.struct_span_err(span, "non-string ABI literal")
                         .span_suggestion(
-                            lit.span,
+                            span,
                             "specify the ABI with a string literal",
                             "\"C\"",
                             Applicability::MaybeIncorrect,

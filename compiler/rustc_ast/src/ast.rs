@@ -521,7 +521,7 @@ pub enum NestedMetaItem {
     /// A literal.
     ///
     /// E.g., `"foo"`, `64`, `true`.
-    Literal(Lit),
+    Literal(Lit, Span),
 }
 
 /// A spanned compile-time attribute item.
@@ -550,7 +550,9 @@ pub enum MetaItemKind {
     /// Name value meta item.
     ///
     /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
-    NameValue(Lit),
+    ///
+    /// The span is that of the literal on the RHS.
+    NameValue(Lit, Span),
 }
 
 /// A block (`{ .. }`).
@@ -1605,7 +1607,7 @@ pub enum MacArgs {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum MacArgsEq {
     Ast(P<Expr>),
-    Hir(Lit),
+    Hir(Lit, Span),
 }
 
 impl MacArgs {
@@ -1621,7 +1623,7 @@ impl MacArgs {
             MacArgs::Empty => None,
             MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
             MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            MacArgs::Eq(_, MacArgsEq::Hir(lit, _)) => {
                 unreachable!("in literal form when getting span: {:?}", lit);
             }
         }
@@ -1634,7 +1636,7 @@ impl MacArgs {
             MacArgs::Empty => TokenStream::default(),
             MacArgs::Delimited(.., tokens) => tokens.clone(),
             MacArgs::Eq(_, MacArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            MacArgs::Eq(_, MacArgsEq::Hir(lit, _)) => {
                 unreachable!("in literal form when getting inner tokens: {:?}", lit)
             }
         }
@@ -1663,9 +1665,10 @@ where
             MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => {
                 unreachable!("hash_stable {:?}", expr);
             }
-            MacArgs::Eq(eq_span, MacArgsEq::Hir(lit)) => {
+            MacArgs::Eq(eq_span, MacArgsEq::Hir(lit, lit_span)) => {
                 eq_span.hash_stable(ctx, hasher);
                 lit.hash_stable(ctx, hasher);
+                lit_span.hash_stable(ctx, hasher);
             }
         }
     }
@@ -1717,6 +1720,8 @@ pub enum StrStyle {
 }
 
 /// An AST literal.
+///
+/// Consult the enclosing type for the span (e.g. `ExprKind::Lit`).
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
     /// The original literal token as written in source code.
@@ -1725,7 +1730,6 @@ pub struct Lit {
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub kind: LitKind,
-    pub span: Span,
 }
 
 /// Same as `Lit`, but restricted to string literals.
@@ -1749,7 +1753,6 @@ impl StrLit {
         };
         Lit {
             token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
-            span: self.span,
             kind: LitKind::Str(self.symbol_unescaped, self.style),
         }
     }
@@ -3084,7 +3087,7 @@ mod size_asserts {
     static_assert_size!(Impl, 200);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
-    static_assert_size!(Lit, 48);
+    static_assert_size!(Lit, 40);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);

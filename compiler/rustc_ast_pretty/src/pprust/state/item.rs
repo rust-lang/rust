@@ -207,7 +207,7 @@ impl<'a> State<'a> {
                     s.word("extern");
                 }));
                 if let Some(abi) = nmod.abi {
-                    self.print_literal(&abi.as_lit());
+                    self.print_literal(&abi.as_lit(), abi.span);
                     self.nbsp();
                 }
                 self.bopen();

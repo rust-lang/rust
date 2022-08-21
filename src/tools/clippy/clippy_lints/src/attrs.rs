@@ -318,7 +318,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                 for item in items {
                     if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
-                        if let MetaItemKind::NameValue(lit) = &mi.kind;
+                        if let MetaItemKind::NameValue(lit, _) = &mi.kind;
                         if mi.has_name(sym::since);
                         then {
                             check_semver(cx, item.span(), lit);
@@ -457,7 +457,7 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
 
     // Check if the reason is present
     if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
-        && let MetaItemKind::NameValue(_) = &item.kind
+        && let MetaItemKind::NameValue(..) = &item.kind
         && item.path == sym::reason
     {
         return;

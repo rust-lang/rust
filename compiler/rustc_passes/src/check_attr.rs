@@ -1327,7 +1327,7 @@ impl CheckAttrVisitor<'_> {
             return false;
         };
 
-        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. }, _)]) {
             true
         } else {
             self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
@@ -1995,7 +1995,7 @@ impl CheckAttrVisitor<'_> {
             ) && let Some(meta) = attr.meta_item_list()
             && meta.len() == 1
             && let Some(item) = meta[0].meta_item()
-            && let MetaItemKind::NameValue(_) = &item.kind
+            && let MetaItemKind::NameValue(..) = &item.kind
             && item.path == sym::reason
         {
             errors::UnusedNote::NoLints { name: attr.name_or_empty() }

@@ -259,8 +259,10 @@ fn rewrite_initial_doc_comments(
 impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItem::Literal(ref l) => rewrite_literal(context, l, shape),
+            ast::NestedMetaItem::MetaItem(meta_item) => meta_item.rewrite(context, shape),
+            ast::NestedMetaItem::Literal(lit, lit_span) => {
+                rewrite_literal(context, lit, *lit_span, shape)
+            }
         }
     }
 }
@@ -308,7 +310,7 @@ impl Rewrite for ast::MetaItem {
                     }),
                 )?
             }
-            ast::MetaItemKind::NameValue(ref literal) => {
+            ast::MetaItemKind::NameValue(ref lit, lit_span) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.path, shape)?;
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(path.len() + 3)?;
@@ -318,8 +320,8 @@ impl Rewrite for ast::MetaItem {
                 // we might be better off ignoring the fact that the attribute
                 // is longer than the max width and continue on formatting.
                 // See #2479 for example.
-                let value = rewrite_literal(context, literal, lit_shape)
-                    .unwrap_or_else(|| context.snippet(literal.span).to_owned());
+                let value = rewrite_literal(context, lit, lit_span, lit_shape)
+                    .unwrap_or_else(|| context.snippet(lit_span).to_owned());
                 format!("{} = {}", path, value)
             }
         })
@@ -509,7 +511,7 @@ pub(crate) trait MetaVisitor<'ast> {
         match meta_item.kind {
             ast::MetaItemKind::Word => self.visit_meta_word(meta_item),
             ast::MetaItemKind::List(ref list) => self.visit_meta_list(meta_item, list),
-            ast::MetaItemKind::NameValue(ref lit) => self.visit_meta_name_value(meta_item, lit),
+            ast::MetaItemKind::NameValue(ref lit, _) => self.visit_meta_name_value(meta_item, lit),
         }
     }
 
@@ -530,7 +532,7 @@ pub(crate) trait MetaVisitor<'ast> {
     fn visit_nested_meta_item(&mut self, nm: &'ast ast::NestedMetaItem) {
         match nm {
             ast::NestedMetaItem::MetaItem(ref meta_item) => self.visit_meta_item(meta_item),
-            ast::NestedMetaItem::Literal(ref lit) => self.visit_literal(lit),
+            ast::NestedMetaItem::Literal(ref lit, _) => self.visit_literal(lit),
         }
     }
 

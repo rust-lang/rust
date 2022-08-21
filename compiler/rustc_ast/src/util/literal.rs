@@ -209,14 +209,14 @@ impl LitKind {
 
 impl Lit {
     /// Converts literal token into an AST literal.
-    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
+    pub fn from_token_lit(token_lit: token::Lit) -> Result<Lit, LitError> {
+        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)? })
     }
 
     /// Converts arbitrary token into an AST literal.
     ///
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
-    pub fn from_token(token: &Token) -> Result<Lit, LitError> {
+    pub fn from_token(token: &Token) -> Result<(Lit, Span), LitError> {
         let lit = match token.uninterpolate().kind {
             token::Ident(name, false) if name.is_bool_lit() => {
                 token::Lit::new(token::Bool, name, None)
@@ -226,30 +226,30 @@ impl Lit {
                 if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
                     && let ast::ExprKind::Lit(lit) = &expr.kind
                 {
-                    return Ok(lit.clone());
+                    return Ok((lit.clone(), expr.span));
                 }
                 return Err(LitError::NotLiteral);
             }
             _ => return Err(LitError::NotLiteral),
         };
 
-        Lit::from_token_lit(lit, token.span)
+        Ok((Lit::from_token_lit(lit)?, token.span))
     }
 
     /// Attempts to recover an AST literal from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token_lit: kind.to_token_lit(), kind, span }
+    pub fn from_lit_kind(kind: LitKind) -> Lit {
+        Lit { token_lit: kind.to_token_lit(), kind }
     }
 
     /// Losslessly convert an AST literal into a token.
-    pub fn to_token(&self) -> Token {
+    pub fn to_token(&self, span: Span) -> Token {
         let kind = match self.token_lit.kind {
             token::Bool => token::Ident(self.token_lit.symbol, false),
             _ => token::Literal(self.token_lit),
         };
-        Token::new(kind, self.span)
+        Token::new(kind, span)
     }
 }
 
