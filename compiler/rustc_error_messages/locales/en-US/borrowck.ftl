@@ -26,3 +26,32 @@ borrowck_var_better_not_mut =
 
 borrowck_const_not_used_in_type_alias = 
     const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+    
+borrowck_var_cannot_escape_closure = 
+    captured variable cannot escape `FnMut` closure body
+    .upvar_def = variable defined here
+    .upvar = variable captured here
+    .fr =  "inferred to be a `FnMut` closure"
+    .note = `FnMut` closures only have access to their captured variables while they are executing...
+    .cannot_escape = ...therefore, they cannot allow references to captured variables to escape
+
+borrowck_returned_closure_escaped = 
+    returns a closure that contains a reference to a captured variable, which then escapes the closure body
+
+borrowck_returned_async_block_escaped = 
+    returns an `async` block that contains a reference to a captured variable, which then escapes the closure body
+
+borrowck_returned_ref_escaped = 
+    returns a reference to a captured variable which escapes the closure body
+
+borrowck_lifetime_constraints_error =
+    lifetime may not live long enough
+    
+borrowck_returned_lifetime_wrong =
+    {$mir_def_name} was supposed to return data with lifetime `{$outlived_fr_name}` but it is returning data with lifetime `{$fr_name}`
+
+borrowck_returned_lifetime_short =
+    {$category_desc}requires that `{$free_region_name}` must outlive `{$outlived_fr_name}`"
+    
+borrowck_impl_require_static =
+    the used `impl` has a `'static` requirement

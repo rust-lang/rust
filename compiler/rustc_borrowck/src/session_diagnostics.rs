@@ -1,3 +1,4 @@
+use rustc_errors::MultiSpan;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -64,4 +65,78 @@ pub(crate) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(borrowck::var_cannot_escape_closure)]
+#[note]
+#[note(borrowck::cannot_escape)]
+pub(crate) struct FnMutError {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub ty_err: FnMutReturnTypeErr,
+    #[label(borrowck::upvar_def)]
+    pub upvar_def_span: Option<Span>,
+    #[label(borrowck::upvar)]
+    pub upvar_span: Option<Span>,
+    #[label(borrowck::fr)]
+    pub fr_span: Option<Span>,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum FnMutReturnTypeErr {
+    #[label(borrowck::returned_closure_escaped)]
+    ReturnClosure {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::returned_async_block_escaped)]
+    ReturnAsyncBlock {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::returned_ref_escaped)]
+    ReturnRef {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(SessionDiagnostic)]
+#[error(borrowck::lifetime_constraints_error)]
+pub(crate) struct LifeTimeOutLiveErr {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub category: LifeTimeReturnCategoryErr,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum LifeTimeReturnCategoryErr {
+    #[label(borrowck::returned_lifetime_wrong)]
+    WrongReturn {
+        #[primary_span]
+        span: Span,
+        mir_def_name: String,
+        outlived_fr_name: String,
+        fr_name: String,
+    },
+    #[label(borrowck::returned_lifetime_short)]
+    ShortReturn {
+        #[primary_span]
+        span: Span,
+        category_desc: String,
+        free_region_name: String,
+        outlived_fr_name: String,
+    },
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum StaticLifeTimeRequireErr {
+    #[note(borrowck::impl_require_static)]
+    UsedImpl {
+        #[primary_span]
+        span: MultiSpan,
+    },
 }
