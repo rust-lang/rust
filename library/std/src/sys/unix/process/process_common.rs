@@ -60,7 +60,7 @@ cfg_if::cfg_if! {
             );
 
             let bit = (signum - 1) as usize;
-            if set.is_null() || bit < 0 || bit >= (8 * size_of::<sigset_t>()) {
+            if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
                 crate::sys::unix::os::set_errno(libc::EINVAL);
                 return -1;
             }
