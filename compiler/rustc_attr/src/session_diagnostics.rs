@@ -1,5 +1,6 @@
 use std::num::IntErrorKind;
 
+use rustc_ast as ast;
 use rustc_errors::{error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_macros::SessionDiagnostic;
 use rustc_session::{parse::ParseSess, SessionDiagnostic};
@@ -303,6 +304,18 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
     },
 }
 
+impl<'a> IncorrectReprFormatGenericCause<'a> {
+    pub fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
+        match kind {
+            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                Some(Self::Int { span, name, int: *int })
+            }
+            ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol: *symbol }),
+            _ => None,
+        }
+    }
+}
+
 #[derive(SessionDiagnostic)]
 #[diag(attr::rustc_promotable_pairing, code = "E0717")]
 pub(crate) struct RustcPromotablePairing {
@@ -326,13 +339,15 @@ pub(crate) struct CfgPredicateIdentifier {
 
 #[derive(SessionDiagnostic)]
 #[diag(attr::deprecated_item_suggestion)]
-#[note]
 pub(crate) struct DeprecatedItemSuggestion {
     #[primary_span]
     pub span: Span,
 
     #[help]
     pub is_nightly: Option<()>,
+
+    #[note]
+    pub details: (),
 }
 
 #[derive(SessionDiagnostic)]

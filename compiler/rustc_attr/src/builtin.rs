@@ -854,6 +854,7 @@ where
                                     sess.emit_err(session_diagnostics::DeprecatedItemSuggestion {
                                         span: mi.span,
                                         is_nightly: sess.is_nightly_build().then_some(()),
+                                        details: (),
                                     });
                                 }
 
@@ -1021,23 +1022,11 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         sess.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
                             span: item.span(),
                             repr_arg: &name,
-                            cause: match value.kind {
-                                ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                    Some(IncorrectReprFormatGenericCause::Int {
-                                        span: item.span(),
-                                        name: &name,
-                                        int,
-                                    })
-                                }
-                                ast::LitKind::Str(symbol, _) => {
-                                    Some(IncorrectReprFormatGenericCause::Symbol {
-                                        span: item.span(),
-                                        name: &name,
-                                        symbol,
-                                    })
-                                }
-                                _ => None,
-                            },
+                            cause: IncorrectReprFormatGenericCause::from_lit_kind(
+                                item.span(),
+                                &value.kind,
+                                &name,
+                            ),
                         });
                     } else {
                         if matches!(
