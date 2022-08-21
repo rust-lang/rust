@@ -38,6 +38,7 @@ fluent_messages! {
     const_eval => "../locales/en-US/const_eval.ftl",
     expand => "../locales/en-US/expand.ftl",
     interface => "../locales/en-US/interface.ftl",
+    infer => "../locales/en-US/infer.ftl",
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",
     passes => "../locales/en-US/passes.ftl",

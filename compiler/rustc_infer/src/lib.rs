@@ -23,6 +23,8 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![recursion_limit = "512"] // For rustdoc
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -34,5 +36,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+mod errors;
 pub mod infer;
 pub mod traits;
