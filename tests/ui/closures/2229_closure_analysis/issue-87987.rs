@@ -9,6 +9,7 @@ struct Props {
 fn main() {
     // Test 1
     let props_2 = Props { field_1: 1, field_2: 1 };
+    //~^ WARN unused variable: `props_2`
 
     let _ = || {
         let _: Props = props_2;

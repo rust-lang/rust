@@ -798,6 +798,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
             tcx.ensure().has_ffi_unwind_calls(def_id);
+            tcx.ensure().check_liveness(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering

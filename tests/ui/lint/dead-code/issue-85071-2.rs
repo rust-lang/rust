@@ -18,5 +18,4 @@ fn main() {
     let x = s.f();
     //~^ WARNING: unused variable: `x`
     let _y = x;
-    //~^ WARNING: unreachable definition
 }

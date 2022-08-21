@@ -25,6 +25,9 @@ mir_transform_fn_item_ref = taking a reference to a function item does not give 
 
 mir_transform_initializing_valid_range_label = initializing type with `rustc_layout_scalar_valid_range` attr
 mir_transform_initializing_valid_range_note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
+
+mir_transform_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
+
 mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspend point, but should not be
     .label = the value is held across this suspend point
     .note = {$reason}
@@ -44,6 +47,8 @@ mir_transform_requires_unsafe = {$details} is unsafe and requires unsafe {$op_in
 
 mir_transform_simd_shuffle_last_const = last argument of `simd_shuffle` is required to be a `const` item
 
+mir_transform_string_interpolation_only_works = string interpolation only works in `format!` invocations
+
 mir_transform_target_feature_call_label = call to function with `#[target_feature]`
 mir_transform_target_feature_call_note = can only be called if the required target features are available
 
@@ -58,8 +63,26 @@ mir_transform_unsafe_op_in_unsafe_fn = {$details} is unsafe and requires unsafe 
     .suggestion = consider wrapping the function body in an unsafe block
     .note = an unsafe function restricts its caller, but its body is safe by default
 
+mir_transform_unused_assign = value assigned to `{$name}` is never read
+    .help = maybe it is overwritten before being read?
+
+mir_transform_unused_assign_passed = value passed to `{$name}` is never read
+    .help = maybe it is overwritten before being read?
+
+mir_transform_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
+    .help = did you mean to capture by reference instead?
+
 mir_transform_unused_unsafe = unnecessary `unsafe` block
     .label = because it's nested under this `unsafe` block
+
+mir_transform_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
+    .note = consider using `_{$name}` instead
+
+mir_transform_unused_var_underscore = if this is intentional, prefix it with an underscore
+
+mir_transform_unused_variable = unused variable: `{$name}`
+
+mir_transform_unused_variable_try_ignore = try ignoring the field
 
 mir_transform_use_of_asm_label = use of inline assembly
 mir_transform_use_of_asm_note = inline assembly is entirely unchecked and can cause undefined behavior

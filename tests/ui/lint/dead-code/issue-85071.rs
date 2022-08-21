@@ -15,5 +15,4 @@ fn main() {
     let x = f();
     //~^ WARNING: unused variable: `x`
     let _ = x;
-    //~^ WARNING: unreachable expression
 }

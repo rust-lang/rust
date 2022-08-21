@@ -705,7 +705,7 @@ pub enum BindingForm<'tcx> {
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
-    RefForGuard,
+    RefForGuard(Local),
 }
 
 TrivialTypeTraversalAndLiftImpls! {
@@ -724,7 +724,7 @@ mod binding_form_impl {
             match self {
                 Var(binding) => binding.hash_stable(hcx, hasher),
                 ImplicitSelf(kind) => kind.hash_stable(hcx, hasher),
-                RefForGuard => (),
+                RefForGuard(local) => local.hash_stable(hcx, hasher),
             }
         }
     }
@@ -955,7 +955,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard))
+        matches!(self.local_info(), LocalInfo::User(BindingForm::RefForGuard(_)))
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
@@ -1519,7 +1519,7 @@ impl<'tcx> StatementKind<'tcx> {
 impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
-    fn is_indirect(&self) -> bool {
+    pub fn is_indirect(&self) -> bool {
         match self {
             Self::Deref => true,
 
@@ -1574,7 +1574,7 @@ impl<V, T> ProjectionElem<V, T> {
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
     pub local: Local,
     pub projection: &'tcx [PlaceElem<'tcx>],
@@ -1658,6 +1658,13 @@ impl From<Local> for Place<'_> {
     #[inline]
     fn from(local: Local) -> Self {
         Place { local, projection: List::empty() }
+    }
+}
+
+impl From<Local> for PlaceRef<'_> {
+    #[inline]
+    fn from(local: Local) -> Self {
+        PlaceRef { local, projection: List::empty() }
     }
 }
 
@@ -1746,7 +1753,13 @@ impl<'tcx> PlaceRef<'tcx> {
 
 impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for elem in self.projection.iter().rev() {
+        Debug::fmt(&self.as_ref(), fmt)
+    }
+}
+
+impl Debug for PlaceRef<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        for &elem in self.projection.iter().rev() {
             match elem {
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
@@ -1764,7 +1777,7 @@ impl Debug for Place<'_> {
 
         write!(fmt, "{:?}", self.local)?;
 
-        for elem in self.projection.iter() {
+        for &elem in self.projection.iter() {
             match elem {
                 ProjectionElem::OpaqueCast(ty) => {
                     write!(fmt, " as {})", ty)?;

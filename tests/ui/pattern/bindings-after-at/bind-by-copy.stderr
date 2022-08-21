@@ -1,0 +1,19 @@
+warning: value assigned to `x` is never read
+  --> $DIR/bind-by-copy.rs:19:5
+   |
+LL |     x.b.c = 30;
+   |     ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: value assigned to `y` is never read
+  --> $DIR/bind-by-copy.rs:24:5
+   |
+LL |     y.d.c = 30;
+   |     ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: 2 warnings emitted
+

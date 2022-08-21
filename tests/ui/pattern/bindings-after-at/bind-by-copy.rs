@@ -17,10 +17,12 @@ pub fn main() {
     let mut x@B {b, ..} = B {a: 10, b: C {c: 20}};
     assert_eq!(x.a, 10);
     x.b.c = 30;
+    //~^ WARN value assigned to `x` is never read
     assert_eq!(b.c, 20);
     let mut y@D {d, ..} = D {a: 10, d: C {c: 20}};
     assert_eq!(y.a, 10);
     y.d.c = 30;
+    //~^ WARN value assigned to `y` is never read
     assert_eq!(d.c, 20);
 
     let some_b = Some(B { a: 10, b: C { c: 20 } });
