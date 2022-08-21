@@ -32,12 +32,12 @@ except ImportError:
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung'},
     'rls': {'Xanewok'},
-    'book': {'carols10cents', 'steveklabnik'},
+    'book': {'carols10cents'},
     'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
-    'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
-    'rust-by-example': {'steveklabnik', 'marioidival'},
+    'reference': {'Havvy', 'matthewjasper', 'ehuss'},
+    'rust-by-example': {'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
-    'edition-guide': {'ehuss', 'steveklabnik'},
+    'edition-guide': {'ehuss'},
     'rustc-dev-guide': {'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
