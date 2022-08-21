@@ -52,6 +52,7 @@ fluent_messages! {
     ty_utils => "../locales/en-US/ty_utils.ftl",
     typeck => "../locales/en-US/typeck.ftl",
     mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
+    query_system => "../locales/en-US/query_system.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

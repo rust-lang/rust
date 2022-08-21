@@ -1,12 +1,10 @@
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
-use rustc_hir::def::DefKind;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level,
-};
-use rustc_session::Session;
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level};
+use rustc_hir::def::DefKind;
+use rustc_session::{Session, SessionDiagnostic};
 use rustc_span::Span;
 
 use std::hash::Hash;
@@ -536,46 +534,29 @@ pub(crate) fn report_cycle<'a>(
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);
-    let mut err =
-        struct_span_err!(sess, span, E0391, "cycle detected when {}", stack[0].query.description);
+
+    let mut cycle_diag = crate::error::Cycle {
+        span,
+        upper_stack_info: Vec::with_capacity(stack.len() - 1),
+        stack_bottom: stack[0].query.description.to_owned(),
+        recursive_ty_alias: false,
+        recursive_trait_alias: false,
+        cycle_usage: usage.map(|(span, query)| (query.default_span(span), query.description)),
+    };
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
         let span = query.default_span(stack[(i + 1) % stack.len()].span);
-        err.span_note(span, &format!("...which requires {}...", query.description));
+        cycle_diag.upper_stack_info.push((span, query.description.to_owned()));
     }
 
-    if stack.len() == 1 {
-        err.note(&format!("...which immediately requires {} again", stack[0].query.description));
-    } else {
-        err.note(&format!(
-            "...which again requires {}, completing the cycle",
-            stack[0].query.description
-        ));
+    if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+        cycle_diag.recursive_ty_alias = true;
+    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
+        cycle_diag.recursive_trait_alias = true;
     }
 
-    if stack.iter().all(|entry| {
-        entry
-            .query
-            .def_kind
-            .map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias | DefKind::TraitAlias))
-    }) {
-        if stack.iter().all(|entry| {
-            entry.query.def_kind.map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias))
-        }) {
-            err.note("type aliases cannot be recursive");
-            err.help("consider using a struct, enum, or union instead to break the cycle");
-            err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
-        } else {
-            err.note("trait aliases cannot be recursive");
-        }
-    }
-
-    if let Some((span, query)) = usage {
-        err.span_note(query.default_span(span), &format!("cycle used when {}", query.description));
-    }
-
-    err
+    cycle_diag.into_diagnostic(&sess.parse_sess)
 }
 
 pub fn print_query_stack<CTX: QueryContext>(
