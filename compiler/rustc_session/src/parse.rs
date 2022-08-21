@@ -2,15 +2,17 @@
 //! It also serves as an input to the parser itself.
 
 use crate::config::CheckCfg;
-use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
+use crate::lint::{
+    builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
+};
 use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+    error_code, fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -101,9 +103,56 @@ pub fn feature_err_issue<'a>(
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    let span = span.into();
+
+    // Cancel an earlier warning for this same error, if it exists.
+    if let Some(span) = span.primary_span() {
+        sess.span_diagnostic
+            .steal_diagnostic(span, StashKey::EarlySyntaxWarning)
+            .map(|err| err.cancel());
+    }
+
     let mut err = sess.span_diagnostic.struct_span_err_with_code(span, explain, error_code!(E0658));
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
     err
+}
+
+/// Construct a future incompatibility diagnostic for a feature gate.
+///
+/// This diagnostic is only a warning and *does not cause compilation to fail*.
+pub fn feature_warn<'a>(sess: &'a ParseSess, feature: Symbol, span: Span, explain: &str) {
+    feature_warn_issue(sess, feature, span, GateIssue::Language, explain);
+}
+
+/// Construct a future incompatibility diagnostic for a feature gate.
+///
+/// This diagnostic is only a warning and *does not cause compilation to fail*.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer `feature_warn`.
+pub fn feature_warn_issue<'a>(
+    sess: &'a ParseSess,
+    feature: Symbol,
+    span: Span,
+    issue: GateIssue,
+    explain: &str,
+) {
+    let mut err = sess.span_diagnostic.struct_span_warn(span, explain);
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
+
+    // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
+    let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
+    let future_incompatible = lint.future_incompatible.as_ref().unwrap();
+    err.code(DiagnosticId::Lint {
+        name: lint.name_lower(),
+        has_future_breakage: false,
+        is_force_warn: false,
+    });
+    err.warn(lint.desc);
+    err.note(format!("for more information, see {}", future_incompatible.reference));
+
+    // A later feature_err call can steal and cancel this warning.
+    err.stash(span, StashKey::EarlySyntaxWarning);
 }
 
 /// Adds the diagnostics for a feature to an existing error.
@@ -322,5 +371,13 @@ impl ParseSess {
     #[rustc_lint_diagnostics]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
+    }
+
+    #[rustc_lint_diagnostics]
+    pub fn struct_diagnostic<G: EmissionGuarantee>(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, G> {
+        self.span_diagnostic.struct_diagnostic(msg)
     }
 }

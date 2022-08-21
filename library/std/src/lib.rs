@@ -187,6 +187,7 @@
 //! [rust-discord]: https://discord.gg/rust-lang
 //! [array]: prim@array
 //! [slice]: prim@slice
+
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
@@ -201,25 +202,35 @@
     no_global_oom_handling,
     not(no_global_oom_handling)
 ))]
+// To run libstd tests without x.py without ending up with two copies of libstd, Miri needs to be
+// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
+// rustc itself never sets the feature, so this line has no affect there.
+#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
+// miri-test-libstd also prefers to make std use the sysroot versions of the dependencies.
+#![cfg_attr(feature = "miri-test-libstd", feature(rustc_private))]
 // Don't link to std. We are std.
 #![no_std]
+// Tell the compiler to link to either panic_abort or panic_unwind
+#![needs_panic_runtime]
+//
+// Lints:
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
-// Tell the compiler to link to either panic_abort or panic_unwind
-#![needs_panic_runtime]
+#![deny(rustc::existing_doc_keyword)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+//
+// Features:
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
-#![deny(rustc::existing_doc_keyword)]
 //
 // Language features:
 #![feature(alloc_error_handler)]
@@ -258,6 +269,7 @@
 #![feature(staged_api)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
+#![feature(utf8_chunks)]
 //
 // Library features (core):
 #![feature(array_error_internals)]

@@ -3,37 +3,37 @@ use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(LintDiagnostic)]
-#[lint(passes::outer_crate_level_attr)]
+#[diag(passes::outer_crate_level_attr)]
 pub struct OuterCrateLevelAttr;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::inner_crate_level_attr)]
+#[diag(passes::inner_crate_level_attr)]
 pub struct InnerCrateLevelAttr;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::ignored_attr_with_macro)]
+#[diag(passes::ignored_attr_with_macro)]
 pub struct IgnoredAttrWithMacro<'a> {
     pub sym: &'a str,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::ignored_attr)]
+#[diag(passes::ignored_attr)]
 pub struct IgnoredAttr<'a> {
     pub sym: &'a str,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::inline_ignored_function_prototype)]
+#[diag(passes::inline_ignored_function_prototype)]
 pub struct IgnoredInlineAttrFnProto;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::inline_ignored_constants)]
+#[diag(passes::inline_ignored_constants)]
 #[warn_]
 #[note]
 pub struct IgnoredInlineAttrConstants;
 
 #[derive(SessionDiagnostic)]
-#[error(passes::inline_not_fn_or_closure, code = "E0518")]
+#[diag(passes::inline_not_fn_or_closure, code = "E0518")]
 pub struct InlineNotFnOrClosure {
     #[primary_span]
     pub attr_span: Span,
@@ -42,19 +42,19 @@ pub struct InlineNotFnOrClosure {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::no_coverage_ignored_function_prototype)]
+#[diag(passes::no_coverage_ignored_function_prototype)]
 pub struct IgnoredNoCoverageFnProto;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::no_coverage_propagate)]
+#[diag(passes::no_coverage_propagate)]
 pub struct IgnoredNoCoveragePropagate;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::no_coverage_fn_defn)]
+#[diag(passes::no_coverage_fn_defn)]
 pub struct IgnoredNoCoverageFnDefn;
 
 #[derive(SessionDiagnostic)]
-#[error(passes::no_coverage_not_coverable, code = "E0788")]
+#[diag(passes::no_coverage_not_coverable, code = "E0788")]
 pub struct IgnoredNoCoverageNotCoverable {
     #[primary_span]
     pub attr_span: Span,
@@ -63,7 +63,7 @@ pub struct IgnoredNoCoverageNotCoverable {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::should_be_applied_to_fn)]
+#[diag(passes::should_be_applied_to_fn)]
 pub struct AttrShouldBeAppliedToFn {
     #[primary_span]
     pub attr_span: Span,
@@ -72,14 +72,14 @@ pub struct AttrShouldBeAppliedToFn {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::naked_tracked_caller, code = "E0736")]
+#[diag(passes::naked_tracked_caller, code = "E0736")]
 pub struct NakedTrackedCaller {
     #[primary_span]
     pub attr_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::should_be_applied_to_fn, code = "E0739")]
+#[diag(passes::should_be_applied_to_fn, code = "E0739")]
 pub struct TrackedCallerWrongLocation {
     #[primary_span]
     pub attr_span: Span,
@@ -88,7 +88,7 @@ pub struct TrackedCallerWrongLocation {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::should_be_applied_to_struct_enum, code = "E0701")]
+#[diag(passes::should_be_applied_to_struct_enum, code = "E0701")]
 pub struct NonExhaustiveWrongLocation {
     #[primary_span]
     pub attr_span: Span,
@@ -97,7 +97,7 @@ pub struct NonExhaustiveWrongLocation {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::should_be_applied_to_trait)]
+#[diag(passes::should_be_applied_to_trait)]
 pub struct AttrShouldBeAppliedToTrait {
     #[primary_span]
     pub attr_span: Span,
@@ -106,11 +106,11 @@ pub struct AttrShouldBeAppliedToTrait {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::target_feature_on_statement)]
+#[diag(passes::target_feature_on_statement)]
 pub struct TargetFeatureOnStatement;
 
 #[derive(SessionDiagnostic)]
-#[error(passes::should_be_applied_to_static)]
+#[diag(passes::should_be_applied_to_static)]
 pub struct AttrShouldBeAppliedToStatic {
     #[primary_span]
     pub attr_span: Span,
@@ -119,7 +119,7 @@ pub struct AttrShouldBeAppliedToStatic {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_expect_str)]
+#[diag(passes::doc_expect_str)]
 pub struct DocExpectStr<'a> {
     #[primary_span]
     pub attr_span: Span,
@@ -127,7 +127,7 @@ pub struct DocExpectStr<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_empty)]
+#[diag(passes::doc_alias_empty)]
 pub struct DocAliasEmpty<'a> {
     #[primary_span]
     pub span: Span,
@@ -135,7 +135,7 @@ pub struct DocAliasEmpty<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_bad_char)]
+#[diag(passes::doc_alias_bad_char)]
 pub struct DocAliasBadChar<'a> {
     #[primary_span]
     pub span: Span,
@@ -144,7 +144,7 @@ pub struct DocAliasBadChar<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_start_end)]
+#[diag(passes::doc_alias_start_end)]
 pub struct DocAliasStartEnd<'a> {
     #[primary_span]
     pub span: Span,
@@ -152,7 +152,7 @@ pub struct DocAliasStartEnd<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_bad_location)]
+#[diag(passes::doc_alias_bad_location)]
 pub struct DocAliasBadLocation<'a> {
     #[primary_span]
     pub span: Span,
@@ -161,7 +161,7 @@ pub struct DocAliasBadLocation<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_not_an_alias)]
+#[diag(passes::doc_alias_not_an_alias)]
 pub struct DocAliasNotAnAlias<'a> {
     #[primary_span]
     pub span: Span,
@@ -169,42 +169,42 @@ pub struct DocAliasNotAnAlias<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_alias_duplicated)]
+#[diag(passes::doc_alias_duplicated)]
 pub struct DocAliasDuplicated {
     #[label]
     pub first_defn: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_not_string_literal)]
+#[diag(passes::doc_alias_not_string_literal)]
 pub struct DocAliasNotStringLiteral {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_alias_malformed)]
+#[diag(passes::doc_alias_malformed)]
 pub struct DocAliasMalformed {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_keyword_empty_mod)]
+#[diag(passes::doc_keyword_empty_mod)]
 pub struct DocKeywordEmptyMod {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_keyword_not_mod)]
+#[diag(passes::doc_keyword_not_mod)]
 pub struct DocKeywordNotMod {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_keyword_invalid_ident)]
+#[diag(passes::doc_keyword_invalid_ident)]
 pub struct DocKeywordInvalidIdent {
     #[primary_span]
     pub span: Span,
@@ -212,21 +212,21 @@ pub struct DocKeywordInvalidIdent {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_fake_variadic_not_valid)]
+#[diag(passes::doc_fake_variadic_not_valid)]
 pub struct DocFakeVariadicNotValid {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_keyword_only_impl)]
+#[diag(passes::doc_keyword_only_impl)]
 pub struct DocKeywordOnlyImpl {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_inline_conflict)]
+#[diag(passes::doc_inline_conflict)]
 #[help]
 pub struct DocKeywordConflict {
     #[primary_span]
@@ -234,7 +234,7 @@ pub struct DocKeywordConflict {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_inline_only_use)]
+#[diag(passes::doc_inline_only_use)]
 #[note]
 pub struct DocInlineOnlyUse {
     #[label]
@@ -244,7 +244,7 @@ pub struct DocInlineOnlyUse {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::doc_attr_not_crate_level)]
+#[diag(passes::doc_attr_not_crate_level)]
 pub struct DocAttrNotCrateLevel<'a> {
     #[primary_span]
     pub span: Span,
@@ -252,27 +252,27 @@ pub struct DocAttrNotCrateLevel<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_test_unknown)]
+#[diag(passes::doc_test_unknown)]
 pub struct DocTestUnknown {
     pub path: String,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_test_takes_list)]
+#[diag(passes::doc_test_takes_list)]
 pub struct DocTestTakesList;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_primitive)]
+#[diag(passes::doc_primitive)]
 pub struct DocPrimitive;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_test_unknown_any)]
+#[diag(passes::doc_test_unknown_any)]
 pub struct DocTestUnknownAny {
     pub path: String,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_test_unknown_spotlight)]
+#[diag(passes::doc_test_unknown_spotlight)]
 #[note]
 #[note(passes::no_op_note)]
 pub struct DocTestUnknownSpotlight {
@@ -282,7 +282,7 @@ pub struct DocTestUnknownSpotlight {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_test_unknown_include)]
+#[diag(passes::doc_test_unknown_include)]
 pub struct DocTestUnknownInclude {
     pub path: String,
     pub value: String,
@@ -292,11 +292,11 @@ pub struct DocTestUnknownInclude {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::doc_invalid)]
+#[diag(passes::doc_invalid)]
 pub struct DocInvalid;
 
 #[derive(SessionDiagnostic)]
-#[error(passes::pass_by_value)]
+#[diag(passes::pass_by_value)]
 pub struct PassByValue {
     #[primary_span]
     pub attr_span: Span,
@@ -305,7 +305,7 @@ pub struct PassByValue {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::allow_incoherent_impl)]
+#[diag(passes::allow_incoherent_impl)]
 pub struct AllowIncoherentImpl {
     #[primary_span]
     pub attr_span: Span,
@@ -314,7 +314,7 @@ pub struct AllowIncoherentImpl {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::has_incoherent_inherent_impl)]
+#[diag(passes::has_incoherent_inherent_impl)]
 pub struct HasIncoherentInherentImpl {
     #[primary_span]
     pub attr_span: Span,
@@ -323,21 +323,21 @@ pub struct HasIncoherentInherentImpl {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::must_use_async)]
+#[diag(passes::must_use_async)]
 pub struct MustUseAsync {
     #[label]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::must_use_no_effect)]
+#[diag(passes::must_use_no_effect)]
 pub struct MustUseNoEffect {
     pub article: &'static str,
     pub target: rustc_hir::Target,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::must_not_suspend)]
+#[diag(passes::must_not_suspend)]
 pub struct MustNotSuspend {
     #[primary_span]
     pub attr_span: Span,
@@ -346,7 +346,7 @@ pub struct MustNotSuspend {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::cold)]
+#[diag(passes::cold)]
 #[warn_]
 pub struct Cold {
     #[label]
@@ -354,7 +354,7 @@ pub struct Cold {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::link)]
+#[diag(passes::link)]
 #[warn_]
 pub struct Link {
     #[label]
@@ -362,7 +362,7 @@ pub struct Link {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::link_name)]
+#[diag(passes::link_name)]
 #[warn_]
 pub struct LinkName<'a> {
     #[help]
@@ -373,7 +373,7 @@ pub struct LinkName<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::no_link)]
+#[diag(passes::no_link)]
 pub struct NoLink {
     #[primary_span]
     pub attr_span: Span,
@@ -382,7 +382,7 @@ pub struct NoLink {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::export_name)]
+#[diag(passes::export_name)]
 pub struct ExportName {
     #[primary_span]
     pub attr_span: Span,
@@ -391,7 +391,7 @@ pub struct ExportName {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_layout_scalar_valid_range_not_struct)]
+#[diag(passes::rustc_layout_scalar_valid_range_not_struct)]
 pub struct RustcLayoutScalarValidRangeNotStruct {
     #[primary_span]
     pub attr_span: Span,
@@ -400,14 +400,14 @@ pub struct RustcLayoutScalarValidRangeNotStruct {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_layout_scalar_valid_range_arg)]
+#[diag(passes::rustc_layout_scalar_valid_range_arg)]
 pub struct RustcLayoutScalarValidRangeArg {
     #[primary_span]
     pub attr_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_legacy_const_generics_only)]
+#[diag(passes::rustc_legacy_const_generics_only)]
 pub struct RustcLegacyConstGenericsOnly {
     #[primary_span]
     pub attr_span: Span,
@@ -416,7 +416,7 @@ pub struct RustcLegacyConstGenericsOnly {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_legacy_const_generics_index)]
+#[diag(passes::rustc_legacy_const_generics_index)]
 pub struct RustcLegacyConstGenericsIndex {
     #[primary_span]
     pub attr_span: Span,
@@ -425,7 +425,7 @@ pub struct RustcLegacyConstGenericsIndex {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_legacy_const_generics_index_exceed)]
+#[diag(passes::rustc_legacy_const_generics_index_exceed)]
 pub struct RustcLegacyConstGenericsIndexExceed {
     #[primary_span]
     #[label]
@@ -434,21 +434,21 @@ pub struct RustcLegacyConstGenericsIndexExceed {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_legacy_const_generics_index_negative)]
+#[diag(passes::rustc_legacy_const_generics_index_negative)]
 pub struct RustcLegacyConstGenericsIndexNegative {
     #[primary_span]
     pub invalid_args: Vec<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_dirty_clean)]
+#[diag(passes::rustc_dirty_clean)]
 pub struct RustcDirtyClean {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::link_section)]
+#[diag(passes::link_section)]
 #[warn_]
 pub struct LinkSection {
     #[label]
@@ -456,7 +456,7 @@ pub struct LinkSection {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::no_mangle_foreign)]
+#[diag(passes::no_mangle_foreign)]
 #[warn_]
 #[note]
 pub struct NoMangleForeign {
@@ -468,7 +468,7 @@ pub struct NoMangleForeign {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::no_mangle)]
+#[diag(passes::no_mangle)]
 #[warn_]
 pub struct NoMangle {
     #[label]
@@ -476,32 +476,32 @@ pub struct NoMangle {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::repr_ident, code = "E0565")]
+#[diag(passes::repr_ident, code = "E0565")]
 pub struct ReprIdent {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::repr_conflicting, code = "E0566")]
+#[diag(passes::repr_conflicting, code = "E0566")]
 pub struct ReprConflicting;
 
 #[derive(SessionDiagnostic)]
-#[error(passes::used_static)]
+#[diag(passes::used_static)]
 pub struct UsedStatic {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::used_compiler_linker)]
+#[diag(passes::used_compiler_linker)]
 pub struct UsedCompilerLinker {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::allow_internal_unstable)]
+#[diag(passes::allow_internal_unstable)]
 pub struct AllowInternalUnstable {
     #[primary_span]
     pub attr_span: Span,
@@ -510,14 +510,14 @@ pub struct AllowInternalUnstable {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::debug_visualizer_placement)]
+#[diag(passes::debug_visualizer_placement)]
 pub struct DebugVisualizerPlacement {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::debug_visualizer_invalid)]
+#[diag(passes::debug_visualizer_invalid)]
 #[note(passes::note_1)]
 #[note(passes::note_2)]
 #[note(passes::note_3)]
@@ -527,7 +527,7 @@ pub struct DebugVisualizerInvalid {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_allow_const_fn_unstable)]
+#[diag(passes::rustc_allow_const_fn_unstable)]
 pub struct RustcAllowConstFnUnstable {
     #[primary_span]
     pub attr_span: Span,
@@ -536,7 +536,7 @@ pub struct RustcAllowConstFnUnstable {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_std_internal_symbol)]
+#[diag(passes::rustc_std_internal_symbol)]
 pub struct RustcStdInternalSymbol {
     #[primary_span]
     pub attr_span: Span,
@@ -545,42 +545,42 @@ pub struct RustcStdInternalSymbol {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::const_trait)]
+#[diag(passes::const_trait)]
 pub struct ConstTrait {
     #[primary_span]
     pub attr_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::link_ordinal)]
+#[diag(passes::link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]
     pub attr_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::stability_promotable)]
+#[diag(passes::stability_promotable)]
 pub struct StabilityPromotable {
     #[primary_span]
     pub attr_span: Span,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::deprecated)]
+#[diag(passes::deprecated)]
 pub struct Deprecated;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::macro_use)]
+#[diag(passes::macro_use)]
 pub struct MacroUse {
     pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::macro_export)]
+#[diag(passes::macro_export)]
 pub struct MacroExport;
 
 #[derive(LintDiagnostic)]
-#[lint(passes::plugin_registrar)]
+#[diag(passes::plugin_registrar)]
 pub struct PluginRegistrar;
 
 #[derive(SessionSubdiagnostic)]
@@ -594,7 +594,7 @@ pub enum UnusedNote {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::unused)]
+#[diag(passes::unused)]
 pub struct Unused {
     #[suggestion(applicability = "machine-applicable")]
     pub attr_span: Span,
@@ -603,7 +603,7 @@ pub struct Unused {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::non_exported_macro_invalid_attrs, code = "E0518")]
+#[diag(passes::non_exported_macro_invalid_attrs, code = "E0518")]
 pub struct NonExportedMacroInvalidAttrs {
     #[primary_span]
     #[label]
@@ -611,9 +611,8 @@ pub struct NonExportedMacroInvalidAttrs {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(passes::unused_duplicate)]
+#[diag(passes::unused_duplicate)]
 pub struct UnusedDuplicate {
-    #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub this: Span,
     #[note]
@@ -623,7 +622,7 @@ pub struct UnusedDuplicate {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::unused_multiple)]
+#[diag(passes::unused_multiple)]
 pub struct UnusedMultiple {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -634,7 +633,7 @@ pub struct UnusedMultiple {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_lint_opt_ty)]
+#[diag(passes::rustc_lint_opt_ty)]
 pub struct RustcLintOptTy {
     #[primary_span]
     pub attr_span: Span,
@@ -643,7 +642,7 @@ pub struct RustcLintOptTy {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(passes::rustc_lint_opt_deny_field_access)]
+#[diag(passes::rustc_lint_opt_deny_field_access)]
 pub struct RustcLintOptDenyFieldAccess {
     #[primary_span]
     pub attr_span: Span,

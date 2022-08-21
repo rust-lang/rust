@@ -37,14 +37,23 @@ pub unsafe fn do_usercall(
     (a, b)
 }
 
-type Register = u64;
+/// A value passed or returned in a CPU register.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub type Register = u64;
 
-trait RegisterArgument {
+/// Translate a type from/to Register to be used as an argument.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub trait RegisterArgument {
+    /// Translate a Register to Self.
     fn from_register(_: Register) -> Self;
+    /// Translate self to a Register.
     fn into_register(self) -> Register;
 }
 
-trait ReturnValue {
+/// Translate a pair of Registers to the raw usercall return value.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub trait ReturnValue {
+    /// Translate a pair of Registers to the raw usercall return value.
     fn from_registers(call: &'static str, regs: (Register, Register)) -> Self;
 }
 
@@ -68,6 +77,7 @@ macro_rules! define_usercalls {
 
 macro_rules! define_ra {
     (< $i:ident > $t:ty) => {
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         impl<$i> RegisterArgument for $t {
             fn from_register(a: Register) -> Self {
                 a as _
@@ -78,6 +88,7 @@ macro_rules! define_ra {
         }
     };
     ($i:ty as $t:ty) => {
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         impl RegisterArgument for $t {
             fn from_register(a: Register) -> Self {
                 a as $i as _
@@ -88,6 +99,7 @@ macro_rules! define_ra {
         }
     };
     ($t:ty) => {
+        #[unstable(feature = "sgx_platform", issue = "56975")]
         impl RegisterArgument for $t {
             fn from_register(a: Register) -> Self {
                 a as _
@@ -112,6 +124,7 @@ define_ra!(usize as isize);
 define_ra!(<T> *const T);
 define_ra!(<T> *mut T);
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl RegisterArgument for bool {
     fn from_register(a: Register) -> bool {
         if a != 0 { true } else { false }
@@ -121,6 +134,7 @@ impl RegisterArgument for bool {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: RegisterArgument> RegisterArgument for Option<NonNull<T>> {
     fn from_register(a: Register) -> Option<NonNull<T>> {
         NonNull::new(a as _)
@@ -130,12 +144,14 @@ impl<T: RegisterArgument> RegisterArgument for Option<NonNull<T>> {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl ReturnValue for ! {
     fn from_registers(call: &'static str, _regs: (Register, Register)) -> Self {
         rtabort!("Usercall {call}: did not expect to be re-entered");
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl ReturnValue for () {
     fn from_registers(call: &'static str, usercall_retval: (Register, Register)) -> Self {
         rtassert!(usercall_retval.0 == 0);
@@ -144,6 +160,7 @@ impl ReturnValue for () {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: RegisterArgument> ReturnValue for T {
     fn from_registers(call: &'static str, usercall_retval: (Register, Register)) -> Self {
         rtassert!(usercall_retval.1 == 0);
@@ -151,6 +168,7 @@ impl<T: RegisterArgument> ReturnValue for T {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: RegisterArgument, U: RegisterArgument> ReturnValue for (T, U) {
     fn from_registers(_call: &'static str, regs: (Register, Register)) -> Self {
         (T::from_register(regs.0), U::from_register(regs.1))
