@@ -33,8 +33,8 @@ where
 {
 
     let _: fn(&'lower ()) = match v {
-        //~^ ERROR lifetime may not live long enough
         true => lt_in_fn::<'a>(),
+        //~^ ERROR lifetime may not live long enough
         false => lt_in_fn::<'b>(),
     };
 }
@@ -46,8 +46,8 @@ where
 
 {
     let _: Contra<'lower> = match v {
-        //~^ ERROR lifetime may not live long enough
         true => lt_in_contra::<'a>(),
+        //~^ ERROR lifetime may not live long enough
         false => lt_in_contra::<'b>(),
     };
 }

@@ -2,10 +2,9 @@ error[E0597]: `c` does not live long enough
   --> $DIR/method-call.rs:36:34
    |
 LL |     a.method::<&'static u32>(b,  &c);
-   |     -----------------------------^^-
-   |     |                            |
-   |     |                            borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'static`
+   |       ------                     ^^ borrowed value does not live long enough
+   |       |
+   |       type annotation requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -16,10 +15,9 @@ LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
 ...
 LL |     a.method::<&'a u32>(b,  &c);
-   |     ------------------------^^-
-   |     |                       |
-   |     |                       borrowed value does not live long enough
-   |     argument requires that `c` is borrowed for `'a`
+   |       ------                ^^ borrowed value does not live long enough
+   |       |
+   |       type annotation requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
 
@@ -33,10 +31,9 @@ LL |     let _closure = || {
    |                     - `c` dropped here while still borrowed
 LL |         let c = 66;
 LL |         a.method::<&'a u32>(b,  &c);
-   |         ------------------------^^-
-   |         |                       |
-   |         |                       borrowed value does not live long enough
-   |         argument requires that `c` is borrowed for `'a`
+   |           ------                ^^ borrowed value does not live long enough
+   |           |
+   |           type annotation requires that `c` is borrowed for `'a`
 
 error: aborting due to 3 previous errors
 

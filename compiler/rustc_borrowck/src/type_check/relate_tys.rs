@@ -4,7 +4,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Const, Ty};
+use rustc_middle::ty::{self, Const, Ty, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
@@ -54,6 +54,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         )
         .relate(a, b)?;
         Ok(())
+    }
+
+    /// Given a user annotation, `val`, this registers the minimum necessary region constraints
+    /// under the category `ConstraintCategory::TypeAnnotation` and replaces annotated lifetimes
+    /// with fresh inference vars.
+    pub(super) fn extract_annotations<T: TypeFoldable<'tcx>>(&mut self, val: T, span: Span) -> T {
+        let tcx = self.infcx.tcx;
+        let mut relate = NllTypeRelatingDelegate::new(
+            self,
+            Locations::All(span),
+            ConstraintCategory::TypeAnnotation,
+            UniverseInfo::other(),
+        );
+        tcx.fold_regions(val, |region, _| match region.kind() {
+            ty::ReVar(_) => region,
+            ty::ReFree(_) | ty::ReEarlyBound(_) | ty::ReStatic => {
+                let var = relate.next_existential_region_var(false);
+                relate.push_outlives(region, var, ty::VarianceDiagInfo::default());
+                relate.push_outlives(var, region, ty::VarianceDiagInfo::default());
+                var
+            }
+            _ => bug!("unexpected region in type annotation {:?}", region),
+        })
     }
 }
 

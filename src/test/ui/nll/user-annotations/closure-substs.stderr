@@ -16,27 +16,21 @@ LL |         return x;
    |                ^ returning this value requires that `'1` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/closure-substs.rs:20:9
+  --> $DIR/closure-substs.rs:19:18
    |
 LL | fn bar<'a>() {
    |        -- lifetime `'a` defined here
-...
-LL |         b(x);
-   |         ^^^^ argument requires that `'a` must outlive `'static`
+LL |     // Here `x` is free in the closure sig:
+LL |     |x: &'a i32, b: fn(&'static i32)| {
+   |                  ^ type annotation requires that `'a` must outlive `'static`
 
-error[E0521]: borrowed data escapes outside of closure
-  --> $DIR/closure-substs.rs:27:9
+error: lifetime may not live long enough
+  --> $DIR/closure-substs.rs:27:15
    |
 LL |     |x: &i32, b: fn(&'static i32)| {
-   |      -  - let's call the lifetime of this reference `'1`
-   |      |
-   |      `x` is a reference that is only valid in the closure body
-LL |         b(x);
-   |         ^^^^
+   |         -     ^ type annotation requires that `'1` must outlive `'static`
    |         |
-   |         `x` escapes the closure body here
-   |         argument requires that `'1` must outlive `'static`
+   |         let's call the lifetime of this reference `'1`
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0521`.

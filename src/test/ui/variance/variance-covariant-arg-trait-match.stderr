@@ -7,7 +7,7 @@ LL | fn get_min_from_max<'min, 'max, G>()
    |                     lifetime `'min` defined here
 ...
 LL |     impls_get::<G,&'min i32>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'min` must outlive `'max`
    |
    = help: consider adding the following bound: `'min: 'max`
 
@@ -20,7 +20,7 @@ LL | fn get_max_from_min<'min, 'max, G>()
    |                     lifetime `'min` defined here
 ...
 LL |     impls_get::<G,&'max i32>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'min` must outlive `'max`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'min` must outlive `'max`
    |
    = help: consider adding the following bound: `'min: 'max`
 

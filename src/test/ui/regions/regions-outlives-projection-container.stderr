@@ -33,7 +33,7 @@ LL | fn call_with_assoc<'a,'b>() {
    |                    lifetime `'a` defined here
 ...
 LL |     call::<&'a WithAssoc<TheType<'b>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -46,7 +46,7 @@ LL | fn call_without_assoc<'a,'b>() {
    |                       lifetime `'a` defined here
 ...
 LL |     call::<&'a WithoutAssoc<TheType<'b>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 

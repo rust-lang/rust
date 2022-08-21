@@ -17,14 +17,16 @@ fn foo1() {
 fn bar<'a>() {
     // Here `x` is free in the closure sig:
     |x: &'a i32, b: fn(&'static i32)| {
-        b(x); //~ ERROR lifetime may not live long enough
+        //~^ ERROR lifetime may not live long enough
+        b(x);
     };
 }
 
 fn bar1() {
     // Here `x` is bound in the closure sig:
     |x: &i32, b: fn(&'static i32)| {
-        b(x); //~ ERROR borrowed data escapes outside of closure
+        //~^ ERROR lifetime may not live long enough
+        b(x);
     };
 }
 

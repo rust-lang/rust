@@ -129,8 +129,8 @@ fn static_to_a_to_static_through_struct<'a>(_x: &'a u32) -> &'static u32 {
 }
 
 fn a_to_static_then_static<'a>(x: &'a u32) -> &'static u32 {
-    let (y, _z): (&'static u32, u32) = (x, 44); //~ ERROR
-    y
+    let (y, _z): (&'static u32, u32) = (x, 44);
+    y //~ ERROR
 }
 
 fn main() { }

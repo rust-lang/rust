@@ -1875,6 +1875,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `results`. The paths are stored as a series of
     /// `ConstraintIndex` values -- in other words, a list of *edges*.
     ///
+    /// We have a special handling for `TypeAnnotation` constraints in that we don't report a path
+    /// with such constraint unless we're sure that no other path exists.
+    /// This enables us to say that a lifetime annotation is unnecessarily restrictive if it
+    /// appears in the constraint path, and thus we can safely suggest removing it.
+    ///
     /// Returns: a series of constraints as well as the region `R`
     /// that passed the target test.
     pub(crate) fn find_constraint_paths_between_regions(
@@ -1888,10 +1893,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Use a deque so that we do a breadth-first search. We will
         // stop at the first match, which ought to be the shortest
         // path (fewest constraints).
-        let mut deque = VecDeque::new();
-        deque.push_back(from_region);
+        let mut deque_p0 = VecDeque::new(); // Higher priority queue.
+        let mut deque_p1 = VecDeque::new(); // Lower priority queue. See method docs.
+        deque_p0.push_back(from_region);
 
-        while let Some(r) = deque.pop_front() {
+        while let Some(r) = deque_p0.pop_front().or_else(|| deque_p1.pop_front()) {
             debug!(
                 "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
                 from_region,
@@ -1939,8 +1945,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
+                    let constraint_category = constraint.category;
                     context[sub_region] = Trace::FromOutlivesConstraint(constraint);
-                    deque.push_back(sub_region);
+                    match constraint_category {
+                        ConstraintCategory::TypeAnnotation => deque_p1.push_back(sub_region),
+                        // FIXME A `ClosureBounds` constraint can be mapped to `TypeAnnotation`
+                        // later. It should be treated as such here but we're ingoring that.
+                        _ => deque_p0.push_back(sub_region),
+                    }
                 }
             };
 

@@ -5,10 +5,9 @@ LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
 LL |     let v = 22;
 LL |     let x = A::<'a>::new(&v, 22);
-   |             -------------^^-----
-   |             |            |
-   |             |            borrowed value does not live long enough
-   |             argument requires that `v` is borrowed for `'a`
+   |             ------------ ^^ borrowed value does not live long enough
+   |             |
+   |             type annotation requires that `v` is borrowed for `'a`
 LL |
 LL | }
    | - `v` dropped here while still borrowed

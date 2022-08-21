@@ -101,9 +101,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // argument N is stored in local N+2.
                 let local = Local::new(argument_index + 2);
                 let mir_input_ty = body.local_decls[local].ty;
+                // FIXME span should point to the type annotation, not the argument.
                 let mir_input_span = body.local_decls[local].source_info.span;
 
                 // If the user explicitly annotated the input types, enforce those.
+                let user_provided_input_ty =
+                    self.extract_annotations(user_provided_input_ty, mir_input_span);
                 let user_provided_input_ty =
                     self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
 

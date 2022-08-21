@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL | fn bar<'a>() {
    |        -- lifetime `'a` defined here
 LL |     foo::<&'a i32>();
-   |     ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |     ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

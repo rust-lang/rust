@@ -30,28 +30,28 @@ help: the following changes may resolve your lifetime errors
    = help: add bound `'b: 'upper`
 
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:35:12
+  --> $DIR/empty-binders-err.rs:36:17
    |
 LL | fn contra_fn<'a, 'b, 'lower>(v: bool)
    |              --      ------ lifetime `'lower` defined here
    |              |
    |              lifetime `'a` defined here
 ...
-LL |     let _: fn(&'lower ()) = match v {
-   |            ^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
+LL |         true => lt_in_fn::<'a>(),
+   |                 ^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
    |
    = help: consider adding the following bound: `'lower: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/empty-binders-err.rs:48:12
+  --> $DIR/empty-binders-err.rs:49:17
    |
 LL | fn contra_struct<'a, 'b, 'lower>(v: bool)
    |                  --      ------ lifetime `'lower` defined here
    |                  |
    |                  lifetime `'a` defined here
 ...
-LL |     let _: Contra<'lower> = match v {
-   |            ^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
+LL |         true => lt_in_contra::<'a>(),
+   |                 ^^^^^^^^^^^^^^^^^^ type annotation requires that `'lower` must outlive `'a`
    |
    = help: consider adding the following bound: `'lower: 'a`
 

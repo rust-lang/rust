@@ -10,7 +10,7 @@ error: lifetime may not live long enough
 LL | fn test2<'a>() {
    |          -- lifetime `'a` defined here
 LL |     outlives_forall::<Value<'a>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: aborting due to 2 previous errors
 

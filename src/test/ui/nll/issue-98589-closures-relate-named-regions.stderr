@@ -1,12 +1,12 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-98589-closures-relate-named-regions.rs:10:5
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:10:10
    |
 LL | fn test_early_early<'a: 'a, 'b: 'b>() {
    |                     --      -- lifetime `'b` defined here
    |                     |
    |                     lifetime `'a` defined here
 LL |     || { None::<&'a &'b ()>; };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |          ^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -18,7 +18,7 @@ LL | fn test_early_late<'a: 'a, 'b>() {
    |                    |
    |                    lifetime `'a` defined here
 LL |     || { None::<&'a &'b ()>; };
-   |          ^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |          ^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -30,7 +30,7 @@ LL | fn test_late_late<'a, 'b>() {
    |                   |
    |                   lifetime `'a` defined here
 LL |     || { None::<&'a &'b ()>; };
-   |          ^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |          ^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
