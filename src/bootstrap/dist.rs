@@ -1018,10 +1018,7 @@ impl Step for Rls {
 
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("RLS", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("rls expected to build");
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::RLS);

@@ -273,7 +273,6 @@ pub struct Build {
     bootstrap_out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
-    rls_info: channel::GitInfo,
     rust_analyzer_info: channel::GitInfo,
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
@@ -407,7 +406,6 @@ impl Build {
         let ignore_git = config.ignore_git;
         let rust_info = channel::GitInfo::new(ignore_git, &src);
         let cargo_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rls"));
         let rust_analyzer_info =
             channel::GitInfo::new(ignore_git, &src.join("src/tools/rust-analyzer"));
         let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
@@ -485,7 +483,6 @@ impl Build {
 
             rust_info,
             cargo_info,
-            rls_info,
             rust_analyzer_info,
             clippy_info,
             miri_info,

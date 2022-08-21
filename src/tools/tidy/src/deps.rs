@@ -31,8 +31,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("mdbook", "MPL-2.0"),            // mdbook
     ("openssl", "Apache-2.0"),        // cargo, mdbook
     ("colored", "MPL-2.0"),           // rustfmt
-    ("ordslice", "Apache-2.0"),       // rls
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // rls/cargo/... (because of serde)
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // cargo/... (because of serde)
     ("bytesize", "Apache-2.0"),       // cargo
     ("im-rc", "MPL-2.0+"),            // cargo
     ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
