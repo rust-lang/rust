@@ -329,7 +329,7 @@ impl SocketAddr {
 
             crate::ptr::copy_nonoverlapping(
                 namespace.as_ptr(),
-                addr.sun_path.as_mut_ptr().offset(1) as *mut u8,
+                addr.sun_path.as_mut_ptr().add(1) as *mut u8,
                 namespace.len(),
             );
             let len = (sun_path_offset(&addr) + 1 + namespace.len()) as libc::socklen_t;

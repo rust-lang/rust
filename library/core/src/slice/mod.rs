@@ -2924,7 +2924,7 @@ impl<T> [T] {
                 let prev_ptr_write = ptr.add(next_write - 1);
                 if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
                     if next_read != next_write {
-                        let ptr_write = prev_ptr_write.offset(1);
+                        let ptr_write = prev_ptr_write.add(1);
                         mem::swap(&mut *ptr_read, &mut *ptr_write);
                     }
                     next_write += 1;
