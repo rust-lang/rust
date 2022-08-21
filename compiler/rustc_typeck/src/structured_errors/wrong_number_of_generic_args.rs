@@ -525,6 +525,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     self.suggest_adding_args(err);
                 } else if self.too_many_args_provided() {
                     self.suggest_removing_args_or_generics(err);
+                    self.suggest_moving_args(err);
                 } else {
                     unreachable!();
                 }
@@ -650,6 +651,64 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
+            }
+        }
+    }
+
+    /// Suggests moving redundant argument(s) of an associate function to the
+    /// trait it belongs to.
+    ///
+    /// ```compile_fail
+    /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
+    /// ```
+    fn suggest_moving_args(&self, err: &mut Diagnostic) {
+        if let Some(trait_) = self.tcx.trait_of_item(self.def_id) {
+            // HACK(hkmatsumoto): Ugly way to tell "<trait>::<assoc fn>()" from "x.<assoc fn>()";
+            // we don't care the latter (for now).
+            if self.path_segment.res == Some(hir::def::Res::Err) {
+                return;
+            }
+
+            // Say, if the assoc fn takes `A`, `B` and `C` as generic arguments while expecting 1
+            // argument, and its trait expects 2 arguments. It is hard to "split" them right as
+            // there are too many cases to handle: `A` `B` | `C`, `A` `B` | `C`, `A` `C` | `B`, ...
+            let num_assoc_fn_expected_args =
+                self.num_expected_type_or_const_args() + self.num_expected_lifetime_args();
+            if num_assoc_fn_expected_args > 0 {
+                return;
+            }
+
+            let num_assoc_fn_excess_args =
+                self.num_excess_type_or_const_args() + self.num_excess_lifetime_args();
+
+            let trait_generics = self.tcx.generics_of(trait_);
+            let num_trait_generics_except_self =
+                trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
+
+            // FIXME(hkmatsumoto): RHS of this condition ideally should be
+            // `num_trait_generics_except_self` - "# of generic args already provided to trait"
+            // but unable to get that information with `self.def_id`.
+            if num_assoc_fn_excess_args == num_trait_generics_except_self {
+                if let Some(span) = self.gen_args.span_ext()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    let msg = format!(
+                        "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",
+                        these = pluralize!("this", num_assoc_fn_excess_args),
+                        s = pluralize!(num_assoc_fn_excess_args),
+                        name = self.tcx.item_name(trait_),
+                        num = num_trait_generics_except_self,
+                    );
+                    let sugg = vec![
+                        (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
+                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
+                    ];
+
+                    err.multipart_suggestion(
+                        msg,
+                        sugg,
+                        Applicability::MaybeIncorrect
+                    );
+                }
             }
         }
     }
