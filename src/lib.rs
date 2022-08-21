@@ -85,17 +85,17 @@ pub use crate::concurrency::data_race::{
     EvalContextExt as DataRaceEvalContextExt,
 };
 pub use crate::diagnostics::{
-    EvalContextExt as DiagnosticsEvalContextExt, NonHaltingDiagnostic, register_diagnostic,
-    report_error, TerminationInfo,
+    register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
+    NonHaltingDiagnostic, TerminationInfo,
 };
 pub use crate::eval::{
-    AlignmentCheck, BacktraceStyle, create_ecx, eval_entry, IsolatedOp, MiriConfig, RejectOpWith,
+    create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
 pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
     AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind,
-    NUM_CPUS, PAGE_SIZE, Provenance, ProvenanceExtra, STACK_ADDR, STACK_SIZE,
+    Provenance, ProvenanceExtra, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
@@ -103,10 +103,10 @@ pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
 };
-pub use concurrency::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{
     EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,
 };
+pub use concurrency::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
