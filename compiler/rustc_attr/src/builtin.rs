@@ -237,8 +237,6 @@ where
     let mut promotable = false;
     let mut allowed_through_unstable_modules = false;
 
-    let diagnostic = &sess.parse_sess.span_diagnostic;
-
     'outer: for attr in attrs_iter {
         if ![
             sym::rustc_const_unstable,
@@ -278,7 +276,7 @@ where
                     *item = Some(v);
                     true
                 } else {
-                    struct_span_err!(diagnostic, meta.span, E0539, "incorrect meta item").emit();
+                    sess.emit_err(session_diagnostics::InvalidMetaItem { span: meta.span });
                     false
                 }
             };
@@ -344,39 +342,28 @@ where
                                 // is a name/value pair string literal.
                                 issue_num = match issue.unwrap().as_str() {
                                     "none" => None,
-                                    issue => {
-                                        let emit_diag = |msg: &str| {
-                                            struct_span_err!(
-                                                diagnostic,
-                                                mi.span,
-                                                E0545,
-                                                "`issue` must be a non-zero numeric string \
-                                                or \"none\"",
-                                            )
-                                            .span_label(mi.name_value_literal_span().unwrap(), msg)
-                                            .emit();
-                                        };
-                                        match issue.parse() {
-                                            Ok(0) => {
-                                                emit_diag(
-                                                    "`issue` must not be \"0\", \
-                                                    use \"none\" instead",
-                                                );
-                                                continue 'outer;
-                                            }
-                                            Ok(num) => NonZeroU32::new(num),
-                                            Err(err) => {
-                                                emit_diag(&err.to_string());
-                                                continue 'outer;
-                                            }
+                                    issue => match issue.parse::<NonZeroU32>() {
+                                        Ok(num) => Some(num),
+                                        Err(err) => {
+                                            sess.emit_err(
+                                                session_diagnostics::InvalidIssueString {
+                                                    span: mi.span,
+                                                    cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
+                                                        mi.name_value_literal_span().unwrap(),
+                                                        err.kind(),
+                                                    ),
+                                                },
+                                            );
+                                            continue 'outer;
                                         }
-                                    }
+                                    },
                                 };
                             }
                             sym::soft => {
                                 if !mi.is_word() {
-                                    let msg = "`soft` should not have any arguments";
-                                    sess.parse_sess.span_diagnostic.span_err(mi.span, msg);
+                                    sess.emit_err(session_diagnostics::SoftNoArgs {
+                                        span: mi.span,
+                                    });
                                 }
                                 is_soft = true;
                             }
@@ -434,8 +421,7 @@ where
                             continue;
                         }
                         _ => {
-                            struct_span_err!(diagnostic, attr.span, E0547, "missing 'issue'")
-                                .emit();
+                            sess.emit_err(session_diagnostics::MissingIssue { span: attr.span });
                             continue;
                         }
                     }
@@ -530,14 +516,7 @@ where
         if let Some((ref mut stab, _)) = const_stab {
             stab.promotable = promotable;
         } else {
-            struct_span_err!(
-                diagnostic,
-                item_sp,
-                E0717,
-                "`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` \
-                or a `rustc_const_stable` attribute"
-            )
-            .emit();
+            sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp });
         }
     }
 
@@ -552,13 +531,7 @@ where
         {
             *allowed_through_unstable_modules = true;
         } else {
-            struct_span_err!(
-                diagnostic,
-                item_sp,
-                E0789,
-                "`rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute"
-            )
-            .emit();
+            sess.emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
         }
     }
 
