@@ -84,6 +84,13 @@ pub trait EmissionGuarantee: Sized {
     /// of `Self` without actually performing the emission.
     #[track_caller]
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
+
+    /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
+    #[track_caller]
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self>;
 }
 
 /// Private module for sealing the `IsError` helper trait.
@@ -166,6 +173,15 @@ impl EmissionGuarantee for ErrorGuaranteed {
             }
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_guaranteeing_error::<_, { Level::Error { lint: false } }>(
+            handler, msg,
+        )
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, ()> {
@@ -208,6 +224,13 @@ impl EmissionGuarantee for () {
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new(handler, Level::Warning(None), msg)
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, !> {
@@ -246,6 +269,13 @@ impl EmissionGuarantee for ! {
         }
         // Then fatally error, returning `!`
         crate::FatalError.raise()
+    }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_fatal(handler, msg)
     }
 }
 
