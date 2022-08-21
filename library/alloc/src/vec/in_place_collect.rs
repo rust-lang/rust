@@ -267,7 +267,7 @@ where
             // one slot in the underlying storage will have been freed up and we can immediately
             // write back the result.
             unsafe {
-                let dst = dst_buf.offset(i as isize);
+                let dst = dst_buf.add(i);
                 debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");
                 ptr::write(dst, self.__iterator_get_unchecked(i));
                 // Since this executes user code which can panic we have to bump the pointer

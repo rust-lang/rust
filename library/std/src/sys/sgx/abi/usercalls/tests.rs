@@ -17,12 +17,12 @@ fn test_copy_to_userspace_function() {
             dst.copy_from_enclave(&[0u8; 100]);
 
             // Copy src[0..size] to dst + offset
-            unsafe { copy_to_userspace(src.as_ptr(), dst.as_mut_ptr().offset(offset), size) };
+            unsafe { copy_to_userspace(src.as_ptr(), dst.as_mut_ptr().add(offset), size) };
 
             // Verify copy
             for byte in 0..size {
                 unsafe {
-                    assert_eq!(*dst.as_ptr().offset(offset + byte as isize), src[byte as usize]);
+                    assert_eq!(*dst.as_ptr().add(offset + byte), src[byte as usize]);
                 }
             }
         }
