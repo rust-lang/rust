@@ -61,9 +61,7 @@ mod operator;
 mod range_map;
 mod shims;
 mod stacked_borrows;
-mod sync;
-mod thread;
-mod vector_clock;
+pub mod thread;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -105,12 +103,10 @@ pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
 };
-pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{
     EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,
 };
-pub use crate::vector_clock::{VClock, VTimestamp, VectorIdx};
-
+pub use concurrency::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[

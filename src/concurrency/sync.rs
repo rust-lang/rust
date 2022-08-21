@@ -7,6 +7,7 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
+use super::vector_clock::VClock;
 use crate::*;
 
 /// We cannot use the `newtype_index!` macro because we have to use 0 as a
@@ -150,7 +151,7 @@ struct FutexWaiter {
 
 /// The state of all synchronization variables.
 #[derive(Default, Debug)]
-pub(super) struct SynchronizationState {
+pub(crate) struct SynchronizationState {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
