@@ -545,6 +545,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    RustcPath,
 }
 
 pub enum Input {
@@ -1777,6 +1778,20 @@ fn collect_print_requests(
         cg.target_feature = String::new();
     }
 
+    let gate = |req, opt| {
+        if unstable_opts.unstable_options {
+            req
+        } else {
+            early_error(
+                error_format,
+                &format!(
+                    "the `-Z unstable-options` flag must also be passed to \
+                        enable the {opt} print option",
+                ),
+            );
+        }
+    };
+
     prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
         "crate-name" => PrintRequest::CrateName,
         "file-names" => PrintRequest::FileNames,
@@ -1791,18 +1806,9 @@ fn collect_print_requests(
         "tls-models" => PrintRequest::TlsModels,
         "native-static-libs" => PrintRequest::NativeStaticLibs,
         "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
-        "target-spec-json" => {
-            if unstable_opts.unstable_options {
-                PrintRequest::TargetSpec
-            } else {
-                early_error(
-                    error_format,
-                    "the `-Z unstable-options` flag must also be passed to \
-                     enable the target-spec-json print option",
-                );
-            }
-        }
+        "target-spec-json" => gate(PrintRequest::TargetSpec, "target-spec-json"),
         "link-args" => PrintRequest::LinkArgs,
+        "rustc-path" => gate(PrintRequest::RustcPath, "rustc-path"),
         req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
