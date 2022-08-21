@@ -64,6 +64,8 @@ declare_clippy_lint! {
     ///     y*y
     /// }, |foo| foo);
     /// ```
+    // FIXME: Before moving this lint out of nursery, the lint name needs to be updated. It now also
+    // covers matches and `Result`.
     #[clippy::version = "1.47.0"]
     pub OPTION_IF_LET_ELSE,
     nursery,
@@ -235,24 +237,25 @@ fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        // Don't lint macros, because it behaves weirdly
-        // and don't lint constant as well
-        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
-            let detection = detect_option_if_let_else(cx, expr).or_else(|| detect_option_match(cx, expr));
-            if let Some(det) = detection {
-                span_lint_and_sugg(
-                    cx,
-                    OPTION_IF_LET_ELSE,
-                    expr.span,
-                    format!("use Option::{} instead of an if let/else", det.method_sugg).as_str(),
-                    "try",
-                    format!(
-                        "{}.{}({}, {})",
-                        det.option, det.method_sugg, det.none_expr, det.some_expr
-                    ),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+        // Don't lint macros and constants
+        if expr.span.from_expansion() || in_constant(cx, expr.hir_id) {
+            return;
+        }
+
+        let detection = detect_option_if_let_else(cx, expr).or_else(|| detect_option_match(cx, expr));
+        if let Some(det) = detection {
+            span_lint_and_sugg(
+                cx,
+                OPTION_IF_LET_ELSE,
+                expr.span,
+                format!("use Option::{} instead of an if let/else", det.method_sugg).as_str(),
+                "try",
+                format!(
+                    "{}.{}({}, {})",
+                    det.option, det.method_sugg, det.none_expr, det.some_expr
+                ),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
