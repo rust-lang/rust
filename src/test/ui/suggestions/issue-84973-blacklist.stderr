@@ -31,10 +31,12 @@ LL | #[derive(Clone)]
    |
 
 error[E0277]: `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:22]` cannot be unpinned
-  --> $DIR/issue-84973-blacklist.rs:17:5
+  --> $DIR/issue-84973-blacklist.rs:17:13
    |
 LL |     f_unpin(static || { yield; });
-   |     ^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:22]`
+   |     ------- ^^^^^^^^^^^^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/issue-84973-blacklist.rs:17:13: 17:22]`
+   |     |
+   |     required by a bound introduced by this call
    |
    = note: consider using `Box::pin`
 note: required by a bound in `f_unpin`

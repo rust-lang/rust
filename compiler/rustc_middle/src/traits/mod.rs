@@ -234,12 +234,22 @@ pub enum ObligationCauseCode<'tcx> {
     /// This is the trait reference from the given projection.
     ProjectionWf(ty::ProjectionTy<'tcx>),
 
-    /// In an impl of trait `X` for type `Y`, type `Y` must
-    /// also implement all supertraits of `X`.
+    /// Must satisfy all of the where-clause predicates of the
+    /// given item.
     ItemObligation(DefId),
 
-    /// Like `ItemObligation`, but with extra detail on the source of the obligation.
+    /// Like `ItemObligation`, but carries the span of the
+    /// predicate when it can be identified.
     BindingObligation(DefId, Span),
+
+    /// Like `ItemObligation`, but carries the `HirId` of the
+    /// expression that caused the obligation, and the `usize`
+    /// indicates exactly which predicate it is in the list of
+    /// instantiated predicates.
+    ExprItemObligation(DefId, rustc_hir::HirId, usize),
+
+    /// Combines `ExprItemObligation` and `BindingObligation`.
+    ExprBindingObligation(DefId, Span, rustc_hir::HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),

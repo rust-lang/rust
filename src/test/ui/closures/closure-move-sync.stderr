@@ -1,8 +1,14 @@
 error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:6:13
+  --> $DIR/closure-move-sync.rs:6:27
    |
-LL |     let t = thread::spawn(|| {
-   |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
+LL |       let t = thread::spawn(|| {
+   |  _____________-------------_^
+   | |             |
+   | |             required by a bound introduced by this call
+LL | |         recv.recv().unwrap();
+LL | |
+LL | |     });
+   | |_____^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
@@ -18,10 +24,12 @@ LL |     F: Send + 'static,
    |        ^^^^ required by this bound in `spawn`
 
 error[E0277]: `Sender<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:18:5
+  --> $DIR/closure-move-sync.rs:18:19
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
-   |     ^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
+   |     ------------- ^^^^^^^^^^^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `Sender<()>`
    = note: required for `&Sender<()>` to implement `Send`

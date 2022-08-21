@@ -1,8 +1,15 @@
 error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36] as Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36]`
-  --> $DIR/generator-yielding-or-returning-itself.rs:15:5
+  --> $DIR/generator-yielding-or-returning-itself.rs:15:34
    |
-LL |     want_cyclic_generator_return(|| {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
+LL |       want_cyclic_generator_return(|| {
+   |  _____----------------------------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         if false { yield None.unwrap(); }
+LL | |         None.unwrap()
+LL | |     })
+   | |_____^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
@@ -17,10 +24,17 @@ LL |     where T: Generator<Yield = (), Return = T>
    |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_generator_return`
 
 error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35] as Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35]`
-  --> $DIR/generator-yielding-or-returning-itself.rs:28:5
+  --> $DIR/generator-yielding-or-returning-itself.rs:28:33
    |
-LL |     want_cyclic_generator_yield(|| {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
+LL |       want_cyclic_generator_yield(|| {
+   |  _____---------------------------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         if false { yield None.unwrap(); }
+LL | |         None.unwrap()
+LL | |     })
+   | |_____^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,

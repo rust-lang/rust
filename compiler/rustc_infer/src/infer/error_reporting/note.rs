@@ -390,10 +390,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if matches!(
                     &trace.cause.code().peel_derives(),
                     ObligationCauseCode::BindingObligation(..)
+                        | ObligationCauseCode::ExprBindingObligation(..)
                 ) =>
             {
                 // Hack to get around the borrow checker because trace.cause has an `Rc`.
-                if let ObligationCauseCode::BindingObligation(_, span) =
+                if let ObligationCauseCode::BindingObligation(_, span)
+                | ObligationCauseCode::ExprBindingObligation(_, span, ..) =
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;

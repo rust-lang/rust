@@ -491,7 +491,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // so we just call `predicates_for_generics` directly to avoid redoing work.
         // `self.add_required_obligations(self.span, def_id, &all_substs);`
         for obligation in traits::predicates_for_generics(
-            traits::ObligationCause::new(self.span, self.body_id, traits::ItemObligation(def_id)),
+            |idx, span| {
+                let code = if span.is_dummy() {
+                    ObligationCauseCode::ExprItemObligation(def_id, self.call_expr.hir_id, idx)
+                } else {
+                    ObligationCauseCode::ExprBindingObligation(
+                        def_id,
+                        span,
+                        self.call_expr.hir_id,
+                        idx,
+                    )
+                };
+                traits::ObligationCause::new(self.span, self.body_id, code)
+            },
             self.param_env,
             method_predicates,
         ) {

@@ -860,8 +860,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
 
-                        err.emit();
-                        return;
+                        err
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
@@ -1564,6 +1563,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.cause.code().peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ExprItemObligation(..)
+                        | ObligationCauseCode::ExprBindingObligation(..)
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
@@ -2091,13 +2092,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::ItemObligation(def_id) = *obligation.cause.code() {
+                if let ObligationCauseCode::ItemObligation(def_id) | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code() {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
-                } else if let (
-                    Ok(ref snippet),
-                    &ObligationCauseCode::BindingObligation(def_id, _),
-                ) =
-                    (self.tcx.sess.source_map().span_to_snippet(span), obligation.cause.code())
+                } else if let Ok(snippet) = &self.tcx.sess.source_map().span_to_snippet(span)
+                    && let ObligationCauseCode::BindingObligation(def_id, _) | ObligationCauseCode::ExprBindingObligation(def_id, ..)
+                        = *obligation.cause.code()
                 {
                     let generics = self.tcx.generics_of(def_id);
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
@@ -2520,15 +2519,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let (
-            ty::PredicateKind::Trait(pred),
-            &ObligationCauseCode::BindingObligation(item_def_id, span),
-        ) = (
-            obligation.predicate.kind().skip_binder(),
-            obligation.cause.code().peel_derives(),
-        )  else {
-            return;
-        };
+        let ty::PredicateKind::Trait(pred) = obligation.predicate.kind().skip_binder() else { return; };
+        let (ObligationCauseCode::BindingObligation(item_def_id, span)
+        | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..))
+            = *obligation.cause.code().peel_derives() else { return; };
         debug!(?pred, ?item_def_id, ?span);
 
         let (Some(node), true) = (

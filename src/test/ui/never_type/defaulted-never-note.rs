@@ -32,6 +32,7 @@ fn smeg() {
     //[fallback]~| NOTE the trait `ImplementedForUnitButNotNever` is not implemented
     //[fallback]~| HELP trait `ImplementedForUnitButNotNever` is implemented for `()`
     //[fallback]~| NOTE this error might have been caused
+    //[fallback]~| NOTE required by a bound introduced by this call
     //[fallback]~| HELP did you intend
 }
 

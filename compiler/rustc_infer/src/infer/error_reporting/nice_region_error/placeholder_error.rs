@@ -211,7 +211,10 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         );
         let mut err = self.tcx().sess.struct_span_err(span, &msg);
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = *cause.code() {
+        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id)
+        | ObligationCauseCode::ExprItemObligation(def_id, ..) =
+            *cause.code()
+        {
             err.span_label(span, "doesn't satisfy where-clause");
             err.span_label(
                 self.tcx().def_span(def_id),

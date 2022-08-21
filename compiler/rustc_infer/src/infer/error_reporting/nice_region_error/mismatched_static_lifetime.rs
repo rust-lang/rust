@@ -35,7 +35,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
         };
-        let ObligationCauseCode::BindingObligation(_def_id, binding_span) = *parent.code() else {
+        let (ObligationCauseCode::BindingObligation(_, binding_span) | ObligationCauseCode::ExprBindingObligation(_, binding_span, ..))
+            = *parent.code() else {
             return None;
         };
         let mut err = self.tcx().sess.struct_span_err(cause.span, "incompatible lifetime on type");
