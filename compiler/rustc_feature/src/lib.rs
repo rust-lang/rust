@@ -12,6 +12,8 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![feature(once_cell)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod accepted;
 mod active;

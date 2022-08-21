@@ -249,7 +249,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyArray<rustc_span::SourceFile>,
+    source_map: LazyTable<u32, LazyValue<rustc_span::SourceFile>>,
 
     compiler_builtins: bool,
     needs_allocator: bool,
@@ -444,6 +444,10 @@ struct GeneratorData<'tcx> {
 const TAG_VALID_SPAN_LOCAL: u8 = 0;
 const TAG_VALID_SPAN_FOREIGN: u8 = 1;
 const TAG_PARTIAL_SPAN: u8 = 2;
+
+// Tags for encoding Symbol's
+const SYMBOL_STR: u8 = 0;
+const SYMBOL_OFFSET: u8 = 1;
 
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);

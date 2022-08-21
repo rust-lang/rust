@@ -15,7 +15,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
              &'c &'b str
              [char; N]
              char
-   = note: required because of the requirements on the impl of `Pattern<'_>` for `u8`
+   = note: required for `u8` to implement `Pattern<'_>`
 
 error: aborting due to previous error
 

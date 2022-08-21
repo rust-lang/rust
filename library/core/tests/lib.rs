@@ -99,6 +99,7 @@
 #![feature(waker_getters)]
 #![feature(slice_flatten)]
 #![feature(provide_any)]
+#![feature(utf8_chunks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

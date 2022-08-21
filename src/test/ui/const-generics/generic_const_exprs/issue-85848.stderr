@@ -7,12 +7,12 @@ LL |     writes_to_specific_path(&cap);
    |     required by a bound introduced by this call
    |
    = help: the trait `Delegates<U>` is implemented for `T`
-note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
+note: required for `&C` to implement `Contains<(), true>`
   --> $DIR/issue-85848.rs:21:12
    |
 LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^
-note: required because of the requirements on the impl of `Delegates<()>` for `&C`
+note: required for `&C` to implement `Delegates<()>`
   --> $DIR/issue-85848.rs:12:12
    |
 LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
@@ -32,12 +32,12 @@ LL |     writes_to_specific_path(&cap);
    |     required by a bound introduced by this call
    |
    = help: try adding a `where` bound using this expression: `where [(); { contains::<T, U>() }]:`
-note: required because of the requirements on the impl of `Contains<(), true>` for `&C`
+note: required for `&C` to implement `Contains<(), true>`
   --> $DIR/issue-85848.rs:21:12
    |
 LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^
-note: required because of the requirements on the impl of `Delegates<()>` for `&C`
+note: required for `&C` to implement `Delegates<()>`
   --> $DIR/issue-85848.rs:12:12
    |
 LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}

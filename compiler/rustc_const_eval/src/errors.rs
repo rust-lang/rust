@@ -3,7 +3,7 @@ use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unstable_in_stable)]
+#[diag(const_eval::unstable_in_stable)]
 pub(crate) struct UnstableInStable {
     pub gate: String,
     #[primary_span]
@@ -22,14 +22,14 @@ pub(crate) struct UnstableInStable {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::thread_local_access, code = "E0625")]
+#[diag(const_eval::thread_local_access, code = "E0625")]
 pub(crate) struct NonConstOpErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::static_access, code = "E0013")]
+#[diag(const_eval::static_access, code = "E0013")]
 #[help]
 pub(crate) struct StaticAccessErr {
     #[primary_span]
@@ -41,7 +41,7 @@ pub(crate) struct StaticAccessErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::raw_ptr_to_int)]
+#[diag(const_eval::raw_ptr_to_int)]
 #[note]
 #[note(const_eval::note2)]
 pub(crate) struct RawPtrToIntErr {
@@ -50,7 +50,7 @@ pub(crate) struct RawPtrToIntErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::raw_ptr_comparison)]
+#[diag(const_eval::raw_ptr_comparison)]
 #[note]
 pub(crate) struct RawPtrComparisonErr {
     #[primary_span]
@@ -58,14 +58,14 @@ pub(crate) struct RawPtrComparisonErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::panic_non_str)]
+#[diag(const_eval::panic_non_str)]
 pub(crate) struct PanicNonStrErr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::mut_deref, code = "E0658")]
+#[diag(const_eval::mut_deref, code = "E0658")]
 pub(crate) struct MutDerefErr {
     #[primary_span]
     pub span: Span,
@@ -73,7 +73,7 @@ pub(crate) struct MutDerefErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::transient_mut_borrow, code = "E0658")]
+#[diag(const_eval::transient_mut_borrow, code = "E0658")]
 pub(crate) struct TransientMutBorrowErr {
     #[primary_span]
     pub span: Span,
@@ -81,7 +81,7 @@ pub(crate) struct TransientMutBorrowErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::transient_mut_borrow_raw, code = "E0658")]
+#[diag(const_eval::transient_mut_borrow_raw, code = "E0658")]
 pub(crate) struct TransientMutBorrowErrRaw {
     #[primary_span]
     pub span: Span,

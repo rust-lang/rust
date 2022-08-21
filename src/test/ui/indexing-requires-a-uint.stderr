@@ -6,7 +6,7 @@ LL |     [0][0u8];
    |
    = help: the trait `SliceIndex<[{integer}]>` is not implemented for `u8`
    = help: the trait `SliceIndex<[T]>` is implemented for `usize`
-   = note: required because of the requirements on the impl of `Index<u8>` for `[{integer}]`
+   = note: required for `[{integer}]` to implement `Index<u8>`
 
 error[E0308]: mismatched types
   --> $DIR/indexing-requires-a-uint.rs:12:18

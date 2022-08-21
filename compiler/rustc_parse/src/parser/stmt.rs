@@ -1,5 +1,7 @@
 use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
-use super::diagnostics::{AttemptLocalParseRecovery, Error};
+use super::diagnostics::{
+    AttemptLocalParseRecovery, Error, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
+};
 use super::expr::LhsExpr;
 use super::pat::RecoverComma;
 use super::path::PathStyle;
@@ -58,28 +60,22 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
             let mut_let_span = lo.to(self.token.span);
-            self.struct_span_err(mut_let_span, "invalid variable declaration")
-                .span_suggestion(
-                    mut_let_span,
-                    "switch the order of `mut` and `let`",
-                    "let mut",
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            self.sess.emit_err(InvalidVariableDeclaration {
+                span: mut_let_span,
+                sub: InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
+            });
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
             self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
         } else if self.is_kw_followed_by_ident(kw::Mut) {
-            self.recover_stmt_local(lo, attrs, "missing keyword", "let mut")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::MissingLet)?
         } else if self.is_kw_followed_by_ident(kw::Auto) {
             self.bump(); // `auto`
-            let msg = "write `let` instead of `auto` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs, msg, "let")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotAuto)?
         } else if self.is_kw_followed_by_ident(sym::var) {
             self.bump(); // `var`
-            let msg = "write `let` instead of `var` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs, msg, "let")?
+            self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotVar)?
         } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
@@ -181,7 +177,7 @@ impl<'a> Parser<'a> {
             None => unreachable!(),
         };
 
-        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot
@@ -217,13 +213,10 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         attrs: AttrWrapper,
-        msg: &str,
-        sugg: &str,
+        subdiagnostic: fn(Span) -> InvalidVariableDeclarationSub,
     ) -> PResult<'a, Stmt> {
         let stmt = self.recover_local_after_let(lo, attrs)?;
-        self.struct_span_err(lo, "invalid variable declaration")
-            .span_suggestion(lo, msg, sugg, Applicability::MachineApplicable)
-            .emit();
+        self.sess.emit_err(InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
     }
 

@@ -32,7 +32,7 @@ LL |     (|_| 2333).await;
    |
    = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
    = note: [closure@$DIR/issue-62009-1.rs:12:6: 12:9] must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
+   = note: required for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     (|_| 2333).await;

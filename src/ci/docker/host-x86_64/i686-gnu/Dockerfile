@@ -23,6 +23,9 @@ RUN sh /scripts/sccache.sh
 COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
 
+# We are intentionally allowing an old toolchain on this builder (and that's
+# incompatible with LLVM downloads today).
+ENV NO_DOWNLOAD_CI_LLVM 1
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu \
     --set llvm.allow-old-toolchain
 # Exclude some tests that are unlikely to be platform specific, to speed up

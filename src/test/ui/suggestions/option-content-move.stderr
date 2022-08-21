@@ -1,9 +1,10 @@
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:11:20
+  --> $DIR/option-content-move.rs:9:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
    |                    |
+   |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |                    move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
    |
 note: this function takes ownership of the receiver `self`, which moves `selection.1`
@@ -11,17 +12,14 @@ note: this function takes ownership of the receiver `self`, which moves `selecti
    |
 LL |     pub const fn unwrap(self) -> T {
    |                         ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
-   |
-LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
-   |                                +++++++++
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
-  --> $DIR/option-content-move.rs:29:20
+  --> $DIR/option-content-move.rs:27:20
    |
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^ -------- `selection.1` moved due to this method call
    |                    |
+   |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
    |
 note: this function takes ownership of the receiver `self`, which moves `selection.1`
@@ -29,10 +27,6 @@ note: this function takes ownership of the receiver `self`, which moves `selecti
    |
 LL |     pub fn unwrap(self) -> T
    |                   ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
-   |
-LL |                 if selection.1.as_ref().unwrap().contains(selection.0) {
-   |                                +++++++++
 
 error: aborting due to 2 previous errors
 

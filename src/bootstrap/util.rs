@@ -258,6 +258,10 @@ impl CiEnv {
         }
     }
 
+    pub fn is_ci() -> bool {
+        Self::current() != CiEnv::None
+    }
+
     /// If in a CI environment, forces the command to run with colors.
     pub fn force_coloring_in_ci(self, cmd: &mut Command) {
         if self != CiEnv::None {

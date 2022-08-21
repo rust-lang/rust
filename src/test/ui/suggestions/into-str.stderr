@@ -14,7 +14,7 @@ LL |     foo(String::new());
              <String as From<Box<str>>>
              <String as From<Cow<'a, str>>>
              <String as From<char>>
-   = note: required because of the requirements on the impl of `Into<&str>` for `String`
+   = note: required for `String` to implement `Into<&str>`
 note: required by a bound in `foo`
   --> $DIR/into-str.rs:1:31
    |

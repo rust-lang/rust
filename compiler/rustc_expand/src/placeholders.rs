@@ -15,12 +15,12 @@ pub fn placeholder(
     id: ast::NodeId,
     vis: Option<ast::Visibility>,
 ) -> AstFragment {
-    fn mac_placeholder() -> ast::MacCall {
-        ast::MacCall {
+    fn mac_placeholder() -> P<ast::MacCall> {
+        P(ast::MacCall {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
             args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
-        }
+        })
     }
 
     let ident = Ident::empty();

@@ -8,7 +8,7 @@ LL |     for (i, _) in & & & & &v.iter().enumerate() {
    |                   help: consider removing 5 leading `&`-references
    |
    = help: the trait `Iterator` is not implemented for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
-   = note: required because of the requirements on the impl of `IntoIterator` for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>`
+   = note: required for `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
 
 error: aborting due to previous error
 

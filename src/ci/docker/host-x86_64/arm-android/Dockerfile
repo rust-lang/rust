@@ -29,6 +29,10 @@ ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
 
+# We are intentionally allowing an old toolchain on this builder (and that's
+# incompatible with LLVM downloads today).
+ENV NO_DOWNLOAD_CI_LLVM 1
+
 ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14 \
     --set llvm.allow-old-toolchain
 

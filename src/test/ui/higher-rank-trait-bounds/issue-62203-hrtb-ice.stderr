@@ -44,7 +44,7 @@ LL | |             },
 LL | |         },
    | |_________^ expected struct `Unit3`, found struct `Unit4`
    |
-note: required because of the requirements on the impl of `for<'r> T0<'r, (&'r u8,)>` for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>`
+note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>

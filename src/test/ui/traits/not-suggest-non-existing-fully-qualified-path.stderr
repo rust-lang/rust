@@ -22,7 +22,7 @@ LL | impl I<i32> for B {}
    | ^^^^^^^^^^^^^^^^^
 LL | impl I<u32> for B {}
    | ^^^^^^^^^^^^^^^^^
-note: required because of the requirements on the impl of `V<_>` for `A<B>`
+note: required for `A<B>` to implement `V<_>`
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:12:12
    |
 LL | impl<T, U> V<U> for A<T>

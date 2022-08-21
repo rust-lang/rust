@@ -63,7 +63,7 @@ fn test2() {
     require_send(send_gen);
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE `RefCell<i32>` cannot be shared between threads safely
-    //~| NOTE requirements on the impl
+    //~| NOTE required for
     //~| NOTE captures the following types
 }
 

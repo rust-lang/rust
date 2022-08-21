@@ -4,6 +4,8 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![allow(rustc::default_hash_types)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 #![recursion_limit = "128"]
 
 use synstructure::decl_derive;
@@ -127,9 +129,7 @@ decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
+        diag,
         help,
         note,
         warn_,
@@ -146,9 +146,7 @@ decl_derive!(
 decl_derive!(
     [LintDiagnostic, attributes(
         // struct attributes
-        warning,
-        error,
-        lint,
+        diag,
         help,
         note,
         warn_,

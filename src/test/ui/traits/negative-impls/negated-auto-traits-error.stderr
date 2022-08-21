@@ -66,7 +66,7 @@ LL |     is_send(Box::new(TestType));
    |     required by a bound introduced by this call
    |
    = note: the trait bound `Unique<dummy2::TestType>: Send` is not satisfied
-   = note: required because of the requirements on the impl of `Send` for `Unique<dummy2::TestType>`
+   = note: required for `Unique<dummy2::TestType>` to implement `Send`
    = note: required because it appears within the type `Box<dummy2::TestType>`
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
@@ -92,7 +92,7 @@ note: required because it appears within the type `Outer2<dummy3::TestType>`
    |
 LL | struct Outer2<T>(T);
    |        ^^^^^^
-   = note: required because of the requirements on the impl of `Send` for `Unique<Outer2<dummy3::TestType>>`
+   = note: required for `Unique<Outer2<dummy3::TestType>>` to implement `Send`
    = note: required because it appears within the type `Box<Outer2<dummy3::TestType>>`
 note: required by a bound in `is_send`
   --> $DIR/negated-auto-traits-error.rs:16:15
@@ -109,7 +109,7 @@ LL |     is_sync(Outer2(TestType));
    |     required by a bound introduced by this call
    |
    = help: the trait `Send` is not implemented for `main::TestType`
-note: required because of the requirements on the impl of `Sync` for `Outer2<main::TestType>`
+note: required for `Outer2<main::TestType>` to implement `Sync`
   --> $DIR/negated-auto-traits-error.rs:14:22
    |
 LL | unsafe impl<T: Send> Sync for Outer2<T> {}

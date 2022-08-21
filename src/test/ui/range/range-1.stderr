@@ -20,8 +20,8 @@ LL |     for i in false..true {}
              isize
              u128
            and 5 others
-   = note: required because of the requirements on the impl of `Iterator` for `std::ops::Range<bool>`
-   = note: required because of the requirements on the impl of `IntoIterator` for `std::ops::Range<bool>`
+   = note: required for `std::ops::Range<bool>` to implement `Iterator`
+   = note: required for `std::ops::Range<bool>` to implement `IntoIterator`
 
 error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
   --> $DIR/range-1.rs:14:17

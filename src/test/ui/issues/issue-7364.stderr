@@ -5,7 +5,7 @@ LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));
    |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `RefCell<isize>`
-   = note: required because of the requirements on the impl of `Sync` for `Unique<RefCell<isize>>`
+   = note: required for `Unique<RefCell<isize>>` to implement `Sync`
    = note: required because it appears within the type `Box<RefCell<isize>>`
    = note: shared static variables must have a type that implements `Sync`
 

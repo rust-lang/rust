@@ -114,23 +114,20 @@ pub fn prebuilt_llvm_config(
     Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
 }
 
-pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
-    let config = &builder.config;
-    if !config.llvm_from_ci {
-        return;
-    }
+/// This retrieves the LLVM sha we *want* to use, according to git history.
+pub(crate) fn detect_llvm_sha(config: &crate::config::Config) -> String {
     let mut rev_list = config.git();
     rev_list.args(&[
         PathBuf::from("rev-list"),
-        format!("--author={}", builder.config.stage0_metadata.config.git_merge_commit_email).into(),
+        format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
         "-n1".into(),
         "--first-parent".into(),
         "HEAD".into(),
         "--".into(),
-        builder.src.join("src/llvm-project"),
-        builder.src.join("src/bootstrap/download-ci-llvm-stamp"),
+        config.src.join("src/llvm-project"),
+        config.src.join("src/bootstrap/download-ci-llvm-stamp"),
         // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-        builder.src.join("src/version"),
+        config.src.join("src/version"),
     ]);
     let llvm_sha = output(&mut rev_list);
     let llvm_sha = llvm_sha.trim();
@@ -143,8 +140,82 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
         panic!();
     }
 
+    llvm_sha.to_owned()
+}
+
+/// Returns whether the CI-found LLVM is currently usable.
+///
+/// This checks both the build triple platform to confirm we're usable at all,
+/// and then verifies if the current HEAD matches the detected LLVM SHA head,
+/// in which case LLVM is indicated as not available.
+pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool) -> bool {
+    // This is currently all tier 1 targets and tier 2 targets with host tools
+    // (since others may not have CI artifacts)
+    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+    let supported_platforms = [
+        // tier 1
+        "aarch64-unknown-linux-gnu",
+        "i686-pc-windows-gnu",
+        "i686-pc-windows-msvc",
+        "i686-unknown-linux-gnu",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-gnu",
+        "x86_64-pc-windows-msvc",
+        // tier 2 with host tools
+        "aarch64-apple-darwin",
+        "aarch64-pc-windows-msvc",
+        "aarch64-unknown-linux-musl",
+        "arm-unknown-linux-gnueabi",
+        "arm-unknown-linux-gnueabihf",
+        "armv7-unknown-linux-gnueabihf",
+        "mips-unknown-linux-gnu",
+        "mips64-unknown-linux-gnuabi64",
+        "mips64el-unknown-linux-gnuabi64",
+        "mipsel-unknown-linux-gnu",
+        "powerpc-unknown-linux-gnu",
+        "powerpc64-unknown-linux-gnu",
+        "powerpc64le-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-gnu",
+        "s390x-unknown-linux-gnu",
+        "x86_64-unknown-freebsd",
+        "x86_64-unknown-illumos",
+        "x86_64-unknown-linux-musl",
+        "x86_64-unknown-netbsd",
+    ];
+    if !supported_platforms.contains(&&*config.build.triple) {
+        return false;
+    }
+
+    let triple = &*config.build.triple;
+    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
+        // No alt builder for aarch64-unknown-linux-gnu today.
+        return false;
+    }
+
+    if crate::util::CiEnv::is_ci() {
+        let llvm_sha = detect_llvm_sha(config);
+        let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
+        let head_sha = head_sha.trim();
+        if llvm_sha == head_sha {
+            eprintln!(
+                "Detected LLVM as non-available: running in CI and modified LLVM in this change"
+            );
+            return false;
+        }
+    }
+
+    true
+}
+
+pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
+    let config = &builder.config;
+    if !config.llvm_from_ci {
+        return;
+    }
     let llvm_root = config.ci_llvm_root();
     let llvm_stamp = llvm_root.join(".llvm-stamp");
+    let llvm_sha = detect_llvm_sha(&config);
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);

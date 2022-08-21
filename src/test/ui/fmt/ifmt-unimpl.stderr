@@ -14,7 +14,7 @@ LL |     format!("{:X}", "3");
              NonZeroI8
              NonZeroIsize
            and 21 others
-   = note: required because of the requirements on the impl of `UpperHex` for `&str`
+   = note: required for `&str` to implement `UpperHex`
 note: required by a bound in `ArgumentV1::<'a>::new_upper_hex`
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |

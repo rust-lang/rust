@@ -9,7 +9,7 @@ note: expected this to be `u8`
    |
 LL |     type Assoc = u8;
    |                  ^^
-note: required because of the requirements on the impl of `Test` for `()`
+note: required for `()` to implement `Test`
   --> $DIR/projection-mismatch-in-impl-where-clause.rs:11:9
    |
 LL | impl<T> Test for T where T: Super<Assoc = ()> {}

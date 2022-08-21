@@ -244,7 +244,7 @@ impl MultiSugg {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_report_ambiguous_plus)]
+#[diag(parser::maybe_report_ambiguous_plus)]
 struct AmbiguousPlus {
     pub sum_ty: String,
     #[primary_span]
@@ -253,7 +253,7 @@ struct AmbiguousPlus {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
+#[diag(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
 struct BadTypePlus {
     pub ty: String,
     #[primary_span]
@@ -287,7 +287,7 @@ pub enum BadTypePlusSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_recover_from_bad_qpath_stage_2)]
+#[diag(parser::maybe_recover_from_bad_qpath_stage_2)]
 struct BadQPathStage2 {
     #[primary_span]
     #[suggestion(applicability = "maybe-incorrect")]
@@ -296,7 +296,7 @@ struct BadQPathStage2 {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_semicolon)]
+#[diag(parser::incorrect_semicolon)]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
     #[suggestion_short(applicability = "machine-applicable")]
@@ -307,7 +307,7 @@ struct IncorrectSemicolon<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_use_of_await)]
+#[diag(parser::incorrect_use_of_await)]
 struct IncorrectUseOfAwait {
     #[primary_span]
     #[suggestion(parser::parentheses_suggestion, applicability = "machine-applicable")]
@@ -315,7 +315,7 @@ struct IncorrectUseOfAwait {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_use_of_await)]
+#[diag(parser::incorrect_use_of_await)]
 struct IncorrectAwait {
     #[primary_span]
     span: Span,
@@ -326,12 +326,41 @@ struct IncorrectAwait {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::in_in_typo)]
+#[diag(parser::in_in_typo)]
 struct InInTypo {
     #[primary_span]
     span: Span,
     #[suggestion(applicability = "machine-applicable")]
     sugg_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_variable_declaration)]
+pub struct InvalidVariableDeclaration {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: InvalidVariableDeclarationSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum InvalidVariableDeclarationSub {
+    #[suggestion(
+        parser::switch_mut_let_order,
+        applicability = "maybe-incorrect",
+        code = "let mut"
+    )]
+    SwitchMutLetOrder(#[primary_span] Span),
+    #[suggestion(
+        parser::missing_let_before_mut,
+        applicability = "machine-applicable",
+        code = "let mut"
+    )]
+    MissingLet(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_auto, applicability = "machine-applicable", code = "let")]
+    UseLetNotAuto(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_var, applicability = "machine-applicable", code = "let")]
+    UseLetNotVar(#[primary_span] Span),
 }
 
 // SnapshotParser is used to create a snapshot of the parser
@@ -608,6 +637,15 @@ impl<'a> Parser<'a> {
                     self.prev_token.span,
                     "write `pub` instead of `public` to make the item public",
                     "pub",
+                    appl,
+                );
+            }
+
+            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    &format!("write `fn` instead of `{symbol}` to declare a function"),
+                    "fn",
                     appl,
                 );
             }

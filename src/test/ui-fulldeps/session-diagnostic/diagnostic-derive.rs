@@ -28,15 +28,15 @@ use rustc_errors::{Applicability, MultiSpan};
 extern crate rustc_session;
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct Hello {}
 
 #[derive(SessionDiagnostic)]
-#[warning(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct HelloWarn {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 //~^ ERROR `#[derive(SessionDiagnostic)]` can only be used on structs
 enum SessionDiagnosticOnEnum {
     Foo,
@@ -44,54 +44,54 @@ enum SessionDiagnosticOnEnum {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
-#[error = "E0123"]
-//~^ ERROR `#[error = ...]` is not a valid attribute
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag = "E0123"]
+//~^ ERROR `#[diag = ...]` is not a valid attribute
 struct WrongStructAttrStyle {}
 
 #[derive(SessionDiagnostic)]
 #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic kind not specified
+//~^^ ERROR diagnostic slug not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(SessionDiagnostic)]
-#[error("E0123")]
-//~^ ERROR `#[error("...")]` is not a valid attribute
+#[diag("E0123")]
+//~^ ERROR `#[diag("...")]` is not a valid attribute
 //~^^ ERROR diagnostic slug not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(SessionDiagnostic)]
-#[error(nonsense, code = "E0123")]
+#[diag(nonsense, code = "E0123")]
 //~^ ERROR cannot find value `nonsense` in module `rustc_errors::fluent`
 struct InvalidNestedStructAttr {}
 
 #[derive(SessionDiagnostic)]
-#[error(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense(...))]` is not a valid attribute
+#[diag(nonsense("foo"), code = "E0123", slug = "foo")]
+//~^ ERROR `#[diag(nonsense(...))]` is not a valid attribute
 //~^^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr1 {}
 
 #[derive(SessionDiagnostic)]
-#[error(nonsense = "...", code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
+#[diag(nonsense = "...", code = "E0123", slug = "foo")]
+//~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
 //~^^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(SessionDiagnostic)]
-#[error(nonsense = 4, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid attribute
+#[diag(nonsense = 4, code = "E0123", slug = "foo")]
+//~^ ERROR `#[diag(nonsense = ...)]` is not a valid attribute
 //~^^ ERROR diagnostic slug not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(slug = ...)]` is not a valid attribute
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123", slug = "foo")]
+//~^ ERROR `#[diag(slug = ...)]` is not a valid attribute
 struct InvalidNestedStructAttr4 {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct WrongPlaceField {
     #[suggestion = "bar"]
     //~^ ERROR `#[suggestion = ...]` is not a valid attribute
@@ -99,45 +99,36 @@ struct WrongPlaceField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0456")]
 //~^ ERROR specified multiple times
 //~^^ ERROR specified multiple times
-//~^^^ ERROR specified multiple times
-struct ErrorSpecifiedTwice {}
+struct DiagSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
-#[warning(typeck::ambiguous_lifetime_bound, code = "E0293")]
-//~^ ERROR specified multiple times
-//~^^ ERROR specified multiple times
-//~^^^ ERROR specified multiple times
-struct WarnSpecifiedAfterError {}
-
-#[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0456", code = "E0457")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0456", code = "E0457")]
 //~^ ERROR specified multiple times
 struct CodeSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, typeck::ambiguous_lifetime_bound, code = "E0456")]
-//~^ ERROR `#[error(typeck::ambiguous_lifetime_bound)]` is not a valid attribute
+#[diag(typeck::ambiguous_lifetime_bound, typeck::ambiguous_lifetime_bound, code = "E0456")]
+//~^ ERROR `#[diag(typeck::ambiguous_lifetime_bound)]` is not a valid attribute
 struct SlugSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-struct KindNotProvided {} //~ ERROR diagnostic kind not specified
+struct KindNotProvided {} //~ ERROR diagnostic slug not specified
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456")]
+#[diag(code = "E0456")]
 //~^ ERROR diagnostic slug not specified
 struct SlugNotProvided {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound)]
+#[diag(typeck::ambiguous_lifetime_bound)]
 struct CodeNotProvided {}
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct MessageWrongType {
     #[primary_span]
     //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
@@ -145,7 +136,7 @@ struct MessageWrongType {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct InvalidPathFieldAttr {
     #[nonsense]
     //~^ ERROR `#[nonsense]` is not a valid attribute
@@ -154,7 +145,7 @@ struct InvalidPathFieldAttr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithField {
     name: String,
     #[label(typeck::label)]
@@ -162,7 +153,7 @@ struct ErrorWithField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithMessageAppliedToField {
     #[label(typeck::label)]
     //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
@@ -170,7 +161,7 @@ struct ErrorWithMessageAppliedToField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithNonexistentField {
     #[suggestion(typeck::suggestion, code = "{name}")]
     //~^ ERROR `name` doesn't refer to a field on this type
@@ -179,7 +170,7 @@ struct ErrorWithNonexistentField {
 
 #[derive(SessionDiagnostic)]
 //~^ ERROR invalid format string: expected `'}'`
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorMissingClosingBrace {
     #[suggestion(typeck::suggestion, code = "{name")]
     suggestion: (Span, Applicability),
@@ -189,7 +180,7 @@ struct ErrorMissingClosingBrace {
 
 #[derive(SessionDiagnostic)]
 //~^ ERROR invalid format string: unmatched `}`
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorMissingOpeningBrace {
     #[suggestion(typeck::suggestion, code = "name}")]
     suggestion: (Span, Applicability),
@@ -198,14 +189,14 @@ struct ErrorMissingOpeningBrace {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelOnSpan {
     #[label(typeck::label)]
     sp: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelOnNonSpan {
     #[label(typeck::label)]
     //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
@@ -213,7 +204,7 @@ struct LabelOnNonSpan {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct Suggest {
     #[suggestion(typeck::suggestion, code = "This is the suggested code")]
     #[suggestion_short(typeck::suggestion, code = "This is the suggested code")]
@@ -223,14 +214,14 @@ struct Suggest {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithoutCode {
     #[suggestion(typeck::suggestion)]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithBadKey {
     #[suggestion(nonsense = "bar")]
     //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid attribute
@@ -238,7 +229,7 @@ struct SuggestWithBadKey {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithShorthandMsg {
     #[suggestion(msg = "bar")]
     //~^ ERROR `#[suggestion(msg = ...)]` is not a valid attribute
@@ -246,21 +237,21 @@ struct SuggestWithShorthandMsg {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithoutMsg {
     #[suggestion(code = "bar")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithTypesSwapped {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
     suggestion: (Applicability, Span),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithWrongTypeApplicabilityOnly {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
     //~^ ERROR wrong field type for suggestion
@@ -268,14 +259,14 @@ struct SuggestWithWrongTypeApplicabilityOnly {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithSpanOnly {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
     suggestion: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateSpanAndApplicability {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
     //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
@@ -283,7 +274,7 @@ struct SuggestWithDuplicateSpanAndApplicability {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateApplicabilityAndSpan {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
     //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one
@@ -291,7 +282,7 @@ struct SuggestWithDuplicateApplicabilityAndSpan {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct WrongKindOfAnnotation {
     #[label = "bar"]
     //~^ ERROR `#[label = ...]` is not a valid attribute
@@ -299,7 +290,7 @@ struct WrongKindOfAnnotation {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct OptionsInErrors {
     #[label(typeck::label)]
     label: Option<Span>,
@@ -308,7 +299,7 @@ struct OptionsInErrors {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0456")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0456")]
 struct MoveOutOfBorrowError<'tcx> {
     name: Ident,
     ty: Ty<'tcx>,
@@ -322,7 +313,7 @@ struct MoveOutOfBorrowError<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithLifetime<'a> {
     #[label(typeck::label)]
     span: Span,
@@ -330,7 +321,7 @@ struct ErrorWithLifetime<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithDefaultLabelAttr<'a> {
     #[label]
     span: Span,
@@ -339,7 +330,7 @@ struct ErrorWithDefaultLabelAttr<'a> {
 
 #[derive(SessionDiagnostic)]
 //~^ ERROR the trait bound `Hello: IntoDiagnosticArg` is not satisfied
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ArgFieldWithoutSkip {
     #[primary_span]
     span: Span,
@@ -347,7 +338,7 @@ struct ArgFieldWithoutSkip {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ArgFieldWithSkip {
     #[primary_span]
     span: Span,
@@ -358,56 +349,56 @@ struct ArgFieldWithSkip {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithSpannedNote {
     #[note]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithSpannedNoteCustom {
     #[note(typeck::note)]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 #[note]
 struct ErrorWithNote {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 #[note(typeck::note)]
 struct ErrorWithNoteCustom {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithSpannedHelp {
     #[help]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithSpannedHelpCustom {
     #[help(typeck::help)]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 #[help]
 struct ErrorWithHelp {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 #[help(typeck::help)]
 struct ErrorWithHelpCustom {
     val: String,
@@ -415,34 +406,34 @@ struct ErrorWithHelpCustom {
 
 #[derive(SessionDiagnostic)]
 #[help]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithHelpWrongOrder {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
 #[help(typeck::help)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithHelpCustomWrongOrder {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
 #[note]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithNoteWrongOrder {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
 #[note(typeck::note)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithNoteCustomWrongOrder {
     val: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ApplicabilityInBoth {
     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
     //~^ ERROR applicability cannot be set in both the field and attribute
@@ -450,7 +441,7 @@ struct ApplicabilityInBoth {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct InvalidApplicability {
     #[suggestion(typeck::suggestion, code = "...", applicability = "batman")]
     //~^ ERROR invalid applicability
@@ -458,14 +449,14 @@ struct InvalidApplicability {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ValidApplicability {
     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
     suggestion: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct NoApplicability {
     #[suggestion(typeck::suggestion, code = "...")]
     suggestion: Span,
@@ -476,14 +467,14 @@ struct NoApplicability {
 struct Note;
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound)]
+#[diag(typeck::ambiguous_lifetime_bound)]
 struct Subdiagnostic {
     #[subdiagnostic]
     note: Note,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct VecField {
     #[primary_span]
     #[label]
@@ -491,7 +482,7 @@ struct VecField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct UnitField {
     #[primary_span]
     spans: Span,
@@ -502,7 +493,7 @@ struct UnitField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct OptUnitField {
     #[primary_span]
     spans: Span,
@@ -513,7 +504,7 @@ struct OptUnitField {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingPath {
     #[label(typeck::label, foo)]
     //~^ ERROR `#[label(...)]` is not a valid attribute
@@ -521,7 +512,7 @@ struct LabelWithTrailingPath {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingNameValue {
     #[label(typeck::label, foo = "...")]
     //~^ ERROR `#[label(...)]` is not a valid attribute
@@ -529,40 +520,64 @@ struct LabelWithTrailingNameValue {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelWithTrailingList {
     #[label(typeck::label, foo("..."))]
     //~^ ERROR `#[label(...)]` is not a valid attribute
     span: Span,
 }
 
-#[derive(SessionDiagnostic)]
-#[lint(typeck::ambiguous_lifetime_bound)]
-//~^ ERROR only `#[error(..)]` and `#[warning(..)]` are supported
-struct LintsBad {
-}
-
 #[derive(LintDiagnostic)]
-#[lint(typeck::ambiguous_lifetime_bound)]
+#[diag(typeck::ambiguous_lifetime_bound)]
 struct LintsGood {
 }
 
 #[derive(LintDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound)]
-//~^ ERROR only `#[lint(..)]` is supported
-struct ErrorsBad {
+#[diag(typeck::ambiguous_lifetime_bound)]
+struct PrimarySpanOnLint {
+    #[primary_span]
+    //~^ ERROR `#[primary_span]` is not a valid attribute
+    span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithMultiSpan {
     #[primary_span]
     span: MultiSpan,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 #[warn_]
 struct ErrorWithWarn {
     val: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+//~^ ERROR `#[error(...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `error` in this scope
+struct ErrorAttribute {}
+
+#[derive(SessionDiagnostic)]
+#[warning(typeck::ambiguous_lifetime_bound, code = "E0123")]
+//~^ ERROR `#[warning(...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `warning` in this scope
+struct WarningAttribute {}
+
+#[derive(SessionDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound, code = "E0123")]
+//~^ ERROR `#[lint(...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `lint` in this scope
+struct LintAttributeOnSessionDiag {}
+
+#[derive(LintDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound, code = "E0123")]
+//~^ ERROR `#[lint(...)]` is not a valid attribute
+//~| ERROR diagnostic slug not specified
+//~| ERROR cannot find attribute `lint` in this scope
+struct LintAttributeOnLintDiag {}

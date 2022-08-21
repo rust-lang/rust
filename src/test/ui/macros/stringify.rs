@@ -3,11 +3,18 @@
 // compile-flags: --test
 
 #![feature(async_closure)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(const_trait_impl)]
+#![feature(decl_macro)]
 #![feature(generators)]
 #![feature(half_open_range_patterns)]
+#![feature(label_break_value)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
+#![feature(trait_alias)]
+#![feature(try_blocks)]
+#![feature(type_ascription)]
 #![deny(unused_macros)]
 
 macro_rules! stringify_block {

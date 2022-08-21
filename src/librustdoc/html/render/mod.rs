@@ -569,7 +569,10 @@ fn short_item_info(
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(
-            "<div class=\"stab deprecated\"><span class=\"emoji\">👎</span> {}</div>",
+            "<div class=\"stab deprecated\">\
+                 <span class=\"emoji\">👎</span>\
+                 <span>{}</span>\
+             </div>",
             message,
         ));
     }
@@ -582,8 +585,9 @@ fn short_item_info(
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
     {
-        let mut message =
-            "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
+        let mut message = "<span class=\"emoji\">🔬</span>\
+             <span>This is a nightly-only experimental API."
+            .to_owned();
 
         let mut feature = format!("<code>{}</code>", Escape(feature.as_str()));
         if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
@@ -594,7 +598,7 @@ fn short_item_info(
             ));
         }
 
-        message.push_str(&format!(" ({})", feature));
+        message.push_str(&format!(" ({})</span>", feature));
 
         extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
@@ -1985,7 +1989,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             {
                 let mut derefs = FxHashSet::default();
                 derefs.insert(did);
-                sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
+                sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
 
             let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
@@ -2057,6 +2061,7 @@ fn sidebar_deref_methods(
     impl_: &Impl,
     v: &[Impl],
     derefs: &mut FxHashSet<DefId>,
+    used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();
 
@@ -2089,13 +2094,10 @@ fn sidebar_deref_methods(
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
             debug!("found inner_impl: {:?}", impls);
-            let mut used_links = FxHashSet::default();
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(|i| {
-                    get_methods(i.inner_impl(), true, &mut used_links, deref_mut, cx.tcx())
-                })
+                .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 let id = if let Some(target_def_id) = real_target.def_id(c) {
@@ -2124,7 +2126,14 @@ fn sidebar_deref_methods(
                         .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
                         .unwrap_or(false)
                 }) {
-                    sidebar_deref_methods(cx, out, target_deref_impl, target_impls, derefs);
+                    sidebar_deref_methods(
+                        cx,
+                        out,
+                        target_deref_impl,
+                        target_impls,
+                        derefs,
+                        used_links,
+                    );
                 }
             }
         }
@@ -2623,8 +2632,8 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             clean::Type::BorrowedRef { type_, .. } => {
                 work.push_back(*type_);
             }
-            clean::Type::QPath { self_type, trait_, .. } => {
-                work.push_back(*self_type);
+            clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
+                work.push_back(self_type);
                 process_path(trait_.def_id());
             }
             _ => {}
