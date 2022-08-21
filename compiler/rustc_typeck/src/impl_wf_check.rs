@@ -12,7 +12,6 @@ use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
@@ -20,6 +19,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use crate::errors::{AssociatedItemsNotDistinct, TypeParameterNotConstrainedForImpl};
 
 mod min_specialization;
 
@@ -174,25 +174,15 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
 }
 
 fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
-    let mut err = struct_span_err!(
-        tcx.sess,
+    let note = if kind == "const" { Some(()) } else { None };
+
+    tcx.sess.emit_err(TypeParameterNotConstrainedForImpl {
         span,
-        E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind,
-        name
-    );
-    err.span_label(span, format!("unconstrained {} parameter", kind));
-    if kind == "const" {
-        err.note(
-            "expressions using a const parameter must map each value to a distinct output value",
-        );
-        err.note(
-            "proving the result of expressions other than the parameter are unique is not supported",
-        );
-    }
-    err.emit();
+        kind_name: kind,
+        name: name.to_string(),
+        first_note: note,
+        second_note: note
+    });
 }
 
 /// Enforce that we do not have two items in an impl with the same name.
@@ -209,16 +199,11 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
         let ident = impl_item.ident(tcx);
         match seen_items.entry(ident.normalize_to_macros_2_0()) {
             Occupied(entry) => {
-                let mut err = struct_span_err!(
-                    tcx.sess,
+                tcx.sess.emit_err(AssociatedItemsNotDistinct {
                     span,
-                    E0201,
-                    "duplicate definitions with name `{}`:",
-                    ident
-                );
-                err.span_label(*entry.get(), format!("previous definition of `{}` here", ident));
-                err.span_label(span, "duplicate definition");
-                err.emit();
+                    ident: ident.to_string(),
+                    prev_definition_span: *entry.get()
+                });
             }
             Vacant(entry) => {
                 entry.insert(span);

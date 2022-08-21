@@ -140,3 +140,105 @@ typeck_unsafe_trait_implemented_without_unsafe_keyword =
 
 typeck_attribute_requires_unsafe_keyword =
     requires an `unsafe impl` declaration due to `#[{$attr_name}]` attribute
+
+typeck_explicit_use_of_destructor =
+    explicit use of destructor method
+    .label = explicit destructor calls not allowed
+    .suggestion = consider using `drop` function
+
+typeck_unable_to_find_overloaded_call_trait =
+    failed to find an overloaded call trait for closure call
+    .help = make sure the `fn`/`fn_mut`/`fn_once` lang items are defined
+    and have associated `call`/`call_mut`/`call_once` functions
+
+typeck_type_parameter_not_constrained_for_impl =
+    the {$kind_name} parameter `{$name}` is not constrained by the
+    impl trait, self type, or predicates (SESSION DIAGNOSTIC GENERATED)
+    .label = unconstrained {$kind_name} parameter (SESSION DIAGNOSTIC GENERATED)
+    .first_note = expressions using a const parameter must map each value to a distinct output value (SESSION DIAGNOSTIC GENERATED)
+    .second_note = proving the result of expressions other than the parameter are unique is not supported (SESSION DIAGNOSTIC GENERATED)
+
+typeck_associated_items_not_distinct =
+    duplicate definitions with name `{$ident}`: (SESSION DIAGNOSTIC GENERATED)
+    .label = duplicate definition (SESSION DIAGNOSTIC GENERATED)
+    .prev_def_label = previous definition of `{$ident}` here (SESSION DIAGNOSTIC GENERATED)
+
+typeck_associated_items_not_defined_in_trait =
+    associated type `{$assoc_name}` not found for `{$ty_param_name}` (SESSION DIAGNOSTIC GENERATED)
+    .suggest_similarily_named_type = there is an associated type with a similar name (SESSION DIAGNOSTIC GENERATED)
+    .label_similarily_named_type = there is a similarly named associated type `{$suggested_name}` in the trait `{$trait_name}` (SESSION DIAGNOSTIC GENERATED)
+    .label_type_not_found = associated type `{$assoc_name}` not found (SESSION DIAGNOSTIC GENERATED)
+
+typeck_enum_discriminant_overflow =
+    enum discriminant overflowed
+    .label = overflowed on value after {$last_good_discriminant}
+    .note = explicitly set `{$overflown_discriminant} = {$wrapped_value}` if that is desired outcome
+
+typeck_rustc_paren_sugar_not_enabled =
+    the `#[rustc_paren_sugar]` attribute is a temporary means of controlling
+    which traits can use parenthetical notation
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
+
+typeck_attribute_on_non_foreign_function =
+    `#[{$attr_name}]` may only be used on foreign functions
+
+ffi_const_and_ffi_pure_on_same_function =
+    `#[ffi_const]` function cannot be `#[ffi_pure]`
+
+cmse_nonsecure_entry_requires_c_abi =
+    `#[cmse_nonsecure_entry]` requires C ABI
+
+cmse_nonsecure_entry_requires_trust_zone_m_ext =
+    `#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension
+
+typeck_track_caller_requires_cabi =
+    `#[track_caller]` requires Rust ABI
+
+typeck_export_name_contains_null_characters =
+    `export_name` may not contain null characters
+
+typeck_instruction_set_unsupported_on_target =
+    target does not support `#[instruction_set]`
+
+typeck_varargs_on_non_cabi_function =
+    C-variadic function must have C or cdecl calling convention
+    .label = C-variadics require C or cdecl calling convention
+
+typeck_generic_params_on_main_function =
+    `main` function is not allowed to have generic
+    parameters
+    .label = `main` cannot have generic parameters
+
+typeck_when_clause_on_main_function =
+    `main` function is not allowed to have a `where` clause
+    .label = `main` cannot have a `where` clause
+
+typeck_async_main_function =
+    `main` function is not allowed to be `async`
+    .label = main` function is not allowed to be `async`
+
+typeck_generic_return_type_on_main =
+    `main` function return type is not allowed to have generic
+    parameters
+
+typeck_type_parameter_on_start_function =
+    start function is not allowed to have type parameters
+    .label = start function cannot have type parameters
+
+typeck_where_clause_on_start_function =
+    start function is not allowed to have a `where` clause
+    .label = start function cannot have a `where` clause
+
+typeck_async_start_function =
+    `start` is not allowed to be `async`
+
+typeck_ambiguous_associated_type =
+    ambiguous associated type
+    .fix_std_module_text = you are looking for the module in `std`, not the primitive type
+    .fix_use_fully_qualified_syntax = use fully-qualified syntax
+
+typeck_enum_variant_not_found =
+    no variant named `{$assoc_ident}` found for enum `{$self_type}`
+    .fix_similar_type = there is a variant with a similar name
+    .info_label = variant not found in `{$self_type}`
+    .info_label_at_enum = variant `{$assoc_ident}` not found here

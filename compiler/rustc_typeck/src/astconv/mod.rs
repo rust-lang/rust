@@ -7,10 +7,7 @@ mod generics;
 
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
-use crate::errors::{
-    AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
-    TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
-};
+use crate::errors::{AmbiguousAssociatedType, AmbiguousAssociatedTypeFixSuggestion, AmbiguousLifetimeBound, EnumVariantNotFound, EnumVariantNotFoundFixOrInfo, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits, TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified};
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
@@ -1576,29 +1573,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_str: &str,
         name: Symbol,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
-        if self
+        let fix = if self
             .tcx()
             .resolutions(())
             .confused_type_with_std_module
             .keys()
-            .any(|full_span| full_span.contains(span))
-        {
-            err.span_suggestion(
-                span.shrink_to_lo(),
-                "you are looking for the module in `std`, not the primitive type",
-                "std::",
-                Applicability::MachineApplicable,
-            );
+            .any(|full_span| full_span.contains(span)) {
+            AmbiguousAssociatedTypeFixSuggestion::StdModule { span: span.shrink_to_lo() }
         } else {
-            err.span_suggestion(
+            AmbiguousAssociatedTypeFixSuggestion::UseFullyQualifiedSyntax {
                 span,
-                "use fully-qualified syntax",
-                format!("<{} as {}>::{}", type_str, trait_str, name),
-                Applicability::HasPlaceholders,
-            );
-        }
-        err.emit()
+                type_str,
+                trait_str,
+                name
+            }
+        };
+
+        self.tcx().sess.emit_err(AmbiguousAssociatedType { span, possible_fix: fix })
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -1922,17 +1913,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
                     tcx.sess.span_err(span, &msg)
                 } else if qself_ty.is_enum() {
-                    let mut err = struct_span_err!(
-                        tcx.sess,
-                        assoc_ident.span,
-                        E0599,
-                        "no variant named `{}` found for enum `{}`",
-                        assoc_ident,
-                        qself_ty,
-                    );
+                    let self_type = qself_ty.to_string();
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
-                    if let Some(suggested_name) = find_best_match_for_name(
+
+                    let fix_or_info = if let Some(suggested_name) = find_best_match_for_name(
                         &adt_def
                             .variants()
                             .iter()
@@ -1941,24 +1926,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         assoc_ident.name,
                         None,
                     ) {
-                        err.span_suggestion(
-                            assoc_ident.span,
-                            "there is a variant with a similar name",
-                            suggested_name,
-                            Applicability::MaybeIncorrect,
-                        );
+                        EnumVariantNotFoundFixOrInfo::SuggestSimilarName { span: assoc_ident.span, suggested_name }
                     } else {
-                        err.span_label(
-                            assoc_ident.span,
-                            format!("variant not found in `{}`", qself_ty),
-                        );
-                    }
+                        EnumVariantNotFoundFixOrInfo::InfoLabel { span: assoc_ident.span, self_type: &self_type }
+                    };
 
-                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
-                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
-                    }
-
-                    err.emit()
+                    tcx.sess.emit_err(EnumVariantNotFound { span: assoc_ident.span, info_label_at_enum: tcx.hir().span_if_local(adt_def.did()), fix_or_info, assoc_ident, self_type: &self_type })
                 } else if let Some(reported) = qself_ty.error_reported() {
                     reported
                 } else {

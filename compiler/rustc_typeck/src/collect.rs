@@ -25,7 +25,7 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, error_code};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -48,6 +48,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{abi, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use std::iter;
+use crate::errors::{AttributeOnNonForeignFunction, CMSENonSecureEntryRequiresCAbi, CMSENonSecureEntryRequiresTrustZoneMExt, EnumDiscriminantOverflow, ExportNameContainsNullCharacters, FFIConstAndFFIPureOnSameFunction, InstructionSetUnsupportedOnTarget, RustcParenSugarNotEnabled, TrackCallerRequiresCAbi};
 
 mod item_bounds;
 mod type_of;
@@ -927,16 +928,14 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-                struct_span_err!(tcx.sess, variant.span, E0370, "enum discriminant overflowed")
-                    .span_label(
-                        variant.span,
-                        format!("overflowed on value after {}", prev_discr.unwrap()),
-                    )
-                    .note(&format!(
-                        "explicitly set `{} = {}` if that is desired outcome",
-                        variant.ident, wrapped_discr
-                    ))
-                    .emit();
+               tcx.sess.emit_err(EnumDiscriminantOverflow {
+                   span: variant.span,
+                   last_good_discriminant: prev_discr.unwrap().to_string(),
+                   _note: (),
+                   overflown_discriminant: variant.ident,
+                   wrapped_value: wrapped_discr.to_string()
+               });
+
                 None
             }
             .unwrap_or(wrapped_discr),
@@ -1196,14 +1195,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
-        tcx.sess
-            .struct_span_err(
-                item.span,
-                "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
-                 which traits can use parenthetical notation",
-            )
-            .help("add `#![feature(unboxed_closures)]` to the crate attributes to use it")
-            .emit();
+        tcx.sess.emit_err(RustcParenSugarNotEnabled { span: item.span, _help: () });
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
@@ -2747,50 +2739,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
             } else {
                 // `#[ffi_returns_twice]` is only allowed `extern fn`s.
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0724,
-                    "`#[ffi_returns_twice]` may only be used on foreign functions"
-                )
-                .emit();
+                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0724), attr_name: "ffi_returns_twice" });
             }
         } else if attr.has_name(sym::ffi_pure) {
             if tcx.is_foreign_item(did) {
                 if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
                     // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0757,
-                        "`#[ffi_const]` function cannot be `#[ffi_pure]`"
-                    )
-                    .emit();
+                    tcx.sess.emit_err(FFIConstAndFFIPureOnSameFunction { span: attr.span });
                 } else {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
                 }
             } else {
                 // `#[ffi_pure]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0755,
-                    "`#[ffi_pure]` may only be used on foreign functions"
-                )
-                .emit();
+                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0755), attr_name: "ffi_pure" });
             }
         } else if attr.has_name(sym::ffi_const) {
             if tcx.is_foreign_item(did) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
             } else {
                 // `#[ffi_const]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0756,
-                    "`#[ffi_const]` may only be used on foreign functions"
-                )
-                .emit();
+                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0756), attr_name: "ffi_const" });
             }
         } else if attr.has_name(sym::rustc_allocator_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
@@ -2877,25 +2845,17 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0776,
-                    "`#[cmse_nonsecure_entry]` requires C ABI"
-                )
-                .emit();
+                tcx.sess.emit_err(CMSENonSecureEntryRequiresCAbi { span: attr.span });
             }
             if !tcx.sess.target.llvm_target.contains("thumbv8m") {
-                struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
-                    .emit();
+                tcx.sess.emit_err(CMSENonSecureEntryRequiresTrustZoneMExt { span: attr.span });
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
         } else if attr.has_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
             if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi() != abi::Abi::Rust {
-                struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
-                    .emit();
+                tcx.sess.emit_err(TrackCallerRequiresCAbi { span: attr.span });
             }
             if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
                 feature_err(
@@ -2912,13 +2872,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 if s.as_str().contains('\0') {
                     // `#[export_name = ...]` will be converted to a null-terminated string,
                     // so it may not contain any null characters.
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0648,
-                        "`export_name` may not contain null characters"
-                    )
-                    .emit();
+
+                    tcx.sess.emit_err(ExportNameContainsNullCharacters { span: attr.span });
                 }
                 codegen_fn_attrs.export_name = Some(s);
             }
@@ -3022,13 +2977,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
                                 if !tcx.sess.target.has_thumb_interworking {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0779,
-                                        "target does not support `#[instruction_set]`"
-                                    )
-                                    .emit();
+                                    tcx.sess.emit_err(InstructionSetUnsupportedOnTarget { span: attr.span });
+
                                     None
                                 } else if segments[1] == sym::a32 {
                                     Some(InstructionSetAttr::ArmA32)

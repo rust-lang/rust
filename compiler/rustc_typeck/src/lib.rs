@@ -98,7 +98,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
@@ -117,6 +117,7 @@ use std::iter;
 
 use astconv::AstConv;
 use bounds::Bounds;
+use crate::errors::{AsyncMainFunction, AsyncStartFunction, GenericParamsOnMainFunction, GenericReturnTypeOnMain, TypeParameterOnStartFunction, VarargsOnNonCabiFunction, WhenClauseOnMainFunction, WhereClauseOnStartFunction};
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     match (decl.c_variadic, abi) {
@@ -124,13 +125,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl { .. }) => {}
         // The function is a "C-variadic" function with an incorrect calling convention.
         (true, _) => {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0045,
-                "C-variadic function must have C or cdecl calling convention"
-            );
-            err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
+            tcx.sess.emit_err(VarargsOnNonCabiFunction { span });
         }
     }
 }
@@ -240,45 +235,25 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_fn_predicates = tcx.predicates_of(main_def_id);
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
         let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
-        let msg = "`main` function is not allowed to have generic \
-            parameters";
-        let mut diag =
-            struct_span_err!(tcx.sess, generics_param_span.unwrap_or(main_span), E0131, "{}", msg);
-        if let Some(generics_param_span) = generics_param_span {
-            let label = "`main` cannot have generic parameters";
-            diag.span_label(generics_param_span, label);
-        }
-        diag.emit();
+
+        tcx.sess.emit_err(GenericParamsOnMainFunction { span: generics_param_span.unwrap_or(main_span), generics_param_span });
+
         error = true;
     } else if !main_fn_predicates.predicates.is_empty() {
         // generics may bring in implicit predicates, so we skip this check if generics is present.
         let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
-        let mut diag = struct_span_err!(
-            tcx.sess,
-            generics_where_clauses_span.unwrap_or(main_span),
-            E0646,
-            "`main` function is not allowed to have a `where` clause"
-        );
-        if let Some(generics_where_clauses_span) = generics_where_clauses_span {
-            diag.span_label(generics_where_clauses_span, "`main` cannot have a `where` clause");
-        }
-        diag.emit();
+
+        tcx.sess.emit_err(WhenClauseOnMainFunction { span: generics_where_clauses_span.unwrap_or(main_span), generics_where_clauses_span });
+
         error = true;
     }
 
     let main_asyncness = tcx.asyncness(main_def_id);
     if let hir::IsAsync::Async = main_asyncness {
-        let mut diag = struct_span_err!(
-            tcx.sess,
-            main_span,
-            E0752,
-            "`main` function is not allowed to be `async`"
-        );
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
-        if let Some(asyncness_span) = asyncness_span {
-            diag.span_label(asyncness_span, "`main` function is not allowed to be `async`");
-        }
-        diag.emit();
+
+        tcx.sess.emit_err(AsyncMainFunction { span: main_span, asyncness_span });
+
         error = true;
     }
 
@@ -299,9 +274,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         if !return_ty.bound_vars().is_empty() {
-            let msg = "`main` function return type is not allowed to have generic \
-                    parameters";
-            struct_span_err!(tcx.sess, return_ty_span, E0131, "{}", msg).emit();
+            tcx.sess.emit_err(GenericReturnTypeOnMain { span: return_ty_span });
+
             error = true;
         }
         let return_ty = return_ty.skip_binder();
@@ -359,40 +333,20 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
-                        struct_span_err!(
-                            tcx.sess,
-                            generics.span,
-                            E0132,
-                            "start function is not allowed to have type parameters"
-                        )
-                        .span_label(generics.span, "start function cannot have type parameters")
-                        .emit();
+                        tcx.sess.emit_err(TypeParameterOnStartFunction { span: generics.span });
+
                         error = true;
                     }
                     if generics.has_where_clause_predicates {
-                        struct_span_err!(
-                            tcx.sess,
-                            generics.where_clause_span,
-                            E0647,
-                            "start function is not allowed to have a `where` clause"
-                        )
-                        .span_label(
-                            generics.where_clause_span,
-                            "start function cannot have a `where` clause",
-                        )
-                        .emit();
+                        tcx.sess.emit_err(WhereClauseOnStartFunction { span: generics.where_clause_span, where_clause_span: generics.where_clause_span });
+
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
                         let span = tcx.def_span(it.def_id);
-                        struct_span_err!(
-                            tcx.sess,
-                            span,
-                            E0752,
-                            "`start` is not allowed to be `async`"
-                        )
-                        .span_label(span, "`start` is not allowed to be `async`")
-                        .emit();
+
+                        tcx.sess.emit_err(AsyncStartFunction { span });
+
                         error = true;
                     }
 

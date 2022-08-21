@@ -7,7 +7,10 @@ use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
-use crate::errors::{SafeTraitImplementedAsUnsafe, UnsafeTraitImplementedWithoutUnsafeKeyword, AttributeRequiresUnsafeKeyword};
+use crate::errors::{
+    AttributeRequiresUnsafeKeyword, SafeTraitImplementedAsUnsafe,
+    UnsafeTraitImplementedWithoutUnsafeKeyword,
+};
 
 pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Impl));
@@ -20,11 +23,17 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
         match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
-                tcx.sess.emit_err(SafeTraitImplementedAsUnsafe { span: item.span, trait_name: trait_ref.print_only_trait_path().to_string() });
+                tcx.sess.emit_err(SafeTraitImplementedAsUnsafe {
+                    span: item.span,
+                    trait_name: trait_ref.print_only_trait_path().to_string(),
+                });
             }
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
-                tcx.sess.emit_err(UnsafeTraitImplementedWithoutUnsafeKeyword { span: item.span, trait_name: trait_ref.print_only_trait_path().to_string() });
+                tcx.sess.emit_err(UnsafeTraitImplementedWithoutUnsafeKeyword {
+                    span: item.span,
+                    trait_name: trait_ref.print_only_trait_path().to_string(),
+                });
             }
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
