@@ -98,7 +98,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::{ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
@@ -115,9 +115,13 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::iter;
 
+use crate::errors::{
+    AsyncMainFunction, AsyncStartFunction, GenericParamsOnMainFunction, GenericReturnTypeOnMain,
+    TypeParameterOnStartFunction, VarargsOnNonCabiFunction, WhenClauseOnMainFunction,
+    WhereClauseOnStartFunction,
+};
 use astconv::AstConv;
 use bounds::Bounds;
-use crate::errors::{AsyncMainFunction, AsyncStartFunction, GenericParamsOnMainFunction, GenericReturnTypeOnMain, TypeParameterOnStartFunction, VarargsOnNonCabiFunction, WhenClauseOnMainFunction, WhereClauseOnStartFunction};
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     match (decl.c_variadic, abi) {
@@ -236,14 +240,20 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
         let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
 
-        tcx.sess.emit_err(GenericParamsOnMainFunction { span: generics_param_span.unwrap_or(main_span), generics_param_span });
+        tcx.sess.emit_err(GenericParamsOnMainFunction {
+            span: generics_param_span.unwrap_or(main_span),
+            generics_param_span,
+        });
 
         error = true;
     } else if !main_fn_predicates.predicates.is_empty() {
         // generics may bring in implicit predicates, so we skip this check if generics is present.
         let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
 
-        tcx.sess.emit_err(WhenClauseOnMainFunction { span: generics_where_clauses_span.unwrap_or(main_span), generics_where_clauses_span });
+        tcx.sess.emit_err(WhenClauseOnMainFunction {
+            span: generics_where_clauses_span.unwrap_or(main_span),
+            generics_where_clauses_span,
+        });
 
         error = true;
     }
@@ -338,7 +348,10 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         error = true;
                     }
                     if generics.has_where_clause_predicates {
-                        tcx.sess.emit_err(WhereClauseOnStartFunction { span: generics.where_clause_span, where_clause_span: generics.where_clause_span });
+                        tcx.sess.emit_err(WhereClauseOnStartFunction {
+                            span: generics.where_clause_span,
+                            where_clause_span: generics.where_clause_span,
+                        });
 
                         error = true;
                     }

@@ -1,5 +1,8 @@
 use crate::astconv::AstConv;
-use crate::errors::{AssociatedTypeNotDefinedInTrait, AssociatedTypeNotDefinedInTraitComment, ManualImplementation, MissingTypeParams};
+use crate::errors::{
+    AssociatedTypeNotDefinedInTrait, AssociatedTypeNotDefinedInTraitComment, ManualImplementation,
+    MissingTypeParams,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -151,7 +154,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             assoc_name,
             ty_param_name,
-            comment: AssociatedTypeNotDefinedInTraitComment::CommentNotFound { span, assoc_name }
+            comment: AssociatedTypeNotDefinedInTraitComment::CommentNotFound { span, assoc_name },
         };
 
         let all_candidate_names: Vec<_> = all_candidates()
@@ -165,7 +168,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             find_best_match_for_name(&all_candidate_names, assoc_name.name, None),
             assoc_name.span != DUMMY_SP,
         ) {
-            err.comment = AssociatedTypeNotDefinedInTraitComment::SuggestSimilarType { span, similar: suggested_name };
+            err.comment = AssociatedTypeNotDefinedInTraitComment::SuggestSimilarType {
+                span,
+                similar: suggested_name,
+            };
 
             return self.tcx().sess.emit_err(err);
         }
@@ -211,7 +217,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
                 .collect::<Vec<_>>()[..]
             {
-                err.comment = AssociatedTypeNotDefinedInTraitComment::LabelSimilarType { span, suggested_name, trait_name: self.tcx().def_path_str(*best_trait) };
+                err.comment = AssociatedTypeNotDefinedInTraitComment::LabelSimilarType {
+                    span,
+                    suggested_name,
+                    trait_name: self.tcx().def_path_str(*best_trait),
+                };
 
                 return self.tcx().sess.emit_err(err);
             }

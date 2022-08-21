@@ -19,13 +19,21 @@ use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
 use crate::errors;
+use crate::errors::{
+    AttributeOnNonForeignFunction, CMSENonSecureEntryRequiresCAbi,
+    CMSENonSecureEntryRequiresTrustZoneMExt, EnumDiscriminantOverflow,
+    ExportNameContainsNullCharacters, FFIConstAndFFIPureOnSameFunction,
+    InstructionSetUnsupportedOnTarget, RustcParenSugarNotEnabled, TrackCallerRequiresCAbi,
+};
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, error_code};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -48,7 +56,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{abi, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use std::iter;
-use crate::errors::{AttributeOnNonForeignFunction, CMSENonSecureEntryRequiresCAbi, CMSENonSecureEntryRequiresTrustZoneMExt, EnumDiscriminantOverflow, ExportNameContainsNullCharacters, FFIConstAndFFIPureOnSameFunction, InstructionSetUnsupportedOnTarget, RustcParenSugarNotEnabled, TrackCallerRequiresCAbi};
 
 mod item_bounds;
 mod type_of;
@@ -928,13 +935,13 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-               tcx.sess.emit_err(EnumDiscriminantOverflow {
-                   span: variant.span,
-                   last_good_discriminant: prev_discr.unwrap().to_string(),
-                   _note: (),
-                   overflown_discriminant: variant.ident,
-                   wrapped_value: wrapped_discr.to_string()
-               });
+                tcx.sess.emit_err(EnumDiscriminantOverflow {
+                    span: variant.span,
+                    last_good_discriminant: prev_discr.unwrap().to_string(),
+                    _note: (),
+                    overflown_discriminant: variant.ident,
+                    wrapped_value: wrapped_discr.to_string(),
+                });
 
                 None
             }
@@ -2739,7 +2746,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
             } else {
                 // `#[ffi_returns_twice]` is only allowed `extern fn`s.
-                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0724), attr_name: "ffi_returns_twice" });
+                tcx.sess.emit_err(AttributeOnNonForeignFunction {
+                    span: attr.span,
+                    error_code: error_code!(E0724),
+                    attr_name: "ffi_returns_twice",
+                });
             }
         } else if attr.has_name(sym::ffi_pure) {
             if tcx.is_foreign_item(did) {
@@ -2751,14 +2762,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 }
             } else {
                 // `#[ffi_pure]` is only allowed on foreign functions
-                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0755), attr_name: "ffi_pure" });
+                tcx.sess.emit_err(AttributeOnNonForeignFunction {
+                    span: attr.span,
+                    error_code: error_code!(E0755),
+                    attr_name: "ffi_pure",
+                });
             }
         } else if attr.has_name(sym::ffi_const) {
             if tcx.is_foreign_item(did) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
             } else {
                 // `#[ffi_const]` is only allowed on foreign functions
-                tcx.sess.emit_err(AttributeOnNonForeignFunction { span: attr.span, error_code: error_code!(E0756), attr_name: "ffi_const" });
+                tcx.sess.emit_err(AttributeOnNonForeignFunction {
+                    span: attr.span,
+                    error_code: error_code!(E0756),
+                    attr_name: "ffi_const",
+                });
             }
         } else if attr.has_name(sym::rustc_allocator_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
@@ -2977,7 +2996,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
                                 if !tcx.sess.target.has_thumb_interworking {
-                                    tcx.sess.emit_err(InstructionSetUnsupportedOnTarget { span: attr.span });
+                                    tcx.sess.emit_err(InstructionSetUnsupportedOnTarget {
+                                        span: attr.span,
+                                    });
 
                                     None
                                 } else if segments[1] == sym::a32 {

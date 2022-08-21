@@ -1,5 +1,5 @@
 //! Errors emitted by typeck.
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, DiagnosticId};
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_session::{parse::ParseSess, SessionDiagnostic};
@@ -345,7 +345,6 @@ pub struct ExternCrateNotIdiomatic {
 #[error(typeck::safe_trait_implemented_as_unsafe, code = "E0199")]
 pub struct SafeTraitImplementedAsUnsafe {
     #[primary_span]
-    #[label]
     pub span: Span,
     pub trait_name: String,
 }
@@ -366,17 +365,45 @@ pub struct AttributeRequiresUnsafeKeyword<'a> {
     pub attr_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
-#[error(typeck::type_parameter_not_constrained_for_impl, code = "E0207")]
-pub struct TypeParameterNotConstrainedForImpl<'a> {
-    #[primary_span]
+#[derive(Eq, PartialEq)]
+pub enum UnconstrainedParameterType {
+    Type,
+    Lifetime,
+    Const
+}
+
+pub struct TypeParameterNotConstrainedForImpl {
     pub span: Span,
-    pub kind_name: &'a str,
-    pub name: String,
-    #[note(typeck::first_note)]
-    pub first_note: Option<()>,
-    #[note(typeck::second_note)]
-    pub second_note: Option<()>,
+    pub kind: UnconstrainedParameterType,
+    pub name: Symbol,
+}
+
+impl<'a> SessionDiagnostic<'a> for TypeParameterNotConstrainedForImpl {
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let kind_msg = match self.kind {
+            UnconstrainedParameterType::Type => "type",
+            UnconstrainedParameterType::Lifetime => "lifetime",
+            UnconstrainedParameterType::Const => "const",
+        };
+
+        let mut err = sess.span_diagnostic.struct_span_err_with_code(
+            self.span,
+            rustc_errors::fluent::typeck::type_parameter_not_constrained_for_impl,
+            error_code!(E0207),
+        );
+
+        err.set_arg("name", self.name);
+        err.set_arg("kind", kind_msg);
+
+        err.span_label(self.span, rustc_errors::fluent::typeck::label);
+
+        if self.kind == UnconstrainedParameterType::Const {
+            err.note(rustc_errors::fluent::typeck::first_note);
+            err.note(rustc_errors::fluent::typeck::second_note);
+        }
+
+        err
+    }
 }
 
 #[derive(SessionDiagnostic)]
@@ -393,9 +420,9 @@ pub struct AssociatedItemsNotDistinct {
 #[derive(SessionSubdiagnostic)]
 pub enum AssociatedTypeNotDefinedInTraitComment {
     #[suggestion(
-    typeck::suggest_similarily_named_type,
-    code = "{similar}",
-    applicability = "maybe-incorrect"
+        typeck::suggest_similarily_named_type,
+        code = "{similar}",
+        applicability = "maybe-incorrect"
     )]
     SuggestSimilarType {
         #[primary_span]
@@ -407,16 +434,15 @@ pub enum AssociatedTypeNotDefinedInTraitComment {
         #[primary_span]
         span: Span,
         suggested_name: Symbol,
-        trait_name: String
+        trait_name: String,
     },
     #[label(typeck::label_type_not_found)]
     CommentNotFound {
         #[primary_span]
         span: Span,
         assoc_name: Ident,
-    }
+    },
 }
-
 
 #[derive(SessionDiagnostic)]
 #[error(typeck::associated_items_not_defined_in_trait, code = "E0220")]
@@ -426,7 +452,7 @@ pub struct AssociatedTypeNotDefinedInTrait<'a> {
     pub assoc_name: Ident,
     pub ty_param_name: &'a str,
     #[subdiagnostic]
-    pub comment: AssociatedTypeNotDefinedInTraitComment
+    pub comment: AssociatedTypeNotDefinedInTraitComment,
 }
 
 #[derive(SessionDiagnostic)]
@@ -472,7 +498,7 @@ impl<'a, 'b> SessionDiagnostic<'a> for AttributeOnNonForeignFunction<'b> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(typeck::ffi_const_and_ffi_pure_on_same_function, code = "E0724")]
+#[error(typeck::ffi_const_and_ffi_pure_on_same_function, code = "E0757")]
 pub struct FFIConstAndFFIPureOnSameFunction {
     #[primary_span]
     pub span: Span,
@@ -517,6 +543,7 @@ pub struct InstructionSetUnsupportedOnTarget {
 #[error(typeck::varargs_on_non_cabi_function, code = "E0045")]
 pub struct VarargsOnNonCabiFunction {
     #[primary_span]
+    #[label]
     pub span: Span,
 }
 
@@ -526,7 +553,7 @@ pub struct GenericParamsOnMainFunction {
     #[primary_span]
     pub span: Span,
     #[label]
-    pub generics_param_span: Option<Span>
+    pub generics_param_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
@@ -535,7 +562,7 @@ pub struct WhenClauseOnMainFunction {
     #[primary_span]
     pub span: Span,
     #[label]
-    pub generics_where_clauses_span: Option<Span>
+    pub generics_where_clauses_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
@@ -544,7 +571,7 @@ pub struct AsyncMainFunction {
     #[primary_span]
     pub span: Span,
     #[label]
-    pub asyncness_span: Option<Span>
+    pub asyncness_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
@@ -558,6 +585,7 @@ pub struct GenericReturnTypeOnMain {
 #[error(typeck::type_parameter_on_start_function, code = "E0132")]
 pub struct TypeParameterOnStartFunction {
     #[primary_span]
+    #[label]
     pub span: Span,
 }
 
@@ -567,7 +595,7 @@ pub struct WhereClauseOnStartFunction {
     #[primary_span]
     pub span: Span,
     #[label]
-    pub where_clause_span: Span
+    pub where_clause_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
@@ -581,18 +609,18 @@ pub struct AsyncStartFunction {
 #[derive(SessionSubdiagnostic)]
 pub enum AmbiguousAssociatedTypeFixSuggestion<'a> {
     #[suggestion(
-    typeck::fix_std_module_text,
-    code = "std::",
-    applicability = "machine-applicable"
+        typeck::fix_std_module_text,
+        code = "std::",
+        applicability = "machine-applicable"
     )]
     StdModule {
         #[primary_span]
         span: Span,
     },
     #[suggestion(
-    typeck::fix_use_fully_qualified_syntax,
-    code = "<{type_str} as {trait_str}>::{name}",
-    applicability = "has-placeholders"
+        typeck::fix_use_fully_qualified_syntax,
+        code = "<{type_str} as {trait_str}>::{name}",
+        applicability = "has-placeholders"
     )]
     UseFullyQualifiedSyntax {
         #[primary_span]
@@ -609,27 +637,26 @@ pub struct AmbiguousAssociatedType<'a> {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub possible_fix: AmbiguousAssociatedTypeFixSuggestion<'a>
+    pub possible_fix: AmbiguousAssociatedTypeFixSuggestion<'a>,
 }
-
 
 #[derive(SessionSubdiagnostic)]
 pub enum EnumVariantNotFoundFixOrInfo<'a> {
     #[suggestion(
-    typeck::fix_similar_type,
-    code = "{suggested_name}",
-    applicability = "maybe-incorrect"
+        typeck::fix_similar_type,
+        code = "{suggested_name}",
+        applicability = "maybe-incorrect"
     )]
     SuggestSimilarName {
         #[primary_span]
         span: Span,
-        suggested_name: Symbol
+        suggested_name: Symbol,
     },
     #[label(typeck::info_label)]
     InfoLabel {
         #[primary_span]
         span: Span,
-        self_type: &'a str
+        self_type: &'a str,
     },
 }
 
@@ -643,5 +670,5 @@ pub struct EnumVariantNotFound<'a> {
     #[subdiagnostic]
     pub fix_or_info: EnumVariantNotFoundFixOrInfo<'a>,
     pub assoc_ident: Ident,
-    pub self_type: &'a str
+    pub self_type: &'a str,
 }

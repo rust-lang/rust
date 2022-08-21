@@ -18,8 +18,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
+use crate::errors::{AssociatedItemsNotDistinct, TypeParameterNotConstrainedForImpl, UnconstrainedParameterType};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use crate::errors::{AssociatedItemsNotDistinct, TypeParameterNotConstrainedForImpl};
 
 mod min_specialization;
 
@@ -123,7 +123,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
+                    report_unused_parameter(tcx, tcx.def_span(param.def_id), UnconstrainedParameterType::Type, param_ty.name);
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
@@ -134,7 +134,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
-                        "lifetime",
+                        UnconstrainedParameterType::Lifetime,
                         param.name,
                     );
                 }
@@ -145,7 +145,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
-                        "const",
+                        UnconstrainedParameterType::Const,
                         param_ct.name,
                     );
                 }
@@ -173,15 +173,11 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
-    let note = if kind == "const" { Some(()) } else { None };
-
+fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: UnconstrainedParameterType, name: Symbol) {
     tcx.sess.emit_err(TypeParameterNotConstrainedForImpl {
         span,
-        kind_name: kind,
-        name: name.to_string(),
-        first_note: note,
-        second_note: note
+        kind,
+        name,
     });
 }
 
@@ -202,7 +198,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
                 tcx.sess.emit_err(AssociatedItemsNotDistinct {
                     span,
                     ident: ident.to_string(),
-                    prev_definition_span: *entry.get()
+                    prev_definition_span: *entry.get(),
                 });
             }
             Vacant(entry) => {

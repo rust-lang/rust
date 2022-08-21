@@ -152,22 +152,21 @@ typeck_unable_to_find_overloaded_call_trait =
     and have associated `call`/`call_mut`/`call_once` functions
 
 typeck_type_parameter_not_constrained_for_impl =
-    the {$kind_name} parameter `{$name}` is not constrained by the
-    impl trait, self type, or predicates (SESSION DIAGNOSTIC GENERATED)
-    .label = unconstrained {$kind_name} parameter (SESSION DIAGNOSTIC GENERATED)
-    .first_note = expressions using a const parameter must map each value to a distinct output value (SESSION DIAGNOSTIC GENERATED)
-    .second_note = proving the result of expressions other than the parameter are unique is not supported (SESSION DIAGNOSTIC GENERATED)
+    the {$kind} parameter `{$name}` is not constrained by the impl trait, self type, or predicates
+    .label = unconstrained {$kind} parameter
+    .first_note = expressions using a const parameter must map each value to a distinct output value
+    .second_note = proving the result of expressions other than the parameter are unique is not supported
 
 typeck_associated_items_not_distinct =
-    duplicate definitions with name `{$ident}`: (SESSION DIAGNOSTIC GENERATED)
-    .label = duplicate definition (SESSION DIAGNOSTIC GENERATED)
-    .prev_def_label = previous definition of `{$ident}` here (SESSION DIAGNOSTIC GENERATED)
+    duplicate definitions with name `{$ident}`:
+    .label = duplicate definition
+    .prev_def_label = previous definition of `{$ident}` here
 
 typeck_associated_items_not_defined_in_trait =
-    associated type `{$assoc_name}` not found for `{$ty_param_name}` (SESSION DIAGNOSTIC GENERATED)
-    .suggest_similarily_named_type = there is an associated type with a similar name (SESSION DIAGNOSTIC GENERATED)
-    .label_similarily_named_type = there is a similarly named associated type `{$suggested_name}` in the trait `{$trait_name}` (SESSION DIAGNOSTIC GENERATED)
-    .label_type_not_found = associated type `{$assoc_name}` not found (SESSION DIAGNOSTIC GENERATED)
+    associated type `{$assoc_name}` not found for `{$ty_param_name}`
+    .suggest_similarily_named_type = there is an associated type with a similar name
+    .label_similarily_named_type = there is a similarly named associated type `{$suggested_name}` in the trait `{$trait_name}`
+    .label_type_not_found = associated type `{$assoc_name}` not found
 
 typeck_enum_discriminant_overflow =
     enum discriminant overflowed
@@ -175,8 +174,7 @@ typeck_enum_discriminant_overflow =
     .note = explicitly set `{$overflown_discriminant} = {$wrapped_value}` if that is desired outcome
 
 typeck_rustc_paren_sugar_not_enabled =
-    the `#[rustc_paren_sugar]` attribute is a temporary means of controlling
-    which traits can use parenthetical notation
+    the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
 typeck_attribute_on_non_foreign_function =
@@ -205,8 +203,7 @@ typeck_varargs_on_non_cabi_function =
     .label = C-variadics require C or cdecl calling convention
 
 typeck_generic_params_on_main_function =
-    `main` function is not allowed to have generic
-    parameters
+    `main` function is not allowed to have generic parameters
     .label = `main` cannot have generic parameters
 
 typeck_when_clause_on_main_function =
@@ -215,11 +212,10 @@ typeck_when_clause_on_main_function =
 
 typeck_async_main_function =
     `main` function is not allowed to be `async`
-    .label = main` function is not allowed to be `async`
+    .label = `main` function is not allowed to be `async`
 
 typeck_generic_return_type_on_main =
-    `main` function return type is not allowed to have generic
-    parameters
+    `main` function return type is not allowed to have generic parameters
 
 typeck_type_parameter_on_start_function =
     start function is not allowed to have type parameters
@@ -231,6 +227,7 @@ typeck_where_clause_on_start_function =
 
 typeck_async_start_function =
     `start` is not allowed to be `async`
+    .label = `start` is not allowed to be `async`
 
 typeck_ambiguous_associated_type =
     ambiguous associated type
