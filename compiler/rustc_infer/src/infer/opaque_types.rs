@@ -1,3 +1,4 @@
+use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
 use hir::def_id::{DefId, LocalDefId};
@@ -153,22 +154,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let Some(OpaqueTyOrigin::TyAlias) =
                         did2.as_local().and_then(|did2| self.opaque_type_origin(did2, cause.span))
                     {
-                        self.tcx
-                                .sess
-                                .struct_span_err(
-                                    cause.span,
-                                    "opaque type's hidden type cannot be another opaque type from the same scope",
-                                )
-                                .span_label(cause.span, "one of the two opaque types used here has to be outside its defining scope")
-                                .span_note(
-                                    self.tcx.def_span(def_id),
-                                    "opaque type whose hidden type is being assigned",
-                                )
-                                .span_note(
-                                    self.tcx.def_span(did2),
-                                    "opaque type being used as hidden type",
-                                )
-                                .emit();
+                        self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
+                            span: cause.span,
+                            hidden_type: self.tcx.def_span(did2),
+                            opaque_type: self.tcx.def_span(def_id),
+                        });
                     }
                 }
                 Some(self.register_hidden_type(
