@@ -645,25 +645,18 @@ pub fn eval_condition(
                     NestedMetaItem::Literal(Lit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
-                    sess.span_diagnostic
-                        .struct_span_err(*span, "expected a version literal")
-                        .emit();
+                    sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
                     return false;
                 }
                 [..] => {
-                    sess.span_diagnostic
-                        .struct_span_err(cfg.span, "expected single version literal")
-                        .emit();
+                    sess.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
+                        span: cfg.span,
+                    });
                     return false;
                 }
             };
             let Some(min_version) = parse_version(min_version.as_str(), false) else {
-                sess.span_diagnostic
-                    .struct_span_warn(
-                        *span,
-                        "unknown version literal format, assuming it refers to a future version",
-                    )
-                    .emit();
+                sess.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
             let rustc_version = parse_version(env!("CFG_RELEASE"), true).unwrap();
@@ -706,13 +699,9 @@ pub fn eval_condition(
                     }),
                 sym::not => {
                     if mis.len() != 1 {
-                        struct_span_err!(
-                            sess.span_diagnostic,
-                            cfg.span,
-                            E0536,
-                            "expected 1 cfg-pattern"
-                        )
-                        .emit();
+                        sess.emit_err(session_diagnostics::ExpectedOneCfgPattern {
+                            span: cfg.span,
+                        });
                         return false;
                     }
 
@@ -738,21 +727,16 @@ pub fn eval_condition(
                     })
                 }
                 _ => {
-                    struct_span_err!(
-                        sess.span_diagnostic,
-                        cfg.span,
-                        E0537,
-                        "invalid predicate `{}`",
-                        pprust::path_to_string(&cfg.path)
-                    )
-                    .emit();
+                    sess.emit_err(session_diagnostics::InvalidPredicate {
+                        span: cfg.span,
+                        predicate: pprust::path_to_string(&cfg.path),
+                    });
                     false
                 }
             }
         }
         ast::MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
-            sess.span_diagnostic
-                .span_err(cfg.path.span, "`cfg` predicate key must be an identifier");
+            sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
         MetaItemKind::NameValue(ref lit) if !lit.kind.is_str() => {
@@ -868,14 +852,10 @@ where
                             }
                             sym::suggestion => {
                                 if !sess.features_untracked().deprecated_suggestion {
-                                    let mut diag = sess.struct_span_err(
-                                        mi.span,
-                                        "suggestions on deprecated items are unstable",
-                                    );
-                                    if sess.is_nightly_build() {
-                                        diag.help("add `#![feature(deprecated_suggestion)]` to the crate root");
-                                    }
-                                    diag.note("see #94785 for more details").emit();
+                                    sess.emit_err(session_diagnostics::DeprecatedItemSuggestion {
+                                        span: mi.span,
+                                        is_nightly: sess.is_nightly_build().then_some(()),
+                                    });
                                 }
 
                                 if !get(mi, &mut suggestion) {
@@ -921,7 +901,7 @@ where
             }
 
             if note.is_none() {
-                struct_span_err!(diagnostic, attr.span, E0543, "missing 'note'").emit();
+                sess.emit_err(session_diagnostics::MissingNote { span: attr.span });
                 continue;
             }
         }

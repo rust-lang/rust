@@ -55,3 +55,29 @@ attr_rustc_allowed_unstable_pairing =
 
 attr_soft_no_args =
     `soft` should not have any arguments
+
+attr_expected_version_literal =
+    expected a version literal
+
+attr_expected_single_version_literal =
+    expected single version literal
+
+attr_unknown_version_literal =
+    unknown version literal format, assuming it refers to a future version
+
+attr_expected_one_cfg_pattern =
+    expected 1 cfg-pattern
+
+attr_invalid_predicate =
+    invalid predicate `{$predicate}`
+
+attr_cfg_predicate_identifier =
+    `cfg` predicate key must be an identifier
+
+attr_deprecated_item_suggestion =
+    suggestions on deprecated items are unstable
+    .help = add `#![feature(deprecated_suggestion)]` to the crate root
+    .note = see #94785 for more details
+
+attr_missing_note =
+    missing 'note'

@@ -80,6 +80,68 @@ pub(crate) struct SoftNoArgs {
 }
 
 #[derive(SessionDiagnostic)]
+#[error(attr::expected_version_literal)]
+pub(crate) struct ExpectedVersionLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::expected_single_version_literal)]
+pub(crate) struct ExpectedSingleVersionLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[warning(attr::unknown_version_literal)]
+pub(crate) struct UnknownVersionLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::expected_one_cfg_pattern, code = "E0536")]
+pub(crate) struct ExpectedOneCfgPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::invalid_predicate, code = "E0537")]
+pub(crate) struct InvalidPredicate {
+    #[primary_span]
+    pub span: Span,
+
+    pub predicate: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::cfg_predicate_identifier)]
+pub(crate) struct CfgPredicateIdentifier {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::deprecated_item_suggestion)]
+#[note]
+pub(crate) struct DeprecatedItemSuggestion {
+    #[primary_span]
+    pub span: Span,
+
+    #[help]
+    pub is_nightly: Option<()>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(attr::missing_note, code = "E0543")]
+pub(crate) struct MissingNote {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
 #[error(attr::invalid_issue_string, code = "E0545")]
 pub(crate) struct InvalidIssueString {
     #[primary_span]
