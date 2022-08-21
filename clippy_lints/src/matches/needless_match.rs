@@ -8,7 +8,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, FnRetTy, Node, Pat, PatKind, Path, QPath};
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, FnRetTy, Guard, Node, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 use rustc_typeck::hir_ty_to_ty;
@@ -65,8 +65,26 @@ pub(crate) fn check_if_let<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'_>, if_let: 
 fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
     for arm in arms {
         let arm_expr = peel_blocks_with_stmt(arm.body);
+
+        if let Some(guard_expr) = &arm.guard {
+            match guard_expr {
+                // gives up if `pat if expr` can have side effects
+                Guard::If(if_cond) => {
+                    if if_cond.can_have_side_effects() {
+                        return false;
+                    }
+                },
+                // gives up `pat if let ...` arm
+                Guard::IfLet(_) => {
+                    return false;
+                },
+            };
+        }
+
         if let PatKind::Wild = arm.pat.kind {
-            return eq_expr_value(cx, match_expr, strip_return(arm_expr));
+            if !eq_expr_value(cx, match_expr, strip_return(arm_expr)) {
+                return false;
+            }
         } else if !pat_same_as_expr(arm.pat, arm_expr) {
             return false;
         }
