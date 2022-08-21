@@ -7,7 +7,7 @@ use rustc_span::{Span, Symbol};
 use crate::ast_validation::ForbiddenLetReason;
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_let)]
+#[diag(ast_passes::forbidden_let)]
 #[note]
 pub struct ForbiddenLet {
     #[primary_span]
@@ -31,21 +31,21 @@ impl AddSubdiagnostic for ForbiddenLetReason {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_assoc_constraint)]
+#[diag(ast_passes::forbidden_assoc_constraint)]
 pub struct ForbiddenAssocConstraint {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::keyword_lifetime)]
+#[diag(ast_passes::keyword_lifetime)]
 pub struct KeywordLifetime {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::invalid_label)]
+#[diag(ast_passes::invalid_label)]
 pub struct InvalidLabel {
     #[primary_span]
     pub span: Span,
@@ -53,7 +53,7 @@ pub struct InvalidLabel {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::invalid_visibility, code = "E0449")]
+#[diag(ast_passes::invalid_visibility, code = "E0449")]
 pub struct InvalidVisibility {
     #[primary_span]
     pub span: Span,
@@ -72,7 +72,7 @@ pub enum InvalidVisibilityNote {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::trait_fn_async, code = "E0706")]
+#[diag(ast_passes::trait_fn_async, code = "E0706")]
 #[note]
 #[note(ast_passes::note2)]
 pub struct TraitFnAsync {
@@ -83,7 +83,7 @@ pub struct TraitFnAsync {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::trait_fn_const, code = "E0379")]
+#[diag(ast_passes::trait_fn_const, code = "E0379")]
 pub struct TraitFnConst {
     #[primary_span]
     #[label]
@@ -91,21 +91,21 @@ pub struct TraitFnConst {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_lifetime_bound)]
+#[diag(ast_passes::forbidden_lifetime_bound)]
 pub struct ForbiddenLifetimeBound {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_non_lifetime_param)]
+#[diag(ast_passes::forbidden_non_lifetime_param)]
 pub struct ForbiddenNonLifetimeParam {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[fatal(ast_passes::fn_param_too_many)]
+#[diag(ast_passes::fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]
     pub span: Span,
@@ -113,21 +113,21 @@ pub struct FnParamTooMany {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_c_var_args_only)]
+#[diag(ast_passes::fn_param_c_var_args_only)]
 pub struct FnParamCVarArgsOnly {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_c_var_args_not_last)]
+#[diag(ast_passes::fn_param_c_var_args_not_last)]
 pub struct FnParamCVarArgsNotLast {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_doc_comment)]
+#[diag(ast_passes::fn_param_doc_comment)]
 pub struct FnParamDocComment {
     #[primary_span]
     #[label]
@@ -135,14 +135,14 @@ pub struct FnParamDocComment {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_forbidden_attr)]
+#[diag(ast_passes::fn_param_forbidden_attr)]
 pub struct FnParamForbiddenAttr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_forbidden_self)]
+#[diag(ast_passes::fn_param_forbidden_self)]
 #[note]
 pub struct FnParamForbiddenSelf {
     #[primary_span]
@@ -151,7 +151,7 @@ pub struct FnParamForbiddenSelf {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_default)]
+#[diag(ast_passes::forbidden_default)]
 pub struct ForbiddenDefault {
     #[primary_span]
     pub span: Span,
@@ -160,7 +160,7 @@ pub struct ForbiddenDefault {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::assoc_const_without_body)]
+#[diag(ast_passes::assoc_const_without_body)]
 pub struct AssocConstWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -169,7 +169,7 @@ pub struct AssocConstWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::assoc_fn_without_body)]
+#[diag(ast_passes::assoc_fn_without_body)]
 pub struct AssocFnWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -178,7 +178,7 @@ pub struct AssocFnWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::assoc_type_without_body)]
+#[diag(ast_passes::assoc_type_without_body)]
 pub struct AssocTypeWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -187,7 +187,7 @@ pub struct AssocTypeWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::const_without_body)]
+#[diag(ast_passes::const_without_body)]
 pub struct ConstWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -196,7 +196,7 @@ pub struct ConstWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::static_without_body)]
+#[diag(ast_passes::static_without_body)]
 pub struct StaticWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -205,7 +205,7 @@ pub struct StaticWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::ty_alias_without_body)]
+#[diag(ast_passes::ty_alias_without_body)]
 pub struct TyAliasWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -214,7 +214,7 @@ pub struct TyAliasWithoutBody {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_without_body)]
+#[diag(ast_passes::fn_without_body)]
 pub struct FnWithoutBody {
     #[primary_span]
     pub span: Span,
