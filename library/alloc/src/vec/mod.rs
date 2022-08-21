@@ -542,8 +542,8 @@ impl<T> Vec<T> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
@@ -702,8 +702,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// unsafe {
     ///     // Overwrite memory with 4, 5, 6
-    ///     for i in 0..len as isize {
-    ///         ptr::write(p.offset(i), 4 + i);
+    ///     for i in 0..len {
+    ///         ptr::write(p.add(i), 4 + i);
     ///     }
     ///
     ///     // Put everything back together into a Vec
