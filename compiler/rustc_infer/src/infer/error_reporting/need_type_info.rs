@@ -568,7 +568,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         NeedTypeInfoInGenerator {
             bad_label: data.make_bad_error(span),
             span,
-            generator_kind: kind.to_string(),
+            generator_kind: kind.descr(),
         }
         .into_diagnostic(&self.tcx.sess.parse_sess)
     }

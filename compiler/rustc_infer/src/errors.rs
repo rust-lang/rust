@@ -73,7 +73,7 @@ pub struct AmbigousReturn<'a> {
 pub struct NeedTypeInfoInGenerator<'a> {
     #[primary_span]
     pub span: Span,
-    pub generator_kind: String,
+    pub generator_kind: &'static str,
     #[subdiagnostic]
     pub bad_label: InferenceBadError<'a>,
 }
