@@ -178,97 +178,15 @@ pub(crate) fn type_check<'mir, 'tcx>(
         upvars,
     };
 
-    let opaque_type_values = type_check_internal(
-        infcx,
-        param_env,
-        body,
-        promoted,
-        &region_bound_pairs,
-        implicit_region_bound,
-        &mut borrowck_context,
-        |mut cx| {
-            debug!("inside extra closure of type_check_internal");
-            cx.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
-            liveness::generate(
-                &mut cx,
-                body,
-                elements,
-                flow_inits,
-                move_data,
-                location_table,
-                use_polonius,
-            );
-
-            translate_outlives_facts(&mut cx);
-            let opaque_type_values =
-                infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-
-            opaque_type_values
-                .into_iter()
-                .map(|(opaque_type_key, decl)| {
-                    cx.fully_perform_op(
-                        Locations::All(body.span),
-                        ConstraintCategory::OpaqueType,
-                        CustomTypeOp::new(
-                            |infcx| {
-                                infcx.register_member_constraints(
-                                    param_env,
-                                    opaque_type_key,
-                                    decl.hidden_type.ty,
-                                    decl.hidden_type.span,
-                                );
-                                Ok(InferOk { value: (), obligations: vec![] })
-                            },
-                            || "opaque_type_map".to_string(),
-                        ),
-                    )
-                    .unwrap();
-                    let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
-                    trace!(
-                        "finalized opaque type {:?} to {:#?}",
-                        opaque_type_key,
-                        hidden_type.ty.kind()
-                    );
-                    if hidden_type.has_infer_types_or_consts() {
-                        infcx.tcx.sess.delay_span_bug(
-                            decl.hidden_type.span,
-                            &format!("could not resolve {:#?}", hidden_type.ty.kind()),
-                        );
-                        hidden_type.ty = infcx.tcx.ty_error();
-                    }
-
-                    (opaque_type_key, (hidden_type, decl.origin))
-                })
-                .collect()
-        },
-    );
-
-    MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
-}
-
-#[instrument(
-    skip(infcx, body, promoted, region_bound_pairs, borrowck_context, extra),
-    level = "debug"
-)]
-fn type_check_internal<'a, 'tcx, R>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    body: &'a Body<'tcx>,
-    promoted: &'a IndexVec<Promoted, Body<'tcx>>,
-    region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: ty::Region<'tcx>,
-    borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
-    extra: impl FnOnce(TypeChecker<'a, 'tcx>) -> R,
-) -> R {
-    debug!("body: {:#?}", body);
     let mut checker = TypeChecker::new(
         infcx,
         body,
         param_env,
-        region_bound_pairs,
+        &region_bound_pairs,
         implicit_region_bound,
-        borrowck_context,
+        &mut borrowck_context,
     );
+
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, promoted);
         verifier.visit_body(&body);
@@ -280,7 +198,56 @@ fn type_check_internal<'a, 'tcx, R>(
         checker.typeck_mir(body);
     }
 
-    extra(checker)
+    checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
+    liveness::generate(
+        &mut checker,
+        body,
+        elements,
+        flow_inits,
+        move_data,
+        location_table,
+        use_polonius,
+    );
+
+    translate_outlives_facts(&mut checker);
+    let opaque_type_values = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+    let opaque_type_values = opaque_type_values
+        .into_iter()
+        .map(|(opaque_type_key, decl)| {
+            checker
+                .fully_perform_op(
+                    Locations::All(body.span),
+                    ConstraintCategory::OpaqueType,
+                    CustomTypeOp::new(
+                        |infcx| {
+                            infcx.register_member_constraints(
+                                param_env,
+                                opaque_type_key,
+                                decl.hidden_type.ty,
+                                decl.hidden_type.span,
+                            );
+                            Ok(InferOk { value: (), obligations: vec![] })
+                        },
+                        || "opaque_type_map".to_string(),
+                    ),
+                )
+                .unwrap();
+            let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
+            trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
+            if hidden_type.has_infer_types_or_consts() {
+                infcx.tcx.sess.delay_span_bug(
+                    decl.hidden_type.span,
+                    &format!("could not resolve {:#?}", hidden_type.ty.kind()),
+                );
+                hidden_type.ty = infcx.tcx.ty_error();
+            }
+
+            (opaque_type_key, (hidden_type, decl.origin))
+        })
+        .collect();
+
+    MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
 }
 
 fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
@@ -1911,7 +1878,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(_, ty) => {
+            &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
