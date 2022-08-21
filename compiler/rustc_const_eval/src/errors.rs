@@ -89,7 +89,7 @@ pub(crate) struct TransientMutBorrowErrRaw {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::const_evaL_max_num_nodes_in_const_err)]
+#[error(const_eval::max_num_nodes_in_const)]
 pub(crate) struct MaxNumNodesInConstErr {
     #[primary_span]
     pub span: Span,
