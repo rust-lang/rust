@@ -810,6 +810,20 @@ impl<'a> Parser<'a> {
             let span = tilde.to(self.prev_token.span);
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
             Some(span)
+        } else if self.eat_keyword(kw::Const) {
+            let span = self.prev_token.span;
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+
+            self.struct_span_err(span, "const bounds must start with `~`")
+                .span_suggestion(
+                    span.shrink_to_lo(),
+                    "add `~`",
+                    "~",
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+
+            Some(span)
         } else {
             None
         };

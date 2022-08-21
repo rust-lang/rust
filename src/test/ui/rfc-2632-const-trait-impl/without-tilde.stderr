@@ -1,14 +1,10 @@
-error: expected identifier, found keyword `const`
+error: const bounds must start with `~`
   --> $DIR/without-tilde.rs:5:13
    |
 LL | struct S<T: const Tr>;
-   |             ^^^^^ expected identifier, found keyword
+   |             -^^^^
+   |             |
+   |             help: add `~`: `~`
 
-error: expected one of `(`, `+`, `,`, `::`, `<`, `=`, or `>`, found `Tr`
-  --> $DIR/without-tilde.rs:5:19
-   |
-LL | struct S<T: const Tr>;
-   |                   ^^ expected one of 7 possible tokens
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
