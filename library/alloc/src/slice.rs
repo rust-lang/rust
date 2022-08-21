@@ -1024,7 +1024,7 @@ where
             // Consume the greater side.
             // If equal, prefer the right run to maintain stability.
             unsafe {
-                let to_copy = if is_less(&*right.offset(-1), &*left.offset(-1)) {
+                let to_copy = if is_less(&*right.sub(1), &*left.sub(1)) {
                     decrement_and_get(left)
                 } else {
                     decrement_and_get(right)
@@ -1038,12 +1038,12 @@ where
 
     unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
         let old = *ptr;
-        *ptr = unsafe { ptr.offset(1) };
+        *ptr = unsafe { ptr.add(1) };
         old
     }
 
     unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
-        *ptr = unsafe { ptr.offset(-1) };
+        *ptr = unsafe { ptr.sub(1) };
         *ptr
     }
 

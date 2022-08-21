@@ -2447,8 +2447,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     let mut right_offset = 0;
                     for i in left_edge..right_edge {
                         right_offset = (i - left_edge) % (cap - right_edge);
-                        let src: isize = (right_edge + right_offset) as isize;
-                        ptr::swap(buf.add(i), buf.offset(src));
+                        let src = right_edge + right_offset;
+                        ptr::swap(buf.add(i), buf.add(src));
                     }
                     let n_ops = right_edge - left_edge;
                     left_edge += n_ops;

@@ -69,9 +69,12 @@ fn test_union_highlighting() {
 fn test_decorations() {
     create_default_session_globals_then(|| {
         let src = "let x = 1;
-let y = 2;";
+let y = 2;
+let z = 3;
+let a = 4;";
         let mut decorations = FxHashMap::default();
-        decorations.insert("example", vec![(0, 10)]);
+        decorations.insert("example", vec![(0, 10), (11, 21)]);
+        decorations.insert("example2", vec![(22, 32)]);
 
         let mut html = Buffer::new();
         write_code(&mut html, src, None, Some(DecorationInfo(decorations)));
