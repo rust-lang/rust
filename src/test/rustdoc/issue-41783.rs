@@ -1,8 +1,10 @@
 // @has issue_41783/struct.Foo.html
 // @!hasraw - 'space'
 // @!hasraw - 'comment'
-// @hasraw - '<span class="attribute">#[outer]</span>'
-// @hasraw - '<span class="attribute">#![inner]</span>'
+// @hasraw - '<span class="attribute">#[outer]'
+// @!hasraw - '<span class="attribute">#[outer]</span>'
+// @hasraw - '#![inner]</span>'
+// @!hasraw - '<span class="attribute">#![inner]</span>'
 // @snapshot 'codeblock' - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]//pre/code'
 
 /// ```no_run
