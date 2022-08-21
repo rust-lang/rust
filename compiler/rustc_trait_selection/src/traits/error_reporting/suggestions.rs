@@ -903,7 +903,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             obligation.cause.code()
         {
             &parent_code
-        } else if let ObligationCauseCode::ItemObligation(_) = obligation.cause.code() {
+        } else if let ObligationCauseCode::ItemObligation(_)
+        | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
+        {
             obligation.cause.code()
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
@@ -929,35 +931,36 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let param_env = obligation.param_env;
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing =
-            |old_pred: ty::PolyTraitPredicate<'tcx>, blacklist: &[DefId]| -> bool {
-                if blacklist.contains(&old_pred.def_id()) {
-                    return false;
-                }
-                // We map bounds to `&T` and `&mut T`
-                let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
-                    (
-                        trait_pred,
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                    )
-                });
-                let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
-                    (
-                        trait_pred,
-                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                    )
-                });
+        let mut try_borrowing = |old_pred: ty::PolyTraitPredicate<'tcx>,
+                                 blacklist: &[DefId]|
+         -> bool {
+            if blacklist.contains(&old_pred.def_id()) {
+                return false;
+            }
+            // We map bounds to `&T` and `&mut T`
+            let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
+                (
+                    trait_pred,
+                    self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                )
+            });
+            let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
+                (
+                    trait_pred,
+                    self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                )
+            });
 
-                let mk_result = |trait_pred_and_new_ty| {
-                    let obligation =
-                        self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
-                    self.predicate_must_hold_modulo_regions(&obligation)
-                };
-                let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
-                let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
+            let mk_result = |trait_pred_and_new_ty| {
+                let obligation =
+                    self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
+                self.predicate_must_hold_modulo_regions(&obligation)
+            };
+            let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
+            let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
 
-                let (ref_inner_ty_satisfies_pred, ref_inner_ty_mut) =
-                if let ObligationCauseCode::ItemObligation(_) = obligation.cause.code()
+            let (ref_inner_ty_satisfies_pred, ref_inner_ty_mut) =
+                if let ObligationCauseCode::ItemObligation(_) | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
                     && let ty::Ref(_, ty, mutability) = old_pred.self_ty().skip_binder().kind()
                 {
                     (
@@ -968,74 +971,74 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     (false, false)
                 };
 
-                if imm_ref_self_ty_satisfies_pred
-                    || mut_ref_self_ty_satisfies_pred
-                    || ref_inner_ty_satisfies_pred
-                {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                        // We don't want a borrowing suggestion on the fields in structs,
-                        // ```
-                        // struct Foo {
-                        //  the_foos: Vec<Foo>
-                        // }
-                        // ```
-                        if !matches!(
-                            span.ctxt().outer_expn_data().kind,
-                            ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
-                        ) {
-                            return false;
-                        }
-                        if snippet.starts_with('&') {
-                            // This is already a literal borrow and the obligation is failing
-                            // somewhere else in the obligation chain. Do not suggest non-sense.
-                            return false;
-                        }
-                        // We have a very specific type of error, where just borrowing this argument
-                        // might solve the problem. In cases like this, the important part is the
-                        // original type obligation, not the last one that failed, which is arbitrary.
-                        // Because of this, we modify the error to refer to the original obligation and
-                        // return early in the caller.
-
-                        let msg = format!("the trait bound `{}` is not satisfied", old_pred);
-                        if has_custom_message {
-                            err.note(&msg);
-                        } else {
-                            err.message =
-                                vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
-                        }
-                        err.span_label(
-                            span,
-                            format!(
-                                "the trait `{}` is not implemented for `{}`",
-                                old_pred.print_modifiers_and_trait_path(),
-                                old_pred.self_ty().skip_binder(),
-                            ),
-                        );
-
-                        if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
-                            err.span_suggestions(
-                                span.shrink_to_lo(),
-                                "consider borrowing here",
-                                ["&".to_string(), "&mut ".to_string()].into_iter(),
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
-                            err.span_suggestion_verbose(
-                                span.shrink_to_lo(),
-                                &format!(
-                                    "consider{} borrowing here",
-                                    if is_mut { " mutably" } else { "" }
-                                ),
-                                format!("&{}", if is_mut { "mut " } else { "" }),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        return true;
+            if imm_ref_self_ty_satisfies_pred
+                || mut_ref_self_ty_satisfies_pred
+                || ref_inner_ty_satisfies_pred
+            {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    // We don't want a borrowing suggestion on the fields in structs,
+                    // ```
+                    // struct Foo {
+                    //  the_foos: Vec<Foo>
+                    // }
+                    // ```
+                    if !matches!(
+                        span.ctxt().outer_expn_data().kind,
+                        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
+                    ) {
+                        return false;
                     }
+                    if snippet.starts_with('&') {
+                        // This is already a literal borrow and the obligation is failing
+                        // somewhere else in the obligation chain. Do not suggest non-sense.
+                        return false;
+                    }
+                    // We have a very specific type of error, where just borrowing this argument
+                    // might solve the problem. In cases like this, the important part is the
+                    // original type obligation, not the last one that failed, which is arbitrary.
+                    // Because of this, we modify the error to refer to the original obligation and
+                    // return early in the caller.
+
+                    let msg = format!("the trait bound `{}` is not satisfied", old_pred);
+                    if has_custom_message {
+                        err.note(&msg);
+                    } else {
+                        err.message =
+                            vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
+                    }
+                    err.span_label(
+                        span,
+                        format!(
+                            "the trait `{}` is not implemented for `{}`",
+                            old_pred.print_modifiers_and_trait_path(),
+                            old_pred.self_ty().skip_binder(),
+                        ),
+                    );
+
+                    if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
+                        err.span_suggestions(
+                            span.shrink_to_lo(),
+                            "consider borrowing here",
+                            ["&".to_string(), "&mut ".to_string()].into_iter(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            &format!(
+                                "consider{} borrowing here",
+                                if is_mut { " mutably" } else { "" }
+                            ),
+                            format!("&{}", if is_mut { "mut " } else { "" }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    return true;
                 }
-                return false;
-            };
+            }
+            return false;
+        };
 
         if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
