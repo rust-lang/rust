@@ -343,6 +343,14 @@ impl Command {
             ))
         }
     }
+
+    pub fn sandbox(&mut self) -> bool {
+        false
+    }
+
+    pub fn is_sandboxed(&mut self) -> bool {
+        false
+    }
 }
 
 impl fmt::Debug for Command {

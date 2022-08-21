@@ -456,3 +456,12 @@ fn run_canonical_bat_script() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }
+
+#[test]
+#[cfg(unix)]
+fn sandboxed_cmd() {
+    let mut cmd = env_cmd();
+    let s = cmd.sandbox();
+    let r = cmd.is_sandboxed();
+    assert_eq!(s, r);
+}

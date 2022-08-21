@@ -1029,6 +1029,43 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
     }
+
+    /// Sets the process to be sandboxed
+    ///
+    /// child processes will be in sandbox mode too.
+    ///
+    /// ```no_run
+    /// #![feature(command_sandbox)]
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ps -auf");
+    /// cmd.sandbox();
+    /// if let Ok(mut child) = cmd.spawn() {
+    ///     println!("sandboxed process child id {}", child.id());
+    /// } else {
+    ///     println!("failed to start sandboxed process")
+    /// }
+    /// ```
+    #[unstable(feature = "command_sandbox", issue = "none")]
+    pub fn sandbox(&mut self) -> bool {
+        self.inner.sandbox()
+    }
+
+    /// Checks the process to be sandboxed
+    ///
+    /// ```no_run
+    /// #![feature(command_sandbox)]
+    /// #![feature(command_is_sandboxed)]
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// cmd.sandbox();
+    /// println!("sandboxed process ? {}", cmd.is_sandboxed())
+    /// ```
+    #[unstable(feature = "command_is_sandboxed", issue = "none")]
+    pub fn is_sandboxed(&mut self) -> bool {
+        self.inner.is_sandboxed()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

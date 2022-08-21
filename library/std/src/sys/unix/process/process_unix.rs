@@ -552,6 +552,33 @@ impl Command {
             Ok(Some(p))
         }
     }
+
+    #[cfg(target_os = "freebsd")]
+    #[allow(dead_code)]
+    pub fn sandbox(&mut self) -> bool {
+        let r = unsafe { libc::cap_enter() };
+        r == 0
+    }
+
+    #[cfg(not(target_os = "freebsd"))]
+    #[allow(dead_code)]
+    pub fn sandbox(&mut self) -> bool {
+        false
+    }
+
+    #[cfg(target_os = "freebsd")]
+    #[allow(dead_code)]
+    pub fn is_sandboxed(&mut self) -> bool {
+        let mut mode: libc::c_uint = 0;
+        let r = unsafe { libc::cap_getmode(&mut mode) };
+        r == 0 && mode == 1
+    }
+
+    #[cfg(not(target_os = "freebsd"))]
+    #[allow(dead_code)]
+    pub fn is_sandboxed(&mut self) -> bool {
+        false
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
