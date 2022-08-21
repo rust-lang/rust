@@ -24,7 +24,7 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeFlags, TypeVisitor};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -640,15 +640,12 @@ impl<'tcx> OrphanChecker<'tcx> {
         // Fully concrete projections are OK, so check
         // and only exit if there's generics
         if let ty::Projection(proj) = *t.kind() {
-            for typ in proj.trait_ref(self.tcx).substs.types() {
-                if let ty::Param(..) = *typ.kind() {
-                    debug!(
-                        "found_uncovered_ty: type parameter found in projection, exit orphan check"
-                    );
-                    return ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t));
-                }
+            if proj.has_type_flags(TypeFlags::HAS_TY_PARAM) {
+                debug!("found_uncovered_ty: type parameter found in projection, exit orphan check");
+                ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
+            } else {
+                ControlFlow::CONTINUE
             }
-            ControlFlow::CONTINUE
         } else {
             ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
         }
