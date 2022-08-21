@@ -48,7 +48,7 @@ fn expand<'cx>(
     MacEager::expr(
         cx.expr(
             sp,
-            ExprKind::MacCall(MacCall {
+            ExprKind::MacCall(P(MacCall {
                 path: Path {
                     span: sp,
                     segments: cx
@@ -64,7 +64,7 @@ fn expand<'cx>(
                     tts,
                 )),
                 prior_type_ascription: None,
-            }),
+            })),
         ),
     )
 }

@@ -569,7 +569,10 @@ fn short_item_info(
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(
-            "<div class=\"stab deprecated\"><span class=\"emoji\">👎</span> {}</div>",
+            "<div class=\"stab deprecated\">\
+                 <span class=\"emoji\">👎</span>\
+                 <span>{}</span>\
+             </div>",
             message,
         ));
     }
@@ -582,8 +585,9 @@ fn short_item_info(
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
     {
-        let mut message =
-            "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
+        let mut message = "<span class=\"emoji\">🔬</span>\
+             <span>This is a nightly-only experimental API."
+            .to_owned();
 
         let mut feature = format!("<code>{}</code>", Escape(feature.as_str()));
         if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
@@ -594,7 +598,7 @@ fn short_item_info(
             ));
         }
 
-        message.push_str(&format!(" ({})", feature));
+        message.push_str(&format!(" ({})</span>", feature));
 
         extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }

@@ -21,6 +21,7 @@
 
 use crate::ffi::{c_void, CStr};
 use crate::ptr::NonNull;
+use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::c;
 
 /// Helper macro for creating CStrs from literals and symbol names.
@@ -71,6 +72,20 @@ impl Module {
     pub unsafe fn new(name: &CStr) -> Option<Self> {
         // SAFETY: A CStr is always null terminated.
         let module = c::GetModuleHandleA(name.as_ptr());
+        NonNull::new(module).map(Self)
+    }
+
+    /// Load the library (if not already loaded)
+    ///
+    /// # Safety
+    ///
+    /// The module must not be unloaded.
+    pub unsafe fn load_system_library(name: &CStr) -> Option<Self> {
+        let module = c::LoadLibraryExA(
+            name.as_ptr(),
+            crate::ptr::null_mut(),
+            c::LOAD_LIBRARY_SEARCH_SYSTEM32,
+        );
         NonNull::new(module).map(Self)
     }
 
@@ -144,61 +159,63 @@ macro_rules! compat_fn_with_fallback {
     )*)
 }
 
-/// Optionally load `WaitOnAddress`.
-/// Unlike the dynamic loading described above, this does not have a fallback.
+/// Optionally loaded functions.
 ///
-/// This is rexported from sys::c. You should prefer to import
-/// from there in case this changes again in the future.
-pub mod WaitOnAddress {
-    use super::*;
-    use crate::mem;
-    use crate::ptr;
-    use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-    use crate::sys::c;
+/// Actual loading of the function defers to $load_functions.
+macro_rules! compat_fn_optional {
+    ($load_functions:expr;
+    $(
+        $(#[$meta:meta])*
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) $(-> $rettype:ty)?;
+    )+) => (
+        $(
+            pub mod $symbol {
+                use super::*;
+                use crate::ffi::c_void;
+                use crate::mem;
+                use crate::ptr::{self, NonNull};
+                use crate::sync::atomic::{AtomicPtr, Ordering};
 
-    static MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
-    static SYMBOL_NAME: &CStr = ansi_str!("WaitOnAddress");
+                pub(in crate::sys) static PTR: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 
-    // WaitOnAddress function signature.
-    type F = unsafe extern "system" fn(
-        Address: c::LPVOID,
-        CompareAddress: c::LPVOID,
-        AddressSize: c::SIZE_T,
-        dwMilliseconds: c::DWORD,
-    );
+                type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 
-    // A place to store the loaded function atomically.
-    static WAIT_ON_ADDRESS: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
+                #[inline(always)]
+                pub fn option() -> Option<F> {
+                    let f = PTR.load(Ordering::Acquire);
+                    if !f.is_null() { Some(unsafe { mem::transmute(f) }) } else { try_load() }
+                }
 
-    // We can skip trying to load again if we already tried.
-    static LOAD_MODULE: AtomicBool = AtomicBool::new(true);
-
-    #[inline(always)]
-    pub fn option() -> Option<F> {
-        let f = WAIT_ON_ADDRESS.load(Ordering::Acquire);
-        if !f.is_null() { Some(unsafe { mem::transmute(f) }) } else { try_load() }
-    }
-
-    #[cold]
-    fn try_load() -> Option<F> {
-        if LOAD_MODULE.load(Ordering::Acquire) {
-            // load the module
-            let mut wait_on_address = None;
-            if let Some(func) = try_load_inner() {
-                WAIT_ON_ADDRESS.store(func.as_ptr(), Ordering::Release);
-                wait_on_address = Some(unsafe { mem::transmute(func) });
+                #[cold]
+                fn try_load() -> Option<F> {
+                    $load_functions;
+                    NonNull::new(PTR.load(Ordering::Acquire)).map(|f| unsafe { mem::transmute(f) })
+                }
             }
-            // Don't try to load the module again even if loading failed.
-            LOAD_MODULE.store(false, Ordering::Release);
-            wait_on_address
-        } else {
-            None
-        }
+        )+
+    )
+}
+
+/// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
+pub(super) fn load_synch_functions() {
+    fn try_load() -> Option<()> {
+        const MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
+        const WAIT_ON_ADDRESS: &CStr = ansi_str!("WaitOnAddress");
+        const WAKE_BY_ADDRESS_SINGLE: &CStr = ansi_str!("WakeByAddressSingle");
+
+        // Try loading the library and all the required functions.
+        // If any step fails, then they all fail.
+        let library = unsafe { Module::load_system_library(MODULE_NAME) }?;
+        let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
+        let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;
+
+        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Release);
+        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Release);
+        Some(())
     }
 
-    // In the future this could be a `try` block but until then I think it's a
-    // little bit cleaner as a separate function.
-    fn try_load_inner() -> Option<NonNull<c_void>> {
-        unsafe { Module::new(MODULE_NAME)?.proc_address(SYMBOL_NAME) }
-    }
+    // Try to load the module but skip loading if a previous attempt failed.
+    static LOAD_MODULE: AtomicBool = AtomicBool::new(true);
+    let module_loaded = LOAD_MODULE.load(Ordering::Acquire) && try_load().is_some();
+    LOAD_MODULE.store(module_loaded, Ordering::Release)
 }

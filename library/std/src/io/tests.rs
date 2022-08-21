@@ -94,7 +94,7 @@ fn read_to_end() {
     assert_eq!(c.read_to_end(&mut v).unwrap(), 1);
     assert_eq!(v, b"1");
 
-    let cap = 1024 * 1024;
+    let cap = if cfg!(miri) { 1024 } else { 1024 * 1024 };
     let data = (0..cap).map(|i| (i / 3) as u8).collect::<Vec<_>>();
     let mut v = Vec::new();
     let (a, b) = data.split_at(data.len() / 2);
@@ -309,6 +309,7 @@ fn chain_zero_length_read_is_not_eof() {
 
 #[bench]
 #[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_read_to_end(b: &mut test::Bencher) {
     b.iter(|| {
         let mut lr = repeat(1).take(10000000);

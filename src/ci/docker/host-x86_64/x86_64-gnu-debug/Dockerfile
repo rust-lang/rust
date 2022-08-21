@@ -31,6 +31,9 @@ RUN sh /scripts/sccache.sh
 ENV RUSTBUILD_FORCE_CLANG_BASED_TESTS 1
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 
+# llvm.use-linker conflicts with downloading CI LLVM
+ENV NO_DOWNLOAD_CI_LLVM 1
+
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --enable-debug \

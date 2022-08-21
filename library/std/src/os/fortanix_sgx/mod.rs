@@ -26,6 +26,7 @@ pub mod usercalls {
             free, insecure_time, launch_thread, read, read_alloc, send, wait, write,
         };
         pub use crate::sys::abi::usercalls::raw::{do_usercall, Usercalls as UsercallNrs};
+        pub use crate::sys::abi::usercalls::raw::{Register, RegisterArgument, ReturnValue};
 
         // fortanix-sgx-abi re-exports
         pub use crate::sys::abi::usercalls::raw::Error;

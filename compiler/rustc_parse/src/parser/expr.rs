@@ -1492,11 +1492,11 @@ impl<'a> Parser<'a> {
                 self.struct_span_err(path.span, "macros cannot use qualified paths").emit();
             }
             let lo = path.span;
-            let mac = MacCall {
+            let mac = P(MacCall {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
-            };
+            });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) &&
             let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path) {
