@@ -27,7 +27,7 @@ use rustc_span::Span;
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifeTimeOutLiveErr,
-    LifeTimeReturnCategoryErr,
+    LifeTimeReturnCategoryErr, RequireStaticErr,
 };
 
 use super::{OutlivesSuggestionBuilder, RegionName};
@@ -854,7 +854,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ident.span,
                     "calling this method introduces the `impl`'s 'static` requirement",
                 );
-                err.span_note(multi_span, "the used `impl` has a `'static` requirement");
+                err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "consider relaxing the implicit `'static` requirement",

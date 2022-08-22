@@ -52,3 +52,6 @@ borrowck_returned_lifetime_wrong =
 
 borrowck_returned_lifetime_short =
     {$category_desc}requires that `{$free_region_name}` must outlive `{$outlived_fr_name}`
+
+borrowck_used_impl_require_static =
+    the used `impl` has a `'static` requirement
