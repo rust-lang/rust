@@ -40,7 +40,6 @@ macro_rules! define_semantic_token_types {
 define_semantic_token_types![
     (ANGLE, "angle"),
     (ARITHMETIC, "arithmetic"),
-    (ATTRIBUTE, "attribute"),
     (ATTRIBUTE_BRACKET, "attributeBracket"),
     (BITWISE, "bitwise"),
     (BOOLEAN, "boolean"),
@@ -53,6 +52,8 @@ define_semantic_token_types![
     (COMMA, "comma"),
     (COMPARISON, "comparison"),
     (CONST_PARAMETER, "constParameter"),
+    // FIXME: to be replaced once lsp-types has the upstream version
+    (DECORATOR, "decorator"),
     (DERIVE, "derive"),
     (DERIVE_HELPER, "deriveHelper"),
     (DOT, "dot"),
@@ -63,7 +64,6 @@ define_semantic_token_types![
     (LIFETIME, "lifetime"),
     (LOGICAL, "logical"),
     (MACRO_BANG, "macroBang"),
-    (OPERATOR, "operator"),
     (PARENTHESIS, "parenthesis"),
     (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),

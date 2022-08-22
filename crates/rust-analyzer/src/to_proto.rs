@@ -558,7 +558,7 @@ fn semantic_token_type_and_modifiers(
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => semantic_tokens::ATTRIBUTE,
+            SymbolKind::Attribute => semantic_tokens::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
             SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
@@ -613,7 +613,7 @@ fn semantic_token_type_and_modifiers(
             HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
             HlOperator::Logical => semantic_tokens::LOGICAL,
             HlOperator::Comparison => semantic_tokens::COMPARISON,
-            HlOperator::Other => semantic_tokens::OPERATOR,
+            HlOperator::Other => lsp_types::SemanticTokenType::OPERATOR,
         },
         HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
         HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
