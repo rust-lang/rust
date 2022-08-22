@@ -73,7 +73,7 @@ impl DefDiagnostic {
         Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { id, index } }
     }
 
-    pub(super) fn unconfigured_code(
+    pub fn unconfigured_code(
         container: LocalModuleId,
         ast: AstId<ast::Item>,
         cfg: CfgExpr,

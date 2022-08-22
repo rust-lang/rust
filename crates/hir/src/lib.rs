@@ -511,6 +511,7 @@ impl Module {
             .collect()
     }
 
+    /// Fills `acc` with the module's diagnostics.
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
@@ -531,11 +532,21 @@ impl Module {
                         m.diagnostics(db, acc)
                     }
                 }
+                ModuleDef::Trait(t) => {
+                    for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
+                        emit_def_diagnostic(db, acc, diag);
+                    }
+                    acc.extend(decl.diagnostics(db))
+                }
                 _ => acc.extend(decl.diagnostics(db)),
             }
         }
 
         for impl_def in self.impl_defs(db) {
+            for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
+                emit_def_diagnostic(db, acc, diag);
+            }
+
             for item in impl_def.items(db) {
                 let def: DefWithBody = match item {
                     AssocItem::Function(it) => it.into(),
