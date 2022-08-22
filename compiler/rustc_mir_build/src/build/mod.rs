@@ -6,8 +6,9 @@ use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{GeneratorKind, ImplicitSelfKind, Node};
+use rustc_hir::{GeneratorKind, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
@@ -15,7 +16,9 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, PatKind, Thir};
+use rustc_middle::thir::{
+    self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -95,26 +98,6 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
-
-fn liberated_closure_env_ty(
-    tcx: TyCtxt<'_>,
-    closure_expr_id: hir::HirId,
-    body_id: hir::BodyId,
-) -> Ty<'_> {
-    let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
-
-    let ty::Closure(closure_def_id, closure_substs) = *closure_ty.kind() else {
-        bug!("closure expr does not have closure type: {:?}", closure_ty);
-    };
-
-    let bound_vars =
-        tcx.mk_bound_variable_kinds(std::iter::once(ty::BoundVariableKind::Region(ty::BrEnv)));
-    let br =
-        ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind: ty::BrEnv };
-    let env_region = ty::ReLateBound(ty::INNERMOST, br);
-    let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs, env_region).unwrap();
-    tcx.erase_late_bound_regions(ty::Binder::bind_with_vars(closure_env_ty, bound_vars))
-}
 
 #[derive(Debug, PartialEq, Eq)]
 enum BlockFrame {
@@ -436,13 +419,6 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'thir, 'tcx>(
-    Ty<'tcx>,
-    Option<Span>,
-    Option<&'thir Param<'tcx>>,
-    Option<ImplicitSelfKind>,
-);
-
 fn construct_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def: ty::WithOptConstParam<LocalDefId>,
@@ -473,49 +449,27 @@ fn construct_fn<'tcx>(
         hir::Unsafety::Unsafe => Safety::FnUnsafe,
     };
 
-    let body = tcx.hir().body(body_id);
-    let ty = tcx.type_of(fn_def.did);
     let mut abi = fn_sig.abi;
-    let implicit_argument = match ty.kind() {
-        ty::Closure(..) => {
-            // HACK(eddyb) Avoid having RustCall on closures,
-            // as it adds unnecessary (and wrong) auto-tupling.
-            abi = Abi::Rust;
-            vec![ArgInfo(liberated_closure_env_ty(tcx, fn_id, body_id), None, None, None)]
-        }
-        ty::Generator(..) => {
-            let gen_ty = typeck_results.node_type(fn_id);
+    if let DefKind::Closure = tcx.def_kind(fn_def.did) {
+        // HACK(eddyb) Avoid having RustCall on closures,
+        // as it adds unnecessary (and wrong) auto-tupling.
+        abi = Abi::Rust;
+    }
 
-            // The resume argument may be missing, in that case we need to provide it here.
-            // It will always be `()` in this case.
-            if body.params.is_empty() {
-                vec![ArgInfo(gen_ty, None, None, None), ArgInfo(tcx.mk_unit(), None, None, None)]
-            } else {
-                vec![ArgInfo(gen_ty, None, None, None)]
-            }
-        }
-        _ => vec![],
-    };
-
-    let explicit_arguments =
-        thir.params.iter().map(|arg| ArgInfo(arg.ty, arg.ty_span, Some(&arg), arg.self_kind));
-
-    let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+    let arguments = &thir.params;
 
     let (yield_ty, return_ty) = if generator_kind.is_some() {
-        let gen_ty = typeck_results.node_type(fn_id);
+        let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
             ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
             _ => {
-                span_bug!(span, "generator w/o generator type: {:?}", ty)
+                span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
             }
         };
         (Some(gen_sig.yield_ty), gen_sig.return_ty)
     } else {
         (None, fn_sig.output())
     };
-
-    let arguments: Vec<_> = arguments.collect();
 
     let mut body = tcx.infer_ctxt().enter(|infcx| {
         let mut builder = Builder::new(
@@ -532,9 +486,9 @@ fn construct_fn<'tcx>(
         );
 
         let call_site_scope =
-            region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
+            region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::CallSite };
         let arg_scope =
-            region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
+            region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::Arguments };
         let source_info = builder.source_info(span);
         let call_site_s = (call_site_scope, source_info);
         unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
@@ -550,7 +504,7 @@ fn construct_fn<'tcx>(
                         builder.args_and_body(
                             START_BLOCK,
                             fn_def.did,
-                            &arguments,
+                            arguments,
                             arg_scope,
                             &thir[expr],
                         )
@@ -809,18 +763,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         fn_def_id: LocalDefId,
-        arguments: &[ArgInfo<'_, 'tcx>],
+        arguments: &IndexVec<ParamId, Param<'tcx>>,
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
-        for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
+        for param in arguments.iter() {
             let source_info =
-                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
-            let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
+                SourceInfo::outermost(param.pat.as_ref().map_or(self.fn_span, |pat| pat.span));
+            let arg_local =
+                self.local_decls.push(LocalDecl::with_source_info(param.ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt && let Some(name) = arg.pat.simple_ident() {
+            if let Some(ref pat) = param.pat && let Some(name) = pat.simple_ident() {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info,
@@ -893,27 +848,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut scope = None;
         // Bind the argument patterns
-        for (index, arg_info) in arguments.iter().enumerate() {
+        for (index, param) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::from(local);
-            let &ArgInfo(_, opt_ty_info, arg_opt, ref self_binding) = arg_info;
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                arg_opt.as_ref().map_or(expr.span, |arg| arg.pat.span),
+                param.pat.as_ref().map_or(expr.span, |pat| pat.span),
                 argument_scope,
                 local,
                 DropKind::Value,
             );
 
-            let Some(arg) = arg_opt else {
+            let Some(ref pat) = param.pat else {
                 continue;
             };
             let original_source_scope = self.source_scope;
-            let span = arg.pat.span;
-            self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
-            match arg.pat.kind {
+            let span = pat.span;
+            if let Some(arg_hir_id) = param.hir_id {
+                self.set_correct_source_scope_for_arg(arg_hir_id, original_source_scope, span);
+            }
+            match pat.kind {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     mutability,
@@ -924,16 +880,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    self.local_decls[local].local_info = if let Some(kind) = self_binding {
+                    self.local_decls[local].local_info = if let Some(kind) = param.self_kind {
                         Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
-                            BindingForm::ImplicitSelf(*kind),
+                            BindingForm::ImplicitSelf(kind),
                         ))))
                     } else {
                         let binding_mode = ty::BindingMode::BindByValue(mutability);
                         Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                             VarBindingForm {
                                 binding_mode,
-                                opt_ty_info,
+                                opt_ty_info: param.ty_span,
                                 opt_match_place: Some((Some(place), span)),
                                 pat_span: span,
                             },
@@ -945,12 +901,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     scope = self.declare_bindings(
                         scope,
                         expr.span,
-                        &arg.pat,
+                        &pat,
                         matches::ArmHasGuard(false),
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, &arg.pat, place_builder, false));
+                    unpack!(block = self.place_into_pattern(block, &pat, place_builder, false));
                 }
             }
             self.source_scope = original_source_scope;
