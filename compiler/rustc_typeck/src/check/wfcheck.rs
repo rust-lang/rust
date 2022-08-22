@@ -1,5 +1,5 @@
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -104,8 +104,10 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
             return;
         }
 
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, assumed_wf_types, body_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+        let outlives_environment =
+            OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+
         infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }
@@ -694,8 +696,11 @@ fn resolve_regions_with_wf_tys<'tcx>(
     // region constraints get added and solved there and we need to test each
     // call individually.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(&infcx),
+            infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        );
         let region_bound_pairs = outlives_environment.region_bound_pairs();
 
         add_constraints(&infcx, region_bound_pairs);
