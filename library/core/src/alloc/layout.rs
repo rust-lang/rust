@@ -309,15 +309,9 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
-        // This cannot overflow. Quoting from the invariant of Layout:
-        // > `size`, when rounded up to the nearest multiple of `align`,
-        // > must not overflow isize (i.e., the rounded value must be
-        // > less than or equal to `isize::MAX`)
-        let padded_size = self.size() + self.padding_needed_for(self.align());
-        let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
-
-        // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_valid_align(alloc_size, self.align).map(|layout| (layout, padded_size))
+        let padded_self = self.pad_to_align();
+        let repeated = padded_self.repeat_packed(n)?;
+        Ok((repeated, padded_self.size()))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -394,9 +388,35 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
-        let size = self.size().checked_mul(n).ok_or(LayoutError)?;
-        // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_valid_align(size, self.align)
+        // Rather than checking both for overflow and whether the padded size
+        // could exceed `isize::MAX`, do the checking in a larger type
+        // so we only need to say the one check.
+        //
+        // This makes it a bit easier for LLVM to optimize as it's just ordinary
+        // integer operations in the generic optimizer, not intrinsics that
+        // might not be handled as much.  For example, for constant `size` or
+        // `n`, the optimization from llvm-project#56563 means it can often
+        // sink the check before the multiplication, and thus do only the simple
+        // word-width never-overflowing multiplication, rather than the checked
+        // one.  But even if not, the double-width codegen comes out essentially
+        // the same as if the overflow intrinsics where used.
+
+        #[cfg(target_pointer_width = "16")]
+        type UDoubleSize = u32;
+        #[cfg(target_pointer_width = "32")]
+        type UDoubleSize = u64;
+        #[cfg(target_pointer_width = "64")]
+        type UDoubleSize = u128;
+
+        // SAFETY: `UDoubleSize` is big enough that this cannot ever overflow.
+        let size = unsafe { UDoubleSize::unchecked_mul(self.size() as _, n as _) };
+
+        if size > Layout::max_size_for_align(self.align) as UDoubleSize {
+            return Err(LayoutError);
+        }
+
+        // SAFETY: padded size is guaranteed to not exceed `isize::MAX`.
+        unsafe { Ok(Layout::from_size_align_unchecked(size as usize, self.align())) }
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -420,28 +440,9 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
-        // Reduce the amount of code we need to monomorphize per `T`.
-        return inner(mem::size_of::<T>(), ValidAlign::of::<T>(), n);
-
-        #[inline]
-        fn inner(element_size: usize, align: ValidAlign, n: usize) -> Result<Layout, LayoutError> {
-            // We need to check two things about the size:
-            //  - That the total size won't overflow a `usize`, and
-            //  - That the total size still fits in an `isize`.
-            // By using division we can check them both with a single threshold.
-            // That'd usually be a bad idea, but thankfully here the element size
-            // and alignment are constants, so the compiler will fold all of it.
-            if element_size != 0 && n > Layout::max_size_for_align(align) / element_size {
-                return Err(LayoutError);
-            }
-
-            let array_size = element_size * n;
-
-            // SAFETY: We just checked above that the `array_size` will not
-            // exceed `isize::MAX` even when rounded up to the alignment.
-            // And `ValidAlign` guarantees it's a power of two.
-            unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
-        }
+        // The layout of a type is always padded already,
+        // so we can use the packed computation directly.
+        Layout::new::<T>().repeat_packed(n)
     }
 }
 

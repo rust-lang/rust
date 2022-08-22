@@ -53,13 +53,6 @@ impl ValidAlign {
     pub(crate) fn log2(self) -> u32 {
         self.as_nonzero().trailing_zeros()
     }
-
-    /// Returns the alignment for a type.
-    #[inline]
-    pub(crate) fn of<T>() -> Self {
-        // SAFETY: rustc ensures that type alignment is always a power of two.
-        unsafe { ValidAlign::new_unchecked(mem::align_of::<T>()) }
-    }
 }
 
 impl fmt::Debug for ValidAlign {
