@@ -395,6 +395,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 variant_index: _,
                 substs: _,
                 user_ty: _,
+                ctor_span: _,
                 fields: _,
                 base: _,
             }) => match self.tcx.layout_scalar_valid_range(adt_def.did()) {

@@ -242,6 +242,13 @@ impl<'hir> PathSegment<'hir> {
             DUMMY
         }
     }
+
+    pub fn span(&self) -> Span {
+        match self.args {
+            Some(ref args) => self.ident.span.to(args.span_ext),
+            None => self.ident.span,
+        }
+    }
 }
 
 #[derive(Encodable, Debug, HashStable_Generic)]

@@ -319,6 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 variant_index,
                 substs,
                 user_ty,
+                ctor_span,
                 ref fields,
                 ref base,
             }) => {
@@ -380,7 +381,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                        span: source_info.span,
+                        span: ctor_span,
                         user_ty: ty,
                         inferred_ty,
                     })

@@ -115,6 +115,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             variant_index: _,
             substs: _,
             user_ty: _,
+            ctor_span: _,
         }) => {
             for field in &**fields {
                 visitor.visit_expr(&visitor.thir()[field.expr]);

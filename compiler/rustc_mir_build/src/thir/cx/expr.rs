@@ -263,7 +263,7 @@ impl<'tcx> Cx<'tcx> {
             // Here comes the interesting stuff:
             hir::ExprKind::MethodCall(segment, ref args, fn_span) => {
                 // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
-                let expr = self.method_callee(expr, segment.ident.span, None);
+                let expr = self.method_callee(expr, segment.span(), None);
                 // When we apply adjustments to the receiver, use the span of
                 // the overall method call for better diagnostics. args[0]
                 // is guaranteed to exist, since a method call always has a receiver.
@@ -347,6 +347,7 @@ impl<'tcx> Cx<'tcx> {
                             variant_index: index,
                             fields: field_refs,
                             user_ty,
+                            ctor_span: fun.span,
                             base: None,
                         }))
                     } else {
@@ -471,6 +472,7 @@ impl<'tcx> Cx<'tcx> {
                             variant_index: VariantIdx::new(0),
                             substs,
                             user_ty,
+                            ctor_span: qpath.span(),
                             fields: self.field_refs(fields),
                             base: base.as_ref().map(|base| FruInfo {
                                 base: self.mirror_expr(base),
@@ -497,6 +499,7 @@ impl<'tcx> Cx<'tcx> {
                                     variant_index: index,
                                     substs,
                                     user_ty,
+                                    ctor_span: qpath.span(),
                                     fields: self.field_refs(fields),
                                     base: None,
                                 }))
@@ -862,6 +865,7 @@ impl<'tcx> Cx<'tcx> {
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
                         user_ty: user_provided_type,
+                        ctor_span: expr.span,
                         fields: Box::new([]),
                         base: None,
                     })),

@@ -132,6 +132,8 @@ pub struct Adt<'tcx> {
     /// Optional user-given substs: for something like `let x =
     /// Bar::<T> { ... }`.
     pub user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    /// Constructor span, e.g. `Foo::<u8>` in `Foo::<u8>(1)`.
+    pub ctor_span: Span,
 
     pub fields: Box<[FieldExpr]>,
     /// The base, e.g. `Foo {x: 1, .. base}`.
