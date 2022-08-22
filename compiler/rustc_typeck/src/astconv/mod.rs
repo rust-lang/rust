@@ -591,7 +591,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     pub(crate) fn create_substs_for_associated_item(
         &self,
-        tcx: TyCtxt<'tcx>,
         span: Span,
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
@@ -601,22 +600,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             "create_substs_for_associated_item(span: {:?}, item_def_id: {:?}, item_segment: {:?}",
             span, item_def_id, item_segment
         );
-        if tcx.generics_of(item_def_id).params.is_empty() {
-            self.prohibit_generics(slice::from_ref(item_segment).iter(), |_| {});
-
-            parent_substs
-        } else {
-            self.create_substs_for_ast_path(
-                span,
-                item_def_id,
-                parent_substs,
-                item_segment,
-                item_segment.args(),
-                item_segment.infer_args,
-                None,
-            )
-            .0
-        }
+        self.create_substs_for_ast_path(
+            span,
+            item_def_id,
+            parent_substs,
+            item_segment,
+            item_segment.args(),
+            item_segment.infer_args,
+            None,
+        )
+        .0
     }
 
     /// Instantiates the path for the given trait reference, assuming that it's
@@ -1129,7 +1122,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             };
 
             let substs_trait_ref_and_assoc_item = self.create_substs_for_associated_item(
-                tcx,
                 path_span,
                 assoc_item.def_id,
                 &item_segment,
@@ -2105,7 +2097,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.ast_path_to_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
 
         let item_substs = self.create_substs_for_associated_item(
-            tcx,
             span,
             item_def_id,
             item_segment,
