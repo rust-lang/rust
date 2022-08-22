@@ -1,4 +1,6 @@
-//! A character type.
+//! Utilities for the `char` primitive type.
+//!
+//! *[See also the `char` primitive type](primitive@char).*
 //!
 //! The `char` type represents a single character. More specifically, since
 //! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode

@@ -482,6 +482,15 @@ impl Session {
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
     }
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl SessionDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        self.parse_sess.create_fatal(fatal)
+    }
+    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+        self.parse_sess.emit_fatal(fatal)
+    }
     #[inline]
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()

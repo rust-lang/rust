@@ -9,7 +9,7 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_error_messages::MultiSpan;
+use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
@@ -491,7 +491,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: String,
+    pub msg: DiagnosticMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -520,11 +520,11 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let lint_id = LintId::of(lint);
-        let msg = msg.to_string();
+        let msg = msg.into();
         self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, msg, diagnostic });
     }
 
@@ -537,7 +537,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
     }
@@ -547,7 +547,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)

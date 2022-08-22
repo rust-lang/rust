@@ -1,6 +1,6 @@
-//! Functionality for ordering and comparison.
+//! Utilities for comparing and ordering values.
 //!
-//! This module contains various tools for ordering and comparing values. In
+//! This module contains various tools for comparing and ordering values. In
 //! summary:
 //!
 //! * [`Eq`] and [`PartialEq`] are traits that allow you to define total and
