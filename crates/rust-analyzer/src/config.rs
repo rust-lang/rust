@@ -400,7 +400,17 @@ config_data! {
         ///
         /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
         /// of the generic `punctuation` token type.
-        semanticHighlighting_punctuation_specialize: bool = "false",
+        semanticHighlighting_punctuation_specialization_enable: bool = "false",
+        /// Use semantic tokens for operators.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
+        /// they are tagged with modifiers.
+        semanticHighlighting_operator_enable: bool = "true",
+        /// Use specialized semantic tokens for operators.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for operator tokens instead
+        /// of the generic `operator` token type.
+        semanticHighlighting_operator_specialization_enable: bool = "false",
 
         /// Show full signature of the callable. Only shows parameters if disabled.
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
@@ -538,6 +548,8 @@ pub struct HighlightingConfig {
     pub strings: bool,
     pub punctuation: bool,
     pub specialize_punctuation: bool,
+    pub specialize_operator: bool,
+    pub operator: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1192,7 +1204,11 @@ impl Config {
         HighlightingConfig {
             strings: self.data.semanticHighlighting_strings_enable,
             punctuation: self.data.semanticHighlighting_punctuation_enable,
-            specialize_punctuation: self.data.semanticHighlighting_punctuation_specialize,
+            specialize_punctuation: self
+                .data
+                .semanticHighlighting_punctuation_specialization_enable,
+            operator: self.data.semanticHighlighting_operator_enable,
+            specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
         }
     }
 

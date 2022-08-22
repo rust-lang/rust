@@ -544,6 +544,12 @@ pub(crate) fn semantic_tokens(
             tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
                 *tag = HlTag::Punctuation(HlPunct::Other);
             }
+            HlTag::Operator(_) if !config.operator && highlight_range.highlight.mods.is_empty() => {
+                continue
+            }
+            tag @ HlTag::Operator(_) if !config.specialize_operator => {
+                *tag = HlTag::Operator(HlOperator::Other);
+            }
             _ => (),
         }
 
