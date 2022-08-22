@@ -394,13 +394,16 @@ config_data! {
         /// Use semantic tokens for punctuations.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
-        /// they are tagged with modifiers.
+        /// they are tagged with modifiers or have a special role.
         semanticHighlighting_punctuation_enable: bool = "false",
         /// Use specialized semantic tokens for punctuations.
         ///
         /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
         /// of the generic `punctuation` token type.
         semanticHighlighting_punctuation_specialization_enable: bool = "false",
+        /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
+        /// calls.
+        semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
         /// Use semantic tokens for operators.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
@@ -1203,6 +1206,7 @@ impl Config {
             specialize_punctuation: self
                 .data
                 .semanticHighlighting_punctuation_specialization_enable,
+            macro_bang: self.data.semanticHighlighting_punctuation_separate_macro_bang,
             operator: self.data.semanticHighlighting_operator_enable,
             specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
             inject_doc_comment: self.data.semanticHighlighting_doc_comment_inject_enable,

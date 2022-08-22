@@ -199,7 +199,7 @@ impl fmt::Display for HlTag {
 }
 
 impl HlMod {
-    const ALL: &'static [HlMod; HlMod::Unsafe as u8 as usize + 1] = &[
+    const ALL: &'static [HlMod; 19] = &[
         HlMod::Associated,
         HlMod::Async,
         HlMod::Attribute,

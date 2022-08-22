@@ -50,6 +50,8 @@ pub struct HighlightConfig {
     pub specialize_operator: bool,
     /// Whether to inject highlights into doc comments
     pub inject_doc_comment: bool,
+    /// Whether to highlight the macro call bang
+    pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
 }
@@ -457,10 +459,12 @@ fn traverse(
             match &mut highlight.tag {
                 HlTag::StringLiteral if !config.strings => continue,
                 // If punctuation is disabled, make the macro bang part of the macro call again.
-                tag @ HlTag::Punctuation(HlPunct::MacroBang)
-                    if !config.punctuation || !config.specialize_punctuation =>
-                {
-                    *tag = HlTag::Symbol(SymbolKind::Macro);
+                tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
+                    if !config.macro_bang {
+                        *tag = HlTag::Symbol(SymbolKind::Macro);
+                    } else if !config.specialize_punctuation {
+                        *tag = HlTag::Punctuation(HlPunct::Other);
+                    }
                 }
                 HlTag::Punctuation(_) if !config.punctuation => continue,
                 tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {

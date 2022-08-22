@@ -13,6 +13,7 @@ const HL_CONFIG: HighlightConfig = HighlightConfig {
     specialize_operator: true,
     operator: true,
     inject_doc_comment: true,
+    macro_bang: true,
     syntactic_name_ref_highlighting: false,
 };
 
