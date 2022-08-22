@@ -1,6 +1,8 @@
-use rustc_errors::DiagnosticArgFromDisplay;
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
+
+use std::io;
+use std::path::Path;
 
 #[derive(SessionDiagnostic)]
 #[diag(interface::ferris_identifier)]
@@ -34,21 +36,21 @@ pub struct ProcMacroDocWithoutArg;
 #[derive(SessionDiagnostic)]
 #[diag(interface::error_writing_dependencies)]
 pub struct ErrorWritingDependencies<'a> {
-    pub path: DiagnosticArgFromDisplay<'a>,
-    pub error: DiagnosticArgFromDisplay<'a>,
+    pub path: &'a Path,
+    pub error: io::Error,
 }
 
 #[derive(SessionDiagnostic)]
 #[diag(interface::input_file_would_be_overwritten)]
 pub struct InputFileWouldBeOverWritten<'a> {
-    pub path: DiagnosticArgFromDisplay<'a>,
+    pub path: &'a Path,
 }
 
 #[derive(SessionDiagnostic)]
 #[diag(interface::generated_file_conflicts_with_directory)]
 pub struct GeneratedFileConflictsWithDirectory<'a> {
-    pub input_path: DiagnosticArgFromDisplay<'a>,
-    pub dir_path: DiagnosticArgFromDisplay<'a>,
+    pub input_path: &'a Path,
+    pub dir_path: &'a Path,
 }
 
 #[derive(SessionDiagnostic)]
@@ -61,8 +63,8 @@ pub struct OutDirError;
 
 #[derive(SessionDiagnostic)]
 #[diag(interface::cant_emit_mir)]
-pub struct CantEmitMIR<'a> {
-    pub error: DiagnosticArgFromDisplay<'a>,
+pub struct CantEmitMIR {
+    pub error: io::Error,
 }
 
 #[derive(SessionDiagnostic)]
@@ -82,6 +84,6 @@ pub struct RustcErrorUnexpectedAnnotation {
 #[derive(SessionDiagnostic)]
 #[diag(interface::failed_writing_file)]
 pub struct FailedWritingFile<'a> {
-    pub path: DiagnosticArgFromDisplay<'a>,
-    pub error: DiagnosticArgFromDisplay<'a>,
+    pub path: &'a Path,
+    pub error: io::Error,
 }

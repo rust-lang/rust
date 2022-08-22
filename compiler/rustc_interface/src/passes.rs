@@ -647,11 +647,8 @@ fn write_out_deps(
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
         }
-        Err(e) => {
-            sess.emit_fatal(ErrorWritingDependencies {
-                path: (&deps_filename.display()).into(),
-                error: (&e).into(),
-            });
+        Err(error) => {
+            sess.emit_fatal(ErrorWritingDependencies { path: &deps_filename, error });
         }
     }
 }
@@ -682,15 +679,12 @@ pub fn prepare_outputs(
     if let Some(ref input_path) = compiler.input_path {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                let reported = sess
-                    .emit_err(InputFileWouldBeOverWritten { path: (&input_path.display()).into() });
+                let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
                 return Err(reported);
             }
-            if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                let reported = sess.emit_err(GeneratedFileConflictsWithDirectory {
-                    input_path: (&input_path.display()).into(),
-                    dir_path: (&dir_path.display()).into(),
-                });
+            if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
+                let reported =
+                    sess.emit_err(GeneratedFileConflictsWithDirectory { input_path, dir_path });
                 return Err(reported);
             }
         }
@@ -994,8 +988,8 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(e) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
-            tcx.sess.emit_err(CantEmitMIR { error: (&e).into() });
+        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
+            tcx.sess.emit_err(CantEmitMIR { error });
             tcx.sess.abort_if_errors();
         }
     }
