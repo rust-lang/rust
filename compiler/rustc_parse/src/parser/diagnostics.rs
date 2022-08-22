@@ -2370,7 +2370,7 @@ impl<'a> Parser<'a> {
 
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
         let snapshot = self.create_snapshot_for_diagnostic();
-        let param = match self.parse_const_param(vec![]) {
+        let param = match self.parse_const_param(AttrVec::new()) {
             Ok(param) => param,
             Err(err) => {
                 err.cancel();

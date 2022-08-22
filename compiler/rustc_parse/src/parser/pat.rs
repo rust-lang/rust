@@ -4,8 +4,8 @@ use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{
-    self as ast, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
-    PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, AttrVec, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat, PatField, PatKind,
+    Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -1093,7 +1093,7 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    fn parse_pat_field(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, PatField> {
+    fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
@@ -1134,7 +1134,7 @@ impl<'a> Parser<'a> {
             ident: fieldname,
             pat: subpat,
             is_shorthand,
-            attrs: attrs.into(),
+            attrs,
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
             is_placeholder: false,

@@ -504,7 +504,7 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub items: Vec<P<Item>>,
     pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
@@ -1268,7 +1268,7 @@ impl Expr {
                 id: DUMMY_NODE_ID,
                 kind: ExprKind::Err,
                 span: DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
                 tokens: None,
             },
         )
@@ -2669,7 +2669,7 @@ impl VariantData {
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Item<K = ItemKind> {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -3036,19 +3036,19 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AssocItem, 120);
+    static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 112);
+    static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 200);
+    static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
