@@ -649,3 +649,20 @@ pub struct RustcLintOptDenyFieldAccess {
     #[label]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(passes::missing_panic_handler)]
+pub struct MissingPanicHandler;
+
+#[derive(SessionDiagnostic)]
+#[diag(passes::missing_alloc_error_handler)]
+#[note]
+pub struct MissingAllocErrorHandler;
+
+#[derive(SessionDiagnostic)]
+#[diag(passes::missing_lang_item)]
+#[note]
+#[help]
+pub struct MissingLangItem {
+    pub name: Symbol,
+}

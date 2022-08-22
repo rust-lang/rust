@@ -265,3 +265,12 @@ passes_rustc_lint_opt_deny_field_access = `#[rustc_lint_opt_deny_field_access]` 
 
 passes_link_ordinal = attribute should be applied to a foreign function or static
     .label = not a foreign function or static
+
+passes_missing_panic_handler = `#[panic_handler]` function required, but not found
+
+passes_missing_alloc_error_handler = `#[alloc_error_handler]` function required, but not found
+    .note = use `#![feature(default_alloc_error_handler)]` for a default error handler
+
+passes_missing_lang_item = language item required, but not found: `{$name}`
+    .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
+    .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`
