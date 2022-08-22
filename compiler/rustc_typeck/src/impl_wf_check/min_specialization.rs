@@ -67,7 +67,7 @@
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
-use crate::outlives::outlives_bounds::InferCtxtExt;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -147,26 +147,9 @@ fn get_impl_substs<'tcx>(
         let assumed_wf_types =
             ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
-      let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+        let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
         let impl2_substs =
             translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
@@ -174,8 +157,8 @@ fn get_impl_substs<'tcx>(
             return None;
         }
 
-        let mut outlives_env = OutlivesEnvironment::new(param_env);
-        outlives_env.add_implied_bounds(infcx, assumed_wf_types, impl1_hir_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
         infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
         let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
             let span = tcx.def_span(impl1_def_id);
@@ -183,7 +166,8 @@ fn get_impl_substs<'tcx>(
             return None;
         };
         Some((impl1_substs, impl2_substs))
-    })}
+    })
+}
 
 /// Returns a list of all of the unconstrained subst of the given impl.
 ///

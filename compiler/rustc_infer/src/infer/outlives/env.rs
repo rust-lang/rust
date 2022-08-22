@@ -109,7 +109,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
     #[inline]
-    pub fn build(self) -> OutlivesEnvironment<'tcx> {
+    fn build(self) -> OutlivesEnvironment<'tcx> {
         OutlivesEnvironment {
             param_env: self.param_env,
             free_region_map: FreeRegionMap { relation: self.region_relation.freeze() },
