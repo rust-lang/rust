@@ -24,12 +24,11 @@
           StorageLive(_3);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
 -         _4 = SizeOf(i32);                // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 -         _5 = AlignOf(i32);               // scope 2 at $DIR/boxes.rs:+1:14: +1:22
--         _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 +         _4 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 +         _5 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
-+         _6 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
+          _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
                                            // mir::Constant
-                                           // + span: $DIR/boxes.rs:12:14: 12:22
+                                           // + span: $DIR/boxes.rs:13:14: 13:22
                                            // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
       }
   
@@ -53,7 +52,7 @@
   
       bb2: {
           StorageDead(_3);                 // scope 0 at $DIR/boxes.rs:+1:26: +1:27
-          nop;                             // scope 0 at $DIR/boxes.rs:+0:11: +2:2
+          _0 = const ();                   // scope 0 at $DIR/boxes.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/boxes.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/boxes.rs:+2:2: +2:2
       }
