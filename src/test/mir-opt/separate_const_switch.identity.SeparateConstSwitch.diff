@@ -57,15 +57,15 @@
           _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
           StorageLive(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           _10 = discriminant(_4);          // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
--         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-+         switchInt(move _10) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
+-         switchInt(move _10) -> [0_isize: bb7, 1_isize: bb5, otherwise: bb6]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
++         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
       }
   
       bb1: {
 -         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 -         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
--         switchInt(move _5) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+-         switchInt(move _5) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -     }
 - 
 -     bb2: {
@@ -83,6 +83,11 @@
   
 -     bb3: {
 +     bb2: {
+          unreachable;                     // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+      }
+  
+-     bb4: {
++     bb3: {
           StorageLive(_6);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
           _6 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
           StorageLive(_8);                 // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
@@ -106,8 +111,8 @@
           return;                          // scope 0 at $DIR/separate_const_switch.rs:+2:2: +2:2
       }
   
--     bb4: {
-+     bb3: {
+-     bb5: {
++     bb4: {
           StorageLive(_13);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
           _13 = move ((_4 as Err).0: i32); // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageLive(_14);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -126,16 +131,16 @@
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 +         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
-+         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
-      }
-  
--     bb5: {
-+     bb4: {
-          unreachable;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
++         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
       }
   
 -     bb6: {
 +     bb5: {
+          unreachable;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
+      }
+  
+-     bb7: {
++     bb6: {
           StorageLive(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
           _11 = move ((_4 as Ok).0: i32);  // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageLive(_12);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -149,7 +154,7 @@
 +         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 +         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
-+         switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
++         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
       }
   }
   

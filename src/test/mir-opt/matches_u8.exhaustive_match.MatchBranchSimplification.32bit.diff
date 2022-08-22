@@ -8,20 +8,24 @@
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/matches_u8.rs:+1:11: +1:12
-          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_u8.rs:+1:5: +1:12
+          switchInt(move _2) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/matches_u8.rs:+1:5: +1:12
       }
   
       bb1: {
           _0 = const 1_u8;                 // scope 0 at $DIR/matches_u8.rs:+3:17: +3:18
-          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:+3:17: +3:18
+          goto -> bb4;                     // scope 0 at $DIR/matches_u8.rs:+3:17: +3:18
       }
   
       bb2: {
-          _0 = const 0_u8;                 // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
-          goto -> bb3;                     // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
+          unreachable;                     // scope 0 at $DIR/matches_u8.rs:+1:11: +1:12
       }
   
       bb3: {
+          _0 = const 0_u8;                 // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
+          goto -> bb4;                     // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
+      }
+  
+      bb4: {
           return;                          // scope 0 at $DIR/matches_u8.rs:+5:2: +5:2
       }
   }

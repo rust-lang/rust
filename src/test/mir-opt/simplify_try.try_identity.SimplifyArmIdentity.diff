@@ -41,7 +41,7 @@
           _3 = move _4;                    // scope 4 at $DIR/simplify_try.rs:9:5: 9:6
           StorageDead(_4);                 // scope 0 at $DIR/simplify_try.rs:+1:32: +1:33
           _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:+1:19: +1:33
-          switchInt(move _5) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try.rs:+1:13: +1:33
+          switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_try.rs:+1:13: +1:33
       }
   
       bb1: {
@@ -61,6 +61,10 @@
       }
   
       bb2: {
+          unreachable;                     // scope 0 at $DIR/simplify_try.rs:+1:19: +1:33
+      }
+  
+      bb3: {
           StorageLive(_6);                 // scope 0 at $DIR/simplify_try.rs:+2:13: +2:14
           _6 = ((_3 as Err).0: i32);       // scope 0 at $DIR/simplify_try.rs:+2:13: +2:14
           StorageLive(_8);                 // scope 2 at $DIR/simplify_try.rs:+2:37: +2:50
