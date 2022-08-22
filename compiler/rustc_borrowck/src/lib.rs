@@ -426,7 +426,8 @@ fn do_mir_borrowck<'a, 'tcx>(
             continue;
         }
 
-        tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span })
+        let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+        tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }
 
     let tainted_by_errors = mbcx.emit_errors();
