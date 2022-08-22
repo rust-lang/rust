@@ -184,7 +184,7 @@ pub(super) fn from_casted_value<'tcx>(
     let abi_params = cast_target_to_abi_params(cast);
     let abi_param_size: u32 = abi_params.iter().map(|param| param.value_type.bytes()).sum();
     let layout_size = u32::try_from(layout.size.bytes()).unwrap();
-    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
         // specify stack slot alignment.

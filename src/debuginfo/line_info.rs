@@ -161,7 +161,7 @@ impl FunctionDebugContext {
 
         let mut func_end = 0;
 
-        let mcr = context.mach_compile_result.as_ref().unwrap();
+        let mcr = context.compiled_code().unwrap();
         for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
             debug_context.dwarf.unit.line_program.row().address_offset = u64::from(start);
             if !loc.is_default() {

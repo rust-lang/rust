@@ -202,7 +202,7 @@ fn compile_fn<'tcx>(
             &clif_comments,
         );
 
-        if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
+        if let Some(disasm) = &context.compiled_code().unwrap().disasm {
             crate::pretty_clif::write_ir_file(
                 &cx.output_filenames,
                 &format!("{}.vcode", codegened_func.symbol_name.name),

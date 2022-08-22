@@ -330,7 +330,7 @@ impl<'tcx> CPlace<'tcx> {
                 .fatal(&format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
             // specify stack slot alignment.
@@ -472,7 +472,7 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
                         // specify stack slot alignment.

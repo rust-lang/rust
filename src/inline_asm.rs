@@ -733,7 +733,7 @@ fn call_inline_asm<'tcx>(
     inputs: Vec<(Size, Value)>,
     outputs: Vec<(Size, CPlace<'tcx>)>,
 ) {
-    let stack_slot = fx.bcx.func.create_stack_slot(StackSlotData {
+    let stack_slot = fx.bcx.func.create_sized_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
         size: u32::try_from(slot_size.bytes()).unwrap(),
     });
