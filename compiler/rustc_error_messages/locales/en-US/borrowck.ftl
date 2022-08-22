@@ -51,5 +51,4 @@ borrowck_returned_lifetime_wrong =
     {$mir_def_name} was supposed to return data with lifetime `{$outlived_fr_name}` but it is returning data with lifetime `{$fr_name}`
 
 borrowck_returned_lifetime_short =
-    {$category_desc}requires that `{$free_region_name}` must outlive `{$outlived_fr_name}`"
-
+    {$category_desc}requires that `{$free_region_name}` must outlive `{$outlived_fr_name}`
