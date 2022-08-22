@@ -1,11 +1,11 @@
+use crate::infer::InferCtxt;
+use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
+use crate::traits::query::NoSolution;
+use crate::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, ParamEnv, Ty};
-use rustc_trait_selection::infer::InferCtxt;
-use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
-use rustc_trait_selection::traits::query::NoSolution;
-use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 pub use rustc_middle::traits::query::OutlivesBound;
 

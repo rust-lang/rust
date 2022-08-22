@@ -20,6 +20,7 @@
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
+#![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

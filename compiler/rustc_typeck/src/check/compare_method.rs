@@ -1,6 +1,5 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_middle::ty::{self, DefIdTree};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
