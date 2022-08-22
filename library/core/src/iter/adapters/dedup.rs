@@ -1,7 +1,5 @@
 #![unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 
-use crate::iter::{InPlaceIterable, SourceIter};
-
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator according to the [`PartialEq`] trait implementation.
 ///
@@ -50,29 +48,6 @@ where
         let max = self.inner.size_hint().1.map(|max| max + min);
         (min, max)
     }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I> SourceIter for Dedup<I>
-where
-    I: SourceIter + Iterator,
-{
-    type Source = I::Source;
-
-    #[inline]
-    unsafe fn as_inner(&mut self) -> &mut I::Source {
-        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
-        unsafe { SourceIter::as_inner(&mut self.inner) }
-    }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I> InPlaceIterable for Dedup<I>
-where
-    I: Iterator,
-    I: InPlaceIterable,
-    I::Item: PartialEq,
-{
 }
 
 /// An iterator that removes all but the first of consecutive elements in a
@@ -124,28 +99,6 @@ where
         let max = self.inner.size_hint().1.map(|max| max + min);
         (min, max)
     }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F> SourceIter for DedupBy<I, F>
-where
-    I: SourceIter + Iterator,
-{
-    type Source = I::Source;
-
-    #[inline]
-    unsafe fn as_inner(&mut self) -> &mut I::Source {
-        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
-        unsafe { SourceIter::as_inner(&mut self.inner) }
-    }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F> InPlaceIterable for DedupBy<I, F>
-where
-    I: InPlaceIterable,
-    F: FnMut(&I::Item, &I::Item) -> bool,
-{
 }
 
 /// An iterator that removes all but the first of consecutive elements in a
@@ -200,28 +153,4 @@ where
         let max = self.inner.size_hint().1.map(|max| max + min);
         (min, max)
     }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F, K> SourceIter for DedupByKey<I, F, K>
-where
-    I: SourceIter + Iterator,
-    F: FnMut(&I::Item) -> K,
-{
-    type Source = I::Source;
-
-    #[inline]
-    unsafe fn as_inner(&mut self) -> &mut I::Source {
-        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
-        unsafe { SourceIter::as_inner(&mut self.inner) }
-    }
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, F, K> InPlaceIterable for DedupByKey<I, F, K>
-where
-    I: InPlaceIterable,
-    F: FnMut(&I::Item) -> K,
-    K: PartialEq,
-{
 }

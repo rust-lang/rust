@@ -1778,7 +1778,7 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> bool,
     {
-        Dedup::new(self, same_bucket)
+        DedupBy::new(self, same_bucket)
     }
 
     /// Removes all but the first of consecutive elements in the iterator
@@ -1823,7 +1823,7 @@ pub trait Iterator {
         F: FnMut(&Self::Item) -> K,
         K: PartialEq,
     {
-        Dedup::new(self, key)
+        DedupByKey::new(self, key)
     }
 
     /// Borrows an iterator, rather than consuming it.
