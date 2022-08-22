@@ -30,7 +30,9 @@ pub mod usercalls {
 
         // fortanix-sgx-abi re-exports
         pub use crate::sys::abi::usercalls::raw::Error;
-        pub use crate::sys::abi::usercalls::raw::{ByteBuffer, FifoDescriptor, Return, Usercall};
+        pub use crate::sys::abi::usercalls::raw::{
+            ByteBuffer, Cancel, FifoDescriptor, Return, Usercall,
+        };
         pub use crate::sys::abi::usercalls::raw::{Fd, Result, Tcs};
         pub use crate::sys::abi::usercalls::raw::{
             EV_RETURNQ_NOT_EMPTY, EV_UNPARK, EV_USERCALLQ_NOT_FULL, FD_STDERR, FD_STDIN, FD_STDOUT,
