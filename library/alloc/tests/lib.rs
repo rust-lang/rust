@@ -38,6 +38,7 @@
 #![feature(const_str_from_utf8)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(panic_update_hook)]
+#![feature(pointer_is_aligned)]
 #![feature(slice_flatten)]
 #![feature(thin_box)]
 #![feature(bench_black_box)]
