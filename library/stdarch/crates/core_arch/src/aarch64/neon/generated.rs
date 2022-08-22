@@ -20129,18 +20129,18 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vextq_p64() {
-        let a: i64x2 = i64x2::new(0, 8);
-        let b: i64x2 = i64x2::new(9, 11);
-        let e: i64x2 = i64x2::new(8, 9);
+        let a: i64x2 = i64x2::new(1, 1);
+        let b: i64x2 = i64x2::new(2, 2);
+        let e: i64x2 = i64x2::new(1, 2);
         let r: i64x2 = transmute(vextq_p64::<1>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vextq_f64() {
-        let a: f64x2 = f64x2::new(0., 2.);
-        let b: f64x2 = f64x2::new(3., 4.);
-        let e: f64x2 = f64x2::new(2., 3.);
+        let a: f64x2 = f64x2::new(1., 1.);
+        let b: f64x2 = f64x2::new(2., 2.);
+        let e: f64x2 = f64x2::new(1., 2.);
         let r: f64x2 = transmute(vextq_f64::<1>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }

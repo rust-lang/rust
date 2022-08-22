@@ -1570,10 +1570,10 @@ name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
 multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
-a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
-b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
-n = HFLEN
-validate 8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+n = LEN_M1
+validate 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 
 arm = "vext.8"
 aarch64 = ext
@@ -1584,10 +1584,10 @@ name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
 multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
-a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
-b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
-n = HFLEN
-validate 8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+n = LEN_M1
+validate 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 
 aarch64 = ext
 generate poly64x2_t
@@ -1600,10 +1600,10 @@ name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
 multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-!, a, b, {asc-n-out_len}
-a = 0., 2., 2., 3.
-b = 3., 4., 5., 6.,
-n = HFLEN
-validate 2., 3., 3., 4.
+a = 1., 1., 1., 1.
+b = 2., 2., 2., 2.,
+n = LEN_M1
+validate 1., 2., 2., 2.
 
 aarch64 = ext
 generate float64x2_t

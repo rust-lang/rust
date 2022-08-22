@@ -856,6 +856,40 @@ fn type_len_str(t: &str) -> &'static str {
     }
 }
 
+fn type_len_minus_one_str(t: &str) -> &'static str {
+    match t {
+        "int8x8_t" => "7",
+        "int8x16_t" => "15",
+        "int16x4_t" => "3",
+        "int16x8_t" => "7",
+        "int32x2_t" => "1",
+        "int32x4_t" => "3",
+        "int64x1_t" => "0",
+        "int64x2_t" => "1",
+        "uint8x8_t" => "7",
+        "uint8x16_t" => "15",
+        "uint16x4_t" => "3",
+        "uint16x8_t" => "7",
+        "uint32x2_t" => "1",
+        "uint32x4_t" => "3",
+        "uint64x1_t" => "0",
+        "uint64x2_t" => "1",
+        "float16x4_t" => "3",
+        "float16x8_t" => "7",
+        "float32x2_t" => "1",
+        "float32x4_t" => "3",
+        "float64x1_t" => "0",
+        "float64x2_t" => "1",
+        "poly8x8_t" => "7",
+        "poly8x16_t" => "15",
+        "poly16x4_t" => "3",
+        "poly16x8_t" => "7",
+        "poly64x1_t" => "0",
+        "poly64x2_t" => "1",
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
 fn type_half_len_str(t: &str) -> &'static str {
     match t {
         "int8x8_t" => "4",
@@ -901,6 +935,7 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
         "BITS_M1" => bits_minus_one(t),
         "HFBITS" => half_bits(t),
         "LEN" => type_len_str(t),
+        "LEN_M1" => type_len_minus_one_str(t),
         "HFLEN" => type_half_len_str(t),
         o => o,
     }
