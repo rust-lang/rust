@@ -18,7 +18,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
           _3 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
                                            // mir::Constant
-                                           // + span: $DIR/read_immutable_static.rs:7:13: 7:16
+                                           // + span: $DIR/read_immutable_static.rs:8:13: 8:16
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
 -         _2 = (*_3);                      // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
 +         _2 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:16
@@ -26,7 +26,7 @@
           StorageLive(_5);                 // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
           _5 = const {alloc1: &u8};        // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
                                            // mir::Constant
-                                           // + span: $DIR/read_immutable_static.rs:7:19: 7:22
+                                           // + span: $DIR/read_immutable_static.rs:8:19: 8:22
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
 -         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
 -         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22

@@ -69,9 +69,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     ) {
         let cause =
             traits::ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc));
+        // for a type to be WF, we do not need to check if const trait predicates satisfy.
+        let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
             cause,
-            self.param_env,
+            param_env,
             ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
         ));
     }
@@ -1449,7 +1451,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
         iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(infcx, wfcx.param_env, wfcx.body_id, p, sp)
+            traits::wf::predicate_obligations(
+                infcx,
+                wfcx.param_env.without_const(),
+                wfcx.body_id,
+                p,
+                sp,
+            )
         });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();

@@ -875,7 +875,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// in the given `Vec<T>`. The collection may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -2927,6 +2928,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Vec<T> {
     /// Creates an empty `Vec<T>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
     fn default() -> Vec<T> {
         Vec::new()
     }

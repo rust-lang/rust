@@ -25,7 +25,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_unprop_assign.rs:+1:9: +1:10
           _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_unprop_assign.rs:+1:13: +1:18
                                            // mir::Constant
-                                           // + span: $DIR/mutable_variable_unprop_assign.rs:5:13: 5:16
+                                           // + span: $DIR/mutable_variable_unprop_assign.rs:6:13: 6:16
                                            // + literal: Const { ty: fn() -> i32 {foo}, val: Value(<ZST>) }
       }
   
