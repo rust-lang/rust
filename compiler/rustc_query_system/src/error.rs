@@ -21,7 +21,7 @@ impl SessionDiagnostic<'_> for Cycle {
         diag.code(rustc_errors::DiagnosticId::Error("E0391".to_string()));
         let upper_stack_len = self.upper_stack_info.len();
         for (span, desc) in self.upper_stack_info.into_iter() {
-            // FIXME: use fluent translation
+            // FIXME(#100717): use fluent translation
             diag.span_note(span, &format!("...which requires {}...", desc));
         }
         diag.set_arg("stack_bottom", self.stack_bottom);
