@@ -12,6 +12,7 @@
 #![recursion_limit = "256"]
 
 pub mod ast_validation;
+mod errors;
 pub mod feature_gate;
 pub mod node_count;
 pub mod show_span;

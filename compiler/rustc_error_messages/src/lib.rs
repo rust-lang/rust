@@ -32,6 +32,7 @@ pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
 fluent_messages! {
+    ast_passes => "../locales/en-US/ast_passes.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
