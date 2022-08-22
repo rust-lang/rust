@@ -144,7 +144,7 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
-        (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
+        (ast::LitKind::Err, _) => return Err(LitToConstError::Reported),
         _ => return Err(LitToConstError::TypeError),
     };
 

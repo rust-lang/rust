@@ -44,7 +44,7 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
-        (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
+        (ast::LitKind::Err, _) => return Err(LitToConstError::Reported),
         _ => return Err(LitToConstError::TypeError),
     };
 

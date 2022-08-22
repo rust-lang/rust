@@ -146,7 +146,7 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into())
             }
-            token::Err => LitKind::Err(symbol),
+            token::Err => LitKind::Err,
         })
     }
 
@@ -199,7 +199,7 @@ impl LitKind {
                 let symbol = if value { kw::True } else { kw::False };
                 (token::Bool, symbol, None)
             }
-            LitKind::Err(symbol) => (token::Err, symbol, None),
+            LitKind::Err => unreachable!(),
         };
 
         token::Lit::new(kind, symbol, suffix)
