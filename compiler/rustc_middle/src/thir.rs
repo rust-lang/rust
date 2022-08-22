@@ -73,6 +73,8 @@ macro_rules! thir_with_elements {
     }
 }
 
+pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
+
 thir_with_elements! {
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
@@ -84,8 +86,8 @@ thir_with_elements! {
 /// Description of a type-checked function parameter.
 #[derive(Clone, Debug, HashStable)]
 pub struct Param<'tcx> {
-    /// The pattern that appears in the parameter list.
-    pub pat: Pat<'tcx>,
+    /// The pattern that appears in the parameter list, or None for implicit parameters.
+    pub pat: Option<Pat<'tcx>>,
     /// The possibly inferred type.
     pub ty: Ty<'tcx>,
     /// Span of the explicitly provided type, or None if inferred for closures.
@@ -93,7 +95,7 @@ pub struct Param<'tcx> {
     /// Whether this param is `self`, and how it is bound.
     pub self_kind: Option<hir::ImplicitSelfKind>,
     /// HirId for lints.
-    pub hir_id: hir::HirId,
+    pub hir_id: Option<hir::HirId>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
