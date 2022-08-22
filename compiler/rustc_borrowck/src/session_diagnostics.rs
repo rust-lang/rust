@@ -1,4 +1,3 @@
-use rustc_errors::MultiSpan;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -101,7 +100,7 @@ pub(crate) struct LifeTimeOutLiveErr {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub category: Option<LifeTimeReturnCategoryErr>,
+    pub category: LifeTimeReturnCategoryErr,
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -121,14 +120,5 @@ pub(crate) enum LifeTimeReturnCategoryErr {
         category_desc: String,
         free_region_name: String,
         outlived_fr_name: String,
-    },
-}
-
-#[derive(SessionSubdiagnostic)]
-pub(crate) enum RequireStaticErr {
-    #[note(borrowck::used_impl_require_static)]
-    UsedImpl {
-        #[primary_span]
-        multi_span: MultiSpan,
     },
 }

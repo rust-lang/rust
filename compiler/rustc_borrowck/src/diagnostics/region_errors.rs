@@ -27,7 +27,7 @@ use rustc_span::Span;
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifeTimeOutLiveErr,
-    LifeTimeReturnCategoryErr, RequireStaticErr,
+    LifeTimeReturnCategoryErr,
 };
 
 use super::{OutlivesSuggestionBuilder, RegionName};
@@ -500,17 +500,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
 
+        let ty_err = match output_ty.kind() {
+            ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
+            ty::Adt(def, _) if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did()) => {
+                FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
+            }
+            _ => FnMutReturnTypeErr::ReturnRef { span: *span },
+        };
+
         let mut err = FnMutError {
             span: *span,
-            ty_err: match output_ty.kind() {
-                ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
-                ty::Adt(def, _)
-                    if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did()) =>
-                {
-                    FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
-                }
-                _ => FnMutReturnTypeErr::ReturnRef { span: *span },
-            },
+            ty_err,
             upvar_def_span: None,
             upvar_span: None,
             fr_span: None,
@@ -682,8 +682,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let (_, mir_def_name) =
             self.infcx.tcx.article_and_description(self.mir_def_id().to_def_id());
 
-        let mut err = LifeTimeOutLiveErr { span: *span, category: None };
-
         let fr_name = self.give_region_a_name(*fr).unwrap();
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
 
@@ -702,7 +700,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
         };
 
-        err.category = Some(err_category);
+        let err = LifeTimeOutLiveErr { span: *span, category: err_category };
 
         let mut diag = self.infcx.tcx.sess.create_err(err);
 
@@ -856,7 +854,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ident.span,
                     "calling this method introduces the `impl`'s 'static` requirement",
                 );
-                err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
+                err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "consider relaxing the implicit `'static` requirement",
