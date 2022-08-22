@@ -31,7 +31,7 @@ borrowck_var_cannot_escape_closure =
     captured variable cannot escape `FnMut` closure body
     .upvar_def = variable defined here
     .upvar = variable captured here
-    .fr =  "inferred to be a `FnMut` closure"
+    .fr =  inferred to be a `FnMut` closure
     .note = `FnMut` closures only have access to their captured variables while they are executing...
     .cannot_escape = ...therefore, they cannot allow references to captured variables to escape
 
