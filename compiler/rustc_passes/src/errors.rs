@@ -665,3 +665,20 @@ pub struct DeprecatedAnnotationHasNoEffect {
     #[suggestion(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes::missing_panic_handler)]
+pub struct MissingPanicHandler;
+
+#[derive(Diagnostic)]
+#[diag(passes::missing_alloc_error_handler)]
+#[note]
+pub struct MissingAllocErrorHandler;
+
+#[derive(Diagnostic)]
+#[diag(passes::missing_lang_item)]
+#[note]
+#[help]
+pub struct MissingLangItem {
+    pub name: Symbol,
+}

@@ -271,3 +271,12 @@ passes_collapse_debuginfo = `collapse_debuginfo` attribute should be applied to 
 
 passes_deprecated_annotation_has_no_effect = this `#[deprecated]` annotation has no effect
     .suggestion = remove the unnecessary deprecation attribute
+    
+passes_missing_panic_handler = `#[panic_handler]` function required, but not found
+
+passes_missing_alloc_error_handler = `#[alloc_error_handler]` function required, but not found
+    .note = use `#![feature(default_alloc_error_handler)]` for a default error handler
+
+passes_missing_lang_item = language item required, but not found: `{$name}`
+    .note = this can occur when a binary crate with `#![no_std]` is compiled for a target where `{$name}` is defined in the standard library
+    .help = you may be able to compile for a target that doesn't need `{$name}`, specify a target with `--target` or in `.cargo/config`

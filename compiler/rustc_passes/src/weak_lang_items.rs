@@ -8,6 +8,8 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
+use crate::errors::{MissingAllocErrorHandler, MissingLangItem, MissingPanicHandler};
+
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
 pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItems) {
@@ -71,20 +73,13 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
     for (name, &item) in WEAK_ITEMS_REFS.iter() {
         if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
             if item == LangItem::PanicImpl {
-                tcx.sess.err("`#[panic_handler]` function required, but not found");
+                tcx.sess.emit_err(MissingPanicHandler);
             } else if item == LangItem::Oom {
                 if !tcx.features().default_alloc_error_handler {
-                    tcx.sess.err("`#[alloc_error_handler]` function required, but not found");
-                    tcx.sess.note_without_error("use `#![feature(default_alloc_error_handler)]` for a default error handler");
+                    tcx.sess.emit_err(MissingAllocErrorHandler);
                 }
             } else {
-                tcx
-                    .sess
-                    .diagnostic()
-                    .struct_err(&format!("language item required, but not found: `{}`", name))
-                    .note(&format!("this can occur when a binary crate with `#![no_std]` is compiled for a target where `{}` is defined in the standard library", name))
-                    .help(&format!("you may be able to compile for a target that doesn't need `{}`, specify a target with `--target` or in `.cargo/config`", name))
-                    .emit();
+                tcx.sess.emit_err(MissingLangItem { name: *name });
             }
         }
     }
