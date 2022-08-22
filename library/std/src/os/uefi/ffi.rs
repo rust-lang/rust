@@ -37,12 +37,12 @@ pub trait OsStringExt: Sealed
 where
     Self: Sized,
 {
-    fn from_ucs2(ucs: &[u16]) -> Self;
+    fn from_ucs2_lossy(ucs: &[u16]) -> Self;
 
     // For Null terminated UCS-2 Strings.
     #[inline]
     fn from_ucs2_null_termintated(ucs: &[u16]) -> Self {
-        Self::from_ucs2(&ucs[..(ucs.len() - 1)])
+        Self::from_ucs2_lossy(&ucs[..(ucs.len() - 1)])
     }
 
     // Create OsString from an FFI obtained pointer.
@@ -56,7 +56,7 @@ where
 }
 
 impl OsStringExt for OsString {
-    fn from_ucs2(ucs: &[u16]) -> Self {
+    fn from_ucs2_lossy(ucs: &[u16]) -> Self {
         // Min capacity(in case of all ASCII) is `ucs.len()`
         let mut buf = String::with_capacity(ucs.len());
 

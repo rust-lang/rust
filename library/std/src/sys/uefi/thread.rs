@@ -39,7 +39,7 @@ impl Thread {
 #[inline]
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     // UEFI is single threaded
-    Ok(NonZeroUsize::new(1).unwrap())
+    unsafe { Ok(NonZeroUsize::new_unchecked(1)) }
 }
 
 // FIXME: Should be possible to implement. see https://edk2-docs.gitbook.io/a-tour-beyond-bios-mitigate-buffer-overflow-in-ue/additional_overflow_detection/stack_overflow_detection

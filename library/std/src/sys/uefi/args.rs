@@ -78,7 +78,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
     }
     // Skip whitespace.
     code_units.advance_while(|w| w == SPACE || w == TAB);
-    ret_val.push(OsString::from_ucs2(&cur));
+    ret_val.push(OsString::from_ucs2_lossy(&cur));
 
     // Parse the arguments according to these rules:
     // * All code units are taken literally except space, tab, quote and backslash.
@@ -98,7 +98,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
         match w {
             // If not `in_quotes`, a space or tab ends the argument.
             SPACE | TAB if !in_quotes => {
-                ret_val.push(OsString::from_ucs2(&cur[..]));
+                ret_val.push(OsString::from_ucs2_lossy(&cur[..]));
                 cur.truncate(0);
 
                 // Skip whitespace.
@@ -141,7 +141,7 @@ fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
     }
     // Push the final argument, if any.
     if !cur.is_empty() || in_quotes {
-        ret_val.push(OsString::from_ucs2(&cur[..]));
+        ret_val.push(OsString::from_ucs2_lossy(&cur[..]));
     }
     ret_val
 }
