@@ -1193,11 +1193,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
             }
         }
 
-        wfcx.register_wf_obligation(
-            ty_span,
-            Some(WellFormedLoc::Ty(item_id)),
-            item_ty.into(),
-        );
+        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
             wfcx.register_bound(
                 traits::ObligationCause::new(ty_span, wfcx.body_id, traits::WellFormed(None)),
@@ -1306,11 +1302,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
                     if !ty.needs_subst() {
-                        wfcx.register_wf_obligation(
-                            tcx.def_span(param.def_id),
-                            None,
-                            ty.into(),
-                        );
+                        wfcx.register_wf_obligation(tcx.def_span(param.def_id), None, ty.into());
                     }
                 }
             }
@@ -1454,7 +1446,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
         iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(infcx, wfcx.param_env.without_const(), wfcx.body_id, p, sp)
+            traits::wf::predicate_obligations(
+                infcx,
+                wfcx.param_env.without_const(),
+                wfcx.body_id,
+                p,
+                sp,
+            )
         });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
@@ -1509,11 +1507,7 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    wfcx.register_wf_obligation(
-        hir_decl.output.span(),
-        None,
-        sig.output().into(),
-    );
+    wfcx.register_wf_obligation(hir_decl.output.span(), None, sig.output().into());
 
     check_where_clauses(wfcx, span, def_id);
 }
