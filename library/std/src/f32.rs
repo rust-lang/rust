@@ -1,4 +1,4 @@
-//! Constants specific to the `f32` single-precision floating point type.
+//! Constants for the `f32` single-precision floating point type.
 //!
 //! *[See also the `f32` primitive type](primitive@f32).*
 //!

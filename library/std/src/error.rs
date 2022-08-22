@@ -1,4 +1,4 @@
-//! Interfaces for working with Errors.
+//! The `Error` trait provides common functionality for errors.
 //!
 //! # Error Handling In Rust
 //!
