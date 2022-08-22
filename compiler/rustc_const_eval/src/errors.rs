@@ -93,7 +93,7 @@ pub(crate) struct TransientMutBorrowErrRaw {
 pub(crate) struct MaxNumNodesInConstErr {
     #[primary_span]
     pub span: Span,
-    pub s: String,
+    pub global_const_id: String,
 }
 
 #[derive(SessionDiagnostic)]

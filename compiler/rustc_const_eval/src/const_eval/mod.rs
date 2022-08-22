@@ -72,12 +72,12 @@ pub(crate) fn eval_to_valtree<'tcx>(
         Ok(valtree) => Ok(Some(valtree)),
         Err(err) => {
             let did = cid.instance.def_id();
-            let s = cid.display(tcx);
+            let global_const_id = cid.display(tcx);
             match err {
                 ValTreeCreationError::NodesOverflow => {
-                    let msg = format!("maximum number of nodes exceeded in constant {}", &s);
+                    let msg = format!("maximum number of nodes exceeded in constant {}", &global_const_id);
                     let mut diag = match tcx.hir().span_if_local(did) {
-                        Some(span) => tcx.sess.create_err(MaxNumNodesInConstErr { span, s }),
+                        Some(span) => tcx.sess.create_err(MaxNumNodesInConstErr { span, global_const_id }),
                         None => tcx.sess.struct_err(&msg),
                     };
                     diag.emit();

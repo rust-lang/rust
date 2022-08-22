@@ -30,7 +30,7 @@ const_eval_transient_mut_borrow = mutable references are not allowed in {$kind}s
 
 const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {$kind}s
 
-const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$s}
+const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {$kind}s
 
