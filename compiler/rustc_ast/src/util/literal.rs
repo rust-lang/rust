@@ -1,13 +1,11 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, Lit, LitKind};
+use crate::ast::{self, Lit, LitKind, StrStyle};
 use crate::token::{self, Token};
-
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
 use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-
 use std::ascii;
 
 pub enum LitError {
@@ -120,9 +118,9 @@ impl LitKind {
                     }
                 });
                 error?;
-                LitKind::ByteStr(buf.into())
+                LitKind::ByteStr(buf.into(), StrStyle::Cooked)
             }
-            token::ByteStrRaw(_) => {
+            token::ByteStrRaw(n) => {
                 let s = symbol.as_str();
                 let bytes = if s.contains('\r') {
                     let mut buf = Vec::with_capacity(s.len());
@@ -143,7 +141,7 @@ impl LitKind {
                     symbol.to_string().into_bytes()
                 };
 
-                LitKind::ByteStr(bytes.into())
+                LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
             token::Err => LitKind::Err,
         })
@@ -162,14 +160,18 @@ impl LitKind {
                 (token::Str, symbol, None)
             }
             LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
-            LitKind::ByteStr(ref bytes) => {
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Cooked) => {
                 let string = bytes
                     .iter()
-                    .cloned()
+                    .copied()
                     .flat_map(ascii::escape_default)
                     .map(Into::<char>::into)
                     .collect::<String>();
                 (token::ByteStr, Symbol::intern(&string), None)
+            }
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Raw(n)) => {
+                let string = bytes.iter().copied().map(Into::<char>::into).collect::<String>();
+                (token::ByteStrRaw(n), Symbol::intern(&string), None)
             }
             LitKind::Byte(byte) => {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
@@ -210,7 +212,12 @@ impl LitKind {
 impl Lit {
     /// Converts literal token into an AST literal.
     pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
+        Ok(Lit {
+            symbol: token_lit.symbol,
+            suffix: token_lit.suffix,
+            kind: LitKind::from_token_lit(token_lit)?,
+            span,
+        })
     }
 
     /// Converts arbitrary token into an AST literal.
@@ -240,16 +247,27 @@ impl Lit {
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token_lit: kind.to_token_lit(), kind, span }
+        let token_lit = kind.to_token_lit();
+        Lit { symbol: token_lit.symbol, suffix: token_lit.suffix, kind, span }
     }
 
     /// Losslessly convert an AST literal into a token.
     pub fn to_token(&self) -> Token {
-        let kind = match self.token_lit.kind {
-            token::Bool => token::Ident(self.token_lit.symbol, false),
-            _ => token::Literal(self.token_lit),
+        let symbol = self.symbol;
+        let suffix = self.suffix;
+        let kind = match self.kind {
+            LitKind::Bool(_) => return Token::new(token::Ident(symbol, false), self.span),
+            LitKind::Str(_, StrStyle::Cooked) => token::LitKind::Str,
+            LitKind::Str(_, StrStyle::Raw(n)) => token::LitKind::StrRaw(n),
+            LitKind::ByteStr(_, StrStyle::Cooked) => token::LitKind::ByteStr,
+            LitKind::ByteStr(_, StrStyle::Raw(n)) => token::LitKind::ByteStrRaw(n),
+            LitKind::Byte(_) => token::LitKind::Byte,
+            LitKind::Char(_) => token::LitKind::Char,
+            LitKind::Int(..) => token::LitKind::Integer,
+            LitKind::Float(..) => token::LitKind::Float,
+            LitKind::Err => token::LitKind::Err,
         };
-        Token::new(kind, self.span)
+        Token::new(token::Literal(token::Lit { kind, symbol, suffix }), self.span)
     }
 }
 

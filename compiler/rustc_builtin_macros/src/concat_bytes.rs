@@ -90,7 +90,7 @@ fn handle_array_element(
             ) if val <= u8::MAX.into() => Some(val as u8),
 
             ast::LitKind::Byte(val) => Some(val),
-            ast::LitKind::ByteStr(_) => {
+            ast::LitKind::ByteStr(..) => {
                 if !*has_errors {
                     cx.struct_span_err(expr.span, "cannot concatenate doubly nested array")
                         .note("byte strings are treated as arrays of bytes")
@@ -157,7 +157,7 @@ pub fn expand_concat_bytes(
                 ast::LitKind::Byte(val) => {
                     accumulator.push(val);
                 }
-                ast::LitKind::ByteStr(ref bytes) => {
+                ast::LitKind::ByteStr(ref bytes, _) => {
                     accumulator.extend_from_slice(&bytes);
                 }
                 _ => {

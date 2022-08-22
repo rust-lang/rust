@@ -925,11 +925,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lit = if let ExprKind::Lit(lit) = &expr.kind {
                     lit.clone()
                 } else {
-                    Lit {
-                        token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
-                        kind: LitKind::Err,
-                        span: DUMMY_SP,
-                    }
+                    Lit { symbol: kw::Empty, suffix: None, kind: LitKind::Err, span: DUMMY_SP }
                 };
                 MacArgs::Eq(eq_span, MacArgsEq::Hir(lit))
             }

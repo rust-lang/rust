@@ -24,13 +24,13 @@ pub(crate) fn lit_to_const<'tcx>(
             let str_bytes = s.as_str().as_bytes();
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
-        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _))
+        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
-        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
+        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }

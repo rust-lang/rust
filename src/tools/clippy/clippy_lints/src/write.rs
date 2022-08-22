@@ -4,9 +4,9 @@ use std::ops::{Deref, Range};
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
-use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
+use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, LitKind, MacCall, Path, StrLit, StrStyle};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, LitKind};
+use rustc_ast::token::{self};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_lexer::unescape::{self, EscapeError};
@@ -683,21 +683,16 @@ impl Write {
                 },
             };
 
-            let replacement: String = match lit.token_lit.kind {
-                LitKind::StrRaw(_) | LitKind::ByteStrRaw(_) if matches!(fmtstr.style, StrStyle::Raw(_)) => {
-                    lit.token_lit.symbol.as_str().replace('{', "{{").replace('}', "}}")
+            let replacement: String = match lit.kind {
+                LitKind::Str(_, style) | LitKind::ByteStr(_, style) if fmtstr.style == style => {
+                    lit.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
-                LitKind::Str | LitKind::ByteStr if matches!(fmtstr.style, StrStyle::Cooked) => {
-                    lit.token_lit.symbol.as_str().replace('{', "{{").replace('}', "}}")
-                },
-                LitKind::StrRaw(_)
-                | LitKind::Str
-                | LitKind::ByteStrRaw(_)
-                | LitKind::ByteStr
-                | LitKind::Integer
-                | LitKind::Float
+                LitKind::Str(..)
+                | LitKind::ByteStr(..)
+                | LitKind::Int(..)
+                | LitKind::Float(..)
                 | LitKind::Err => continue,
-                LitKind::Byte | LitKind::Char => match lit.token_lit.symbol.as_str() {
+                LitKind::Byte(_) | LitKind::Char(_) => match lit.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
                     "\\\\" if matches!(fmtstr.style, StrStyle::Raw(_)) => "\\",
@@ -708,7 +703,7 @@ impl Write {
                     x => x,
                 }
                 .into(),
-                LitKind::Bool => lit.token_lit.symbol.as_str().deref().into(),
+                LitKind::Bool(_) => lit.symbol.as_str().deref().into(),
             };
 
             if !fmt_spans.is_empty() {

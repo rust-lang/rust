@@ -358,7 +358,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_byte_str(&self, sp: Span, bytes: Vec<u8>) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(bytes)))
+        self.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(bytes), ast::StrStyle::Cooked))
     }
 
     /// `[expr1, expr2, ...]`

@@ -23,7 +23,7 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter};
+use crate::token::{CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1719,13 +1719,47 @@ pub enum StrStyle {
 /// An AST literal.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
-    /// The original literal token as written in source code.
-    pub token_lit: token::Lit,
+    /// The original literal as written in the source code.
+    pub symbol: Symbol,
+    /// The original suffix as written in the source code.
+    pub suffix: Option<Symbol>,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub kind: LitKind,
     pub span: Span,
+}
+
+impl fmt::Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Lit { kind, symbol, suffix, .. } = self;
+        match kind {
+            LitKind::Byte(_) => write!(f, "b'{}'", symbol)?,
+            LitKind::Char(_) => write!(f, "'{}'", symbol)?,
+            LitKind::Str(_, StrStyle::Cooked) => write!(f, "\"{}\"", symbol)?,
+            LitKind::Str(_, StrStyle::Raw(n)) => write!(
+                f,
+                "r{delim}\"{string}\"{delim}",
+                delim = "#".repeat(*n as usize),
+                string = symbol
+            )?,
+            LitKind::ByteStr(_, StrStyle::Cooked) => write!(f, "b\"{}\"", symbol)?,
+            LitKind::ByteStr(_, StrStyle::Raw(n)) => write!(
+                f,
+                "br{delim}\"{string}\"{delim}",
+                delim = "#".repeat(*n as usize),
+                string = symbol
+            )?,
+            LitKind::Int(..) | LitKind::Float(..) | LitKind::Bool(..) | LitKind::Err => {
+                write!(f, "{}", symbol)?
+            }
+        }
+
+        if let Some(suffix) = suffix {
+            write!(f, "{}", suffix)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Same as `Lit`, but restricted to string literals.
@@ -1737,18 +1771,14 @@ pub struct StrLit {
     pub suffix: Option<Symbol>,
     pub span: Span,
     /// The unescaped "semantic" representation of the literal lowered from the original token.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub symbol_unescaped: Symbol,
 }
 
 impl StrLit {
     pub fn as_lit(&self) -> Lit {
-        let token_kind = match self.style {
-            StrStyle::Cooked => token::Str,
-            StrStyle::Raw(n) => token::StrRaw(n),
-        };
         Lit {
-            token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
+            symbol: self.symbol,
+            suffix: self.suffix,
             span: self.span,
             kind: LitKind::Str(self.symbol_unescaped, self.style),
         }
@@ -1785,8 +1815,9 @@ pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
     Str(Symbol, StrStyle),
-    /// A byte string (`b"foo"`).
-    ByteStr(Lrc<[u8]>),
+    /// A byte string (`b"foo"`). Not stored as a symbol because it might be
+    /// non-utf8, and symbols only allow utf8 strings.
+    ByteStr(Lrc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1810,7 +1841,7 @@ impl LitKind {
 
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
-        matches!(self, LitKind::ByteStr(_))
+        matches!(self, LitKind::ByteStr(..))
     }
 
     /// Returns `true` if this is a numeric literal.
@@ -3084,7 +3115,7 @@ mod size_asserts {
     static_assert_size!(Impl, 200);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
-    static_assert_size!(Lit, 48);
+    static_assert_size!(Lit, 40);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);

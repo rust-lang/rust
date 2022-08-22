@@ -388,7 +388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
-        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(_), .. }) = lt.kind {
+        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
             let expected = self.structurally_resolved_type(span, expected);
             if let ty::Ref(_, inner_ty, _) = expected.kind()
                 && matches!(inner_ty.kind(), ty::Slice(_))

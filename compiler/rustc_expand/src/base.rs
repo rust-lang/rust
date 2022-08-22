@@ -1217,7 +1217,7 @@ pub fn expr_to_spanned_string<'a>(
     Err(match expr.kind {
         ast::ExprKind::Lit(ref l) => match l.kind {
             ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
-            ast::LitKind::ByteStr(_) => {
+            ast::LitKind::ByteStr(..) => {
                 let mut err = cx.struct_span_err(l.span, err_msg);
                 err.span_suggestion(
                     expr.span.shrink_to_lo(),

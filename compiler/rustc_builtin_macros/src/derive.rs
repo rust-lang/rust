@@ -1,7 +1,7 @@
 use crate::cfg_eval::cfg_eval;
 
 use rustc_ast as ast;
-use rustc_ast::{attr, token, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{attr, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
@@ -126,9 +126,11 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
 }
 
 fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
-    let help_msg = match lit.token_lit.kind {
-        token::Str if rustc_lexer::is_ident(lit.token_lit.symbol.as_str()) => {
-            format!("try using `#[derive({})]`", lit.token_lit.symbol)
+    let help_msg = match lit.kind {
+        ast::LitKind::Str(_, ast::StrStyle::Cooked)
+            if rustc_lexer::is_ident(lit.symbol.as_str()) =>
+        {
+            format!("try using `#[derive({})]`", lit.symbol)
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };

@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use rustc_ast::ast::{Expr, ExprKind};
-use rustc_ast::token::{Lit, LitKind};
+use rustc_ast::ast::{Expr, ExprKind, LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::fmt::Write;
 
 declare_clippy_lint! {
@@ -57,17 +56,17 @@ impl EarlyLintPass for OctalEscapes {
         }
 
         if let ExprKind::Lit(lit) = &expr.kind {
-            if matches!(lit.token_lit.kind, LitKind::Str) {
-                check_lit(cx, &lit.token_lit, lit.span, true);
-            } else if matches!(lit.token_lit.kind, LitKind::ByteStr) {
-                check_lit(cx, &lit.token_lit, lit.span, false);
+            if matches!(lit.kind, LitKind::Str(_, StrStyle::Cooked)) {
+                check_lit(cx, lit.symbol, lit.span, true);
+            } else if matches!(lit.kind, LitKind::ByteStr(_, StrStyle::Cooked)) {
+                check_lit(cx, lit.symbol, lit.span, false);
             }
         }
     }
 }
 
-fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
-    let contents = lit.symbol.as_str();
+fn check_lit(cx: &EarlyContext<'_>, symbol: Symbol, span: Span, is_string: bool) {
+    let contents = symbol.as_str();
     let mut iter = contents.char_indices().peekable();
     let mut found = vec![];
 

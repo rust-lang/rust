@@ -1723,8 +1723,8 @@ impl<'a> Parser<'a> {
             Some(lit) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
-                    symbol: lit.token_lit.symbol,
-                    suffix: lit.token_lit.suffix,
+                    symbol: lit.symbol,
+                    suffix: lit.suffix,
                     span: lit.span,
                     symbol_unescaped,
                 }),

@@ -122,14 +122,14 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: s.len() }
         }
-        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _))
+        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
             let allocation = Allocation::from_bytes_byte_aligned_immutable(data as &[u8]);
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: data.len() }
         }
-        (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
+        (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }

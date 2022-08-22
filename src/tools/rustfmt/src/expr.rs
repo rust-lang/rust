@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{Delimiter, LitKind};
+use rustc_ast::token::Delimiter;
 use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, Span};
 
@@ -79,7 +79,7 @@ pub(crate) fn format_expr(
             if let Some(expr_rw) = rewrite_literal(context, l, shape) {
                 Some(expr_rw)
             } else {
-                if let LitKind::StrRaw(_) = l.token_lit.kind {
+                if let ast::LitKind::Str(_, ast::StrStyle::Raw(_)) = l.kind {
                     Some(context.snippet(l.span).trim().into())
                 } else {
                     None
@@ -1226,7 +1226,7 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
 
 fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
     let span = lit.span;
-    let symbol = lit.token_lit.symbol.as_str();
+    let symbol = lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
         let hex_lit = match context.config.hex_literal_case() {
@@ -1239,9 +1239,7 @@ fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -
                 format!(
                     "0x{}{}",
                     hex_lit,
-                    lit.token_lit
-                        .suffix
-                        .map_or(String::new(), |s| s.to_string())
+                    lit.suffix.map_or(String::new(), |s| s.to_string())
                 ),
                 context.config.max_width(),
                 shape,
