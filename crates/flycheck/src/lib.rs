@@ -125,6 +125,7 @@ pub enum Progress {
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
     DidCancel,
+    DidFailToRestart(String),
 }
 
 enum Restart {
@@ -193,10 +194,11 @@ impl FlycheckActor {
                             self.progress(Progress::DidStart);
                         }
                         Err(error) => {
-                            tracing::error!(
-                                command = ?self.check_command(),
-                                %error, "failed to restart flycheck"
-                            );
+                            self.progress(Progress::DidFailToRestart(format!(
+                                "Failed to run the following command: {:?} error={}",
+                                self.check_command(),
+                                error
+                            )));
                         }
                     }
                 }
