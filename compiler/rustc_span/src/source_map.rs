@@ -472,7 +472,7 @@ impl SourceMap {
         let hi = self.lookup_char_pos(sp.hi());
         let offset = self.lookup_char_pos(relative_to.lo());
 
-        if lo.file.name != offset.file.name {
+        if lo.file.name != offset.file.name || !relative_to.contains(sp) {
             return self.span_to_embeddable_string(sp);
         }
 

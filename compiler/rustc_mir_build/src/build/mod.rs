@@ -250,7 +250,18 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
 
-            build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
+            let span_with_body = span_with_body.to(tcx.hir().span(body_id.hir_id));
+
+            build::construct_const(
+                &thir,
+                &infcx,
+                expr,
+                def,
+                id,
+                return_ty,
+                return_ty_span,
+                span_with_body,
+            )
         };
 
         lints::check(tcx, &body);
@@ -705,9 +716,8 @@ fn construct_const<'a, 'tcx>(
     hir_id: hir::HirId,
     const_ty: Ty<'tcx>,
     const_ty_span: Span,
+    span: Span,
 ) -> Body<'tcx> {
-    let tcx = infcx.tcx;
-    let span = tcx.hir().span(hir_id);
     let mut builder = Builder::new(
         thir,
         infcx,
