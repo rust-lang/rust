@@ -1,4 +1,4 @@
-//! Helper functions and types for fixed-length arrays.
+//! Utilities for the array primitive type.
 //!
 //! *[See also the array primitive type](array).*
 
