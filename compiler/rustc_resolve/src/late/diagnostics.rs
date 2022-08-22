@@ -2180,7 +2180,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.emit()
     }
 
-    pub(crate) fn add_missing_lifetime_specifiers_label(
+    fn add_missing_lifetime_specifiers_label(
         &mut self,
         err: &mut Diagnostic,
         lifetime_refs: Vec<MissingLifetime>,
