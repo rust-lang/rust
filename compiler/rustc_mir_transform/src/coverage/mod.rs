@@ -541,7 +541,7 @@ fn fn_sig_and_body<'tcx>(
     // to HIR for it.
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
+    (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
 }
 
 fn get_body_span<'tcx>(
