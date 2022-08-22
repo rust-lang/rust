@@ -4,7 +4,7 @@ use rustc_session::{lint::Level, parse::ParseSess, SessionDiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
-#[error(lint::overruled_attribute, code = "E0453")]
+#[diag(lint::overruled_attribute, code = "E0453")]
 pub struct OverruledAttribute {
     #[primary_span]
     pub span: Span,
@@ -43,7 +43,7 @@ impl AddSubdiagnostic for OverruledAttributeSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::malformed_attribute, code = "E0452")]
+#[diag(lint::malformed_attribute, code = "E0452")]
 pub struct MalformedAttribute {
     #[primary_span]
     pub span: Span,
@@ -62,7 +62,7 @@ pub enum MalformedAttributeSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::unknown_tool_in_scoped_lint, code = "E0710")]
+#[diag(lint::unknown_tool_in_scoped_lint, code = "E0710")]
 pub struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
@@ -73,7 +73,7 @@ pub struct UnknownToolInScopedLint {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
+#[diag(lint::builtin_ellipsis_inclusive_range_patterns, code = "E0783")]
 pub struct BuiltinEllpisisInclusiveRangePatterns {
     #[primary_span]
     pub span: Span,
@@ -108,7 +108,7 @@ impl AddSubdiagnostic for RequestedLevel {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::unsupported_group, code = "E0602")]
+#[diag(lint::unsupported_group, code = "E0602")]
 pub struct UnsupportedGroup {
     pub lint_group: String,
 }
@@ -137,7 +137,7 @@ impl SessionDiagnostic<'_> for CheckNameUnknown {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(lint::check_name_unknown_tool, code = "E0602")]
+#[diag(lint::check_name_unknown_tool, code = "E0602")]
 pub struct CheckNameUnknownTool {
     pub tool_name: Symbol,
     #[subdiagnostic]
@@ -145,7 +145,7 @@ pub struct CheckNameUnknownTool {
 }
 
 #[derive(SessionDiagnostic)]
-#[warning(lint::check_name_warning)]
+#[diag(lint::check_name_warning)]
 pub struct CheckNameWarning {
     pub msg: String,
     #[subdiagnostic]
@@ -153,7 +153,7 @@ pub struct CheckNameWarning {
 }
 
 #[derive(SessionDiagnostic)]
-#[warning(lint::check_name_deprecated)]
+#[diag(lint::check_name_deprecated)]
 pub struct CheckNameDeprecated {
     pub lint_name: String,
     pub new_name: String,
