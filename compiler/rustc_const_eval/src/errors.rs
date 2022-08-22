@@ -89,7 +89,7 @@ pub(crate) struct TransientMutBorrowErrRaw {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::max_num_nodes_in_const)]
+#[diag(const_eval::max_num_nodes_in_const)]
 pub(crate) struct MaxNumNodesInConstErr {
     #[primary_span]
     pub span: Span,
@@ -97,7 +97,7 @@ pub(crate) struct MaxNumNodesInConstErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_fn_pointer_call)]
+#[diag(const_eval::unallowed_fn_pointer_call)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]
     pub span: Span,
@@ -105,7 +105,7 @@ pub(crate) struct UnallowedFnPointerCall {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unstable_const_fn)]
+#[diag(const_eval::unstable_const_fn)]
 pub(crate) struct UnstableConstFn {
     #[primary_span]
     pub span: Span,
@@ -113,7 +113,7 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_mutable_refs, code = "E0764")]
+#[diag(const_eval::unallowed_mutable_refs, code = "E0764")]
 pub(crate) struct UnallowedMutableRefs {
     #[primary_span]
     pub span: Span,
@@ -123,7 +123,7 @@ pub(crate) struct UnallowedMutableRefs {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_mutable_refs_raw, code = "E0764")]
+#[diag(const_eval::unallowed_mutable_refs_raw, code = "E0764")]
 pub(crate) struct UnallowedMutableRefsRaw {
     #[primary_span]
     pub span: Span,
@@ -132,7 +132,7 @@ pub(crate) struct UnallowedMutableRefsRaw {
     pub teach: Option<()>,
 }
 #[derive(SessionDiagnostic)]
-#[error(const_eval::non_const_fmt_macro_call, code = "E0015")]
+#[diag(const_eval::non_const_fmt_macro_call, code = "E0015")]
 pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
@@ -140,7 +140,7 @@ pub(crate) struct NonConstFmtMacroCall {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::non_const_fn_call, code = "E0015")]
+#[diag(const_eval::non_const_fn_call, code = "E0015")]
 pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
@@ -149,7 +149,7 @@ pub(crate) struct NonConstFnCall {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_op_in_const_context)]
+#[diag(const_eval::unallowed_op_in_const_context)]
 pub(crate) struct UnallowedOpInConstContext {
     #[primary_span]
     pub span: Span,
@@ -157,7 +157,7 @@ pub(crate) struct UnallowedOpInConstContext {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_heap_allocations, code = "E0010")]
+#[diag(const_eval::unallowed_heap_allocations, code = "E0010")]
 pub(crate) struct UnallowedHeapAllocations {
     #[primary_span]
     #[label]
@@ -168,7 +168,7 @@ pub(crate) struct UnallowedHeapAllocations {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::unallowed_inline_asm, code = "E0015")]
+#[diag(const_eval::unallowed_inline_asm, code = "E0015")]
 pub(crate) struct UnallowedInlineAsm {
     #[primary_span]
     pub span: Span,
@@ -176,7 +176,7 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::interior_mutable_data_refer, code = "E0492")]
+#[diag(const_eval::interior_mutable_data_refer, code = "E0492")]
 pub(crate) struct InteriorMutableDataRefer {
     #[primary_span]
     #[label]
@@ -189,7 +189,7 @@ pub(crate) struct InteriorMutableDataRefer {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(const_eval::interior_mutability_borrow)]
+#[diag(const_eval::interior_mutability_borrow)]
 pub(crate) struct InteriorMutabilityBorrow {
     #[primary_span]
     pub span: Span,
