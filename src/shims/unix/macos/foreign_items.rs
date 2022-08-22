@@ -17,6 +17,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
+        // See `fn emulate_foreign_item_by_name` in `shims/foreign_items.rs` for the general pattern.
+
         match link_name.as_str() {
             // errno
             "__error" => {

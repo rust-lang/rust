@@ -369,6 +369,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
+        // When adding a new shim, you should follow the following pattern:
+        // ```
+        // "shim_name" => {
+        //     let [arg1, arg2, arg3] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+        //     let result = this.shim_name(arg1, arg2, arg3)?;
+        //     this.write_scalar(result, dest)?;
+        // }
+        // ```
+        // and then define `shim_name` as a helper function in an extension trait in a suitable file
+        // (see e.g. `unix/fs.rs`):
+        // ```
+        // fn shim_name(
+        //     &mut self,
+        //     arg1: &OpTy<'tcx, Provenance>,
+        //     arg2: &OpTy<'tcx, Provenance>,
+        //     arg3: &OpTy<'tcx, Provenance>)
+        // -> InterpResult<'tcx, Scalar<Provenance>> {
+        //     let this = self.eval_context_mut();
+        //
+        //     // First thing: load all the arguments. Details depend on the shim.
+        //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
+        //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
+        //     let arg3 = this.deref_operand(arg3)?; // when you want to load/store through the pointer at its declared type
+        //
+        //     // ...
+        //
+        //     Ok(Scalar::from_u32(42))
+        // }
+        // ```
+        // You might find existing shims not following this pattern, most
+        // likely because they predate it or because for some reason they cannot be made to fit.
+
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
