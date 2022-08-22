@@ -87,7 +87,7 @@ a `&'tcx Steal<Body<'tcx>>`, allocated using `tcx.alloc_steal_mir()`.
 This indicates that the result may be **stolen** by a subsequent query – this is an
 optimization to avoid cloning the MIR. Attempting to use a stolen
 result will cause a panic in the compiler. Therefore, it is important
-that you do not accidently read from these intermediate queries without
+that you do not accidentally read from these intermediate queries without
 the consideration of the dependency in the MIR processing pipeline.
 
 Because of this stealing mechanism, some care must be taken to
