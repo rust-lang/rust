@@ -49,7 +49,7 @@ all bodies of a crate in memory at the same time would be very heavy.
 You can get a debug representation of the THIR by passing the `-Zunpretty=thir-tree` flag
 to `rustc`. Here is how a function with just the statement `let x = 1 + 2;` gets represented in
 THIR:
-```rust
+```rust,no_run
 Thir {
     // no match arms
     arms: [],
