@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/inner-or-pat.rs:38:54
+   |
+LL |     match x {
+   |           - this expression has type `&str`
+LL |         x @ ((("h" | "ho" | "yo" | ("dude" | "w")) | () | "nop") | ("hey" | "gg")) |
+   |                                                      ^^ expected `str`, found `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
