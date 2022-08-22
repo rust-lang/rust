@@ -429,7 +429,8 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys. It will be allocated with the given allocator.
     ///
-    /// The created map has the default initial capacity.
+    /// The hash map is initially created with a capacity of 0, so it will not
+    /// allocate until it is first inserted into.
     ///
     /// Warning: `hash_builder` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
@@ -447,7 +448,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// map.insert(1, 2);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
+    pub const fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         Self {
             hash_builder,
             table: RawTable::new_in(alloc),
