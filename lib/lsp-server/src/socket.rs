@@ -15,7 +15,7 @@ pub(crate) fn socket_transport(
     stream: TcpStream,
 ) -> (Sender<Message>, Receiver<Message>, IoThreads) {
     let (reader_receiver, reader) = make_reader(stream.try_clone().unwrap());
-    let (writer_sender, writer) = make_write(stream.try_clone().unwrap());
+    let (writer_sender, writer) = make_write(stream);
     let io_threads = make_io_threads(reader, writer);
     (writer_sender, reader_receiver, io_threads)
 }
