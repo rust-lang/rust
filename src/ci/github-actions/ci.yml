@@ -770,3 +770,19 @@ jobs:
     needs: [auto]
     if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     <<: *base-failure-job
+  ci-auto-approve:
+    runs-on: ubuntu-latest
+    name: "automatically approve if configured"
+    needs: [pr]
+    if: ${{ always() && !cancelled() && needs.build.result == 'success' && github.event.pull_request.labels.contains('auto-approve') }}
+    steps:
+      - uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '@bors r=' + context.event.pull_request.assignee.login
+            })
