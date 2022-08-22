@@ -727,7 +727,7 @@ pub(crate) enum ItemKind {
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
-    TraitItem(Trait),
+    TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
@@ -1130,7 +1130,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: Vec<ast::Attribute>,
+    pub(crate) other_attrs: ast::AttrVec,
 }
 
 impl Attributes {
@@ -1173,7 +1173,7 @@ impl Attributes {
         doc_only: bool,
     ) -> Attributes {
         let mut doc_strings = Vec::new();
-        let mut other_attrs = Vec::new();
+        let mut other_attrs = ast::AttrVec::new();
         for (attr, parent_module) in attrs {
             if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
                 trace!("got doc_str={doc_str:?}");
@@ -1550,13 +1550,7 @@ pub(crate) enum Type {
     BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
-    QPath {
-        assoc: Box<PathSegment>,
-        self_type: Box<Type>,
-        /// FIXME: compute this field on demand.
-        should_show_cast: bool,
-        trait_: Path,
-    },
+    QPath(Box<QPathData>),
 
     /// A type that is inferred: `_`
     Infer,
@@ -1654,8 +1648,8 @@ impl Type {
     }
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        if let QPath { self_type, trait_, assoc, .. } = self {
-            Some((self_type, trait_.def_id(), *assoc.clone()))
+        if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
+            Some((self_type, trait_.def_id(), assoc.clone()))
         } else {
             None
         }
@@ -1679,7 +1673,7 @@ impl Type {
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
+            QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
         cache.and_then(|c| Primitive(t).def_id(c))
@@ -1691,6 +1685,15 @@ impl Type {
     pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct QPathData {
+    pub assoc: PathSegment,
+    pub self_type: Type,
+    /// FIXME: compute this field on demand.
+    pub should_show_cast: bool,
+    pub trait_: Path,
 }
 
 /// A primitive (aka, builtin) type.
@@ -2484,11 +2487,11 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Crate, 72); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    static_assert_size!(GenericArg, 80);
+    static_assert_size!(GenericArg, 64);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(ItemKind, 96);
     static_assert_size!(PathSegment, 40);
-    static_assert_size!(Type, 72);
+    static_assert_size!(Type, 56);
 }

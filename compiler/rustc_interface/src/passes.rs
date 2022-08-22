@@ -265,7 +265,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(interface::ferris_identifier)]
+#[diag(interface::ferris_identifier)]
 struct FerrisIdentifier {
     #[primary_span]
     spans: Vec<Span>,
@@ -274,7 +274,7 @@ struct FerrisIdentifier {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(interface::emoji_identifier)]
+#[diag(interface::emoji_identifier)]
 struct EmojiIdentifier {
     #[primary_span]
     spans: Vec<Span>,

@@ -122,6 +122,21 @@ pub struct Generics {
 }
 
 impl<'tcx> Generics {
+    /// Looks through the generics and all parents to find the index of the
+    /// given param def-id. This is in comparison to the `param_def_id_to_index`
+    /// struct member, which only stores information about this item's own
+    /// generics.
+    pub fn param_def_id_to_index(&self, tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<u32> {
+        if let Some(idx) = self.param_def_id_to_index.get(&def_id) {
+            Some(*idx)
+        } else if let Some(parent) = self.parent {
+            let parent = tcx.generics_of(parent);
+            parent.param_def_id_to_index(tcx, def_id)
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn count(&self) -> usize {
         self.parent_count + self.params.len()

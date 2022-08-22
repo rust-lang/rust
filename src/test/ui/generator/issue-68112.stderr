@@ -1,8 +1,8 @@
 error: generator cannot be sent between threads safely
-  --> $DIR/issue-68112.rs:40:5
+  --> $DIR/issue-68112.rs:40:18
    |
 LL |     require_send(send_gen);
-   |     ^^^^^^^^^^^^ generator is not `Send`
+   |                  ^^^^^^^^ generator is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
 note: generator is not `Send` as this value is used across a yield
@@ -23,10 +23,12 @@ LL | fn require_send(_: impl Send) {}
    |                         ^^^^ required by this bound in `require_send`
 
 error[E0277]: `RefCell<i32>` cannot be shared between threads safely
-  --> $DIR/issue-68112.rs:63:5
+  --> $DIR/issue-68112.rs:63:18
    |
 LL |     require_send(send_gen);
-   |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |     ------------ ^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required for `Arc<RefCell<i32>>` to implement `Send`

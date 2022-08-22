@@ -18,30 +18,15 @@ use syn::{
 };
 use synstructure::{BindingInfo, Structure};
 
-/// What kind of diagnostic is being derived - an error, a warning or a lint?
-#[derive(Copy, Clone)]
+/// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
-    /// `#[error(..)]`
-    Error,
-    /// `#[warn(..)]`
-    Warn,
-    /// `#[lint(..)]`
-    Lint,
-}
-
-impl DiagnosticDeriveKind {
-    /// Returns human-readable string corresponding to the kind.
-    pub fn descr(&self) -> &'static str {
-        match self {
-            DiagnosticDeriveKind::Error => "error",
-            DiagnosticDeriveKind::Warn => "warning",
-            DiagnosticDeriveKind::Lint => "lint",
-        }
-    }
+    SessionDiagnostic,
+    LintDiagnostic,
 }
 
 /// Tracks persistent information required for building up individual calls to diagnostic methods
-/// for generated diagnostic derives - both `SessionDiagnostic` for errors/warnings and
+/// for generated diagnostic derives - both `SessionDiagnostic` for fatal/errors/warnings and
 /// `LintDiagnostic` for lints.
 pub(crate) struct DiagnosticDeriveBuilder {
     /// The identifier to use for the generated `DiagnosticBuilder` instance.
@@ -51,8 +36,8 @@ pub(crate) struct DiagnosticDeriveBuilder {
     /// derive builder.
     pub fields: HashMap<String, TokenStream>,
 
-    /// Kind of diagnostic requested via the struct attribute.
-    pub kind: Option<(DiagnosticDeriveKind, proc_macro::Span)>,
+    /// Kind of diagnostic that should be derived.
+    pub kind: DiagnosticDeriveKind,
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
     pub slug: Option<(Path, proc_macro::Span)>,
@@ -143,7 +128,7 @@ impl DiagnosticDeriveBuilder {
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
-    /// attributes like `#[error(..)`, such as the diagnostic kind and slug. Generates
+    /// attributes like `#[diag(..)]`, such as the slug and error code. Generates
     /// diagnostic builder calls for setting error code and creating note/help messages.
     fn generate_structure_code_for_attr(
         &mut self,
@@ -156,15 +141,15 @@ impl DiagnosticDeriveBuilder {
         let name = name.as_str();
         let meta = attr.parse_meta()?;
 
-        let is_help_note_or_warn = matches!(name, "help" | "note" | "warn_");
+        let is_diag = name == "diag";
 
         let nested = match meta {
-            // Most attributes are lists, like `#[error(..)]`/`#[warning(..)]` for most cases or
+            // Most attributes are lists, like `#[diag(..)]` for most cases or
             // `#[help(..)]`/`#[note(..)]` when the user is specifying a alternative slug.
             Meta::List(MetaList { ref nested, .. }) => nested,
             // Subdiagnostics without spans can be applied to the type too, and these are just
-            // paths: `#[help]` and `#[note]`
-            Meta::Path(_) if is_help_note_or_warn => {
+            // paths: `#[help]`, `#[note]` and `#[warn_]`
+            Meta::Path(_) if !is_diag => {
                 let fn_name = if name == "warn_" {
                     Ident::new("warn", attr.span())
                 } else {
@@ -178,23 +163,21 @@ impl DiagnosticDeriveBuilder {
         // Check the kind before doing any further processing so that there aren't misleading
         // "no kind specified" errors if there are failures later.
         match name {
-            "error" => self.kind.set_once((DiagnosticDeriveKind::Error, span)),
-            "warning" => self.kind.set_once((DiagnosticDeriveKind::Warn, span)),
-            "lint" => self.kind.set_once((DiagnosticDeriveKind::Lint, span)),
-            "help" | "note" | "warn_" => (),
+            "error" | "warning" | "lint" => throw_invalid_attr!(attr, &meta, |diag| {
+                diag.help("`error`, `warning` and `lint` have been replaced by `diag`")
+            }),
+            "diag" | "help" | "note" | "warn_" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help(
-                    "only `error`, `warning`, `help`, `note` and `warn_` are valid attributes",
-                )
+                diag.help("only `diag`, `help`, `note` and `warn_` are valid attributes")
             }),
         }
 
-        // First nested element should always be the path, e.g. `#[error(typeck::invalid)]` or
+        // First nested element should always be the path, e.g. `#[diag(typeck::invalid)]` or
         // `#[help(typeck::another_help)]`.
         let mut nested_iter = nested.into_iter();
         if let Some(nested_attr) = nested_iter.next() {
             // Report an error if there are any other list items after the path.
-            if is_help_note_or_warn && nested_iter.next().is_some() {
+            if !is_diag && nested_iter.next().is_some() {
                 throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                     diag.help(
                         "`help`, `note` and `warn_` struct attributes can only have one argument",
@@ -203,16 +186,16 @@ impl DiagnosticDeriveBuilder {
             }
 
             match nested_attr {
-                NestedMeta::Meta(Meta::Path(path)) if is_help_note_or_warn => {
-                    let fn_name = proc_macro2::Ident::new(name, attr.span());
-                    return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
-                }
                 NestedMeta::Meta(Meta::Path(path)) => {
-                    self.slug.set_once((path.clone(), span));
+                    if is_diag {
+                        self.slug.set_once((path.clone(), span));
+                    } else {
+                        let fn_name = proc_macro2::Ident::new(name, attr.span());
+                        return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
+                    }
                 }
                 NestedMeta::Meta(meta @ Meta::NameValue(_))
-                    if !is_help_note_or_warn
-                        && meta.path().segments.last().unwrap().ident == "code" =>
+                    if is_diag && meta.path().segments.last().unwrap().ident == "code" =>
                 {
                     // don't error for valid follow-up attributes
                 }
@@ -346,10 +329,20 @@ impl DiagnosticDeriveBuilder {
                 Ok(quote! {})
             }
             "primary_span" => {
-                report_error_if_not_applied_to_span(attr, &info)?;
-                Ok(quote! {
-                    #diag.set_span(#binding);
-                })
+                match self.kind {
+                    DiagnosticDeriveKind::SessionDiagnostic => {
+                        report_error_if_not_applied_to_span(attr, &info)?;
+
+                        Ok(quote! {
+                            #diag.set_span(#binding);
+                        })
+                    }
+                    DiagnosticDeriveKind::LintDiagnostic => {
+                        throw_invalid_attr!(attr, &meta, |diag| {
+                            diag.help("the `primary_span` field attribute is not valid for lint diagnostics")
+                        })
+                    }
+                }
             }
             "label" => {
                 report_error_if_not_applied_to_span(attr, &info)?;

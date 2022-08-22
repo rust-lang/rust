@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&mut usize: Default` is not satisfied
   --> $DIR/suggest-adding-reference-to-trait-assoc-item.rs:13:9
    |
 LL |     foo(Default::default());
-   |         ^^^^^^^^^^^^^^^^ expected an implementor of trait `Default`
+   |         ^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `&mut usize`
    |
 help: consider mutably borrowing here
    |
@@ -13,7 +13,7 @@ error[E0277]: the trait bound `&usize: Default` is not satisfied
   --> $DIR/suggest-adding-reference-to-trait-assoc-item.rs:14:9
    |
 LL |     bar(Default::default());
-   |         ^^^^^^^^^^^^^^^^ expected an implementor of trait `Default`
+   |         ^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `&usize`
    |
 help: consider borrowing here
    |

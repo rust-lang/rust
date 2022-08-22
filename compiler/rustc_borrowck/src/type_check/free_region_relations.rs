@@ -268,7 +268,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 // }
                 // impl Foo for () {
                 //   type Bar = ();
-                //   fn foo(&self) ->&() {}
+                //   fn foo(&self) -> &() {}
                 // }
                 // ```
                 // Both &Self::Bar and &() are WF

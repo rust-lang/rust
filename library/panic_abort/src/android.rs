@@ -42,7 +42,7 @@ pub(crate) unsafe fn android_set_abort_message(payload: *mut &mut dyn BoxMeUp) {
         return; // allocation failure
     }
     copy_nonoverlapping(msg.as_ptr(), buf as *mut u8, msg.len());
-    buf.offset(msg.len() as isize).write(0);
+    buf.add(msg.len()).write(0);
 
     let func = transmute::<usize, SetAbortMessageType>(func_addr);
     func(buf);

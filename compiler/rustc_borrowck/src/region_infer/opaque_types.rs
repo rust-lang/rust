@@ -641,7 +641,6 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
-                        //FIXME!
                         self.tcx.sess.emit_err(ConstNotUsedTraitAlias {
                             ct: ct.to_string(),
                             span: self.span,

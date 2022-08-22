@@ -4,7 +4,7 @@ use rustc_ast::expand::allocator::{
     AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
+use rustc_ast::{self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
 use rustc_ast::{Fn, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -113,10 +113,10 @@ impl AllocFnFactory<'_, '_> {
         self.cx.expr_call(self.ty_span, method, args)
     }
 
-    fn attrs(&self) -> Vec<Attribute> {
+    fn attrs(&self) -> AttrVec {
         let special = sym::rustc_std_internal_symbol;
         let special = self.cx.meta_word(self.span, special);
-        vec![self.cx.attribute(special)]
+        vec![self.cx.attribute(special)].into()
     }
 
     fn arg_ty(

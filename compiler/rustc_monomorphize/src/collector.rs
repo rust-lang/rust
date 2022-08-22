@@ -128,7 +128,7 @@
 //! #### Unsizing Casts
 //! A subtle way of introducing neighbor edges is by casting to a trait object.
 //! Since the resulting fat-pointer contains a reference to a vtable, we need to
-//! instantiate all object-save methods of the trait, as we need to store
+//! instantiate all object-safe methods of the trait, as we need to store
 //! pointers to these functions even if they never get called anywhere. This can
 //! be seen as a special case of taking a function reference.
 //!
@@ -1044,10 +1044,12 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// them.
 ///
 /// For example, the source type might be `&SomeStruct` and the target type
-/// might be `&SomeTrait` in a cast like:
+/// might be `&dyn SomeTrait` in a cast like:
 ///
+/// ```rust,ignore (not real code)
 /// let src: &SomeStruct = ...;
-/// let target = src as &SomeTrait;
+/// let target = src as &dyn SomeTrait;
+/// ```
 ///
 /// Then the output of this function would be (SomeStruct, SomeTrait) since for
 /// constructing the `target` fat-pointer we need the vtable for that pair.
@@ -1068,8 +1070,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// for the pair of `T` (which is a trait) and the concrete type that `T` was
 /// originally coerced from:
 ///
+/// ```rust,ignore (not real code)
 /// let src: &ComplexStruct<SomeStruct> = ...;
-/// let target = src as &ComplexStruct<SomeTrait>;
+/// let target = src as &ComplexStruct<dyn SomeTrait>;
+/// ```
 ///
 /// Again, we want this `find_vtable_types_for_unsizing()` to provide the pair
 /// `(SomeStruct, SomeTrait)`.

@@ -854,7 +854,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ident.span,
                     "calling this method introduces the `impl`'s 'static` requirement",
                 );
-                // TODO!
                 err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),

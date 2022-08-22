@@ -24,7 +24,7 @@ pub fn placeholder(
     }
 
     let ident = Ident::empty();
-    let attrs = Vec::new();
+    let attrs = ast::AttrVec::new();
     let vis = vis.unwrap_or(ast::Visibility {
         span: DUMMY_SP,
         kind: ast::VisibilityKind::Inherited,

@@ -2,7 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec_std};
 
-use rustc_ast::{MetaItem, Mutability};
+use rustc_ast::{AttrVec, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -31,7 +31,7 @@ pub fn expand_deriving_hash(
             explicit_self: true,
             nonself_args: vec![(Ref(Box::new(Path(arg)), Mutability::Mut), sym::state)],
             ret_ty: Unit,
-            attributes: vec![],
+            attributes: AttrVec::new(),
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 hash_substructure(a, b, c)

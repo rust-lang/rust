@@ -740,12 +740,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.help("...or use `match` instead of `let...else`");
             }
             _ => {
-                if let ObligationCauseCode::BindingObligation(_, binding_span) =
-                    cause.code().peel_derives()
+                if let ObligationCauseCode::BindingObligation(_, span)
+                | ObligationCauseCode::ExprBindingObligation(_, span, ..)
+                    = cause.code().peel_derives()
+                    && let TypeError::RegionsPlaceholderMismatch = terr
                 {
-                    if matches!(terr, TypeError::RegionsPlaceholderMismatch) {
-                        err.span_note(*binding_span, "the lifetime requirement is introduced here");
-                    }
+                    err.span_note(*span, "the lifetime requirement is introduced here");
                 }
             }
         }

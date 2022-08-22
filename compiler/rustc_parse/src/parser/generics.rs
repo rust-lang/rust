@@ -1,9 +1,7 @@
 use super::{ForceCollect, Parser, TrailingToken};
 
 use rustc_ast::token;
-use rustc_ast::{
-    self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
-};
+use rustc_ast::{self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, WhereClause};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::kw;
 
@@ -26,7 +24,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+    fn parse_ty_param(&mut self, preceding_attrs: AttrVec) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
@@ -43,7 +41,7 @@ impl<'a> Parser<'a> {
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds,
             kind: GenericParamKind::Type { default },
             is_placeholder: false,
@@ -53,7 +51,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_const_param(
         &mut self,
-        preceding_attrs: Vec<Attribute>,
+        preceding_attrs: AttrVec,
     ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
@@ -68,7 +66,7 @@ impl<'a> Parser<'a> {
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
-            attrs: preceding_attrs.into(),
+            attrs: preceding_attrs,
             bounds: Vec::new(),
             kind: GenericParamKind::Const { ty, kw_span: const_span, default },
             is_placeholder: false,
@@ -109,7 +107,7 @@ impl<'a> Parser<'a> {
                         Some(ast::GenericParam {
                             ident: lifetime.ident,
                             id: lifetime.id,
-                            attrs: attrs.into(),
+                            attrs,
                             bounds,
                             kind: ast::GenericParamKind::Lifetime,
                             is_placeholder: false,

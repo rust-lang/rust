@@ -49,10 +49,7 @@ pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
 }
 
 /// Returns attributes that are within `outer_span`.
-pub(crate) fn filter_inline_attrs(
-    attrs: &[ast::Attribute],
-    outer_span: Span,
-) -> Vec<ast::Attribute> {
+pub(crate) fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> ast::AttrVec {
     attrs
         .iter()
         .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())

@@ -50,6 +50,8 @@ use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveE
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::MoveDataParamEnv;
 
+use crate::session_diagnostics::VarNeedNotMut;
+
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
@@ -424,12 +426,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             continue;
         }
 
-        tcx.emit_spanned_lint(
-            UNUSED_MUT,
-            lint_root,
-            span,
-            session_diagnostics::VarBetterNotMut { span },
-        )
+        tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span })
     }
 
     let tainted_by_errors = mbcx.emit_errors();

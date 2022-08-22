@@ -2632,8 +2632,8 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
             clean::Type::BorrowedRef { type_, .. } => {
                 work.push_back(*type_);
             }
-            clean::Type::QPath { self_type, trait_, .. } => {
-                work.push_back(*self_type);
+            clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
+                work.push_back(self_type);
                 process_path(trait_.def_id());
             }
             _ => {}

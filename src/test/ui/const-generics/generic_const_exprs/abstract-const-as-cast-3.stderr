@@ -1,8 +1,8 @@
 error: unconstrained generic constant
-  --> $DIR/abstract-const-as-cast-3.rs:17:5
+  --> $DIR/abstract-const-as-cast-3.rs:17:19
    |
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
 note: required for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>` to implement `Trait`
@@ -26,10 +26,10 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
               found type `{ O as u128 }`
 
 error: unconstrained generic constant
-  --> $DIR/abstract-const-as-cast-3.rs:20:5
+  --> $DIR/abstract-const-as-cast-3.rs:20:19
    |
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
 note: required for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>` to implement `Trait`
@@ -71,10 +71,10 @@ LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
               found type `14`
 
 error: unconstrained generic constant
-  --> $DIR/abstract-const-as-cast-3.rs:35:5
+  --> $DIR/abstract-const-as-cast-3.rs:35:19
    |
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
 note: required for `HasCastInTraitImpl<{ N + 1 }, { N as u128 }>` to implement `Trait`
@@ -98,10 +98,10 @@ LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
               found type `{ O as u128 }`
 
 error: unconstrained generic constant
-  --> $DIR/abstract-const-as-cast-3.rs:38:5
+  --> $DIR/abstract-const-as-cast-3.rs:38:19
    |
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); { O as u128 }]:`
 note: required for `HasCastInTraitImpl<{ N + 1 }, { N as _ }>` to implement `Trait`

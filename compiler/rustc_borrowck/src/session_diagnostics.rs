@@ -1,18 +1,9 @@
-use rustc_errors::MultiSpan;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::move_borrowed, code = "E0505")]
-pub(crate) struct MoveBorrowed<'cx> {
-    #[primary_span]
-    pub span: Span,
-    pub desc: &'cx str,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(borrowck::move_unsized, code = "E0161")]
+#[diag(borrowck::move_unsized, code = "E0161")]
 pub(crate) struct MoveUnsized<'tcx> {
     pub ty: Ty<'tcx>,
     #[primary_span]
@@ -21,7 +12,7 @@ pub(crate) struct MoveUnsized<'tcx> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::higher_ranked_lifetime_error)]
+#[diag(borrowck::higher_ranked_lifetime_error)]
 pub(crate) struct HigherRankedLifetimeError {
     #[subdiagnostic]
     pub cause: Option<HigherRankedErrorCause>,
@@ -38,14 +29,14 @@ pub(crate) enum HigherRankedErrorCause {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::higher_ranked_subtype_error)]
+#[diag(borrowck::higher_ranked_subtype_error)]
 pub(crate) struct HigherRankedSubtypeError {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::generic_does_not_live_long_enough)]
+#[diag(borrowck::generic_does_not_live_long_enough)]
 pub(crate) struct GenericDoesNotLiveLongEnough {
     pub kind: String,
     #[primary_span]
@@ -53,14 +44,14 @@ pub(crate) struct GenericDoesNotLiveLongEnough {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(borrowck::var_better_not_mut)]
-pub(crate) struct VarBetterNotMut {
+#[diag(borrowck::var_does_not_need_mut)]
+pub(crate) struct VarNeedNotMut {
     #[suggestion_short(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::const_not_used_in_type_alias)]
+#[diag(borrowck::const_not_used_in_type_alias)]
 pub(crate) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]
@@ -68,7 +59,7 @@ pub(crate) struct ConstNotUsedTraitAlias {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::var_cannot_escape_closure)]
+#[diag(borrowck::var_cannot_escape_closure)]
 #[note]
 #[note(borrowck::cannot_escape)]
 pub(crate) struct FnMutError {
@@ -104,7 +95,7 @@ pub(crate) enum FnMutReturnTypeErr {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(borrowck::lifetime_constraints_error)]
+#[diag(borrowck::lifetime_constraints_error)]
 pub(crate) struct LifeTimeOutLiveErr {
     #[primary_span]
     pub span: Span,
@@ -129,14 +120,5 @@ pub(crate) enum LifeTimeReturnCategoryErr {
         category_desc: String,
         free_region_name: String,
         outlived_fr_name: String,
-    },
-}
-
-#[derive(SessionSubdiagnostic)]
-pub(crate) enum StaticLifeTimeRequireErr {
-    #[note(borrowck::impl_require_static)]
-    UsedImpl {
-        #[primary_span]
-        span: MultiSpan,
     },
 }

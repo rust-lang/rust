@@ -21,7 +21,7 @@ error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:13:7
    |
 LL |   foo(s);
-   |   --- ^ expected an implementor of trait `Trait`
+   |   --- ^ the trait `Trait` is not implemented for `S`
    |   |
    |   required by a bound introduced by this call
    |

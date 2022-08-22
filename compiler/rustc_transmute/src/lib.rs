@@ -7,6 +7,8 @@
     result_into_ok_or_err
 )]
 #![allow(dead_code, unused_variables)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

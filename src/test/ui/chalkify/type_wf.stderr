@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `{float}: Foo` is not satisfied
-  --> $DIR/type_wf.rs:18:13
+  --> $DIR/type_wf.rs:19:12
    |
-LL |     let s = S {
-   |             ^ the trait `Foo` is not implemented for `{float}`
+LL |         x: 5.0,
+   |            ^^^ the trait `Foo` is not implemented for `{float}`
    |
    = help: the trait `Foo` is implemented for `i32`
 note: required by a bound in `S`
