@@ -385,25 +385,11 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = "false",
 
-        /// Use semantic tokens for strings.
+        /// Inject additional highlighting into doc comments.
         ///
-        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
-        /// By disabling semantic tokens for strings, other grammars can be used to highlight
-        /// their contents.
-        semanticHighlighting_strings_enable: bool = "true",
-        /// Use semantic tokens for punctuations.
-        ///
-        /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
-        /// they are tagged with modifiers or have a special role.
-        semanticHighlighting_punctuation_enable: bool = "false",
-        /// Use specialized semantic tokens for punctuations.
-        ///
-        /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
-        /// of the generic `punctuation` token type.
-        semanticHighlighting_punctuation_specialization_enable: bool = "false",
-        /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
-        /// calls.
-        semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
+        /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
+        /// doc links.
+        semanticHighlighting_doc_comment_inject_enable: bool = "true",
         /// Use semantic tokens for operators.
         ///
         /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
@@ -414,11 +400,25 @@ config_data! {
         /// When enabled, rust-analyzer will emit special token types for operator tokens instead
         /// of the generic `operator` token type.
         semanticHighlighting_operator_specialization_enable: bool = "false",
-        /// Inject additional highlighting into doc comments.
+        /// Use semantic tokens for punctuations.
         ///
-        /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
-        /// doc links.
-        semanticHighlighting_doc_comment_inject_enable: bool = "true",
+        /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
+        /// they are tagged with modifiers or have a special role.
+        semanticHighlighting_punctuation_enable: bool = "false",
+        /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
+        /// calls.
+        semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
+        /// Use specialized semantic tokens for punctuations.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
+        /// of the generic `punctuation` token type.
+        semanticHighlighting_punctuation_specialization_enable: bool = "false",
+        /// Use semantic tokens for strings.
+        ///
+        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+        /// By disabling semantic tokens for strings, other grammars can be used to highlight
+        /// their contents.
+        semanticHighlighting_strings_enable: bool = "true",
 
         /// Show full signature of the callable. Only shows parameters if disabled.
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
