@@ -1,5 +1,3 @@
-//@ignore-target-windows: TLS destructor order is different on Windows.
-
 use std::cell::RefCell;
 use std::thread;
 
@@ -24,14 +22,18 @@ thread_local! {
 /// Check that destructors of the library thread locals are executed immediately
 /// after a thread terminates.
 fn check_destructors() {
+    // We use the same value for both of them, since destructor order differs between Miri on Linux
+    // (which uses `register_dtor_fallback`, in the end using a single pthread_key to manage a
+    // thread-local linked list of dtors to call), real Linux rustc (which uses
+    // `__cxa_thread_atexit_impl`), and Miri on Windows.
     thread::spawn(|| {
         A.with(|f| {
             assert_eq!(*f.value.borrow(), 0);
-            *f.value.borrow_mut() = 5;
+            *f.value.borrow_mut() = 8;
         });
         A_CONST.with(|f| {
             assert_eq!(*f.value.borrow(), 10);
-            *f.value.borrow_mut() = 15;
+            *f.value.borrow_mut() = 8;
         });
     })
     .join()
