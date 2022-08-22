@@ -2271,6 +2271,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         categorized_path.remove(0)
     }
 
+    /// Replaces region variables with equal universal regions where possible.
+    pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        tcx.fold_regions(ty, |region, _| match *region {
+            ty::ReVar(vid) => {
+                let scc = self.constraint_sccs.scc(vid);
+                let normalized = self.scc_representatives[scc];
+                match &self.definitions[normalized].external_name {
+                    Some(universal_r) => *universal_r,
+                    None => region,
+                }
+            }
+            _ => region,
+        })
+    }
+
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         self.universe_causes[&universe].clone()
     }

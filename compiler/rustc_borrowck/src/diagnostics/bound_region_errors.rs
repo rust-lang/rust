@@ -56,6 +56,8 @@ impl<'tcx> UniverseInfo<'tcx> {
     ) {
         match self.0 {
             UniverseInfoInner::RelateTys { expected, found } => {
+                let (expected, found) =
+                    mbcx.regioncx.name_regions(mbcx.infcx.tcx, (expected, found));
                 let err = mbcx.infcx.report_mismatched_types(
                     &cause,
                     expected,

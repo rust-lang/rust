@@ -153,7 +153,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that the regions produced are in fact equal to the named region they are
     /// replaced with. This is fine because this function is only to improve the
     /// region names in error messages.
-    pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    pub(crate) fn name_regions_opaque<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {

@@ -5,7 +5,7 @@ LL |     let y: for<'a> fn(&'a ()) = x;
    |                                 ^ one type is more general than the other
    |
    = note: expected fn pointer `for<'a> fn(&'a ())`
-              found fn pointer `fn(&())`
+              found fn pointer `fn(&'static ())`
 
 error: aborting due to previous error
 
