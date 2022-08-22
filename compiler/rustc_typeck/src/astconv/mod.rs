@@ -365,7 +365,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // here and so associated type bindings will be handled regardless of whether there are any
         // non-`Self` generic parameters.
         if generics.params.is_empty() {
-            return (tcx.intern_substs(&[]), arg_count);
+            return (tcx.intern_substs(parent_substs), arg_count);
         }
 
         struct SubstsForAstPathCtxt<'a, 'tcx> {
