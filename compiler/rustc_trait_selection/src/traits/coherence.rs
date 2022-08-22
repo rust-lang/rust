@@ -391,8 +391,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
     };
 
     let param_env = o.param_env;
-    let errors = super::fully_solve_obligation(&infcx, o);
-    if !errors.is_empty() {
+    if !super::fully_solve_obligation(&infcx, o).is_empty() {
         return false;
     }
 
