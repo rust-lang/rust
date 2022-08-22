@@ -1,6 +1,5 @@
 use super::potentially_plural_count;
 use crate::check::regionck::OutlivesEnvironmentExt;
-use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
@@ -71,6 +70,72 @@ pub(crate) fn compare_impl_method<'tcx>(
     }
 }
 
+/// This function is best explained by example. Consider a trait:
+///
+///     trait Trait<'t, T> {
+///         // `trait_m`
+///         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
+///     }
+///
+/// And an impl:
+///
+///     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
+///          // `impl_m`
+///          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
+///     }
+///
+/// We wish to decide if those two method types are compatible.
+/// For this we have to show that, assuming the bounds of the impl hold, the
+/// bounds of `trait_m` imply the bounds of `impl_m`.
+///
+/// We start out with `trait_to_impl_substs`, that maps the trait
+/// type parameters to impl type parameters. This is taken from the
+/// impl trait reference:
+///
+///     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+///
+/// We create a mapping `dummy_substs` that maps from the impl type
+/// parameters to fresh types and regions. For type parameters,
+/// this is the identity transform, but we could as well use any
+/// placeholder types. For regions, we convert from bound to free
+/// regions (Note: but only early-bound regions, i.e., those
+/// declared on the impl or used in type parameter bounds).
+///
+///     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+///
+/// Now we can apply `placeholder_substs` to the type of the impl method
+/// to yield a new function type in terms of our fresh, placeholder
+/// types:
+///
+///     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+///
+/// We now want to extract and substitute the type of the *trait*
+/// method and compare it. To do so, we must create a compound
+/// substitution by combining `trait_to_impl_substs` and
+/// `impl_to_placeholder_substs`, and also adding a mapping for the method
+/// type parameters. We extend the mapping to also include
+/// the method parameters.
+///
+///     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+///
+/// Applying this to the trait method type yields:
+///
+///     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+///
+/// This type is also the same but the name of the bound region (`'a`
+/// vs `'b`).  However, the normal subtyping rules on fn types handle
+/// this kind of equivalency just fine.
+///
+/// We now use these substitutions to ensure that all declared bounds are
+/// satisfied by the implementation's method.
+///
+/// We do this by creating a parameter environment which contains a
+/// substitution corresponding to `impl_to_placeholder_substs`. We then build
+/// `trait_to_placeholder_substs` and use it to convert the predicates contained
+/// in the `trait_m` generics to the placeholder form.
+///
+/// Finally we register each of these predicates as an obligation and check that
+/// they hold.
 fn compare_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
@@ -96,69 +161,6 @@ fn compare_predicate_entailment<'tcx>(
             kind: impl_m.kind,
         },
     );
-
-    // This code is best explained by example. Consider a trait:
-    //
-    //     trait Trait<'t, T> {
-    //         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
-    //     }
-    //
-    // And an impl:
-    //
-    //     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-    //          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
-    //     }
-    //
-    // We wish to decide if those two method types are compatible.
-    //
-    // We start out with trait_to_impl_substs, that maps the trait
-    // type parameters to impl type parameters. This is taken from the
-    // impl trait reference:
-    //
-    //     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
-    //
-    // We create a mapping `dummy_substs` that maps from the impl type
-    // parameters to fresh types and regions. For type parameters,
-    // this is the identity transform, but we could as well use any
-    // placeholder types. For regions, we convert from bound to free
-    // regions (Note: but only early-bound regions, i.e., those
-    // declared on the impl or used in type parameter bounds).
-    //
-    //     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
-    //
-    // Now we can apply placeholder_substs to the type of the impl method
-    // to yield a new function type in terms of our fresh, placeholder
-    // types:
-    //
-    //     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
-    //
-    // We now want to extract and substitute the type of the *trait*
-    // method and compare it. To do so, we must create a compound
-    // substitution by combining trait_to_impl_substs and
-    // impl_to_placeholder_substs, and also adding a mapping for the method
-    // type parameters. We extend the mapping to also include
-    // the method parameters.
-    //
-    //     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
-    //
-    // Applying this to the trait method type yields:
-    //
-    //     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
-    //
-    // This type is also the same but the name of the bound region ('a
-    // vs 'b).  However, the normal subtyping rules on fn types handle
-    // this kind of equivalency just fine.
-    //
-    // We now use these substitutions to ensure that all declared bounds are
-    // satisfied by the implementation's method.
-    //
-    // We do this by creating a parameter environment which contains a
-    // substitution corresponding to impl_to_placeholder_substs. We then build
-    // trait_to_placeholder_substs and use it to convert the predicates contained
-    // in the trait_m.generics to the placeholder form.
-    //
-    // Finally we register each of these predicates as an obligation in
-    // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
     // Create mapping from impl to placeholder.
     let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
@@ -1445,14 +1447,17 @@ pub fn check_type_bounds<'tcx>(
     };
     debug!(?normalize_param_env);
 
+    let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
     let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
         let ocx = ObligationCtxt::new(&infcx);
 
+        let assumed_wf_types =
+            ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty.def_id.expect_local());
+
         let mut selcx = traits::SelectionContext::new(&infcx);
-        let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = ObligationCause::new(
             impl_ty_span,
             impl_ty_hir_id,
@@ -1508,17 +1513,8 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let implied_bounds = match impl_ty.container {
-            ty::TraitContainer => FxHashSet::default(),
-            ty::ImplContainer => wfcheck::impl_implied_bounds(
-                tcx,
-                param_env,
-                container_id.expect_local(),
-                impl_ty_span,
-            ),
-        };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);
+        outlives_environment.add_implied_bounds(&infcx, assumed_wf_types, impl_ty_hir_id);
         infcx.check_region_obligations_and_report_errors(
             impl_ty.def_id.expect_local(),
             &outlives_environment,

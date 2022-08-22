@@ -3,7 +3,8 @@ use std::cell::RefCell;
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
 use crate::infer::InferCtxtExt;
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::{InferCtxt, InferOk};
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
@@ -12,6 +13,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
@@ -108,5 +110,24 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
+    }
+
+    pub fn assumed_wf_types(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+        def_id: LocalDefId,
+    ) -> FxHashSet<Ty<'tcx>> {
+        let tcx = self.infcx.tcx;
+        let assumed_wf_types = tcx.assumed_wf_types(def_id);
+        let mut implied_bounds = FxHashSet::default();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let cause = ObligationCause::misc(span, hir_id);
+        for ty in assumed_wf_types {
+            implied_bounds.insert(ty);
+            let normalized = self.normalize(cause.clone(), param_env, ty);
+            implied_bounds.insert(normalized);
+        }
+        implied_bounds
     }
 }
