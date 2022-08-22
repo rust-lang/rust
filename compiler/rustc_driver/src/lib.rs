@@ -9,6 +9,8 @@
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -56,6 +58,9 @@ use std::time::Instant;
 
 pub mod args;
 pub mod pretty;
+mod session_diagnostics;
+
+use crate::session_diagnostics::{RlinkNotAFile, RlinkUnableToDeserialize, RlinkUnableToRead};
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -545,7 +550,11 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
 
 fn show_content_with_pager(content: &str) {
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
-        if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
+        if cfg!(windows) {
+            OsString::from("more.com")
+        } else {
+            OsString::from("less")
+        }
     });
 
     let mut fallback_to_println = false;
@@ -581,18 +590,24 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to read rlink file: {}", err));
+                sess.fatal(RlinkUnableToRead {
+                    span: Default::default(),
+                    error_message: err.to_string(),
+                });
             });
             let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
                 Ok(codegen) => codegen,
                 Err(error) => {
-                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                    sess.fatal(RlinkUnableToDeserialize {
+                        span: Default::default(),
+                        error_message: error.to_string(),
+                    });
                 }
             };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
-            sess.fatal("rlink must be a file")
+            sess.fatal(RlinkNotAFile { span: Default::default() })
         }
         Compilation::Stop
     } else {
@@ -1116,7 +1131,11 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         }
     }
 
-    if !result.is_empty() { Some((result, excluded_cargo_defaults)) } else { None }
+    if !result.is_empty() {
+        Some((result, excluded_cargo_defaults))
+    } else {
+        None
+    }
 }
 
 /// Runs a closure and catches unwinds triggered by fatal errors.
