@@ -150,21 +150,21 @@ pub struct AsyncGeneratorsNotSupported {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::inline_asm_unsupported_target, code = "E0472")]
+#[diag(ast_lowering::inline_asm_unsupported_target, code = "E0472")]
 pub struct InlineAsmUnsupportedTarget {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::att_syntax_only_x86)]
+#[diag(ast_lowering::att_syntax_only_x86)]
 pub struct AttSyntaxOnlyX86 {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::abi_specified_multiple_times)]
+#[diag(ast_lowering::abi_specified_multiple_times)]
 pub struct AbiSpecifiedMultipleTimes {
     #[primary_span]
     pub abi_span: Span,
@@ -176,7 +176,7 @@ pub struct AbiSpecifiedMultipleTimes {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::clobber_abi_not_supported)]
+#[diag(ast_lowering::clobber_abi_not_supported)]
 pub struct ClobberAbiNotSupported {
     #[primary_span]
     pub abi_span: Span,
@@ -184,7 +184,7 @@ pub struct ClobberAbiNotSupported {
 
 #[derive(SessionDiagnostic)]
 #[note]
-#[error(ast_lowering::invalid_abi_clobber_abi)]
+#[diag(ast_lowering::invalid_abi_clobber_abi)]
 pub struct InvalidAbiClobberAbi {
     #[primary_span]
     pub abi_span: Span,
@@ -192,7 +192,7 @@ pub struct InvalidAbiClobberAbi {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::invalid_register)]
+#[diag(ast_lowering::invalid_register)]
 pub struct InvalidRegister<'a> {
     #[primary_span]
     pub op_span: Span,
@@ -201,7 +201,7 @@ pub struct InvalidRegister<'a> {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::invalid_register_class)]
+#[diag(ast_lowering::invalid_register_class)]
 pub struct InvalidRegisterClass<'a> {
     #[primary_span]
     pub op_span: Span,
@@ -210,7 +210,7 @@ pub struct InvalidRegisterClass<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_lowering::invalid_asm_template_modifier_reg_class)]
+#[diag(ast_lowering::invalid_asm_template_modifier_reg_class)]
 pub struct InvalidAsmTemplateModifierRegClass {
     #[primary_span]
     #[label(ast_lowering::template_modifier)]
@@ -230,7 +230,7 @@ pub enum InvalidAsmTemplateModifierRegClassSub {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::invalid_asm_template_modifier_const)]
+#[diag(ast_lowering::invalid_asm_template_modifier_const)]
 pub struct InvalidAsmTemplateModifierConst {
     #[primary_span]
     #[label(ast_lowering::template_modifier)]
@@ -240,7 +240,7 @@ pub struct InvalidAsmTemplateModifierConst {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::invalid_asm_template_modifier_sym)]
+#[diag(ast_lowering::invalid_asm_template_modifier_sym)]
 pub struct InvalidAsmTemplateModifierSym {
     #[primary_span]
     #[label(ast_lowering::template_modifier)]
@@ -250,7 +250,7 @@ pub struct InvalidAsmTemplateModifierSym {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::register_class_only_clobber)]
+#[diag(ast_lowering::register_class_only_clobber)]
 pub struct RegisterClassOnlyClobber {
     #[primary_span]
     pub op_span: Span,
@@ -258,7 +258,7 @@ pub struct RegisterClassOnlyClobber {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::register_conflict)]
+#[diag(ast_lowering::register_conflict)]
 pub struct RegisterConflict<'a> {
     #[primary_span]
     #[label(ast_lowering::register1)]
@@ -273,7 +273,7 @@ pub struct RegisterConflict<'a> {
 
 #[derive(SessionDiagnostic, Clone, Copy)]
 #[help]
-#[error(ast_lowering::sub_tuple_binding)]
+#[diag(ast_lowering::sub_tuple_binding)]
 pub struct SubTupleBinding<'a> {
     #[primary_span]
     #[label]
@@ -289,7 +289,7 @@ pub struct SubTupleBinding<'a> {
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::extra_double_dot)]
+#[diag(ast_lowering::extra_double_dot)]
 pub struct ExtraDoubleDot<'a> {
     #[primary_span]
     #[label]
@@ -301,28 +301,28 @@ pub struct ExtraDoubleDot<'a> {
 
 #[derive(SessionDiagnostic, Clone, Copy)]
 #[note]
-#[error(ast_lowering::misplaced_double_dot)]
+#[diag(ast_lowering::misplaced_double_dot)]
 pub struct MisplacedDoubleDot {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::misplaced_relax_trait_bound)]
+#[diag(ast_lowering::misplaced_relax_trait_bound)]
 pub struct MisplacedRelaxTraitBound {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::not_supported_for_lifetime_binder_async_closure)]
+#[diag(ast_lowering::not_supported_for_lifetime_binder_async_closure)]
 pub struct NotSupportedForLifetimeBinderAsyncClosure {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic, Clone, Copy)]
-#[error(ast_lowering::arbitrary_expression_in_pattern)]
+#[diag(ast_lowering::arbitrary_expression_in_pattern)]
 pub struct ArbitraryExpressionInPattern {
     #[primary_span]
     pub span: Span,
