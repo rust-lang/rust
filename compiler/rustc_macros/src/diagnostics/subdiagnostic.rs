@@ -28,6 +28,39 @@ enum SubdiagnosticSuggestionKind {
     Verbose,
 }
 
+impl FromStr for SubdiagnosticSuggestionKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "" => Ok(SubdiagnosticSuggestionKind::Normal),
+            "_short" => Ok(SubdiagnosticSuggestionKind::Short),
+            "_hidden" => Ok(SubdiagnosticSuggestionKind::Hidden),
+            "_verbose" => Ok(SubdiagnosticSuggestionKind::Verbose),
+            _ => Err(()),
+        }
+    }
+}
+
+impl SubdiagnosticSuggestionKind {
+    pub fn to_suggestion_style(&self) -> TokenStream {
+        match self {
+            SubdiagnosticSuggestionKind::Normal => {
+                quote! { rustc_errors::SuggestionStyle::ShowCode }
+            }
+            SubdiagnosticSuggestionKind::Short => {
+                quote! { rustc_errors::SuggestionStyle::HideCodeInline }
+            }
+            SubdiagnosticSuggestionKind::Hidden => {
+                quote! { rustc_errors::SuggestionStyle::HideCodeAlways }
+            }
+            SubdiagnosticSuggestionKind::Verbose => {
+                quote! { rustc_errors::SuggestionStyle::ShowAlways }
+            }
+        }
+    }
+}
+
 /// Which kind of subdiagnostic is being created from a variant?
 #[derive(Clone, Copy)]
 enum SubdiagnosticKind {
@@ -52,17 +85,15 @@ impl FromStr for SubdiagnosticKind {
             "note" => Ok(SubdiagnosticKind::Note),
             "help" => Ok(SubdiagnosticKind::Help),
             "warning" => Ok(SubdiagnosticKind::Warn),
-            "suggestion" => Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Normal)),
-            "suggestion_short" => {
-                Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Short))
+            _ => {
+                if let Some(suggestion_kind) =
+                    s.strip_prefix("suggestion").and_then(|s| s.parse().ok())
+                {
+                    return Ok(SubdiagnosticKind::Suggestion(suggestion_kind));
+                };
+
+                Err(())
             }
-            "suggestion_hidden" => {
-                Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Hidden))
-            }
-            "suggestion_verbose" => {
-                Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Verbose))
-            }
-            _ => Err(()),
         }
     }
 }
@@ -74,18 +105,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
             SubdiagnosticKind::Note => write!(f, "note"),
             SubdiagnosticKind::Help => write!(f, "help"),
             SubdiagnosticKind::Warn => write!(f, "warn"),
-            SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Normal) => {
-                write!(f, "suggestion")
-            }
-            SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Short) => {
-                write!(f, "suggestion_short")
-            }
-            SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Hidden) => {
-                write!(f, "suggestion_hidden")
-            }
-            SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Verbose) => {
-                write!(f, "suggestion_verbose")
-            }
+            SubdiagnosticKind::Suggestion(..) => write!(f, "suggestion_with_style"),
         }
     }
 
@@ -461,25 +481,31 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
         let diag = &self.diag;
         let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
         let message = quote! { rustc_errors::fluent::#slug };
-        let call = if matches!(kind, SubdiagnosticKind::Suggestion(..)) {
-            if let Some(span) = span_field {
-                quote! { #diag.#name(#span, #message, #code, #applicability); }
-            } else {
-                span_err(self.span, "suggestion without `#[primary_span]` field").emit();
-                quote! { unreachable!(); }
+        let call = match kind {
+            SubdiagnosticKind::Suggestion(style) => {
+                if let Some(span) = span_field {
+                    let style = style.to_suggestion_style();
+
+                    quote! { #diag.#name(#span, #message, #code, #applicability, #style); }
+                } else {
+                    span_err(self.span, "suggestion without `#[primary_span]` field").emit();
+                    quote! { unreachable!(); }
+                }
             }
-        } else if matches!(kind, SubdiagnosticKind::Label) {
-            if let Some(span) = span_field {
-                quote! { #diag.#name(#span, #message); }
-            } else {
-                span_err(self.span, "label without `#[primary_span]` field").emit();
-                quote! { unreachable!(); }
+            SubdiagnosticKind::Label => {
+                if let Some(span) = span_field {
+                    quote! { #diag.#name(#span, #message); }
+                } else {
+                    span_err(self.span, "label without `#[primary_span]` field").emit();
+                    quote! { unreachable!(); }
+                }
             }
-        } else {
-            if let Some(span) = span_field {
-                quote! { #diag.#name(#span, #message); }
-            } else {
-                quote! { #diag.#name(#message); }
+            _ => {
+                if let Some(span) = span_field {
+                    quote! { #diag.#name(#span, #message); }
+                } else {
+                    quote! { #diag.#name(#message); }
+                }
             }
         };
 
