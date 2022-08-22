@@ -165,8 +165,8 @@ impl<'tcx> TlsData<'tcx> {
     /// and the thread has a non-NULL value associated with that key,
     /// the value of the key is set to NULL, and then the function pointed
     /// to is called with the previously associated value as its sole argument.
-    /// The order of destructor calls is unspecified if more than one destructor
-    /// exists for a thread when it exits.
+    /// **The order of destructor calls is unspecified if more than one destructor
+    /// exists for a thread when it exits.**
     ///
     /// If, after all the destructors have been called for all non-NULL values
     /// with associated destructors, there are still some non-NULL values with
@@ -188,6 +188,13 @@ impl<'tcx> TlsData<'tcx> {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
+        // We interpret the documentaion above (taken from POSIX) as saying that we need to iterate
+        // over all keys and run each destructor at least once before running any destructor a 2nd
+        // time. That's why we have `key` to indicate how far we got in the current iteration. If we
+        // return `None`, `schedule_next_pthread_tls_dtor` will re-try with `ket` set to `None` to
+        // start the next round.
+        // TODO: In the future, we might consider randomizing destructor order, but we still have to
+        // uphold this requirement.
         for (&key, TlsEntry { data, dtor }) in thread_local.range_mut((start, Unbounded)) {
             match data.entry(thread_id) {
                 BTreeEntry::Occupied(entry) => {

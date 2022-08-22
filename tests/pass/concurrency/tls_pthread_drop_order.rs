@@ -1,4 +1,9 @@
 //@ignore-target-windows: No libc on Windows
+//! Test that pthread_key destructors are run in the right order.
+//! Note that these are *not* used by actual `thread_local!` on Linux! Those use
+//! `thread_local_dtor::register_dtor` from the stdlib instead. In Miri this hits the fallback path
+//! in `register_dtor_fallback`, which uses a *single* pthread_key to manage a thread-local list of
+//! dtors to call.
 
 use std::mem;
 use std::ptr;
@@ -44,6 +49,8 @@ unsafe extern "C" fn dtor(ptr: *mut u64) {
     // If the record is wrong, the cannary will never get cleared, leading to a leak -> test fails.
     // If the record is incomplete (i.e., more dtor calls happen), the check at the beginning of this function will fail -> test fails.
     // The correct sequence is: First key 0, then key 1, then key 0.
+    // Note that this relies on dtor order, which is not specified by POSIX, but seems to be
+    // consistent between Miri and Linux currently (as of Aug 2022).
     if RECORD == 0_1_0 {
         drop(Box::from_raw(CANNARY));
         CANNARY = ptr::null_mut();
