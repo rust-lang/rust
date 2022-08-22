@@ -24,10 +24,9 @@
           StorageLive(_3);                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 -         _3 = _1;                         // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 -         _4 = Eq(_3, const 0_i32);        // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
--         assert(!move _4, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         _3 = const 0_i32;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 +         _4 = const true;                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-+         assert(!const true, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
+          assert(!move _4, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
       }
   
       bb1: {
@@ -38,14 +37,13 @@
 +         _5 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         _6 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         _7 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-+         assert(!const false, "attempt to compute `{} / {}`, which would overflow", const 1_i32, const 0_i32) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
++         assert(!const false, "attempt to compute `{} / {}`, which would overflow", const 1_i32, _3) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
       }
   
       bb2: {
--         _2 = Div(const 1_i32, move _3);  // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-+         _2 = Div(const 1_i32, const 0_i32); // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
+          _2 = Div(const 1_i32, move _3);  // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
           StorageDead(_3);                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
-          nop;                             // scope 0 at $DIR/bad_op_div_by_zero.rs:+0:11: +3:2
+          _0 = const ();                   // scope 0 at $DIR/bad_op_div_by_zero.rs:+0:11: +3:2
           StorageDead(_2);                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+3:1: +3:2
           StorageDead(_1);                 // scope 0 at $DIR/bad_op_div_by_zero.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/bad_op_div_by_zero.rs:+3:2: +3:2

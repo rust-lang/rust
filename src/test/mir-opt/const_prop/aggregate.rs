@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // compile-flags: -O
 
 // EMIT_MIR aggregate.main.ConstProp.diff
