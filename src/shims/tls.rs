@@ -63,6 +63,7 @@ impl<'tcx> Default for TlsData<'tcx> {
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
     /// `max_size` determines the integer size the key has to fit in.
+    #[allow(clippy::integer_arithmetic)]
     pub fn create_tls_key(
         &mut self,
         dtor: Option<ty::Instance<'tcx>>,

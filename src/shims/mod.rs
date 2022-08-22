@@ -1,3 +1,5 @@
+#![warn(clippy::integer_arithmetic)]
+
 mod backtrace;
 pub mod foreign_items;
 pub mod intrinsics;
