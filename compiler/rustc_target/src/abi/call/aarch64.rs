@@ -12,7 +12,7 @@ pub enum ParamExtension {
     /// accommodate Apple's deviation from the usual AArch64 ABI as defined by
     /// ARM.)
     ///
-    /// See also: https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly
+    /// See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
     ExtendTo32Bits,
 
     /// Indicates that no sign- nor zero-extension is performed: if a value of
