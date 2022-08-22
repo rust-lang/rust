@@ -321,15 +321,15 @@ fn ip_properties() {
     check!("fe80:ffff::");
     check!("febf:ffff::");
     check!("fec0::", global);
-    check!("ff01::", multicast);
-    check!("ff02::", multicast);
-    check!("ff03::", multicast);
-    check!("ff04::", multicast);
-    check!("ff05::", multicast);
-    check!("ff08::", multicast);
+    check!("ff01::", global | multicast);
+    check!("ff02::", global | multicast);
+    check!("ff03::", global | multicast);
+    check!("ff04::", global | multicast);
+    check!("ff05::", global | multicast);
+    check!("ff08::", global | multicast);
     check!("ff0e::", global | multicast);
     check!("2001:db8:85a3::8a2e:370:7334", doc);
-    check!("2001:2::ac32:23ff:21", global | benchmarking);
+    check!("2001:2::ac32:23ff:21", benchmarking);
     check!("102:304:506:708:90a:b0c:d0e:f10", global);
 }
 
@@ -609,6 +609,60 @@ fn ipv6_properties() {
 
     check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
 
+    check!(
+        "::ffff:127.0.0.1",
+        &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0x7f, 0, 0, 1],
+        unicast_global
+    );
+
+    check!(
+        "64:ff9b:1::",
+        &[0, 0x64, 0xff, 0x9b, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        unicast_global
+    );
+
+    check!("100::", &[0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+
+    check!("2001::", &[0x20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+
+    check!(
+        "2001:1::1",
+        &[0x20, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        global | unicast_global
+    );
+
+    check!(
+        "2001:1::2",
+        &[0x20, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        global | unicast_global
+    );
+
+    check!(
+        "2001:3::",
+        &[0x20, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
+
+    check!(
+        "2001:4:112::",
+        &[0x20, 1, 0, 4, 1, 0x12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
+
+    check!(
+        "2001:20::",
+        &[0x20, 1, 0, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
+
+    check!("2001:30::", &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+
+    check!(
+        "2001:200::",
+        &[0x20, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
+
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
     check!(
@@ -666,21 +720,37 @@ fn ipv6_properties() {
     check!(
         "ff01::",
         &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_interface_local
+        multicast_interface_local | global
     );
 
-    check!("ff02::", &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_link_local);
+    check!(
+        "ff02::",
+        &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        multicast_link_local | global
+    );
 
-    check!("ff03::", &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_realm_local);
+    check!(
+        "ff03::",
+        &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        multicast_realm_local | global
+    );
 
-    check!("ff04::", &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_admin_local);
+    check!(
+        "ff04::",
+        &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        multicast_admin_local | global
+    );
 
-    check!("ff05::", &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_site_local);
+    check!(
+        "ff05::",
+        &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        multicast_site_local | global
+    );
 
     check!(
         "ff08::",
         &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_organization_local
+        multicast_organization_local | global
     );
 
     check!(
@@ -698,7 +768,7 @@ fn ipv6_properties() {
     check!(
         "2001:2::ac32:23ff:21",
         &[0x20, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0xac, 0x32, 0x23, 0xff, 0, 0x21],
-        global | unicast_global | benchmarking
+        benchmarking
     );
 
     check!(
