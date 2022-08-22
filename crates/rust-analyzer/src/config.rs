@@ -411,6 +411,11 @@ config_data! {
         /// When enabled, rust-analyzer will emit special token types for operator tokens instead
         /// of the generic `operator` token type.
         semanticHighlighting_operator_specialization_enable: bool = "false",
+        /// Inject additional highlighting into doc comments.
+        ///
+        /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
+        /// doc links.
+        semanticHighlighting_doc_comment_inject_enable: bool = "true",
 
         /// Show full signature of the callable. Only shows parameters if disabled.
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
@@ -1200,6 +1205,7 @@ impl Config {
                 .semanticHighlighting_punctuation_specialization_enable,
             operator: self.data.semanticHighlighting_operator_enable,
             specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
+            inject_doc_comment: self.data.semanticHighlighting_doc_comment_inject_enable,
             syntactic_name_ref_highlighting: false,
         }
     }

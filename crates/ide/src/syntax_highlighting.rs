@@ -38,11 +38,19 @@ pub struct HlRange {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct HighlightConfig {
+    /// Whether to highlight strings
     pub strings: bool,
+    /// Whether to highlight punctuation
     pub punctuation: bool,
+    /// Whether to specialize punctuation highlights
     pub specialize_punctuation: bool,
-    pub specialize_operator: bool,
+    /// Whether to highlight operator
     pub operator: bool,
+    /// Whether to specialize operator highlights
+    pub specialize_operator: bool,
+    /// Whether to inject highlights into doc comments
+    pub inject_doc_comment: bool,
+    /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
 }
 
@@ -325,9 +333,11 @@ fn traverse(
             Enter(it) => it,
             Leave(NodeOrToken::Token(_)) => continue,
             Leave(NodeOrToken::Node(node)) => {
-                // Doc comment highlighting injection, we do this when leaving the node
-                // so that we overwrite the highlighting of the doc comment itself.
-                inject::doc_comment(hl, sema, config, file_id, &node);
+                if config.inject_doc_comment {
+                    // Doc comment highlighting injection, we do this when leaving the node
+                    // so that we overwrite the highlighting of the doc comment itself.
+                    inject::doc_comment(hl, sema, config, file_id, &node);
+                }
                 continue;
             }
         };

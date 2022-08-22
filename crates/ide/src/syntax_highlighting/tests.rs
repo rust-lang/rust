@@ -12,6 +12,7 @@ const HL_CONFIG: HighlightConfig = HighlightConfig {
     specialize_punctuation: true,
     specialize_operator: true,
     operator: true,
+    inject_doc_comment: true,
     syntactic_name_ref_highlighting: false,
 };
 
