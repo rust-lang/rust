@@ -82,11 +82,7 @@ macro_rules! define_semantic_token_modifiers {
         pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
             SemanticTokenModifier::DOCUMENTATION,
             SemanticTokenModifier::DECLARATION,
-            SemanticTokenModifier::DEFINITION,
             SemanticTokenModifier::STATIC,
-            SemanticTokenModifier::ABSTRACT,
-            SemanticTokenModifier::DEPRECATED,
-            SemanticTokenModifier::READONLY,
             SemanticTokenModifier::DEFAULT_LIBRARY,
             $($ident),*
         ];
