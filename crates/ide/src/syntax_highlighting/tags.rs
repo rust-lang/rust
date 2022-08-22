@@ -296,7 +296,7 @@ impl Highlight {
         Highlight { tag, mods: HlMods::default() }
     }
     pub fn is_empty(&self) -> bool {
-        self.tag == HlTag::None && self.mods == HlMods::default()
+        self.tag == HlTag::None && self.mods.is_empty()
     }
 }
 
@@ -330,6 +330,10 @@ impl ops::BitOr<HlMod> for Highlight {
 }
 
 impl HlMods {
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
     pub fn contains(self, m: HlMod) -> bool {
         self.0 & m.mask() == m.mask()
     }

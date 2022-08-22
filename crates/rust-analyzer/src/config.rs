@@ -391,6 +391,16 @@ config_data! {
         /// By disabling semantic tokens for strings, other grammars can be used to highlight
         /// their contents.
         semanticHighlighting_strings_enable: bool = "true",
+        /// Use semantic tokens for punctuations.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
+        /// they are tagged with modifiers.
+        semanticHighlighting_punctuation_enable: bool = "false",
+        /// Use specialized semantic tokens for punctuations.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
+        /// of the generic `punctuation` token type.
+        semanticHighlighting_punctuation_specialize: bool = "false",
 
         /// Show full signature of the callable. Only shows parameters if disabled.
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
@@ -521,6 +531,13 @@ impl HoverActionsConfig {
     pub fn runnable(&self) -> bool {
         self.run || self.debug
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HighlightingConfig {
+    pub strings: bool,
+    pub punctuation: bool,
+    pub specialize_punctuation: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1171,8 +1188,12 @@ impl Config {
         }
     }
 
-    pub fn highlighting_strings(&self) -> bool {
-        self.data.semanticHighlighting_strings_enable
+    pub fn highlighting_config(&self) -> HighlightingConfig {
+        HighlightingConfig {
+            strings: self.data.semanticHighlighting_strings_enable,
+            punctuation: self.data.semanticHighlighting_punctuation_enable,
+            specialize_punctuation: self.data.semanticHighlighting_punctuation_specialize,
+        }
     }
 
     pub fn hover(&self) -> HoverConfig {
