@@ -235,35 +235,40 @@ pub(crate) trait HasFieldMap {
         // the referenced fields. Leaves `it` sitting on the closing brace of the format string, so
         // the next call to `it.next()` retrieves the next character.
         while let Some(c) = it.next() {
-            if c == '{' && *it.peek().unwrap_or(&'\0') != '{' {
-                let mut eat_argument = || -> Option<String> {
-                    let mut result = String::new();
-                    // Format specifiers look like:
-                    //
-                    //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
-                    //
-                    // Therefore, we only need to eat until ':' or '}' to find the argument.
-                    while let Some(c) = it.next() {
-                        result.push(c);
-                        let next = *it.peek().unwrap_or(&'\0');
-                        if next == '}' {
-                            break;
-                        } else if next == ':' {
-                            // Eat the ':' character.
-                            assert_eq!(it.next().unwrap(), ':');
-                            break;
-                        }
+            if c != '{' {
+                continue;
+            }
+            if *it.peek().unwrap_or(&'\0') == '{' {
+                assert_eq!(it.next().unwrap(), '{');
+                continue;
+            }
+            let mut eat_argument = || -> Option<String> {
+                let mut result = String::new();
+                // Format specifiers look like:
+                //
+                //   format   := '{' [ argument ] [ ':' format_spec ] '}' .
+                //
+                // Therefore, we only need to eat until ':' or '}' to find the argument.
+                while let Some(c) = it.next() {
+                    result.push(c);
+                    let next = *it.peek().unwrap_or(&'\0');
+                    if next == '}' {
+                        break;
+                    } else if next == ':' {
+                        // Eat the ':' character.
+                        assert_eq!(it.next().unwrap(), ':');
+                        break;
                     }
-                    // Eat until (and including) the matching '}'
-                    while it.next()? != '}' {
-                        continue;
-                    }
-                    Some(result)
-                };
-
-                if let Some(referenced_field) = eat_argument() {
-                    referenced_fields.insert(referenced_field);
                 }
+                // Eat until (and including) the matching '}'
+                while it.next()? != '}' {
+                    continue;
+                }
+                Some(result)
+            };
+
+            if let Some(referenced_field) = eat_argument() {
+                referenced_fields.insert(referenced_field);
             }
         }
 

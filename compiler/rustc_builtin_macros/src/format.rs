@@ -1176,7 +1176,7 @@ fn create_lints_for_named_arguments_used_positionally(cx: &mut Context<'_, '_>) 
 
         cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
             span: MultiSpan::from_span(named_arg.positional_named_arg_span),
-            msg: msg.clone(),
+            msg: msg.into(),
             node_id: ast::CRATE_NODE_ID,
             lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
             diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally {

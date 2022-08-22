@@ -360,6 +360,17 @@ impl ParseSess {
         self.create_warning(warning).emit()
     }
 
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl SessionDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        fatal.into_diagnostic(self)
+    }
+
+    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+        self.create_fatal(fatal).emit()
+    }
+
     #[rustc_lint_diagnostics]
     pub fn struct_err(
         &self,
@@ -371,6 +382,11 @@ impl ParseSess {
     #[rustc_lint_diagnostics]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.span_diagnostic.struct_warn(msg)
+    }
+
+    #[rustc_lint_diagnostics]
+    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+        self.span_diagnostic.struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]

@@ -1,7 +1,4 @@
-//! This module contains the `Any` trait, which enables dynamic typing
-//! of any `'static` type through runtime reflection. It also contains the
-//! `Provider` trait and accompanying API, which enable trait objects to provide
-//! data based on typed requests, an alternate form of runtime reflection.
+//! Utilities for dynamic typing or type reflection.
 //!
 //! # `Any` and `TypeId`
 //!
