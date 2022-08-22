@@ -566,7 +566,7 @@ impl<'a> Resolver<'a> {
                         (span, snippet)
                     };
                     // Suggest the modification to the user
-                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MachineApplicable);
+                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
                 }
 
                 err
