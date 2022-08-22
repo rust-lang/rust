@@ -62,7 +62,6 @@ mod operator;
 mod range_map;
 mod shims;
 mod stacked_borrows;
-pub mod thread;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -81,9 +80,16 @@ pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
-pub use crate::concurrency::data_race::{
-    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
-    EvalContextExt as DataRaceEvalContextExt,
+pub use crate::concurrency::{
+    data_race::{
+        AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
+        EvalContextExt as DataRaceEvalContextExt,
+    },
+    sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId},
+    thread::{
+        EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager,
+        ThreadState,
+    },
 };
 pub use crate::diagnostics::{
     register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
@@ -104,10 +110,7 @@ pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
 };
-pub use crate::thread::{
-    EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,
-};
-pub use concurrency::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
+
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[

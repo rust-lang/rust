@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant, SystemTime};
 
-use crate::thread::Time;
+use crate::concurrency::thread::Time;
 use crate::*;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
