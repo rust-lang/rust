@@ -1519,7 +1519,6 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    // override the env when checking the return type. `~const` bounds can be fulfilled with non-const implementations.
     wfcx.register_wf_obligation(
         hir_decl.output.span(),
         None,
