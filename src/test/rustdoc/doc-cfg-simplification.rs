@@ -1,5 +1,4 @@
 #![crate_name = "globuliferous"]
-#![feature(doc_cfg)]
 
 // @has 'globuliferous/index.html'
 // @count   - '//*[@class="stab portability"]' 1

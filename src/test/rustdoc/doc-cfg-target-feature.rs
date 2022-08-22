@@ -5,8 +5,6 @@
 
 // #49723: rustdoc didn't add target features when extracting or running doctests
 
-#![feature(doc_cfg)]
-
 /// Foo
 ///
 /// # Examples

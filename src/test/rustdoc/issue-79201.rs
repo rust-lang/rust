@@ -1,5 +1,3 @@
-#![feature(doc_cfg)]
-
 // @has 'issue_79201/trait.Foo.html'
 // @count   - '//*[@class="stab portability"]' 6
 // @matches - '//*[@class="stab portability"]' 'crate feature foo-root'

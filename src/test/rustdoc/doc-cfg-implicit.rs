@@ -1,5 +1,4 @@
 #![crate_name = "funambulism"]
-#![feature(doc_auto_cfg, doc_cfg)]
 
 // @has 'funambulism/struct.Disorbed.html'
 // @count   - '//*[@class="stab portability"]' 1

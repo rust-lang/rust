@@ -132,6 +132,13 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126), None),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146), None),
+    /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
+    (accepted, doc_auto_cfg, "1.65.0", Some(43781), None),
+    /// Allows `#[doc(cfg(...))]`. It adds information about under which condition an item is
+    /// available.
+    (accepted, doc_cfg, "1.65.0", Some(43781), None),
+    /// Allows `#[doc(cfg_hide(...))]`.
+    (accepted, doc_cfg_hide, "1.65.0", Some(43781), None),
     /// Allows `..` in tuple (struct) patterns.
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627), None),
     /// Allows `..=` in patterns (RFC 1192).

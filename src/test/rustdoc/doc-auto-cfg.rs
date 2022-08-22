@@ -1,4 +1,3 @@
-#![feature(doc_auto_cfg)]
 #![crate_name = "foo"]
 
 // @has foo/fn.foo.html

@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 
 // @has 'foo/index.html'
 // @matches '-' '//*[@class="item-left module-item"]//*[@class="stab portability"]' '^sync$'

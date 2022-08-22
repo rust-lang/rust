@@ -1,5 +1,5 @@
 #![crate_name = "myrmecophagous"]
-#![feature(doc_cfg, associated_type_defaults)]
+#![feature(associated_type_defaults)]
 
 // @has 'myrmecophagous/index.html'
 // @count   - '//*[@class="stab portability"]' 2

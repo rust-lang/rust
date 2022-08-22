@@ -1,4 +1,3 @@
-#![feature(doc_cfg)]
 #![feature(target_feature, cfg_target_feature)]
 
 // @has doc_cfg/struct.Portable.html

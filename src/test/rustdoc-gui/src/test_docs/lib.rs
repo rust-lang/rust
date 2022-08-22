@@ -4,7 +4,6 @@
 
 #![crate_name = "test_docs"]
 #![feature(rustdoc_internals)]
-#![feature(doc_cfg)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy

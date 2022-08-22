@@ -1,5 +1,4 @@
 #![crate_name = "foo"]
-#![feature(doc_cfg)]
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 

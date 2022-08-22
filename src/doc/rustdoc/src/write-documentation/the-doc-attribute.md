@@ -276,3 +276,61 @@ To get around this limitation, we just add `#[doc(alias = "lib_name_do_something
 on the `do_something` method and then it's all good!
 Users can now look for `lib_name_do_something` in our crate directly and find
 `Obj::do_something`.
+
+## `cfg`
+
+By default, if you use `#[cfg(...)]`:
+
+```rust
+#[cfg(any(windows, doc))]
+pub struct WindowsToken;
+```
+
+`rustdoc` will display this information in the rendered documentation. `#[doc(cfg(...))]` is needed
+only if you want to override the default behaviour.
+
+`#[doc(cfg)]` is intended to be used alongside `#[cfg(doc)]` (described in [advanced features]).
+For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during
+the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc
+that the item is supposed to be used on Windows. For example:
+
+```rust
+/// Token struct that can only be used on Windows.
+#[cfg(any(windows, doc))]
+#[doc(cfg(windows))]
+pub struct WindowsToken;
+/// Token struct that can only be used on Unix.
+#[cfg(any(unix, doc))]
+#[doc(cfg(unix))]
+pub struct UnixToken;
+/// Token struct that is only available with the `serde` feature
+#[cfg(feature = "serde")]
+#[doc(cfg(feature = "serde"))]
+#[derive(serde::Deserialize)]
+pub struct SerdeToken;
+```
+
+In this sample, the tokens will only appear on their respective platforms, but they will both appear
+in documentation.
+
+If you want to hide some `cfg` information in your whole crate at once, take a look at `cfg_hide`
+just below.
+
+[advanced features]: ../advanced-features.md
+
+## `cfg_hide`
+
+Just like `#[doc(cfg(...))]` can override the default behaviour, `cfg_hide` can completely hide
+some `cfg`s to be displayed. For example:
+
+```rust
+#[cfg(unix, feature = "internal-dev-stuff")]
+pub struct Foo;
+```
+
+If you don't want the `internal-dev-stuff` feature to be ever displayed in the generated
+documentation, you can add:
+
+```rust
+#![doc(cfg_hide(feature = "internal-dev-stuff"))]
+```
