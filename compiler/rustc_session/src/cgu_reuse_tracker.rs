@@ -3,7 +3,6 @@
 //! output.
 
 use crate::errors::IncorrectCguReuseType;
-// use crate::errors::{CguNotRecorded, IncorrectCguReuseType};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_span::{Span, Symbol};
@@ -129,11 +128,14 @@ impl CguReuseTracker {
                         };
                     }
                 } else {
+                    //FIXME: Remove this once PR #100694 that implements `[fatal(..)]` is merged
                     let msg = format!(
                         "CGU-reuse for `{cgu_user_name}` (mangled: `{cgu_name}`) was \
                                        not recorded"
                     );
                     diag.span_fatal(error_span.0, &msg)
+
+                    //FIXME: Uncomment this once PR #100694 that implements `[fatal(..)]` is merged
                     // CguNotRecorded { cgu_user_name, cgu_name };
                 }
             }
