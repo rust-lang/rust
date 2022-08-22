@@ -294,6 +294,22 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_predicate_order() {
+    for to_keep in [true, false] {
+        let mut number_of_executions = 0;
+        let mut vec = vec![1, 2, 3, 4];
+        let mut next_expected = 1;
+        vec.retain(|&x| {
+            assert_eq!(next_expected, x);
+            next_expected += 1;
+            number_of_executions += 1;
+            to_keep
+        });
+        assert_eq!(number_of_executions, 4);
+    }
+}
+
+#[test]
 fn test_retain_pred_panic_with_hole() {
     let v = (0..5).map(Rc::new).collect::<Vec<_>>();
     catch_unwind(AssertUnwindSafe(|| {
@@ -352,6 +368,35 @@ fn test_retain_drop_panic() {
     // Other elements are dropped when `drop` of one element panicked.
     // The panicked wrapper also has its Rc dropped.
     assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_maybeuninits() {
+    // This test aimed to be run under miri.
+    use core::mem::MaybeUninit;
+    let mut vec: Vec<_> = [1i32, 2, 3, 4].map(|v| MaybeUninit::new(vec![v])).into();
+    vec.retain(|x| {
+        // SAFETY: Retain must visit every element of Vec in original order and exactly once.
+        // Our values is initialized at creation of Vec.
+        let v = unsafe { x.assume_init_ref()[0] };
+        if v & 1 == 0 {
+            return true;
+        }
+        // SAFETY: Value is initialized.
+        // Value wouldn't be dropped by `Vec::retain`
+        // because `MaybeUninit` doesn't drop content.
+        drop(unsafe { x.assume_init_read() });
+        false
+    });
+    let vec: Vec<i32> = vec
+        .into_iter()
+        .map(|x| unsafe {
+            // SAFETY: All values dropped in retain predicate must be removed by `Vec::retain`.
+            // Remaining values are initialized.
+            x.assume_init()[0]
+        })
+        .collect();
+    assert_eq!(vec, [2, 4]);
 }
 
 #[test]
