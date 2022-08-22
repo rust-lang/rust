@@ -18,7 +18,7 @@ use vfs::AbsPath;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
-    config::{CallInfoConfig, Config, HighlightingConfig},
+    config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, OffsetEncoding},
     lsp_ext,
@@ -517,40 +517,13 @@ pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HlRange>,
-    config: HighlightingConfig,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
 
-    for mut highlight_range in highlights {
+    for highlight_range in highlights {
         if highlight_range.highlight.is_empty() {
             continue;
-        }
-
-        // apply config filtering
-        match &mut highlight_range.highlight.tag {
-            HlTag::StringLiteral if !config.strings => continue,
-            // If punctuation is disabled, make the macro bang part of the macro call again.
-            tag @ HlTag::Punctuation(HlPunct::MacroBang)
-                if !config.punctuation || !config.specialize_punctuation =>
-            {
-                *tag = HlTag::Symbol(SymbolKind::Macro);
-            }
-            HlTag::Punctuation(_)
-                if !config.punctuation && highlight_range.highlight.mods.is_empty() =>
-            {
-                continue
-            }
-            tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
-                *tag = HlTag::Punctuation(HlPunct::Other);
-            }
-            HlTag::Operator(_) if !config.operator && highlight_range.highlight.mods.is_empty() => {
-                continue
-            }
-            tag @ HlTag::Operator(_) if !config.specialize_operator => {
-                *tag = HlTag::Operator(HlOperator::Other);
-            }
-            _ => (),
         }
 
         let (ty, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);

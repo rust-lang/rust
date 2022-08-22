@@ -12,8 +12,8 @@ use std::{ffi::OsString, fmt, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
-    Snippet, SnippetScope,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig,
+    JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -541,15 +541,6 @@ impl HoverActionsConfig {
     pub fn runnable(&self) -> bool {
         self.run || self.debug
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HighlightingConfig {
-    pub strings: bool,
-    pub punctuation: bool,
-    pub specialize_punctuation: bool,
-    pub specialize_operator: bool,
-    pub operator: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1200,8 +1191,8 @@ impl Config {
         }
     }
 
-    pub fn highlighting_config(&self) -> HighlightingConfig {
-        HighlightingConfig {
+    pub fn highlighting_config(&self) -> HighlightConfig {
+        HighlightConfig {
             strings: self.data.semanticHighlighting_strings_enable,
             punctuation: self.data.semanticHighlighting_punctuation_enable,
             specialize_punctuation: self
@@ -1209,6 +1200,7 @@ impl Config {
                 .semanticHighlighting_punctuation_specialization_enable,
             operator: self.data.semanticHighlighting_operator_enable,
             specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
+            syntactic_name_ref_highlighting: false,
         }
     }
 
