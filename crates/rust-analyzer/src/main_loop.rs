@@ -529,6 +529,13 @@ impl GlobalState {
                     }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidFailToRestart(err) => {
+                        self.show_and_log_error(
+                            "cargo check failed".to_string(),
+                            Some(err.to_string()),
+                        );
+                        return;
+                    }
                     flycheck::Progress::DidFinish(result) => {
                         if let Err(err) = result {
                             self.show_and_log_error(
