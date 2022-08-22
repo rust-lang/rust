@@ -1,4 +1,4 @@
-use crate::thread::Time;
+use crate::concurrency::thread::Time;
 use crate::*;
 use rustc_target::abi::{Align, Size};
 use std::time::{Instant, SystemTime};

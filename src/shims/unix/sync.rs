@@ -3,7 +3,7 @@ use std::time::SystemTime;
 use rustc_hir::LangItem;
 use rustc_middle::ty::{layout::TyAndLayout, query::TyCtxtAt, subst::Subst, Ty};
 
-use crate::thread::Time;
+use crate::concurrency::thread::Time;
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
