@@ -7,9 +7,8 @@
 
 #![no_core]
 
-// @has primitive_overloading.json
-// @has - "$.index[*][?(@.name=='usize')]"
-// @has - "$.index[*][?(@.name=='prim')]"
+// @has "$.index[*][?(@.name=='usize')]"
+// @has "$.index[*][?(@.name=='prim')]"
 
 #[doc(primitive = "usize")]
 /// This is the built-in type `usize`.

@@ -1,9 +1,8 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/97986>.
 
-// @has generic_impl.json
-// @has - "$.index[*][?(@.name=='f')]"
-// @has - "$.index[*][?(@.name=='AssocTy')]"
-// @has - "$.index[*][?(@.name=='AssocConst')]"
+// @has "$.index[*][?(@.name=='f')]"
+// @has "$.index[*][?(@.name=='AssocTy')]"
+// @has "$.index[*][?(@.name=='AssocConst')]"
 
 pub mod m {
     pub struct S;
