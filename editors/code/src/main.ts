@@ -51,14 +51,14 @@ async function tryActivate(context: vscode.ExtensionContext): Promise<RustAnalyz
     // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
     // only those are in use.
     // (r-a still somewhat works with Live Share, because commands are tunneled to the host)
-    const folders = (vscode.workspace.workspaceFolders || []).filter((folder) =>
-        folder.uri.scheme == "file"
+    const folders = (vscode.workspace.workspaceFolders || []).filter(
+        (folder) => folder.uri.scheme === "file"
     );
     const rustDocuments = vscode.workspace.textDocuments.filter((document) =>
         isRustDocument(document)
     );
 
-    if (folders.length == 0 && rustDocuments.length == 0) {
+    if (folders.length === 0 && rustDocuments.length === 0) {
         // FIXME: Ideally we would choose not to activate at all (and avoid registering
         // non-functional editor commands), but VS Code doesn't seem to have a good way of doing
         // that
