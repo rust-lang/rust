@@ -1409,7 +1409,7 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
-            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri", "rustfmt"] {
+            for tool in &["rust-demangler", "rust-analyzer", "miri", "rustfmt"] {
                 if !built_tools.contains(tool) {
                     contents = filter(&contents, tool);
                 }
@@ -1449,7 +1449,7 @@ impl Step for Extended {
             prepare("rust-std");
             prepare("rust-analysis");
             prepare("clippy");
-            for tool in &["rust-docs", "rust-demangler", "rls", "rust-analyzer", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "rust-analyzer", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1485,8 +1485,6 @@ impl Step for Extended {
                 builder.create_dir(&exe.join(name));
                 let dir = if name == "rust-std" || name == "rust-analysis" {
                     format!("{}-{}", name, target.triple)
-                } else if name == "rls" {
-                    "rls-preview".to_string()
                 } else if name == "rust-analyzer" {
                     "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
@@ -1510,7 +1508,7 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
-            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri"] {
+            for tool in &["rust-demangler", "rust-analyzer", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1594,25 +1592,6 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(exe.join("StdGroup.wxs")),
             );
-            if built_tools.contains("rls") {
-                builder.run(
-                    Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rls")
-                        .args(&heat_flags)
-                        .arg("-cg")
-                        .arg("RlsGroup")
-                        .arg("-dr")
-                        .arg("Rls")
-                        .arg("-var")
-                        .arg("var.RlsDir")
-                        .arg("-out")
-                        .arg(exe.join("RlsGroup.wxs"))
-                        .arg("-t")
-                        .arg(etc.join("msi/remove-duplicates.xsl")),
-                );
-            }
             if built_tools.contains("rust-analyzer") {
                 builder.run(
                     Command::new(&heat)
@@ -1744,9 +1723,6 @@ impl Step for Extended {
                 if built_tools.contains("rust-demangler") {
                     cmd.arg("-dRustDemanglerDir=rust-demangler");
                 }
-                if built_tools.contains("rls") {
-                    cmd.arg("-dRlsDir=rls");
-                }
                 if built_tools.contains("rust-analyzer") {
                     cmd.arg("-dRustAnalyzerDir=rust-analyzer");
                 }
@@ -1768,9 +1744,6 @@ impl Step for Extended {
             candle("ClippyGroup.wxs".as_ref());
             if built_tools.contains("rust-demangler") {
                 candle("RustDemanglerGroup.wxs".as_ref());
-            }
-            if built_tools.contains("rls") {
-                candle("RlsGroup.wxs".as_ref());
             }
             if built_tools.contains("rust-analyzer") {
                 candle("RustAnalyzerGroup.wxs".as_ref());
@@ -1809,9 +1782,6 @@ impl Step for Extended {
                 .arg("ClippyGroup.wixobj")
                 .current_dir(&exe);
 
-            if built_tools.contains("rls") {
-                cmd.arg("RlsGroup.wixobj");
-            }
             if built_tools.contains("rust-analyzer") {
                 cmd.arg("RustAnalyzerGroup.wixobj");
             }

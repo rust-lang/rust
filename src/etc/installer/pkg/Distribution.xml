@@ -16,9 +16,6 @@
       <line choice="rust-std"/>
       <line choice="cargo"/>
       <line choice="rust-docs"/>
-      <!-- tool-rls-start -->
-      <line choice="rls"/>
-      <!-- tool-rls-end -->
       </line>
       <line choice="uninstall" />
     </choices-outline>
@@ -64,24 +61,10 @@
         >
         <pkg-ref id="org.rust-lang.rust-docs"/>
     </choice>
-    <!-- tool-rls-start -->
-    <choice id="rls" visible="true"
-        title="RLS" description="RLS, the Rust Language Server"
-        selected="(!choices.uninstall.selected &amp;&amp; choices['rls'].selected) || (choices.uninstall.selected &amp;&amp; choices.install.selected)"
-        start_selected="false"
-        >
-        <pkg-ref id="org.rust-lang.rls"/>
-        <pkg-ref id="org.rust-lang.rust-analysis"/>
-    </choice>
-    <!-- tool-rls-end -->
     <pkg-ref id="org.rust-lang.rustc" version="0" onConclusion="none">rustc.pkg</pkg-ref>
     <pkg-ref id="org.rust-lang.cargo" version="0" onConclusion="none">cargo.pkg</pkg-ref>
     <pkg-ref id="org.rust-lang.rust-docs" version="0" onConclusion="none">rust-docs.pkg</pkg-ref>
     <pkg-ref id="org.rust-lang.rust-std" version="0" onConclusion="none">rust-std.pkg</pkg-ref>
-    <!-- tool-rls-start -->
-    <pkg-ref id="org.rust-lang.rls" version="0" onConclusion="none">rls.pkg</pkg-ref>
-    <!-- tool-rls-end -->
-    <pkg-ref id="org.rust-lang.rust-analysis" version="0" onConclusion="none">rust-analysis.pkg</pkg-ref>
     <pkg-ref id="org.rust-lang.uninstall" version="0" onConclusion="none">uninstall.pkg</pkg-ref>
     <background file="rust-logo.png" mime-type="image/png"
                 alignment="bottomleft"/>
