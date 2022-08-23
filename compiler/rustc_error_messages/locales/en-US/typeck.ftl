@@ -241,3 +241,60 @@ typeck_enum_variant_not_found =
     .info_label_at_enum = variant `{$assoc_ident}` not found here
 
 typeck_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
+
+typeck_invalid_dispatch_from_dyn_types_differ_too_much =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures with the same definition; expected `{$source_path}`, found `{$target_path}`
+
+typeck_invalid_dispatch_from_dyn_invalid_repr =
+    structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+
+typeck_invalid_dispatch_from_dyn_invalid_fields =
+    the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+    .note = extra field `{$field_name}` of type `{$ty_a}` is not allowed
+
+typeck_invalid_dispatch_from_dyn_no_coerced_fields =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced, none found
+
+typeck_invalid_dispatch_from_dyn_too_many_coerced_fields =
+    implementing the `DispatchFromDyn` trait requires multiple coercions
+    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
+    .fields_that_need_coercions_fields = currently, {$coerced_fields_len} fields need coercions: {$coerced_fields}
+
+typeck_invalid_dispatch_from_dyn_not_a_struct =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+
+typeck_coerce_unsized_invalid_definition =
+    the trait `CoerceUnsized` may only be implemented for a coercion between structures with the same definition; expected `{$source_path}`, found `{$target_path}
+
+typeck_coerce_unsized_no_coerced_field =
+    implementing the trait `CoerceUnsized` requires multiple coercions
+    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+    .fields_that_need_coercions_fields = currently, {$coerced_fields_len} fields need coercions: {$coerced_fields}
+    .label = requires multiple coercions
+
+typeck_coerce_unsized_not_a_struct =
+    the trait `CoerceUnsized` may only be implemented for a coercion between structures
+
+typeck_cannot_implement_primitives =
+    cannot define inherent `impl` for a type outside of the crate where the type is defined
+
+typeck_explicit_impl_of_internal_structs =
+    explicit impls for the `{$trait_name}` trait are not permitted
+    .label = impl of `{$trait_name}` not allowed
+
+typeck_marker_trait_impl_contains_items =
+    impls for marker traits cannot contain items
+
+typeck_type_automatically_implements_trait =
+    the object type `{$object_type}` automatically implements the trait `{$trait_path}`
+    .label = `{$object_type}` automatically implements trait `{$trait_path}`
+
+typeck_cross_crate_opt_out_trait_impl_on_invalid_target =
+    { $error_type ->
+        [cross_crate] cross-crate traits with a default impl, like `{$trait_path}`, can only be implemented for a struct/enum type defined in the current crate
+        *[invalid_type] cross-crate traits with a default impl, like `{$trait_path}`, can only be implemented for a struct/enum type, not `{$self_type}`
+    }
+    .label = { $error_type ->
+                [cross_crate] can't implement cross-crate trait for type in another crate
+                *[invalid_type] can't implement cross-crate trait with a default impl for non-struct/enum type
+            }

@@ -5,7 +5,10 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use rustc_errors::struct_span_err;
+use crate::errors::{
+    ExplicitImplOfInternalStructs, MarkerTraitImplContainsItems, TypeAutomaticallyImplementsTrait,
+};
+use rustc_errors::error_code;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -45,50 +48,38 @@ fn enforce_trait_manually_implementable(
 
     // Disallow *all* explicit impls of `Pointee`, `DiscriminantKind`, `Sized` and `Unsize` for now.
     if did == li.pointee_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0322,
-            "explicit impls for the `Pointee` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Pointee` not allowed")
-        .emit();
+        tcx.sess.emit_err(ExplicitImplOfInternalStructs {
+            span: impl_header_span,
+            error_code: error_code!(E0322),
+            trait_name: "Pointee",
+        });
         return;
     }
 
     if did == li.discriminant_kind_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0322,
-            "explicit impls for the `DiscriminantKind` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `DiscriminantKind` not allowed")
-        .emit();
+        tcx.sess.emit_err(ExplicitImplOfInternalStructs {
+            span: impl_header_span,
+            error_code: error_code!(E0322),
+            trait_name: "DiscriminantKind",
+        });
         return;
     }
 
     if did == li.sized_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0322,
-            "explicit impls for the `Sized` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Sized` not allowed")
-        .emit();
+        tcx.sess.emit_err(ExplicitImplOfInternalStructs {
+            span: impl_header_span,
+            error_code: error_code!(E0322),
+            trait_name: "Sized",
+        });
         return;
     }
 
     if did == li.unsize_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0328,
-            "explicit impls for the `Unsize` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Unsize` not allowed")
-        .emit();
+        tcx.sess.emit_err(ExplicitImplOfInternalStructs {
+            span: impl_header_span,
+            error_code: error_code!(E0328),
+            trait_name: "Unsize",
+        });
         return;
     }
 
@@ -128,13 +119,7 @@ fn enforce_empty_impls_for_marker_traits(
         return;
     }
 
-    struct_span_err!(
-        tcx.sess,
-        tcx.def_span(impl_def_id),
-        E0715,
-        "impls for marker traits cannot contain items"
-    )
-    .emit();
+    tcx.sess.emit_err(MarkerTraitImplContainsItems { span: tcx.def_span(impl_def_id) });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -213,23 +198,12 @@ fn check_object_overlap<'tcx>(
                 let mut supertrait_def_ids = traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let span = tcx.def_span(impl_def_id);
-                    struct_span_err!(
-                        tcx.sess,
+
+                    tcx.sess.emit_err(TypeAutomaticallyImplementsTrait {
                         span,
-                        E0371,
-                        "the object type `{}` automatically implements the trait `{}`",
-                        trait_ref.self_ty(),
-                        tcx.def_path_str(trait_def_id)
-                    )
-                    .span_label(
-                        span,
-                        format!(
-                            "`{}` automatically implements trait `{}`",
-                            trait_ref.self_ty(),
-                            tcx.def_path_str(trait_def_id)
-                        ),
-                    )
-                    .emit();
+                        object_type: trait_ref.self_ty().to_string(),
+                        trait_path: tcx.def_path_str(trait_def_id),
+                    });
                 }
             }
         }

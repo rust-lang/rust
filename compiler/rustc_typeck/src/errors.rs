@@ -679,3 +679,162 @@ pub struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
 }
+
+pub enum InvalidDispatchFromDynDeclarationType {
+    TypesDifferTooMuch { source_path: String, target_path: String },
+    InvalidRepr,
+    InvalidFields { field_name: Symbol, ty_a: String },
+    NoCoercedFields,
+    TooManyCoercedFields { coerced_fields_len: usize, coerced_fields: String },
+    NotAStruct,
+}
+
+pub struct InvalidDispatchFromDynDeclaration {
+    pub(crate) span: Span,
+    pub(crate) err_type: InvalidDispatchFromDynDeclarationType,
+}
+
+// Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
+impl<'a> SessionDiagnostic<'a> for InvalidDispatchFromDynDeclaration {
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let msg = match &self.err_type {
+            InvalidDispatchFromDynDeclarationType::TypesDifferTooMuch { .. } => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_types_differ_too_much
+            }
+            InvalidDispatchFromDynDeclarationType::InvalidRepr => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_invalid_repr
+            }
+            InvalidDispatchFromDynDeclarationType::InvalidFields { .. } => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_invalid_fields
+            }
+            InvalidDispatchFromDynDeclarationType::NoCoercedFields => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_no_coerced_fields
+            }
+            InvalidDispatchFromDynDeclarationType::TooManyCoercedFields { .. } => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_too_many_coerced_fields
+            }
+            InvalidDispatchFromDynDeclarationType::NotAStruct => {
+                rustc_errors::fluent::typeck::invalid_dispatch_from_dyn_not_a_struct
+            }
+        };
+
+        let mut err =
+            sess.span_diagnostic.struct_span_err_with_code(self.span, msg, error_code!(E0378));
+
+        match self.err_type {
+            InvalidDispatchFromDynDeclarationType::TypesDifferTooMuch {
+                source_path,
+                target_path,
+            } => {
+                err.set_arg("source_path", source_path);
+                err.set_arg("target_path", target_path);
+            }
+            InvalidDispatchFromDynDeclarationType::InvalidFields { field_name, ty_a } => {
+                err.set_arg("field_name", field_name);
+                err.set_arg("ty_a", ty_a);
+
+                err.note(rustc_errors::fluent::typeck::note);
+            }
+            InvalidDispatchFromDynDeclarationType::TooManyCoercedFields {
+                coerced_fields_len,
+                coerced_fields,
+            } => {
+                err.set_arg("coerced_fields_len", coerced_fields_len);
+                err.set_arg("coerced_fields", coerced_fields);
+
+                err.note(rustc_errors::fluent::typeck::note);
+                err.note(rustc_errors::fluent::typeck::fields_that_need_coercions_fields);
+            }
+            _ => {}
+        }
+
+        err
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::coerce_unsized_invalid_definition, code = "E0377")]
+pub struct CoerceUnsizedInvalidDefinition {
+    #[primary_span]
+    pub span: Span,
+    pub source_path: String,
+    pub target_path: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::coerce_unsized_no_coerced_field, code = "E0374")]
+pub struct CoerceUnsizedNoCoercedField {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::coerce_unsized_no_coerced_field, code = "E0375")]
+pub struct CoerceUnsizedTooManyCoercedFields {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    pub _note: (),
+    #[note(typeck::fields_that_need_coercions_fields)]
+    pub _fields_note: (),
+    pub coerced_fields_len: usize,
+    pub coerced_fields: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::coerce_unsized_not_a_struct, code = "E0376")]
+pub struct CoerceUnsizedNotAStruct {
+    #[primary_span]
+    pub span: Span,
+}
+
+pub struct ExplicitImplOfInternalStructs {
+    pub span: Span,
+    pub error_code: DiagnosticId,
+    pub trait_name: &'static str,
+}
+
+impl<'a> SessionDiagnostic<'a> for ExplicitImplOfInternalStructs {
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut err = sess.span_diagnostic.struct_span_err_with_code(
+            self.span,
+            rustc_errors::fluent::typeck::explicit_impl_of_internal_structs,
+            self.error_code,
+        );
+
+        err.set_arg("trait_name", self.trait_name);
+
+        err.span_label(self.span, rustc_errors::fluent::typeck::label);
+
+        err
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::marker_trait_impl_contains_items, code = "E0715")]
+pub struct MarkerTraitImplContainsItems {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::type_automatically_implements_trait, code = "E0371")]
+pub struct TypeAutomaticallyImplementsTrait {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub object_type: String,
+    pub trait_path: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(typeck::cross_crate_opt_out_trait_impl_on_invalid_target, code = "E0321")]
+pub struct CrossCrateOptOutTraitImplOnInvalidTarget {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub trait_path: String,
+    pub error_type: &'static str,
+    pub self_type: String,
+}
