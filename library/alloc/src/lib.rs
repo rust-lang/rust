@@ -111,6 +111,8 @@
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
+#![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
@@ -127,6 +129,7 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
+#![cfg_attr(not(bootstrap), feature(provide_any))]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
@@ -179,6 +182,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
+#![feature(with_negative_coherence)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

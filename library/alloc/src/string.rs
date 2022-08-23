@@ -44,6 +44,8 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+#[cfg(not(bootstrap))]
+use core::error::Error;
 use core::fmt;
 use core::hash;
 use core::iter::FusedIterator;
@@ -1936,6 +1938,24 @@ impl fmt::Display for FromUtf8Error {
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-16"
     }
 }
 
