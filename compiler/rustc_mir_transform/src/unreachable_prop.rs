@@ -84,7 +84,7 @@ where
                 TerminatorKind::Unreachable
             } else if is_unreachable(otherwise) {
                 // If there are multiple targets, don't delete unreachable branches (like an unreachable otherwise)
-                // unless otherwise is unrachable, in which case deleting a normal branch causes it to be merged with
+                // unless otherwise is unreachable, in which case deleting a normal branch causes it to be merged with
                 // the otherwise, keeping its unreachable.
                 // This looses information about reachability causing worse codegen.
                 // For example (see src/test/codegen/match-optimizes-away.rs)
