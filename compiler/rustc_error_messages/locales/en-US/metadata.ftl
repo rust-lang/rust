@@ -121,3 +121,12 @@ metadata_unsupported_abi_i686 =
 
 metadata_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
+
+metadata_fail_create_file_encoder =
+    failed to create file encoder: {$err}
+
+metadata_fail_seek_file =
+    failed to seek the file: {$err}
+
+metadata_fail_write_file =
+    failed to write to the file: {$err}

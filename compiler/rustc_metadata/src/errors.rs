@@ -282,3 +282,21 @@ pub struct UnsupportedAbi {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::fail_create_file_encoder)]
+pub struct FailCreateFileEncoder {
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::fail_seek_file)]
+pub struct FailSeekFile {
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::fail_write_file)]
+pub struct FailWriteFile {
+    pub err: String,
+}
