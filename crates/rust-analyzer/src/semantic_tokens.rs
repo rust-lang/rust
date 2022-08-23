@@ -32,6 +32,7 @@ macro_rules! define_semantic_token_types {
             SemanticTokenType::TYPE_PARAMETER,
             SemanticTokenType::TYPE,
             SemanticTokenType::VARIABLE,
+            SemanticTokenType::DECORATOR,
             $($ident),*
         ];
     };
