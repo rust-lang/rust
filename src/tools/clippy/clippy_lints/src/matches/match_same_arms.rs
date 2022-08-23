@@ -290,7 +290,7 @@ impl<'a> NormalizedPat<'a> {
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val),
                     LitKind::Bool(val) => Self::LitBool(val),
-                    LitKind::Float(..) | LitKind::Err(_) => Self::Wild,
+                    LitKind::Float(..) | LitKind::Err => Self::Wild,
                 },
                 _ => Self::Wild,
             },

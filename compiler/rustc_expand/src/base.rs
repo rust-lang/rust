@@ -1227,7 +1227,7 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err(_) => None,
+            ast::LitKind::Err => None,
             _ => Some((cx.struct_span_err(l.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

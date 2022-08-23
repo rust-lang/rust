@@ -1751,7 +1751,8 @@ pub enum LitFloatType {
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 #[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
-    /// A string literal (`"foo"`).
+    /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
+    /// from the original token's symbol.
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
     ByteStr(Lrc<[u8]>),
@@ -1761,12 +1762,13 @@ pub enum LitKind {
     Char(char),
     /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`).
+    /// A float literal (`1f64` or `1E10f64`). Stored as a symbol rather than
+    /// `f64` so that `LitKind` can impl `Eq` and `Hash`.
     Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err(Symbol),
+    Err,
 }
 
 impl LitKind {
@@ -1805,7 +1807,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err(..) => false,
+            | LitKind::Err => false,
         }
     }
 }
