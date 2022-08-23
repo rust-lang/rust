@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![warn(clippy::manual_empty_string_creations)]
+#![warn(clippy::manual_string_new)]
 
 macro_rules! create_strings_from_macro {
     // When inside a macro, nothing should warn to prevent false positives.
@@ -12,40 +12,40 @@ macro_rules! create_strings_from_macro {
 
 fn main() {
     // Method calls
-    let _ = String::new();
+    let _ = "".to_string();
     let _ = "no warning".to_string();
 
-    let _ = String::new();
+    let _ = "".to_owned();
     let _ = "no warning".to_owned();
 
-    let _: String = String::new();
+    let _: String = "".into();
     let _: String = "no warning".into();
 
     let _: SomeOtherStruct = "no warning".into();
     let _: SomeOtherStruct = "".into(); // No warning too. We are not converting into String.
 
     // Calls
-    let _ = String::new();
-    let _ = String::new();
+    let _ = String::from("");
+    let _ = <String>::from("");
     let _ = String::from("no warning");
     let _ = SomeOtherStruct::from("no warning");
     let _ = SomeOtherStruct::from(""); // Again: no warning.
 
-    let _ = String::new();
+    let _ = String::try_from("").unwrap();
     let _ = String::try_from("no warning").unwrap();
     let _ = String::try_from("no warning").expect("this should not warn");
     let _ = SomeOtherStruct::try_from("no warning").unwrap();
     let _ = SomeOtherStruct::try_from("").unwrap(); // Again: no warning.
 
-    let _: String = String::new();
+    let _: String = From::from("");
     let _: String = From::from("no warning");
     let _: SomeOtherStruct = From::from("no warning");
     let _: SomeOtherStruct = From::from(""); // Again: no warning.
 
-    let _: String = String::new();
+    let _: String = TryFrom::try_from("").unwrap();
     let _: String = TryFrom::try_from("no warning").unwrap();
     let _: String = TryFrom::try_from("no warning").expect("this should not warn");
-    let _: String = String::new();
+    let _: String = TryFrom::try_from("").expect("this should warn");
     let _: SomeOtherStruct = TryFrom::try_from("no_warning").unwrap();
     let _: SomeOtherStruct = TryFrom::try_from("").unwrap(); // Again: no warning.
 
