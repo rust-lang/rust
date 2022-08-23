@@ -4,8 +4,16 @@ error[E0308]: mismatched types
 LL |     let x: Arr<{usize::MAX}> = Arr {};
    |            ^^^^^^^^^^^^^^^^^ expected `false`, found `true`
    |
-   = note: expected type `false`
-              found type `true`
+   = note: expected constant `false`
+              found constant `true`
+note: required by a bound in `Arr`
+  --> $DIR/issue-73260.rs:6:37
+   |
+LL | struct Arr<const N: usize>
+   |        --- required by a bound in this
+LL | where
+LL |     Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                                     ^^^^^^ required by this bound in `Arr`
 
 error[E0308]: mismatched types
   --> $DIR/issue-73260.rs:16:32
@@ -13,8 +21,16 @@ error[E0308]: mismatched types
 LL |     let x: Arr<{usize::MAX}> = Arr {};
    |                                ^^^ expected `false`, found `true`
    |
-   = note: expected type `false`
-              found type `true`
+   = note: expected constant `false`
+              found constant `true`
+note: required by a bound in `Arr`
+  --> $DIR/issue-73260.rs:6:37
+   |
+LL | struct Arr<const N: usize>
+   |        --- required by a bound in this
+LL | where
+LL |     Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                                     ^^^^^^ required by this bound in `Arr`
 
 error: aborting due to 2 previous errors
 
