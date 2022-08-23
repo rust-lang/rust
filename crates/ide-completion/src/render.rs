@@ -565,6 +565,7 @@ fn main() { Foo::Fo$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
+                        lookup: "Foo{}",
                         detail: "Foo { x: i32, y: i32 }",
                     },
                 ]
@@ -591,6 +592,7 @@ fn main() { Foo::Fo$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
+                        lookup: "Foo()",
                         detail: "Foo(i32, i32)",
                     },
                 ]
@@ -707,7 +709,7 @@ fn main() { let _: m::Spam = S$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
-                        lookup: "Spam::Bar(…)",
+                        lookup: "Spam::Bar()",
                         detail: "m::Spam::Bar(i32)",
                         relevance: CompletionRelevance {
                             exact_name_match: false,

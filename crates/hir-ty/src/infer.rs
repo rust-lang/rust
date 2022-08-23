@@ -734,6 +734,7 @@ impl<'a> InferenceContext<'a> {
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(strukt.into()));
                     }
+                    ValueNs::ImplSelf(impl_id) => (TypeNs::SelfType(impl_id), None),
                     _ => return (self.err_ty(), None),
                 },
                 Some(ResolveValueResult::Partial(typens, unresolved)) => (typens, Some(unresolved)),
@@ -875,7 +876,10 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(name![future_trait])?.as_trait()?;
+        let trait_ = self
+            .resolver
+            .resolve_known_trait(self.db.upcast(), &path![core::future::IntoFuture])
+            .or_else(|| self.resolve_lang_item(name![future_trait])?.as_trait())?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 

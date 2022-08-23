@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase, SourceDatabaseExt};
+use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
@@ -176,9 +176,9 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut fs_refresh_changes = Vec::new();
         // A file was added or deleted
         let mut has_structure_changes = false;
+        let mut workspace_structure_change = None;
 
         let (change, changed_files) = {
             let mut change = Change::new();
@@ -192,7 +192,7 @@ impl GlobalState {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        fs_refresh_changes.push((path, file.file_id));
+                        workspace_structure_change = Some(path);
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
@@ -227,11 +227,10 @@ impl GlobalState {
 
         {
             let raw_database = self.analysis_host.raw_database();
-            let workspace_structure_change =
-                fs_refresh_changes.into_iter().find(|&(_, file_id)| {
-                    !raw_database.source_root(raw_database.file_source_root(file_id)).is_library
-                });
-            if let Some((path, _)) = workspace_structure_change {
+            // FIXME: ideally we should only trigger a workspace fetch for non-library changes
+            // but somethings going wrong with the source root business when we add a new local
+            // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
+            if let Some(path) = workspace_structure_change {
                 self.fetch_workspaces_queue
                     .request_op(format!("workspace vfs file change: {}", path.display()));
             }
