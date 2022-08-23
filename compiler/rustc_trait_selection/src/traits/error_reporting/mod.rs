@@ -1514,7 +1514,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
                 if let ObligationCauseCode::BindingObligation(..)
-                | ObligationCauseCode::ItemObligation(..) = code
+                | ObligationCauseCode::ItemObligation(..)
+                | ObligationCauseCode::ExprBindingObligation(..)
+                | ObligationCauseCode::ExprItemObligation(..) = code
                 {
                     self.note_obligation_cause_code(
                         &mut diag,
