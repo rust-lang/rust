@@ -1,6 +1,3 @@
-// #![deny(rustc::diagnostic_outside_of_impl)]
-// #![deny(rustc::untranslatable_diagnostic)]
-//
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own

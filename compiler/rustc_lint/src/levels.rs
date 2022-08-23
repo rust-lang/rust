@@ -1,6 +1,3 @@
-// #![deny(rustc::diagnostic_outside_of_impl)]
-// #![deny(rustc::untranslatable_diagnostic)]
-//
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc_ast as ast;

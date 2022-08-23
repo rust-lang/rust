@@ -36,8 +36,6 @@
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
-// #![deny(rustc::diagnostic_outside_of_impl)]
-// #![deny(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate rustc_middle;
