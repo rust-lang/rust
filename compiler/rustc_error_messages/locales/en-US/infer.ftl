@@ -1,4 +1,4 @@
-infer_opaque_hidden_type = 
+infer_opaque_hidden_type =
     opaque type's hidden type cannot be another opaque type from the same scope
     .label = one of the two opaque types used here has to be outside its defining scope
     .opaque_type = opaque type whose hidden type is being assigned
@@ -8,7 +8,7 @@ infer_type_annotations_needed = {$source_kind ->
     [closure] type annotations needed for the closure `{$source_name}`
     [normal] type annotations needed for `{$source_name}`
     *[other] type annotations needed
-} 
+}
     .label = type must be known at this point
 
 infer_label_bad = {$bad_kind ->
@@ -38,24 +38,24 @@ infer_source_kind_subdiag_let = {$kind ->
 }
 
 infer_source_kind_subdiag_generic_label =
-    cannot infer {$is_type -> 
+    cannot infer {$is_type ->
     [true] type
     *[false] the value
-    } of the {$is_type -> 
+    } of the {$is_type ->
     [true] type
     *[false] const
     } {$parent_exists ->
     [true] parameter `{$param_name}` declared on the {$parent_prefix} `{$parent_name}`
-    *[false] parameter {$param_name} 
+    *[false] parameter {$param_name}
     }
 
 infer_source_kind_subdiag_generic_suggestion =
-    consider specifying the generic {$arg_count -> 
+    consider specifying the generic {$arg_count ->
     [one] argument
     *[other] arguments
     }
 
-infer_source_kind_fully_qualified = 
+infer_source_kind_fully_qualified =
     try using a fully qualified path to specify the expected types
 
 infer_source_kind_closure_return =
@@ -105,4 +105,3 @@ infer_relate_param_bound = ...so that the type `{$name}` will meet its required 
 infer_relate_param_bound_2 = ...that is required by this bound
 infer_relate_region_param_bound = ...so that the declared lifetime parameter bounds are satisfied
 infer_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
-
