@@ -17,7 +17,7 @@ rustc_mir_dataflow_peek_must_be_place_or_ref_place =
     rustc_peek: argument expression must be either `place` or `&place`
 
 rustc_mir_dataflow_peek_must_be_not_temporary =
-    dataflow::sanity_check cannot feed a non-temp to rustc_peek.
+    dataflow::sanity_check cannot feed a non-temp to rustc_peek
 
 rustc_mir_dataflow_peek_bit_not_set =
     rustc_peek: bit not set
