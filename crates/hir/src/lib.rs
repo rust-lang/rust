@@ -3798,9 +3798,9 @@ impl Type {
 
                 // For non-phantom_data adts we check variants/fields as well as generic parameters
                 TyKind::Adt(adt_id, substitution)
-                    if !db.struct_datum(krate, *adt_id).flags.phantom_data =>
+                    if !db.adt_datum(krate, *adt_id).flags.phantom_data =>
                 {
-                    let adt_datum = &db.struct_datum(krate, *adt_id);
+                    let adt_datum = &db.adt_datum(krate, *adt_id);
                     let adt_datum_bound =
                         adt_datum.binders.clone().substitute(Interner, substitution);
                     adt_datum_bound

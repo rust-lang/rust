@@ -33,7 +33,7 @@ use crate::{
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
 pub(crate) type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
-pub(crate) type StructDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
+pub(crate) type AdtDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
 pub(crate) type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 
@@ -53,8 +53,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
-    fn adt_datum(&self, struct_id: AdtId) -> Arc<StructDatum> {
-        self.db.struct_datum(self.krate, struct_id)
+    fn adt_datum(&self, struct_id: AdtId) -> Arc<AdtDatum> {
+        self.db.adt_datum(self.krate, struct_id)
     }
     fn adt_repr(&self, _struct_id: AdtId) -> Arc<rust_ir::AdtRepr<Interner>> {
         // FIXME: keep track of these
@@ -712,13 +712,13 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
     }
 }
 
-pub(crate) fn struct_datum_query(
+pub(crate) fn adt_datum_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    struct_id: AdtId,
-) -> Arc<StructDatum> {
-    debug!("struct_datum {:?}", struct_id);
-    let chalk_ir::AdtId(adt_id) = struct_id;
+    adt_id: AdtId,
+) -> Arc<AdtDatum> {
+    debug!("adt_datum {:?}", adt_id);
+    let chalk_ir::AdtId(adt_id) = adt_id;
     let generic_params = generics(db.upcast(), adt_id.into());
     let upstream = adt_id.module(db.upcast()).krate() != krate;
     let where_clauses = {
@@ -737,10 +737,10 @@ pub(crate) fn struct_datum_query(
         fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
     };
     let struct_datum_bound = rust_ir::AdtDatumBound { variants: vec![variant], where_clauses };
-    let struct_datum = StructDatum {
+    let struct_datum = AdtDatum {
         // FIXME set ADT kind
         kind: rust_ir::AdtKind::Struct,
-        id: struct_id,
+        id: chalk_ir::AdtId(adt_id),
         binders: make_binders(db, &generic_params, struct_datum_bound),
         flags,
     };

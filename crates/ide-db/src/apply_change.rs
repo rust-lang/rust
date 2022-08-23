@@ -124,7 +124,7 @@ impl RootDatabase {
             hir::db::InternCoroutineQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
-            hir::db::StructDatumQuery
+            hir::db::AdtDatumQuery
             hir::db::ImplDatumQuery
             hir::db::FnDefDatumQuery
             hir::db::FnDefVarianceQuery

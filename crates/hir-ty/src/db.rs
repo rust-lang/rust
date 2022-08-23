@@ -220,12 +220,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         trait_id: chalk_db::TraitId,
     ) -> sync::Arc<chalk_db::TraitDatum>;
 
-    #[salsa::invoke(chalk_db::struct_datum_query)]
-    fn struct_datum(
+    #[salsa::invoke(chalk_db::adt_datum_query)]
+    fn adt_datum(
         &self,
         krate: CrateId,
         struct_id: chalk_db::AdtId,
-    ) -> sync::Arc<chalk_db::StructDatum>;
+    ) -> sync::Arc<chalk_db::AdtDatum>;
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
     fn impl_datum(
