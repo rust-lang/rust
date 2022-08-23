@@ -10,10 +10,6 @@ LL |     let _y = x.clone();
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
            candidate #1: `Clone`
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _y = x.i.clone();
-   |                ++
 
 error: aborting due to previous error
 
