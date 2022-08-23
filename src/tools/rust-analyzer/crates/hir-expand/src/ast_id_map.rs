@@ -15,7 +15,7 @@ use std::{
 use la_arena::{Arena, Idx};
 use profile::Count;
 use rustc_hash::FxHasher;
-use syntax::{ast, match_ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstNode> {
@@ -92,18 +92,12 @@ impl AstIdMap {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
         bdfs(node, |it| {
-            match_ast! {
-                match it {
-                    ast::Item(module_item) => {
-                        res.alloc(module_item.syntax());
-                        true
-                    },
-                    ast::BlockExpr(block) => {
-                        res.alloc(block.syntax());
-                        true
-                    },
-                    _ => false,
-                }
+            let kind = it.kind();
+            if ast::Item::can_cast(kind) || ast::BlockExpr::can_cast(kind) {
+                res.alloc(&it);
+                true
+            } else {
+                false
             }
         });
         res.map = hashbrown::HashMap::with_capacity_and_hasher(res.arena.len(), ());
@@ -123,6 +117,7 @@ impl AstIdMap {
         let raw = self.erased_ast_id(item.syntax());
         FileAstId { raw, _ty: PhantomData }
     }
+
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
         let hash = hash_ptr(&ptr);

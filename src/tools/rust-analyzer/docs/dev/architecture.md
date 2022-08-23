@@ -485,7 +485,7 @@ Mind the code--architecture gap: at the moment, we are using fewer feature flags
 ### Serialization
 
 In Rust, it is easy (often too easy) to add serialization to any type by adding `#[derive(Serialize)]`.
-This easiness is misleading -- serializable types impose significant backwards compatability constraints.
+This easiness is misleading -- serializable types impose significant backwards compatibility constraints.
 If a type is serializable, then it is a part of some IPC boundary.
 You often don't control the other side of this boundary, so changing serializable types is hard.
 

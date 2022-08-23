@@ -257,6 +257,7 @@ macro_rules! __known_path {
     (core::ops::RangeToInclusive) => {};
     (core::ops::RangeInclusive) => {};
     (core::future::Future) => {};
+    (core::future::IntoFuture) => {};
     (core::ops::Try) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")

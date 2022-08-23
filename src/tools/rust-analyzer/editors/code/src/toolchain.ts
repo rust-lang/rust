@@ -158,7 +158,7 @@ export const getPathForExecutable = memoizeAsync(
 
         try {
             // hmm, `os.homedir()` seems to be infallible
-            // it is not mentioned in docs and cannot be infered by the type signature...
+            // it is not mentioned in docs and cannot be inferred by the type signature...
             const standardPath = vscode.Uri.joinPath(
                 vscode.Uri.file(os.homedir()),
                 ".cargo",

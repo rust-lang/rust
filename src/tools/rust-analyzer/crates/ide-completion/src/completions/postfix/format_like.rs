@@ -173,7 +173,7 @@ impl FormatStrParser {
                     }
                 }
                 (State::Expr, ':') if chars.peek().copied() == Some(':') => {
-                    // path seperator
+                    // path separator
                     current_expr.push_str("::");
                     chars.next();
                 }
@@ -185,7 +185,7 @@ impl FormatStrParser {
                         current_expr = String::new();
                         self.state = State::FormatOpts;
                     } else {
-                        // We're inside of braced expression, assume that it's a struct field name/value delimeter.
+                        // We're inside of braced expression, assume that it's a struct field name/value delimiter.
                         current_expr.push(chr);
                     }
                 }

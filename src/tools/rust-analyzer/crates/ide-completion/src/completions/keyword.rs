@@ -75,16 +75,17 @@ impl Future for A {}
 fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
-                kw await expr.await
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn ref   &expr
-                sn refm  &mut expr
+                kw await                  expr.await
+                me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                sn box                    Box::new(expr)
+                sn call                   function(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn let                    let
+                sn letm                   let mut
+                sn match                  match expr {}
+                sn ref                    &expr
+                sn refm                   &mut expr
             "#]],
         );
 
@@ -98,18 +99,45 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                kw await expr.await
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn ref   &expr
-                sn refm  &mut expr
+                kw await                  expr.await
+                me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                sn box                    Box::new(expr)
+                sn call                   function(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn let                    let
+                sn letm                   let mut
+                sn match                  match expr {}
+                sn ref                    &expr
+                sn refm                   &mut expr
             "#]],
-        )
+        );
+    }
+
+    #[test]
+    fn test_completion_await_impls_into_future() {
+        check(
+            r#"
+//- minicore: future
+use core::future::*;
+struct A {}
+impl IntoFuture for A {}
+fn foo(a: A) { a.$0 }
+"#,
+            expect![[r#"
+                kw await                  expr.await
+                me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                sn box                    Box::new(expr)
+                sn call                   function(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn let                    let
+                sn letm                   let mut
+                sn match                  match expr {}
+                sn ref                    &expr
+                sn refm                   &mut expr
+            "#]],
+        );
     }
 
     #[test]

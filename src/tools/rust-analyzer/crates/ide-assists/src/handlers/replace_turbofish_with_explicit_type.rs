@@ -88,7 +88,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             },
         );
     } else if let Some(InferType(t)) = let_stmt.ty() {
-        // If there's a type inferrence underscore, we can offer to replace it with the type in
+        // If there's a type inference underscore, we can offer to replace it with the type in
         // the turbofish.
         // let x: _ = fn::<...>();
         let underscore_range = t.syntax().text_range();

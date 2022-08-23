@@ -467,7 +467,7 @@ fn foo() {
 fn completes_enum_variant_pat() {
     cov_mark::check!(enum_variant_pattern_path);
     check_edit(
-        "RecordVariant {…}",
+        "RecordVariant{}",
         r#"
 enum Enum {
     RecordVariant { field: u32 }

@@ -118,6 +118,10 @@ If you're changing this because you're using some tool wrapping
 Cargo, you might also want to change
 `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
 
+If there are multiple linked projects, this command is invoked for
+each of them, with the working directory being the project root
+(i.e., the folder containing the `Cargo.toml`).
+
 An example command would be:
 
 ```bash
@@ -317,6 +321,12 @@ Whether to show `Run` action. Only applies when
 +
 --
 Whether to show documentation on hover.
+--
+[[rust-analyzer.hover.documentation.keywords.enable]]rust-analyzer.hover.documentation.keywords.enable (default: `true`)::
++
+--
+Whether to show keyword hover popups. Only applies when
+`#rust-analyzer.hover.documentation.enable#` is set.
 --
 [[rust-analyzer.hover.links.enable]]rust-analyzer.hover.links.enable (default: `true`)::
 +
