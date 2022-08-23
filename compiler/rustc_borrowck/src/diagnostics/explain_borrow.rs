@@ -21,7 +21,7 @@ use crate::{
     WriteKind,
 };
 
-use super::{find_use, RegionName, UseSpans};
+use super::{find_use, region_errors, RegionName, UseSpans};
 
 #[derive(Debug)]
 pub(crate) enum BorrowExplanation<'tcx> {
@@ -268,6 +268,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     );
                 };
 
+                if let ConstraintCategory::TypeAnnotation = category {
+                    err.span_help(span, "you can remove unnecessary lifetime annotations here");
+                    region_errors::suggest_relax_self(tcx, err, body.source.def_id(), span);
+                }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}

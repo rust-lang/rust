@@ -11,6 +11,12 @@ LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
 ...
 LL | }
    | - `v` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-inherent-4.rs:15:13
+   |
+LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `v` does not live long enough
   --> $DIR/method-ufcs-inherent-4.rs:15:41
@@ -25,6 +31,12 @@ LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
 ...
 LL | }
    | - `v` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-inherent-4.rs:15:13
+   |
+LL |     let x = <A<'a>>::new::<&'a u32>(&v, &v);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

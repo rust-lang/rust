@@ -8,6 +8,12 @@ LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/transmute-const-promotion.rs:4:12
+   |
+LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
+   |            ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

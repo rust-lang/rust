@@ -8,6 +8,12 @@ LL |     let Foo::Bar::<'static>(_z) = foo;
    |         ----------------------- type annotation requires that `y` is borrowed for `'static`
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:9:9
+   |
+LL |     let Foo::Bar::<'static>(_z) = foo;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_enum_variant.rs:14:24
@@ -20,6 +26,12 @@ LL |         Foo::Bar::<'static>(_z) => {
 ...
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/pattern_substs_on_tuple_enum_variant.rs:17:9
+   |
+LL |         Foo::Bar::<'static>(_z) => {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

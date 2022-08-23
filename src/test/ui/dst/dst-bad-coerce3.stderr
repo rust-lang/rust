@@ -11,6 +11,12 @@ LL |     let f3: &'a Fat<[isize]> = f2;
 ...
 LL | }
    | - `f1` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dst-bad-coerce3.rs:17:13
+   |
+LL |     let f3: &'a Fat<[isize]> = f2;
+   |             ^^^^^^^^^^^^^^^^
 
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:21:25
@@ -25,6 +31,12 @@ LL |     let f3: &'a Fat<dyn Bar> = f2;
 ...
 LL | }
    | - `f1` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dst-bad-coerce3.rs:22:13
+   |
+LL |     let f3: &'a Fat<dyn Bar> = f2;
+   |             ^^^^^^^^^^^^^^^^
 
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:26:30
@@ -39,6 +51,12 @@ LL |     let f3: &'a ([isize],) = f2;
 ...
 LL | }
    | - `f1` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dst-bad-coerce3.rs:27:13
+   |
+LL |     let f3: &'a ([isize],) = f2;
+   |             ^^^^^^^^^^^^^^
 
 error[E0597]: `f1` does not live long enough
   --> $DIR/dst-bad-coerce3.rs:31:23
@@ -52,6 +70,12 @@ LL |     let f3: &'a (dyn Bar,) = f2;
    |             -------------- type annotation requires that `f1` is borrowed for `'a`
 LL | }
    | - `f1` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dst-bad-coerce3.rs:32:13
+   |
+LL |     let f3: &'a (dyn Bar,) = f2;
+   |             ^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

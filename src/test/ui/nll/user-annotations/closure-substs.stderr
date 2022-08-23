@@ -31,6 +31,9 @@ LL |     |x: &i32, b: fn(&'static i32)| {
    |         -     ^ type annotation requires that `'1` must outlive `'static`
    |         |
    |         let's call the lifetime of this reference `'1`
+LL |
+LL |         b(x);
+   |         ---- because of argument here
 
 error: aborting due to 4 previous errors
 

@@ -10,6 +10,12 @@ LL |     let s_inner: &'a S = &*v.0;
 LL |     &s_inner.0
 LL | }
    | - here, drop of `v` needs exclusive access to `*v.0`, because the type `VecWrapper<'_>` implements the `Drop` trait
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/issue-31567.rs:10:18
+   |
+LL |     let s_inner: &'a S = &*v.0;
+   |                  ^^^^^
 
 error: aborting due to previous error
 

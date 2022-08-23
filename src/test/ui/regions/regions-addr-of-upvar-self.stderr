@@ -29,6 +29,12 @@ LL |             let p: &'static mut usize = &mut self.food;
 ...
 LL |     }
    |      - `self` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/regions-addr-of-upvar-self.rs:8:20
+   |
+LL |             let p: &'static mut usize = &mut self.food;
+   |                    ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

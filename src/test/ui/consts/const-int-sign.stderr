@@ -8,6 +8,12 @@ LL |     let x: &'static bool = &(5_i32.is_negative());
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-int-sign.rs:2:12
+   |
+LL |     let x: &'static bool = &(5_i32.is_negative());
+   |            ^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:4:29
@@ -19,6 +25,12 @@ LL |     let y: &'static bool = &(5_i32.is_positive());
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-int-sign.rs:4:12
+   |
+LL |     let y: &'static bool = &(5_i32.is_positive());
+   |            ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

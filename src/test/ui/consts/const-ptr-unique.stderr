@@ -8,6 +8,12 @@ LL |     let x: &'static *mut u32 = &(unique.as_ptr());
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-ptr-unique.rs:8:12
+   |
+LL |     let x: &'static *mut u32 = &(unique.as_ptr());
+   |            ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

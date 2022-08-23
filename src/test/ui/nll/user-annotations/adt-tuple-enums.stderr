@@ -7,6 +7,12 @@ LL |     SomeEnum::SomeVariant::<&'static u32>(&c);
    |     type annotation requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-enums.rs:28:5
+   |
+LL |     SomeEnum::SomeVariant::<&'static u32>(&c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-enums.rs:33:38
@@ -20,6 +26,12 @@ LL |     SomeEnum::SomeVariant::<&'a u32>(&c);
    |     type annotation requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-enums.rs:33:5
+   |
+LL |     SomeEnum::SomeVariant::<&'a u32>(&c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-enums.rs:43:42
@@ -33,6 +45,12 @@ LL |         SomeEnum::SomeVariant::<&'a u32>(&c);
    |         type annotation requires that `c` is borrowed for `'a`
 LL |     };
    |     - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-enums.rs:43:9
+   |
+LL |         SomeEnum::SomeVariant::<&'a u32>(&c);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

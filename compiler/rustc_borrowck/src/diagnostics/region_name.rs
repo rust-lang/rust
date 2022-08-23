@@ -867,7 +867,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         };
 
         let tcx = self.infcx.tcx;
-        let body_parent_did = tcx.opt_parent(self.mir_def_id().to_def_id())?;
+        let typeck_root_did = tcx.typeck_root_def_id(self.mir_def_id().to_def_id());
+        let body_parent_did = tcx.opt_parent(typeck_root_did)?;
         if tcx.parent(region.def_id) != body_parent_did
             || tcx.def_kind(body_parent_did) != DefKind::Impl
         {

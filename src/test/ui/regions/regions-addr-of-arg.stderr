@@ -7,6 +7,12 @@ LL |     let _p: &'static isize = &a;
    |             type annotation requires that `a` is borrowed for `'static`
 LL | }
    |  - `a` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/regions-addr-of-arg.rs:5:13
+   |
+LL |     let _p: &'static isize = &a;
+   |             ^^^^^^^^^^^^^^
 
 error[E0515]: cannot return reference to function parameter `a`
   --> $DIR/regions-addr-of-arg.rs:13:5

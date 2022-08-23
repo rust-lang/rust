@@ -2067,6 +2067,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region_origin: NllRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> BlameConstraint<'tcx> {
+        self.best_blame_constraint_filtered(
+            body,
+            from_region,
+            from_region_origin,
+            target_test,
+            |_| true,
+        )
+    }
+
+    /// Same as `best_blame_constraint` but this can exclude some constraints from being reported
+    /// as the "best" according to `filter`.
+    pub(crate) fn best_blame_constraint_filtered(
+        &self,
+        body: &Body<'tcx>,
+        from_region: RegionVid,
+        from_region_origin: NllRegionVariableOrigin,
+        target_test: impl Fn(RegionVid) -> bool,
+        filter: impl Fn(&BlameConstraint<'tcx>) -> bool,
+    ) -> BlameConstraint<'tcx> {
         debug!(
             "best_blame_constraint(from_region={:?}, from_region_origin={:?})",
             from_region, from_region_origin
@@ -2126,6 +2145,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         variance_info: constraint.variance_info,
                     }
                 }
+            })
+            // Downgrade the category of filtered constraints to be ignored later.
+            .map(|mut blame| {
+                if !filter(&blame) {
+                    blame.category = ConstraintCategory::Internal;
+                }
+                blame
             })
             .collect();
         debug!("best_blame_constraint: categorized_path={:#?}", categorized_path);

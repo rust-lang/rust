@@ -15,6 +15,12 @@ LL |     let _: &'static u32 = &foo();
    |            type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dont_promote_unstable_const_fn.rs:17:12
+   |
+LL |     let _: &'static u32 = &foo();
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:21:28
@@ -26,6 +32,12 @@ LL |     let _: &'static u32 = &meh();
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dont_promote_unstable_const_fn.rs:21:12
+   |
+LL |     let _: &'static u32 = &meh();
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:22:26
@@ -37,6 +49,12 @@ LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/dont_promote_unstable_const_fn.rs:22:12
+   |
+LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
+   |            ^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

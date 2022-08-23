@@ -1,0 +1,119 @@
+error: lifetime may not live long enough
+  --> $DIR/self-diagnostics.rs:11:13
+   |
+LL | impl S<'_> {
+   |        -- lifetime `'2` appears in the `impl`'s self type
+LL |     const CLOSURE_ARGS: () = {
+LL |         |s: &str| {
+   |             - let's call the lifetime of this reference `'1`
+LL |             Self(s);
+   |             ^^^^ type annotation requires that `'1` must outlive `'2`
+   |
+   = help: consider replacing `Self` with `S`
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/self-diagnostics.rs:20:18
+   |
+LL | impl S<'_> {
+   |        -- lifetime `'1` appears in the `impl`'s self type
+...
+LL |             Self(s);
+   |             ---- type annotation requires that borrow lasts for `'1`
+LL |         };
+LL |         closure(&String::new());
+   |                  ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                  |
+   |                  creates a temporary which is freed while still in use
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/self-diagnostics.rs:18:13
+   |
+LL |             Self(s);
+   |             ^^^^
+   = help: consider replacing `Self` with `S`
+
+error[E0621]: explicit lifetime required in the type of `s`
+  --> $DIR/self-diagnostics.rs:31:13
+   |
+LL |     fn test3(s: &str) {
+   |                 ---- help: add explicit lifetime `'x` to the type of `s`: `&'x str`
+LL |         let _ = || {
+LL |             Self::static_method(s);
+   |             ^^^^^^^^^^^^^^^^^^^ lifetime `'x` required
+
+error: lifetime may not live long enough
+  --> $DIR/self-diagnostics.rs:38:13
+   |
+LL | impl<'x> S<'x> {
+   |      -- lifetime `'x` defined here
+...
+LL |     fn test_named_lt<'y>(s: &'y str) {
+   |                      -- lifetime `'y` defined here
+LL |         let _ = || {
+LL |             Self::static_method(s);
+   |             ^^^^^^^^^^^^^^^^^^^ type annotation requires that `'y` must outlive `'x`
+   |
+   = help: consider replacing `Self` with `S`
+   = help: consider adding the following bound: `'y: 'x`
+
+error[E0597]: `s` does not live long enough
+  --> $DIR/self-diagnostics.rs:46:9
+   |
+LL | impl<'x> S<'x> {
+   |      -- lifetime `'x` defined here
+LL |     fn test7(s: String) {
+LL |         s.split('/')
+   |         ^^^^^^^^^^^^ borrowed value does not live long enough
+LL |
+LL |             .map(|s| Self(s))
+   |                      ---- type annotation requires that `s` is borrowed for `'x`
+LL |             .collect::<Vec<_>>();
+LL |     }
+   |     - `s` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/self-diagnostics.rs:48:22
+   |
+LL |             .map(|s| Self(s))
+   |                      ^^^^
+   = help: consider replacing `Self` with `S`
+
+error[E0597]: `s` does not live long enough
+  --> $DIR/self-diagnostics.rs:55:9
+   |
+LL | impl<'x> S<'x> {
+   |      -- lifetime `'x` defined here
+...
+LL |         s.split('/')
+   |         ^^^^^^^^^^^^ borrowed value does not live long enough
+...
+LL |             .map(|_: Self| {})
+   |                   - type annotation requires that `s` is borrowed for `'x`
+LL |             .collect::<Vec<_>>();
+LL |     }
+   |     - `s` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/self-diagnostics.rs:58:19
+   |
+LL |             .map(|_: Self| {})
+   |                   ^
+
+error: lifetime may not live long enough
+  --> $DIR/self-diagnostics.rs:68:14
+   |
+LL | impl<'x> S<'x> {
+   |      -- lifetime `'x` defined here
+...
+LL |     fn method_call<'c>(self, s: &'c str) {
+   |                    -- lifetime `'c` defined here
+LL |         self.eq::<Self>(S(s)); // remove Self
+   |              ^^^^^^^^^^ type annotation requires that `'c` must outlive `'x`
+   |
+   = help: consider replacing `Self` with `S`
+   = help: consider adding the following bound: `'c: 'x`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0597, E0621, E0716.
+For more information about an error, try `rustc --explain E0597`.

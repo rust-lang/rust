@@ -7,6 +7,12 @@ LL |         &std::intrinsics::size_of::<i32>();
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-eval-intrinsic-promotion.rs:4:12
+   |
+LL |     let x: &'static usize =
+   |            ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

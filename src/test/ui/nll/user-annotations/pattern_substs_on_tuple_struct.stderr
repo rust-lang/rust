@@ -8,6 +8,12 @@ LL |     let Foo::<'static>(_z) = foo;
    |         ------------------ type annotation requires that `y` is borrowed for `'static`
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/pattern_substs_on_tuple_struct.rs:7:9
+   |
+LL |     let Foo::<'static>(_z) = foo;
+   |         ^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/pattern_substs_on_tuple_struct.rs:12:19
@@ -20,6 +26,12 @@ LL |         Foo::<'static>(_z) => {
 ...
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/pattern_substs_on_tuple_struct.rs:15:9
+   |
+LL |         Foo::<'static>(_z) => {
+   |         ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

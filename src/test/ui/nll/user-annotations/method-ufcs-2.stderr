@@ -7,6 +7,12 @@ LL |     x(&a, b, c);
    |       ^^ borrowed value does not live long enough
 LL | }
    | - `a` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-2.rs:29:13
+   |
+LL |     let x = <&'static u32 as Bazoom<_>>::method;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `b` does not live long enough
   --> $DIR/method-ufcs-2.rs:37:39
@@ -20,6 +26,12 @@ LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c);
    |     type annotation requires that `b` is borrowed for `'a`
 LL | }
    | - `b` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-2.rs:37:5
+   |
+LL |     <_ as Bazoom<&'a u32>>::method(a, &b, c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `b` does not live long enough
   --> $DIR/method-ufcs-2.rs:51:44
@@ -37,6 +49,12 @@ LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c);
 LL |     };
 LL | }
    | - `b` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-2.rs:51:9
+   |
+LL |         <_ as Bazoom<&'a u32>>::method(a, &b, c);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

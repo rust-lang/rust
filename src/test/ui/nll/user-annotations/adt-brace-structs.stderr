@@ -7,6 +7,12 @@ LL |     SomeStruct::<&'static u32> { t: &c };
    |     type annotation requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-brace-structs.rs:23:5
+   |
+LL |     SomeStruct::<&'static u32> { t: &c };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-brace-structs.rs:28:32
@@ -20,6 +26,12 @@ LL |     SomeStruct::<&'a u32> { t: &c };
    |     type annotation requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-brace-structs.rs:28:5
+   |
+LL |     SomeStruct::<&'a u32> { t: &c };
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-brace-structs.rs:38:36
@@ -33,6 +45,12 @@ LL |         SomeStruct::<&'a u32> { t: &c };
    |         type annotation requires that `c` is borrowed for `'a`
 LL |     };
    |     - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-brace-structs.rs:38:9
+   |
+LL |         SomeStruct::<&'a u32> { t: &c };
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

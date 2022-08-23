@@ -8,6 +8,12 @@ LL |     let x: &'static _ = &X;
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/interior-mutability.rs:40:12
+   |
+LL |     let x: &'static _ = &X;
+   |            ^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/interior-mutability.rs:41:26
@@ -19,6 +25,12 @@ LL |     let y: &'static _ = &Y;
 LL |     let z: &'static _ = &Z;
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/interior-mutability.rs:41:12
+   |
+LL |     let y: &'static _ = &Y;
+   |            ^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/interior-mutability.rs:42:26
@@ -29,6 +41,12 @@ LL |     let z: &'static _ = &Z;
    |            type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/interior-mutability.rs:42:12
+   |
+LL |     let z: &'static _ = &Z;
+   |            ^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

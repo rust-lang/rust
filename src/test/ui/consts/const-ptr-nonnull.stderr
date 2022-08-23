@@ -8,6 +8,12 @@ LL |     let x: &'static NonNull<u32> = &(NonNull::dangling());
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-ptr-nonnull.rs:4:12
+   |
+LL |     let x: &'static NonNull<u32> = &(NonNull::dangling());
+   |            ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-ptr-nonnull.rs:9:37
@@ -19,6 +25,12 @@ LL |     let x: &'static NonNull<u32> = &(non_null.cast());
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-ptr-nonnull.rs:9:12
+   |
+LL |     let x: &'static NonNull<u32> = &(non_null.cast());
+   |            ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -8,6 +8,12 @@ LL |         SomeEnum::SomeOtherVariant::<Cell<&'static u32>>,
 LL |     );
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-nullary-enums.rs:34:9
+   |
+LL |         SomeEnum::SomeOtherVariant::<Cell<&'static u32>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:41:41
@@ -22,6 +28,12 @@ LL |         SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
 LL |     );
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-nullary-enums.rs:42:9
+   |
+LL |         SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-nullary-enums.rs:54:45
@@ -35,6 +47,12 @@ LL |             SomeEnum::SomeVariant(Cell::new(&c)),
    |                                             ^^ borrowed value does not live long enough
 LL |             SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
    |             ------------------------------------------- type annotation requires that `c` is borrowed for `'a`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-nullary-enums.rs:55:13
+   |
+LL |             SomeEnum::SomeOtherVariant::<Cell<&'a u32>>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

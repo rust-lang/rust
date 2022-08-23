@@ -1,0 +1,45 @@
+error[E0499]: cannot borrow `*byte_list` as mutable more than once at a time
+  --> $DIR/self-issue-100725.rs:15:9
+   |
+LL | impl<'a> Bigger<'a> {
+   |      -- lifetime `'a` defined here
+LL |     pub fn get_addr(byte_list: &'a mut Vec<u8>) -> &mut u8 {
+LL |         byte_list.iter_mut().find_map(|item| {
+   |         -------------------- first mutable borrow occurs here
+LL |             Self::other(item); // replace with `Bigger`
+   |             ----------- type annotation requires that `*byte_list` is borrowed for `'a`
+...
+LL |         byte_list.push(0);
+   |         ^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/self-issue-100725.rs:11:13
+   |
+LL |             Self::other(item); // replace with `Bigger`
+   |             ^^^^^^^^^^^
+   = help: consider replacing `Self` with `Bigger`
+
+error[E0499]: cannot borrow `*byte_list` as mutable more than once at a time
+  --> $DIR/self-issue-100725.rs:17:9
+   |
+LL | impl<'a> Bigger<'a> {
+   |      -- lifetime `'a` defined here
+LL |     pub fn get_addr(byte_list: &'a mut Vec<u8>) -> &mut u8 {
+LL |         byte_list.iter_mut().find_map(|item| {
+   |         -------------------- first mutable borrow occurs here
+LL |             Self::other(item); // replace with `Bigger`
+   |             ----------- type annotation requires that `*byte_list` is borrowed for `'a`
+...
+LL |         byte_list.last_mut().unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/self-issue-100725.rs:11:13
+   |
+LL |             Self::other(item); // replace with `Bigger`
+   |             ^^^^^^^^^^^
+   = help: consider replacing `Self` with `Bigger`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

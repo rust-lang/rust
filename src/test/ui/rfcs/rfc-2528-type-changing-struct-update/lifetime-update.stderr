@@ -9,6 +9,12 @@ LL |     let m2: Machine<'static, State1> = Machine {
 ...
 LL | }
    | - `s` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/lifetime-update.rs:38:13
+   |
+LL |     let m2: Machine<'static, State1> = Machine {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

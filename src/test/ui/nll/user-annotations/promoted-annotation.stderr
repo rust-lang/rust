@@ -11,6 +11,12 @@ LL |     f(&x);
 LL |
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promoted-annotation.rs:5:14
+   |
+LL |     let f = &drop::<&'a i32>;
+   |              ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

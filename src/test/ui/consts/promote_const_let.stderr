@@ -8,6 +8,12 @@ LL |         &y
    |         ^^ borrowed value does not live long enough
 LL |     };
    |     - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promote_const_let.rs:2:12
+   |
+LL |     let x: &'static u32 = {
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote_const_let.rs:6:28
@@ -22,6 +28,12 @@ LL | |     };
    | |_____^ creates a temporary which is freed while still in use
 LL |   }
    |   - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promote_const_let.rs:6:12
+   |
+LL |     let x: &'static u32 = &{
+   |            ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

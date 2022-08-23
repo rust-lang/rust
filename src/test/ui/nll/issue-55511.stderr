@@ -9,6 +9,12 @@ LL |         <() as Foo<'static>>::C => { }
 ...
 LL | }
    | - `a` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/issue-55511.rs:16:9
+   |
+LL |         <() as Foo<'static>>::C => { }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

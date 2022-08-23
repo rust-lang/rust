@@ -8,6 +8,12 @@ LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3));
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-int-overflowing.rs:2:12
+   |
+LL |     let x: &'static (i32, bool) = &(5_i32.overflowing_add(3));
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-overflowing.rs:4:36
@@ -19,6 +25,12 @@ LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3));
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-int-overflowing.rs:4:12
+   |
+LL |     let y: &'static (i32, bool) = &(5_i32.overflowing_sub(3));
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-overflowing.rs:6:36
@@ -30,6 +42,12 @@ LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3));
 LL |
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-int-overflowing.rs:6:12
+   |
+LL |     let z: &'static (i32, bool) = &(5_i32.overflowing_mul(3));
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

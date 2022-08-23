@@ -11,6 +11,12 @@ LL |     equate(InvariantRef::new(&y), const { InvariantRef::<'a>::NEW });
 LL |
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/const-expr-lifetime-err.rs:23:43
+   |
+LL |     equate(InvariantRef::new(&y), const { InvariantRef::<'a>::NEW });
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

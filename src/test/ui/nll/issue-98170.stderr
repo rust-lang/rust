@@ -7,6 +7,8 @@ LL |     pub fn new<'a>(field: &'a [u32]) -> MyStruct<'a> {
    |                -- lifetime `'a` defined here
 LL |         Self { field }
    |         ^^^^ type annotation requires that `'a` must outlive `'1`
+   |
+   = help: consider replacing `Self` with `MyStruct`
 
 error: lifetime may not live long enough
   --> $DIR/issue-98170.rs:7:9
@@ -28,6 +30,8 @@ LL | impl<'a> Trait<'a> for MyStruct<'_> {
 LL |     fn new(field: &'a [u32]) -> MyStruct<'a> {
 LL |         Self { field }
    |         ^^^^ type annotation requires that `'a` must outlive `'1`
+   |
+   = help: consider replacing `Self` with `MyStruct`
 
 error: lifetime may not live long enough
   --> $DIR/issue-98170.rs:19:9

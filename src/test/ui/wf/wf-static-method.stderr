@@ -22,6 +22,7 @@ LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
 LL |         let me = Self::make_me();
    |                  ^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
+   = help: consider replacing `Self` with `IndirectEvil`
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough

@@ -8,6 +8,12 @@ LL |     let x: &'static u8 = &(bar() + 1);
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promoted_const_fn_fail_deny_const_err.rs:20:12
+   |
+LL |     let x: &'static u8 = &(bar() + 1);
+   |            ^^^^^^^^^^^
 
 error: aborting due to previous error
 

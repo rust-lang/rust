@@ -8,6 +8,13 @@ LL |         Self(&x);
 LL |
 LL |     }
    |     - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/issue-61882-2.rs:6:9
+   |
+LL |         Self(&x);
+   |         ^^^^
+   = help: consider replacing `Self` with `A<&u8>`
 
 error: aborting due to previous error
 

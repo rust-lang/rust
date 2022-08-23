@@ -7,6 +7,12 @@ LL |     let b: <() as Foo>::Out = &a;
    |            type annotation requires that `a` is borrowed for `'static`
 LL | }
    | - `a` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/normalization.rs:9:12
+   |
+LL |     let b: <() as Foo>::Out = &a;
+   |            ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

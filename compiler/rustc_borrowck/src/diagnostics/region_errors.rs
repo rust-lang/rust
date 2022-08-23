@@ -2,6 +2,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, Item, ItemKind, Node};
@@ -18,7 +19,7 @@ use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
-use rustc_middle::ty::{self, RegionVid, Ty};
+use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
@@ -715,10 +716,51 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
+        if let ConstraintCategory::TypeAnnotation = category {
+            self.handle_annotation_error(errci, &mut diag);
+        }
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
 
         diag
+    }
+
+    /// Adds a secondary label to lifetime annotation errors:
+    /// ```
+    /// fn test<'a, 'b>(s: &'a str) {
+    ///     let closure = |_: &'b str| {}; // Primary label: type annotation requires 'a: 'b.
+    ///     closure(s); // Secondary label: because of this call.
+    /// }
+    /// ```
+    ///
+    /// Also Suggests replacing `Self`. See `suggest_relax_self`.
+    fn handle_annotation_error(&self, errci: &ErrorConstraintInfo<'tcx>, err: &mut Diagnostic) {
+        let ErrorConstraintInfo { fr, outlived_fr, span, category: _, .. } = errci.clone();
+
+        // Try to report the second most relevant constraint to provide more context.
+        let constraint2 = self.regioncx.best_blame_constraint_filtered(
+            &self.body,
+            fr,
+            NllRegionVariableOrigin::FreeRegion,
+            |r| self.regioncx.provides_universal_region(r, fr, outlived_fr),
+            |constraint| match constraint.category {
+                ConstraintCategory::TypeAnnotation => false,
+                _ => true,
+            },
+        );
+        debug!("suggest_relax_annotation: constraint2={:?}", constraint2);
+        let map = self.infcx.tcx.sess.source_map();
+        let same_line = map
+            .lookup_line(constraint2.cause.span.hi())
+            .and_then(|line1| map.lookup_line(span.hi()).map(|line2| line1.line == line2.line))
+            .unwrap_or(false);
+        let desc = constraint2.category.description();
+        if !desc.is_empty() && !same_line {
+            err.span_label(constraint2.cause.span, format!("because of {desc}here"));
+        }
+
+        let body_did = self.body.source.def_id();
+        suggest_relax_self(self.infcx.tcx, err, body_did, span);
     }
 
     /// Adds a suggestion to errors where an `impl Trait` is returned.
@@ -901,5 +943,48 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
+    }
+}
+
+/// Use of `Self` can impose unnecessary region constraints:
+/// ```
+/// struct MyStruct<'a>(&'a str);
+/// impl<'a> MyStruct<'a> {
+///     fn test<'x>(s: &'x str) {
+///         let _ = Self(s); // requires 'x: 'a.
+///     }
+/// }
+/// ```
+/// Here we suggest replacing `Self` with `MyStruct<'_>`.
+/// Assumes that `span` points to hir::Path that may name `Self`.
+pub(crate) fn suggest_relax_self<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    err: &mut Diagnostic,
+    body_did: DefId,
+    span: Span,
+) {
+    use rustc_lexer as lex;
+    fn tokenize(mut input: &str) -> impl Iterator<Item = (lex::TokenKind, &str)> {
+        std::iter::from_fn(move || {
+            if input.is_empty() {
+                return None;
+            }
+            let token = lex::first_token(input);
+            let token_str = &input[..(token.len as usize)];
+            input = &input[(token.len as usize)..];
+            Some((token.kind, token_str))
+        })
+    }
+
+    let snippet = tcx.sess.source_map().span_to_snippet(span).unwrap_or_default();
+    let has_self = tokenize(&snippet)
+        .find(|(tok, s)| *tok == lex::TokenKind::Ident && *s == "Self")
+        .and_then(|_| tcx.opt_parent(tcx.typeck_root_def_id(body_did)))
+        .filter(|parent_did| tcx.def_kind(parent_did) == DefKind::Impl);
+
+    if let Some(impl_did) = has_self {
+        let suggested_ty =
+            tcx.fold_regions(tcx.type_of(impl_did), |_, _| tcx.mk_region(ty::ReErased));
+        err.help(format!("consider replacing `Self` with `{suggested_ty}`"));
     }
 }

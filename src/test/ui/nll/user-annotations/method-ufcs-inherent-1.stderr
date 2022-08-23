@@ -11,6 +11,12 @@ LL |     let x = A::<'a>::new(&v, 22);
 LL |
 LL | }
    | - `v` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-ufcs-inherent-1.rs:14:13
+   |
+LL |     let x = A::<'a>::new(&v, 22);
+   |             ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

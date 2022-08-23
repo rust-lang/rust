@@ -10,6 +10,12 @@ LL | |     };
    | |_____^ creates a temporary which is freed while still in use
 LL |   }
    |   - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/union_promotion.rs:10:12
+   |
+LL |     let x: &'static bool = &unsafe {
+   |            ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

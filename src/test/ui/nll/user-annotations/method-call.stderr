@@ -7,6 +7,12 @@ LL |     a.method::<&'static u32>(b,  &c);
    |       type annotation requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-call.rs:36:7
+   |
+LL |     a.method::<&'static u32>(b,  &c);
+   |       ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/method-call.rs:43:29
@@ -20,6 +26,12 @@ LL |     a.method::<&'a u32>(b,  &c);
    |       type annotation requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-call.rs:43:7
+   |
+LL |     a.method::<&'a u32>(b,  &c);
+   |       ^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/method-call.rs:57:33
@@ -34,6 +46,12 @@ LL |         a.method::<&'a u32>(b,  &c);
    |           -----------------     ^^ borrowed value does not live long enough
    |           |
    |           type annotation requires that `c` is borrowed for `'a`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/method-call.rs:57:11
+   |
+LL |         a.method::<&'a u32>(b,  &c);
+   |           ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

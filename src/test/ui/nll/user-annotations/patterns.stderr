@@ -7,6 +7,12 @@ LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:5:12
+   |
+LL |     let y: &'static u32;
+   |            ^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:14:9
@@ -17,6 +23,12 @@ LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:13:17
+   |
+LL |     let (y, z): (&'static u32, &'static u32);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:20:13
@@ -28,6 +40,12 @@ LL |     let ref z: &'static u32 = y;
 LL |     **z
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:21:16
+   |
+LL |     let ref z: &'static u32 = y;
+   |                ^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:39:9
@@ -38,6 +56,12 @@ LL |     y = &x;
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:38:30
+   |
+LL |     let Single { value: y }: Single<&'static u32>;
+   |                              ^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:51:10
@@ -59,6 +83,12 @@ LL |     let y: &'static u32 = &x;
    |            type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:56:12
+   |
+LL |     let y: &'static u32 = &x;
+   |            ^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:61:27
@@ -70,6 +100,12 @@ LL |     let _: &'static u32 = &x;
 ...
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:61:12
+   |
+LL |     let _: &'static u32 = &x;
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:63:41
@@ -79,6 +115,12 @@ LL |     let _: Vec<&'static String> = vec![&String::new()];
    |            |                            |
    |            |                            creates a temporary which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:63:12
+   |
+LL |     let _: Vec<&'static String> = vec![&String::new()];
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:66:52
@@ -88,6 +130,12 @@ LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                 |                                  |
    |                 |                                  creates a temporary which is freed while still in use
    |                 type annotation requires that borrow lasts for `'static`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:66:17
+   |
+LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:69:53
@@ -97,6 +145,12 @@ LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
    |                  |                                  |
    |                  |                                  creates a temporary which is freed while still in use
    |                  type annotation requires that borrow lasts for `'static`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:69:18
+   |
+LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:75:40
@@ -107,6 +161,12 @@ LL |     let (_, _): (&'static u32, u32) = (&x, 44);
    |                 type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:75:17
+   |
+LL |     let (_, _): (&'static u32, u32) = (&x, 44);
+   |                 ^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:80:40
@@ -117,6 +177,12 @@ LL |     let (y, _): (&'static u32, u32) = (&x, 44);
    |                 type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:80:17
+   |
+LL |     let (y, _): (&'static u32, u32) = (&x, 44);
+   |                 ^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:85:69
@@ -127,6 +193,12 @@ LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x };
    |                              type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:85:30
+   |
+LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x };
+   |                              ^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:90:69
@@ -137,6 +209,12 @@ LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x };
    |                              type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:90:30
+   |
+LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x };
+   |                              ^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:98:17
@@ -148,6 +226,12 @@ LL |         value1: &x,
 ...
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/patterns.rs:97:42
+   |
+LL |     let Double { value1: _, value2: _ }: Double<&'static u32> = Double {
+   |                                          ^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime may not live long enough
   --> $DIR/patterns.rs:111:5

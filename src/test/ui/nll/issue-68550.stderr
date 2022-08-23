@@ -10,6 +10,12 @@ LL |     let _: &'a A = &x;
    |            type annotation requires that `x` is borrowed for `'a`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/issue-68550.rs:12:12
+   |
+LL |     let _: &'a A = &x;
+   |            ^^^^^
 
 error: aborting due to previous error
 

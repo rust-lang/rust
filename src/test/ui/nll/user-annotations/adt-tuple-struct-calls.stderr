@@ -7,6 +7,12 @@ LL |     f(&c);
    |       ^^ borrowed value does not live long enough
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-struct-calls.rs:26:13
+   |
+LL |     let f = SomeStruct::<&'static u32>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-struct-calls.rs:33:7
@@ -20,6 +26,12 @@ LL |     f(&c);
    |       ^^ borrowed value does not live long enough
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-struct-calls.rs:32:13
+   |
+LL |     let f = SomeStruct::<&'a u32>;
+   |             ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-struct-calls.rs:45:11
@@ -33,6 +45,12 @@ LL |         let f = SomeStruct::<&'a u32>;
    |                 --------------------- type annotation requires that `c` is borrowed for `'a`
 LL |         f(&c);
    |           ^^ borrowed value does not live long enough
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/adt-tuple-struct-calls.rs:44:17
+   |
+LL |         let f = SomeStruct::<&'a u32>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-struct-calls.rs:53:11

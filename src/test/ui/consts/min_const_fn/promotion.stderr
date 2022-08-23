@@ -8,6 +8,12 @@ LL |     let x: &'static () = &foo1();
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:11:12
+   |
+LL |     let x: &'static () = &foo1();
+   |            ^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:12:28
@@ -19,6 +25,12 @@ LL |     let y: &'static i32 = &foo2(42);
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:12:12
+   |
+LL |     let y: &'static i32 = &foo2(42);
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:13:28
@@ -30,6 +42,12 @@ LL |     let z: &'static i32 = &foo3();
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:13:12
+   |
+LL |     let z: &'static i32 = &foo3();
+   |            ^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:14:34
@@ -41,6 +59,12 @@ LL |     let a: &'static Cell<i32> = &foo4();
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:14:12
+   |
+LL |     let a: &'static Cell<i32> = &foo4();
+   |            ^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:15:42
@@ -52,6 +76,12 @@ LL |     let a: &'static Option<Cell<i32>> = &foo5();
 LL |     let a: &'static Option<Cell<i32>> = &foo6();
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:15:12
+   |
+LL |     let a: &'static Option<Cell<i32>> = &foo5();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:16:42
@@ -62,6 +92,12 @@ LL |     let a: &'static Option<Cell<i32>> = &foo6();
    |            type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/promotion.rs:16:12
+   |
+LL |     let a: &'static Option<Cell<i32>> = &foo6();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

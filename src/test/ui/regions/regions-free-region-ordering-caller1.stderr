@@ -11,6 +11,12 @@ LL |     let z: &'a & usize = &(&y);
 ...
 LL | }
    | - temporary value is freed at the end of this statement
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:12
+   |
+LL |     let z: &'a & usize = &(&y);
+   |            ^^^^^^^^^^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/regions-free-region-ordering-caller1.rs:9:27
@@ -25,6 +31,12 @@ LL |     let z: &'a & usize = &(&y);
 ...
 LL | }
    | - `y` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/regions-free-region-ordering-caller1.rs:9:12
+   |
+LL |     let z: &'a & usize = &(&y);
+   |            ^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

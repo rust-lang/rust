@@ -8,6 +8,12 @@ LL |     let y: &u32 = &x: &'static u32;
    |                   type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/type_ascription_static_lifetime.rs:6:19
+   |
+LL |     let y: &u32 = &x: &'static u32;
+   |                   ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

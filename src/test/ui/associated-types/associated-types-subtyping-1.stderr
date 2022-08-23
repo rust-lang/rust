@@ -8,6 +8,9 @@ LL | fn method2<'a,'b,T>(x: &'a T, y: &'b T)
 ...
 LL |     let a: <T as Trait<'a>>::Type = make_any();
    |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+...
+LL |     let _c: <T as Trait<'b>>::Type = a;
+   |                                      - because of assignment here
    |
    = help: consider adding the following bound: `'b: 'a`
 

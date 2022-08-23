@@ -7,6 +7,12 @@ LL |     some_fn::<&'static u32>(&c);
    |     type annotation requires that `c` is borrowed for `'static`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/fns.rs:23:5
+   |
+LL |     some_fn::<&'static u32>(&c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/fns.rs:28:24
@@ -20,6 +26,12 @@ LL |     some_fn::<&'a u32>(&c);
    |     type annotation requires that `c` is borrowed for `'a`
 LL | }
    | - `c` dropped here while still borrowed
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/fns.rs:28:5
+   |
+LL |     some_fn::<&'a u32>(&c);
+   |     ^^^^^^^^^^^^^^^^^^
 
 error[E0597]: `c` does not live long enough
   --> $DIR/fns.rs:38:28
@@ -33,6 +45,12 @@ LL |         some_fn::<&'a u32>(&c);
    |         ------------------ ^^ borrowed value does not live long enough
    |         |
    |         type annotation requires that `c` is borrowed for `'a`
+   |
+help: you can remove unnecessary lifetime annotations here
+  --> $DIR/fns.rs:38:9
+   |
+LL |         some_fn::<&'a u32>(&c);
+   |         ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
