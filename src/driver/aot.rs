@@ -373,10 +373,10 @@ pub(crate) fn run_aot(
                             )
                             .0
                     }
-                    CguReuse::PreLto => {
+                    CguReuse::PreLto => unreachable!(),
+                    CguReuse::PostLto => {
                         OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, &*cgu))
                     }
-                    CguReuse::PostLto => unreachable!(),
                 }
             })
             .collect::<Vec<_>>()
@@ -485,5 +485,5 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         cgu.name()
     );
 
-    if tcx.try_mark_green(&dep_node) { CguReuse::PreLto } else { CguReuse::No }
+    if tcx.try_mark_green(&dep_node) { CguReuse::PostLto } else { CguReuse::No }
 }
