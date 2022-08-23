@@ -23,7 +23,7 @@ impl<F, G> CustomTypeOp<F, G> {
     }
 }
 
-impl<'tcx, F, R, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
+impl<'tcx, F, R: fmt::Debug, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
 where
     F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
     G: Fn() -> String,
@@ -89,8 +89,8 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
         infcx.tcx,
         region_obligations
             .iter()
-            .map(|r_o| (r_o.sup_type, r_o.sub_region))
-            .map(|(ty, r)| (infcx.resolve_vars_if_possible(ty), r)),
+            .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category()))
+            .map(|(ty, r, cc)| (infcx.resolve_vars_if_possible(ty), r, cc)),
         &region_constraint_data,
     );
 

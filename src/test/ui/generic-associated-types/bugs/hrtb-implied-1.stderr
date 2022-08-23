@@ -1,0 +1,20 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/hrtb-implied-1.rs:31:22
+   |
+LL |     let slice = &mut ();
+   |                      ^^ creates a temporary which is freed while still in use
+...
+LL |     print_items::<WindowsMut<'_>>(windows);
+   |     -------------------------------------- argument requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/hrtb-implied-1.rs:26:26
+   |
+LL |     for<'a> I::Item<'a>: Debug,
+   |                          ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.
