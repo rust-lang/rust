@@ -650,7 +650,7 @@ fn thin_box() {
                     .unwrap_or_else(|| handle_alloc_error(layout))
                     .cast::<DynMetadata<T>>();
                 ptr.as_ptr().write(meta);
-                ptr.cast::<u8>().as_ptr().add(offset).cast::<Value>().write(value);
+                ptr.as_ptr().byte_add(offset).cast::<Value>().write(value);
                 Self { ptr, phantom: PhantomData }
             }
         }
