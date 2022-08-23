@@ -283,79 +283,59 @@ fn emit_orphan_check_error<'tcx>(
                 _ => sp = generics[idx - 1].span(),
             }
 
-            match local_type {
-                Some(local_type) => {
-                    let mut err = match *param_ty.kind() {
-                        ty::Projection(..) => {
-                            let mut err = struct_span_err!(
-                                tcx.sess,
-                                sp,
-                                E0210,
-                                "associated type `{}` must be covered by another type \
-                                when it appears before the first local type (`{}`)",
-                                param_ty,
-                                local_type
-                            );
-                            err.span_label(
-                                sp,
-                                format!(
-                                    "associated type `{}` must be covered by another type \
-                                    when it appears before the first local type (`{}`)",
-                                    param_ty, local_type
-                                ),
-                            );
-                            err
-                        }
-                        _ => {
-                            let mut err = struct_span_err!(
-                                tcx.sess,
-                                sp,
-                                E0210,
-                                "type parameter `{}` must be covered by another type \
-                                when it appears before the first local type (`{}`)",
-                                param_ty,
-                                local_type
-                            );
-                            err.span_label(
-                                sp,
-                                format!(
-                                    "type parameter `{}` must be covered by another type \
-                                    when it appears before the first local type (`{}`)",
-                                    param_ty, local_type
-                                ),
-                            );
-                            err
-                        }
-                    };
+            let message = match *param_ty.kind() {
+                ty::Projection(..) => "associated type",
+                _ => "type parameter",
+            };
 
-                    err.note(
-                        "implementing a foreign trait is only possible if at \
+            match local_type {
+                Some(local_type) => struct_span_err!(
+                    tcx.sess,
+                    sp,
+                    E0210,
+                    "{} `{}` must be covered by another type \
+                    when it appears before the first local type (`{}`)",
+                    message,
+                    param_ty,
+                    local_type
+                )
+                .span_label(
+                    sp,
+                    format!(
+                        "{} `{}` must be covered by another type \
+                        when it appears before the first local type (`{}`)",
+                        message, param_ty, local_type
+                    ),
+                )
+                .note(
+                    "implementing a foreign trait is only possible if at \
                         least one of the types for which it is implemented is local, \
                         and no uncovered type parameters or associated types appear \
                         before that first local type",
-                    )
-                    .note(
-                        "in this case, 'before' refers to the following order: \
+                )
+                .note(
+                    "in this case, 'before' refers to the following order: \
                         `impl<..> ForeignTrait<T1, ..., Tn> for T0`, \
                         where `T0` is the first and `Tn` is the last",
-                    )
-                    .emit()
-                }
+                )
+                .emit(),
+
                 None => struct_span_err!(
                     tcx.sess,
                     sp,
                     E0210,
-                    "type parameter `{}` must be used as the type parameter for some \
+                    "{} `{}` must be used as the type parameter for some \
                     local type (e.g., `MyStruct<{}>`)",
+                    message,
                     param_ty,
                     param_ty
                 )
                 .span_label(
                     sp,
                     format!(
-                        "type parameter `{}` must be used as the type parameter for some \
-                    local type",
-                        param_ty,
+                        "{} `{}` must be used as the type parameter for some \
+                        local type",
+                        message, param_ty,
                     ),
                 )
                 .note(
