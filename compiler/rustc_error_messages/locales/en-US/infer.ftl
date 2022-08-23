@@ -61,5 +61,48 @@ infer_source_kind_fully_qualified =
 infer_source_kind_closure_return =
     try giving this closure an explicit return type
 
+# generator_kind  may need to be translated
 infer_need_type_info_in_generator =
     type inside {$generator_kind} must be known in this context
+
+
+infer_subtype = ...so that the {$requirement ->
+    [method_compat] method type is compatible with trait
+    [type_compat] associated type is compatible with trait
+    [const_compat] const is compatible with trait
+    [expr_assignable] expression is assignable
+    [if_else_different] `if` and `else` have incompatible types
+    [no_else] `if` missing an `else` returns `()`
+    [fn_main_correct_type] `main` function has the correct type
+    [fn_start_correct_type] #[start]` function has the correct type
+    [intristic_correct_type] intrinsic has the correct type
+    [method_correct_type] method receiver has the correct type
+    *[other] types are compatible
+}
+infer_subtype_2 = ...so that {$requirement ->
+    [method_compat] method type is compatible with trait
+    [type_compat] associated type is compatible with trait
+    [const_compat] const is compatible with trait
+    [expr_assignable] expression is assignable
+    [if_else_different] `if` and `else` have incompatible types
+    [no_else] `if` missing an `else` returns `()`
+    [fn_main_correct_type] `main` function has the correct type
+    [fn_start_correct_type] #[start]` function has the correct type
+    [intristic_correct_type] intrinsic has the correct type
+    [method_correct_type] method receiver has the correct type
+    *[other] types are compatible
+}
+
+infer_reborrow = ...so that reference does not outlive borrowed content
+infer_reborrow_upvar = ...so that closure can access `{$name}`
+infer_relate_object_bound = ...so that it can be closed over into an object
+infer_data_borrowed = ...so that the type `{$name}` is not borrowed for too long
+infer_reference_outlives_referent = ...so that the reference type `{$name}` does not outlive the data it points at
+infer_relate_param_bound = ...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
+[true] ...
+*[false] {""}
+}
+infer_relate_param_bound_2 = ...that is required by this bound
+infer_relate_region_param_bound = ...so that the declared lifetime parameter bounds are satisfied
+infer_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
+

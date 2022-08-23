@@ -2811,6 +2811,7 @@ pub enum FailureCode {
 pub trait ObligationCauseExt<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode;
     fn as_requirement_str(&self) -> &'static str;
+    fn as_requirement_localised(&self) -> &'static str;
 }
 
 impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
@@ -2877,6 +2878,23 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
+        }
+    }
+
+    fn as_requirement_localised(&self) -> &'static str {
+        use crate::traits::ObligationCauseCode::*;
+        match self.code() {
+            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
+            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => "type_compat",
+            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => "const_compat",
+            ExprAssignable => "expr_assignable",
+            IfExpression { .. } => "if_else_different",
+            IfExpressionWithNoElse => "no_else",
+            MainFunctionType => "fn_main_correct_type",
+            StartFunctionType => "fn_start_correct_type",
+            IntrinsicType => "intristic_correct_type",
+            MethodReceiver => "method_correct_type",
+            _ => "other",
         }
     }
 }

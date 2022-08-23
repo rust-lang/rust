@@ -1,4 +1,4 @@
-use rustc_errors::{fluent, AddSubdiagnostic};
+use rustc_errors::{fluent, AddSubdiagnostic, DiagnosticMessage, DiagnosticStyledString};
 use rustc_hir::FnRetTy;
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{BytePos, Span};
@@ -183,5 +183,67 @@ impl AddSubdiagnostic for SourceKindMultiSuggestion<'_> {
                 );
             }
         }
+    }
+}
+
+pub enum RegionOriginNote<'a> {
+    Plain {
+        span: Span,
+        msg: DiagnosticMessage,
+    },
+    WithName {
+        span: Span,
+        msg: DiagnosticMessage,
+        name: &'a str,
+        continues: bool,
+    },
+    WithRequirement {
+        span: Span,
+        requirement: &'static str,
+        expected_found: Option<(DiagnosticStyledString, DiagnosticStyledString)>,
+    },
+}
+
+impl AddSubdiagnostic for RegionOriginNote<'_> {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        let mut label_or_note = |span, msg: DiagnosticMessage| {
+            let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
+            let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
+            let span_is_primary = diag.span.primary_spans().iter().all(|&sp| sp == span);
+            if span_is_primary && sub_count == 0 && expanded_sub_count == 0 {
+                diag.span_label(span, msg);
+            } else if span_is_primary && expanded_sub_count == 0 {
+                diag.note(msg);
+            } else {
+                diag.span_note(span, msg);
+            }
+        };
+        match self {
+            RegionOriginNote::Plain { span, msg } => {
+                label_or_note(span, msg);
+            }
+            RegionOriginNote::WithName { span, msg, name, continues } => {
+                label_or_note(span, msg);
+                diag.set_arg("name", name);
+                diag.set_arg("continues", continues);
+            }
+            RegionOriginNote::WithRequirement {
+                span,
+                requirement,
+                expected_found: Some((expected, found)),
+            } => {
+                label_or_note(span, fluent::infer::subtype);
+                diag.set_arg("requirement", requirement);
+
+                diag.note_expected_found(&"", expected, &"", found);
+            }
+            RegionOriginNote::WithRequirement { span, requirement, expected_found: None } => {
+                // FIXME: this really should be handled at some earlier stage. Our
+                // handling of region checking when type errors are present is
+                // *terrible*.
+                label_or_note(span, fluent::infer::subtype_2);
+                diag.set_arg("requirement", requirement);
+            }
+        };
     }
 }
