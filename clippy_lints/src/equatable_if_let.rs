@@ -96,18 +96,18 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                 );
             } else {
                 span_lint_and_sugg(
-                    cx, 
+                    cx,
                     EQUATABLE_IF_LET,
                     expr.span,
-                    "this pattern matching can be expressed using `matches!`", 
-                    "try", 
+                    "this pattern matching can be expressed using `matches!`",
+                    "try",
                     format!(
                         "matches!({}, {})",
                         snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
                         snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0,
-                    ), 
+                    ),
                     applicability,
-                )
+                );
             }
         }
     }
