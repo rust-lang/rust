@@ -34,11 +34,11 @@ use stdarch_test::assert_instr;
 /// support `cmpxchg16b` and the program enters an execution path that
 /// eventually would reach this function the behavior is undefined.
 ///
-/// The failure ordering must be [`SeqCst`], [`Acquire`] or [`Relaxed`], or this
-/// function call is undefined. See the `Atomic*` documentation's
-/// `compare_exchange` function for more information. When `compare_exchange`
-/// panics, this is undefined behavior. Currently this function aborts the
-/// process with an undefined instruction.
+/// The failure ordering must be [`Ordering::SeqCst`], [`Ordering::Acquire`] or
+/// [`Ordering::Relaxed`], or this function call is undefined. See the `Atomic*`
+/// documentation's `compare_exchange` function for more information. When
+/// `compare_exchange` panics, this is undefined behavior. Currently this
+/// function aborts the process with an undefined instruction.
 #[inline]
 #[cfg_attr(test, assert_instr(cmpxchg16b, success = Ordering::SeqCst, failure = Ordering::SeqCst))]
 #[target_feature(enable = "cmpxchg16b")]
