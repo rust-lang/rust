@@ -861,3 +861,14 @@ For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watc
     "isBackground": true
 }
 ```
+
+==== Live Share
+
+VS Code Live Share has partial support for rust-analyzer.
+
+Live Share _requires_ the official Microsoft build of VS Code, OSS builds will not work correctly.
+
+The host's rust-analyzer instance will be shared with all guests joining the session.
+The guests do not have to have the rust-analyzer extension installed for this to work.
+
+If you are joining a Live Share session and _do_ have rust-analyzer installed locally, commands from the command palette will not work correctly since they will attempt to communicate with the local server.
