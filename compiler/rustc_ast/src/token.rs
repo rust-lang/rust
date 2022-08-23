@@ -436,6 +436,30 @@ impl Token {
             || self == &OpenDelim(Delimiter::Parenthesis)
     }
 
+    /// Returns `true` if the token can appear at the start of an item.
+    pub fn can_begin_item(&self) -> bool {
+        match self.kind {
+            Ident(name, _) => [
+                kw::Fn,
+                kw::Use,
+                kw::Struct,
+                kw::Enum,
+                kw::Pub,
+                kw::Trait,
+                kw::Extern,
+                kw::Impl,
+                kw::Unsafe,
+                kw::Static,
+                kw::Union,
+                kw::Macro,
+                kw::Mod,
+                kw::Type,
+            ]
+            .contains(&name),
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token is any literal.
     pub fn is_lit(&self) -> bool {
         matches!(self.kind, Literal(..))
