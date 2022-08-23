@@ -13,11 +13,7 @@
 #[macro_use]
 extern crate tracing;
 
-#[cfg(feature = "rustc")]
-pub(crate) use rustc_data_structures::fx::{FxHashMap as Map, FxHashSet as Set};
-
-#[cfg(not(feature = "rustc"))]
-pub(crate) use std::collections::{HashMap as Map, HashSet as Set};
+pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub(crate) mod layout;
 pub(crate) mod maybe_transmutable;

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tracing = "0.1"
-rustc_data_structures = { path = "../rustc_data_structures", optional = true}
+rustc_data_structures = { path = "../rustc_data_structures"}
 rustc_hir = { path = "../rustc_hir", optional = true}
 rustc_infer = { path = "../rustc_infer", optional = true}
 rustc_macros = { path = "../rustc_macros", optional = true}
@@ -18,7 +18,6 @@ rustc_target = { path = "../rustc_target", optional = true}
 [features]
 rustc = [
     "rustc_middle",
-    "rustc_data_structures",
     "rustc_hir",
     "rustc_infer",
     "rustc_macros",

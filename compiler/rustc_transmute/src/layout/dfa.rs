@@ -104,7 +104,6 @@ where
     }
 
     #[instrument(level = "debug")]
-    #[cfg_attr(feature = "rustc", allow(rustc::potential_query_instability))]
     pub(crate) fn from_nfa(nfa: Nfa<R>) -> Self {
         let Nfa { transitions: nfa_transitions, start: nfa_start, accepting: nfa_accepting } = nfa;
 
