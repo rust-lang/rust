@@ -391,6 +391,7 @@ pub(crate) fn run_aot(
                     }
                     CguReuse::PreLto => unreachable!(),
                     CguReuse::PostLto => {
+                        concurrency_limiter.job_already_done();
                         OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, &*cgu))
                     }
                 }
