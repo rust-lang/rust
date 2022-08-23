@@ -511,7 +511,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
-                match outer_res {
+                let def_id = match outer_res {
                     Res::SelfTy { trait_: maybe_trait_defid, alias_to: maybe_impl_defid } => {
                         if let Some(impl_span) =
                             maybe_impl_defid.and_then(|(def_id, _)| self.opt_span(def_id))
@@ -536,11 +536,13 @@ impl<'a> Resolver<'a> {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
+                        def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
+                        def_id
                     }
                     _ => {
                         bug!(
@@ -548,28 +550,23 @@ impl<'a> Resolver<'a> {
                             DefKind::TyParam or DefKind::ConstParam"
                         );
                     }
-                }
+                };
 
-                if has_generic_params == HasGenericParams::Yes {
+                if let HasGenericParams::Yes(span) = has_generic_params {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = "try using a local generic parameter instead";
-                    if let Some((sugg_span, snippet)) = sm.generate_local_type_param_snippet(span) {
-                        // Suggest the modification to the user
-                        err.span_suggestion(
-                            sugg_span,
-                            sugg_msg,
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if let Some(sp) = sm.generate_fn_name_span(span) {
-                        err.span_label(
-                            sp,
-                            "try adding a local generic parameter in this method instead",
-                        );
+                    let name = self.opt_name(def_id).unwrap_or(sym::T);
+                    let (span, snippet) = if span.is_empty() {
+                        let snippet = format!("<{}>", name);
+                        (span, snippet)
                     } else {
-                        err.help("try using a local generic parameter instead");
-                    }
+                        let span = sm.span_through_char(span, '<').shrink_to_hi();
+                        let snippet = format!("{}, ", name);
+                        (span, snippet)
+                    };
+                    // Suggest the modification to the user
+                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
                 }
 
                 err
