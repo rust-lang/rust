@@ -1028,6 +1028,7 @@ supported_targets! {
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+    ("armv4t-none-eabi", armv4t_none_eabi),
 
     ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
     ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),
