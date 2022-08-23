@@ -1,7 +1,7 @@
 use crate::concurrency::thread::Time;
 use crate::*;
 use rustc_target::abi::{Align, Size};
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
 
 /// Implementation of the SYS_futex syscall.
 /// `args` is the arguments *after* the syscall number.
@@ -106,14 +106,14 @@ pub fn futex<'tcx>(
                     if op & futex_realtime != 0 {
                         Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
                     } else {
-                        Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
+                        this.machine.clock.get_time_absolute(duration).unwrap()
                     }
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
                     if op & futex_realtime != 0 {
                         Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
                     } else {
-                        Time::Monotonic(Instant::now().checked_add(duration).unwrap())
+                        this.machine.clock.get_time_relative(duration).unwrap()
                     }
                 })
             };

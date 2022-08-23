@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::num::TryFromIntError;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
 use log::trace;
 
@@ -16,6 +16,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::concurrency::sync::SynchronizationState;
+use crate::shims::time::{Clock, Instant};
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -185,17 +186,6 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 pub enum Time {
     Monotonic(Instant),
     RealTime(SystemTime),
-}
-
-impl Time {
-    /// How long do we have to wait from now until the specified time?
-    fn get_wait_time(&self) -> Duration {
-        match self {
-            Time::Monotonic(instant) => instant.saturating_duration_since(Instant::now()),
-            Time::RealTime(time) =>
-                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
-        }
-    }
 }
 
 /// Callbacks are used to implement timeouts. For example, waiting on a
@@ -490,13 +480,16 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get a callback that is ready to be called.
-    fn get_ready_callback(&mut self) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
+    fn get_ready_callback(
+        &mut self,
+        clock: &Clock,
+    ) -> Option<(ThreadId, TimeoutCallback<'mir, 'tcx>)> {
         // We iterate over all threads in the order of their indices because
         // this allows us to have a deterministic scheduler.
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
                 Entry::Occupied(entry) =>
-                    if entry.get().call_time.get_wait_time() == Duration::new(0, 0) {
+                    if clock.get_wait_time(&entry.get().call_time) == Duration::new(0, 0) {
                         return Some((thread, entry.remove().callback));
                     },
                 Entry::Vacant(_) => {}
@@ -553,7 +546,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
+    fn schedule(&mut self, clock: &Clock) -> InterpResult<'tcx, SchedulingAction> {
         // Check whether the thread has **just** terminated (`check_terminated`
         // checks whether the thread has popped all its stack and if yes, sets
         // the thread state to terminated).
@@ -580,7 +573,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // at the time of the call".
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
         let potential_sleep_time =
-            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
+            self.timeout_callbacks.values().map(|info| clock.get_wait_time(&info.call_time)).min();
         if potential_sleep_time == Some(Duration::new(0, 0)) {
             return Ok(SchedulingAction::ExecuteTimeoutCallback);
         }
@@ -615,7 +608,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
-            std::thread::sleep(sleep_time);
+
+            clock.sleep(sleep_time);
             Ok(SchedulingAction::ExecuteTimeoutCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
@@ -878,18 +872,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let (thread, callback) =
-            if let Some((thread, callback)) = this.machine.threads.get_ready_callback() {
-                (thread, callback)
-            } else {
-                // get_ready_callback can return None if the computer's clock
-                // was shifted after calling the scheduler and before the call
-                // to get_ready_callback (see issue
-                // https://github.com/rust-lang/miri/issues/1763). In this case,
-                // just do nothing, which effectively just returns to the
-                // scheduler.
-                return Ok(());
-            };
+        let (thread, callback) = if let Some((thread, callback)) =
+            this.machine.threads.get_ready_callback(&this.machine.clock)
+        {
+            (thread, callback)
+        } else {
+            // get_ready_callback can return None if the computer's clock
+            // was shifted after calling the scheduler and before the call
+            // to get_ready_callback (see issue
+            // https://github.com/rust-lang/miri/issues/1763). In this case,
+            // just do nothing, which effectively just returns to the
+            // scheduler.
+            return Ok(());
+        };
         // This back-and-forth with `set_active_thread` is here because of two
         // design decisions:
         // 1. Make the caller and not the callback responsible for changing
@@ -906,7 +901,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
-        this.machine.threads.schedule()
+        this.machine.threads.schedule(&this.machine.clock)
     }
 
     /// Handles thread termination of the active thread: wakes up threads joining on this one,

@@ -1,7 +1,127 @@
-use std::time::{Duration, Instant, SystemTime};
+use std::sync::atomic::AtomicU64;
+use std::time::{Duration, Instant as StdInstant, SystemTime};
+
+use rustc_data_structures::sync::Ordering;
 
 use crate::concurrency::thread::Time;
 use crate::*;
+
+/// When using a virtual clock, this defines how many nanoseconds do we pretend
+/// are passing for each basic block.
+const NANOSECOND_PER_BASIC_BLOCK: u64 = 10;
+
+#[derive(Debug)]
+pub enum Instant {
+    Host(StdInstant),
+    Virtual { nanoseconds: u64 },
+}
+
+/// A monotone clock used for `Instant` simulation.
+#[derive(Debug)]
+pub enum Clock {
+    Host {
+        /// The "time anchor" for this machine's monotone clock.
+        time_anchor: StdInstant,
+    },
+    Virtual {
+        /// The "current virtual time".
+        nanoseconds: AtomicU64,
+    },
+}
+
+impl Clock {
+    /// Create a new clock based on the availability of communication with the host.
+    pub fn new(communicate: bool) -> Self {
+        if communicate {
+            Self::Host { time_anchor: StdInstant::now() }
+        } else {
+            Self::Virtual { nanoseconds: 0.into() }
+        }
+    }
+
+    /// Get the current time relative to this clock.
+    pub fn get(&self) -> Duration {
+        match self {
+            Self::Host { time_anchor } => StdInstant::now().saturating_duration_since(*time_anchor),
+            Self::Virtual { nanoseconds } =>
+                Duration::from_nanos(nanoseconds.load(Ordering::Relaxed)),
+        }
+    }
+
+    /// Let the time pass for a small interval.
+    pub fn tick(&self) {
+        match self {
+            Self::Host { .. } => {
+                // Time will pass without us doing anything.
+            }
+            Self::Virtual { nanoseconds } => {
+                nanoseconds.fetch_add(NANOSECOND_PER_BASIC_BLOCK, Ordering::Relaxed);
+            }
+        }
+    }
+
+    /// Sleep for the desired duration.
+    pub fn sleep(&self, duration: Duration) {
+        match self {
+            Self::Host { .. } => std::thread::sleep(duration),
+            Self::Virtual { nanoseconds } => {
+                // Just pretend that we have slept for some time.
+                nanoseconds.fetch_add(duration.as_nanos().try_into().unwrap(), Ordering::Relaxed);
+            }
+        }
+    }
+
+    /// Compute `now + duration` relative to this clock.
+    pub fn get_time_relative(&self, duration: Duration) -> Option<Time> {
+        match self {
+            Self::Host { .. } =>
+                StdInstant::now()
+                    .checked_add(duration)
+                    .map(|instant| Time::Monotonic(Instant::Host(instant))),
+            Self::Virtual { nanoseconds } =>
+                nanoseconds
+                    .load(Ordering::Relaxed)
+                    .checked_add(duration.as_nanos().try_into().unwrap())
+                    .map(|nanoseconds| Time::Monotonic(Instant::Virtual { nanoseconds })),
+        }
+    }
+
+    /// Compute `start + duration` relative to this clock where `start` is the instant of time when
+    /// this clock was created.
+    pub fn get_time_absolute(&self, duration: Duration) -> Option<Time> {
+        match self {
+            Self::Host { time_anchor } =>
+                time_anchor
+                    .checked_add(duration)
+                    .map(|instant| Time::Monotonic(Instant::Host(instant))),
+            Self::Virtual { .. } =>
+                Some(Time::Monotonic(Instant::Virtual {
+                    nanoseconds: duration.as_nanos().try_into().unwrap(),
+                })),
+        }
+    }
+
+    /// How long do we have to wait from now until the specified time?
+    pub fn get_wait_time(&self, time: &Time) -> Duration {
+        match time {
+            Time::Monotonic(instant) =>
+                match (instant, self) {
+                    (Instant::Host(instant), Clock::Host { .. }) =>
+                        instant.saturating_duration_since(StdInstant::now()),
+                    (
+                        Instant::Virtual { nanoseconds },
+                        Clock::Virtual { nanoseconds: current_ns },
+                    ) =>
+                        Duration::from_nanos(
+                            nanoseconds.saturating_sub(current_ns.load(Ordering::Relaxed)),
+                        ),
+                    _ => panic!(),
+                },
+            Time::RealTime(time) =>
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
+        }
+    }
+}
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
@@ -23,7 +143,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "clock_gettime");
-        this.check_no_isolation("`clock_gettime`")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
 
@@ -40,9 +159,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             [this.eval_libc_i32("CLOCK_MONOTONIC")?, this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?];
 
         let duration = if absolute_clocks.contains(&clk_id) {
+            this.check_no_isolation("`clock_gettime` with real time clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            Instant::now().duration_since(this.machine.time_anchor)
+            this.machine.clock.get()
         } else {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
@@ -123,11 +243,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
-        this.check_no_isolation("`QueryPerformanceCounter`")?;
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = Instant::now().duration_since(this.machine.time_anchor);
+        let duration = this.machine.clock.get();
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
@@ -146,7 +265,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
-        this.check_no_isolation("`QueryPerformanceFrequency`")?;
 
         // Retrieves the frequency of the hardware performance counter.
         // The frequency of the performance counter is fixed at system boot and
@@ -164,11 +282,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
 
         this.assert_target_os("macos", "mach_absolute_time");
-        this.check_no_isolation("`mach_absolute_time`")?;
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = Instant::now().duration_since(this.machine.time_anchor);
+        let duration = this.machine.clock.get();
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;
@@ -182,7 +299,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
-        this.check_no_isolation("`mach_timebase_info`")?;
 
         let info = this.deref_operand(info_op)?;
 
@@ -202,7 +318,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("nanosleep");
-        this.check_no_isolation("`nanosleep`")?;
 
         let duration = match this.read_timespec(&this.deref_operand(req_op)?)? {
             Some(duration) => duration,
@@ -213,10 +328,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
         // If adding the duration overflows, let's just sleep for an hour. Waking up early is always acceptable.
-        let timeout_time = Instant::now()
-            .checked_add(duration)
-            .unwrap_or_else(|| Instant::now().checked_add(Duration::from_secs(3600)).unwrap());
-        let timeout_time = Time::Monotonic(timeout_time);
+        let timeout_time = this.machine.clock.get_time_relative(duration).unwrap_or_else(|| {
+            this.machine.clock.get_time_relative(Duration::from_secs(3600)).unwrap()
+        });
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);
@@ -238,12 +352,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "Sleep");
-        this.check_no_isolation("`Sleep`")?;
 
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
-        let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
+        let timeout_time = this.machine.clock.get_time_relative(duration).unwrap();
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);

@@ -359,11 +359,6 @@ pub fn eval_entry<'tcx>(
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
-                    assert!(
-                        ecx.machine.communicate(),
-                        "scheduler callbacks require disabled isolation, but the code \
-                        that created the callback did not check it"
-                    );
                     ecx.run_timeout_callback()?;
                 }
                 SchedulingAction::ExecuteDtors => {

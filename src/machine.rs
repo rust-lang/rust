@@ -4,7 +4,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
-use std::time::Instant;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -28,7 +27,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::{
     concurrency::{data_race, weak_memory},
-    shims::unix::FileHandler,
+    shims::{time::Clock, unix::FileHandler},
     *,
 };
 
@@ -327,8 +326,8 @@ pub struct Evaluator<'mir, 'tcx> {
     /// The table of directory descriptors.
     pub(crate) dir_handler: shims::unix::DirHandler,
 
-    /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
-    pub(crate) time_anchor: Instant,
+    /// This machine's monotone clock.
+    pub(crate) clock: Clock,
 
     /// The set of threads.
     pub(crate) threads: ThreadManager<'mir, 'tcx>,
@@ -434,7 +433,6 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             enforce_abi: config.check_abi,
             file_handler: FileHandler::new(config.mute_stdout_stderr),
             dir_handler: Default::default(),
-            time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),
             static_roots: Vec::new(),
@@ -454,6 +452,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             basic_block_count: 0,
+            clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
@@ -1036,6 +1035,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
         // These are our preemption points.
         ecx.maybe_preempt_active_thread();
+
+        ecx.machine.clock.tick();
+
         Ok(())
     }
 
