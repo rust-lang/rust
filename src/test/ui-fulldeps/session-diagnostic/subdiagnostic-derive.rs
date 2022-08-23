@@ -310,10 +310,8 @@ union AC {
 #[derive(SessionSubdiagnostic)]
 #[label(parser::add_paren)]
 //~^ NOTE previously specified here
-//~^^ NOTE previously specified here
 #[label(parser::add_paren)]
 //~^ ERROR specified multiple times
-//~^^ ERROR specified multiple times
 struct AD {
     #[primary_span]
     span: Span,
@@ -515,4 +513,121 @@ struct AY {}
 struct AZ {
     #[primary_span]
     span: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[suggestion(parser::add_paren, code = "...")]
+//~^ ERROR suggestion without `#[primary_span]` field
+struct BA {
+    #[suggestion_part]
+    //~^ ERROR `#[suggestion_part]` is not a valid attribute
+    span: Span,
+    #[suggestion_part(code = "...")]
+    //~^ ERROR `#[suggestion_part(...)]` is not a valid attribute
+    span2: Span,
+    #[applicability]
+    applicability: Applicability,
+    var: String,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
+//~^ ERROR multipart suggestion without any `#[suggestion_part(...)]` fields
+//~| ERROR `code` is not a valid nested attribute of a `multipart_suggestion` attribute
+struct BBa {
+    var: String,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+struct BBb {
+    #[suggestion_part]
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
+    span1: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+struct BBc {
+    #[suggestion_part()]
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
+    span1: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren)]
+//~^ ERROR multipart suggestion without any `#[suggestion_part(...)]` fields
+struct BC {
+    #[primary_span]
+    //~^ ERROR `#[primary_span]` is not a valid attribute
+    span: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren)]
+struct BD {
+    #[suggestion_part]
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
+    span1: Span,
+    #[suggestion_part()]
+    //~^ ERROR `#[suggestion_part(...)]` attribute without `code = "..."`
+    span2: Span,
+    #[suggestion_part(foo = "bar")]
+    //~^ ERROR `#[suggestion_part(foo = ...)]` is not a valid attribute
+    span4: Span,
+    #[suggestion_part(code = "...")]
+    //~^ ERROR the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+    s1: String,
+    #[suggestion_part()]
+    //~^ ERROR the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+    s2: String,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+struct BE {
+    #[suggestion_part(code = "...", code = ",,,")]
+    //~^ ERROR specified multiple times
+    //~| NOTE previously specified here
+    span: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+struct BF {
+    #[suggestion_part(code = "(")]
+    first: Span,
+    #[suggestion_part(code = ")")]
+    second: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren)]
+struct BG {
+    #[applicability]
+    appl: Applicability,
+    #[suggestion_part(code = "(")]
+    first: Span,
+    #[suggestion_part(code = ")")]
+    second: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+//~^ NOTE previously specified here
+struct BH {
+    #[applicability]
+    //~^ ERROR specified multiple times
+    appl: Applicability,
+    #[suggestion_part(code = "(")]
+    first: Span,
+    #[suggestion_part(code = ")")]
+    second: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+struct BI {
+    #[suggestion_part(code = "")]
+    spans: Vec<Span>,
 }
