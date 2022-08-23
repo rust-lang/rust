@@ -22,7 +22,7 @@ use rustc_errors::{
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
@@ -977,15 +977,6 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
-            if symbol.as_str() == "public" {
-                err.span_suggestion_short(
-                    self.prev_token.span,
-                    "write `pub` instead of `public` to make the item public",
-                    "pub",
-                    appl,
-                );
-            }
-
             if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
                 err.span_suggestion_short(
                     self.prev_token.span,
@@ -994,6 +985,19 @@ impl<'a> Parser<'a> {
                     appl,
                 );
             }
+        }
+
+        // `pub` may be used for an item or `pub(crate)`
+        if self.prev_token.is_ident_named(sym::public)
+            && (self.token.can_begin_item()
+                || self.token.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
+        {
+            err.span_suggestion_short(
+                self.prev_token.span,
+                "write `pub` instead of `public` to make the item public",
+                "pub",
+                appl,
+            );
         }
 
         // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
