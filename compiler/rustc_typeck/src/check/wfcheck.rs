@@ -1,5 +1,5 @@
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -10,7 +10,6 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::Normalized;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -24,8 +23,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::query::normalize::AtExt;
-use rustc_trait_selection::traits::query::NoSolution;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
@@ -72,9 +69,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     ) {
         let cause =
             traits::ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc));
+        // for a type to be WF, we do not need to check if const trait predicates satisfy.
+        let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
             cause,
-            self.param_env,
+            param_env,
             ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
         ));
     }
@@ -86,26 +85,31 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     body_def_id: LocalDefId,
     f: F,
 ) where
-    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>) -> FxHashSet<Ty<'tcx>>,
+    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>),
 {
     let param_env = tcx.param_env(body_def_id);
     let body_id = tcx.hir().local_def_id_to_hir_id(body_def_id);
     tcx.infer_ctxt().enter(|ref infcx| {
         let ocx = ObligationCtxt::new(infcx);
+
+        let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
+
         let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 
         if !tcx.features().trivial_bounds {
             wfcx.check_false_global_bounds()
         }
-        let wf_tys = f(&mut wfcx);
+        f(&mut wfcx);
         let errors = wfcx.select_all_or_error();
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return;
         }
 
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, wf_tys, body_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+        let outlives_environment =
+            OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+
         infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }
@@ -383,7 +387,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_hir_id,
-                            sig.output(),
+                            sig.inputs_and_output,
                             // We also assume that all of the function signature's parameter types
                             // are well formed.
                             &sig.inputs().iter().copied().collect(),
@@ -694,8 +698,11 @@ fn resolve_regions_with_wf_tys<'tcx>(
     // region constraints get added and solved there and we need to test each
     // call individually.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(&infcx),
+            infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        );
         let region_bound_pairs = outlives_environment.region_bound_pairs();
 
         add_constraints(&infcx, region_bound_pairs);
@@ -976,15 +983,9 @@ fn check_associated_item(
     enter_wf_checking_ctxt(tcx, span, item_id, |wfcx| {
         let item = tcx.associated_item(item_id);
 
-        let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer => (FxHashSet::default(), tcx.types.self_param),
-            ty::ImplContainer => {
-                let def_id = item.container_id(tcx);
-                (
-                    impl_implied_bounds(tcx, wfcx.param_env, def_id.expect_local(), span),
-                    tcx.type_of(def_id),
-                )
-            }
+        let self_ty = match item.container {
+            ty::TraitContainer => tcx.types.self_param,
+            ty::ImplContainer => tcx.type_of(item.container_id(tcx)),
         };
 
         match item.kind {
@@ -1002,7 +1003,6 @@ fn check_associated_item(
                     sig,
                     hir_sig.decl,
                     item.def_id.expect_local(),
-                    &mut implied_bounds,
                 );
                 check_method_receiver(wfcx, hir_sig, item, self_ty);
             }
@@ -1017,8 +1017,6 @@ fn check_associated_item(
                 }
             }
         }
-
-        implied_bounds
     })
 }
 
@@ -1118,9 +1116,6 @@ fn check_type_defn<'tcx, F>(
         }
 
         check_where_clauses(wfcx, item.span, item.def_id);
-
-        // No implied bounds in a struct definition.
-        FxHashSet::default()
     });
 }
 
@@ -1144,9 +1139,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     }
 
     enter_wf_checking_ctxt(tcx, item.span, item.def_id, |wfcx| {
-        check_where_clauses(wfcx, item.span, item.def_id);
-
-        FxHashSet::default()
+        check_where_clauses(wfcx, item.span, item.def_id)
     });
 
     // Only check traits, don't check trait aliases
@@ -1186,9 +1179,7 @@ fn check_item_fn(
 ) {
     enter_wf_checking_ctxt(tcx, span, def_id, |wfcx| {
         let sig = tcx.fn_sig(def_id);
-        let mut implied_bounds = FxHashSet::default();
-        check_fn_or_method(wfcx, ident.span, sig, decl, def_id, &mut implied_bounds);
-        implied_bounds
+        check_fn_or_method(wfcx, ident.span, sig, decl, def_id);
     })
 }
 
@@ -1231,9 +1222,6 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
             );
         }
-
-        // No implied bounds in a const, etc.
-        FxHashSet::default()
     });
 }
 
@@ -1284,8 +1272,6 @@ fn check_impl<'tcx>(
         }
 
         check_where_clauses(wfcx, item.span, item.def_id);
-
-        impl_implied_bounds(tcx, wfcx.param_env, item.def_id, item.span)
     });
 }
 
@@ -1465,7 +1451,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
         iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(infcx, wfcx.param_env, wfcx.body_id, p, sp)
+            traits::wf::predicate_obligations(
+                infcx,
+                wfcx.param_env.without_const(),
+                wfcx.body_id,
+                p,
+                sp,
+            )
         });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
@@ -1479,7 +1471,6 @@ fn check_fn_or_method<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
     hir_decl: &hir::FnDecl<'_>,
     def_id: LocalDefId,
-    implied_bounds: &mut FxHashSet<Ty<'tcx>>,
 ) {
     let tcx = wfcx.tcx();
     let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
@@ -1521,14 +1512,7 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    implied_bounds.extend(sig.inputs());
-
     wfcx.register_wf_obligation(hir_decl.output.span(), None, sig.output().into());
-
-    // FIXME(#27579) return types should not be implied bounds
-    implied_bounds.insert(sig.output());
-
-    debug!(?implied_bounds);
 
     check_where_clauses(wfcx, span, def_id);
 }
@@ -1922,40 +1906,6 @@ impl<'a, 'tcx> WfCheckingCtxt<'a, 'tcx> {
             })
             .collect()
     }
-}
-
-pub fn impl_implied_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: LocalDefId,
-    span: Span,
-) -> FxHashSet<Ty<'tcx>> {
-    // We completely ignore any obligations caused by normalizing the types
-    // we assume to be well formed. Considering that the user of the implied
-    // bounds will also normalize them, we leave it to them to emit errors
-    // which should result in better causes and spans.
-    tcx.infer_ctxt().enter(|infcx| {
-        let cause = ObligationCause::misc(span, tcx.hir().local_def_id_to_hir_id(impl_def_id));
-        match tcx.impl_trait_ref(impl_def_id) {
-            Some(trait_ref) => {
-                // Trait impl: take implied bounds from all types that
-                // appear in the trait reference.
-                match infcx.at(&cause, param_env).normalize(trait_ref) {
-                    Ok(Normalized { value, obligations: _ }) => value.substs.types().collect(),
-                    Err(NoSolution) => FxHashSet::default(),
-                }
-            }
-
-            None => {
-                // Inherent impl: take implied bounds from the `self` type.
-                let self_ty = tcx.type_of(impl_def_id);
-                match infcx.at(&cause, param_env).normalize(self_ty) {
-                    Ok(Normalized { value, obligations: _ }) => FxHashSet::from_iter([value]),
-                    Err(NoSolution) => FxHashSet::default(),
-                }
-            }
-        }
-    })
 }
 
 fn error_392(

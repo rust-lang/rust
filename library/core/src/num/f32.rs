@@ -1,4 +1,4 @@
-//! Constants specific to the `f32` single-precision floating point type.
+//! Constants for the `f32` single-precision floating point type.
 //!
 //! *[See also the `f32` primitive type][f32].*
 //!
@@ -1282,15 +1282,14 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
-    pub fn clamp(self, min: f32, max: f32) -> f32 {
+    pub fn clamp(mut self, min: f32, max: f32) -> f32 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
+        if self < min {
+            self = min;
         }
-        if x > max {
-            x = max;
+        if self > max {
+            self = max;
         }
-        x
+        self
     }
 }

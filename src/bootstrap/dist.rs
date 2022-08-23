@@ -1226,17 +1226,10 @@ impl Step for Rustfmt {
 
         let rustfmt = builder
             .ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("Rustfmt", builder.build.config.missing_tools);
-                None
-            })?;
+            .expect("rustfmt expected to build - essential tool");
         let cargofmt = builder
             .ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() })
-            .or_else(|| {
-                missing_tool("Cargofmt", builder.build.config.missing_tools);
-                None
-            })?;
-
+            .expect("cargo fmt expected to build - essential tool");
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);

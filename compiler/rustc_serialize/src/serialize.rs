@@ -273,7 +273,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
         unsafe {
             let ptr: *mut T = vec.as_mut_ptr();
             for i in 0..len {
-                std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
+                std::ptr::write(ptr.add(i), Decodable::decode(d));
             }
             vec.set_len(len);
         }

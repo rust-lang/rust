@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
-  --> $DIR/multiple-impls.rs:33:18
+  --> $DIR/multiple-impls.rs:33:33
    |
 LL |     Index::index(&[] as &[i32], 2u32);
-   |     ------------ ^^^^^^^^^^^^^ trait message
+   |     ------------                ^^^^ trait message
    |     |
    |     required by a bound introduced by this call
    |
@@ -12,10 +12,10 @@ LL |     Index::index(&[] as &[i32], 2u32);
              <[i32] as Index<Foo<usize>>>
 
 error[E0277]: the trait bound `[i32]: Index<Foo<u32>>` is not satisfied
-  --> $DIR/multiple-impls.rs:35:18
+  --> $DIR/multiple-impls.rs:35:33
    |
 LL |     Index::index(&[] as &[i32], Foo(2u32));
-   |     ------------ ^^^^^^^^^^^^^ on impl for Foo
+   |     ------------                ^^^^^^^^^ on impl for Foo
    |     |
    |     required by a bound introduced by this call
    |
@@ -25,10 +25,10 @@ LL |     Index::index(&[] as &[i32], Foo(2u32));
              <[i32] as Index<Foo<usize>>>
 
 error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
-  --> $DIR/multiple-impls.rs:37:18
+  --> $DIR/multiple-impls.rs:37:33
    |
 LL |     Index::index(&[] as &[i32], Bar(2u32));
-   |     ------------ ^^^^^^^^^^^^^ on impl for Bar
+   |     ------------                ^^^^^^^^^ on impl for Bar
    |     |
    |     required by a bound introduced by this call
    |

@@ -51,7 +51,7 @@ pub fn inject(
             cx.item(
                 span,
                 ident,
-                vec![cx.attribute(cx.meta_word(span, sym::macro_use))],
+                vec![cx.attribute(cx.meta_word(span, sym::macro_use))].into(),
                 ast::ItemKind::ExternCrate(None),
             ),
         );
@@ -78,7 +78,7 @@ pub fn inject(
     let use_item = cx.item(
         span,
         Ident::empty(),
-        vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
+        vec![cx.attribute(cx.meta_word(span, sym::prelude_import))].into(),
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),
             kind: ast::UseTreeKind::Glob,

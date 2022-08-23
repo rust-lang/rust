@@ -15,11 +15,11 @@ use std::ops::Range;
 /// for the attribute target. This allows us to perform cfg-expansion on
 /// a token stream before we invoke a derive proc-macro.
 ///
-/// This wrapper prevents direct access to the underlying `Vec<ast::Attribute>`.
+/// This wrapper prevents direct access to the underlying `ast::AttrVec>`.
 /// Parsing code can only get access to the underlying attributes
 /// by passing an `AttrWrapper` to `collect_tokens_trailing_tokens`.
 /// This makes it difficult to accidentally construct an AST node
-/// (which stores a `Vec<ast::Attribute>`) without first collecting tokens.
+/// (which stores an `ast::AttrVec`) without first collecting tokens.
 ///
 /// This struct has its own module, to ensure that the parser code
 /// cannot directly access the `attrs` field
@@ -49,9 +49,10 @@ impl AttrWrapper {
         self.attrs
     }
 
+    // Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
-    pub(crate) fn prepend_to_nt_inner(self, attrs: &mut Vec<Attribute>) {
-        let mut self_attrs: Vec<_> = self.attrs.into();
+    pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
+        let mut self_attrs = self.attrs.clone();
         std::mem::swap(attrs, &mut self_attrs);
         attrs.extend(self_attrs);
     }
@@ -196,7 +197,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
-        f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, (R, TrailingToken)>,
+        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, TrailingToken)>,
     ) -> PResult<'a, R> {
         // We only bail out when nothing could possibly observe the collected tokens:
         // 1. We cannot be force collecting tokens (since force-collecting requires tokens
@@ -212,7 +213,7 @@ impl<'a> Parser<'a> {
             // or `#[cfg_attr]` attributes.
             && !self.capture_cfg
         {
-            return Ok(f(self, attrs.attrs.into())?.0);
+            return Ok(f(self, attrs.attrs)?.0);
         }
 
         let start_token = (self.token.clone(), self.token_spacing);
@@ -222,7 +223,7 @@ impl<'a> Parser<'a> {
         let prev_capturing = std::mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
         let replace_ranges_start = self.capture_state.replace_ranges.len();
 
-        let ret = f(self, attrs.attrs.into());
+        let ret = f(self, attrs.attrs);
 
         self.capture_state.capturing = prev_capturing;
 
@@ -352,7 +353,7 @@ impl<'a> Parser<'a> {
         // on the captured token stream.
         if self.capture_cfg
             && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(&final_attrs)
+            && has_cfg_or_cfg_attr(final_attrs)
         {
             let attr_data = AttributesData { attrs: final_attrs.to_vec().into(), tokens };
 

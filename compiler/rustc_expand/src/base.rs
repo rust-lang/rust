@@ -6,7 +6,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, HasAttrs, Item, NodeId, PatKind};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
@@ -71,7 +71,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
             Annotatable::Item(item) => item.visit_attrs(f),
             Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
@@ -1227,7 +1227,7 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err(_) => None,
+            ast::LitKind::Err => None,
             _ => Some((cx.struct_span_err(l.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

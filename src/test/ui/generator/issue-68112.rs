@@ -64,6 +64,7 @@ fn test2() {
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE `RefCell<i32>` cannot be shared between threads safely
     //~| NOTE required for
+    //~| NOTE required by a bound introduced by this call
     //~| NOTE captures the following types
 }
 

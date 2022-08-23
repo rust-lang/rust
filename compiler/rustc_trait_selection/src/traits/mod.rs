@@ -117,11 +117,21 @@ pub enum TraitQueryMode {
 
 /// Creates predicate obligations from the generic bounds.
 pub fn predicates_for_generics<'tcx>(
-    cause: ObligationCause<'tcx>,
+    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    util::predicates_for_generics(cause, 0, param_env, generic_bounds)
+    let generic_bounds = generic_bounds;
+    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
+
+    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
+        move |(idx, (predicate, span))| Obligation {
+            cause: cause(idx, span),
+            recursion_depth: 0,
+            param_env: param_env,
+            predicate,
+        },
+    )
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -463,9 +473,6 @@ pub fn impossible_predicates<'tcx>(
     debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        // HACK: Set tainted by errors to gracefully exit in case of overflow.
-        infcx.set_tainted_by_errors();
-
         let param_env = ty::ParamEnv::reveal_all();
         let ocx = ObligationCtxt::new(&infcx);
         let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);

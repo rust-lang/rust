@@ -3595,6 +3595,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
+ "rustc_macros",
  "rustc_parse",
  "rustc_session",
  "rustc_span",
@@ -4320,6 +4321,7 @@ dependencies = [
  "rustc_ast",
  "rustc_errors",
  "rustc_lint",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
@@ -5294,7 +5296,6 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.14.0",
- "crossbeam-utils",
  "lazy_static",
  "regex",
  "walkdir",

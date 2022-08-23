@@ -4,7 +4,7 @@ error[E0401]: can't use generic parameters from outer function
 LL | fn foo<const X: u32>() {
    |              - const parameter from outer function
 LL |     fn bar() -> u32 {
-   |        --- try adding a local generic parameter in this method instead
+   |           - help: try using a local generic parameter instead: `<X>`
 LL |         X
    |         ^ use of generic parameter from outer function
 

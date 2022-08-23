@@ -1514,8 +1514,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         traits::normalize(selcx, self.param_env, cause.clone(), impl_bounds);
 
                     // Convert the bounds into obligations.
-                    let impl_obligations =
-                        traits::predicates_for_generics(cause, self.param_env, impl_bounds);
+                    let impl_obligations = traits::predicates_for_generics(
+                        move |_, _| cause.clone(),
+                        self.param_env,
+                        impl_bounds,
+                    );
 
                     let candidate_obligations = impl_obligations
                         .chain(norm_obligations.into_iter())

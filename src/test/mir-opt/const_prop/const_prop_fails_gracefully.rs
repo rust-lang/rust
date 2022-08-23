@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 #[inline(never)]
 fn read(_: usize) { }
 

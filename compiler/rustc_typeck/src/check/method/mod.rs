@@ -534,7 +534,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             traits::ObligationCause::misc(span, self.body_id)
         };
-        obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
+        let predicates_cause = cause.clone();
+        obligations.extend(traits::predicates_for_generics(
+            move |_, _| predicates_cause.clone(),
+            self.param_env,
+            bounds,
+        ));
 
         // Also add an obligation for the method type being well-formed.
         let method_ty = tcx.mk_fn_ptr(ty::Binder::dummy(fn_sig));

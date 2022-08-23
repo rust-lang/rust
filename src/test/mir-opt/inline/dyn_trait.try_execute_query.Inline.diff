@@ -7,8 +7,8 @@
       let mut _2: &dyn Cache<V = <C as Cache>::V>; // in scope 0 at $DIR/dyn-trait.rs:+1:14: +1:15
       let mut _3: &C;                      // in scope 0 at $DIR/dyn-trait.rs:+1:14: +1:15
 +     scope 1 (inlined mk_cycle::<<C as Cache>::V>) { // at $DIR/dyn-trait.rs:27:5: 27:16
-+         debug c => _2;                   // in scope 1 at $DIR/dyn-trait.rs:+0:27: +0:28
-+         let mut _4: &dyn Cache<V = <C as Cache>::V>; // in scope 1 at $DIR/dyn-trait.rs:+0:5: +0:22
++         debug c => _2;                   // in scope 1 at $DIR/dyn-trait.rs:20:27: 20:28
++         let mut _4: &dyn Cache<V = <C as Cache>::V>; // in scope 1 at $DIR/dyn-trait.rs:21:5: 21:22
 +     }
   
       bb0: {
@@ -18,9 +18,9 @@
           _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (Pointer(Unsize)); // scope 0 at $DIR/dyn-trait.rs:+1:14: +1:15
           StorageDead(_3);                 // scope 0 at $DIR/dyn-trait.rs:+1:14: +1:15
 -         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> bb1; // scope 0 at $DIR/dyn-trait.rs:+1:5: +1:16
-+         StorageLive(_4);                 // scope 1 at $DIR/dyn-trait.rs:+0:5: +0:22
-+         _4 = _2;                         // scope 1 at $DIR/dyn-trait.rs:+0:5: +0:22
-+         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _4) -> bb1; // scope 1 at $DIR/dyn-trait.rs:+0:5: +0:22
++         StorageLive(_4);                 // scope 1 at $DIR/dyn-trait.rs:21:5: 21:22
++         _4 = _2;                         // scope 1 at $DIR/dyn-trait.rs:21:5: 21:22
++         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _4) -> bb1; // scope 1 at $DIR/dyn-trait.rs:21:5: 21:22
                                            // mir::Constant
 -                                          // + span: $DIR/dyn-trait.rs:27:5: 27:13
 -                                          // + literal: Const { ty: for<'r> fn(&'r (dyn Cache<V = <C as Cache>::V> + 'r)) {mk_cycle::<<C as Cache>::V>}, val: Value(<ZST>) }
@@ -29,7 +29,7 @@
       }
   
       bb1: {
-+         StorageDead(_4);                 // scope 1 at $DIR/dyn-trait.rs:+0:21: +0:22
++         StorageDead(_4);                 // scope 1 at $DIR/dyn-trait.rs:21:21: 21:22
           StorageDead(_2);                 // scope 0 at $DIR/dyn-trait.rs:+1:15: +1:16
           return;                          // scope 0 at $DIR/dyn-trait.rs:+2:2: +2:2
       }

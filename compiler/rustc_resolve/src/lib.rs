@@ -1945,6 +1945,16 @@ impl<'a> Resolver<'a> {
         def_id.as_local().map(|def_id| self.source_span[def_id])
     }
 
+    /// Retrieves the name of the given `DefId`.
+    #[inline]
+    pub fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
+        let def_key = match def_id.as_local() {
+            Some(def_id) => self.definitions.def_key(def_id),
+            None => self.cstore().def_key(def_id),
+        };
+        def_key.get_opt_name()
+    }
+
     /// Checks if an expression refers to a function marked with
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.

@@ -11,7 +11,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrStyle, ExprKind, ForeignItemKind};
+use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrStyle, AttrVec, ExprKind, ForeignItemKind};
 use rustc_ast::{HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
@@ -1001,7 +1001,7 @@ enum AddSemicolon {
 /// of functionality used by `InvocationCollector`.
 trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     type OutputTy = SmallVec<[Self; 1]>;
-    type AttrsTy: Deref<Target = [ast::Attribute]> = Vec<ast::Attribute>;
+    type AttrsTy: Deref<Target = [ast::Attribute]> = ast::AttrVec;
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy;
@@ -1333,7 +1333,7 @@ impl InvocationCollectorNode for ast::Stmt {
             }
             StmtKind::Item(item) => match item.into_inner() {
                 ast::Item { kind: ItemKind::MacCall(mac), attrs, .. } => {
-                    (mac.args.need_semicolon(), mac, attrs.into())
+                    (mac.args.need_semicolon(), mac, attrs)
                 }
                 _ => unreachable!(),
             },
@@ -1390,7 +1390,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            TyKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
+            TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1414,7 +1414,7 @@ impl InvocationCollectorNode for P<ast::Pat> {
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            PatKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
+            PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1646,7 +1646,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
-            attrs.splice(pos..pos, self.cfg().expand_cfg_attr(attr, false));
+            // Repeated `insert` calls is inefficient, but the number of
+            // insertions is almost always 0 or 1 in practice.
+            for cfg in self.cfg().expand_cfg_attr(attr, false).into_iter().rev() {
+                attrs.insert(pos, cfg)
+            }
         });
     }
 

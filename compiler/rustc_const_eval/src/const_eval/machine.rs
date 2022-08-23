@@ -101,14 +101,22 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
     /// This boolean here controls the second part.
     pub(super) can_access_statics: bool,
+
+    /// Whether to check alignment during evaluation.
+    check_alignment: bool,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(crate) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
+    pub(crate) fn new(
+        const_eval_limit: Limit,
+        can_access_statics: bool,
+        check_alignment: bool,
+    ) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
             stack: Vec::new(),
             can_access_statics,
+            check_alignment,
         }
     }
 }
@@ -238,7 +246,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     #[inline(always)]
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+        ecx.machine.check_alignment
     }
 
     #[inline(always)]

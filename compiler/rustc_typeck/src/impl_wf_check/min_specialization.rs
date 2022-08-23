@@ -65,27 +65,25 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::check::regionck::OutlivesEnvironmentExt;
-use crate::check::wfcheck::impl_implied_bounds;
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
-use rustc_trait_selection::traits::{self, translate_substs, wf};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
-        tcx.infer_ctxt().enter(|infcx| {
-            check_always_applicable(&infcx, impl_def_id, node);
-        });
+        check_always_applicable(tcx, impl_def_id, node);
     }
 }
 
@@ -105,15 +103,13 @@ fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Opti
 }
 
 /// Check that `impl1` is a sound specialization
-fn check_always_applicable(infcx: &InferCtxt<'_, '_>, impl1_def_id: LocalDefId, impl2_node: Node) {
-    if let Some((impl1_substs, impl2_substs)) = get_impl_substs(infcx, impl1_def_id, impl2_node) {
+fn check_always_applicable(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node) {
+    if let Some((impl1_substs, impl2_substs)) = get_impl_substs(tcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
         debug!(
             "check_always_applicable(\nimpl1_def_id={:?},\nimpl2_def_id={:?},\nimpl2_substs={:?}\n)",
             impl1_def_id, impl2_def_id, impl2_substs
         );
-
-        let tcx = infcx.tcx;
 
         let parent_substs = if impl2_node.is_from_trait() {
             impl2_substs.to_vec()
@@ -124,7 +120,7 @@ fn check_always_applicable(infcx: &InferCtxt<'_, '_>, impl1_def_id: LocalDefId, 
         let span = tcx.def_span(impl1_def_id);
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
-        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+        check_predicates(tcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
     }
 }
 
@@ -139,32 +135,38 @@ fn check_always_applicable(infcx: &InferCtxt<'_, '_>, impl1_def_id: LocalDefId, 
 ///
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
 fn get_impl_substs<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     impl1_def_id: LocalDefId,
     impl2_node: Node,
 ) -> Option<(SubstsRef<'tcx>, SubstsRef<'tcx>)> {
-    let tcx = infcx.tcx;
-    let param_env = tcx.param_env(impl1_def_id);
+    tcx.infer_ctxt().enter(|ref infcx| {
+        let ocx = ObligationCtxt::new(infcx);
+        let param_env = tcx.param_env(impl1_def_id);
+        let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
 
-    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
-    let impl2_substs =
-        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+        let assumed_wf_types =
+            ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
-    let mut outlives_env = OutlivesEnvironment::new(param_env);
-    let implied_bounds =
-        impl_implied_bounds(infcx.tcx, param_env, impl1_def_id, tcx.def_span(impl1_def_id));
-    outlives_env.add_implied_bounds(
-        infcx,
-        implied_bounds,
-        tcx.hir().local_def_id_to_hir_id(impl1_def_id),
-    );
-    infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
-    let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
-        let span = tcx.def_span(impl1_def_id);
-        tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
-        return None;
-    };
-    Some((impl1_substs, impl2_substs))
+        let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+        let impl2_substs =
+            translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            ocx.infcx.report_fulfillment_errors(&errors, None, false);
+            return None;
+        }
+
+        let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+        infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
+        let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+            let span = tcx.def_span(impl1_def_id);
+            tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+            return None;
+        };
+        Some((impl1_substs, impl2_substs))
+    })
 }
 
 /// Returns a list of all of the unconstrained subst of the given impl.
@@ -279,14 +281,13 @@ fn check_static_lifetimes<'tcx>(
 /// * a well-formed predicate of a type argument of the trait being implemented,
 ///   including the `Self`-type.
 fn check_predicates<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     impl1_def_id: LocalDefId,
     impl1_substs: SubstsRef<'tcx>,
     impl2_node: Node,
     impl2_substs: SubstsRef<'tcx>,
     span: Span,
 ) {
-    let tcx = infcx.tcx;
     let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
     let impl1_predicates: Vec<_> = traits::elaborate_predicates_with_span(
         tcx,
@@ -343,19 +344,23 @@ fn check_predicates<'tcx>(
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().substs {
-        if let Some(obligations) = wf::obligations(
-            infcx,
-            tcx.param_env(impl1_def_id),
-            tcx.hir().local_def_id_to_hir_id(impl1_def_id),
-            0,
-            arg,
-            span,
-        ) {
+        tcx.infer_ctxt().enter(|ref infcx| {
+            let obligations = wf::obligations(
+                infcx,
+                tcx.param_env(impl1_def_id),
+                tcx.hir().local_def_id_to_hir_id(impl1_def_id),
+                0,
+                arg,
+                span,
+            )
+            .unwrap();
+
+            assert!(!obligations.needs_infer());
             impl2_predicates.extend(
                 traits::elaborate_obligations(tcx, obligations)
                     .map(|obligation| obligation.predicate),
             )
-        }
+        })
     }
     impl2_predicates.extend(
         traits::elaborate_predicates_with_span(tcx, always_applicable_traits)

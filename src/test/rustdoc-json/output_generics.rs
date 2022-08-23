@@ -2,12 +2,11 @@
 
 // This is a regression test for #98009.
 
-// @has output_generics.json
-// @has - "$.index[*][?(@.name=='this_compiles')]"
-// @has - "$.index[*][?(@.name=='this_does_not')]"
-// @has - "$.index[*][?(@.name=='Events')]"
-// @has - "$.index[*][?(@.name=='Other')]"
-// @has - "$.index[*][?(@.name=='Trait')]"
+// @has "$.index[*][?(@.name=='this_compiles')]"
+// @has "$.index[*][?(@.name=='this_does_not')]"
+// @has "$.index[*][?(@.name=='Events')]"
+// @has "$.index[*][?(@.name=='Other')]"
+// @has "$.index[*][?(@.name=='Trait')]"
 
 struct Events<R>(R);
 

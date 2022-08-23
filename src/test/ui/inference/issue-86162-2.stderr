@@ -4,7 +4,7 @@ error[E0283]: type annotations needed
 LL |     Foo::bar(gen()); //<- Do not suggest `Foo::bar::<impl Clone>()`!
    |     -------- ^^^ cannot infer type of the type parameter `T` declared on the function `gen`
    |     |
-   |     type must be known at this point
+   |     required by a bound introduced by this call
    |
    = note: cannot satisfy `_: Clone`
 note: required by a bound in `Foo::bar`

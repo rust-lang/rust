@@ -11,6 +11,7 @@ doctest = false
 libloading = "0.7.1"
 rustc_errors = { path = "../rustc_errors" }
 rustc_lint = { path = "../rustc_lint" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_session = { path = "../rustc_session" }

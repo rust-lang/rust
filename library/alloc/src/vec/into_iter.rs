@@ -148,7 +148,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.ptr as *const _ == self.end {
+        if self.ptr == self.end {
             None
         } else if mem::size_of::<T>() == 0 {
             // purposefully don't use 'ptr.offset' because for
@@ -160,7 +160,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             Some(unsafe { mem::zeroed() })
         } else {
             let old = self.ptr;
-            self.ptr = unsafe { self.ptr.offset(1) };
+            self.ptr = unsafe { self.ptr.add(1) };
 
             Some(unsafe { ptr::read(old) })
         }
@@ -272,7 +272,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })
         } else {
-            self.end = unsafe { self.end.offset(-1) };
+            self.end = unsafe { self.end.sub(1) };
 
             Some(unsafe { ptr::read(self.end) })
         }
@@ -288,7 +288,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             }
         } else {
             // SAFETY: same as for advance_by()
-            self.end = unsafe { self.end.offset(step_size.wrapping_neg() as isize) };
+            self.end = unsafe { self.end.sub(step_size) };
         }
         let to_drop = ptr::slice_from_raw_parts_mut(self.end as *mut T, step_size);
         // SAFETY: same as for advance_by()

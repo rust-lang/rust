@@ -1,4 +1,4 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type][f64].*
 //!
@@ -1280,15 +1280,14 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
-    pub fn clamp(self, min: f64, max: f64) -> f64 {
+    pub fn clamp(mut self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
+        if self < min {
+            self = min;
         }
-        if x > max {
-            x = max;
+        if self > max {
+            self = max;
         }
-        x
+        self
     }
 }

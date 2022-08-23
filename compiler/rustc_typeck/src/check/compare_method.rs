@@ -1,7 +1,6 @@
 use super::potentially_plural_count;
-use crate::check::regionck::OutlivesEnvironmentExt;
-use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -71,6 +70,72 @@ pub(crate) fn compare_impl_method<'tcx>(
     }
 }
 
+/// This function is best explained by example. Consider a trait:
+///
+///     trait Trait<'t, T> {
+///         // `trait_m`
+///         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
+///     }
+///
+/// And an impl:
+///
+///     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
+///          // `impl_m`
+///          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
+///     }
+///
+/// We wish to decide if those two method types are compatible.
+/// For this we have to show that, assuming the bounds of the impl hold, the
+/// bounds of `trait_m` imply the bounds of `impl_m`.
+///
+/// We start out with `trait_to_impl_substs`, that maps the trait
+/// type parameters to impl type parameters. This is taken from the
+/// impl trait reference:
+///
+///     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
+///
+/// We create a mapping `dummy_substs` that maps from the impl type
+/// parameters to fresh types and regions. For type parameters,
+/// this is the identity transform, but we could as well use any
+/// placeholder types. For regions, we convert from bound to free
+/// regions (Note: but only early-bound regions, i.e., those
+/// declared on the impl or used in type parameter bounds).
+///
+///     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
+///
+/// Now we can apply `placeholder_substs` to the type of the impl method
+/// to yield a new function type in terms of our fresh, placeholder
+/// types:
+///
+///     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
+///
+/// We now want to extract and substitute the type of the *trait*
+/// method and compare it. To do so, we must create a compound
+/// substitution by combining `trait_to_impl_substs` and
+/// `impl_to_placeholder_substs`, and also adding a mapping for the method
+/// type parameters. We extend the mapping to also include
+/// the method parameters.
+///
+///     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+///
+/// Applying this to the trait method type yields:
+///
+///     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
+///
+/// This type is also the same but the name of the bound region (`'a`
+/// vs `'b`).  However, the normal subtyping rules on fn types handle
+/// this kind of equivalency just fine.
+///
+/// We now use these substitutions to ensure that all declared bounds are
+/// satisfied by the implementation's method.
+///
+/// We do this by creating a parameter environment which contains a
+/// substitution corresponding to `impl_to_placeholder_substs`. We then build
+/// `trait_to_placeholder_substs` and use it to convert the predicates contained
+/// in the `trait_m` generics to the placeholder form.
+///
+/// Finally we register each of these predicates as an obligation and check that
+/// they hold.
 fn compare_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
@@ -96,69 +161,6 @@ fn compare_predicate_entailment<'tcx>(
             kind: impl_m.kind,
         },
     );
-
-    // This code is best explained by example. Consider a trait:
-    //
-    //     trait Trait<'t, T> {
-    //         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
-    //     }
-    //
-    // And an impl:
-    //
-    //     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-    //          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
-    //     }
-    //
-    // We wish to decide if those two method types are compatible.
-    //
-    // We start out with trait_to_impl_substs, that maps the trait
-    // type parameters to impl type parameters. This is taken from the
-    // impl trait reference:
-    //
-    //     trait_to_impl_substs = {'t => 'j, T => &'i U, Self => Foo}
-    //
-    // We create a mapping `dummy_substs` that maps from the impl type
-    // parameters to fresh types and regions. For type parameters,
-    // this is the identity transform, but we could as well use any
-    // placeholder types. For regions, we convert from bound to free
-    // regions (Note: but only early-bound regions, i.e., those
-    // declared on the impl or used in type parameter bounds).
-    //
-    //     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
-    //
-    // Now we can apply placeholder_substs to the type of the impl method
-    // to yield a new function type in terms of our fresh, placeholder
-    // types:
-    //
-    //     <'b> fn(t: &'i0 U0, m: &'b) -> Foo
-    //
-    // We now want to extract and substitute the type of the *trait*
-    // method and compare it. To do so, we must create a compound
-    // substitution by combining trait_to_impl_substs and
-    // impl_to_placeholder_substs, and also adding a mapping for the method
-    // type parameters. We extend the mapping to also include
-    // the method parameters.
-    //
-    //     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
-    //
-    // Applying this to the trait method type yields:
-    //
-    //     <'a> fn(t: &'i0 U0, m: &'a) -> Foo
-    //
-    // This type is also the same but the name of the bound region ('a
-    // vs 'b).  However, the normal subtyping rules on fn types handle
-    // this kind of equivalency just fine.
-    //
-    // We now use these substitutions to ensure that all declared bounds are
-    // satisfied by the implementation's method.
-    //
-    // We do this by creating a parameter environment which contains a
-    // substitution corresponding to impl_to_placeholder_substs. We then build
-    // trait_to_placeholder_substs and use it to convert the predicates contained
-    // in the trait_m.generics to the placeholder form.
-    //
-    // Finally we register each of these predicates as an obligation in
-    // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
     // Create mapping from impl to placeholder.
     let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
@@ -399,8 +401,11 @@ fn compare_predicate_entailment<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, wf_tys, impl_m_hir_id);
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(infcx),
+            infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
+        );
         infcx.check_region_obligations_and_report_errors(
             impl_m.def_id.expect_local(),
             &outlives_environment,
@@ -853,8 +858,7 @@ fn compare_synthetic_generics<'tcx>(
     {
         if impl_synthetic != trait_synthetic {
             let impl_def_id = impl_def_id.expect_local();
-            let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_def_id);
-            let impl_span = tcx.hir().span(impl_hir_id);
+            let impl_span = tcx.def_span(impl_def_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(
                 tcx.sess,
@@ -873,17 +877,16 @@ fn compare_synthetic_generics<'tcx>(
                         // try taking the name from the trait impl
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
-                        let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
+                        let new_name = tcx.opt_item_name(trait_def_id)?;
                         let trait_m = trait_m.def_id.as_local()?;
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m });
+                        let trait_m = tcx.hir().expect_trait_item(trait_m);
 
                         let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
+                        let impl_m = tcx.hir().expect_impl_item(impl_m);
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
-                        let new_generics_span =
-                            tcx.sess.source_map().generate_fn_name_span(impl_span)?.shrink_to_hi();
+                        let new_generics_span = tcx.def_ident_span(impl_def_id)?.shrink_to_hi();
                         // in case there are generics, just replace them
                         let generics_span =
                             impl_m.generics.span.substitute_dummy(new_generics_span);
@@ -895,7 +898,7 @@ fn compare_synthetic_generics<'tcx>(
                             "try changing the `impl Trait` argument to a generic parameter",
                             vec![
                                 // replace `impl Trait` with `T`
-                                (impl_span, new_name),
+                                (impl_span, new_name.to_string()),
                                 // replace impl method generics with trait method generics
                                 // This isn't quite right, as users might have changed the names
                                 // of the generics, but it works for the common case
@@ -912,7 +915,7 @@ fn compare_synthetic_generics<'tcx>(
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
                         let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
+                        let impl_m = tcx.hir().expect_impl_item(impl_m);
                         let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),
@@ -1445,14 +1448,17 @@ pub fn check_type_bounds<'tcx>(
     };
     debug!(?normalize_param_env);
 
+    let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
     let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
         let ocx = ObligationCtxt::new(&infcx);
 
+        let assumed_wf_types =
+            ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty.def_id.expect_local());
+
         let mut selcx = traits::SelectionContext::new(&infcx);
-        let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = ObligationCause::new(
             impl_ty_span,
             impl_ty_hir_id,
@@ -1463,7 +1469,7 @@ pub fn check_type_bounds<'tcx>(
         );
         let mk_cause = |span: Span| {
             let code = if span.is_dummy() {
-                traits::MiscObligation
+                traits::ItemObligation(trait_ty.def_id)
             } else {
                 traits::BindingObligation(trait_ty.def_id, span)
             };
@@ -1508,17 +1514,10 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let implied_bounds = match impl_ty.container {
-            ty::TraitContainer => FxHashSet::default(),
-            ty::ImplContainer => wfcheck::impl_implied_bounds(
-                tcx,
-                param_env,
-                container_id.expect_local(),
-                impl_ty_span,
-            ),
-        };
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_hir_id, assumed_wf_types);
+        let outlives_environment =
+            OutlivesEnvironment::with_bounds(param_env, Some(&infcx), implied_bounds);
+
         infcx.check_region_obligations_and_report_errors(
             impl_ty.def_id.expect_local(),
             &outlives_environment,

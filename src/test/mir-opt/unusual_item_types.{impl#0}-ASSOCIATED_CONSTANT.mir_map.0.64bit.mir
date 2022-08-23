@@ -5,6 +5,6 @@ const <impl at $DIR/unusual-item-types.rs:9:1: 9:7>::ASSOCIATED_CONSTANT: i32 = 
 
     bb0: {
         _0 = const 2_i32;                // scope 0 at $DIR/unusual-item-types.rs:+0:38: +0:39
-        return;                          // scope 0 at $DIR/unusual-item-types.rs:+0:5: +0:35
+        return;                          // scope 0 at $DIR/unusual-item-types.rs:+0:5: +0:39
     }
 }

@@ -1556,7 +1556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut error_happened = false;
 
         // Type-check each field.
-        for field in ast_fields {
+        for (idx, field) in ast_fields.iter().enumerate() {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
@@ -1594,7 +1594,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
-            self.check_expr_coercable_to_type(&field.expr, field_type, None);
+            let ty = self.check_expr_with_hint(&field.expr, field_type);
+            let (_, diag) =
+                self.demand_coerce_diag(&field.expr, ty, field_type, None, AllowTwoPhase::No);
+
+            if let Some(mut diag) = diag {
+                if idx == ast_fields.len() - 1 && remaining_fields.is_empty() {
+                    self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                }
+                diag.emit();
+            }
         }
 
         // Make sure the programmer specified correct number of fields.
@@ -1822,25 +1831,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
 
-        // If the last field is a range literal, but it isn't supposed to be, then they probably
-        // meant to use functional update syntax.
-        //
+        if let Some(last) = ast_fields.last() {
+            self.suggest_fru_from_range(last, variant, substs, &mut err);
+        }
+
+        err.emit();
+    }
+
+    /// If the last field is a range literal, but it isn't supposed to be, then they probably
+    /// meant to use functional update syntax.
+    fn suggest_fru_from_range(
+        &self,
+        last_expr_field: &hir::ExprField<'tcx>,
+        variant: &ty::VariantDef,
+        substs: SubstsRef<'tcx>,
+        err: &mut Diagnostic,
+    ) {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
-        if let Some((
-            last,
-            ExprKind::Struct(
+        if let ExprKind::Struct(
                 QPath::LangItem(LangItem::Range, ..),
                 &[ref range_start, ref range_end],
                 _,
-            ),
-        )) = ast_fields.last().map(|last| (last, &last.expr.kind)) &&
-        let variant_field =
-            variant.fields.iter().find(|field| field.ident(self.tcx) == last.ident) &&
-        let range_def_id = self.tcx.lang_items().range_struct() &&
-        variant_field
-            .and_then(|field| field.ty(self.tcx, substs).ty_adt_def())
-            .map(|adt| adt.did())
-            != range_def_id
+            ) = last_expr_field.expr.kind
+            && let variant_field =
+                variant.fields.iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
+            && let range_def_id = self.tcx.lang_items().range_struct()
+            && variant_field
+                .and_then(|field| field.ty(self.tcx, substs).ty_adt_def())
+                .map(|adt| adt.did())
+                != range_def_id
         {
             let instead = self
                 .tcx
@@ -1856,8 +1875,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
-
-        err.emit();
     }
 
     /// Report an error for a struct field expression when there are invisible fields.

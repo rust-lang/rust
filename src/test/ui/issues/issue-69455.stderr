@@ -16,7 +16,7 @@ error[E0283]: type annotations needed
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
    |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
    |                          |
-   |                          type must be known at this point
+   |                          required by a bound introduced by this call
    |
 note: multiple `impl`s satisfying `u64: Test<_>` found
   --> $DIR/issue-69455.rs:11:1

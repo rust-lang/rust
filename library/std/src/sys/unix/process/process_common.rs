@@ -45,11 +45,31 @@ cfg_if::cfg_if! {
         }
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::{slice, mem};
+            use crate::{
+                mem::{align_of, size_of},
+                slice,
+            };
+            use libc::{c_ulong, sigset_t};
 
-            let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
+            // The implementations from bionic (android libc) type pun `sigset_t` as an
+            // array of `c_ulong`. This works, but lets add a smoke check to make sure
+            // that doesn't change.
+            const _: () = assert!(
+                align_of::<c_ulong>() == align_of::<sigset_t>()
+                    && (size_of::<sigset_t>() % size_of::<c_ulong>()) == 0
+            );
+
             let bit = (signum - 1) as usize;
-            raw[bit / 8] |= 1 << (bit % 8);
+            if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
+                crate::sys::unix::os::set_errno(libc::EINVAL);
+                return -1;
+            }
+            let raw = slice::from_raw_parts_mut(
+                set as *mut c_ulong,
+                size_of::<sigset_t>() / size_of::<c_ulong>(),
+            );
+            const LONG_BIT: usize = size_of::<c_ulong>() * 8;
+            raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
             return 0;
         }
     } else {

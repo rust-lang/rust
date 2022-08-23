@@ -1,0 +1,171 @@
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:10
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |          ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL | fn _f<F: r#fn(), G>(_: impl fn(), _: &dyn fn())
+   |          ++
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:27
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                           ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL | fn _f<F: fn(), G>(_: impl r#fn(), _: &dyn fn())
+   |                           ++
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:3:41
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                                         ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn r#fn())
+   |                                         ++
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/kw-in-trait-bounds.rs:17:4
+   |
+LL | G: fn(),
+   |    ^^ expected identifier, found keyword
+   |
+help: escape `fn` to use it as an identifier
+   |
+LL | G: r#fn(),
+   |    ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:24:10
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |          ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: r#struct, B>(_: impl struct, _: &dyn struct)
+   |          ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:24:29
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                             ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: struct, B>(_: impl r#struct, _: &dyn struct)
+   |                             ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:24:45
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                                             ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn r#struct)
+   |                                             ++
+
+error: expected identifier, found keyword `struct`
+  --> $DIR/kw-in-trait-bounds.rs:38:8
+   |
+LL |     B: struct,
+   |        ^^^^^^ expected identifier, found keyword
+   |
+help: escape `struct` to use it as an identifier
+   |
+LL |     B: r#struct,
+   |        ++
+
+error[E0405]: cannot find trait `r#fn` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:3:10
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |          ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+   |
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
+
+error[E0405]: cannot find trait `r#fn` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:17:4
+   |
+LL | G: fn(),
+   |    ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+   |
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
+
+error[E0405]: cannot find trait `r#fn` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:3:27
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                           ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+   |
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
+
+error[E0405]: cannot find trait `r#fn` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:3:41
+   |
+LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+   |                                         ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+   |
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:24:10
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |          ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:38:8
+   |
+LL |     B: struct,
+   |        ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:24:29
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error[E0405]: cannot find trait `r#struct` in this scope
+  --> $DIR/kw-in-trait-bounds.rs:24:45
+   |
+LL | fn _g<A: struct, B>(_: impl struct, _: &dyn struct)
+   |                                             ^^^^^^ help: a trait with a similar name exists (notice the capitalization): `Struct`
+...
+LL | trait Struct {}
+   | ------------ similarly named trait `Struct` defined here
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

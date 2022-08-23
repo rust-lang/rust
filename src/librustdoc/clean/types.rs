@@ -1130,7 +1130,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: Vec<ast::Attribute>,
+    pub(crate) other_attrs: ast::AttrVec,
 }
 
 impl Attributes {
@@ -1173,7 +1173,7 @@ impl Attributes {
         doc_only: bool,
     ) -> Attributes {
         let mut doc_strings = Vec::new();
-        let mut other_attrs = Vec::new();
+        let mut other_attrs = ast::AttrVec::new();
         for (attr, parent_module) in attrs {
             if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
                 trace!("got doc_str={doc_str:?}");
