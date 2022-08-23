@@ -5,7 +5,10 @@ use oorandom::Rand32;
 use stdx::format_to;
 use syntax::AstNode;
 
-use crate::{syntax_highlighting::highlight, FileId, RootDatabase};
+use crate::{
+    syntax_highlighting::{highlight, HighlightConfig},
+    FileId, RootDatabase,
+};
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
     let parse = db.parse(file_id);
@@ -20,7 +23,21 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         )
     }
 
-    let hl_ranges = highlight(db, file_id, None, false);
+    let hl_ranges = highlight(
+        db,
+        HighlightConfig {
+            strings: true,
+            punctuation: true,
+            specialize_punctuation: true,
+            specialize_operator: true,
+            operator: true,
+            inject_doc_comment: true,
+            macro_bang: true,
+            syntactic_name_ref_highlighting: false,
+        },
+        file_id,
+        None,
+    );
     let text = parse.tree().syntax().to_string();
     let mut buf = String::new();
     buf.push_str(STYLE);

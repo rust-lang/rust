@@ -517,7 +517,6 @@ pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HlRange>,
-    highlight_strings: bool,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
@@ -526,10 +525,8 @@ pub(crate) fn semantic_tokens(
         if highlight_range.highlight.is_empty() {
             continue;
         }
+
         let (ty, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
-        if !highlight_strings && ty == lsp_types::SemanticTokenType::STRING {
-            continue;
-        }
         let token_index = semantic_tokens::type_index(ty);
         let modifier_bitset = mods.0;
 
@@ -561,7 +558,7 @@ fn semantic_token_type_and_modifiers(
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => semantic_tokens::ATTRIBUTE,
+            SymbolKind::Attribute => lsp_types::SemanticTokenType::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
             SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
@@ -616,7 +613,7 @@ fn semantic_token_type_and_modifiers(
             HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
             HlOperator::Logical => semantic_tokens::LOGICAL,
             HlOperator::Comparison => semantic_tokens::COMPARISON,
-            HlOperator::Other => semantic_tokens::OPERATOR,
+            HlOperator::Other => lsp_types::SemanticTokenType::OPERATOR,
         },
         HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
         HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,

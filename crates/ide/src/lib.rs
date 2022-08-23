@@ -98,7 +98,7 @@ pub use crate::{
     static_index::{StaticIndex, StaticIndexedFile, TokenId, TokenStaticData},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
-        HlRange,
+        HighlightConfig, HlRange,
     },
 };
 pub use hir::{Documentation, Semantics};
@@ -517,8 +517,12 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file
-    pub fn highlight(&self, file_id: FileId) -> Cancellable<Vec<HlRange>> {
-        self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false))
+    pub fn highlight(
+        &self,
+        highlight_config: HighlightConfig,
+        file_id: FileId,
+    ) -> Cancellable<Vec<HlRange>> {
+        self.with_db(|db| syntax_highlighting::highlight(db, highlight_config, file_id, None))
     }
 
     /// Computes all ranges to highlight for a given item in a file.
@@ -533,9 +537,13 @@ impl Analysis {
     }
 
     /// Computes syntax highlighting for the given file range.
-    pub fn highlight_range(&self, frange: FileRange) -> Cancellable<Vec<HlRange>> {
+    pub fn highlight_range(
+        &self,
+        highlight_config: HighlightConfig,
+        frange: FileRange,
+    ) -> Cancellable<Vec<HlRange>> {
         self.with_db(|db| {
-            syntax_highlighting::highlight(db, frange.file_id, Some(frange.range), false)
+            syntax_highlighting::highlight(db, highlight_config, frange.file_id, Some(frange.range))
         })
     }
 

@@ -12,26 +12,26 @@ macro_rules! define_semantic_token_types {
         $(pub(crate) const $ident: SemanticTokenType = SemanticTokenType::new($string);)*
 
         pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-            SemanticTokenType::COMMENT,
-            SemanticTokenType::KEYWORD,
-            SemanticTokenType::STRING,
-            SemanticTokenType::NUMBER,
-            SemanticTokenType::REGEXP,
-            SemanticTokenType::OPERATOR,
-            SemanticTokenType::NAMESPACE,
-            SemanticTokenType::TYPE,
-            SemanticTokenType::STRUCT,
             SemanticTokenType::CLASS,
-            SemanticTokenType::INTERFACE,
-            SemanticTokenType::ENUM,
+            SemanticTokenType::COMMENT,
             SemanticTokenType::ENUM_MEMBER,
-            SemanticTokenType::TYPE_PARAMETER,
+            SemanticTokenType::ENUM,
             SemanticTokenType::FUNCTION,
-            SemanticTokenType::METHOD,
-            SemanticTokenType::PROPERTY,
+            SemanticTokenType::INTERFACE,
+            SemanticTokenType::KEYWORD,
             SemanticTokenType::MACRO,
-            SemanticTokenType::VARIABLE,
+            SemanticTokenType::METHOD,
+            SemanticTokenType::NAMESPACE,
+            SemanticTokenType::NUMBER,
+            SemanticTokenType::OPERATOR,
             SemanticTokenType::PARAMETER,
+            SemanticTokenType::PROPERTY,
+            SemanticTokenType::REGEXP,
+            SemanticTokenType::STRING,
+            SemanticTokenType::STRUCT,
+            SemanticTokenType::TYPE_PARAMETER,
+            SemanticTokenType::TYPE,
+            SemanticTokenType::VARIABLE,
             $($ident),*
         ];
     };
@@ -40,7 +40,6 @@ macro_rules! define_semantic_token_types {
 define_semantic_token_types![
     (ANGLE, "angle"),
     (ARITHMETIC, "arithmetic"),
-    (ATTRIBUTE, "attribute"),
     (ATTRIBUTE_BRACKET, "attributeBracket"),
     (BITWISE, "bitwise"),
     (BOOLEAN, "boolean"),
@@ -63,7 +62,6 @@ define_semantic_token_types![
     (LIFETIME, "lifetime"),
     (LOGICAL, "logical"),
     (MACRO_BANG, "macroBang"),
-    (OPERATOR, "operator"),
     (PARENTHESIS, "parenthesis"),
     (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),
@@ -82,11 +80,7 @@ macro_rules! define_semantic_token_modifiers {
         pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
             SemanticTokenModifier::DOCUMENTATION,
             SemanticTokenModifier::DECLARATION,
-            SemanticTokenModifier::DEFINITION,
             SemanticTokenModifier::STATIC,
-            SemanticTokenModifier::ABSTRACT,
-            SemanticTokenModifier::DEPRECATED,
-            SemanticTokenModifier::READONLY,
             SemanticTokenModifier::DEFAULT_LIBRARY,
             $($ident),*
         ];

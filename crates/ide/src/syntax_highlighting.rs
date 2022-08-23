@@ -14,7 +14,7 @@ mod html;
 mod tests;
 
 use hir::{Name, Semantics};
-use ide_db::{FxHashMap, RootDatabase};
+use ide_db::{FxHashMap, RootDatabase, SymbolKind};
 use syntax::{
     ast, AstNode, AstToken, NodeOrToken, SyntaxKind::*, SyntaxNode, TextRange, WalkEvent, T,
 };
@@ -24,7 +24,7 @@ use crate::{
         escape::highlight_escape_string, format::highlight_format_string, highlights::Highlights,
         macro_::MacroHighlighter, tags::Highlight,
     },
-    FileId, HlMod, HlTag,
+    FileId, HlMod, HlOperator, HlPunct, HlTag,
 };
 
 pub(crate) use html::highlight_as_html;
@@ -34,6 +34,26 @@ pub struct HlRange {
     pub range: TextRange,
     pub highlight: Highlight,
     pub binding_hash: Option<u64>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct HighlightConfig {
+    /// Whether to highlight strings
+    pub strings: bool,
+    /// Whether to highlight punctuation
+    pub punctuation: bool,
+    /// Whether to specialize punctuation highlights
+    pub specialize_punctuation: bool,
+    /// Whether to highlight operator
+    pub operator: bool,
+    /// Whether to specialize operator highlights
+    pub specialize_operator: bool,
+    /// Whether to inject highlights into doc comments
+    pub inject_doc_comment: bool,
+    /// Whether to highlight the macro call bang
+    pub macro_bang: bool,
+    /// Whether to highlight unresolved things be their syntax
+    pub syntactic_name_ref_highlighting: bool,
 }
 
 // Feature: Semantic Syntax Highlighting
@@ -155,9 +175,9 @@ pub struct HlRange {
 // image::https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png[]
 pub(crate) fn highlight(
     db: &RootDatabase,
+    config: HighlightConfig,
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
-    syntactic_name_ref_highlighting: bool,
 ) -> Vec<HlRange> {
     let _p = profile::span("highlight");
     let sema = Semantics::new(db);
@@ -183,26 +203,18 @@ pub(crate) fn highlight(
         Some(it) => it.krate(),
         None => return hl.to_vec(),
     };
-    traverse(
-        &mut hl,
-        &sema,
-        file_id,
-        &root,
-        krate,
-        range_to_highlight,
-        syntactic_name_ref_highlighting,
-    );
+    traverse(&mut hl, &sema, config, file_id, &root, krate, range_to_highlight);
     hl.to_vec()
 }
 
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
+    config: HighlightConfig,
     file_id: FileId,
     root: &SyntaxNode,
     krate: hir::Crate,
     range_to_highlight: TextRange,
-    syntactic_name_ref_highlighting: bool,
 ) {
     let is_unlinked = sema.to_module_def(file_id).is_none();
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
@@ -323,9 +335,11 @@ fn traverse(
             Enter(it) => it,
             Leave(NodeOrToken::Token(_)) => continue,
             Leave(NodeOrToken::Node(node)) => {
-                // Doc comment highlighting injection, we do this when leaving the node
-                // so that we overwrite the highlighting of the doc comment itself.
-                inject::doc_comment(hl, sema, file_id, &node);
+                if config.inject_doc_comment {
+                    // Doc comment highlighting injection, we do this when leaving the node
+                    // so that we overwrite the highlighting of the doc comment itself.
+                    inject::doc_comment(hl, sema, config, file_id, &node);
+                }
                 continue;
             }
         };
@@ -400,7 +414,8 @@ fn traverse(
                 let string_to_highlight = ast::String::cast(descended_token.clone());
                 if let Some((string, expanded_string)) = string.zip(string_to_highlight) {
                     if string.is_raw() {
-                        if inject::ra_fixture(hl, sema, &string, &expanded_string).is_some() {
+                        if inject::ra_fixture(hl, sema, config, &string, &expanded_string).is_some()
+                        {
                             continue;
                         }
                     }
@@ -421,7 +436,7 @@ fn traverse(
                 sema,
                 krate,
                 &mut bindings_shadow_count,
-                syntactic_name_ref_highlighting,
+                config.syntactic_name_ref_highlighting,
                 name_like,
             ),
             NodeOrToken::Token(token) => highlight::token(sema, token).zip(Some(None)),
@@ -439,6 +454,29 @@ fn traverse(
                 // something unresolvable. FIXME: There should be a way to prevent that
                 continue;
             }
+
+            // apply config filtering
+            match &mut highlight.tag {
+                HlTag::StringLiteral if !config.strings => continue,
+                // If punctuation is disabled, make the macro bang part of the macro call again.
+                tag @ HlTag::Punctuation(HlPunct::MacroBang) => {
+                    if !config.macro_bang {
+                        *tag = HlTag::Symbol(SymbolKind::Macro);
+                    } else if !config.specialize_punctuation {
+                        *tag = HlTag::Punctuation(HlPunct::Other);
+                    }
+                }
+                HlTag::Punctuation(_) if !config.punctuation => continue,
+                tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
+                    *tag = HlTag::Punctuation(HlPunct::Other);
+                }
+                HlTag::Operator(_) if !config.operator && highlight.mods.is_empty() => continue,
+                tag @ HlTag::Operator(_) if !config.specialize_operator => {
+                    *tag = HlTag::Operator(HlOperator::Other);
+                }
+                _ => (),
+            }
+
             if inside_attribute {
                 highlight |= HlMod::Attribute
             }
