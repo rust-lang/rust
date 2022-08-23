@@ -461,7 +461,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
 
 pub enum OrphanCheckErr<'tcx> {
     NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
-    UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
+    UncoveredTy(Ty<'tcx>, usize, Option<Ty<'tcx>>),
 }
 
 /// Checks the coherence orphan rules. `impl_def_id` should be the
@@ -588,21 +588,28 @@ fn orphan_check_trait_ref<'tcx>(
     }
 
     let mut checker = OrphanChecker::new(tcx, in_crate);
-    match trait_ref.visit_with(&mut checker) {
-        ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
-        ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
-            // Does there exist some local type after the `ParamTy`.
-            checker.search_first_local_ty = true;
-            if let Some(OrphanCheckEarlyExit::LocalTy(local_ty)) =
-                trait_ref.visit_with(&mut checker).break_value()
-            {
-                Err(OrphanCheckErr::UncoveredTy(ty, Some(local_ty)))
-            } else {
-                Err(OrphanCheckErr::UncoveredTy(ty, None))
+    for (idx, arg) in trait_ref.substs.types().enumerate() {
+        match checker.visit_ty(arg) {
+            ControlFlow::Continue(()) => continue,
+            ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
+                // Does there exist some local type after the `ParamTy`.
+                checker.search_first_local_ty = true;
+
+                if let Some(OrphanCheckEarlyExit::LocalTy(local_ty)) =
+                    trait_ref.visit_with(&mut checker).break_value()
+                {
+                    return Err(OrphanCheckErr::UncoveredTy(ty, idx, Some(local_ty)));
+                } else {
+                    return Err(OrphanCheckErr::UncoveredTy(ty, idx, None));
+                }
             }
+            ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(_)) => return Ok(()),
         }
-        ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(_)) => Ok(()),
     }
+
+    // If no early break occured, means we didn't find a local type
+    // and should return Err
+    return Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys));
 }
 
 struct OrphanChecker<'tcx> {

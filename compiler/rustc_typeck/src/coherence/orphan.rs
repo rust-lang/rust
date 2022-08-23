@@ -111,7 +111,7 @@ fn do_orphan_check_impl<'tcx>(
             tr.path.span,
             trait_ref.self_ty(),
             impl_.self_ty.span,
-            &impl_.generics,
+            &impl_.of_trait.as_ref().unwrap().path.segments.last().unwrap().args().args,
             err,
         )?,
     }
@@ -212,7 +212,7 @@ fn emit_orphan_check_error<'tcx>(
     trait_span: Span,
     self_ty: Ty<'tcx>,
     self_ty_span: Span,
-    generics: &hir::Generics<'tcx>,
+    generics: &[rustc_hir::GenericArg<'tcx>],
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
     Err(match err {
@@ -275,21 +275,13 @@ fn emit_orphan_check_error<'tcx>(
             err.note("define and implement a trait or new type instead");
             err.emit()
         }
-        traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) => {
-            let mut sp = sp;
+        traits::OrphanCheckErr::UncoveredTy(param_ty, idx, local_type) => {
+            let sp;
 
-            match *param_ty.kind() {
-                ty::Projection(..) => {
-                    sp = self_ty_span;
-                }
-                _ => {
-                    for param in generics.params {
-                        if param.name.ident().to_string() == param_ty.to_string() {
-                            sp = param.span;
-                        }
-                    }
-                }
-            };
+            match idx {
+                0 => sp = self_ty_span,
+                _ => sp = generics[idx - 1].span(),
+            }
 
             match local_type {
                 Some(local_type) => {
