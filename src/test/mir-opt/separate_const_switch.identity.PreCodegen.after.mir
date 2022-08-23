@@ -52,7 +52,6 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
         _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
-        StorageLive(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         _8 = discriminant(_4);           // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         switchInt(move _8) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
     }
@@ -72,7 +71,6 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         discriminant(_3) = 1;            // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_12);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
         StorageLive(_5);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
         _5 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
@@ -111,7 +109,6 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         discriminant(_3) = 0;            // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_10);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_9);                 // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
         StorageLive(_7);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         _7 = ((_3 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
