@@ -210,4 +210,17 @@ trait StaticReturnAndTakes<'a> {
     fn bar<'b>(&self, arg: Self::Y<'b>);
 }
 
+// We require bounds when the GAT appears in the inputs
+trait Input {
+    type Item<'a>;
+    //~^ missing required
+    fn takes_item<'a>(&'a self, item: Self::Item<'a>);
+}
+
+// We don't require bounds when the GAT appears in the where clauses
+trait WhereClause {
+    type Item<'a>;
+    fn takes_item<'a>(&'a self) where Self::Item<'a>: ;
+}
+
 fn main() {}
