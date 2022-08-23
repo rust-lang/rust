@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) -Copt-level=0 --emit=llvm-bc,llvm-ir,asm,obj,link test-24876.rs

@@ -1,7 +1,7 @@
 # Test that allocator-related symbols don't show up as exported from a cdylib as
 # they're internal to Rust and not part of the public ABI.
 
--include ../tools.mk
+include ../tools.mk
 
 # ignore-windows
 # FIXME: The __rdl_ and __rust_ symbol still remains, no matter using MSVC or GNU

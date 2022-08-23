@@ -1,7 +1,7 @@
 # only-linux
 # ignore-32bit
 
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) eh_frame-terminator.rs
