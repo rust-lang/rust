@@ -927,10 +927,12 @@ impl<'a> Parser<'a> {
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
-                    || (t.can_begin_expr() && t != &token::Semi && t != &token::Pound)
+                    || ((t.can_begin_expr() || t.can_begin_item())
+                        && t != &token::Semi
+                        && t != &token::Pound)
                     // Avoid triggering with too many trailing `#` in raw string.
                     || (sm.is_multiline(
-                        self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo())
+                        self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo()),
                     ) && t == &token::Pound)
             }) && !expected.contains(&TokenType::Token(token::Comma))
             {
