@@ -107,6 +107,9 @@ def : CallPattern<(Op $x),
                   ["exp10"],
                   [(FMul (FMul (DiffeRet<"">), (Call<(SameFunc), [ReadNone,NoUnwind]> $x) ), (ConstantFP<"2.30258509299404568401799145468"> $x))]
                   >;
+def : CallPattern<(Op $x),
+                  ["tan", "tanf", "tanl"],
+                  [(FMul (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), (FMul(Call<(SameFunc), [ReadNone,NoUnwind]> $x):$c, $c)))]>;
 
 // TODO replace with intrinsic call to exp
 def : CallPattern<(Op $x),
