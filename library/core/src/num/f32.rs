@@ -402,6 +402,12 @@ impl f32 {
     /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
+    /// Zero (0).
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const ZERO: f32 = 0.0_f32;
+    /// Negative Zero. Same value as Zero, but stores a negative sign bit. IEEE-754 specifies that both should be able to stored.
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const NEG_ZERO: f32 = -0.0_f32;
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
@@ -410,7 +416,6 @@ impl f32 {
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
-
     /// Returns `true` if this value is NaN.
     ///
     /// ```

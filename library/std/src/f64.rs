@@ -24,7 +24,7 @@ use crate::sys::cmath;
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
     consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
-    MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
+    MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, NEG_ZERO, RADIX, ZERO, 
 };
 
 #[cfg(not(test))]

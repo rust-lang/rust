@@ -401,15 +401,20 @@ impl f64 {
     /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
+    /// Zero (0).
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const ZERO: f64 = 0.0_f64;
+    /// Negative Zero. Same value as Zero, but stores a negative sign bit. IEEE-754 specifies that both should be able to stored.
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const NEG_ZERO: f64 = -0.0_f64;
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const NAN: f64 = 0.0_f64 / 0.0_f64;
+    pub const NAN: f64 = f64::ZERO / f64::ZERO;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const INFINITY: f64 = 1.0_f64 / 0.0_f64;
+    pub const INFINITY: f64 = 1.0_f64 / f64::ZERO;
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
-
+    pub const NEG_INFINITY: f64 = -1.0_f64 / f64::ZERO;
     /// Returns `true` if this value is NaN.
     ///
     /// ```
@@ -495,7 +500,7 @@ impl f64 {
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308_f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
-    /// let zero = 0.0_f64;
+    /// let zero = f64::ZERO;
     ///
     /// assert!(!min.is_subnormal());
     /// assert!(!max.is_subnormal());
@@ -522,7 +527,7 @@ impl f64 {
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
-    /// let zero = 0.0f64;
+    /// let zero = f64::ZERO;
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
