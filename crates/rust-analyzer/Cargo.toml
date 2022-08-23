@@ -23,6 +23,7 @@ crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.3"
 lsp-types = { version = "0.93.0", features = ["proposed"] }
+scip = "0.1.1"
 parking_lot = "0.12.1"
 xflags = "0.2.4"
 oorandom = "11.1.3"
