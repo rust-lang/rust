@@ -59,7 +59,7 @@ impl HTMLFormatter {
     ) -> Result<(), Box<dyn Error>> {
         let mut output_file = File::create(parent_dir.join(err_code).with_extension("html"))?;
 
-        self.header(&mut output_file, "../")?;
+        self.header(&mut output_file, "../", "")?;
         self.title(&mut output_file, &format!("Error code {}", err_code))?;
 
         let mut id_map = IdMap::new();
@@ -90,7 +90,12 @@ impl HTMLFormatter {
         self.footer(&mut output_file)
     }
 
-    fn header(&self, output: &mut dyn Write, extra: &str) -> Result<(), Box<dyn Error>> {
+    fn header(
+        &self,
+        output: &mut dyn Write,
+        extra_path: &str,
+        extra: &str,
+    ) -> Result<(), Box<dyn Error>> {
         write!(
             output,
             r##"<!DOCTYPE html>
@@ -99,14 +104,14 @@ impl HTMLFormatter {
 <title>Rust Compiler Error Index</title>
 <meta charset="utf-8">
 <!-- Include rust.css after light.css so its rules take priority. -->
-<link rel="stylesheet" type="text/css" href="{extra}rustdoc{suffix}.css"/>
-<link rel="stylesheet" type="text/css" href="{extra}light{suffix}.css"/>
-<link rel="stylesheet" type="text/css" href="{extra}rust.css"/>
+<link rel="stylesheet" type="text/css" href="{extra_path}rustdoc{suffix}.css"/>
+<link rel="stylesheet" type="text/css" href="{extra_path}light{suffix}.css"/>
+<link rel="stylesheet" type="text/css" href="{extra_path}rust.css"/>
 <style>
 .error-undescribed {{
     display: none;
 }}
-</style>
+</style>{extra}
 </head>
 <body>
 "##,
@@ -153,7 +158,22 @@ fn render_html(output_path: &Path, formatter: HTMLFormatter) -> Result<(), Box<d
         create_dir_all(&parent)?;
     }
 
-    formatter.header(&mut output_file, "")?;
+    formatter.header(
+        &mut output_file,
+        "",
+        &format!(
+            r#"<script>(function() {{
+    if (window.location.hash) {{
+        let code = window.location.hash.replace(/^#/, '');
+        // We have to make sure this pattern matches to avoid inadvertently creating an
+        // open redirect.
+        if (/^E[0-9]+$/.test(code)) {{
+            window.location = './{error_codes_dir}/' + code + '.html';
+        }}
+    }}
+}})()</script>"#
+        ),
+    )?;
     formatter.title(&mut output_file, "Rust Compiler Error Index")?;
 
     write!(
