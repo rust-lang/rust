@@ -413,7 +413,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Verifies one piece of a parse string, and remembers it if valid.
     /// All errors are not emitted as fatal so we can continue giving errors
     /// about this and possibly other format strings.
-    fn verify_piece(&mut self, p: &parse::Piece<'_>) {
+    fn verify_piece(&mut self, p: &parse::Piece<'a>) {
         match *p {
             parse::String(..) => {}
             parse::NextArgument(ref arg) => {
@@ -432,6 +432,11 @@ impl<'a, 'b> Context<'a, 'b> {
 
                 let has_precision = arg.format.precision != Count::CountImplied;
                 let has_width = arg.format.width != Count::CountImplied;
+
+                if has_precision || has_width {
+                    // push before named params are resolved to aid diagnostics
+                    self.arg_with_formatting.push(arg.format);
+                }
 
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
@@ -581,7 +586,11 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut zero_based_note = false;
 
         let count = self.pieces.len()
-            + self.arg_with_formatting.iter().filter(|fmt| fmt.precision_span.is_some()).count();
+            + self
+                .arg_with_formatting
+                .iter()
+                .filter(|fmt| matches!(fmt.precision, parse::CountIsParam(_)))
+                .count();
         if self.names.is_empty() && !numbered_position_args && count != self.num_args() {
             e = self.ecx.struct_span_err(
                 sp,
@@ -647,7 +656,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             + self
                                 .arg_with_formatting
                                 .iter()
-                                .filter(|fmt| fmt.precision_span.is_some())
+                                .filter(|fmt| matches!(fmt.precision, parse::CountIsParam(_)))
                                 .count();
                         e.span_label(
                             span,
@@ -899,26 +908,22 @@ impl<'a, 'b> Context<'a, 'b> {
                     },
                     position_span: arg.position_span,
                     format: parse::FormatSpec {
-                        fill: arg.format.fill,
+                        fill: None,
                         align: parse::AlignUnknown,
                         flags: 0,
                         precision: parse::CountImplied,
-                        precision_span: None,
+                        precision_span: arg.format.precision_span,
                         width: parse::CountImplied,
-                        width_span: None,
+                        width_span: arg.format.width_span,
                         ty: arg.format.ty,
                         ty_span: arg.format.ty_span,
                     },
                 };
 
                 let fill = arg.format.fill.unwrap_or(' ');
-
                 let pos_simple = arg.position.index() == simple_arg.position.index();
 
-                if arg.format.precision_span.is_some() || arg.format.width_span.is_some() {
-                    self.arg_with_formatting.push(arg.format);
-                }
-                if !pos_simple || arg.format != simple_arg.format || fill != ' ' {
+                if !pos_simple || arg.format != simple_arg.format {
                     self.all_pieces_simple = false;
                 }
 
