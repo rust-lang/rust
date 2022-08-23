@@ -264,9 +264,7 @@ impl<'a> Iterator for Parser<'a> {
             }
         } else {
             if self.is_literal {
-                let start = self.to_span_index(self.cur_line_start);
-                let end = self.to_span_index(self.input.len());
-                let span = start.to(end);
+                let span = self.span(self.cur_line_start, self.input.len());
                 if self.line_spans.last() != Some(&span) {
                     self.line_spans.push(span);
                 }
@@ -384,6 +382,12 @@ impl<'a> Parser<'a> {
         InnerOffset(raw + pos + 1)
     }
 
+    fn span(&self, start_pos: usize, end_pos: usize) -> InnerSpan {
+        let start = self.to_span_index(start_pos);
+        let end = self.to_span_index(end_pos);
+        start.to(end)
+    }
+
     /// Forces consumption of the specified character. If the character is not
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) -> Option<usize> {
@@ -472,9 +476,7 @@ impl<'a> Parser<'a> {
                     return &self.input[start..pos];
                 }
                 '\n' if self.is_literal => {
-                    let start = self.to_span_index(self.cur_line_start);
-                    let end = self.to_span_index(pos);
-                    self.line_spans.push(start.to(end));
+                    self.line_spans.push(self.span(self.cur_line_start, pos));
                     self.cur_line_start = pos + 1;
                     self.cur.next();
                 }
@@ -537,6 +539,10 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn current_pos(&mut self) -> usize {
+        if let Some(&(pos, _)) = self.cur.peek() { pos } else { self.input.len() }
+    }
+
     /// Parses a format specifier at the current position, returning all of the
     /// relevant information in the `FormatSpec` struct.
     fn format(&mut self) -> FormatSpec<'a> {
@@ -590,39 +596,37 @@ impl<'a> Parser<'a> {
             // no '0' flag and '0$' as the width instead.
             if let Some(end) = self.consume_pos('$') {
                 spec.width = CountIsParam(0);
-
-                if let Some((pos, _)) = self.cur.peek().cloned() {
-                    spec.width_span = Some(self.to_span_index(pos - 2).to(self.to_span_index(pos)));
-                }
+                spec.width_span = Some(self.span(end - 1, end + 1));
                 havewidth = true;
-                spec.width_span = Some(self.to_span_index(end - 1).to(self.to_span_index(end + 1)));
             } else {
                 spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
             }
         }
+
         if !havewidth {
-            let width_span_start = if let Some((pos, _)) = self.cur.peek() { *pos } else { 0 };
-            let (w, sp) = self.count(width_span_start);
-            spec.width = w;
-            spec.width_span = sp;
+            let start = self.current_pos();
+            spec.width = self.count(start);
+            if spec.width != CountImplied {
+                let end = self.current_pos();
+                spec.width_span = Some(self.span(start, end));
+            }
         }
 
         if let Some(start) = self.consume_pos('.') {
-            if let Some(end) = self.consume_pos('*') {
+            if self.consume('*') {
                 // Resolve `CountIsNextParam`.
                 // We can do this immediately as `position` is resolved later.
                 let i = self.curarg;
                 self.curarg += 1;
                 spec.precision = CountIsParam(i);
-                spec.precision_span =
-                    Some(self.to_span_index(start).to(self.to_span_index(end + 1)));
             } else {
-                let (p, sp) = self.count(start);
-                spec.precision = p;
-                spec.precision_span = sp;
+                spec.precision = self.count(start + 1);
             }
+            let end = self.current_pos();
+            spec.precision_span = Some(self.span(start, end));
         }
-        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
+
+        let ty_span_start = self.current_pos();
         // Optional radix followed by the actual format specifier
         if self.consume('x') {
             if self.consume('?') {
@@ -642,11 +646,9 @@ impl<'a> Parser<'a> {
             spec.ty = "?";
         } else {
             spec.ty = self.word();
-            let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
             if !spec.ty.is_empty() {
-                spec.ty_span = ty_span_start
-                    .and_then(|s| ty_span_end.map(|e| (s, e)))
-                    .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
+                let ty_span_end = self.current_pos();
+                spec.ty_span = Some(self.span(ty_span_start, ty_span_end));
             }
         }
         spec
@@ -670,13 +672,11 @@ impl<'a> Parser<'a> {
             return spec;
         }
 
-        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
+        let ty_span_start = self.current_pos();
         spec.ty = self.word();
-        let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
         if !spec.ty.is_empty() {
-            spec.ty_span = ty_span_start
-                .and_then(|s| ty_span_end.map(|e| (s, e)))
-                .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
+            let ty_span_end = self.current_pos();
+            spec.ty_span = Some(self.span(ty_span_start, ty_span_end));
         }
 
         spec
@@ -685,26 +685,21 @@ impl<'a> Parser<'a> {
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self, start: usize) -> (Count<'a>, Option<InnerSpan>) {
+    fn count(&mut self, start: usize) -> Count<'a> {
         if let Some(i) = self.integer() {
-            if let Some(end) = self.consume_pos('$') {
-                let span = self.to_span_index(start).to(self.to_span_index(end + 1));
-                (CountIsParam(i), Some(span))
-            } else {
-                (CountIs(i), None)
-            }
+            if self.consume('$') { CountIsParam(i) } else { CountIs(i) }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
             if word.is_empty() {
                 self.cur = tmp;
-                (CountImplied, None)
+                CountImplied
             } else if let Some(end) = self.consume_pos('$') {
-                let span = self.to_span_index(start + 1).to(self.to_span_index(end));
-                (CountIsName(word, span), None)
+                let name_span = self.span(start, end);
+                CountIsName(word, name_span)
             } else {
                 self.cur = tmp;
-                (CountImplied, None)
+                CountImplied
             }
         }
     }
@@ -737,7 +732,7 @@ impl<'a> Parser<'a> {
                 "invalid argument name `_`",
                 "invalid argument name",
                 "argument name cannot be a single underscore",
-                self.to_span_index(start).to(self.to_span_index(end)),
+                self.span(start, end),
             );
         }
         word

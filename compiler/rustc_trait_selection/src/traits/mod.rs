@@ -473,9 +473,6 @@ pub fn impossible_predicates<'tcx>(
     debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        // HACK: Set tainted by errors to gracefully exit in case of overflow.
-        infcx.set_tainted_by_errors();
-
         let param_env = ty::ParamEnv::reveal_all();
         let ocx = ObligationCtxt::new(&infcx);
         let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);

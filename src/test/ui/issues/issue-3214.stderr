@@ -2,10 +2,9 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/issue-3214.rs:3:12
    |
 LL | fn foo<T>() {
-   |    --- - type parameter from outer function
-   |    |
-   |    try adding a local generic parameter in this method instead
+   |        - type parameter from outer function
 LL |     struct Foo {
+   |               - help: try using a local generic parameter instead: `<T>`
 LL |         x: T,
    |            ^ use of generic parameter from outer function
 

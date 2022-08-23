@@ -4321,6 +4321,7 @@ dependencies = [
  "rustc_ast",
  "rustc_errors",
  "rustc_lint",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_session",
  "rustc_span",
