@@ -1285,6 +1285,11 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Result::and_then
     ///
     /// # Examples
     ///
