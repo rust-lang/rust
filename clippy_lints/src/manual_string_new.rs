@@ -29,13 +29,13 @@ declare_clippy_lint! {
     /// let b = String::new();
     /// ```
     #[clippy::version = "1.65.0"]
-    pub MANUAL_EMPTY_STRING_CREATIONS,
-    style,
+    pub MANUAL_STRING_NEW,
+    pedantic,
     "empty String is being created manually"
 }
-declare_lint_pass!(ManualEmptyStringCreations => [MANUAL_EMPTY_STRING_CREATIONS]);
+declare_lint_pass!(ManualStringNew => [MANUAL_STRING_NEW]);
 
-impl LateLintPass<'_> for ManualEmptyStringCreations {
+impl LateLintPass<'_> for ManualStringNew {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
             return;
@@ -75,11 +75,10 @@ fn is_expr_kind_empty_str(expr_kind: &ExprKind<'_>) -> bool {
     false
 }
 
-/// Emits the `MANUAL_EMPTY_STRING_CREATION` warning and suggests the appropriate fix.
 fn warn_then_suggest(cx: &LateContext<'_>, span: Span) {
     span_lint_and_sugg(
         cx,
-        MANUAL_EMPTY_STRING_CREATIONS,
+        MANUAL_STRING_NEW,
         span,
         "empty String is being created manually",
         "consider using",

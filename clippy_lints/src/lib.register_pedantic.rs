@@ -48,6 +48,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(macro_use::MACRO_USE_IMPORTS),
     LintId::of(manual_assert::MANUAL_ASSERT),
     LintId::of(manual_instant_elapsed::MANUAL_INSTANT_ELAPSED),
+    LintId::of(manual_string_new::MANUAL_STRING_NEW),
     LintId::of(matches::MATCH_BOOL),
     LintId::of(matches::MATCH_ON_VEC_ITEMS),
     LintId::of(matches::MATCH_SAME_ARMS),
