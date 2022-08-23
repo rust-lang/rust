@@ -31,7 +31,7 @@ use crate::{
 // ```
 // ->
 // ```
-// type A = i32;
+// 
 // fn id(x: i32) -> i32 {
 //     x
 // };
@@ -84,6 +84,9 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
             for (file_id, refs) in usages.into_iter() {
                 inline_refs_for_file(file_id, refs);
             }
+
+            builder.edit_file(ctx.file_id());
+            builder.delete(ast_alias.syntax().text_range());
         },
     )
 }
@@ -929,7 +932,7 @@ fn foo() {
 }
 "#,
                 r#"
-type A = u32;
+
 
 fn foo() {
     let _: u32 = 3;
@@ -960,7 +963,7 @@ fn foo() {
                 r#"
 //- /lib.rs
 mod foo;
-type T<E> = Vec<E>;
+
 fn f() -> Vec<&str> {
     vec!["hello"]
 }
