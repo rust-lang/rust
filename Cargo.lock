@@ -1892,6 +1892,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsondoclint"
+version = "0.1.0"
+
+[[package]]
 name = "jsonpath_lib"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

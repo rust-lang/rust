@@ -132,6 +132,7 @@ trigger_files = [
     "src/etc/htmldocck.py",
     "src/etc/check_missing_items.py",
     "src/tools/jsondocck",
+    "src/tools/jsondoclint",
     "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
@@ -147,6 +148,7 @@ trigger_files = [
     "src/rustdoc-json-types",
     "src/test/rustdoc-json",
     "src/tools/jsondocck",
+    "src/tools/jsondoclint",
 ]
 
 [autolabel."T-compiler"]

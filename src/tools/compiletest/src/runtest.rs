@@ -2572,6 +2572,14 @@ impl<'test> TestCx<'test> {
         if !res.status.success() {
             self.fatal_proc_rec("check_missing_items failed!", &res);
         }
+
+        let res = self.cmd2procres(
+            Command::new(self.config.jsondoclint_path.as_ref().unwrap()).arg(&json_out),
+        );
+
+        if !res.status.success() {
+            self.fatal_proc_rec("jsondoclint failed!", &res);
+        }
     }
 
     fn get_lines<P: AsRef<Path>>(
