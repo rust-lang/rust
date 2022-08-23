@@ -498,7 +498,7 @@ impl f32 {
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
     /// let max = f32::MAX;
     /// let lower_than_min = 1.0e-40_f32;
-    /// let zero = 0.0_f32;
+    /// let zero = f32::ZERO;
     ///
     /// assert!(!min.is_subnormal());
     /// assert!(!max.is_subnormal());
@@ -525,7 +525,7 @@ impl f32 {
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
     /// let max = f32::MAX;
     /// let lower_than_min = 1.0e-40_f32;
-    /// let zero = 0.0_f32;
+    /// let zero = f32::ZERO;
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
