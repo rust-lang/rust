@@ -32,13 +32,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Ok(place_resolved) =
-            place.clone().try_upvars_resolved(tcx, self.typeck_results)
+            place.clone().try_upvars_resolved(tcx, &self.upvars)
         {
-            match place_resolved
-                .into_place(tcx, self.typeck_results)
-                .ty(&self.local_decls, tcx)
-                .ty
-                .kind()
+            match place_resolved.into_place(tcx, &self.upvars).ty(&self.local_decls, tcx).ty.kind()
             {
                 ty::Array(_, length) => (length.eval_usize(tcx, self.param_env), true),
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
