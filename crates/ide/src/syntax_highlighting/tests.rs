@@ -624,7 +624,7 @@ struct Foo {
     bar: bool,
 }
 
-/// This is an impl with a code block.
+/// This is an impl of [`Foo`] with a code block.
 ///
 /// ```
 /// fn foo() {
