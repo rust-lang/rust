@@ -99,24 +99,6 @@ require steps beyond what this guide talks about.
 Note: Before we stabilize any feature, it's the rule that it
 should appear in the documentation.
 
-### Determining the stabilization version
-
-The version in which the feature will be stabilized *must* match
-the value of [the `src/version` file in `master`][src-version] when the PR is merged.
-
-It's worth checking [the version schedule on the Forge][forge-versions] to see whether
-changes are coming soon.  You'll usually use the version labelled "Nightly".
-"Nightly" is two versions higher than the current stable release,
-since what's currently in beta will be the next stable release,
-and any changes you're making now will be in the one after that.
-
-No PR is merged instantly, so you'll want to be careful around release time.
-The version bump happens [the Friday before][forge-release-process] the stable release,
-not the same time as the release.  So if you're opening a PR shortly before then,
-be prepared to update the version, or consider just opening it for one version
-higher than the current nightly, with a note saying not to merge until
-after the upcoming version bump.
-
 ### Updating the feature-gate listing
 
 There is a central listing of feature-gates in
@@ -127,7 +109,7 @@ to stabilize, something like (this example is taken from
 
 ```rust,ignore
 // pub(restricted) visibilities (RFC 1422)
-(active, pub_restricted, "1.9.0", Some(32409)),
+(active, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
 ```
 
 The above line should be moved down to the area for "accepted"
@@ -136,11 +118,13 @@ When it is done, it should look like:
 
 ```rust,ignore
 // pub(restricted) visibilities (RFC 1422)
-(accepted, pub_restricted, "1.31.0", Some(32409)),
+(accepted, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
 // note that we changed this
 ```
 
-(The version here is the one discussed in the previous section.)
+(Even though you will encounter version numbers in the file of past changes,
+you should not put the rustc version you expect your stabilization to happen in,
+but instead `CURRENT_RUSTC_VERSION`)
 
 ### Removing existing uses of the feature-gate
 
