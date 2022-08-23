@@ -1573,7 +1573,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         if self.tcx.sess.features_untracked().return_position_impl_trait_v2 {
                             if let Some(parent_generics) = parent_generics {
                                 let generics =
-                                    self.lowering_arena.gs.alloc(generics.merge(parent_generics));
+                                    self.lowering_arena.gs.alloc(parent_generics.merge(generics));
                                 self.lower_opaque_impl_trait_v2(
                                     span,
                                     origin,
