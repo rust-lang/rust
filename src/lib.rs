@@ -4,6 +4,7 @@
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
+extern crate jobserver;
 #[macro_use]
 extern crate rustc_middle;
 extern crate rustc_ast;
@@ -53,6 +54,7 @@ mod cast;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
+mod concurrency_limiter;
 mod config;
 mod constant;
 mod debuginfo;
