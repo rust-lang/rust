@@ -20,6 +20,8 @@ use rustc_parse_format::Count;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
+use crate::errors::{DuplicatedArgument, FormatStringArgumentRequired, InvalidPositionalArguments};
+
 #[derive(PartialEq)]
 enum ArgumentType {
     Placeholder(&'static str),
@@ -287,7 +289,7 @@ fn parse_args<'a>(
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(ecx.struct_span_err(sp, "requires at least a format string argument"));
+        return Err(ecx.create_err(FormatStringArgumentRequired { span: sp }));
     }
 
     let first_token = &p.token;
@@ -348,10 +350,11 @@ fn parse_args<'a>(
                 p.expect(&token::Eq)?;
                 let e = p.parse_expr()?;
                 if let Some(&prev) = names.get(&ident.name) {
-                    ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
-                        .span_label(args[prev].expr.span, "previously here")
-                        .span_label(e.span, "duplicate argument")
-                        .emit();
+                    ecx.emit_err(DuplicatedArgument {
+                        span: e.span,
+                        prev_span: args[prev].expr.span,
+                        ident,
+                    });
                     continue;
                 }
 
@@ -366,15 +369,10 @@ fn parse_args<'a>(
             _ => {
                 let e = p.parse_expr()?;
                 if named {
-                    let mut err = ecx.struct_span_err(
-                        e.span,
-                        "positional arguments cannot follow named arguments",
-                    );
-                    err.span_label(e.span, "positional arguments must be before named arguments");
-                    for &pos in names.values() {
-                        err.span_label(args[pos].expr.span, "named argument");
-                    }
-                    err.emit();
+                    ecx.emit_err(InvalidPositionalArguments {
+                        span: e.span,
+                        names: names.values().map(|&pos| args[pos].expr.span).collect(),
+                    });
                 }
                 args.push(FormatArg { expr: e, name: None });
             }

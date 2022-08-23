@@ -5,6 +5,8 @@ use rustc_span::symbol::Symbol;
 
 use std::string::String;
 
+use crate::errors::{ByteStringLiteralConcatenate, MissingLiteral};
+
 pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: rustc_span::Span,
@@ -37,7 +39,7 @@ pub fn expand_concat(
                     accumulator.push_str(&b.to_string());
                 }
                 ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
-                    cx.span_err(e.span, "cannot concatenate a byte string literal");
+                    cx.emit_err(ByteStringLiteralConcatenate { span: e.span });
                 }
                 ast::LitKind::Err => {
                     has_errors = true;
@@ -52,9 +54,7 @@ pub fn expand_concat(
         }
     }
     if !missing_literal.is_empty() {
-        let mut err = cx.struct_span_err(missing_literal, "expected a literal");
-        err.note("only literals (like `\"foo\"`, `42` and `3.14`) can be passed to `concat!()`");
-        err.emit();
+        cx.emit_err(MissingLiteral { span: sp });
         return DummyResult::any(sp);
     } else if has_errors {
         return DummyResult::any(sp);

@@ -163,6 +163,7 @@ pub use StaticFields::*;
 pub use SubstructureFields::*;
 
 use crate::deriving;
+use crate::errors::{CannotBeDerivedUnions, UnallowedDerive};
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, BindingAnnotation, ByRef, EnumDef, Expr, Generics, Mutability, PatKind,
@@ -391,7 +392,7 @@ fn find_type_parameters(
         }
 
         fn visit_mac_call(&mut self, mac: &ast::MacCall) {
-            self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
+            self.cx.emit_err(UnallowedDerive { span: mac.span() });
         }
     }
 
@@ -478,7 +479,7 @@ impl<'a> TraitDef<'a> {
                                 always_copy,
                             )
                         } else {
-                            cx.span_err(mitem.span, "this trait cannot be derived for unions");
+                            cx.emit_err(CannotBeDerivedUnions { span: mitem.span });
                             return;
                         }
                     }

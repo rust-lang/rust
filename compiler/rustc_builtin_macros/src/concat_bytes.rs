@@ -1,7 +1,13 @@
 use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
-use rustc_errors::Applicability;
 use rustc_expand::base::{self, DummyResult};
+
+use crate::errors::{
+    BooleanLiteralsConcatenate, ByteLiteralExpected, CharacterLiteralsConcatenate,
+    DoublyNestedArrayConcatenate, FloatLiteralsConcatenate, InvalidNumericLiteral,
+    InvalidRepeatCount, NumericLiteralsConcatenate, OutOfBoundNumericLiteral, Snippet,
+    StringLiteralsConcatenate,
+};
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_nested: bool) {
@@ -10,60 +16,49 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
     };
     match lit.kind {
         ast::LitKind::Char(_) => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate character literals");
-            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
-                err.span_suggestion(
-                    expr.span,
-                    "try using a byte character",
-                    format!("b{}", snippet),
-                    Applicability::MachineApplicable,
-                )
-                .emit();
-            }
+            let sub = cx
+                .sess
+                .source_map()
+                .span_to_snippet(expr.span)
+                .ok()
+                .map(|s| Snippet::ByteCharacter { span: expr.span, snippet: s });
+            cx.emit_err(CharacterLiteralsConcatenate { span: expr.span, sub });
         }
         ast::LitKind::Str(_, _) => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate string literals");
             // suggestion would be invalid if we are nested
-            if !is_nested {
-                if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
-                    err.span_suggestion(
-                        expr.span,
-                        "try using a byte string",
-                        format!("b{}", snippet),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            err.emit();
+            let sub = if !is_nested {
+                cx.sess
+                    .source_map()
+                    .span_to_snippet(expr.span)
+                    .ok()
+                    .map(|s| Snippet::ByteString { span: expr.span, snippet: s })
+            } else {
+                None
+            };
+            cx.emit_err(StringLiteralsConcatenate { span: expr.span, sub });
         }
         ast::LitKind::Float(_, _) => {
-            cx.span_err(expr.span, "cannot concatenate float literals");
+            cx.emit_err(FloatLiteralsConcatenate { span: expr.span });
         }
         ast::LitKind::Bool(_) => {
-            cx.span_err(expr.span, "cannot concatenate boolean literals");
+            cx.emit_err(BooleanLiteralsConcatenate { span: expr.span });
         }
         ast::LitKind::Err => {}
         ast::LitKind::Int(_, _) if !is_nested => {
-            let mut err = cx.struct_span_err(expr.span, "cannot concatenate numeric literals");
-            if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {
-                err.span_suggestion(
-                    expr.span,
-                    "try wrapping the number in an array",
-                    format!("[{}]", snippet),
-                    Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
+            let sub = cx.sess.source_map().span_to_snippet(expr.span).ok().map(|s| {
+                Snippet::WrappingNumberInArray { span: expr.span, snippet: format!("[{}]", s) }
+            });
+            cx.emit_err(NumericLiteralsConcatenate { span: expr.span, sub });
         }
         ast::LitKind::Int(
             val,
             ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
         ) => {
             assert!(val > u8::MAX.into()); // must be an error
-            cx.span_err(expr.span, "numeric literal is out of bounds");
+            cx.emit_err(OutOfBoundNumericLiteral { span: expr.span });
         }
         ast::LitKind::Int(_, _) => {
-            cx.span_err(expr.span, "numeric literal is not a `u8`");
+            cx.emit_err(InvalidNumericLiteral { span: expr.span });
         }
         _ => unreachable!(),
     }
@@ -78,7 +73,11 @@ fn handle_array_element(
     match expr.kind {
         ast::ExprKind::Array(_) | ast::ExprKind::Repeat(_, _) => {
             if !*has_errors {
-                cx.span_err(expr.span, "cannot concatenate doubly nested array");
+                cx.emit_err(DoublyNestedArrayConcatenate {
+                    span: expr.span,
+                    note: None,
+                    help: None,
+                });
             }
             *has_errors = true;
             None
@@ -92,10 +91,11 @@ fn handle_array_element(
             ast::LitKind::Byte(val) => Some(val),
             ast::LitKind::ByteStr(_) => {
                 if !*has_errors {
-                    cx.struct_span_err(expr.span, "cannot concatenate doubly nested array")
-                        .note("byte strings are treated as arrays of bytes")
-                        .help("try flattening the array")
-                        .emit();
+                    cx.emit_err(DoublyNestedArrayConcatenate {
+                        span: expr.span,
+                        note: Some(()),
+                        help: Some(()),
+                    });
                 }
                 *has_errors = true;
                 None
@@ -150,7 +150,7 @@ pub fn expand_concat_bytes(
                         }
                     }
                 } else {
-                    cx.span_err(count.value.span, "repeat count is not a positive number");
+                    cx.emit_err(InvalidRepeatCount { span: count.value.span });
                 }
             }
             ast::ExprKind::Lit(ref lit) => match lit.kind {
@@ -176,9 +176,7 @@ pub fn expand_concat_bytes(
         }
     }
     if !missing_literals.is_empty() {
-        let mut err = cx.struct_span_err(missing_literals.clone(), "expected a byte literal");
-        err.note("only byte literals (like `b\"foo\"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`");
-        err.emit();
+        cx.emit_err(ByteLiteralExpected { spans: missing_literals.clone() });
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));
     } else if has_errors {
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));

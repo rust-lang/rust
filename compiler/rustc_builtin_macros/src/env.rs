@@ -11,6 +11,8 @@ use rustc_span::Span;
 
 use std::env;
 
+use crate::errors::{EmptyArgument, EnvExpandError};
+
 pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -54,7 +56,7 @@ pub fn expand_env<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.is_empty() => {
-            cx.span_err(sp, "env! takes 1 or 2 arguments");
+            cx.emit_err(EmptyArgument { span: sp });
             return DummyResult::any(sp);
         }
         None => return DummyResult::any(sp),
@@ -73,7 +75,7 @@ pub fn expand_env<'cx>(
     };
 
     if exprs.next().is_some() {
-        cx.span_err(sp, "env! takes 1 or 2 arguments");
+        cx.emit_err(EmptyArgument { span: sp });
         return DummyResult::any(sp);
     }
 
@@ -82,7 +84,7 @@ pub fn expand_env<'cx>(
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            cx.span_err(sp, msg.as_str());
+            cx.emit_err(EnvExpandError { span: sp, msg: msg.as_str() });
             return DummyResult::any(sp);
         }
         Some(value) => cx.expr_str(sp, value),

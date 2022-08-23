@@ -4,6 +4,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{self, *};
 use rustc_span::Span;
 
+use crate::errors::CompileError;
+
 pub fn expand_compile_error<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -13,7 +15,7 @@ pub fn expand_compile_error<'cx>(
         return DummyResult::any(sp);
     };
 
-    cx.span_err(sp, var.as_str());
+    cx.emit_err(CompileError { span: sp, msg: var.as_str().to_owned() });
 
     DummyResult::any(sp)
 }

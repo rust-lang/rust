@@ -1,8 +1,8 @@
 use crate::cfg_eval::cfg_eval;
+use crate::errors::{NotApplicableDerive, PathRejected, TraitPathExpected};
 
 use rustc_ast as ast;
 use rustc_ast::{attr, token, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
-use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
@@ -112,15 +112,7 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
     let bad_target =
         !matches!(item_kind, Some(ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)));
     if bad_target {
-        struct_span_err!(
-            sess,
-            span,
-            E0774,
-            "`derive` may only be applied to `struct`s, `enum`s and `union`s",
-        )
-        .span_label(span, "not applicable here")
-        .span_label(item.span(), "not a `struct`, `enum` or `union`")
-        .emit();
+        sess.emit_err(NotApplicableDerive { span, item_span: item.span() });
     }
     bad_target
 }
@@ -132,18 +124,13 @@ fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
         }
         _ => "for example, write `#[derive(Debug)]` for `Debug`".to_string(),
     };
-    struct_span_err!(sess, lit.span, E0777, "expected path to a trait, found literal",)
-        .span_label(lit.span, "not a trait")
-        .help(&help_msg)
-        .emit();
+    sess.emit_err(TraitPathExpected { span: lit.span, help_msg: &help_msg });
 }
 
 fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
     let report_error = |title, action| {
         let span = meta.span.with_lo(meta.path.span.hi());
-        sess.struct_span_err(span, title)
-            .span_suggestion(span, action, "", Applicability::MachineApplicable)
-            .emit();
+        sess.emit_err(PathRejected { span, title, action });
     };
     match meta.kind {
         MetaItemKind::Word => {}

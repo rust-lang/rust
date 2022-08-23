@@ -1,12 +1,13 @@
 mod context;
 
 use crate::edition_panic::use_panic_2021;
+use crate::errors::{self, ArgumentExpressionRequired};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{Expr, ExprKind, MacArgs, MacCall, MacDelimiter, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -113,9 +114,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
     let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {
-        let mut err = cx.struct_span_err(sp, "macro requires a boolean expression as an argument");
-        err.span_label(sp, "boolean expression required");
-        return Err(err);
+        return Err(cx.create_err(errors::BooleanExpressionRequired { span: sp }));
     }
 
     let cond_expr = parser.parse_expr()?;
@@ -128,14 +127,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
     //
     // Emit an error about semicolon and suggest removing it.
     if parser.token == token::Semi {
-        let mut err = cx.struct_span_err(sp, "macro requires an expression as an argument");
-        err.span_suggestion(
-            parser.token.span,
-            "try removing semicolon",
-            "",
-            Applicability::MaybeIncorrect,
-        );
-        err.emit();
+        cx.emit_err(ArgumentExpressionRequired { span: sp });
 
         parser.bump();
     }
@@ -148,16 +140,7 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
     // Emit an error and suggest inserting a comma.
     let custom_message =
         if let token::Literal(token::Lit { kind: token::Str, .. }) = parser.token.kind {
-            let mut err = cx.struct_span_err(parser.token.span, "unexpected string literal");
-            let comma_span = parser.prev_token.span.shrink_to_hi();
-            err.span_suggestion_short(
-                comma_span,
-                "try adding a comma",
-                ", ",
-                Applicability::MaybeIncorrect,
-            );
-            err.emit();
-
+            cx.sess.emit_err(errors::UnexpectedStringLiteral { span: parser.token.span });
             parse_custom_message(&mut parser)
         } else if parser.eat(&token::Comma) {
             parse_custom_message(&mut parser)
@@ -174,5 +157,9 @@ fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PRes
 
 fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
     let ts = parser.parse_tokens();
-    if !ts.is_empty() { Some(ts) } else { None }
+    if !ts.is_empty() {
+        Some(ts)
+    } else {
+        None
+    }
 }
