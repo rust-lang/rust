@@ -391,10 +391,15 @@ impl f32 {
     /// Maximum possible power of 10 exponent.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 38;
-
+    /// Zero (0).
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const ZERO: f32 = 0.0_f32;
+    /// Negative Zero. Same value as Zero, but stores a negative sign bit. IEEE-754 specifies that both should be able to stored.
+    #[stable(feature = "zero_consts", since = "1.64.0")]
+    pub const NEG_ZERO: f32 = -0.0_f32;
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// Note that IEEE-754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -402,20 +407,14 @@ impl f32 {
     /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
-    /// Zero (0).
-    #[stable(feature = "zero_consts", since = "1.64.0")]
-    pub const ZERO: f32 = 0.0_f32;
-    /// Negative Zero. Same value as Zero, but stores a negative sign bit. IEEE-754 specifies that both should be able to stored.
-    #[stable(feature = "zero_consts", since = "1.64.0")]
-    pub const NEG_ZERO: f32 = -0.0_f32;
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const NAN: f32 = 0.0_f32 / 0.0_f32;
+    pub const NAN: f32 = f32::ZERO / f32::ZERO;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const INFINITY: f32 = 1.0_f32 / 0.0_f32;
+    pub const INFINITY: f32 = 1.0_f32 / f32::ZERO;
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
-    pub const NEG_INFINITY: f32 = -1.0_f32 / 0.0_f32;
+    pub const NEG_INFINITY: f32 = -1.0_f32 / f32::ZERO;
     /// Returns `true` if this value is NaN.
     ///
     /// ```

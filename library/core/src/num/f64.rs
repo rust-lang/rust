@@ -391,16 +391,6 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_10_EXP: i32 = 308;
 
-    /// Not a Number (NaN).
-    ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
-    /// a plethora of bit patterns are considered to be NaN.
-    /// Furthermore, the standard makes a difference
-    /// between a "signaling" and a "quiet" NaN,
-    /// and allows inspecting its "payload" (the unspecified bits in the bit pattern).
-    /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
-    /// and the stability of its representation over Rust versions
-    /// and target platforms isn't guaranteed.
     /// Zero (0).
     #[stable(feature = "zero_consts", since = "1.64.0")]
     pub const ZERO: f64 = 0.0_f64;
@@ -408,6 +398,16 @@ impl f64 {
     #[stable(feature = "zero_consts", since = "1.64.0")]
     pub const NEG_ZERO: f64 = -0.0_f64;
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    /// Not a Number (NaN).
+    ///
+    /// Note that IEEE-754 doesn't define just a single NaN value;
+    /// a plethora of bit patterns are considered to be NaN.
+    /// Furthermore, the standard makes a difference
+    /// between a "signaling" and a "quiet" NaN,
+    /// and allows inspecting its "payload" (the unspecified bits in the bit pattern).
+    /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
+    /// and the stability of its representation over Rust versions
+    /// and target platforms isn't guaranteed.
     pub const NAN: f64 = f64::ZERO / f64::ZERO;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
