@@ -1514,7 +1514,11 @@ impl ExitStatus {
     /// runtime system (often, for example, 255, 254, 127 or 126).
     ///
     /// On Unix, this will return `None` if the process was terminated by a signal.
-    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) is an
+    #[cfg_attr(target_env = "sgx", doc = " `std::os::unix::process::ExitStatusExt` is an")]
+    #[cfg_attr(
+        not(target_env = "sgx"),
+        doc = " [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) is an"
+    )]
     /// extension trait for extracting any such signal, and other details, from the `ExitStatus`.
     ///
     /// # Examples
@@ -1599,7 +1603,11 @@ impl ExitStatusError {
     ///
     /// On Unix, this will return `None` if the process was terminated by a signal.  If you want to
     /// handle such situations specially, consider using methods from
-    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt).
+    #[cfg_attr(target_env = "sgx", doc = " `std::os::unix::process::ExitStatusExt`.")]
+    #[cfg_attr(
+        not(target_env = "sgx"),
+        doc = " [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt)."
+    )]
     ///
     /// If the process finished by calling `exit` with a nonzero value, this will return
     /// that exit status.

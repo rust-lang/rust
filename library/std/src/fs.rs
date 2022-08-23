@@ -194,9 +194,13 @@ pub struct FileTimes(fs_imp::FileTimes);
 /// This module only currently provides one bit of information,
 /// [`Permissions::readonly`], which is exposed on all currently supported
 /// platforms. Unix-specific functionality, such as mode bits, is available
-/// through the [`PermissionsExt`] trait.
+#[cfg_attr(target_env = "sgx", doc = " through the `std::os::unix::fs::PermissionsExt` trait.")]
+#[cfg_attr(not(target_env = "sgx"), doc = " through the [`PermissionsExt`] trait.")]
 ///
-/// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
+#[cfg_attr(
+    not(target_env = "sgx"),
+    doc = " [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt"
+)]
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
@@ -1919,13 +1923,33 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 ///
 /// The `link` path will be a symbolic link pointing to the `original` path.
 /// On Windows, this will be a file symlink, not a directory symlink;
-/// for this reason, the platform-specific [`std::os::unix::fs::symlink`]
-/// and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be
+#[cfg_attr(
+    target_env = "sgx",
+    doc = " for this reason, the platform-specific `std::os::unix::fs::symlink`"
+)]
+#[cfg_attr(
+    target_env = "sgx",
+    doc = " and `std::os::windows::fs::symlink_file` or `std::os::windows::fs::symlink_dir` should be"
+)]
+#[cfg_attr(
+    not(target_env = "sgx"),
+    doc = " for this reason, the platform-specific [`std::os::unix::fs::symlink`]"
+)]
+#[cfg_attr(
+    not(target_env = "sgx"),
+    doc = " and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be"
+)]
 /// used instead to make the intent explicit.
 ///
-/// [`std::os::unix::fs::symlink`]: crate::os::unix::fs::symlink
-/// [`std::os::windows::fs::symlink_file`]: crate::os::windows::fs::symlink_file
-/// [`symlink_dir`]: crate::os::windows::fs::symlink_dir
+#[cfg_attr(
+    not(target_env = "sgx"),
+    doc = " [`std::os::unix::fs::symlink`]: crate::os::unix::fs::symlink"
+)]
+#[cfg_attr(
+    not(target_env = "sgx"),
+    doc = " [`std::os::windows::fs::symlink_file`]: crate::os::windows::fs::symlink_file"
+)]
+#[cfg_attr(not(target_env = "sgx"), doc = " [`symlink_dir`]: crate::os::windows::fs::symlink_dir")]
 ///
 /// # Examples
 ///

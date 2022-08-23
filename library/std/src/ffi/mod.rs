@@ -99,50 +99,18 @@
 //!
 //! # Conversions
 //!
-//! ## On Unix
-//!
-//! On Unix, [`OsStr`] implements the
-//! <code>std::os::unix::ffi::[OsStrExt][unix.OsStrExt]</code> trait, which
-//! augments it with two methods, [`from_bytes`] and [`as_bytes`].
-//! These do inexpensive conversions from and to byte slices.
-//!
-//! Additionally, on Unix [`OsString`] implements the
-//! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait,
-//! which provides [`from_vec`] and [`into_vec`] methods that consume
-//! their arguments, and take or produce vectors of [`u8`].
-//!
-//! ## On Windows
-//!
-//! An [`OsStr`] can be losslessly converted to a native Windows string. And
-//! a native Windows string can be losslessly converted to an [`OsString`].
-//!
-//! On Windows, [`OsStr`] implements the
-//! <code>std::os::windows::ffi::[OsStrExt][windows.OsStrExt]</code> trait,
-//! which provides an [`encode_wide`] method. This provides an
-//! iterator that can be [`collect`]ed into a vector of [`u16`]. After a nul
-//! characters is appended, this is the same as a native Windows string.
-//!
-//! Additionally, on Windows [`OsString`] implements the
-//! <code>std::os::windows:ffi::[OsStringExt][windows.OsStringExt]</code>
-//! trait, which provides a [`from_wide`] method to convert a native Windows
-//! string (without the terminating nul character) to an [`OsString`].
+#![cfg_attr(not(target_env = "sgx"), doc = include_str!("./docs_linked.md"))] // see note below
+#![cfg_attr(target_env = "sgx", doc = include_str!("./docs_unlinked.md"))]
 //!
 //! [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
 //! [Unicode code point]: https://www.unicode.org/glossary/#code_point
 //! [`env::set_var()`]: crate::env::set_var "env::set_var"
 //! [`env::var_os()`]: crate::env::var_os "env::var_os"
-//! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt "os::unix::ffi::OsStringExt"
-//! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec "os::unix::ffi::OsStringExt::from_vec"
-//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec "os::unix::ffi::OsStringExt::into_vec"
-//! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
-//! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes "os::unix::ffi::OsStrExt::from_bytes"
-//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes "os::unix::ffi::OsStrExt::as_bytes"
-//! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
-//! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt "os::windows::ffi::OsStrExt"
-//! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide "os::windows::ffi::OsStrExt::encode_wide"
-//! [`collect`]: crate::iter::Iterator::collect "iter::Iterator::collect"
-//! [windows.OsStringExt]: crate::os::windows::ffi::OsStringExt "os::windows::ffi::OsStringExt"
-//! [`from_wide`]: crate::os::windows::ffi::OsStringExt::from_wide "os::windows::ffi::OsStringExt::from_wide"
+
+// NOTE: The last section of the docs contains links to unix and windows
+// specific types that are not available in the SGX target. Therefore two
+// versions of the docs are stored in files and included based on target. These
+// should be kept in sync modulo the links.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
