@@ -74,7 +74,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             evaluation_cache: self.evaluation_cache.clone(),
             reported_trait_errors: self.reported_trait_errors.clone(),
             reported_closure_mismatch: self.reported_closure_mismatch.clone(),
-            tainted_by_errors_flag: self.tainted_by_errors_flag.clone(),
+            tainted_by_errors: self.tainted_by_errors.clone(),
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),

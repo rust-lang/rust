@@ -32,7 +32,7 @@ pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::fmt;
@@ -316,12 +316,12 @@ pub struct InferCtxt<'a, 'tcx> {
     ///
     /// Don't read this flag directly, call `is_tainted_by_errors()`
     /// and `set_tainted_by_errors()`.
-    tainted_by_errors_flag: Cell<bool>,
+    tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
     /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
-    // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
+    // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
 
     /// This flag is true while there is an active snapshot.
@@ -624,7 +624,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
             reported_closure_mismatch: Default::default(),
-            tainted_by_errors_flag: Cell::new(false),
+            tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             skip_leak_check: Cell::new(false),
@@ -1227,23 +1227,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn is_tainted_by_errors(&self) -> bool {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
-             tainted_by_errors_flag={})",
+             tainted_by_errors={})",
             self.tcx.sess.err_count(),
             self.err_count_on_creation,
-            self.tainted_by_errors_flag.get()
+            self.tainted_by_errors.get().is_some()
         );
 
         if self.tcx.sess.err_count() > self.err_count_on_creation {
             return true; // errors reported since this infcx was made
         }
-        self.tainted_by_errors_flag.get()
+        self.tainted_by_errors.get().is_some()
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
     /// observe an error from a prior pass.
     pub fn set_tainted_by_errors(&self) {
         debug!("set_tainted_by_errors()");
-        self.tainted_by_errors_flag.set(true)
+        self.tainted_by_errors.set(Some(
+            self.tcx.sess.delay_span_bug(DUMMY_SP, "`InferCtxt` incorrectly tainted by errors"),
+        ));
     }
 
     pub fn skip_region_resolution(&self) {
