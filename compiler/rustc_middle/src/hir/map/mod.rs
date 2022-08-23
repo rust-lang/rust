@@ -146,10 +146,12 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Map<'hir> {
+    #[inline]
     pub fn krate(self) -> &'hir Crate<'hir> {
         self.tcx.hir_crate(())
     }
 
+    #[inline]
     pub fn root_module(self) -> &'hir Mod<'hir> {
         match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
             Some(OwnerNode::Crate(item)) => item,
@@ -157,14 +159,17 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[inline]
     pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
+    #[inline]
     pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_module_items(module).items()
     }
 
+    #[inline]
     pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
@@ -489,11 +494,13 @@ impl<'hir> Map<'hir> {
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    #[inline]
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
         self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
-    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
+    #[inline]
+    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
@@ -626,35 +633,22 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId)) {
-        self.for_each_module(f)
-    }
-
-    #[cfg(parallel_compiler)]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
-
-        fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
-        where
-            F: Fn(LocalDefId) + Sync,
-        {
-            (*f)(module);
-            let items = tcx.hir_module_items(module);
-            par_iter(&items.submodules[..]).for_each(|&sm| par_iter_submodules(tcx, sm, f));
-        }
+    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+        let crate_items = self.tcx.hir_crate_items(());
+        par_for_each_in(&crate_items.submodules[..], |module| f(*module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
     pub fn parent_iter(self, current_id: HirId) -> ParentHirIterator<'hir> {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
     }

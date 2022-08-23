@@ -1,5 +1,5 @@
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -69,9 +69,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     ) {
         let cause =
             traits::ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc));
+        // for a type to be WF, we do not need to check if const trait predicates satisfy.
+        let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
             cause,
-            self.param_env,
+            param_env,
             ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
         ));
     }
@@ -104,8 +106,10 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
             return;
         }
 
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, assumed_wf_types, body_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+        let outlives_environment =
+            OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
+
         infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }
@@ -694,8 +698,11 @@ fn resolve_regions_with_wf_tys<'tcx>(
     // region constraints get added and solved there and we need to test each
     // call individually.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(&infcx),
+            infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
+        );
         let region_bound_pairs = outlives_environment.region_bound_pairs();
 
         add_constraints(&infcx, region_bound_pairs);
@@ -1444,7 +1451,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
         iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(infcx, wfcx.param_env, wfcx.body_id, p, sp)
+            traits::wf::predicate_obligations(
+                infcx,
+                wfcx.param_env.without_const(),
+                wfcx.body_id,
+                p,
+                sp,
+            )
         });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();

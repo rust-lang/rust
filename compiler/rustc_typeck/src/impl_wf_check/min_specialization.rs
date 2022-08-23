@@ -65,9 +65,9 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -157,8 +157,8 @@ fn get_impl_substs<'tcx>(
             return None;
         }
 
-        let mut outlives_env = OutlivesEnvironment::new(param_env);
-        outlives_env.add_implied_bounds(infcx, assumed_wf_types, impl1_hir_id);
+        let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
         infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
         let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
             let span = tcx.def_span(impl1_def_id);

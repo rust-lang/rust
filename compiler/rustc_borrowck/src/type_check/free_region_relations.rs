@@ -1,5 +1,5 @@
 use rustc_data_structures::frozen::Frozen;
-use rustc_data_structures::transitive_relation::TransitiveRelation;
+use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -61,25 +61,13 @@ pub(crate) fn create<'tcx>(
         constraints,
         universal_regions: universal_regions.clone(),
         region_bound_pairs: Default::default(),
-        relations: UniversalRegionRelations {
-            universal_regions: universal_regions.clone(),
-            outlives: Default::default(),
-            inverse_outlives: Default::default(),
-        },
+        outlives: Default::default(),
+        inverse_outlives: Default::default(),
     }
     .create()
 }
 
 impl UniversalRegionRelations<'_> {
-    /// Records in the `outlives_relation` (and
-    /// `inverse_outlives_relation`) that `fr_a: fr_b`. Invoked by the
-    /// builder below.
-    fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
-        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
-        self.outlives.add(fr_a, fr_b);
-        self.inverse_outlives.add(fr_b, fr_a);
-    }
-
     /// Given two universal regions, returns the postdominating
     /// upper-bound (effectively the least upper bound).
     ///
@@ -216,11 +204,20 @@ struct UniversalRegionRelationsBuilder<'this, 'tcx> {
     constraints: &'this mut MirTypeckRegionConstraints<'tcx>,
 
     // outputs:
-    relations: UniversalRegionRelations<'tcx>,
+    outlives: TransitiveRelationBuilder<RegionVid>,
+    inverse_outlives: TransitiveRelationBuilder<RegionVid>,
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
 impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
+    /// Records in the `outlives_relation` (and
+    /// `inverse_outlives_relation`) that `fr_a: fr_b`.
+    fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
+        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
+        self.outlives.add(fr_a, fr_b);
+        self.inverse_outlives.add(fr_b, fr_a);
+    }
+
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
         let unnormalized_input_output_tys = self
             .universal_regions
@@ -292,9 +289,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let fr_fn_body = self.universal_regions.fr_fn_body;
         for fr in self.universal_regions.universal_regions() {
             debug!("build: relating free region {:?} to itself and to 'static", fr);
-            self.relations.relate_universal_regions(fr, fr);
-            self.relations.relate_universal_regions(fr_static, fr);
-            self.relations.relate_universal_regions(fr, fr_fn_body);
+            self.relate_universal_regions(fr, fr);
+            self.relate_universal_regions(fr_static, fr);
+            self.relate_universal_regions(fr, fr_fn_body);
         }
 
         for data in &constraint_sets {
@@ -313,7 +310,11 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         CreateResult {
-            universal_region_relations: Frozen::freeze(self.relations),
+            universal_region_relations: Frozen::freeze(UniversalRegionRelations {
+                universal_regions: self.universal_regions,
+                outlives: self.outlives.freeze(),
+                inverse_outlives: self.inverse_outlives.freeze(),
+            }),
             region_bound_pairs: self.region_bound_pairs,
             normalized_inputs_and_output,
         }
@@ -356,7 +357,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
                     let r1 = self.universal_regions.to_region_vid(r1);
                     let r2 = self.universal_regions.to_region_vid(r2);
-                    self.relations.relate_universal_regions(r2, r1);
+                    self.relate_universal_regions(r2, r1);
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {

@@ -236,7 +236,8 @@ impl Wtf8Buf {
     /// in the given `Wtf8Buf`. The `Wtf8Buf` may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// capacity is already sufficient. This method preserves the contents even
+    /// if an error occurs.
     ///
     /// # Errors
     ///

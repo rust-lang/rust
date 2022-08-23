@@ -12,9 +12,8 @@ pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // Enable only under -Zmir-opt-level=4 as in some cases (check the deeply-nested-opt
-        // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
-        sess.mir_opt_level() >= 4
+        // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -38,7 +37,19 @@ impl MirPass<'_> for UnreachablePropagation {
             }
         }
 
+        // We do want do keep some unreachable blocks, but make them empty.
+        for bb in unreachable_blocks {
+            if !tcx.consider_optimizing(|| {
+                format!("UnreachablePropagation {:?} ", body.source.def_id())
+            }) {
+                break;
+            }
+
+            body.basic_blocks_mut()[bb].statements.clear();
+        }
+
         let replaced = !replacements.is_empty();
+
         for (bb, terminator_kind) in replacements {
             if !tcx.consider_optimizing(|| {
                 format!("UnreachablePropagation {:?} ", body.source.def_id())
@@ -57,42 +68,55 @@ impl MirPass<'_> for UnreachablePropagation {
 
 fn remove_successors<'tcx, F>(
     terminator_kind: &TerminatorKind<'tcx>,
-    predicate: F,
+    is_unreachable: F,
 ) -> Option<TerminatorKind<'tcx>>
 where
     F: Fn(BasicBlock) -> bool,
 {
-    let terminator = match *terminator_kind {
-        TerminatorKind::Goto { target } if predicate(target) => TerminatorKind::Unreachable,
-        TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
+    let terminator = match terminator_kind {
+        // This will unconditionally run into an unreachable and is therefore unreachable as well.
+        TerminatorKind::Goto { target } if is_unreachable(*target) => TerminatorKind::Unreachable,
+        TerminatorKind::SwitchInt { targets, discr, switch_ty } => {
             let otherwise = targets.otherwise();
 
-            let original_targets_len = targets.iter().len() + 1;
-            let (mut values, mut targets): (Vec<_>, Vec<_>) =
-                targets.iter().filter(|(_, bb)| !predicate(*bb)).unzip();
-
-            if !predicate(otherwise) {
-                targets.push(otherwise);
-            } else {
-                values.pop();
-            }
-
-            let retained_targets_len = targets.len();
-
-            if targets.is_empty() {
+            // If all targets are unreachable, we can be unreachable as well.
+            if targets.all_targets().iter().all(|bb| is_unreachable(*bb)) {
                 TerminatorKind::Unreachable
-            } else if targets.len() == 1 {
-                TerminatorKind::Goto { target: targets[0] }
-            } else if original_targets_len != retained_targets_len {
+            } else if is_unreachable(otherwise) {
+                // If there are multiple targets, don't delete unreachable branches (like an unreachable otherwise)
+                // unless otherwise is unrachable, in which case deleting a normal branch causes it to be merged with
+                // the otherwise, keeping its unreachable.
+                // This looses information about reachability causing worse codegen.
+                // For example (see src/test/codegen/match-optimizes-away.rs)
+                //
+                // pub enum Two { A, B }
+                // pub fn identity(x: Two) -> Two {
+                //     match x {
+                //         Two::A => Two::A,
+                //         Two::B => Two::B,
+                //     }
+                // }
+                //
+                // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
+                // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
+                // If the otherwise branch is unreachable, we can delete all other unreacahble targets, as they will
+                // still point to the unreachable and therefore not lose reachability information.
+                let reachable_iter = targets.iter().filter(|(_, bb)| !is_unreachable(*bb));
+
+                let new_targets = SwitchTargets::new(reachable_iter, otherwise);
+
+                // No unreachable branches were removed.
+                if new_targets.all_targets().len() == targets.all_targets().len() {
+                    return None;
+                }
+
                 TerminatorKind::SwitchInt {
                     discr: discr.clone(),
-                    switch_ty,
-                    targets: SwitchTargets::new(
-                        values.iter().copied().zip(targets.iter().copied()),
-                        *targets.last().unwrap(),
-                    ),
+                    switch_ty: *switch_ty,
+                    targets: new_targets,
                 }
             } else {
+                // If the otherwise branch is reachable, we don't want to delete any unreachable branches.
                 return None;
             }
         }

@@ -148,7 +148,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.ptr as *const _ == self.end {
+        if self.ptr == self.end {
             None
         } else if mem::size_of::<T>() == 0 {
             // purposefully don't use 'ptr.offset' because for

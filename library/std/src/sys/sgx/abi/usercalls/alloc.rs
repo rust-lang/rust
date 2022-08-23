@@ -117,7 +117,7 @@ pub unsafe trait UserSafe {
     /// * the pointer is null.
     /// * the pointed-to range is not in user memory.
     unsafe fn check_ptr(ptr: *const Self) {
-        let is_aligned = |p: *const u8| -> bool { 0 == p.addr() & (Self::align_of() - 1) };
+        let is_aligned = |p: *const u8| -> bool { p.is_aligned_to(Self::align_of()) };
 
         assert!(is_aligned(ptr as *const u8));
         assert!(is_user_range(ptr as _, mem::size_of_val(unsafe { &*ptr })));
@@ -386,7 +386,7 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
         unsafe {
             copy_bytewise_to_userspace(src, dst, len);
         }
-    } else if len % 8 == 0 && dst as usize % 8 == 0 {
+    } else if len % 8 == 0 && dst.is_aligned_to(8) {
         // Copying 8-byte aligned quadwords: copy quad word per quad word
         unsafe {
             copy_quadwords(src, dst, len);
