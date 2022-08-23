@@ -19,7 +19,7 @@ mod net;
 mod tests;
 
 // Export the types and traits for the public API.
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[unstable(feature = "os_fd", issue = "98699")]
 pub use owned::*;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "os_fd", issue = "98699")]
 pub use raw::*;
