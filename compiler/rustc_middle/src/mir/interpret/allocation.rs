@@ -23,30 +23,39 @@ use super::{
 };
 use crate::ty;
 
+/// Representation of a section of memory, starting at a particular
+/// address and of a specified length.
+/// This is how we represent bytes in an `Allocation` that can't be 
+/// owned, since they belong to a foreign process -- in particular, we
+/// use this to store pointers to C memory passed back from C FFI calls 
+/// in Miri.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable)]
 pub struct AddrAllocBytes {
+    /// Address of the beginning of the bytes.
     pub addr: u64,
+    /// Size of the type of the data being stored in these bytes.
     pub type_size: usize,
-    /// Length of the allocation, in multiples of `type_size`; 
+    /// Length of the bytes, in multiples of `type_size`; 
     /// it's in a `RefCell` since it can change depending on how it's used
     /// in the program. UNSAFE
     pub len: std::cell::RefCell<usize>,
 }
 
 impl AddrAllocBytes {
+    /// Length of the bytes.
     pub fn total_len(&self) -> usize {
         self.type_size * *self.len.borrow()
     }
 }
 
+// Satisfy the `Hash` and `HashStable` trait requirements; can't be automatically derived.
 impl hash::Hash for AddrAllocBytes {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.addr.hash(state);
         self.type_size.hash(state);
     }
 }   
-
 impl<CTX> HashStable<CTX> for AddrAllocBytes {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.addr.hash_stable(hcx, hasher);
@@ -54,16 +63,22 @@ impl<CTX> HashStable<CTX> for AddrAllocBytes {
     }
 }
 
+/// Types that can be used to represent the `bytes field of an `Allocation`. 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum AllocBytes {
+    /// Owned, boxed slice of [u8].
     Boxed(Box<[u8]>),
     /// Address, size of the type stored, and length of the allocation.
+    /// This is used for representing pointers to bytes that belong to a 
+    /// foreign process (such as pointers into C memory, passed back to Rust
+    /// through an FFI call).
     Addr(AddrAllocBytes),
 }
 
 impl AllocBytes {
+    /// The length of the bytes.
     pub fn len(&self) -> usize {
         match self {
             Self::Boxed(b) => b.len(),
@@ -71,6 +86,7 @@ impl AllocBytes {
         }
     }
 
+    /// The real address of the bytes.
     pub fn get_addr(&self) -> u64 {
         match self {
             Self::Boxed(b) => b.as_ptr() as u64,
@@ -78,6 +94,7 @@ impl AllocBytes {
         }
     }
 
+    /// Slice of the bytes, for a specified range.
     pub fn get_slice_from_range(&self, range: Range<usize>) -> &[u8] {
         match &self {
             Self::Boxed(b) => &b[range],
@@ -96,32 +113,33 @@ impl AllocBytes {
         }
     }
 
+    /// Mutable slice of the bytes, for a specified range.
     pub fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8]{
         match self {
             AllocBytes::Boxed(ref mut b) => &mut b[range],
             AllocBytes::Addr(AddrAllocBytes{..}) => {
-                // unsafe {
-                //     let addr = *addr as *const u8;
-                //     &mut std::slice::from_raw_parts(addr, *len)[range]
-                // }
+                // TODO! Should this be allowed?
                 todo!();
             }
         }
     }
 
+    /// Pointer addition to the base address of the bytes.
     pub fn add_ptr(&mut self, to_add: usize) -> *mut u8 {
         match self {
             AllocBytes::Boxed(b) => {
                 b.as_mut_ptr().wrapping_add(to_add)
             },
             AllocBytes::Addr(AddrAllocBytes{..}) => {
-                // TODO!
+                // TODO! Should this be allowed?
                 todo!();
             }
         }
     }
 
-    pub fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &AllocBytes) {
+    /// Write an `AllocBytes` to a boxed slice of `MaybeUninit` -- this serves to initialize 
+    /// the elements in `boxed`, for the length of the `AllocBytes` passed in.
+    pub fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &Self) {
         match to_write {
             AllocBytes::Boxed(ref b) => {
                 MaybeUninit::write_slice(boxed, &b);
@@ -489,8 +507,8 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 /// Byte accessors.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// Get the pointer of the [u8] of bytes.
-    pub fn get_bytes_addr(&self) -> Size {
-        Size::from_bytes(self.bytes.get_addr())
+    pub fn expose_base_addr(&self) -> usize {
+        self.bytes.get_addr().try_into().unwrap()
     }
 
     /// This is the entirely abstraction-violating way to just grab the raw bytes without

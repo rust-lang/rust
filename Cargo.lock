@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "abort_on_panic"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "955f37ac58af2416bac687c8ab66a4ccba282229bd7422a28d2281a5e66a6116"
-
-[[package]]
 name = "addr2line"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2158,26 +2152,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libffi"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e08093a2ddeee94bd0c830a53d895ff91f1f3bb0f9b3c8c6b00739cdf76bc1d"
-dependencies = [
- "abort_on_panic",
- "libc",
- "libffi-sys",
-]
-
-[[package]]
-name = "libffi-sys"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab4106b7f09d7b87d021334d5618fac1dfcfb824d4c5fe111ff0074dfd242e15"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "libgit2-sys"
 version = "0.13.2+1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2508,8 +2482,6 @@ dependencies = [
  "getrandom 0.2.0",
  "lazy_static",
  "libc",
- "libffi",
- "libloading",
  "log",
  "measureme",
  "rand 0.8.5",
