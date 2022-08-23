@@ -85,6 +85,46 @@ SOURCE_FILE
             L_PAREN "("
             R_PAREN ")"
           SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            PIPE "|"
+            WHITESPACE " "
+            OR_PAT
+              IDENT_PAT
+                NAME
+                  IDENT "a"
+              WHITESPACE " "
+              PIPE "|"
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            PIPE "|"
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "b"
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            COMMA ","
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            R_PAREN ")"
+          SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
