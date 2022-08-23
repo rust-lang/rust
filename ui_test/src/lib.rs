@@ -272,7 +272,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                     }
                     Error::ErrorsWithoutPattern { path: None, msgs } => {
                         eprintln!(
-                            "There were {} unmatched diagnostics that occurred outside the testfile and had not pattern",
+                            "There were {} unmatched diagnostics that occurred outside the testfile and had no pattern",
                             msgs.len(),
                         );
                         for Message { level, message } in msgs {
@@ -629,8 +629,8 @@ pub enum Mode {
 
 impl Mode {
     fn ok(self, status: ExitStatus) -> Errors {
-        match (status.code().unwrap(), self) {
-            (1, Mode::Fail) | (101, Mode::Panic) | (0, Mode::Pass) => vec![],
+        match (status.code(), self) {
+            (Some(1), Mode::Fail) | (Some(101), Mode::Panic) | (Some(0), Mode::Pass) => vec![],
             _ => vec![Error::ExitStatus(self, status)],
         }
     }
