@@ -415,6 +415,7 @@ impl f64 {
     /// Negative infinity (−∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / f64::ZERO;
+    
     /// Returns `true` if this value is NaN.
     ///
     /// ```
