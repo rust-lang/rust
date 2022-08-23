@@ -858,8 +858,7 @@ fn compare_synthetic_generics<'tcx>(
     {
         if impl_synthetic != trait_synthetic {
             let impl_def_id = impl_def_id.expect_local();
-            let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_def_id);
-            let impl_span = tcx.hir().span(impl_hir_id);
+            let impl_span = tcx.def_span(impl_def_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(
                 tcx.sess,
@@ -878,17 +877,16 @@ fn compare_synthetic_generics<'tcx>(
                         // try taking the name from the trait impl
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
-                        let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
+                        let new_name = tcx.opt_item_name(trait_def_id)?;
                         let trait_m = trait_m.def_id.as_local()?;
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m });
+                        let trait_m = tcx.hir().expect_trait_item(trait_m);
 
                         let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
+                        let impl_m = tcx.hir().expect_impl_item(impl_m);
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
-                        let new_generics_span =
-                            tcx.sess.source_map().generate_fn_name_span(impl_span)?.shrink_to_hi();
+                        let new_generics_span = tcx.def_ident_span(impl_def_id)?.shrink_to_hi();
                         // in case there are generics, just replace them
                         let generics_span =
                             impl_m.generics.span.substitute_dummy(new_generics_span);
@@ -900,7 +898,7 @@ fn compare_synthetic_generics<'tcx>(
                             "try changing the `impl Trait` argument to a generic parameter",
                             vec![
                                 // replace `impl Trait` with `T`
-                                (impl_span, new_name),
+                                (impl_span, new_name.to_string()),
                                 // replace impl method generics with trait method generics
                                 // This isn't quite right, as users might have changed the names
                                 // of the generics, but it works for the common case
@@ -917,7 +915,7 @@ fn compare_synthetic_generics<'tcx>(
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
                         let impl_m = impl_m.def_id.as_local()?;
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
+                        let impl_m = tcx.hir().expect_impl_item(impl_m);
                         let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),

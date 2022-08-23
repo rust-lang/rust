@@ -13,7 +13,9 @@ use rustc_span::{Span, DUMMY_SP};
 
 use std::ptr;
 
-use crate::late::{ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind};
+use crate::late::{
+    ConstantHasGenerics, ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind,
+};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
 use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
@@ -1103,7 +1105,7 @@ impl<'a> Resolver<'a> {
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
-                        ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
+                        ItemRibKind(_) | AssocItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -1168,10 +1170,10 @@ impl<'a> Resolver<'a> {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
@@ -1180,7 +1182,9 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
                                 // this and then enforce the self type to be concrete later on.
@@ -1207,7 +1211,6 @@ impl<'a> Resolver<'a> {
 
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(
@@ -1232,28 +1235,22 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::ConstParam, _) => {
-                let mut ribs = ribs.iter().peekable();
-                if let Some(Rib { kind: FnItemRibKind, .. }) = ribs.peek() {
-                    // When declaring const parameters inside function signatures, the first rib
-                    // is always a `FnItemRibKind`. In this case, we can skip it, to avoid it
-                    // (spuriously) conflicting with the const param.
-                    ribs.next();
-                }
-
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => continue,
 
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1272,7 +1269,6 @@ impl<'a> Resolver<'a> {
                         }
 
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(
