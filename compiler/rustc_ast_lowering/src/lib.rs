@@ -1570,32 +1570,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         generics,
                         parent_generics,
                     } => {
-                        if self.tcx.sess.features_untracked().return_position_impl_trait_v2 {
-                            if let Some(parent_generics) = parent_generics {
-                                let generics =
-                                    self.lowering_arena.gs.alloc(parent_generics.merge(generics));
-                                self.lower_opaque_impl_trait_v2(
-                                    span,
-                                    origin,
-                                    def_node_id,
-                                    generics,
-                                    impl_trait_inputs,
-                                    bounds,
-                                    itctx,
-                                )
-                            } else {
-                                self.lower_opaque_impl_trait_v2(
-                                    span,
-                                    origin,
-                                    def_node_id,
-                                    generics,
-                                    impl_trait_inputs,
-                                    bounds,
-                                    itctx,
-                                )
-                            }
+                        if let Some(parent_generics) = parent_generics {
+                            let generics =
+                                self.lowering_arena.gs.alloc(parent_generics.merge(generics));
+                            self.lower_opaque_impl_trait(
+                                span,
+                                origin,
+                                def_node_id,
+                                generics,
+                                impl_trait_inputs,
+                                bounds,
+                                itctx,
+                            )
                         } else {
-                            self.lower_opaque_impl_trait(span, origin, def_node_id, bounds, itctx)
+                            self.lower_opaque_impl_trait(
+                                span,
+                                origin,
+                                def_node_id,
+                                generics,
+                                impl_trait_inputs,
+                                bounds,
+                                itctx,
+                            )
                         }
                     }
                     ImplTraitContext::TypeAliasesOpaqueTy => {
@@ -1604,6 +1600,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             span,
                             hir::OpaqueTyOrigin::TyAlias,
                             def_node_id,
+                            &Generics::default(),
+                            &Vec::new(),
                             bounds,
                             nested_itctx,
                         )
@@ -1673,162 +1671,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// for the lifetimes that get captured (`'x`, in our example above) and reference those.
     #[instrument(level = "debug", skip(self))]
     fn lower_opaque_impl_trait<'itctx>(
-        &mut self,
-        span: Span,
-        origin: hir::OpaqueTyOrigin,
-        opaque_ty_node_id: NodeId,
-        bounds: &'itctx GenericBounds,
-        itctx: ImplTraitContext<'_, 'itctx>,
-    ) -> hir::TyKind<'hir>
-    where
-        'a: 'itctx,
-    {
-        // Make sure we know that some funky desugaring has been going on here.
-        // This is a first: there is code in other places like for loop
-        // desugaring that explicitly states that we don't want to track that.
-        // Not tracking it makes lints in rustc and clippy very fragile, as
-        // frequently opened issues show.
-        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
-
-        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
-        debug!(?opaque_ty_def_id);
-
-        // Contains the new lifetime definitions created for the TAIT (if any).
-        let mut collected_lifetimes = Vec::new();
-
-        // If this came from a TAIT (as opposed to a function that returns an RPIT), we only want
-        // to capture the lifetimes that appear in the bounds. So visit the bounds to find out
-        // exactly which ones those are.
-        let lifetimes_to_remap = if origin == hir::OpaqueTyOrigin::TyAlias {
-            // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't keep all the lifetime parameters
-            Vec::new()
-        } else {
-            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
-            // we only keep the lifetimes that appear in the `impl Debug` itself:
-            lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
-        };
-        debug!(?lifetimes_to_remap);
-
-        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
-            let mut new_remapping = FxHashMap::default();
-
-            // If this opaque type is only capturing a subset of the lifetimes (those that appear
-            // in bounds), then create the new lifetime parameters required and create a mapping
-            // from the old `'a` (on the function) to the new `'a` (on the opaque type).
-            collected_lifetimes = lctx.create_lifetime_defs(
-                opaque_ty_def_id,
-                &lifetimes_to_remap,
-                &mut new_remapping,
-            );
-            debug!(?collected_lifetimes);
-            debug!(?new_remapping);
-
-            // Install the remapping from old to new (if any):
-            lctx.with_remapping(new_remapping, &[], |lctx| {
-                // This creates HIR lifetime definitions as `hir::GenericParam`, in the given
-                // example `type TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection
-                // containing `&['x]`.
-                let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
-                    |&(new_node_id, lifetime)| {
-                        let hir_id = lctx.lower_node_id(new_node_id);
-                        debug_assert_ne!(lctx.opt_local_def_id(new_node_id), None);
-
-                        let (name, kind) = if lifetime.ident.name == kw::UnderscoreLifetime {
-                            (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
-                        } else {
-                            (
-                                hir::ParamName::Plain(lifetime.ident),
-                                hir::LifetimeParamKind::Explicit,
-                            )
-                        };
-
-                        hir::GenericParam {
-                            hir_id,
-                            name,
-                            span: lifetime.ident.span,
-                            pure_wrt_drop: false,
-                            kind: hir::GenericParamKind::Lifetime { kind },
-                            colon_span: None,
-                        }
-                    },
-                ));
-                debug!(?lifetime_defs);
-
-                // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
-                // get back Debug + 'a1, which is suitable for use on the TAIT.
-                let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
-                debug!(?hir_bounds);
-
-                let opaque_ty_item = hir::OpaqueTy {
-                    generics: self.arena.alloc(hir::Generics {
-                        params: lifetime_defs,
-                        predicates: &[],
-                        has_where_clause_predicates: false,
-                        where_clause_span: lctx.lower_span(span),
-                        span: lctx.lower_span(span),
-                    }),
-                    bounds: hir_bounds,
-                    origin,
-                };
-                debug!(?opaque_ty_item);
-
-                lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
-            })
-        });
-
-        // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
-        // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
-        let lifetimes =
-            self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(|(_, lifetime)| {
-                let id = self.next_node_id();
-                let span = lifetime.ident.span;
-
-                let ident = if lifetime.ident.name == kw::UnderscoreLifetime {
-                    Ident::with_dummy_span(kw::UnderscoreLifetime)
-                } else {
-                    lifetime.ident
-                };
-
-                let l = self.new_named_lifetime(lifetime.id, id, span, ident);
-                hir::GenericArg::Lifetime(l)
-            }));
-        debug!(?lifetimes);
-
-        // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
-    }
-
-    /// Lowers a `ReturnPositionOpaqueTy` (`-> impl Trait`) or a `TypeAliasesOpaqueTy` (`type F =
-    /// impl Trait`): this creates the associated Opaque Type (TAIT) definition and then returns a
-    /// HIR type that references the TAIT.
-    ///
-    /// Given a function definition like:
-    ///
-    /// ```rust
-    /// fn test<'a, T: Debug>(x: &'a T) -> impl Debug + 'a {
-    ///     x
-    /// }
-    /// ```
-    ///
-    /// we will create a TAIT definition in the HIR like
-    ///
-    /// ```
-    /// type TestReturn<'a, T, 'x> = impl Debug + 'x
-    /// ```
-    ///
-    /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
-    ///
-    /// ```rust
-    /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
-    /// ```
-    ///
-    /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the
-    /// type parameters from the function `test` (this is implemented in the query layer, they aren't
-    /// added explicitly in the HIR). But this includes all the lifetimes, and we only want to
-    /// capture the lifetimes that are referenced in the bounds. Therefore, we add *extra* lifetime parameters
-    /// for the lifetimes that get captured (`'x`, in our example above) and reference those.
-    #[tracing::instrument(level = "debug", skip(self))]
-    fn lower_opaque_impl_trait_v2<'itctx>(
         &mut self,
         span: Span,
         origin: hir::OpaqueTyOrigin,
@@ -2099,7 +1941,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args)
+        let result = hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
+        debug!("lower_opaque_impl_trait = {:?}", result);
+        result
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and

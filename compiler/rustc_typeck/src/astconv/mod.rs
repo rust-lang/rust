@@ -2707,9 +2707,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         match origin {
-            hir::OpaqueTyOrigin::FnReturn(..)
-                if tcx.sess.features_untracked().return_position_impl_trait_v2 =>
-            {
+            hir::OpaqueTyOrigin::FnReturn(..) => {
                 let params = &self.tcx().generics_of(def_id).params;
                 assert_eq!(params.len(), generic_args.len());
                 let substs: Vec<_> = generic_args

@@ -1054,7 +1054,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let parent = hir_map.get_parent_node(lt.hir_id);
 
                                 match hir_map.get(parent) {
-                                    hir::Node::Item(&hir::Item { kind: hir::ItemKind::OpaqueTy(..), .. }) if this.tcx.sess.features_untracked().return_position_impl_trait_v2 => {
+                                    hir::Node::Item(&hir::Item { kind: hir::ItemKind::OpaqueTy(..), .. }) => {
                                         // do not warn
                                     }
                                     _ => {

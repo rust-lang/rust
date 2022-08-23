@@ -2398,15 +2398,8 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> 
     if let Node::Item(item) = tcx.hir().get_by_def_id(def_id) {
         if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
             return match opaque_ty.origin {
-                hir::OpaqueTyOrigin::FnReturn(_)
-                    if tcx.sess.features_untracked().return_position_impl_trait_v2 =>
-                {
-                    None
-                }
-                hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
-                    Some(parent)
-                }
-                hir::OpaqueTyOrigin::TyAlias => None,
+                hir::OpaqueTyOrigin::AsyncFn(parent) => Some(parent),
+                hir::OpaqueTyOrigin::TyAlias | hir::OpaqueTyOrigin::FnReturn(_) => None,
             };
         }
     }

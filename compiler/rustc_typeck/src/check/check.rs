@@ -726,13 +726,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let (param_env_did, defining_use_anchor) = match *origin {
-        hir::OpaqueTyOrigin::FnReturn(did) => {
-            if tcx.sess.features_untracked().return_position_impl_trait_v2 {
-                (def_id, did)
-            } else {
-                (did, did)
-            }
-        }
+        hir::OpaqueTyOrigin::FnReturn(did) => (def_id, did),
         hir::OpaqueTyOrigin::AsyncFn(did) => (did, did),
         hir::OpaqueTyOrigin::TyAlias => (def_id, def_id),
     };

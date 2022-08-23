@@ -618,26 +618,13 @@ fn type_param_predicates(
                 | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    origin: hir::OpaqueTyOrigin::TyAlias | hir::OpaqueTyOrigin::FnReturn(..),
                     ..
                 })
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,
                 ItemKind::Trait(_, _, ref generics, ..) => {
-                    // Implied `Self: Trait` and supertrait bounds.
-                    if param_id == item_hir_id {
-                        let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        extend =
-                            Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
-                    }
-                    generics
-                }
-                ItemKind::OpaqueTy(OpaqueTy {
-                    ref generics,
-                    origin: hir::OpaqueTyOrigin::FnReturn(..),
-                    ..
-                }) if tcx.sess.features_untracked().return_position_impl_trait_v2 => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
@@ -1597,12 +1584,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                ..
-            }) if !tcx.sess.features_untracked().return_position_impl_trait_v2 => {
-                Some(fn_def_id.to_def_id())
-            }
-            ItemKind::OpaqueTy(hir::OpaqueTy {
                 origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                 ..
             }) => Some(fn_def_id.to_def_id()),
@@ -2170,31 +2151,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     *generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
-                    ref generics,
-                    origin: hir::OpaqueTyOrigin::FnReturn(..),
-                    ..
-                }) => {
-                    // return-position impl trait
-                    //
-                    // We don't inherit predicates from the parent here:
-                    // If we have, say `fn f<'a, T: 'a>() -> impl Sized {}`
-                    // then the return type is `f::<'static, T>::{{opaque}}`.
-                    //
-                    // If we inherited the predicates of `f` then we would
-                    // require that `T: 'static` to show that the return
-                    // type is well-formed.
-                    //
-                    // The only way to have something with this opaque type
-                    // is from the return type of the containing function,
-                    // which will ensure that the function's predicates
-                    // hold.
-                    if !tcx.sess.features_untracked().return_position_impl_trait_v2 {
-                        return ty::GenericPredicates { parent: None, predicates: &[] };
-                    }
-
-                    generics
-                }
-                ItemKind::OpaqueTy(OpaqueTy {
                     origin: hir::OpaqueTyOrigin::AsyncFn(..), ..
                 }) => {
                     // return-position impl trait
@@ -2215,12 +2171,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    origin: hir::OpaqueTyOrigin::TyAlias | hir::OpaqueTyOrigin::FnReturn(..),
                     ..
-                }) => {
-                    // type-alias impl trait
-                    generics
-                }
+                }) => generics,
 
                 _ => NO_GENERICS,
             }

@@ -178,8 +178,6 @@ declare_features! (
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (active, with_negative_coherence, "1.60.0", None, None),
-    /// Added for testing impl trait in return position using a "sibling" type
-    (active, return_position_impl_trait_v2, "1.62.0", None, None),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

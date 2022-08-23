@@ -196,9 +196,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             (generics, arg_index)
         }
 
-        Node::Ty(&Ty { kind: TyKind::OpaqueDef(id, generics), .. })
-            if tcx.sess.features_untracked().return_position_impl_trait_v2 =>
-        {
+        Node::Ty(&Ty { kind: TyKind::OpaqueDef(id, generics), .. }) => {
             let parent_generics = tcx.generics_of(id.def_id.to_def_id());
 
             generics
