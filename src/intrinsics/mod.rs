@@ -303,6 +303,12 @@ fn codegen_float_intrinsic_call<'tcx>(
 
     let layout = fx.layout_of(ty);
     let res = match intrinsic {
+        sym::fmaf32 | sym::fmaf64 => {
+            let a = args[0].load_scalar(fx);
+            let b = args[1].load_scalar(fx);
+            let c = args[2].load_scalar(fx);
+            CValue::by_val(fx.bcx.ins().fma(a, b, c), layout)
+        }
         sym::copysignf32 | sym::copysignf64 => {
             let a = args[0].load_scalar(fx);
             let b = args[1].load_scalar(fx);

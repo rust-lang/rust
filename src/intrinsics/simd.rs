@@ -397,21 +397,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let layout = a.layout();
             let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let res_lane_layout = fx.layout_of(lane_ty);
 
             for lane in 0..lane_count {
-                let a_lane = a.value_lane(fx, lane);
-                let b_lane = b.value_lane(fx, lane);
-                let c_lane = c.value_lane(fx, lane);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+                let c_lane = c.value_lane(fx, lane).load_scalar(fx);
 
-                let res_lane = match lane_ty.kind() {
-                    ty::Float(FloatTy::F32) => {
-                        fx.easy_call("fmaf", &[a_lane, b_lane, c_lane], lane_ty)
-                    }
-                    ty::Float(FloatTy::F64) => {
-                        fx.easy_call("fma", &[a_lane, b_lane, c_lane], lane_ty)
-                    }
-                    _ => unreachable!(),
-                };
+                let res_lane = fx.bcx.ins().fma(a_lane, b_lane, c_lane);
+                let res_lane = CValue::by_val(res_lane, res_lane_layout);
 
                 ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
             }
