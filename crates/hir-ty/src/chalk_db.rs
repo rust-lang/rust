@@ -724,7 +724,7 @@ pub(crate) fn adt_datum_query(
     let where_clauses = convert_where_clauses(db, adt_id.into(), &bound_vars_subst);
 
     let phantom_data_id = db
-        .lang_item(krate, SmolStr::new_inline("phantom_data"))
+        .lang_item(krate, LangItem::PhantomData)
         .and_then(|item| item.as_struct())
         .map(|item| item.into());
     let flags = rust_ir::AdtFlags {
@@ -754,10 +754,7 @@ pub(crate) fn adt_datum_query(
                 .enum_data(id)
                 .variants
                 .iter()
-                .map(|(local_id, _)| {
-                    let variant_id = hir_def::EnumVariantId { parent: id, local_id };
-                    variant_id_to_fields(variant_id.into())
-                })
+                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
                 .collect();
             (rust_ir::AdtKind::Enum, variants)
         }
