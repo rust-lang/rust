@@ -300,3 +300,55 @@ pub struct FailSeekFile {
 pub struct FailWriteFile {
     pub err: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::crate_not_panic_runtime)]
+pub struct CrateNotPanicRuntime {
+    pub crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::no_panic_strategy)]
+pub struct NoPanicStrategy {
+    pub crate_name: String,
+    pub strategy: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::profiler_builtins_needs_core)]
+pub struct ProfilerBuiltinsNeedsCore;
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::not_profiler_runtime)]
+pub struct NotProfilerRuntime {
+    pub crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::no_multiple_global_alloc)]
+pub struct NoMultipleGlobalAlloc {
+    #[primary_span]
+    #[label]
+    pub span2: Span,
+    #[label(metadata::prev_global_alloc)]
+    pub span1: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::conflicting_global_alloc)]
+pub struct ConflictingGlobalAlloc {
+    pub crate_name: String,
+    pub other_crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::global_alloc_required)]
+pub struct GlobalAllocRequired;
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::no_transitive_needs_dep)]
+pub struct NoTransitiveNeedsDep {
+    pub crate_name: String,
+    pub needs_crate_name: String,
+    pub deps_crate_name: String,
+}

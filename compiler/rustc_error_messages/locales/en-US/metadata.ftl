@@ -130,3 +130,31 @@ metadata_fail_seek_file =
 
 metadata_fail_write_file =
     failed to write to the file: {$err}
+
+metadata_crate_not_panic_runtime =
+    the crate `{$crate_name}` is not a panic runtime
+
+metadata_no_panic_strategy =
+    the crate `{$crate_name}` does not have the panic strategy `{$strategy}`
+
+metadata_profiler_builtins_needs_core =
+    `profiler_builtins` crate (required by compiler options) is not compatible with crate attribute `#![no_core]`
+
+metadata_not_profiler_runtime =
+    the crate `{$crate_name}` is not a profiler runtime
+
+metadata_no_multiple_global_alloc =
+    cannot define multiple global allocators
+    .label = cannot define a new global allocator
+
+metadata_prev_global_alloc =
+    previous global allocator defined here
+
+metadata_conflicting_global_alloc =
+    the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}
+
+metadata_global_alloc_required =
+    no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
+
+metadata_no_transitive_needs_dep =
+    the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`
