@@ -352,3 +352,29 @@ pub struct NoTransitiveNeedsDep {
     pub needs_crate_name: String,
     pub deps_crate_name: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::failed_write_error)]
+pub struct FailedWriteError {
+    pub filename: String,
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::failed_create_tempdir)]
+pub struct FailedCreateTempdir {
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::failed_create_file)]
+pub struct FailedCreateFile {
+    pub filename: String,
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::failed_create_encoded_metadata)]
+pub struct FailedCreateEncodedMetadata {
+    pub err: String,
+}

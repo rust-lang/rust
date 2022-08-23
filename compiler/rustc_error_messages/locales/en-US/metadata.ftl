@@ -158,3 +158,15 @@ metadata_global_alloc_required =
 
 metadata_no_transitive_needs_dep =
     the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`
+
+metadata_failed_write_error =
+    failed to write {$filename}: {$err}
+
+metadata_failed_create_tempdir =
+    couldn't create a temp dir: {$err}
+
+metadata_failed_create_file =
+    failed to create the file {$filename}: {$err}
+
+metadata_failed_create_encoded_metadata =
+    failed to create encoded metadata from file: {$err}
