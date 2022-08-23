@@ -35,21 +35,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         // All `#[rustc_do_not_const_check]` functions should be hooked here.
         let def_id = instance.def_id();
 
-        if Some(def_id) == self.tcx.lang_items().const_eval_select() {
-            // redirect to const_eval_select_ct
-            if let Some(const_eval_select) = self.tcx.lang_items().const_eval_select_ct() {
-                return Ok(Some(
-                    ty::Instance::resolve(
-                        *self.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        const_eval_select,
-                        instance.substs,
-                    )
-                    .unwrap()
-                    .unwrap(),
-                ));
-            }
-        } else if Some(def_id) == self.tcx.lang_items().panic_display()
+        if Some(def_id) == self.tcx.lang_items().panic_display()
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
             // &str or &&str

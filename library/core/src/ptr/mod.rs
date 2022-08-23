@@ -886,7 +886,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe {
-        assert_unsafe_precondition!(
+        assert_unsafe_precondition!([T](x: *mut T, y: *mut T, count: usize) =>
             is_aligned_and_not_null(x)
                 && is_aligned_and_not_null(y)
                 && is_nonoverlapping(x, y, count)
@@ -983,7 +983,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -1470,7 +1470,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(src));
+        assert_unsafe_precondition!([T](src: *const T) => is_aligned_and_not_null(src));
         intrinsics::volatile_load(src)
     }
 }
@@ -1541,7 +1541,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         intrinsics::volatile_store(dst, src);
     }
 }
