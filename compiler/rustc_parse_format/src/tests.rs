@@ -1,5 +1,6 @@
 use super::*;
 
+#[track_caller]
 fn same(fmt: &'static str, p: &[Piece<'static>]) {
     let parser = Parser::new(fmt, None, None, false, ParseMode::Format);
     assert_eq!(parser.collect::<Vec<Piece<'static>>>(), p);
@@ -190,9 +191,9 @@ fn format_counts() {
                 align: AlignUnknown,
                 flags: 0,
                 precision: CountImplied,
-                width: CountIs(10),
                 precision_span: None,
-                width_span: None,
+                width: CountIs(10),
+                width_span: Some(InnerSpan { start: 3, end: 5 }),
                 ty: "x",
                 ty_span: None,
             },
@@ -208,9 +209,9 @@ fn format_counts() {
                 align: AlignUnknown,
                 flags: 0,
                 precision: CountIs(10),
+                precision_span: Some(InnerSpan { start: 6, end: 9 }),
                 width: CountIsParam(10),
-                precision_span: None,
-                width_span: Some(InnerSpan::new(3, 6)),
+                width_span: Some(InnerSpan { start: 3, end: 6 }),
                 ty: "x",
                 ty_span: None,
             },
@@ -226,9 +227,9 @@ fn format_counts() {
                 align: AlignUnknown,
                 flags: 0,
                 precision: CountIs(10),
+                precision_span: Some(InnerSpan { start: 6, end: 9 }),
                 width: CountIsParam(0),
-                precision_span: None,
-                width_span: Some(InnerSpan::new(4, 6)),
+                width_span: Some(InnerSpan { start: 4, end: 6 }),
                 ty: "x",
                 ty_span: None,
             },
@@ -244,8 +245,8 @@ fn format_counts() {
                 align: AlignUnknown,
                 flags: 0,
                 precision: CountIsParam(0),
+                precision_span: Some(InnerSpan { start: 3, end: 5 }),
                 width: CountImplied,
-                precision_span: Some(InnerSpan::new(3, 5)),
                 width_span: None,
                 ty: "x",
                 ty_span: None,
@@ -279,15 +280,33 @@ fn format_counts() {
                 fill: None,
                 align: AlignUnknown,
                 flags: 0,
-                precision: CountIsName("b", InnerSpan::new(6, 7)),
-                width: CountIsName("a", InnerSpan::new(4, 4)),
-                precision_span: None,
-                width_span: None,
+                precision: CountIsName("b", InnerSpan { start: 6, end: 7 }),
+                precision_span: Some(InnerSpan { start: 5, end: 8 }),
+                width: CountIsName("a", InnerSpan { start: 3, end: 4 }),
+                width_span: Some(InnerSpan { start: 3, end: 5 }),
                 ty: "?",
                 ty_span: None,
             },
         })],
     );
+    same(
+        "{:.4}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            position_span: InnerSpan { start: 2, end: 2 },
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIs(4),
+                precision_span: Some(InnerSpan { start: 3, end: 5 }),
+                width: CountImplied,
+                width_span: None,
+                ty: "",
+                ty_span: None,
+            },
+        })],
+    )
 }
 #[test]
 fn format_flags() {
