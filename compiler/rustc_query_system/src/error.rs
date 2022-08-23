@@ -1,48 +1,57 @@
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
-use rustc_session::SessionDiagnostic;
+use rustc_errors::AddSubdiagnostic;
 use rustc_span::Span;
 
-pub struct Cycle {
+pub struct CycleStack {
     pub span: Span,
-    pub stack_bottom: String,
-    pub upper_stack_info: Vec<(Span, String)>,
-    pub recursive_ty_alias: bool,
-    pub recursive_trait_alias: bool,
-    pub cycle_usage: Option<(Span, String)>,
+    pub desc: String,
 }
 
-impl SessionDiagnostic<'_> for Cycle {
-    fn into_diagnostic(
-        self,
-        sess: &'_ rustc_session::parse::ParseSess,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::query_system::cycle);
-        diag.set_span(self.span);
-        diag.code(rustc_errors::DiagnosticId::Error("E0391".to_string()));
-        let upper_stack_len = self.upper_stack_info.len();
-        for (span, desc) in self.upper_stack_info.into_iter() {
-            // FIXME(#100717): use fluent translation
-            diag.span_note(span, &format!("...which requires {}...", desc));
-        }
-        diag.set_arg("stack_bottom", self.stack_bottom);
-        if upper_stack_len == 0 {
-            diag.note(rustc_errors::fluent::query_system::cycle_stack_single);
-        } else {
-            diag.note(rustc_errors::fluent::query_system::cycle_stack_multiple);
-        }
-        if self.recursive_trait_alias {
-            diag.note(rustc_errors::fluent::query_system::cycle_recursive_trait_alias);
-        } else if self.recursive_ty_alias {
-            diag.note(rustc_errors::fluent::query_system::cycle_recursive_ty_alias);
-            diag.help(rustc_errors::fluent::query_system::cycle_recursive_ty_alias_help1);
-            diag.help(rustc_errors::fluent::query_system::cycle_recursive_ty_alias_help2);
-        }
-        if let Some((span, desc)) = self.cycle_usage {
-            diag.set_arg("usage", desc);
-            diag.span_note(span, rustc_errors::fluent::query_system::cycle_usage);
-        }
-        diag
+impl AddSubdiagnostic for CycleStack {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        diag.span_note(self.span, &format!("...which requires {}...", self.desc));
     }
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum StackCount {
+    #[note(query_system::cycle_stack_single)]
+    Single,
+    #[note(query_system::cycle_stack_multiple)]
+    Multiple,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum Alias {
+    #[note(query_system::cycle_recursive_ty_alias)]
+    #[help(query_system::cycle_recursive_ty_alias_help1)]
+    #[help(query_system::cycle_recursive_ty_alias_help2)]
+    Ty,
+    #[note(query_system::cycle_recursive_trait_alias)]
+    Trait,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[note(query_system::cycle_usage)]
+pub struct CycleUsage {
+    #[primary_span]
+    pub span: Span,
+    pub usage: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(query_system::cycle, code = "E0391")]
+pub struct Cycle {
+    #[primary_span]
+    pub span: Span,
+    pub stack_bottom: String,
+    #[subdiagnostic]
+    pub cycle_stack: Vec<CycleStack>,
+    #[subdiagnostic]
+    pub stack_count: StackCount,
+    #[subdiagnostic]
+    pub alias: Option<Alias>,
+    #[subdiagnostic]
+    pub cycle_usage: Option<CycleUsage>,
 }
 
 #[derive(SessionDiagnostic)]

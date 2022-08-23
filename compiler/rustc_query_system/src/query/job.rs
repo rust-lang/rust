@@ -1,3 +1,4 @@
+use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
 
@@ -535,26 +536,42 @@ pub(crate) fn report_cycle<'a>(
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);
 
-    let mut cycle_diag = crate::error::Cycle {
-        span,
-        upper_stack_info: Vec::with_capacity(stack.len() - 1),
-        stack_bottom: stack[0].query.description.to_owned(),
-        recursive_ty_alias: false,
-        recursive_trait_alias: false,
-        cycle_usage: usage.map(|(span, query)| (query.default_span(span), query.description)),
-    };
+    let mut cycle_stack = Vec::new();
+
+    use crate::error::StackCount;
+    let stack_count = if stack.len() == 1 { StackCount::Single } else { StackCount::Multiple };
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
         let span = query.default_span(stack[(i + 1) % stack.len()].span);
-        cycle_diag.upper_stack_info.push((span, query.description.to_owned()));
+        cycle_stack.push(CycleStack { span, desc: query.description.to_owned() });
     }
 
-    if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
-        cycle_diag.recursive_ty_alias = true;
-    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
-        cycle_diag.recursive_trait_alias = true;
+    let mut cycle_usage = None;
+    if let Some((span, query)) = usage {
+        cycle_usage = Some(crate::error::CycleUsage {
+            span: query.default_span(span),
+            usage: query.description,
+        });
     }
+    // let cycle_usage = usage.map(|(span, query)| query.default_span(span))
+
+    let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+        Some(crate::error::Alias::Ty)
+    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
+        Some(crate::error::Alias::Trait)
+    } else {
+        None
+    };
+
+    let cycle_diag = crate::error::Cycle {
+        span,
+        cycle_stack,
+        stack_bottom: stack[0].query.description.to_owned(),
+        alias,
+        cycle_usage: cycle_usage,
+        stack_count,
+    };
 
     cycle_diag.into_diagnostic(&sess.parse_sess)
 }

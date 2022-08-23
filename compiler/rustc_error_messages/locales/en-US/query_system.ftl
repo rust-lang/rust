@@ -19,3 +19,5 @@ query_system_cycle_recursive_ty_alias_help1 = consider using a struct, enum, or 
 query_system_cycle_recursive_ty_alias_help2 = see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information
 
 query_system_cycle_recursive_trait_alias = trait aliases cannot be recursive
+
+query_system_cycle_which_requires = ...which requires {$desc}...
