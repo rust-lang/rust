@@ -32,20 +32,18 @@ except ImportError:
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung'},
     'rls': {'Xanewok'},
-    'rustfmt': {'topecongiro', 'calebcartwright'},
-    'book': {'carols10cents', 'steveklabnik'},
+    'book': {'carols10cents'},
     'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
-    'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
-    'rust-by-example': {'steveklabnik', 'marioidival'},
+    'reference': {'Havvy', 'matthewjasper', 'ehuss'},
+    'rust-by-example': {'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
-    'edition-guide': {'ehuss', 'steveklabnik'},
+    'edition-guide': {'ehuss'},
     'rustc-dev-guide': {'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 LABELS = {
     'miri': ['A-miri', 'C-bug'],
     'rls': ['A-rls', 'C-bug'],
-    'rustfmt': ['A-rustfmt', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],
@@ -58,7 +56,6 @@ LABELS = {
 REPOS = {
     'miri': 'https://github.com/rust-lang/miri',
     'rls': 'https://github.com/rust-lang/rls',
-    'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
     'nomicon': 'https://github.com/rust-lang/nomicon',
     'reference': 'https://github.com/rust-lang/reference',
