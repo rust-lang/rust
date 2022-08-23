@@ -81,7 +81,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 }
 
 /// The `InterpCx` is only meant to be used to do field and index projections into constants for
-/// `simd_shuffle` and const patterns in match arms.
+/// `simd_shuffle` and const patterns in match arms. It never performs alignment checks.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
@@ -98,7 +98,11 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics),
+        CompileTimeInterpreter::new(
+            tcx.const_eval_limit(),
+            can_access_statics,
+            /*check_alignment:*/ false,
+        ),
     )
 }
 
@@ -203,7 +207,13 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
+    // This is just accessing an already computed constant, so no need to check alginment here.
+    let ecx = mk_eval_cx(
+        tcx,
+        tcx.def_span(key.value.instance.def_id()),
+        key.param_env,
+        /*can_access_statics:*/ is_static,
+    );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
         "can only fail if layout computation failed, \
@@ -300,7 +310,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         key.param_env,
         // Statics (and promoteds inside statics) may access other statics, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(tcx.const_eval_limit(), /*can_access_statics:*/ is_static),
+        CompileTimeInterpreter::new(
+            tcx.const_eval_limit(),
+            /*can_access_statics:*/ is_static,
+            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+        ),
     );
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
