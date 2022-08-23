@@ -11,6 +11,10 @@ monomorphize_consider_type_length_limit =
 
 monomorphize_fatal_error = {$error_message}
 
+monomorphize_unknown_partition_strategy = unknown partitioning strategy
+
+monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
+
 monomorphize_unused_generic_params = item has unused generic parameters
 
 monomorphize_large_assignments =

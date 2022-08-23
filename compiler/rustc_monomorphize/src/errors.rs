@@ -39,14 +39,6 @@ pub struct FatalError {
     pub error_message: String,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(monomorphize::fatal_error)]
-pub struct SpanFatalError {
-    #[primary_span]
-    pub span: Span,
-    pub error_message: String,
-}
-
 pub struct UnusedGenericParams {
     pub span: Span,
     pub param_spans: Vec<Span>,
@@ -78,4 +70,16 @@ pub struct LargeAssignmentsLint {
     pub span: Span,
     pub size: u64,
     pub limit: u64,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(monomorphize::unknown_partition_strategy)]
+pub struct UnknownPartitionStrategy;
+
+#[derive(SessionDiagnostic)]
+#[diag(monomorphize::symbol_already_defined)]
+pub struct SymbolAlreadyDefined {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub symbol: String,
 }
