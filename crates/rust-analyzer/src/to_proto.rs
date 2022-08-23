@@ -558,64 +558,64 @@ fn semantic_token_type_and_modifiers(
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => lsp_types::SemanticTokenType::DECORATOR,
+            SymbolKind::Attribute => semantic_tokens::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
             SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
-            SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
+            SymbolKind::Module => semantic_tokens::NAMESPACE,
             SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
-            SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
-            SymbolKind::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
+            SymbolKind::Field => semantic_tokens::PROPERTY,
+            SymbolKind::TypeParam => semantic_tokens::TYPE_PARAMETER,
             SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
             SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
             SymbolKind::Label => semantic_tokens::LABEL,
-            SymbolKind::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
+            SymbolKind::ValueParam => semantic_tokens::PARAMETER,
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
             SymbolKind::SelfType => semantic_tokens::SELF_TYPE_KEYWORD,
-            SymbolKind::Local => lsp_types::SemanticTokenType::VARIABLE,
+            SymbolKind::Local => semantic_tokens::VARIABLE,
             SymbolKind::Function => {
                 if highlight.mods.contains(HlMod::Associated) {
-                    lsp_types::SemanticTokenType::METHOD
+                    semantic_tokens::METHOD
                 } else {
-                    lsp_types::SemanticTokenType::FUNCTION
+                    semantic_tokens::FUNCTION
                 }
             }
             SymbolKind::Const => {
                 mods |= semantic_tokens::CONSTANT;
-                mods |= lsp_types::SemanticTokenModifier::STATIC;
-                lsp_types::SemanticTokenType::VARIABLE
+                mods |= semantic_tokens::STATIC;
+                semantic_tokens::VARIABLE
             }
             SymbolKind::Static => {
-                mods |= lsp_types::SemanticTokenModifier::STATIC;
-                lsp_types::SemanticTokenType::VARIABLE
+                mods |= semantic_tokens::STATIC;
+                semantic_tokens::VARIABLE
             }
-            SymbolKind::Struct => lsp_types::SemanticTokenType::STRUCT,
-            SymbolKind::Enum => lsp_types::SemanticTokenType::ENUM,
-            SymbolKind::Variant => lsp_types::SemanticTokenType::ENUM_MEMBER,
+            SymbolKind::Struct => semantic_tokens::STRUCT,
+            SymbolKind::Enum => semantic_tokens::ENUM,
+            SymbolKind::Variant => semantic_tokens::ENUM_MEMBER,
             SymbolKind::Union => semantic_tokens::UNION,
             SymbolKind::TypeAlias => semantic_tokens::TYPE_ALIAS,
-            SymbolKind::Trait => lsp_types::SemanticTokenType::INTERFACE,
-            SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
+            SymbolKind::Trait => semantic_tokens::INTERFACE,
+            SymbolKind::Macro => semantic_tokens::MACRO,
             SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
             SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,
         },
         HlTag::AttributeBracket => semantic_tokens::ATTRIBUTE_BRACKET,
         HlTag::BoolLiteral => semantic_tokens::BOOLEAN,
         HlTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
-        HlTag::ByteLiteral | HlTag::NumericLiteral => lsp_types::SemanticTokenType::NUMBER,
+        HlTag::ByteLiteral | HlTag::NumericLiteral => semantic_tokens::NUMBER,
         HlTag::CharLiteral => semantic_tokens::CHAR,
-        HlTag::Comment => lsp_types::SemanticTokenType::COMMENT,
+        HlTag::Comment => semantic_tokens::COMMENT,
         HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
-        HlTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
+        HlTag::Keyword => semantic_tokens::KEYWORD,
         HlTag::None => semantic_tokens::GENERIC,
         HlTag::Operator(op) => match op {
             HlOperator::Bitwise => semantic_tokens::BITWISE,
             HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
             HlOperator::Logical => semantic_tokens::LOGICAL,
             HlOperator::Comparison => semantic_tokens::COMPARISON,
-            HlOperator::Other => lsp_types::SemanticTokenType::OPERATOR,
+            HlOperator::Other => semantic_tokens::OPERATOR,
         },
-        HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
+        HlTag::StringLiteral => semantic_tokens::STRING,
         HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
         HlTag::Punctuation(punct) => match punct {
             HlPunct::Bracket => semantic_tokens::BRACKET,
@@ -640,16 +640,16 @@ fn semantic_token_type_and_modifiers(
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HlMod::CrateRoot => semantic_tokens::CRATE_ROOT,
-            HlMod::DefaultLibrary => lsp_types::SemanticTokenModifier::DEFAULT_LIBRARY,
-            HlMod::Definition => lsp_types::SemanticTokenModifier::DECLARATION,
-            HlMod::Documentation => lsp_types::SemanticTokenModifier::DOCUMENTATION,
+            HlMod::DefaultLibrary => semantic_tokens::DEFAULT_LIBRARY,
+            HlMod::Definition => semantic_tokens::DECLARATION,
+            HlMod::Documentation => semantic_tokens::DOCUMENTATION,
             HlMod::Injected => semantic_tokens::INJECTED,
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Library => semantic_tokens::LIBRARY,
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,
-            HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
+            HlMod::Static => semantic_tokens::STATIC,
             HlMod::Trait => semantic_tokens::TRAIT_MODIFIER,
             HlMod::Unsafe => semantic_tokens::UNSAFE,
         };
