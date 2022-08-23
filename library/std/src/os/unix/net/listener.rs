@@ -73,10 +73,8 @@ impl UnixListener {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
-            #[cfg(target_os = "linux")]
-            const backlog: libc::c_int = -1;
-            #[cfg(not(target_os = "linux"))]
-            const backlog: libc::c_int = 128;
+            const backlog: libc::c_int =
+                if cfg!(any(target_os = "linux", target_os = "freebsd")) { -1 } else { 128 };
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), &addr as *const _ as *const _, len as _))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
