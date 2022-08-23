@@ -29,33 +29,57 @@ error: expected a message field for "missing_message"
   | ^^^^^^^^^^^^^^^^^
   |
 
-error: overrides existing message: `key`
-  --> $DIR/test.rs:53:9
+error: overrides existing message: `a_b_key`
+  --> $DIR/test.rs:53:16
    |
-LL |         b => "./duplicate-b.ftl",
-   |         ^
+LL |         a_b => "./duplicate-a-b.ftl",
+   |                ^^^^^^^^^^^^^^^^^^^^^
    |
 help: previously defined in this resource
-  --> $DIR/test.rs:52:9
+  --> $DIR/test.rs:52:14
    |
 LL |         a => "./duplicate-a.ftl",
-   |         ^
+   |              ^^^^^^^^^^^^^^^^^^^
 
-error: name `this-slug-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:62:9
+error: name `slug_with_hyphens_this-slug-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:62:30
    |
 LL |         slug_with_hyphens => "./slug-with-hyphens.ftl",
-   |         ^^^^^^^^^^^^^^^^^
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
 error: attribute `label-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:71:9
+  --> $DIR/test.rs:71:31
    |
 LL |         label_with_hyphens => "./label-with-hyphens.ftl",
-   |         ^^^^^^^^^^^^^^^^^^
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
-error: aborting due to 6 previous errors
+error: name `with-hyphens` contains a '-' character
+  --> $DIR/test.rs:90:23
+   |
+LL |         test_crate => "./missing-crate-name.ftl",
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: name `with-hyphens` does not start with the crate name
+  --> $DIR/test.rs:90:23
+   |
+LL |         test_crate => "./missing-crate-name.ftl",
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: prepend `test_crate_` to the slug name: `test_crate_with_hyphens`
+
+error: name `test-crate_foo` contains a '-' character
+  --> $DIR/test.rs:90:23
+   |
+LL |         test_crate => "./missing-crate-name.ftl",
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: aborting due to 9 previous errors
 

@@ -50,8 +50,8 @@ mod duplicate {
 
     fluent_messages! {
         a => "./duplicate-a.ftl",
-        b => "./duplicate-b.ftl",
-//~^ ERROR overrides existing message: `key`
+        a_b => "./duplicate-a-b.ftl",
+//~^ ERROR overrides existing message: `a_b_key`
     }
 }
 
@@ -60,7 +60,7 @@ mod slug_with_hyphens {
 
     fluent_messages! {
         slug_with_hyphens => "./slug-with-hyphens.ftl",
-//~^ ERROR name `this-slug-has-hyphens` contains a '-' character
+//~^ ERROR name `slug_with_hyphens_this-slug-has-hyphens` contains a '-' character
     }
 }
 
@@ -80,5 +80,18 @@ mod valid {
         valid => "./valid.ftl",
     }
 
-    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, valid::valid};
+    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, valid::key};
+}
+
+mod missing_crate_name {
+    use super::fluent_messages;
+
+    fluent_messages! {
+        test_crate => "./missing-crate-name.ftl",
+//~^ ERROR name `test-crate_foo` contains a '-' character
+//~| ERROR name `with-hyphens` contains a '-' character
+//~| ERROR name `with-hyphens` does not start with the crate name
+    }
+
+    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, test_crate::{foo, with_hyphens}};
 }
