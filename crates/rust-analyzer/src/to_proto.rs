@@ -558,7 +558,7 @@ fn semantic_token_type_and_modifiers(
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
-            SymbolKind::Attribute => semantic_tokens::DECORATOR,
+            SymbolKind::Attribute => lsp_types::SemanticTokenType::DECORATOR,
             SymbolKind::Derive => semantic_tokens::DERIVE,
             SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
