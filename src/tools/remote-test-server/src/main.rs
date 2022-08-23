@@ -42,6 +42,8 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 const RETRY_INTERVAL: u64 = 1;
 const NUMBER_OF_RETRIES: usize = 5;
 
+const NUMBER_OF_TRIES: usize = 5;
+
 #[derive(Copy, Clone)]
 struct Config {
     verbose: bool,
@@ -60,7 +62,7 @@ impl Config {
             } else {
                 ([10, 0, 2, 15], 12345).into()
             },
-            staticlink: false
+            staticlink: false,
         }
     }
 

@@ -1,3 +1,3 @@
 @echo -off
 fs0:
-testd
+testd nothread staticlink

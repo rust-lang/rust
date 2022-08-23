@@ -271,8 +271,6 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
         "x86_64-unknown-uefi" => {
             let mut cmd = Command::new("qemu-system-x86_64");
             cmd.arg("-nographic")
-                .arg("-machine")
-                .arg("q35")
                 .arg("-m")
                 .arg("1024")
                 .arg("-drive")
@@ -281,42 +279,19 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_VARS.fd,index=1")
                 .arg("-drive")
                 .arg("format=raw,file=/tmp/OVMF/UefiShell.iso,index=2")
-                .arg("-netdev")
-                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
-                .arg("-device")
-                .arg("virtio-net-pci,netdev=net0,mac=00:00:00:00:00:00")
                 .arg("-drive")
                 .arg(&format!(
                     "file={},format=raw,media=disk,index=3",
                     &rootfs_img.to_string_lossy()
-                ));
-            t!(cmd.spawn());
-        }
-        "i686-unknown-uefi" => {
-            let mut cmd = Command::new("qemu-system-i386");
-            cmd.arg("-nographic")
-                .arg("-machine")
-                .arg("q35")
-                .arg("-m")
-                .arg("1024")
-                .arg("-drive")
-                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_CODE.fd,index=0")
-                .arg("-drive")
-                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_VARS.fd,index=1")
-                .arg("-drive")
-                .arg("format=raw,file=/tmp/OVMF/UefiShell.iso,index=2")
+                ))
                 .arg("-netdev")
                 .arg("user,id=net0,hostfwd=tcp::12345-:12345")
                 .arg("-device")
                 .arg("virtio-net-pci,netdev=net0,mac=00:00:00:00:00:00")
-                .arg("-drive")
-                .arg(&format!(
-                    "file={},format=raw,media=disk,index=3",
-                    &rootfs_img.to_string_lossy()
-                ));
+                .arg("-device")
+                .arg("virtio-rng-pci");
             t!(cmd.spawn());
         }
-
         _ => panic!("cannot start emulator for: {}", target),
     }
 }

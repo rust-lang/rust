@@ -1,6 +1,6 @@
-FROM ubuntu:22.04
+FROM fedora:latest
 
-RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN dnf update -y && dnf install -y \
       bc \
       bzip2 \
       ca-certificates \
@@ -10,13 +10,14 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-
       file \
       g++ \
       git \
-      libc6-dev \
       make \
       ninja-build \
       python3 \
-      qemu-system \
+      qemu \
+      edk2-ovmf \
       mtools \
-      xz-utils
+      xz \
+      libstdc++-static
 
 ENV ARCH=x86_64
 
@@ -27,11 +28,9 @@ RUN mkdir rootfs
 # Copy over startup script
 COPY scripts/qemu_uefi.nsh rootfs/startup.nsh
 
-# OVMF Stuff
+# This is here in case we want to use some other version/source for OVMF
 RUN mkdir OVMF
-COPY OVMF/OVMF_CODE.fd OVMF/OVMF_CODE.fd
-COPY OVMF/OVMF_VARS.fd OVMF/OVMF_VARS.fd
-COPY OVMF/UefiShell.iso OVMF/UefiShell.iso
+RUN cp /usr/share/OVMF/* OVMF
 
 # TODO: What is this?!
 # Source of the file: https://github.com/vfdev-5/qemu-rpi2-vexpress/raw/master/vexpress-v2p-ca15-tc1.dtb
