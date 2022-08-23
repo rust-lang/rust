@@ -550,7 +550,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,
-            defining_use_anchor: DefiningAnchor::Error,
+            defining_use_anchor: DefiningAnchor::Bubble,
             considering_regions: true,
             fresh_typeck_results: None,
         }
