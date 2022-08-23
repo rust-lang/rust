@@ -755,9 +755,12 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        let this = self;
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
-        unsafe { assert_unsafe_precondition!(self >= origin) };
+        unsafe {
+            assert_unsafe_precondition!([T](this: *const T, origin: *const T) => this >= origin)
+        };
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);

@@ -56,7 +56,7 @@ macro_rules! nonzero_integers {
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
-                        core::intrinsics::assert_unsafe_precondition!(n != 0);
+                        core::intrinsics::assert_unsafe_precondition!((n: $Int) => n != 0);
                         Self(n)
                     }
                 }
