@@ -720,26 +720,55 @@ pub(crate) fn adt_datum_query(
     debug!("adt_datum {:?}", adt_id);
     let chalk_ir::AdtId(adt_id) = adt_id;
     let generic_params = generics(db.upcast(), adt_id.into());
-    let upstream = adt_id.module(db.upcast()).krate() != krate;
-    let where_clauses = {
-        let generic_params = generics(db.upcast(), adt_id.into());
-        let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-        convert_where_clauses(db, adt_id.into(), &bound_vars)
-    };
+    let bound_vars_subst = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+    let where_clauses = convert_where_clauses(db, adt_id.into(), &bound_vars_subst);
+
+    let phantom_data_id = db
+        .lang_item(krate, SmolStr::new_inline("phantom_data"))
+        .and_then(|item| item.as_struct())
+        .map(|item| item.into());
     let flags = rust_ir::AdtFlags {
-        upstream,
-        // FIXME set fundamental and phantom_data flags correctly
+        upstream: adt_id.module(db.upcast()).krate() != krate,
+        // FIXME set fundamental flags correctly
         fundamental: false,
-        phantom_data: false,
+        phantom_data: phantom_data_id == Some(adt_id),
     };
-    // FIXME provide enum variants properly (for auto traits)
-    let variant = rust_ir::AdtVariantDatum {
-        fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
+
+    let variant_id_to_fields = |id| {
+        let field_types = db.field_types(id);
+        let fields = id
+            .variant_data(db.upcast())
+            .fields()
+            .iter()
+            .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
+            .collect();
+        rust_ir::AdtVariantDatum { fields }
     };
-    let struct_datum_bound = rust_ir::AdtDatumBound { variants: vec![variant], where_clauses };
+
+    let (kind, variants) = match adt_id {
+        hir_def::AdtId::StructId(id) => {
+            (rust_ir::AdtKind::Struct, vec![variant_id_to_fields(id.into())])
+        }
+        hir_def::AdtId::EnumId(id) => {
+            let variants = db
+                .enum_data(id)
+                .variants
+                .iter()
+                .map(|(local_id, _)| {
+                    let variant_id = hir_def::EnumVariantId { parent: id, local_id };
+                    variant_id_to_fields(variant_id.into())
+                })
+                .collect();
+            (rust_ir::AdtKind::Enum, variants)
+        }
+        hir_def::AdtId::UnionId(id) => {
+            (rust_ir::AdtKind::Union, vec![variant_id_to_fields(id.into())])
+        }
+    };
+
+    let struct_datum_bound = rust_ir::AdtDatumBound { variants, where_clauses };
     let struct_datum = AdtDatum {
-        // FIXME set ADT kind
-        kind: rust_ir::AdtKind::Struct,
+        kind,
         id: chalk_ir::AdtId(adt_id),
         binders: make_binders(db, &generic_params, struct_datum_bound),
         flags,
