@@ -378,6 +378,7 @@ bootstrap_tool!(
     JsonDocCk, "src/tools/jsondocck", "jsondocck";
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
+    ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
