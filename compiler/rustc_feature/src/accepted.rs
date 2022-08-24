@@ -186,6 +186,8 @@ declare_features! (
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
+    /// Allows `'a: { break 'a; }`.
+    (accepted, label_break_value, "1.65.0", Some(48594), None),
     /// Allows `if/while p && let q = r && ...` chains.
     (accepted, let_chains, "1.64.0", Some(53667), None),
     /// Allows `break {expr}` with a value inside `loop`s.

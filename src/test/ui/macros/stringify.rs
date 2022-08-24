@@ -9,7 +9,6 @@
 #![feature(decl_macro)]
 #![feature(generators)]
 #![feature(half_open_range_patterns)]
-#![feature(label_break_value)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
 #![feature(trait_alias)]
