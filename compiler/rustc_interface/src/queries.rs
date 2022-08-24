@@ -1,3 +1,4 @@
+use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, QueryContext};
 
@@ -274,18 +275,14 @@ impl<'tcx> Queries<'tcx> {
 
                 // Bare `#[rustc_error]`.
                 None => {
-                    tcx.sess.span_fatal(
-                        tcx.def_span(def_id),
-                        "fatal error triggered by #[rustc_error]",
-                    );
+                    tcx.sess.emit_fatal(RustcErrorFatal { span: tcx.def_span(def_id) });
                 }
 
                 // Some other attribute.
                 Some(_) => {
-                    tcx.sess.span_warn(
-                        tcx.def_span(def_id),
-                        "unexpected annotation used with `#[rustc_error(...)]!",
-                    );
+                    tcx.sess.emit_warning(RustcErrorUnexpectedAnnotation {
+                        span: tcx.def_span(def_id),
+                    });
                 }
             }
         }
@@ -360,9 +357,8 @@ impl Linker {
         if sess.opts.unstable_opts.no_link {
             let encoded = CodegenResults::serialize_rlink(&codegen_results);
             let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
-            std::fs::write(&rlink_file, encoded).map_err(|err| {
-                sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
-            })?;
+            std::fs::write(&rlink_file, encoded)
+                .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
