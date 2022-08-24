@@ -1,13 +1,12 @@
 use crate::base::ExtCtxt;
-
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, UnOp};
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
@@ -28,7 +27,7 @@ impl<'a> ExtCtxt<'a> {
     ) -> ast::Path {
         assert!(!idents.is_empty());
         let add_root = global && !idents[0].is_path_segment_keyword();
-        let mut segments = Vec::with_capacity(idents.len() + add_root as usize);
+        let mut segments = ThinVec::with_capacity(idents.len() + add_root as usize);
         if add_root {
             segments.push(ast::PathSegment::path_root(span));
         }
