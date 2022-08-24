@@ -21,8 +21,8 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
-
 use std::borrow::Cow;
+use thin_vec::ThinVec;
 
 pub use self::delimited::IterDelimited;
 
@@ -1708,7 +1708,7 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
         let generics = ast::Generics {
-            params: Vec::new(),
+            params: ThinVec::new(),
             where_clause: ast::WhereClause {
                 has_where_token: false,
                 predicates: Vec::new(),

@@ -4,6 +4,7 @@ use rustc_ast::token;
 use rustc_ast::{self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, WhereClause};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::kw;
+use thin_vec::ThinVec;
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -76,8 +77,8 @@ impl<'a> Parser<'a> {
 
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
-    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
-        let mut params = Vec::new();
+    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, ThinVec<ast::GenericParam>> {
+        let mut params = ThinVec::new();
         let mut done = false;
         while !done {
             let attrs = self.parse_outer_attributes()?;
@@ -195,7 +196,7 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             (params, span_lo.to(self.prev_token.span))
         } else {
-            (vec![], self.prev_token.span.shrink_to_hi())
+            (ThinVec::new(), self.prev_token.span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,

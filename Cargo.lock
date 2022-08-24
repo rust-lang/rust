@@ -3171,6 +3171,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_span",
+ "thin-vec",
 ]
 
 [[package]]

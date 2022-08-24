@@ -2047,7 +2047,7 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
-            ClosureBinder::For { span, generic_params: P::from_vec(lifetime_defs) }
+            ClosureBinder::For { span, generic_params: lifetime_defs }
         } else {
             ClosureBinder::NotPresent
         };

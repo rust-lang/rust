@@ -126,7 +126,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
-            bound_generic_params: Vec::new(),
+            bound_generic_params: ThinVec::new(),
             trait_ref: self.trait_ref(path),
             span,
         }

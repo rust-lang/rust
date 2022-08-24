@@ -829,9 +829,7 @@ pub fn noop_visit_closure_binder<T: MutVisitor>(binder: &mut ClosureBinder, vis:
     match binder {
         ClosureBinder::NotPresent => {}
         ClosureBinder::For { span: _, generic_params } => {
-            let mut vec = std::mem::take(generic_params).into_vec();
-            vec.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-            *generic_params = P::from_vec(vec);
+            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
         }
     }
 }
