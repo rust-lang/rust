@@ -1577,13 +1577,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Universal { apit_nodes } => {
                         let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
-                        let (param, bounds, path) =
-                            self.lower_generic_and_bounds(def_node_id, span, ident, bounds);
+                        apit_nodes.push(t);
+                        let (param, bounds, path) = self.lower_generic_and_bounds(
+                            def_node_id,
+                            span,
+                            ident,
+                            bounds,
+                            apit_nodes,
+                        );
                         self.impl_trait_defs.push(param);
                         if let Some(bounds) = bounds {
                             self.impl_trait_bounds.push(bounds);
                         }
-                        apit_nodes.push(t);
                         path
                     }
                     ImplTraitContext::Disallowed(position) => {
@@ -1785,7 +1790,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(ty), span);
                         // FIXME: unsure if this is going to work or do we need to first create all
                         // the def_ids and then call this lower_generic_and_bounds method
-                        lctx.lower_generic_and_bounds(node_id, span, ident, bounds)
+                        lctx.lower_generic_and_bounds(node_id, span, ident, bounds, &mut Vec::new())
                     } else {
                         unreachable!(
                             "impl_trait_inputs contains {:?} which is not TyKind::ImplTrait(..)",
@@ -2627,13 +2632,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    fn lower_generic_and_bounds(
+    fn lower_generic_and_bounds<'itctx>(
         &mut self,
         node_id: NodeId,
         span: Span,
         ident: Ident,
-        bounds: &[GenericBound],
-    ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>) {
+        bounds: &'itctx [GenericBound],
+        apit_nodes: &mut Vec<&'itctx Ty>,
+    ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>)
+    where
+        'a: 'itctx,
+    {
         // Add a definition for the in-band `Param`.
         let def_id = self.local_def_id(node_id);
 
@@ -2652,7 +2661,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             node_id,
             &GenericParamKind::Type { default: None },
             bounds,
-            &mut ImplTraitContext::Universal { apit_nodes: &mut Vec::new() },
+            &mut ImplTraitContext::Universal { apit_nodes },
             hir::PredicateOrigin::ImplTrait,
         );
 
