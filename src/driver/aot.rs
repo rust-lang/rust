@@ -4,6 +4,7 @@
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
@@ -18,6 +19,7 @@ use rustc_session::Session;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
+use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::global_asm::GlobalAsmConfig;
 use crate::{prelude::*, BackendConfig};
 
@@ -27,18 +29,24 @@ struct ModuleCodegenResult {
     existing_work_product: Option<(WorkProductId, WorkProduct)>,
 }
 
-impl<HCX> HashStable<HCX> for ModuleCodegenResult {
+enum OngoingModuleCodegen {
+    Sync(Result<ModuleCodegenResult, String>),
+    Async(JoinHandle<Result<ModuleCodegenResult, String>>),
+}
+
+impl<HCX> HashStable<HCX> for OngoingModuleCodegen {
     fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
         // do nothing
     }
 }
 
 pub(crate) struct OngoingCodegen {
-    modules: Vec<Result<ModuleCodegenResult, String>>,
+    modules: Vec<OngoingModuleCodegen>,
     allocator_module: Option<CompiledModule>,
     metadata_module: Option<CompiledModule>,
     metadata: EncodedMetadata,
     crate_info: CrateInfo,
+    concurrency_limiter: ConcurrencyLimiter,
 }
 
 impl OngoingCodegen {
@@ -50,7 +58,15 @@ impl OngoingCodegen {
         let mut work_products = FxHashMap::default();
         let mut modules = vec![];
 
-        for module_codegen_result in self.modules {
+        for module_codegen in self.modules {
+            let module_codegen_result = match module_codegen {
+                OngoingModuleCodegen::Sync(module_codegen_result) => module_codegen_result,
+                OngoingModuleCodegen::Async(join_handle) => match join_handle.join() {
+                    Ok(module_codegen_result) => module_codegen_result,
+                    Err(panic) => std::panic::resume_unwind(panic),
+                },
+            };
+
             let module_codegen_result = match module_codegen_result {
                 Ok(module_codegen_result) => module_codegen_result,
                 Err(err) => sess.fatal(&err),
@@ -89,6 +105,8 @@ impl OngoingCodegen {
                 modules.push(module_global_asm);
             }
         }
+
+        drop(self.concurrency_limiter);
 
         (
             CodegenResults {
@@ -233,70 +251,90 @@ fn reuse_workproduct_for_cgu(
 
 fn module_codegen(
     tcx: TyCtxt<'_>,
-    (backend_config, global_asm_config, cgu_name): (
+    (backend_config, global_asm_config, cgu_name, token): (
         BackendConfig,
         Arc<GlobalAsmConfig>,
         rustc_span::Symbol,
+        ConcurrencyLimiterToken,
     ),
-) -> Result<ModuleCodegenResult, String> {
-    let cgu = tcx.codegen_unit(cgu_name);
-    let mono_items = cgu.items_in_deterministic_order(tcx);
+) -> OngoingModuleCodegen {
+    let (cgu_name, mut cx, mut module, codegened_functions) = tcx.sess.time("codegen cgu", || {
+        let cgu = tcx.codegen_unit(cgu_name);
+        let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut module = make_module(tcx.sess, &backend_config, cgu_name.as_str().to_string());
+        let mut module = make_module(tcx.sess, &backend_config, cgu_name.as_str().to_string());
 
-    let mut cx = crate::CodegenCx::new(
-        tcx,
-        backend_config.clone(),
-        module.isa(),
-        tcx.sess.opts.debuginfo != DebugInfo::None,
-        cgu_name,
-    );
-    super::predefine_mono_items(tcx, &mut module, &mono_items);
-    let mut cached_context = Context::new();
-    for (mono_item, _) in mono_items {
-        match mono_item {
-            MonoItem::Fn(inst) => {
-                tcx.sess.time("codegen fn", || {
-                    crate::base::codegen_and_compile_fn(
-                        tcx,
-                        &mut cx,
-                        &mut cached_context,
-                        &mut module,
-                        inst,
-                    )
-                });
-            }
-            MonoItem::Static(def_id) => crate::constant::codegen_static(tcx, &mut module, def_id),
-            MonoItem::GlobalAsm(item_id) => {
-                crate::global_asm::codegen_global_asm_item(tcx, &mut cx.global_asm, item_id);
+        let mut cx = crate::CodegenCx::new(
+            tcx,
+            backend_config.clone(),
+            module.isa(),
+            tcx.sess.opts.debuginfo != DebugInfo::None,
+            cgu_name,
+        );
+        super::predefine_mono_items(tcx, &mut module, &mono_items);
+        let mut codegened_functions = vec![];
+        for (mono_item, _) in mono_items {
+            match mono_item {
+                MonoItem::Fn(inst) => {
+                    tcx.sess.time("codegen fn", || {
+                        let codegened_function = crate::base::codegen_fn(
+                            tcx,
+                            &mut cx,
+                            Function::new(),
+                            &mut module,
+                            inst,
+                        );
+                        codegened_functions.push(codegened_function);
+                    });
+                }
+                MonoItem::Static(def_id) => {
+                    crate::constant::codegen_static(tcx, &mut module, def_id)
+                }
+                MonoItem::GlobalAsm(item_id) => {
+                    crate::global_asm::codegen_global_asm_item(tcx, &mut cx.global_asm, item_id);
+                }
             }
         }
-    }
-    crate::main_shim::maybe_create_entry_wrapper(
-        tcx,
-        &mut module,
-        &mut cx.unwind_context,
-        false,
-        cgu.is_primary(),
-    );
+        crate::main_shim::maybe_create_entry_wrapper(
+            tcx,
+            &mut module,
+            &mut cx.unwind_context,
+            false,
+            cgu.is_primary(),
+        );
 
-    let global_asm_object_file = crate::global_asm::compile_global_asm(
-        &global_asm_config,
-        cgu.name().as_str(),
-        &cx.global_asm,
-    )?;
+        let cgu_name = cgu.name().as_str().to_owned();
 
-    tcx.sess.time("write object file", || {
-        emit_cgu(
-            &global_asm_config.output_filenames,
-            &cx.profiler,
-            cgu.name().as_str().to_string(),
-            module,
-            cx.debug_context,
-            cx.unwind_context,
-            global_asm_object_file,
-        )
-    })
+        (cgu_name, cx, module, codegened_functions)
+    });
+
+    OngoingModuleCodegen::Async(std::thread::spawn(move || {
+        cx.profiler.clone().verbose_generic_activity("compile functions").run(|| {
+            let mut cached_context = Context::new();
+            for codegened_func in codegened_functions {
+                crate::base::compile_fn(&mut cx, &mut cached_context, &mut module, codegened_func);
+            }
+        });
+
+        let global_asm_object_file =
+            cx.profiler.verbose_generic_activity("compile assembly").run(|| {
+                crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, &cx.global_asm)
+            })?;
+
+        let codegen_result = cx.profiler.verbose_generic_activity("write object file").run(|| {
+            emit_cgu(
+                &global_asm_config.output_filenames,
+                &cx.profiler,
+                cgu_name,
+                module,
+                cx.debug_context,
+                cx.unwind_context,
+                global_asm_object_file,
+            )
+        });
+        std::mem::drop(token);
+        codegen_result
+    }))
 }
 
 pub(crate) fn run_aot(
@@ -321,6 +359,8 @@ pub(crate) fn run_aot(
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
+    let mut concurrency_limiter = ConcurrencyLimiter::new(tcx.sess, cgus.len());
+
     let modules = super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         cgus.iter()
             .map(|cgu| {
@@ -338,14 +378,22 @@ pub(crate) fn run_aot(
                             .with_task(
                                 dep_node,
                                 tcx,
-                                (backend_config.clone(), global_asm_config.clone(), cgu.name()),
+                                (
+                                    backend_config.clone(),
+                                    global_asm_config.clone(),
+                                    cgu.name(),
+                                    concurrency_limiter.acquire(),
+                                ),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
                             )
                             .0
                     }
-                    CguReuse::PreLto => reuse_workproduct_for_cgu(tcx, &*cgu),
-                    CguReuse::PostLto => unreachable!(),
+                    CguReuse::PreLto => unreachable!(),
+                    CguReuse::PostLto => {
+                        concurrency_limiter.job_already_done();
+                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, &*cgu))
+                    }
                 }
             })
             .collect::<Vec<_>>()
@@ -424,6 +472,7 @@ pub(crate) fn run_aot(
         metadata_module,
         metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
+        concurrency_limiter,
     })
 }
 
@@ -453,5 +502,5 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         cgu.name()
     );
 
-    if tcx.try_mark_green(&dep_node) { CguReuse::PreLto } else { CguReuse::No }
+    if tcx.try_mark_green(&dep_node) { CguReuse::PostLto } else { CguReuse::No }
 }

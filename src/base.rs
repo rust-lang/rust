@@ -5,21 +5,21 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::SymbolName;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
-struct CodegenedFunction<'tcx> {
-    symbol_name: SymbolName<'tcx>,
+pub(crate) struct CodegenedFunction {
+    symbol_name: String,
     func_id: FuncId,
     func: Function,
     clif_comments: CommentWriter,
     func_debug_cx: Option<FunctionDebugContext>,
 }
 
+#[cfg_attr(not(feature = "jit"), allow(dead_code))]
 pub(crate) fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
@@ -36,13 +36,13 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     compile_fn(cx, cached_context, module, codegened_func);
 }
 
-fn codegen_fn<'tcx>(
+pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
-) -> CodegenedFunction<'tcx> {
+) -> CodegenedFunction {
     debug_assert!(!instance.substs.needs_infer());
 
     let mir = tcx.instance_mir(instance.def);
@@ -56,9 +56,9 @@ fn codegen_fn<'tcx>(
     });
 
     // Declare function
-    let symbol_name = tcx.symbol_name(instance);
+    let symbol_name = tcx.symbol_name(instance).name.to_string();
     let sig = get_function_sig(tcx, module.isa().triple(), instance);
-    let func_id = module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
+    let func_id = module.declare_function(&symbol_name, Linkage::Local, &sig).unwrap();
 
     // Make the FunctionBuilder
     let mut func_ctx = FunctionBuilderContext::new();
@@ -81,7 +81,7 @@ fn codegen_fn<'tcx>(
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
-        Some(debug_context.define_function(tcx, symbol_name.name, mir.span))
+        Some(debug_context.define_function(tcx, &symbol_name, mir.span))
     } else {
         None
     };
@@ -113,6 +113,7 @@ fn codegen_fn<'tcx>(
     tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
+    let symbol_name = fx.symbol_name;
     let clif_comments = fx.clif_comments;
     let func_debug_cx = fx.func_debug_cx;
 
@@ -121,7 +122,7 @@ fn codegen_fn<'tcx>(
     if cx.should_write_ir {
         crate::pretty_clif::write_clif_file(
             tcx.output_filenames(()),
-            symbol_name.name,
+            &symbol_name,
             "unopt",
             module.isa(),
             &func,
@@ -135,11 +136,11 @@ fn codegen_fn<'tcx>(
     CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
 }
 
-fn compile_fn<'tcx>(
+pub(crate) fn compile_fn(
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
-    codegened_func: CodegenedFunction<'tcx>,
+    codegened_func: CodegenedFunction,
 ) {
     let clif_comments = codegened_func.clif_comments;
 
@@ -195,7 +196,7 @@ fn compile_fn<'tcx>(
         // Write optimized function to file for debugging
         crate::pretty_clif::write_clif_file(
             &cx.output_filenames,
-            codegened_func.symbol_name.name,
+            &codegened_func.symbol_name,
             "opt",
             module.isa(),
             &context.func,
@@ -205,7 +206,7 @@ fn compile_fn<'tcx>(
         if let Some(disasm) = &context.compiled_code().unwrap().disasm {
             crate::pretty_clif::write_ir_file(
                 &cx.output_filenames,
-                &format!("{}.vcode", codegened_func.symbol_name.name),
+                &format!("{}.vcode", codegened_func.symbol_name),
                 |file| file.write_all(disasm.as_bytes()),
             )
         }
