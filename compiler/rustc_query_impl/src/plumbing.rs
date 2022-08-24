@@ -10,10 +10,11 @@ use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{self, DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_query_system::dep_graph::HasDepContext;
+use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
+    force_query, QueryContext, QueryDescription, QueryJobId, QueryMap, QuerySideEffects,
+    QueryStackFrame,
 };
 use std::any::Any;
 use std::num::NonZeroU64;
@@ -315,6 +316,27 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx, K, V>(
     }
 }
 
+pub(crate) fn force_from_dep_node<'tcx, Q>(
+    tcx: TyCtxt<'tcx>,
+    // dep_node: rustc_query_system::dep_graph::DepNode<CTX::DepKind>,
+    dep_node: DepNode,
+    recover: fn(TyCtxt<'tcx>, DepNode) -> Option<Q::Key>,
+) -> bool
+where
+    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q::Key: DepNodeParams<TyCtxt<'tcx>>,
+{
+    if let Some(key) = recover(tcx, dep_node) {
+        #[cfg(debug_assertions)]
+        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
+        let tcx = QueryCtxt::from_tcx(tcx);
+        force_query::<Q, _>(tcx, key, dep_node);
+        true
+    } else {
+        false
+    }
+}
+
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_query_append`.
 macro_rules! define_queries {
@@ -385,7 +407,7 @@ macro_rules! define_queries {
             use super::*;
             use rustc_middle::dep_graph::DepNode;
             use rustc_query_system::dep_graph::DepNodeParams;
-            use rustc_query_system::query::{force_query, QueryDescription};
+            use rustc_query_system::query::QueryDescription;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
@@ -462,23 +484,11 @@ macro_rules! define_queries {
                     <<queries::$name<'_> as QueryConfig>::Key as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
                 }
 
-                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
-                    if let Some(key) = recover(tcx, dep_node) {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        let tcx = QueryCtxt::from_tcx(tcx);
-                        force_query::<queries::$name<'_>, _>(tcx, key, dep_node);
-                        true
-                    } else {
-                        false
-                    }
-                }
-
                 DepKindStruct {
                     is_anon,
                     is_eval_always,
                     fingerprint_style,
-                    force_from_dep_node: Some(force_from_dep_node),
+                    force_from_dep_node: Some(|tcx, dep_node| $crate::plumbing::force_from_dep_node::<queries::$name<'_>>(tcx, dep_node, recover)),
                     try_load_from_on_disk_cache: Some(|tcx, key| $crate::plumbing::try_load_from_on_disk_cache(tcx, key, recover, queries::$name::cache_on_disk, TyCtxt::$name)),
                 }
             })*
