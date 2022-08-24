@@ -33,32 +33,17 @@ use std::ops::Index;
 
 pub mod visit;
 
-newtype_index! {
-    /// An index to an [`Arm`] stored in [`Thir::arms`]
-    #[derive(HashStable)]
-    pub struct ArmId {
-        DEBUG_FORMAT = "a{}"
-    }
-}
-
-newtype_index! {
-    /// An index to an [`Expr`] stored in [`Thir::exprs`]
-    #[derive(HashStable)]
-    pub struct ExprId {
-        DEBUG_FORMAT = "e{}"
-    }
-}
-
-newtype_index! {
-    #[derive(HashStable)]
-    /// An index to a [`Stmt`] stored in [`Thir::stmts`]
-    pub struct StmtId {
-        DEBUG_FORMAT = "s{}"
-    }
-}
-
 macro_rules! thir_with_elements {
-    ($($name:ident: $id:ty => $value:ty,)*) => {
+    ($($name:ident: $id:ty => $value:ty => $format:literal,)*) => {
+        $(
+            newtype_index! {
+                #[derive(HashStable)]
+                pub struct $id {
+                    DEBUG_FORMAT = $format
+                }
+            }
+        )*
+
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
@@ -91,9 +76,9 @@ macro_rules! thir_with_elements {
 }
 
 thir_with_elements! {
-    arms: ArmId => Arm<'tcx>,
-    exprs: ExprId => Expr<'tcx>,
-    stmts: StmtId => Stmt<'tcx>,
+    arms: ArmId => Arm<'tcx> => "a{}",
+    exprs: ExprId => Expr<'tcx> => "e{}",
+    stmts: StmtId => Stmt<'tcx> => "s{}",
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
