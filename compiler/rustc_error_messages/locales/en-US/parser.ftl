@@ -71,6 +71,8 @@ parser_field_expression_with_generic = field expressions cannot have generic arg
 parser_macro_invocation_with_qualified_path = macros cannot use qualified paths
 
 parser_unexpected_token_after_label = expected `while`, `for`, `loop` or `{"{"}` after a label
+    .suggestion_remove_label = consider removing the label
+    .suggestion_enclose_in_block = consider enclosing expression in a block
 
 parser_require_colon_after_labeled_expression = labeled expression must be followed by `:`
     .note = labels are used before loops and blocks, allowing e.g., `break 'label` to them
@@ -161,3 +163,62 @@ parser_use_eq_instead = unexpected `==`
 
 parser_use_empty_block_not_semi = expected { "`{}`" }, found `;`
     .suggestion = try using { "`{}`" } instead
+
+parser_comparison_interpreted_as_generic =
+    `<` is interpreted as a start of generic arguments for `{$typename}`, not a comparison
+    .label_args = interpreted as generic arguments
+    .label_comparison = not interpreted as comparison
+    .suggestion = try comparing the cast value
+
+parser_shift_interpreted_as_generic =
+    `<<` is interpreted as a start of generic arguments for `{$typename}`, not a shift
+    .label_args = interpreted as generic arguments
+    .label_comparison = not interpreted as shift
+    .suggestion = try shifting the cast value
+
+parser_found_expr_would_be_stmt = expected expression, found `{$token}`
+    .label = expected expression
+
+parser_leading_plus_not_supported = leading `+` is not supported
+    .label = unexpected `+`
+    .suggestion_remove_plus = try removing the `+`
+
+parser_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call arguments
+    .suggestion_braces_for_struct = if `{$name}` is a struct, use braces as delimiters
+    .suggestion_no_fields_for_fn = if `{$name}` is a function, use the arguments directly
+
+parser_labeled_loop_in_break = parentheses are required around this expression to avoid confusion with a labeled break expression
+    .suggestion = wrap the expression in parentheses
+
+parser_array_brackets_instead_of_braces = this is a block expression, not an array
+    .suggestion = to make an array, use square brackets instead of curly braces
+
+parser_match_arm_body_without_braces = `match` arm body without braces
+    .label_statements = {$num_statements ->
+            [one] this statement is not surrounded by a body
+           *[other] these statements are not surrounded by a body
+        }
+    .label_arrow = while parsing the `match` arm starting here
+    .suggestion_add_braces = surround the {$num_statements ->
+            [one] statement
+           *[other] statements
+        } with a body
+    .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
+
+parser_struct_literal_not_allowed_here = struct literals are not allowed here
+    .suggestion = surround the struct literal with parentheses
+
+parser_invalid_interpolated_expression = invalid interpolated expression
+
+parser_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+parser_octal_float_literal_not_supported = octal float literal is not supported
+parser_binary_float_literal_not_supported = binary float literal is not supported
+parser_not_supported = not supported
+
+parser_non_string_abi_literal = non-string ABI literal
+    .suggestion = specify the ABI with a string literal
+
+parser_mismatched_closing_delimiter = mismatched closing delimiter: `{$delimiter}`
+    .label_unmatched = mismatched closing delimiter
+    .label_opening_candidate = closing delimiter possibly meant for this
+    .label_unclosed = unclosed delimiter

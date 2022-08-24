@@ -32,7 +32,8 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan,
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic,
+    MultiSpan,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
@@ -40,6 +41,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
 use std::ops::Range;
 use std::{cmp, mem, slice};
+
+use self::diagnostics::{MismatchedClosingDelimiter, NonStringAbiLiteral};
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -1384,14 +1387,7 @@ impl<'a> Parser<'a> {
             Err(Some(lit)) => match lit.kind {
                 ast::LitKind::Err => None,
                 _ => {
-                    self.struct_span_err(lit.span, "non-string ABI literal")
-                        .span_suggestion(
-                            lit.span,
-                            "specify the ABI with a string literal",
-                            "\"C\"",
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                    self.sess.emit_err(NonStringAbiLiteral { span: lit.span });
                     None
                 }
             },
@@ -1432,25 +1428,18 @@ pub(crate) fn make_unclosed_delims_error(
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
-    let span: MultiSpan = if let Some(sp) = unmatched.unclosed_span {
-        vec![unmatched.found_span, sp].into()
-    } else {
-        unmatched.found_span.into()
-    };
-    let mut err = sess.span_diagnostic.struct_span_err(
-        span,
-        &format!(
-            "mismatched closing delimiter: `{}`",
-            pprust::token_kind_to_string(&token::CloseDelim(found_delim)),
-        ),
-    );
-    err.span_label(unmatched.found_span, "mismatched closing delimiter");
-    if let Some(sp) = unmatched.candidate_span {
-        err.span_label(sp, "closing delimiter possibly meant for this");
-    }
+    let mut spans = vec![unmatched.found_span];
     if let Some(sp) = unmatched.unclosed_span {
-        err.span_label(sp, "unclosed delimiter");
+        spans.push(sp);
+    };
+    let err = MismatchedClosingDelimiter {
+        spans,
+        delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
+        unmatched: unmatched.found_span,
+        opening_candidate: unmatched.candidate_span,
+        unclosed: unmatched.unclosed_span,
     }
+    .into_diagnostic(&sess.span_diagnostic);
     Some(err)
 }
 

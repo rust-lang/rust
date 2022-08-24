@@ -21,6 +21,7 @@ use rustc_errors::{
 };
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -487,11 +488,24 @@ pub(crate) struct MacroInvocationWithQualifiedPath(#[primary_span] pub Span);
 
 #[derive(Diagnostic)]
 #[diag(parser::unexpected_token_after_label)]
-pub(crate) struct UnexpectedTokenAfterLabel(
+pub(crate) struct UnexpectedTokenAfterLabel {
     #[primary_span]
     #[label(parser::unexpected_token_after_label)]
-    pub Span,
-);
+    pub span: Span,
+    #[suggestion_verbose(parser::suggestion_remove_label, code = "")]
+    pub remove_label: Option<Span>,
+    #[subdiagnostic]
+    pub enclose_in_block: Option<UnexpectedTokenAfterLabelSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion_enclose_in_block, applicability = "machine-applicable")]
+pub(crate) struct UnexpectedTokenAfterLabelSugg {
+    #[suggestion_part(code = "{{ ")]
+    pub left: Span,
+    #[suggestion_part(code = " }}")]
+    pub right: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(parser::require_colon_after_labeled_expression)]
@@ -751,6 +765,236 @@ pub(crate) struct UseEmptyBlockNotSemi {
     #[primary_span]
     #[suggestion_hidden(applicability = "machine-applicable", code = "{{}}")]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::comparison_interpreted_as_generic)]
+pub(crate) struct ComparisonInterpretedAsGeneric {
+    #[primary_span]
+    #[label(parser::label_comparison)]
+    pub comparison: Span,
+    pub typename: String,
+    #[label(parser::label_args)]
+    pub args: Span,
+    #[subdiagnostic]
+    pub suggestion: ComparisonOrShiftInterpretedAsGenericSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::shift_interpreted_as_generic)]
+pub(crate) struct ShiftInterpretedAsGeneric {
+    #[primary_span]
+    #[label(parser::label_comparison)]
+    pub shift: Span,
+    pub typename: String,
+    #[label(parser::label_args)]
+    pub args: Span,
+    #[subdiagnostic]
+    pub suggestion: ComparisonOrShiftInterpretedAsGenericSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct ComparisonOrShiftInterpretedAsGenericSugg {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::found_expr_would_be_stmt)]
+pub(crate) struct FoundExprWouldBeStmt {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub token: String,
+    #[subdiagnostic]
+    pub suggestion: ExprParenthesesNeeded,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::leading_plus_not_supported)]
+pub(crate) struct LeadingPlusNotSupported {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion_verbose(
+        parser::suggestion_remove_plus,
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub remove_plus: Option<Span>,
+    #[subdiagnostic]
+    pub add_parentheses: Option<ExprParenthesesNeeded>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::parentheses_with_struct_fields)]
+pub(crate) struct ParenthesesWithStructFields {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+    #[subdiagnostic]
+    pub braces_for_struct: BracesForStructLiteral,
+    #[subdiagnostic]
+    pub no_fields_for_fn: NoFieldsForFnCall,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion_braces_for_struct, applicability = "maybe-incorrect")]
+pub(crate) struct BracesForStructLiteral {
+    #[suggestion_part(code = " {{ ")]
+    pub first: Span,
+    #[suggestion_part(code = " }}")]
+    pub second: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion_no_fields_for_fn, applicability = "maybe-incorrect")]
+pub(crate) struct NoFieldsForFnCall {
+    #[suggestion_part(code = "")]
+    pub fields: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::labeled_loop_in_break)]
+pub(crate) struct LabeledLoopInBreak {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: LabeledLoopInBreakSub,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct LabeledLoopInBreakSub {
+    #[suggestion_part(code = "(")]
+    pub first: Span,
+    #[suggestion_part(code = ")")]
+    pub second: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::array_brackets_instead_of_braces)]
+pub(crate) struct ArrayBracketsInsteadOfSpaces {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: ArrayBracketsInsteadOfSpacesSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct ArrayBracketsInsteadOfSpacesSugg {
+    #[suggestion_part(code = "[")]
+    pub left: Span,
+    #[suggestion_part(code = "]")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::match_arm_body_without_braces)]
+pub(crate) struct MatchArmBodyWithoutBraces {
+    #[primary_span]
+    #[label(parser::label_statements)]
+    pub statements: Span,
+    #[label(parser::label_arrow)]
+    pub arrow: Span,
+    pub num_statements: usize,
+    #[subdiagnostic]
+    pub sub: MatchArmBodyWithoutBracesSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MatchArmBodyWithoutBracesSugg {
+    #[multipart_suggestion(parser::suggestion_add_braces, applicability = "machine-applicable")]
+    AddBraces {
+        #[suggestion_part(code = "{{ ")]
+        left: Span,
+        #[suggestion_part(code = " }}")]
+        right: Span,
+    },
+    #[suggestion(
+        parser::suggestion_use_comma_not_semicolon,
+        code = ",",
+        applicability = "machine-applicable"
+    )]
+    UseComma {
+        #[primary_span]
+        semicolon: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::struct_literal_not_allowed_here)]
+pub(crate) struct StructLiteralNotAllowedHere {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: StructLiteralNotAllowedHereSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct StructLiteralNotAllowedHereSugg {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_interpolated_expression)]
+pub(crate) struct InvalidInterpolatedExpression {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::hexadecimal_float_literal_not_supported)]
+pub(crate) struct HexadecimalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parser::not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::octal_float_literal_not_supported)]
+pub(crate) struct OctalFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parser::not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::binary_float_literal_not_supported)]
+pub(crate) struct BinaryFloatLiteralNotSupported {
+    #[primary_span]
+    #[label(parser::not_supported)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::non_string_abi_literal)]
+pub(crate) struct NonStringAbiLiteral {
+    #[primary_span]
+    #[suggestion(code = "\"C\"", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::mismatched_closing_delimiter)]
+pub(crate) struct MismatchedClosingDelimiter {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub delimiter: String,
+    #[label(parser::label_unmatched)]
+    pub unmatched: Span,
+    #[label(parser::label_opening_candidate)]
+    pub opening_candidate: Option<Span>,
+    #[label(parser::label_unclosed)]
+    pub unclosed: Option<Span>,
 }
 
 // SnapshotParser is used to create a snapshot of the parser
