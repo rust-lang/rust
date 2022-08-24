@@ -173,7 +173,7 @@ use rustc_span::Span;
 use std::cell::RefCell;
 use std::iter;
 use std::vec;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
 pub mod ty;
@@ -291,7 +291,7 @@ pub fn combine_substructure(
 }
 
 struct TypeParameter {
-    bound_generic_params: Vec<ast::GenericParam>,
+    bound_generic_params: ThinVec<ast::GenericParam>,
     ty: P<ast::Ty>,
 }
 
@@ -358,7 +358,7 @@ fn find_type_parameters(
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
         ty_param_names: &'a [Symbol],
-        bound_generic_params_stack: Vec<ast::GenericParam>,
+        bound_generic_params_stack: ThinVec<ast::GenericParam>,
         type_params: Vec<TypeParameter>,
     }
 
@@ -397,7 +397,7 @@ fn find_type_parameters(
     let mut visitor = Visitor {
         cx,
         ty_param_names,
-        bound_generic_params_stack: Vec::new(),
+        bound_generic_params_stack: ThinVec::new(),
         type_params: Vec::new(),
     };
     visit::Visitor::visit_ty(&mut visitor, ty);

@@ -9,3 +9,4 @@ doctest = false
 [dependencies]
 rustc_span = { path = "../rustc_span" }
 rustc_ast = { path = "../rustc_ast" }
+thin-vec = "0.2.8"
