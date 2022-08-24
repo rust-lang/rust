@@ -19,7 +19,7 @@ macro_rules! panic {
 ///
 /// # Same As
 ///
-/// ```
+/// ```no_run
 /// if ($first) == false {
 ///     return $second;
 /// }
@@ -27,7 +27,7 @@ macro_rules! panic {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 ///
 /// fn some_computation() -> bool { true } // a very simple function
 ///
