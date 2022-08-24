@@ -45,7 +45,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             self.warn_unused_unsafe(
                 hir_id,
                 block_span,
-                Some((self.tcx.sess.source_map().guess_head_span(enclosing_span), "block")),
+                Some(UnusedUnsafeEnclosing::Block {
+                    span: self.tcx.sess.source_map().guess_head_span(enclosing_span),
+                }),
             );
             f(self);
         } else {
@@ -59,7 +61,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     hir_id,
                     span,
                     if self.unsafe_op_in_unsafe_fn_allowed() {
-                        self.body_unsafety.unsafe_fn_sig_span().map(|span| (span, "fn"))
+                        self.body_unsafety
+                            .unsafe_fn_sig_span()
+                            .map(|span| UnusedUnsafeEnclosing::Function { span })
                     } else {
                         None
                     },
@@ -95,18 +99,15 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         &self,
         hir_id: hir::HirId,
         block_span: Span,
-        enclosing_unsafe: Option<(Span, &'static str)>,
+        enclosing_unsafe: Option<UnusedUnsafeEnclosing>,
     ) {
         let block_span = self.tcx.sess.source_map().guess_head_span(block_span);
-        self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, |lint| {
-            let msg = "unnecessary `unsafe` block";
-            let mut db = lint.build(msg);
-            db.span_label(block_span, msg);
-            if let Some((span, kind)) = enclosing_unsafe {
-                db.span_label(span, format!("because it's nested under this `unsafe` {}", kind));
-            }
-            db.emit();
-        });
+        self.tcx.emit_spanned_lint(
+            UNUSED_UNSAFE,
+            hir_id,
+            block_span,
+            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
+        );
     }
 
     /// Whether the `unsafe_op_in_unsafe_fn` lint is `allow`ed at the current HIR node.
