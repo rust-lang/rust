@@ -187,3 +187,6 @@ while work_list:
             check_generic_bound(bound)
         if item["inner"]["default"]:
             check_type(item["inner"]["default"])
+    elif item["kind"] == "import":
+        if item["inner"]["id"]:
+            work_list.add(item["inner"]["id"])
