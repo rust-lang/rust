@@ -43,14 +43,6 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
     }
 }
 
-/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => other_ty == inner_ty,
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-    })
-}
-
 /// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
 /// constructor.
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {

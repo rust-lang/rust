@@ -99,7 +99,7 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{contains_adt_constructor, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{
     contains_return, get_trait_def_id, is_trait_method, iter_input_pats, meets_msrv, msrvs, paths, return_ty,
 };
@@ -3242,7 +3242,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 if contains_adt_constructor(ret_ty, self_adt) {
                     return;
                 }
-            } else if contains_ty(ret_ty, self_ty) {
+            } else if ret_ty.contains(self_ty) {
                 return;
             }
 
@@ -3260,7 +3260,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             if contains_adt_constructor(assoc_ty, self_adt) {
                                 return;
                             }
-                        } else if contains_ty(assoc_ty, self_ty) {
+                        } else if assoc_ty.contains(self_ty) {
                             return;
                         }
                     }
@@ -3309,7 +3309,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id());
             let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
-            if !contains_ty(ret_ty, self_ty);
+            if !ret_ty.contains(self_ty);
 
             then {
                 span_lint(
