@@ -818,8 +818,8 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_liveness(key: LocalDefId) -> () {
-        desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
+    query check_liveness(key: DefId) {
+        desc { |tcx| "checking liveness of variables in {}", tcx.def_path_str(key) }
     }
 
     /// Return the live symbols in the crate for dead code check.

@@ -911,13 +911,13 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
-                sess.time("liveness_and_intrinsic_checking", || {
-                    tcx.hir().par_for_each_module(|module| {
+                sess.time("liveness_checking", || {
+                    tcx.hir().par_body_owners(|def_id| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
                         //
                         // maybe move the check to a MIR pass?
-                        tcx.ensure().check_mod_liveness(module);
+                        tcx.ensure().check_liveness(def_id.to_def_id());
                     });
                 });
             }
