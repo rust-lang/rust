@@ -47,8 +47,18 @@ which is useful to keep peak memory in check. Having a THIR representation of
 all bodies of a crate in memory at the same time would be very heavy.
 
 You can get a debug representation of the THIR by passing the `-Zunpretty=thir-tree` flag
-to `rustc`. Here is how a function with just the statement `let x = 1 + 2;` gets represented in
-THIR:
+to `rustc`.
+
+To demonstrate, let's use the following example:
+
+```rust
+fn main() {
+    let x = 1 + 2;
+}
+```
+
+Here is how that gets represented in THIR (as of <!-- date-check --> Aug 2022):
+
 ```rust,no_run
 Thir {
     // no match arms
@@ -57,57 +67,73 @@ Thir {
         // expression 0, a literal with a value of 1
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:13: 2:14 (#0),
             kind: Literal {
-                literal: Const {
-                    ty: i32,
-                    val: Value(Scalar(0x00000001)),
+                lit: Spanned {
+                    node: Int(
+                        1,
+                        Unsuffixed,
+                    ),
+                    span: oneplustwo.rs:2:13: 2:14 (#0),
                 },
-                user_ty: None,
-                const_id: None,
+                neg: false,
             },
         },
         // expression 1, scope surronding literal 1
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:13: 2:14 (#0),
             kind: Scope {
-                region_scope: Node(1),
-                lint_level: Explicit(HirId {
-                    owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                    local_id: 1,
-                }),
                 // reference to expression 0 above
+                region_scope: Node(3),
+                lint_level: Explicit(
+                    HirId {
+                        owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                        local_id: 3,
+                    },
+                ),
                 value: e0,
             },
         },
         // expression 2, literal 2
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:17: 2:18 (#0),
             kind: Literal {
-                literal: Const {
-                    ty: i32,
-                    val: Value(Scalar(0x00000002)),
+                lit: Spanned {
+                    node: Int(
+                        2,
+                        Unsuffixed,
+                    ),
+                    span: oneplustwo.rs:2:17: 2:18 (#0),
                 },
-                user_ty: None,
-                const_id: None,
+                neg: false,
             },
         },
         // expression 3, scope surrounding literal 2
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:17: 2:18 (#0),
             kind: Scope {
-                region_scope: Node(2),
-                lint_level: Explicit(HirId {
-                    owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                    local_id: 2,
-                }),
+                region_scope: Node(4),
+                lint_level: Explicit(
+                    HirId {
+                        owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                        local_id: 4,
+                    },
+                ),
                 // reference to expression 2 above
                 value: e2,
             },
@@ -115,7 +141,9 @@ Thir {
         // expression 4, represents 1 + 2
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:13: 2:18 (#0),
             kind: Binary {
                 op: Add,
@@ -127,30 +155,38 @@ Thir {
         // expression 5, scope surronding expression 4
         Expr {
             ty: i32,
-            temp_lifetime: Some(Node(6)),
+            temp_lifetime: Some(
+                Node(1),
+            ),
             span: oneplustwo.rs:2:13: 2:18 (#0),
             kind: Scope {
-                region_scope: Node(3),
-                lint_level: Explicit(HirId {
-                    owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                    local_id: 3,
-                }),
+                region_scope: Node(5),
+                lint_level: Explicit(
+                    HirId {
+                        owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                        local_id: 5,
+                    },
+                ),
                 value: e4,
             },
         },
         // expression 6, block around statement
         Expr {
             ty: (),
-            temp_lifetime: Some(Node(8)),
+            temp_lifetime: Some(
+                Node(9),
+            ),
             span: oneplustwo.rs:1:11: 3:2 (#0),
             kind: Block {
                 body: Block {
                     targeted_by_break: false,
-                    region_scope: Node(7),
+                    region_scope: Node(8),
                     opt_destruction_scope: None,
                     span: oneplustwo.rs:1:11: 3:2 (#0),
                     // reference to statement 0 below
-                    stmts: [ s0 ],
+                    stmts: [
+                        s0,
+                    ],
                     expr: None,
                     safety_mode: Safe,
                 },
@@ -160,25 +196,29 @@ Thir {
         Expr {
             ty: (),
             temp_lifetime: Some(
-                Node(8),
+                Node(9),
             ),
             span: oneplustwo.rs:1:11: 3:2 (#0),
             kind: Scope {
-                region_scope: Node(8),
-                lint_level: Explicit(HirId {
-                    owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                    local_id: 8,
-                }),
+                region_scope: Node(9),
+                lint_level: Explicit(
+                    HirId {
+                        owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                        local_id: 9,
+                    },
+                ),
                 value: e6,
             },
         },
         // destruction scope around expression 7
         Expr {
             ty: (),
-            temp_lifetime: Some(Node(8)),
+            temp_lifetime: Some(
+                Node(9),
+            ),
             span: oneplustwo.rs:1:11: 3:2 (#0),
             kind: Scope {
-                region_scope: Destruction(8),
+                region_scope: Destruction(9),
                 lint_level: Inherited,
                 value: e7,
             },
@@ -188,8 +228,8 @@ Thir {
         // let statement
         Stmt {
             kind: Let {
-                remainder_scope: Remainder { block: 7, first_statement_index: 0},
-                init_scope: Node(6),
+                remainder_scope: Remainder { block: 8, first_statement_index: 0},
+                init_scope: Node(1),
                 pattern: Pat {
                     ty: i32,
                     span: oneplustwo.rs:2:9: 2:10 (#0),
@@ -197,22 +237,31 @@ Thir {
                         mutability: Not,
                         name: "x",
                         mode: ByValue,
-                        var: HirId {
-                            owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                            local_id: 5,
-                        },
+                        var: LocalVarId(
+                            HirId {
+                                owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                                local_id: 7,
+                            },
+                        ),
                         ty: i32,
                         subpattern: None,
                         is_primary: true,
                     },
                 },
-                initializer: Some(e5),
-                lint_level: Explicit(HirId {
-                    owner: DefId(0:3 ~ oneplustwo[6ccc]::main),
-                    local_id: 4,
-                }),
+                initializer: Some(
+                    e5,
+                ),
+                else_block: None,
+                lint_level: Explicit(
+                    HirId {
+                        owner: DefId(0:3 ~ oneplustwo[6932]::main),
+                        local_id: 6,
+                    },
+                ),
             },
-            opt_destruction_scope: Some(Destruction(6)),
+            opt_destruction_scope: Some(
+                Destruction(1),
+            ),
         },
     ],
 }
