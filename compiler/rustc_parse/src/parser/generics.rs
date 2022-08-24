@@ -202,7 +202,7 @@ impl<'a> Parser<'a> {
             params,
             where_clause: WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
         let mut where_clause = WhereClause {
             has_where_token: false,
-            predicates: Vec::new(),
+            predicates: ThinVec::new(),
             span: self.prev_token.span.shrink_to_hi(),
         };
 
