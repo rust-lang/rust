@@ -1,5 +1,4 @@
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
-use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -22,6 +21,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,

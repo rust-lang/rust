@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # Ensure that crates compiled with different rustc versions cannot
 # be dynamically linked.

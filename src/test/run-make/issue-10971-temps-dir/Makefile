@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # Regression test for issue #10971
 # Running two invocations in parallel would overwrite each other's temp files.

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Assert that the search index is generated deterministically, regardless of the
 # order that crates are documented in.

@@ -3,7 +3,7 @@
 # only-x86
 # only-windows
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 all:
 	$(RUSTC) --crate-type lib --crate-name raw_dylib_test lib.rs

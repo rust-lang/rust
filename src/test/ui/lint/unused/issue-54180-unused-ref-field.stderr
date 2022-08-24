@@ -11,12 +11,6 @@ LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
-error: unused variable: `x`
-  --> $DIR/issue-54180-unused-ref-field.rs:29:45
-   |
-LL |     let _: i32 = points.iter().map(|Point { x, y }| y).sum();
-   |                                             ^ help: try ignoring the field: `x: _`
-
 error: unused variable: `f1`
   --> $DIR/issue-54180-unused-ref-field.rs:26:13
    |
@@ -28,6 +22,12 @@ error: unused variable: `x`
    |
 LL |         Point { y, ref mut x } => y,
    |                    ^^^^^^^^^ help: try ignoring the field: `x: _`
+
+error: unused variable: `x`
+  --> $DIR/issue-54180-unused-ref-field.rs:29:45
+   |
+LL |     let _: i32 = points.iter().map(|Point { x, y }| y).sum();
+   |                                             ^ help: try ignoring the field: `x: _`
 
 error: aborting due to 4 previous errors
 

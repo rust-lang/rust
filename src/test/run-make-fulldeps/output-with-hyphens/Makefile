@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) foo-bar.rs --crate-type bin

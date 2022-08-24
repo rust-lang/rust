@@ -273,13 +273,17 @@ impl<'tcx> BorrowExplanation<'tcx> {
             _ => {}
         }
     }
-    pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
+
+    fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
     ) {
+        if !span.is_desugaring(DesugaringKind::OpaqueTy) {
+            return;
+        }
         if let ConstraintCategory::OpaqueType = category {
             let suggestable_name =
                 if region_name.was_named() { region_name.name } else { kw::UnderscoreLifetime };

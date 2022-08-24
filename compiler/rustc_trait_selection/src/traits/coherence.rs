@@ -6,16 +6,18 @@
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{CombinedSnapshot, InferOk};
+use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Normalized, Obligation, ObligationCause, PredicateObligation, PredicateObligations,
-    SelectionContext,
+    self, Normalized, Obligation, ObligationCause, ObligationCtxt, PredicateObligation,
+    PredicateObligations, SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -322,7 +324,7 @@ fn negative_impl<'cx, 'tcx>(
         let (subject2, obligations) =
             impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        !equate(&infcx, impl_env, subject1, subject2, obligations)
+        !equate(&infcx, impl_env, subject1, subject2, obligations, impl1_def_id)
     })
 }
 
@@ -332,6 +334,7 @@ fn equate<'cx, 'tcx>(
     subject1: ImplSubject<'tcx>,
     subject2: ImplSubject<'tcx>,
     obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
+    body_def_id: DefId,
 ) -> bool {
     // do the impls unify? If not, not disjoint.
     let Ok(InferOk { obligations: more_obligations, .. }) =
@@ -342,8 +345,10 @@ fn equate<'cx, 'tcx>(
     };
 
     let selcx = &mut SelectionContext::new(&infcx);
-    let opt_failing_obligation =
-        obligations.into_iter().chain(more_obligations).find(|o| negative_impl_exists(selcx, o));
+    let opt_failing_obligation = obligations
+        .into_iter()
+        .chain(more_obligations)
+        .find(|o| negative_impl_exists(selcx, o, body_def_id));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -358,14 +363,15 @@ fn equate<'cx, 'tcx>(
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
     o: &PredicateObligation<'tcx>,
+    body_def_id: DefId,
 ) -> bool {
-    if resolve_negative_obligation(selcx.infcx().fork(), o) {
+    if resolve_negative_obligation(selcx.infcx().fork(), o, body_def_id) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
     for o in util::elaborate_predicates(selcx.tcx(), iter::once(o.predicate)) {
-        if resolve_negative_obligation(selcx.infcx().fork(), &o) {
+        if resolve_negative_obligation(selcx.infcx().fork(), &o, body_def_id) {
             return true;
         }
     }
@@ -377,6 +383,7 @@ fn negative_impl_exists<'cx, 'tcx>(
 fn resolve_negative_obligation<'cx, 'tcx>(
     infcx: InferCtxt<'cx, 'tcx>,
     o: &PredicateObligation<'tcx>,
+    body_def_id: DefId,
 ) -> bool {
     let tcx = infcx.tcx;
 
@@ -385,12 +392,24 @@ fn resolve_negative_obligation<'cx, 'tcx>(
     };
 
     let param_env = o.param_env;
-    let errors = super::fully_solve_obligation(&infcx, o);
-    if !errors.is_empty() {
+    if !super::fully_solve_obligation(&infcx, o).is_empty() {
         return false;
     }
 
-    let outlives_env = OutlivesEnvironment::new(param_env);
+    let (body_id, body_def_id) = if let Some(body_def_id) = body_def_id.as_local() {
+        (tcx.hir().local_def_id_to_hir_id(body_def_id), body_def_id)
+    } else {
+        (CRATE_HIR_ID, CRATE_DEF_ID)
+    };
+
+    let ocx = ObligationCtxt::new(&infcx);
+    let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
+    let outlives_env = OutlivesEnvironment::with_bounds(
+        param_env,
+        Some(&infcx),
+        infcx.implied_bounds_tys(param_env, body_id, wf_tys),
+    );
+
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
 
     infcx.resolve_regions(&outlives_env).is_empty()

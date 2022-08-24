@@ -67,7 +67,6 @@
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
-use crate::outlives::outlives_bounds::InferCtxtExt as _;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -79,6 +78,7 @@ use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {

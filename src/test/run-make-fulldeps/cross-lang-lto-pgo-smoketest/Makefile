@@ -5,7 +5,7 @@
 # can be executed without anything crashing. It does not test whether PGO or
 # xLTO have any specific effect on the generated code.
 
--include ../tools.mk
+include ../tools.mk
 
 COMMON_FLAGS=-Copt-level=3 -Ccodegen-units=1
 

@@ -89,11 +89,10 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
-use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
@@ -139,12 +138,54 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx));
+fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
+    let local_def_id = match def_id.as_local() {
+        None => return,
+        Some(def_id) => def_id,
+    };
+
+    // Don't run unused pass for #[derive()]
+    let parent = tcx.local_parent(local_def_id);
+    if let DefKind::Impl = tcx.def_kind(parent)
+        && tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
+    {
+        return;
+    }
+
+    // Don't run unused pass for #[naked]
+    if tcx.has_attr(def_id, sym::naked) {
+        return;
+    }
+
+    let mut maps = IrMaps::new(tcx);
+    let body_id = tcx.hir().body_owned_by(local_def_id);
+    let hir_id = tcx.hir().body_owner(body_id);
+    let body = tcx.hir().body(body_id);
+
+    if let Some(upvars) = tcx.upvars_mentioned(def_id) {
+        for &var_hir_id in upvars.keys() {
+            let var_name = tcx.hir().name(var_hir_id);
+            maps.add_variable(Upvar(var_hir_id, var_name));
+        }
+    }
+
+    // gather up the various local variables, significant expressions,
+    // and so forth:
+    maps.visit_body(body);
+
+    // compute liveness
+    let mut lsets = Liveness::new(&mut maps, local_def_id);
+    let entry_ln = lsets.compute(&body, hir_id);
+    lsets.log_liveness(entry_ln, body_id.hir_id);
+
+    // check for various error conditions
+    lsets.visit_body(body);
+    lsets.warn_about_unused_upvars(entry_ln);
+    lsets.warn_about_unused_args(body, entry_ln);
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_liveness, ..*providers };
+    *providers = Providers { check_liveness, ..*providers };
 }
 
 // ______________________________________________________________________
@@ -316,56 +357,6 @@ impl<'tcx> IrMaps<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        debug!("visit_body {:?}", body.id());
-
-        // swap in a new set of IR maps for this body
-        let mut maps = IrMaps::new(self.tcx);
-        let hir_id = maps.tcx.hir().body_owner(body.id());
-        let local_def_id = maps.tcx.hir().local_def_id(hir_id);
-        let def_id = local_def_id.to_def_id();
-
-        // Don't run unused pass for #[derive()]
-        let parent = self.tcx.local_parent(local_def_id);
-        if let DefKind::Impl = self.tcx.def_kind(parent)
-            && self.tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
-        {
-            return;
-        }
-
-        // Don't run unused pass for #[naked]
-        if self.tcx.has_attr(def_id, sym::naked) {
-            return;
-        }
-
-        if let Some(upvars) = maps.tcx.upvars_mentioned(def_id) {
-            for &var_hir_id in upvars.keys() {
-                let var_name = maps.tcx.hir().name(var_hir_id);
-                maps.add_variable(Upvar(var_hir_id, var_name));
-            }
-        }
-
-        // gather up the various local variables, significant expressions,
-        // and so forth:
-        intravisit::walk_body(&mut maps, body);
-
-        // compute liveness
-        let mut lsets = Liveness::new(&mut maps, local_def_id);
-        let entry_ln = lsets.compute(&body, hir_id);
-        lsets.log_liveness(entry_ln, body.id().hir_id);
-
-        // check for various error conditions
-        lsets.visit_body(body);
-        lsets.warn_about_unused_upvars(entry_ln);
-        lsets.warn_about_unused_args(body, entry_ln);
-    }
-
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.add_from_pat(&local.pat);
         if local.els.is_some() {

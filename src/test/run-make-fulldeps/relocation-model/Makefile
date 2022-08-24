@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: others
 	$(RUSTC) -C relocation-model=dynamic-no-pic foo.rs

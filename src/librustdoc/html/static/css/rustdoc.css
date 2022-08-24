@@ -745,10 +745,6 @@ pre, .rustdoc.source .example-wrap {
 	border: 1px solid var(--border-color);
 }
 
-.fields + table {
-	margin-bottom: 1em;
-}
-
 .content .item-list {
 	list-style-type: none;
 	padding: 0;
