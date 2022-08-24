@@ -4,8 +4,8 @@ error: reached the type-length limit while instantiating `std::mem::drop::<Optio
 LL | pub fn drop<T>(_x: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
    = help: consider adding a `#![type_length_limit="8"]` attribute to your crate
+   = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
 
 error: reached the type-length limit while instantiating `<[closure@std::rt::lang_start<()...e<()>>::call_once - shim(vtable)`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
@@ -13,8 +13,8 @@ error: reached the type-length limit while instantiating `<[closure@std::rt::lan
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
    = help: consider adding a `#![type_length_limit="8"]` attribute to your crate
+   = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
 
 error: aborting due to 2 previous errors
 
