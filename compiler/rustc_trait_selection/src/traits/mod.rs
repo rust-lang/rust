@@ -13,6 +13,7 @@ mod fulfill;
 pub mod misc;
 mod object_safety;
 mod on_unimplemented;
+pub mod outlives_bounds;
 mod project;
 pub mod query;
 pub(crate) mod relationships;
