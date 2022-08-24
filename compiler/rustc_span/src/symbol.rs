@@ -1804,6 +1804,11 @@ impl Symbol {
         Symbol(SymbolIndex::from_u32(n))
     }
 
+    /// for use in Decoder only
+    pub fn new_from_decoded(n: u32) -> Self {
+        Self::new(n)
+    }
+
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
@@ -2027,6 +2032,11 @@ impl Symbol {
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
+    }
+
+    /// Is this symbol was interned in compiler's `symbols!` macro
+    pub fn is_preinterned(self) -> bool {
+        self.as_u32() < PREINTERNED_SYMBOLS_COUNT
     }
 }
 

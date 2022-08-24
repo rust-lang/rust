@@ -317,17 +317,24 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
 
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        match s.symbol_table.entry(*self) {
-            Entry::Vacant(o) => {
-                s.opaque.emit_u8(SYMBOL_STR);
-                let pos = s.opaque.position();
-                o.insert(pos);
-                s.emit_str(self.as_str());
-            }
-            Entry::Occupied(o) => {
-                let x = o.get().clone();
-                s.emit_u8(SYMBOL_OFFSET);
-                s.emit_usize(x);
+        // if symbol preinterned, emit tag and symbol index
+        if self.is_preinterned() {
+            s.opaque.emit_u8(SYMBOL_PREINTERNED);
+            s.opaque.emit_u32(self.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match s.symbol_table.entry(*self) {
+                Entry::Vacant(o) => {
+                    s.opaque.emit_u8(SYMBOL_STR);
+                    let pos = s.opaque.position();
+                    o.insert(pos);
+                    s.emit_str(self.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = o.get().clone();
+                    s.emit_u8(SYMBOL_OFFSET);
+                    s.emit_usize(x);
+                }
             }
         }
     }

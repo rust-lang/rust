@@ -631,6 +631,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
 
                 sym
             }
+            SYMBOL_PREINTERNED => {
+                let symbol_index = d.read_u32();
+                Symbol::new_from_decoded(symbol_index)
+            }
             _ => unreachable!(),
         }
     }
