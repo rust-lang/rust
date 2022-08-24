@@ -1,6 +1,10 @@
-// use rustc_errors::ErrorGuaranteed;
+use std::path::PathBuf;
+
+use rustc_errors::{DiagnosticId, ErrorGuaranteed};
 use rustc_macros::SessionDiagnostic;
-use rustc_span::Span;
+use rustc_session::{config, SessionDiagnostic};
+use rustc_span::{sym, Span, Symbol};
+use rustc_target::spec::TargetTriple;
 
 #[derive(SessionDiagnostic)]
 #[diag(metadata::rlib_required)]
@@ -104,8 +108,8 @@ pub struct WasmImportForm {
 #[derive(SessionDiagnostic)]
 #[diag(metadata::empty_link_name, code = "E0454")]
 pub struct EmptyLinkName {
-    #[label]
     #[primary_span]
+    #[label]
     pub span: Span,
 }
 
@@ -126,8 +130,8 @@ pub struct FrameworkOnlyWindows {
 #[derive(SessionDiagnostic)]
 #[diag(metadata::unknown_link_kind, code = "E0458")]
 pub struct UnknownLinkKind {
-    #[label]
     #[primary_span]
+    #[label]
     pub span: Span,
     pub kind: String,
 }
@@ -221,8 +225,8 @@ pub struct IncompatibleWasmLink {
 #[derive(SessionDiagnostic)]
 #[diag(metadata::link_requires_name, code = "E0459")]
 pub struct LinkRequiresName {
-    #[label]
     #[primary_span]
+    #[label]
     pub span: Span,
 }
 
@@ -377,4 +381,247 @@ pub struct FailedCreateFile {
 #[diag(metadata::failed_create_encoded_metadata)]
 pub struct FailedCreateEncodedMetadata {
     pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::non_ascii_name)]
+pub struct NonAsciiName {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::extern_location_not_exist)]
+pub struct ExternLocationNotExist {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub location: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::extern_location_not_file)]
+pub struct ExternLocationNotFile {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub location: String,
+}
+
+pub struct MultipleCandidates {
+    pub span: Span,
+    pub flavor: String,
+    pub crate_name: String,
+    pub candidates: Vec<PathBuf>,
+}
+
+impl SessionDiagnostic<'_> for MultipleCandidates {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::multiple_candidates);
+        diag.set_arg("crate_name", self.crate_name);
+        diag.set_arg("flavor", self.flavor);
+        diag.code(DiagnosticId::Error("E0465".into()));
+        diag.set_span(self.span);
+        for (i, candidate) in self.candidates.iter().enumerate() {
+            diag.span_note(self.span, &format!("candidate #{}: {}", i + 1, candidate.display()));
+        }
+        diag
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::multiple_matching_crates, code = "E0464")]
+#[note]
+pub struct MultipleMatchingCrates {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub candidates: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::symbol_conflicts_current, code = "E0519")]
+pub struct SymbolConflictsCurrent {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::symbol_conflicts_others, code = "E0523")]
+pub struct SymbolConflictsOthers {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::stable_crate_id_collision)]
+pub struct StableCrateIdCollision {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name0: String,
+    pub crate_name1: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::dl_error)]
+pub struct DlError {
+    #[primary_span]
+    pub span: Span,
+    pub err: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::newer_crate_version, code = "E0460")]
+#[note]
+#[note(metadata::found_crate_versions)]
+pub struct NewerCrateVersion {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub add_info: String,
+    pub found_crates: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::no_crate_with_triple, code = "E0461")]
+#[note(metadata::found_crate_versions)]
+pub struct NoCrateWithTriple {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub locator_triple: String,
+    pub add_info: String,
+    pub found_crates: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::found_staticlib, code = "E0462")]
+#[note(metadata::found_crate_versions)]
+#[help]
+pub struct FoundStaticlib {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub add_info: String,
+    pub found_crates: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::incompatible_rustc, code = "E0514")]
+#[note(metadata::found_crate_versions)]
+#[help]
+pub struct IncompatibleRustc {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
+    pub add_info: String,
+    pub found_crates: String,
+    pub rustc_version: String,
+}
+
+pub struct InvalidMetadataFiles {
+    pub span: Span,
+    pub crate_name: String,
+    pub add_info: String,
+    pub crate_rejections: Vec<String>,
+}
+
+impl SessionDiagnostic<'_> for InvalidMetadataFiles {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::invalid_meta_files);
+        diag.set_arg("crate_name", self.crate_name);
+        diag.set_arg("add_info", self.add_info);
+        diag.code(DiagnosticId::Error("E0786".into()));
+        diag.set_span(self.span);
+        for crate_rejection in self.crate_rejections {
+            diag.note(crate_rejection);
+        }
+        diag
+    }
+}
+
+pub struct CannotFindCrate {
+    pub span: Span,
+    pub crate_name: String,
+    pub crate_name_symbol: Symbol,
+    pub add_info: String,
+    pub missing_core: bool,
+    pub current_crate: String,
+    pub is_nightly_build: bool,
+    pub profiler_runtime: Symbol,
+    pub locator_triple: TargetTriple,
+}
+
+impl SessionDiagnostic<'_> for CannotFindCrate {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::cannot_find_crate);
+        diag.set_arg("crate_name", self.crate_name.clone());
+        diag.set_arg("add_info", self.add_info);
+        diag.code(DiagnosticId::Error("E0463".into()));
+        diag.set_span(self.span);
+        // FIXME: Find a way to distill this logic down into the derived SessionDiagnostic form
+        if (self.crate_name_symbol == sym::std || self.crate_name_symbol == sym::core)
+            && self.locator_triple != TargetTriple::from_triple(config::host_triple())
+        {
+            if self.missing_core {
+                diag.note(&format!("the `{}` target may not be installed", self.locator_triple));
+            } else {
+                diag.note(&format!(
+                    "the `{}` target may not support the standard library",
+                    self.locator_triple
+                ));
+            }
+            // NOTE: this suggests using rustup, even though the user may not have it installed.
+            // That's because they could choose to install it; or this may give them a hint which
+            // target they need to install from their distro.
+            if self.missing_core {
+                diag.help(&format!(
+                    "consider downloading the target with `rustup target add {}`",
+                    self.locator_triple
+                ));
+            }
+            // Suggest using #![no_std]. #[no_core] is unstable and not really supported anyway.
+            // NOTE: this is a dummy span if `extern crate std` was injected by the compiler.
+            // If it's not a dummy, that means someone added `extern crate std` explicitly and
+            // `#![no_std]` won't help.
+            if !self.missing_core && self.span.is_dummy() {
+                diag.note(&format!(
+                    "`std` is required by `{}` because it does not declare `#![no_std]`",
+                    self.current_crate
+                ));
+            }
+            if self.is_nightly_build {
+                diag.help("consider building the standard library from source with `cargo build -Zbuild-std`");
+            }
+        } else if self.crate_name_symbol == self.profiler_runtime {
+            diag.note("the compiler may have been built without the profiler runtime");
+        } else if self.crate_name.starts_with("rustc_") {
+            diag.help(
+                "maybe you need to install the missing components with: \
+                             `rustup component add rust-src rustc-dev llvm-tools-preview`",
+            );
+        }
+        diag.span_label(self.span, "can't find crate");
+        diag
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::no_dylib_plugin, code = "E0457")]
+pub struct NoDylibPlugin {
+    #[primary_span]
+    pub span: Span,
+    pub crate_name: String,
 }

@@ -170,3 +170,58 @@ metadata_failed_create_file =
 
 metadata_failed_create_encoded_metadata =
     failed to create encoded metadata from file: {$err}
+
+metadata_non_ascii_name =
+    cannot load a crate with a non-ascii name `{$crate_name}`
+
+metadata_extern_location_not_exist =
+    extern location for {$crate_name} does not exist: {$location}
+
+metadata_extern_location_not_file =
+    extern location for {$crate_name} is not a file: {$location}
+
+metadata_multiple_candidates =
+    multiple {$flavor} candidates for `{$crate_name}` found
+
+metadata_multiple_matching_crates =
+    multiple matching crates for `{$crate_name}`
+    .note = candidates:{$candidates}
+
+metadata_symbol_conflicts_current =
+    the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments. This will result in symbol conflicts between the two.
+
+metadata_symbol_conflicts_others =
+    found two different crates with name `{$crate_name}` that are not distinguished by differing `-C metadata`. This will result in symbol conflicts between the two.
+
+metadata_stable_crate_id_collision =
+    found crates (`{$crate_name0}` and `{$crate_name1}`) with colliding StableCrateId values.
+
+metadata_dl_error =
+    {$err}
+
+metadata_newer_crate_version =
+    found possibly newer version of crate `{$crate_name}`{$add_info}
+    .note = perhaps that crate needs to be recompiled?
+
+metadata_found_crate_versions =
+    the following crate versions were found:{$found_crates}
+
+metadata_no_crate_with_triple =
+    couldn't find crate `{$crate_name}` with expected target triple {$locator_triple}{$add_info}
+
+metadata_found_staticlib =
+    found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}
+    .help = please recompile that crate using --crate-type lib
+
+metadata_incompatible_rustc =
+    found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}
+    .help = please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)
+
+metadata_invalid_meta_files =
+    found invalid metadata files for crate `{$crate_name}`{$add_info}
+
+metadata_cannot_find_crate =
+    can't find crate for `{$crate_name}`{$add_info}
+
+metadata_no_dylib_plugin =
+    plugin `{$crate_name}` only found in rlib format, but must be available in dylib format
