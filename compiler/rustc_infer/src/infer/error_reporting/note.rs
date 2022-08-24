@@ -1,40 +1,26 @@
 use crate::errors::RegionOriginNote;
-use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
+use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddSubdiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage,
-    ErrorGuaranteed,
+    fluent, struct_span_err, AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
+use super::ObligationCauseAsDiagArg;
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
-        let mut label_or_note = |span, msg: DiagnosticMessage| {
-            let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
-            let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
-            let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);
-            if span_is_primary && sub_count == 0 && expanded_sub_count == 0 {
-                err.span_label(span, msg);
-            } else if span_is_primary && expanded_sub_count == 0 {
-                err.note(msg);
-            } else {
-                err.span_note(span, msg);
-            }
-        };
         match *origin {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
-                requirement: trace.cause.as_requirement_localised(),
+                requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
                 expected_found: self.values_str(trace.values),
             }
             .add_to_diagnostic(err),
-            infer::Reborrow(span) => {
-                label_or_note(span, fluent::infer::reborrow);
-                RegionOriginNote::Plain { span, msg: fluent::infer::reborrow }
-                    .add_to_diagnostic(err)
-            }
+            infer::Reborrow(span) => RegionOriginNote::Plain { span, msg: fluent::infer::reborrow }
+                .add_to_diagnostic(err),
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 RegionOriginNote::WithName {
@@ -46,7 +32,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .add_to_diagnostic(err);
             }
             infer::RelateObjectBound(span) => {
-                label_or_note(span, fluent::infer::relate_object_bound);
                 RegionOriginNote::Plain { span, msg: fluent::infer::relate_object_bound }
                     .add_to_diagnostic(err);
             }

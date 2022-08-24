@@ -4,7 +4,7 @@ use crate::errors::{
 };
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -65,6 +65,7 @@ pub struct InferenceDiagnosticsParentData {
     name: String,
 }
 
+#[derive(Clone)]
 pub enum UnderspecifiedArgKind {
     Type { prefix: Cow<'static, str> },
     Const { is_parameter: bool },
@@ -101,7 +102,7 @@ impl InferenceDiagnosticsData {
         InferenceBadError {
             span,
             bad_kind,
-            prefix_kind: self.kind.prefix_kind(),
+            prefix_kind: self.kind.clone(),
             prefix: self.kind.try_get_prefix().unwrap_or_default(),
             name: self.name.clone(),
             has_parent,
@@ -130,14 +131,18 @@ impl InferenceDiagnosticsParentData {
     }
 }
 
-impl UnderspecifiedArgKind {
-    fn prefix_kind(&self) -> &'static str {
-        match self {
+impl IntoDiagnosticArg for UnderspecifiedArgKind {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
             Self::Const { is_parameter: false } => "const",
-        }
+        };
+        rustc_errors::DiagnosticArgValue::Str(kind.into())
     }
+}
+
+impl UnderspecifiedArgKind {
     fn try_get_prefix(&self) -> Option<&str> {
         match self {
             Self::Type { prefix } => Some(prefix.as_ref()),
@@ -405,7 +410,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
                     x_kind: arg_data.where_x_is_kind(ty),
-                    prefix_kind: arg_data.kind.prefix_kind(),
+                    prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
                     kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
@@ -417,7 +422,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     span: insert_span,
                     name: String::new(),
                     x_kind: arg_data.where_x_is_kind(ty),
-                    prefix_kind: arg_data.kind.prefix_kind(),
+                    prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
                     kind: "closure",
@@ -568,9 +573,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         NeedTypeInfoInGenerator {
             bad_label: data.make_bad_error(span),
             span,
-            generator_kind: kind.descr(),
+            generator_kind: GeneratorKindAsDiagArg(kind),
         }
         .into_diagnostic(&self.tcx.sess.parse_sess)
+    }
+}
+
+pub struct GeneratorKindAsDiagArg(pub hir::GeneratorKind);
+
+impl IntoDiagnosticArg for GeneratorKindAsDiagArg {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self.0 {
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "async_block",
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "async_closure",
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "async_fn",
+            hir::GeneratorKind::Gen => "generator",
+        };
+        rustc_errors::DiagnosticArgValue::Str(kind.into())
     }
 }
 

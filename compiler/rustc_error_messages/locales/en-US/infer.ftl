@@ -63,7 +63,12 @@ infer_source_kind_closure_return =
 
 # generator_kind  may need to be translated
 infer_need_type_info_in_generator =
-    type inside {$generator_kind} must be known in this context
+    type inside {$generator_kind ->
+    [async_block] `async` block
+    [async_closure] `async` closure
+    [async_fn] `async fn` body
+    *[generator] generator
+    } must be known in this context
 
 
 infer_subtype = ...so that the {$requirement ->

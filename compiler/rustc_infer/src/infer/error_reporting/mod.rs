@@ -58,7 +58,7 @@ use crate::traits::{
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -78,7 +78,7 @@ use std::{cmp, fmt, iter};
 
 mod note;
 
-mod need_type_info;
+pub(crate) mod need_type_info;
 pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
@@ -2811,7 +2811,6 @@ pub enum FailureCode {
 pub trait ObligationCauseExt<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode;
     fn as_requirement_str(&self) -> &'static str;
-    fn as_requirement_localised(&self) -> &'static str;
 }
 
 impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
@@ -2880,10 +2879,15 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             _ => "types are compatible",
         }
     }
+}
 
-    fn as_requirement_localised(&self) -> &'static str {
+/// Newtype to allow implementing IntoDiagnosticArg
+pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
+
+impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         use crate::traits::ObligationCauseCode::*;
-        match self.code() {
+        let kind = match self.0.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
             CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => "type_compat",
             CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => "const_compat",
@@ -2896,6 +2900,8 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             MethodReceiver => "method_correct_type",
             _ => "other",
         }
+        .into();
+        rustc_errors::DiagnosticArgValue::Str(kind)
     }
 }
 

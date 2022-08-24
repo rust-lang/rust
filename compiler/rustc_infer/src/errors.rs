@@ -3,6 +3,11 @@ use rustc_hir::FnRetTy;
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{BytePos, Span};
 
+use crate::infer::error_reporting::{
+    need_type_info::{GeneratorKindAsDiagArg, UnderspecifiedArgKind},
+    ObligationCauseAsDiagArg,
+};
+
 #[derive(SessionDiagnostic)]
 #[diag(infer::opaque_hidden_type)]
 pub struct OpaqueHiddenTypeDiag {
@@ -73,7 +78,7 @@ pub struct AmbigousReturn<'a> {
 pub struct NeedTypeInfoInGenerator<'a> {
     #[primary_span]
     pub span: Span,
-    pub generator_kind: &'static str,
+    pub generator_kind: GeneratorKindAsDiagArg,
     #[subdiagnostic]
     pub bad_label: InferenceBadError<'a>,
 }
@@ -85,7 +90,7 @@ pub struct InferenceBadError<'a> {
     #[primary_span]
     pub span: Span,
     pub bad_kind: &'static str,
-    pub prefix_kind: &'static str,
+    pub prefix_kind: UnderspecifiedArgKind,
     pub has_parent: bool,
     pub prefix: &'a str,
     pub parent_prefix: &'a str,
@@ -107,7 +112,7 @@ pub enum SourceKindSubdiag<'a> {
         type_name: String,
         kind: &'static str,
         x_kind: &'static str,
-        prefix_kind: &'static str,
+        prefix_kind: UnderspecifiedArgKind,
         prefix: &'a str,
         arg_name: String,
     },
@@ -199,7 +204,7 @@ pub enum RegionOriginNote<'a> {
     },
     WithRequirement {
         span: Span,
-        requirement: &'static str,
+        requirement: ObligationCauseAsDiagArg<'a>,
         expected_found: Option<(DiagnosticStyledString, DiagnosticStyledString)>,
     },
 }
