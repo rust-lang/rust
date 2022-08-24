@@ -460,8 +460,8 @@ macro_rules! r#try {
 /// import the traits qualified so their names do not conflict:
 ///
 /// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
+/// use std::fmt::Write as _;
+/// use std::io::Write as _;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut s = String::new();
