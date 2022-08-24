@@ -320,5 +320,5 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
         }
     }
 
-    rustc_query_append! { [alloc_once!] }
+    rustc_query_append! { alloc_once! }
 }

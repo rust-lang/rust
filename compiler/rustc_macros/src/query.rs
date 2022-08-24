@@ -400,15 +400,15 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ([$($macro:tt)*]) => {
-                $($macro)* {
+            ($macro:ident !) => {
+                $macro! {
                     #query_stream
                 }
             }
         }
         macro_rules! rustc_dep_node_append {
-            ([$($macro:tt)*][$($other:tt)*]) => {
-                $($macro)*(
+            ($macro:ident! [$($other:tt)*]) => {
+                $macro!(
                     $($other)*
 
                     #dep_node_def_stream
@@ -417,8 +417,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
         #[macro_export]
         macro_rules! rustc_cached_queries {
-            ($($macro:tt)*) => {
-                $($macro)*(#cached_queries);
+            ( $macro:ident! ) => {
+                $macro!(#cached_queries);
             }
         }
         #[macro_export]
