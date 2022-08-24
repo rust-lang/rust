@@ -30,12 +30,12 @@ use crate::fmt::{Debug, Display};
 /// assert_eq!(err.to_string(), "invalid digit found in string");
 /// ```
 ///
-/// Errors may provide cause chain information. [`Error::source()`] is generally
+/// Errors may provide cause information. [`Error::source()`] is generally
 /// used when errors cross "abstraction boundaries". If one module must report
 /// an error that is caused by an error from a lower-level module, it can allow
 /// accessing that error via [`Error::source()`]. This makes it possible for the
 /// high-level module to provide its own errors while also revealing some of the
-/// implementation for debugging via `source` chains.
+/// implementation for debugging.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 #[rustc_has_incoherent_inherent_impls]
@@ -397,7 +397,7 @@ impl dyn Error {
     /// // let err : Box<Error> = b.into(); // or
     /// let err = &b as &(dyn Error);
     ///
-    /// let mut iter = err.chain();
+    /// let mut iter = err.sources();
     ///
     /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
     /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
@@ -406,8 +406,23 @@ impl dyn Error {
     /// ```
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
-    pub fn chain(&self) -> Chain<'_> {
-        Chain { current: Some(self) }
+    pub fn sources(&self) -> Source<'_> {
+        // You may think this method would be better in the Error trait, and you'd be right.
+        // Unfortunately that doesn't work, not because of the object safety rules but because we
+        // save a reference to self in Sources below as a trait object. If this method was
+        // declared in Error, then self would have the type &T where T is some concrete type which
+        // implements Error. We would need to coerce self to have type &dyn Error, but that requires
+        // that Self has a known size (i.e., Self: Sized). We can't put that bound on Error
+        // since that would forbid Error trait objects, and we can't put that bound on the method
+        // because that means the method can't be called on trait objects (we'd also need the
+        // 'static bound, but that isn't allowed because methods with bounds on Self other than
+        // Sized are not object-safe). Requiring an Unsize bound is not backwards compatible.
+        //
+        // Two possible solutions are to start the iterator at self.source() instead of self (see
+        // discussion on the tracking issue), or to wait for dyn* to exist (which would then permit
+        // the coercion).
+
+        Source { current: Some(self) }
     }
 }
 
@@ -417,12 +432,12 @@ impl dyn Error {
 /// its sources, use `skip(1)`.
 #[unstable(feature = "error_iter", issue = "58520")]
 #[derive(Clone, Debug)]
-pub struct Chain<'a> {
+pub struct Source<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
 
 #[unstable(feature = "error_iter", issue = "58520")]
-impl<'a> Iterator for Chain<'a> {
+impl<'a> Iterator for Source<'a> {
     type Item = &'a (dyn Error + 'static);
 
     fn next(&mut self) -> Option<Self::Item> {
