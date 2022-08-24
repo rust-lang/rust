@@ -299,16 +299,15 @@ pub(crate) fn create_query_frame<
     QueryStackFrame::new(name, description, span, def_kind, hash)
 }
 
-pub(crate) fn try_load_from_on_disk_cache<'tcx, K, V>(
+pub(crate) fn try_load_from_on_disk_cache<'tcx, K: DepNodeParams<TyCtxt<'tcx>>, V>(
     tcx: TyCtxt<'tcx>,
     dep_node: DepNode,
-    recover: fn(TyCtxt<'tcx>, DepNode) -> Option<K>,
     cache_on_disk: fn(TyCtxt<'tcx>, &K) -> bool,
     do_query: fn(TyCtxt<'tcx>, K) -> V,
 ) {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-    let key = recover(tcx, dep_node).unwrap_or_else(|| {
+    let key = K::recover(tcx, &dep_node).unwrap_or_else(|| {
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
     if cache_on_disk(tcx, &key) {
@@ -316,17 +315,12 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx, K, V>(
     }
 }
 
-pub(crate) fn force_from_dep_node<'tcx, Q>(
-    tcx: TyCtxt<'tcx>,
-    // dep_node: rustc_query_system::dep_graph::DepNode<CTX::DepKind>,
-    dep_node: DepNode,
-    recover: fn(TyCtxt<'tcx>, DepNode) -> Option<Q::Key>,
-) -> bool
+fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
     Q: QueryDescription<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
 {
-    if let Some(key) = recover(tcx, dep_node) {
+    if let Some(key) = Q::Key::recover(tcx, &dep_node) {
         #[cfg(debug_assertions)]
         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
         let tcx = QueryCtxt::from_tcx(tcx);
@@ -405,7 +399,6 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         mod query_callbacks {
             use super::*;
-            use rustc_middle::dep_graph::DepNode;
             use rustc_query_system::dep_graph::DepNodeParams;
             use rustc_query_system::query::QueryDescription;
             use rustc_query_system::dep_graph::FingerprintStyle;
@@ -479,17 +472,14 @@ macro_rules! define_queries {
                     }
                 }
 
-                #[inline(always)]
-                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> Option<<queries::$name<'tcx> as QueryConfig>::Key> {
-                    <<queries::$name<'_> as QueryConfig>::Key as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
-                }
-
                 DepKindStruct {
                     is_anon,
                     is_eval_always,
                     fingerprint_style,
-                    force_from_dep_node: Some(|tcx, dep_node| $crate::plumbing::force_from_dep_node::<queries::$name<'_>>(tcx, dep_node, recover)),
-                    try_load_from_on_disk_cache: Some(|tcx, key| $crate::plumbing::try_load_from_on_disk_cache(tcx, key, recover, queries::$name::cache_on_disk, TyCtxt::$name)),
+                    force_from_dep_node: Some(|tcx, dep_node| $crate::plumbing::force_from_dep_node::<queries::$name<'_>>(tcx, dep_node)),
+                    try_load_from_on_disk_cache: Some(|tcx, key| $crate::plumbing::try_load_from_on_disk_cache::<
+                        <queries::$name<'_> as QueryConfig>::Key, _
+                    >(tcx, key, queries::$name::cache_on_disk, TyCtxt::$name)),
                 }
             })*
         }
