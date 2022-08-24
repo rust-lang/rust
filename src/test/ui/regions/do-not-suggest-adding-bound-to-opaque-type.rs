@@ -1,29 +1,12 @@
-#![feature(allocator_api)]
+pub trait T {}
 
-use std::{
-    alloc::{AllocError, Allocator, Layout},
-    ptr::NonNull,
-};
+struct S<'a>(&'a ());
 
-struct GhostBump;
+impl<'a> T for S<'a> {}
 
-unsafe impl Allocator for &GhostBump {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        todo!()
-    }
-
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        todo!()
-    }
-}
-
-fn foo() -> impl Iterator<Item = usize> {
-    let arena = GhostBump;
-    let mut vec = Vec::new_in(&arena); //~ ERROR `arena` does not live long enough
-    vec.push(1);
-    vec.push(2);
-    vec.push(3);
-    vec.into_iter()
+fn foo() -> impl T {
+    let x = ();
+    S(&x) //~ ERROR `x` does not live long enough
 }
 
 fn main() {}

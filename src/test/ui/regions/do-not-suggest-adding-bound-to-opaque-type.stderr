@@ -1,13 +1,13 @@
-error[E0597]: `arena` does not live long enough
-  --> $DIR/do-not-suggest-adding-bound-to-opaque-type.rs:22:31
+error[E0597]: `x` does not live long enough
+  --> $DIR/do-not-suggest-adding-bound-to-opaque-type.rs:9:7
    |
-LL |     let mut vec = Vec::new_in(&arena);
-   |                               ^^^^^^ borrowed value does not live long enough
-...
-LL |     vec.into_iter()
-   |     --------------- opaque type requires that `arena` is borrowed for `'static`
+LL |     S(&x)
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     opaque type requires that `x` is borrowed for `'static`
 LL | }
-   | - `arena` dropped here while still borrowed
+   | - `x` dropped here while still borrowed
 
 error: aborting due to previous error
 
