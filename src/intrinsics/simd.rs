@@ -14,7 +14,7 @@ fn report_simd_type_validation_error(
 ) {
     fx.tcx.sess.span_err(span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
     // Prevent verifier error
-    crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
@@ -157,7 +157,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                             ),
                         );
                         // Prevent verifier error
-                        crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+                        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
                         return;
                     }
                 }
@@ -274,12 +274,17 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 idx_const
             } else {
                 fx.tcx.sess.span_warn(span, "Index argument for `simd_extract` is not a constant");
-                let res = crate::trap::trap_unimplemented_ret_value(
+                let trap_block = fx.bcx.create_block();
+                let dummy_block = fx.bcx.create_block();
+                let true_ = fx.bcx.ins().iconst(types::I8, 1);
+                fx.bcx.ins().brnz(true_, trap_block, &[]);
+                fx.bcx.ins().jump(dummy_block, &[]);
+                fx.bcx.switch_to_block(trap_block);
+                crate::trap::trap_unimplemented(
                     fx,
-                    ret.layout(),
                     "Index argument for `simd_extract` is not a constant",
                 );
-                ret.write_cvalue(fx, res);
+                fx.bcx.switch_to_block(dummy_block);
                 return;
             };
 
@@ -392,21 +397,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let layout = a.layout();
             let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let res_lane_layout = fx.layout_of(lane_ty);
 
             for lane in 0..lane_count {
-                let a_lane = a.value_lane(fx, lane);
-                let b_lane = b.value_lane(fx, lane);
-                let c_lane = c.value_lane(fx, lane);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+                let c_lane = c.value_lane(fx, lane).load_scalar(fx);
 
-                let res_lane = match lane_ty.kind() {
-                    ty::Float(FloatTy::F32) => {
-                        fx.easy_call("fmaf", &[a_lane, b_lane, c_lane], lane_ty)
-                    }
-                    ty::Float(FloatTy::F64) => {
-                        fx.easy_call("fma", &[a_lane, b_lane, c_lane], lane_ty)
-                    }
-                    _ => unreachable!(),
-                };
+                let res_lane = fx.bcx.ins().fma(a_lane, b_lane, c_lane);
+                let res_lane = CValue::by_val(res_lane, res_lane_layout);
 
                 ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
             }

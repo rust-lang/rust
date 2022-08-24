@@ -62,7 +62,7 @@ use cranelift_codegen::{
 };
 
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_session::config::OutputType;
+use rustc_session::config::{OutputFilenames, OutputType};
 
 use crate::prelude::*;
 
@@ -205,15 +205,11 @@ pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
 }
 
 pub(crate) fn write_ir_file(
-    tcx: TyCtxt<'_>,
-    name: impl FnOnce() -> String,
+    output_filenames: &OutputFilenames,
+    name: &str,
     write: impl FnOnce(&mut dyn Write) -> std::io::Result<()>,
 ) {
-    if !should_write_ir(tcx) {
-        return;
-    }
-
-    let clif_output_dir = tcx.output_filenames(()).with_extension("clif");
+    let clif_output_dir = output_filenames.with_extension("clif");
 
     match std::fs::create_dir(&clif_output_dir) {
         Ok(()) => {}
@@ -221,44 +217,43 @@ pub(crate) fn write_ir_file(
         res @ Err(_) => res.unwrap(),
     }
 
-    let clif_file_name = clif_output_dir.join(name());
+    let clif_file_name = clif_output_dir.join(name);
 
     let res = std::fs::File::create(clif_file_name).and_then(|mut file| write(&mut file));
     if let Err(err) = res {
-        tcx.sess.warn(&format!("error writing ir file: {}", err));
+        // Using early_warn as no Session is available here
+        rustc_session::early_warn(
+            rustc_session::config::ErrorOutputType::default(),
+            &format!("error writing ir file: {}", err),
+        );
     }
 }
 
-pub(crate) fn write_clif_file<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn write_clif_file(
+    output_filenames: &OutputFilenames,
+    symbol_name: &str,
     postfix: &str,
     isa: &dyn cranelift_codegen::isa::TargetIsa,
-    instance: Instance<'tcx>,
     func: &cranelift_codegen::ir::Function,
     mut clif_comments: &CommentWriter,
 ) {
     // FIXME work around filename too long errors
-    write_ir_file(
-        tcx,
-        || format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
-        |file| {
-            let mut clif = String::new();
-            cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func)
-                .unwrap();
+    write_ir_file(output_filenames, &format!("{}.{}.clif", symbol_name, postfix), |file| {
+        let mut clif = String::new();
+        cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func).unwrap();
 
-            for flag in isa.flags().iter() {
-                writeln!(file, "set {}", flag)?;
-            }
-            write!(file, "target {}", isa.triple().architecture.to_string())?;
-            for isa_flag in isa.isa_flags().iter() {
-                write!(file, " {}", isa_flag)?;
-            }
-            writeln!(file, "\n")?;
-            writeln!(file)?;
-            file.write_all(clif.as_bytes())?;
-            Ok(())
-        },
-    );
+        for flag in isa.flags().iter() {
+            writeln!(file, "set {}", flag)?;
+        }
+        write!(file, "target {}", isa.triple().architecture.to_string())?;
+        for isa_flag in isa.isa_flags().iter() {
+            write!(file, " {}", isa_flag)?;
+        }
+        writeln!(file, "\n")?;
+        writeln!(file)?;
+        file.write_all(clif.as_bytes())?;
+        Ok(())
+    });
 }
 
 impl fmt::Debug for FunctionCx<'_, '_, '_> {
