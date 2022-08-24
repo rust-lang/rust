@@ -18,7 +18,7 @@ use std::rc::Rc;
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
     notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
-    render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
+    render_attributes_in_pre, render_impl, render_rightside, render_stability_since_raw,
     AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
@@ -709,14 +709,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
         write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
-        write!(w, "<div class=\"rightside\">");
-
-        let has_stability = render_stability_since(w, m, t, cx.tcx());
-        if has_stability {
-            w.write_str(" · ");
-        }
-        write_srclink(cx, m, w);
-        write!(w, "</div>");
+        render_rightside(w, cx, m, t, RenderMode::Normal);
         write!(w, "<h4 class=\"code-header\">");
         render_assoc_item(
             w,
@@ -1260,7 +1253,13 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w.write_str(")");
             }
             w.write_str("</code>");
-            render_stability_since(w, variant, it, cx.tcx());
+            render_stability_since_raw(
+                w,
+                variant.stable_since(cx.tcx()),
+                variant.const_stability(cx.tcx()),
+                it.stable_since(cx.tcx()),
+                it.const_stable_since(cx.tcx()),
+            );
             w.write_str("</h3>");
 
             use crate::clean::Variant;
@@ -1589,21 +1588,6 @@ where
     w.write_fmt(format_args!("<pre class=\"rust {}\"><code>", item_name));
     f(w);
     w.write_str("</code></pre>");
-}
-
-fn render_stability_since(
-    w: &mut Buffer,
-    item: &clean::Item,
-    containing_item: &clean::Item,
-    tcx: TyCtxt<'_>,
-) -> bool {
-    render_stability_since_raw(
-        w,
-        item.stable_since(tcx),
-        item.const_stability(tcx),
-        containing_item.stable_since(tcx),
-        containing_item.const_stable_since(tcx),
-    )
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {

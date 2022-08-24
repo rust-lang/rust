@@ -191,12 +191,6 @@ impl StylePath {
     }
 }
 
-fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
-    if let Some(l) = cx.src_href(item) {
-        write!(buf, "<a class=\"srclink\" href=\"{}\">source</a>", l)
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Hash)]
 struct ItemEntry {
     url: String,
@@ -1691,7 +1685,9 @@ fn render_rightside(
         const_stable_since,
     );
     let mut srclink = Buffer::empty_from(w);
-    write_srclink(cx, item, &mut srclink);
+    if let Some(l) = cx.src_href(item) {
+        write!(srclink, "<a class=\"srclink\" href=\"{}\">source</a>", l)
+    }
     if has_stability && !srclink.is_empty() {
         rightside.write_str(" · ");
     }
