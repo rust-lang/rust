@@ -12,6 +12,43 @@ macro_rules! panic {
     };
 }
 
+/// Asserts that a boolean expression is `true` at runtime.
+///
+/// This will return the second expression in macro if the provided first expression cannot be
+/// evaluated to `true` at runtime.
+///
+/// # Same As
+///
+/// ```
+/// if ($first) == false {
+///     return $second;
+/// }
+/// ```
+///
+/// # Examples
+///
+/// ```
+///
+/// fn some_computation() -> bool { true } // a very simple function
+///
+/// fn try_something() -> Result<(), &'static str> {
+///     assert_return!(some_computation(), Err("computation failed"));
+///     // .....
+///     Ok(())
+/// }
+///
+/// ```
+#[stable(feature = "rust1", since = "1.0.0")]
+#[macro_export]
+#[cfg_attr(not(test), rustc_diagnostic_item = "assert_return_macro")]
+macro_rules! assert_return {
+    ($cond:expr, $ret:expr $(,)?) => {
+        if ($cond) == false {
+            return $ret;
+        }
+    };
+}
+
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
 ///
 /// On panic, this macro will print the values of the expressions with their
