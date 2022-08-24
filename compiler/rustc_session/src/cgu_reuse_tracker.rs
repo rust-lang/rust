@@ -2,7 +2,8 @@
 //! compilation. This is used for incremental compilation tests and debug
 //! output.
 
-use crate::errors::IncorrectCguReuseType;
+use crate::errors::{CguNotRecorded, IncorrectCguReuseType};
+use crate::Session;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_span::{Span, Symbol};
@@ -104,7 +105,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn check_expected_reuse(&self, diag: &rustc_errors::Handler) {
+    pub fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
             let data = data.lock().unwrap();
 
@@ -118,7 +119,7 @@ impl CguReuseTracker {
                     };
 
                     if error {
-                        let at_least = if at_least { "at least " } else { "" };
+                        let at_least = if at_least { 1 } else { 0 };
                         IncorrectCguReuseType {
                             span: error_span.0,
                             cgu_user_name: &cgu_user_name,
@@ -128,15 +129,7 @@ impl CguReuseTracker {
                         };
                     }
                 } else {
-                    //FIXME: Remove this once PR #100694 that implements `[fatal(..)]` is merged
-                    let msg = format!(
-                        "CGU-reuse for `{cgu_user_name}` (mangled: `{cgu_name}`) was \
-                                       not recorded"
-                    );
-                    diag.span_fatal(error_span.0, &msg)
-
-                    //FIXME: Uncomment this once PR #100694 that implements `[fatal(..)]` is merged
-                    // CguNotRecorded { cgu_user_name, cgu_name };
+                    sess.emit_fatal(CguNotRecorded { cgu_user_name, cgu_name });
                 }
             }
         }
