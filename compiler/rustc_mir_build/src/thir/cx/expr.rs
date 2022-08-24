@@ -562,7 +562,7 @@ impl<'tcx> Cx<'tcx> {
                 self.convert_path_expr(expr, res)
             }
 
-            hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
+            hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm(Box::new(InlineAsmExpr {
                 template: asm.template,
                 operands: asm
                     .operands
@@ -621,7 +621,7 @@ impl<'tcx> Cx<'tcx> {
                     .collect(),
                 options: asm.options,
                 line_spans: asm.line_spans,
-            },
+            })),
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);

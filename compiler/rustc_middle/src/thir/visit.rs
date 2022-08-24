@@ -1,5 +1,5 @@
 use super::{
-    Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind,
+    Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind,
     Thir,
 };
 
@@ -140,7 +140,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         NamedConst { def_id: _, substs: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
-        InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
+        InlineAsm(box InlineAsmExpr { ref operands, template: _, options: _, line_spans: _ }) => {
             for op in &**operands {
                 use InlineAsmOperand::*;
                 match op {

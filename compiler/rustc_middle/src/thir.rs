@@ -133,6 +133,14 @@ pub struct ClosureExpr<'tcx> {
     pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
 }
 
+#[derive(Clone, Debug, HashStable)]
+pub struct InlineAsmExpr<'tcx> {
+    pub template: &'tcx [InlineAsmTemplatePiece],
+    pub operands: Box<[InlineAsmOperand<'tcx>]>,
+    pub options: InlineAsmOptions,
+    pub line_spans: &'tcx [Span],
+}
+
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
@@ -432,12 +440,7 @@ pub enum ExprKind<'tcx> {
         def_id: DefId,
     },
     /// Inline assembly, i.e. `asm!()`.
-    InlineAsm {
-        template: &'tcx [InlineAsmTemplatePiece],
-        operands: Box<[InlineAsmOperand<'tcx>]>,
-        options: InlineAsmOptions,
-        line_spans: &'tcx [Span],
-    },
+    InlineAsm(Box<InlineAsmExpr<'tcx>>),
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
     /// A `yield` expression.
@@ -804,7 +807,7 @@ mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block, 56);
-    static_assert_size!(Expr<'_>, 80);
+    static_assert_size!(Expr<'_>, 64);
     static_assert_size!(Pat<'_>, 24);
     static_assert_size!(Stmt<'_>, 72);
 }

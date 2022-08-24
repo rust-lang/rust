@@ -400,7 +400,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm { template, ref operands, options, line_spans } => {
+            ExprKind::InlineAsm(box InlineAsmExpr { template, ref operands, options, line_spans }) => {
                 use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()
