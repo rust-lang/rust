@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # ignore-windows
 # `ln` is actually `cp` on msys.

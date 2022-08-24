@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTDOC) -Z unstable-options --generate-redirect-map foo.rs -o "$(TMPDIR)/out"

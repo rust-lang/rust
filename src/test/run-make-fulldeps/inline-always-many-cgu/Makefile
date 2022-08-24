@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) foo.rs --emit llvm-ir -C codegen-units=2

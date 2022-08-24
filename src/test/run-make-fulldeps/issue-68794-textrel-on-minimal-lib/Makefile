@@ -6,7 +6,7 @@
 # The test links a rust static library into a shared library, and checks that
 # the linker doesn't have to flag the resulting file as containing TEXTRELs.
 
--include ../tools.mk
+include ../tools.mk
 
 # only-linux
 
