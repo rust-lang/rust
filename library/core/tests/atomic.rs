@@ -155,7 +155,7 @@ fn ptr_add_data() {
 
     assert_eq!(atom.fetch_ptr_sub(1, SeqCst), n.wrapping_add(1));
     assert_eq!(atom.load(SeqCst), n);
-    let bytes_from_n = |b| n.cast::<u8>().wrapping_add(b).cast::<i64>();
+    let bytes_from_n = |b| n.wrapping_byte_add(b);
 
     assert_eq!(atom.fetch_byte_add(1, SeqCst), n);
     assert_eq!(atom.load(SeqCst), bytes_from_n(1));
