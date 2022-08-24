@@ -1309,6 +1309,7 @@ rustc_queries! {
     query layout_of(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
+        depth_limit
         desc { "computing layout of `{}`", key.value }
         remap_env_constness
     }

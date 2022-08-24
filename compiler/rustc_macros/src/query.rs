@@ -106,8 +106,11 @@ struct QueryModifiers {
     /// Generate a dep node based on the dependencies of the query
     anon: Option<Ident>,
 
-    // Always evaluate the query, ignoring its dependencies
+    /// Always evaluate the query, ignoring its dependencies
     eval_always: Option<Ident>,
+
+    /// Whether the query has a call depth limit
+    depth_limit: Option<Ident>,
 
     /// Use a separate query provider for local and extern crates
     separate_provide_extern: Option<Ident>,
@@ -126,6 +129,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
+    let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut remap_env_constness = None;
 
@@ -194,6 +198,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(anon = modifier);
         } else if modifier == "eval_always" {
             try_insert!(eval_always = modifier);
+        } else if modifier == "depth_limit" {
+            try_insert!(depth_limit = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
         } else if modifier == "remap_env_constness" {
@@ -215,6 +221,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         no_hash,
         anon,
         eval_always,
+        depth_limit,
         separate_provide_extern,
         remap_env_constness,
     })
@@ -364,6 +371,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         // Pass on the eval_always modifier
         if let Some(eval_always) = &modifiers.eval_always {
             attributes.push(quote! { (#eval_always) });
+        };
+        // Pass on the depth_limit modifier
+        if let Some(depth_limit) = &modifiers.depth_limit {
+            attributes.push(quote! { (#depth_limit) });
         };
         // Pass on the separate_provide_extern modifier
         if let Some(separate_provide_extern) = &modifiers.separate_provide_extern {
