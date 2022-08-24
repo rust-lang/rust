@@ -320,7 +320,6 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                     // CoWR: if a store happens-before the current load,
                     // then we can't read-from anything earlier in modification order.
                     // C++20 §6.9.2.2 [intro.races] paragraph 18
-                    log::info!("Stopping due to coherent write-read");
                     false
                 } else if store_elem.loads.borrow().iter().any(|(&load_index, &load_timestamp)| {
                     load_timestamp <= clocks.clock[load_index]
@@ -328,13 +327,11 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                     // CoRR: if there was a load from this store which happened-before the current load,
                     // then we cannot read-from anything earlier in modification order.
                     // C++20 §6.9.2.2 [intro.races] paragraph 16
-                    log::info!("Stopping due to coherent read-read");
                     false
                 } else if store_elem.timestamp <= clocks.fence_seqcst[store_elem.store_index] {
                     // The current load, which may be sequenced-after an SC fence, cannot read-before
                     // the last store sequenced-before an SC fence in another thread.
                     // C++17 §32.4 [atomics.order] paragraph 6
-                    log::info!("Stopping due to coherent load sequenced after sc fence");
                     false
                 } else if store_elem.timestamp <= clocks.write_seqcst[store_elem.store_index]
                     && store_elem.is_seqcst
@@ -342,13 +339,11 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                     // The current non-SC load, which may be sequenced-after an SC fence,
                     // cannot read-before the last SC store executed before the fence.
                     // C++17 §32.4 [atomics.order] paragraph 4
-                    log::info!("Stopping due to needing to load from the last SC store");
                     false
                 } else if is_seqcst && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index] {
                     // The current SC load cannot read-before the last store sequenced-before
                     // the last SC fence.
                     // C++17 §32.4 [atomics.order] paragraph 5
-                    log::info!("Stopping due to sc load needing to load from the last SC store before an SC fence");
                     false
                 } else {true};
 
