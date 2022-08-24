@@ -207,7 +207,7 @@ use std::iter;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use crate::errors::{FatalError, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit};
+use crate::errors::{LargeAssignmentsLint, RecursionLimit, RequiresLangItem, TypeLengthLimit};
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -1328,8 +1328,10 @@ impl<'v> RootCollector<'_, 'v> {
 
         let start_def_id = match self.tcx.lang_items().require(LangItem::Start) {
             Ok(s) => s,
-            Err(error_message) => {
-                self.tcx.sess.emit_fatal(FatalError { error_message: error_message.clone() });
+            Err(lang_item_err) => {
+                self.tcx
+                    .sess
+                    .emit_fatal(RequiresLangItem { lang_item: lang_item_err.0.name().to_string() });
             }
         };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).output();

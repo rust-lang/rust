@@ -33,9 +33,9 @@ pub struct TypeLengthLimit {
 }
 
 #[derive(SessionDiagnostic)]
-#[diag(monomorphize::fatal_error)]
-pub struct FatalError {
-    pub error_message: String,
+#[diag(monomorphize::requires_lang_item)]
+pub struct RequiresLangItem {
+    pub lang_item: String,
 }
 
 pub struct UnusedGenericParams {
