@@ -1,6 +1,6 @@
 # Regression test for issue #10973
 
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(RUSTC) --crate-type=rlib --test foo.rs

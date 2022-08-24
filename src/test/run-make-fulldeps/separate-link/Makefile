@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	echo 'fn main(){}' | $(RUSTC) -Z no-link -
