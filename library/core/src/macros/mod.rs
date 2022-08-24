@@ -457,7 +457,8 @@ macro_rules! r#try {
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
 /// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
+/// avoid conflict between the trait names, such as by importing them as `_` or otherwise renaming
+/// them:
 ///
 /// ```
 /// use std::fmt::Write as _;
