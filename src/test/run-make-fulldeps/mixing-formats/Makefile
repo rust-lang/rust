@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Testing various mixings of rlibs and dylibs. Makes sure that it's possible to
 # link an rlib to a dylib. The dependency tree among the file looks like:
