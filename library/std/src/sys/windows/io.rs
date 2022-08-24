@@ -132,10 +132,10 @@ unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
         return false;
     }
     let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const c::FILE_NAME_INFO);
-    let s = core::slice::from_raw_parts(
-        name_info.FileName.as_ptr(),
-        name_info.FileNameLength as usize / 2,
-    );
+    let name_len = name_info.FileNameLength as usize / 2;
+    // Offset to get the `FileName` field.
+    let name_ptr = name_info_bytes.as_ptr().offset(size_of::<c::DWORD>() as isize).cast::<u16>();
+    let s = core::slice::from_raw_parts(name_ptr, name_len);
     let name = String::from_utf16_lossy(s);
     // This checks whether 'pty' exists in the file name, which indicates that
     // a pseudo-terminal is attached. To mitigate against false positives
