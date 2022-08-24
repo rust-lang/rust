@@ -23,7 +23,7 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
         (RegKind::Integer, 9..=16) => types::I128,
         (RegKind::Float, 4) => types::F32,
         (RegKind::Float, 8) => types::F64,
-        (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
+        (RegKind::Vector, size) => types::I8.by(u32::try_from(size).unwrap()).unwrap(),
         _ => unreachable!("{:?}", reg),
     };
     AbiParam::new(clif_ty)
@@ -184,7 +184,7 @@ pub(super) fn from_casted_value<'tcx>(
     let abi_params = cast_target_to_abi_params(cast);
     let abi_param_size: u32 = abi_params.iter().map(|param| param.value_type.bytes()).sum();
     let layout_size = u32::try_from(layout.size.bytes()).unwrap();
-    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
         // specify stack slot alignment.
@@ -193,7 +193,7 @@ pub(super) fn from_casted_value<'tcx>(
         // larger alignment than the integer.
         size: (std::cmp::max(abi_param_size, layout_size) + 15) / 16 * 16,
     });
-    let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
+    let ptr = Pointer::stack_slot(stack_slot);
     let mut offset = 0;
     let mut block_params_iter = block_params.iter().copied();
     for param in abi_params {

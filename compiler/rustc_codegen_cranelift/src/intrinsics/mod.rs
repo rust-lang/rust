@@ -44,7 +44,7 @@ fn report_atomic_type_validation_error<'tcx>(
         ),
     );
     // Prevent verifier error
-    crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
@@ -53,7 +53,7 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
         _ => unreachable!(),
     };
 
-    match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+    match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
         // Cranelift currently only implements icmp for 128bit vectors.
         Some(vector_ty) if vector_ty.bits() == 128 => Some(vector_ty),
         _ => None,
@@ -301,7 +301,44 @@ fn codegen_float_intrinsic_call<'tcx>(
         _ => unreachable!(),
     };
 
-    let res = fx.easy_call(name, &args, ty);
+    let layout = fx.layout_of(ty);
+    let res = match intrinsic {
+        sym::fmaf32 | sym::fmaf64 => {
+            let a = args[0].load_scalar(fx);
+            let b = args[1].load_scalar(fx);
+            let c = args[2].load_scalar(fx);
+            CValue::by_val(fx.bcx.ins().fma(a, b, c), layout)
+        }
+        sym::copysignf32 | sym::copysignf64 => {
+            let a = args[0].load_scalar(fx);
+            let b = args[1].load_scalar(fx);
+            CValue::by_val(fx.bcx.ins().fcopysign(a, b), layout)
+        }
+        sym::fabsf32
+        | sym::fabsf64
+        | sym::floorf32
+        | sym::floorf64
+        | sym::ceilf32
+        | sym::ceilf64
+        | sym::truncf32
+        | sym::truncf64 => {
+            let a = args[0].load_scalar(fx);
+
+            let val = match intrinsic {
+                sym::fabsf32 | sym::fabsf64 => fx.bcx.ins().fabs(a),
+                sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(a),
+                sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(a),
+                sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(a),
+                _ => unreachable!(),
+            };
+
+            CValue::by_val(val, layout)
+        }
+        // These intrinsics aren't supported natively by Cranelift.
+        // Lower them to a libcall.
+        _ => fx.easy_call(name, &args, ty),
+    };
+
     ret.write_cvalue(fx, res);
 
     true
@@ -818,8 +855,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap());
-                        fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
                         fx.tcx
@@ -851,8 +886,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap());
-                        fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
                         fx.tcx

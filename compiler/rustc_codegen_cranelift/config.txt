@@ -15,3 +15,38 @@
 # This option can be changed while the build system is already running for as long as sysroot
 # building hasn't started yet.
 #keep_sysroot
+
+
+# Testsuite
+#
+# Each test suite item has a corresponding key here. The default is to run all tests.
+# Comment any of these lines to skip individual tests.
+
+testsuite.no_sysroot
+build.mini_core
+build.example
+jit.mini_core_hello_world
+aot.mini_core_hello_world
+
+testsuite.base_sysroot
+aot.arbitrary_self_types_pointers_and_wrappers
+aot.issue_91827_extern_types
+build.alloc_system
+aot.alloc_example
+jit.std_example
+aot.std_example
+aot.dst_field_align
+aot.subslice-patterns-const-eval
+aot.track-caller-attribute
+aot.float-minmax-pass
+aot.mod_bench
+
+testsuite.extended_sysroot
+test.rust-random/rand
+bench.simple-raytracer
+test.libcore
+test.regex-shootout-regex-dna
+test.regex
+test.portable-simd
+
+testsuite.abi-checker
