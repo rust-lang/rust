@@ -108,7 +108,7 @@ pub struct Block {
 type UserTy<'tcx> = Option<Box<CanonicalUserType<'tcx>>>;
 
 #[derive(Clone, Debug, HashStable)]
-pub struct Adt<'tcx> {
+pub struct AdtExpr<'tcx> {
     /// The ADT we're constructing.
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
@@ -390,7 +390,7 @@ pub enum ExprKind<'tcx> {
         fields: Box<[ExprId]>,
     },
     /// An ADT constructor, e.g. `Foo {x: 1, y: 2}`.
-    Adt(Box<Adt<'tcx>>),
+    Adt(Box<AdtExpr<'tcx>>),
     /// A type ascription on a place.
     PlaceTypeAscription {
         source: ExprId,

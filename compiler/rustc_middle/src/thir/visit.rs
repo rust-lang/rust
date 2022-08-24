@@ -1,6 +1,6 @@
 use super::{
-    Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind,
-    Thir,
+    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat,
+    PatKind, Stmt, StmtKind, Thir,
 };
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
@@ -109,7 +109,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box crate::thir::Adt {
+        Adt(box AdtExpr {
             ref fields,
             ref base,
             adt_def: _,

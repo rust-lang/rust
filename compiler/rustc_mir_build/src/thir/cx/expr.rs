@@ -341,7 +341,7 @@ impl<'tcx> Cx<'tcx> {
                                 expr: self.mirror_expr(e),
                             })
                             .collect();
-                        ExprKind::Adt(Box::new(Adt {
+                        ExprKind::Adt(Box::new(AdtExpr {
                             adt_def,
                             substs,
                             variant_index: index,
@@ -466,7 +466,7 @@ impl<'tcx> Cx<'tcx> {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
-                        ExprKind::Adt(Box::new(Adt {
+                        ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: VariantIdx::new(0),
                             substs,
@@ -493,7 +493,7 @@ impl<'tcx> Cx<'tcx> {
                                 let user_ty =
                                     user_provided_types.get(expr.hir_id).copied().map(Box::new);
                                 debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
-                                ExprKind::Adt(Box::new(Adt {
+                                ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
                                     substs,
@@ -867,7 +867,7 @@ impl<'tcx> Cx<'tcx> {
                 match ty.kind() {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(Adt {
+                    ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,

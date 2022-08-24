@@ -314,7 +314,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index,
                 substs,
@@ -400,7 +400,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm(box InlineAsmExpr { template, ref operands, options, line_spans }) => {
+            ExprKind::InlineAsm(box InlineAsmExpr {
+                template,
+                ref operands,
+                options,
+                line_spans,
+            }) => {
                 use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()
