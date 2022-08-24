@@ -474,6 +474,23 @@ macro_rules! r#try {
 /// }
 /// ```
 ///
+/// If you also need the trait names themselves, such as to implement one or both on your types,
+/// import the containing module and then name them with a prefix:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::fmt::{self, Write as _};
+/// use std::io::{self, Write as _};
+///
+/// struct Example;
+///
+/// impl fmt::Write for Example {
+///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///          unimplemented!();
+///     }
+/// }
+/// ```
+///
 /// Note: This macro can be used in `no_std` setups as well.
 /// In a `no_std` setup you are responsible for the implementation details of the components.
 ///
