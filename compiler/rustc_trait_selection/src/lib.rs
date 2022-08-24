@@ -16,7 +16,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
-#![feature(label_break_value)]
+#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
