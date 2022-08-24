@@ -152,14 +152,14 @@ mod state {
 
         fn drop_excess_capacity(&mut self) {
             self.assert_invariants();
-            if self.active_jobs == self.pending_jobs {
-                // Drop all excess tokens
-                self.tokens.truncate(std::cmp::max(self.active_jobs, 1));
-            } else {
-                // Keep some excess tokens to satisfy requests faster
-                const MAX_EXTRA_CAPACITY: usize = 2;
-                self.tokens.truncate(std::cmp::max(self.active_jobs + MAX_EXTRA_CAPACITY, 1));
-            }
+
+            // Drop all tokens that can never be used anymore
+            self.tokens.truncate(std::cmp::max(self.pending_jobs, 1));
+
+            // Keep some excess tokens to satisfy requests faster
+            const MAX_EXTRA_CAPACITY: usize = 2;
+            self.tokens.truncate(std::cmp::max(self.active_jobs + MAX_EXTRA_CAPACITY, 1));
+
             self.assert_invariants();
         }
     }
