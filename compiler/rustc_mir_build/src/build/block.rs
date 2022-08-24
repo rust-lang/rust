@@ -1,6 +1,7 @@
 use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use rustc_middle::middle::region::Scope;
 use rustc_middle::thir::*;
 use rustc_middle::{mir::*, ty};
 use rustc_span::Span;
@@ -34,10 +35,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             &stmts,
                             expr,
                             safety_mode,
+                            region_scope,
                         ))
                     })
                 } else {
-                    this.ast_block_stmts(destination, block, span, &stmts, expr, safety_mode)
+                    this.ast_block_stmts(
+                        destination,
+                        block,
+                        span,
+                        &stmts,
+                        expr,
+                        safety_mode,
+                        region_scope,
+                    )
                 }
             })
         })
@@ -51,6 +61,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         stmts: &[StmtId],
         expr: Option<&Expr<'tcx>>,
         safety_mode: BlockSafety,
+        region_scope: Scope,
     ) -> BlockAnd<()> {
         let this = self;
 
@@ -73,6 +84,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut let_scope_stack = Vec::with_capacity(8);
         let outer_source_scope = this.source_scope;
         let outer_in_scope_unsafe = this.in_scope_unsafe;
+        // This scope information is kept for breaking out of the parent remainder scope in case
+        // one let-else pattern matching fails.
+        // By doing so, we can be sure that even temporaries that receive extended lifetime
+        // assignments are dropped, too.
+        let mut last_remainder_scope = region_scope;
         this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
@@ -132,7 +148,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 initializer_span,
                                                 else_block,
                                                 visibility_scope,
-                                                *remainder_scope,
+                                                last_remainder_scope,
                                                 remainder_span,
                                                 pattern,
                                             )
@@ -178,6 +194,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let Some(source_scope) = visibility_scope {
                         this.source_scope = source_scope;
                     }
+                    last_remainder_scope = *remainder_scope;
                 }
             }
 

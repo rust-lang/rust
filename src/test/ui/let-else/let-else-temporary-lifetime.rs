@@ -75,6 +75,17 @@ fn main() {
         }
     }
     {
+        fn must_pass() {
+            let rc = Rc::new(());
+            let &None = &Some(Rc::clone(&rc)) else {
+                Rc::try_unwrap(rc).unwrap();
+                return;
+            };
+            unreachable!();
+        }
+        must_pass();
+    }
+    {
         // test let-else drops temps before else block
         // NOTE: this test has to be the last block in the `main`
         // body.
