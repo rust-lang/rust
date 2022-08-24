@@ -169,3 +169,9 @@ mir_build_call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe function or block
     .note = can only be called if the required target features are available
     .label = call to function with `#[target_feature]`
+
+mir_build_unused_unsafe = unnecessary `unsafe` block
+    .label = unnecessary `unsafe` block
+
+mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
+mir_build_unused_unsafe_enclosing_fn_label = because it's nested under this `unsafe` fn
