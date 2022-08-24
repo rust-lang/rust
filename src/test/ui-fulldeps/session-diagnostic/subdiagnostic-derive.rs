@@ -510,12 +510,11 @@ enum AX {
 }
 
 #[derive(SessionSubdiagnostic)]
-#[warn_(parser::add_paren)]
-struct AY {
-}
+#[warning(parser::add_paren)]
+struct AY {}
 
 #[derive(SessionSubdiagnostic)]
-#[warn_(parser::add_paren)]
+#[warning(parser::add_paren)]
 struct AZ {
     #[primary_span]
     span: Span,

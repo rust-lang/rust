@@ -28,7 +28,7 @@ pub struct IgnoredInlineAttrFnProto;
 
 #[derive(LintDiagnostic)]
 #[diag(passes::inline_ignored_constants)]
-#[warn_]
+#[warning]
 #[note]
 pub struct IgnoredInlineAttrConstants;
 
@@ -347,7 +347,7 @@ pub struct MustNotSuspend {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::cold)]
-#[warn_]
+#[warning]
 pub struct Cold {
     #[label]
     pub span: Span,
@@ -355,7 +355,7 @@ pub struct Cold {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::link)]
-#[warn_]
+#[warning]
 pub struct Link {
     #[label]
     pub span: Option<Span>,
@@ -363,7 +363,7 @@ pub struct Link {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::link_name)]
-#[warn_]
+#[warning]
 pub struct LinkName<'a> {
     #[help]
     pub attr_span: Option<Span>,
@@ -449,7 +449,7 @@ pub struct RustcDirtyClean {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::link_section)]
-#[warn_]
+#[warning]
 pub struct LinkSection {
     #[label]
     pub span: Span,
@@ -457,7 +457,7 @@ pub struct LinkSection {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::no_mangle_foreign)]
-#[warn_]
+#[warning]
 #[note]
 pub struct NoMangleForeign {
     #[label]
@@ -469,7 +469,7 @@ pub struct NoMangleForeign {
 
 #[derive(LintDiagnostic)]
 #[diag(passes::no_mangle)]
-#[warn_]
+#[warning]
 pub struct NoMangle {
     #[label]
     pub span: Span,
@@ -617,7 +617,7 @@ pub struct UnusedDuplicate {
     pub this: Span,
     #[note]
     pub other: Span,
-    #[warn_]
+    #[warning]
     pub warning: Option<()>,
 }
 
