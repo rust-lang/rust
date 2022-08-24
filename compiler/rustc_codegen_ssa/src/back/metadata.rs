@@ -187,12 +187,12 @@ pub enum MetadataPosition {
     Last,
 }
 
-// For rlibs we "pack" rustc metadata into a dummy object file. When rustc
-// creates a dylib crate type it will pass `--whole-archive` (or the
-// platform equivalent) to include all object files from an rlib into the
-// final dylib itself. This causes linkers to iterate and try to include all
-// files located in an archive, so if metadata is stored in an archive then
-// it needs to be of a form that the linker will be able to process.
+// For rlibs we "pack" rustc metadata into a dummy object file.
+//
+// Historically it was needed because rustc linked rlibs as whole-archive in some cases.
+// In that case linkers try to include all files located in an archive, so if metadata is stored
+// in an archive then it needs to be of a form that the linker is able to process.
+// Now it's not clear whether metadata still needs to be wrapped into an object file or not.
 //
 // Note, though, that we don't actually want this metadata to show up in any
 // final output of the compiler. Instead this is purely for rustc's own
