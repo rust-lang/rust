@@ -1,3 +1,4 @@
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
@@ -12,12 +13,11 @@ use rustc_middle::{
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{sym, BytePos, Span};
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
-use rustc_errors::{Applicability, Diagnostic};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -614,6 +614,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             "trait `IndexMut` is required to modify indexed content, \
                                 but it is not implemented for `{ty}`",
                         ));
+                        self.suggest_map_index_mut_alternatives(ty, &mut err);
                     }
                     _ => (),
                 }
@@ -625,6 +626,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         self.buffer_error(err);
+    }
+
+    fn suggest_map_index_mut_alternatives(
+        &self,
+        ty: Ty<'_>,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    ) {
+        let Some(adt) = ty.ty_adt_def() else { return };
+        let did = adt.did();
+        if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
+            || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, did)
+        {
+            err.help(format!("to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API"));
+        }
     }
 
     /// User cannot make signature of a trait mutable without changing the

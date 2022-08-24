@@ -5,6 +5,7 @@ LL |         things[src.as_str()].sort();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<String, Vec<String>>`
+   = help: to modify a `HashMap<String, Vec<String>>`, use `.get_mut()`, `.insert()` or the entry API
 
 error: aborting due to previous error
 
