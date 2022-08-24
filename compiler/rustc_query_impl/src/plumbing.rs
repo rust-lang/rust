@@ -301,18 +301,20 @@ pub(crate) fn create_query_frame<
     QueryStackFrame::new(name, description, span, def_kind, hash)
 }
 
-pub(crate) fn try_load_from_on_disk_cache<'tcx, K: DepNodeParams<TyCtxt<'tcx>>, V>(
+pub(crate) fn try_load_from_on_disk_cache<'tcx, Q, V>(
     tcx: TyCtxt<'tcx>,
     dep_node: DepNode,
-    cache_on_disk: fn(TyCtxt<'tcx>, &K) -> bool,
-    cache_query_deps: fn(TyCtxt<'tcx>, K) -> V,
-) {
+    cache_query_deps: fn(TyCtxt<'tcx>, Q::Key) -> V,
+) where
+    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q::Key: DepNodeParams<TyCtxt<'tcx>>,
+{
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
-    let key = K::recover(tcx, &dep_node).unwrap_or_else(|| {
+    let key = Q::Key::recover(tcx, &dep_node).unwrap_or_else(|| {
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
-    if cache_on_disk(tcx, &key) {
+    if Q::cache_on_disk(tcx, &key) {
         let _ = cache_query_deps(tcx, key);
     }
 }
@@ -434,7 +436,6 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         mod query_callbacks {
             use super::*;
-            use rustc_query_system::query::QueryDescription;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
             // We use this for most things when incr. comp. is turned off.
@@ -495,7 +496,7 @@ macro_rules! define_queries {
                 type Q<'tcx> = queries::$name<'tcx>;
 
                 $crate::plumbing::query_callback::<Q<'_>>(
-                    |tcx, key| $crate::plumbing::try_load_from_on_disk_cache::<<Q<'_> as QueryConfig>::Key, _>(tcx, key, <Q<'_>>::cache_on_disk, TyCtxt::$name),
+                    |tcx, key| $crate::plumbing::try_load_from_on_disk_cache::<Q<'_>, _>(tcx, key, TyCtxt::$name),
                     |tcx, key| $crate::plumbing::force_from_dep_node::<Q<'_>>(tcx, key),
                     is_anon,
                     is_eval_always
