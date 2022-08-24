@@ -4,7 +4,6 @@ use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::glue;
 use crate::traits::*;
-use crate::MemFlags;
 
 use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -343,16 +342,6 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 ..
             } => {
                 if variant_index != dataful_variant {
-                    if bx.cx().sess().target.arch == "arm"
-                        || bx.cx().sess().target.arch == "aarch64"
-                    {
-                        // FIXME(#34427): as workaround for LLVM bug on ARM,
-                        // use memset of 0 before assigning niche value.
-                        let fill_byte = bx.cx().const_u8(0);
-                        let size = bx.cx().const_usize(self.layout.size.bytes());
-                        bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
-                    }
-
                     let niche = self.project_field(bx, tag_field);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
