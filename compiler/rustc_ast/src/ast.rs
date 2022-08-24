@@ -426,7 +426,7 @@ impl Default for Generics {
             params: ThinVec::new(),
             where_clause: WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: DUMMY_SP,
             },
             span: DUMMY_SP,
@@ -441,7 +441,7 @@ pub struct WhereClause {
     /// if we parsed no predicates (e.g. `struct Foo where {}`).
     /// This allows us to pretty-print accurately.
     pub has_where_token: bool,
-    pub predicates: Vec<WherePredicate>,
+    pub predicates: ThinVec<WherePredicate>,
     pub span: Span,
 }
 
@@ -3075,15 +3075,15 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
-    static_assert_size!(Fn, 176);
+    static_assert_size!(Fn, 160);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 56);
-    static_assert_size!(Generics, 56);
-    static_assert_size!(Impl, 168);
-    static_assert_size!(Item, 168);
-    static_assert_size!(ItemKind, 96);
+    static_assert_size!(Generics, 40);
+    static_assert_size!(Impl, 152);
+    static_assert_size!(Item, 152);
+    static_assert_size!(ItemKind, 80);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);

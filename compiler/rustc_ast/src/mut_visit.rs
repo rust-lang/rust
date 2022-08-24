@@ -17,10 +17,10 @@ use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
-
 use smallvec::{smallvec, Array, SmallVec};
 use std::ops::DerefMut;
 use std::{panic, ptr};
+use thin_vec::ThinVec;
 
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
@@ -317,6 +317,17 @@ pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 #[inline]
 pub fn visit_vec<T, F>(elems: &mut Vec<T>, mut visit_elem: F)
+where
+    F: FnMut(&mut T),
+{
+    for elem in elems {
+        visit_elem(elem);
+    }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+#[inline]
+pub fn visit_thin_vec<T, F>(elems: &mut ThinVec<T>, mut visit_elem: F)
 where
     F: FnMut(&mut T),
 {
@@ -907,7 +918,7 @@ pub fn noop_visit_generics<T: MutVisitor>(generics: &mut Generics, vis: &mut T) 
 
 pub fn noop_visit_where_clause<T: MutVisitor>(wc: &mut WhereClause, vis: &mut T) {
     let WhereClause { has_where_token: _, predicates, span } = wc;
-    visit_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
+    visit_thin_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
     vis.visit_span(span);
 }
 

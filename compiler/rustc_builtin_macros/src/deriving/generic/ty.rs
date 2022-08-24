@@ -9,6 +9,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters.
@@ -188,7 +189,11 @@ impl Bounds {
 
         Generics {
             params,
-            where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
+            where_clause: ast::WhereClause {
+                has_where_token: false,
+                predicates: ThinVec::new(),
+                span,
+            },
             span,
         }
     }
