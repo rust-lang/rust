@@ -1,0 +1,14 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/do-not-suggest-adding-bound-to-opaque-type.rs:9:7
+   |
+LL |     S(&x)
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     opaque type requires that `x` is borrowed for `'static`
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

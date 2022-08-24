@@ -281,6 +281,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         span: Span,
         region_name: &RegionName,
     ) {
+        if !span.is_desugaring(DesugaringKind::OpaqueTy) {
+            return;
+        }
         if let ConstraintCategory::OpaqueType = category {
             let suggestable_name =
                 if region_name.was_named() { region_name.name } else { kw::UnderscoreLifetime };
