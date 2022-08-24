@@ -1,5 +1,6 @@
 use crate::LangItem;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct LangItemError(pub LangItem);
 
 impl ToString for LangItemError {
