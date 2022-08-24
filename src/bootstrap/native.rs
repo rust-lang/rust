@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::channel;
 use crate::config::TargetSelection;
 use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, program_out_of_date, t, up_to_date};
@@ -115,24 +116,29 @@ pub fn prebuilt_llvm_config(
 }
 
 /// This retrieves the LLVM sha we *want* to use, according to git history.
-pub(crate) fn detect_llvm_sha(config: &crate::config::Config) -> String {
-    let mut rev_list = config.git();
-    rev_list.args(&[
-        PathBuf::from("rev-list"),
-        format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
-        "-n1".into(),
-        "--first-parent".into(),
-        "HEAD".into(),
-        "--".into(),
-        config.src.join("src/llvm-project"),
-        config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-        // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-        config.src.join("src/version"),
-    ]);
-    let llvm_sha = output(&mut rev_list);
-    let llvm_sha = llvm_sha.trim();
+pub(crate) fn detect_llvm_sha(config: &crate::config::Config, is_git: bool) -> String {
+    let llvm_sha = if is_git {
+        let mut rev_list = config.git();
+        rev_list.args(&[
+            PathBuf::from("rev-list"),
+            format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
+            "-n1".into(),
+            "--first-parent".into(),
+            "HEAD".into(),
+            "--".into(),
+            config.src.join("src/llvm-project"),
+            config.src.join("src/bootstrap/download-ci-llvm-stamp"),
+            // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+            config.src.join("src/version"),
+        ]);
+        output(&mut rev_list).trim().to_owned()
+    } else if let Some(info) = channel::read_commit_info_file(&config.src) {
+        info.sha.trim().to_owned()
+    } else {
+        "".to_owned()
+    };
 
-    if llvm_sha == "" {
+    if &llvm_sha == "" {
         eprintln!("error: could not find commit hash for downloading LLVM");
         eprintln!("help: maybe your repository history is too shallow?");
         eprintln!("help: consider disabling `download-ci-llvm`");
@@ -140,7 +146,7 @@ pub(crate) fn detect_llvm_sha(config: &crate::config::Config) -> String {
         panic!();
     }
 
-    llvm_sha.to_owned()
+    llvm_sha
 }
 
 /// Returns whether the CI-found LLVM is currently usable.
@@ -194,7 +200,9 @@ pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool
     }
 
     if crate::util::CiEnv::is_ci() {
-        let llvm_sha = detect_llvm_sha(config);
+        // We assume we have access to git, so it's okay to unconditionally pass
+        // `true` here.
+        let llvm_sha = detect_llvm_sha(config, true);
         let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
         let head_sha = head_sha.trim();
         if llvm_sha == head_sha {
@@ -215,7 +223,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     }
     let llvm_root = config.ci_llvm_root();
     let llvm_stamp = llvm_root.join(".llvm-stamp");
-    let llvm_sha = detect_llvm_sha(&config);
+    let llvm_sha = detect_llvm_sha(&config, builder.rust_info.is_managed_git_subrepository());
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);
@@ -260,7 +268,7 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     } else {
         &builder.config.stage0_metadata.config.artifacts_server
     };
-    let channel = builder.config.artifact_channel(llvm_sha);
+    let channel = builder.config.artifact_channel(builder, llvm_sha);
     let filename = format!("rust-dev-{}-{}.tar.xz", channel, builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
