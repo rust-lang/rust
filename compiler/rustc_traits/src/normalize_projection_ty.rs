@@ -1,5 +1,5 @@
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor,TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
@@ -21,7 +21,7 @@ fn normalize_projection_ty<'tcx>(
     debug!("normalize_provider(goal={:#?})", goal);
 
     tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
-    tcx.infer_ctxt().enter_canonical_trait_query(
+    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_canonical_trait_query(
         &goal,
         |infcx, fulfill_cx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(infcx);
