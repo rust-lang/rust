@@ -3,7 +3,7 @@ use rustc_macros::SessionDiagnostic;
 #[derive(SessionDiagnostic)]
 #[diag(driver::rlink_unable_to_read)]
 pub(crate) struct RlinkUnableToRead {
-    pub error_message: String,
+    pub err: std::io::Error,
 }
 
 #[derive(SessionDiagnostic)]
@@ -14,4 +14,4 @@ pub(crate) struct RlinkUnableToDeserialize {
 
 #[derive(SessionDiagnostic)]
 #[diag(driver::rlink_no_a_file)]
-pub(crate) struct RlinkNotAFile {}
+pub(crate) struct RlinkNotAFile;

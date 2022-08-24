@@ -1,4 +1,4 @@
-driver_rlink_unable_to_read = failed to read rlink file: `{$error_message}`
+driver_rlink_unable_to_read = failed to read rlink file: `{$err}`
 
 driver_rlink_unable_to_deserialize = could not deserialize .rlink file: `{$error_message}`
 

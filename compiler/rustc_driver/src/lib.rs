@@ -586,12 +586,12 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
-                sess.emit_fatal(RlinkUnableToRead { error_message: err.to_string() });
+                sess.emit_fatal(RlinkUnableToRead { err });
             });
             let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
                 Ok(codegen) => codegen,
-                Err(error) => {
-                    sess.emit_fatal(RlinkUnableToDeserialize { error_message: error.to_string() });
+                Err(error_message) => {
+                    sess.emit_fatal(RlinkUnableToDeserialize { error_message });
                 }
             };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
