@@ -16,6 +16,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
 #![feature(decl_macro)]
+#![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
@@ -211,7 +212,7 @@ impl<T> TypedArena<T> {
 
         unsafe {
             if mem::size_of::<T>() == 0 {
-                self.ptr.set((self.ptr.get() as *mut u8).wrapping_offset(1) as *mut T);
+                self.ptr.set(self.ptr.get().wrapping_byte_add(1));
                 let ptr = ptr::NonNull::<T>::dangling().as_ptr();
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
