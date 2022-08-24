@@ -2,6 +2,8 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::utils::is_ci;
+
 pub(crate) fn build_backend(
     channel: &str,
     host_triple: &str,
@@ -14,7 +16,7 @@ pub(crate) fn build_backend(
 
     let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
 
-    if env::var("CI").as_ref().map(|val| &**val) == Ok("true") {
+    if is_ci() {
         // Deny warnings on CI
         rustflags += " -Dwarnings";
 

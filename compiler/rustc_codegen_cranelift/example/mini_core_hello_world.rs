@@ -139,7 +139,7 @@ pub struct bool_11 {
     field10: bool,
 }
 
-extern "C" fn bool_struct_in_11(arg0: bool_11) {}
+extern "C" fn bool_struct_in_11(_arg0: bool_11) {}
 
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
@@ -321,7 +321,7 @@ fn main() {
     #[cfg(not(any(jit, windows)))]
     test_tls();
 
-    #[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
+    #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
     unsafe {
         global_asm_test();
     }
@@ -343,7 +343,7 @@ fn main() {
 }
 }
 
-#[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
+#[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
 extern "C" {
     fn global_asm_test();
 }
@@ -353,6 +353,16 @@ global_asm! {
     "
     .global global_asm_test
     global_asm_test:
+    // comment that would normally be removed by LLVM
+    ret
+    "
+}
+
+#[cfg(all(not(jit), target_arch = "x86_64", target_os = "darwin"))]
+global_asm! {
+    "
+    .global _global_asm_test
+    _global_asm_test:
     // comment that would normally be removed by LLVM
     ret
     "
@@ -375,6 +385,7 @@ struct pthread_attr_t {
 }
 
 #[link(name = "pthread")]
+#[cfg(unix)]
 extern "C" {
     fn pthread_attr_init(attr: *mut pthread_attr_t) -> c_int;
 
@@ -391,6 +402,91 @@ extern "C" {
     ) -> c_int;
 }
 
+type DWORD = u32;
+type LPDWORD = *mut u32;
+
+type LPVOID = *mut c_void;
+type HANDLE = *mut c_void;
+
+#[link(name = "msvcrt")]
+#[cfg(windows)]
+extern "C" {
+    fn WaitForSingleObject(
+        hHandle: LPVOID,
+        dwMilliseconds: DWORD
+    ) -> DWORD;
+
+    fn CreateThread(
+        lpThreadAttributes: LPVOID, // Technically LPSECURITY_ATTRIBUTES, but we don't use it anyway
+        dwStackSize: usize,
+        lpStartAddress: extern "C" fn(_: *mut c_void) -> *mut c_void,
+        lpParameter: LPVOID,
+        dwCreationFlags: DWORD,
+        lpThreadId: LPDWORD
+    ) -> HANDLE;
+}
+
+struct Thread {
+    #[cfg(windows)]
+    handle: HANDLE,
+    #[cfg(unix)]
+    handle: pthread_t,
+}
+
+impl Thread {
+    unsafe fn create(f: extern "C" fn(_: *mut c_void) -> *mut c_void) -> Self {
+        #[cfg(unix)]
+        {
+            let mut attr: pthread_attr_t = zeroed();
+            let mut thread: pthread_t = 0;
+
+            if pthread_attr_init(&mut attr) != 0 {
+                assert!(false);
+            }
+
+            if pthread_create(&mut thread, &attr, f, 0 as *mut c_void) != 0 {
+                assert!(false);
+            }
+
+            Thread {
+                handle: thread,
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            let handle = CreateThread(0 as *mut c_void, 0, f, 0 as *mut c_void, 0, 0 as *mut u32);
+
+            if (handle as u64) == 0 {
+                assert!(false);
+            }
+
+            Thread {
+                handle,
+            }
+        }
+    }
+
+
+    unsafe fn join(self) {
+        #[cfg(unix)]
+        {
+            let mut res = 0 as *mut c_void;
+            pthread_join(self.handle, &mut res);
+        }
+
+        #[cfg(windows)]
+        {
+            // The INFINITE macro is used to signal operations that do not timeout.
+            let infinite = 0xffffffff;
+            assert!(WaitForSingleObject(self.handle, infinite) == 0);
+        }
+    }
+}
+
+
+
+
 #[thread_local]
 #[cfg(not(jit))]
 static mut TLS: u8 = 42;
@@ -404,21 +500,10 @@ extern "C" fn mutate_tls(_: *mut c_void) -> *mut c_void {
 #[cfg(not(jit))]
 fn test_tls() {
     unsafe {
-        let mut attr: pthread_attr_t = zeroed();
-        let mut thread: pthread_t = 0;
-
         assert_eq!(TLS, 42);
 
-        if pthread_attr_init(&mut attr) != 0 {
-            assert!(false);
-        }
-
-        if pthread_create(&mut thread, &attr, mutate_tls, 0 as *mut c_void) != 0 {
-            assert!(false);
-        }
-
-        let mut res = 0 as *mut c_void;
-        pthread_join(thread, &mut res);
+        let thread = Thread::create(mutate_tls);
+        thread.join();
 
         // TLS of main thread must not have been changed by the other thread.
         assert_eq!(TLS, 42);

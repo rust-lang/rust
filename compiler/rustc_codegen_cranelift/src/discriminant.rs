@@ -62,16 +62,14 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
 
 pub(crate) fn codegen_get_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
+    dest: CPlace<'tcx>,
     value: CValue<'tcx>,
     dest_layout: TyAndLayout<'tcx>,
-) -> CValue<'tcx> {
+) {
     let layout = value.layout();
 
-    if layout.abi == Abi::Uninhabited {
-        let true_ = fx.bcx.ins().iconst(types::I32, 1);
-        fx.bcx.ins().trapnz(true_, TrapCode::UnreachableCodeReached);
-        // Return a dummy value
-        return CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout);
+    if layout.abi.is_uninhabited() {
+        return;
     }
 
     let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
@@ -89,7 +87,9 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
             } else {
                 ty::ScalarInt::try_from_uint(discr_val, dest_layout.size).unwrap()
             };
-            return CValue::const_val(fx, dest_layout, discr_val);
+            let res = CValue::const_val(fx, dest_layout, discr_val);
+            dest.write_cvalue(fx, res);
+            return;
         }
         Variants::Multiple { tag, tag_field, tag_encoding, variants: _ } => {
             (tag, *tag_field, tag_encoding)
@@ -110,7 +110,8 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 _ => false,
             };
             let val = clif_intcast(fx, tag, cast_to, signed);
-            CValue::by_val(val, dest_layout)
+            let res = CValue::by_val(val, dest_layout);
+            dest.write_cvalue(fx, res);
         }
         TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
             // Rebase from niche values to discriminants, and check
@@ -170,7 +171,8 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
 
             let dataful_variant = fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
             let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
-            CValue::by_val(discr, dest_layout)
+            let res = CValue::by_val(discr, dest_layout);
+            dest.write_cvalue(fx, res);
         }
     }
 }

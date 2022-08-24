@@ -8,15 +8,15 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { version = "0.85.3", features = ["unwind", "all-arch"] }
-cranelift-frontend = "0.85.3"
-cranelift-module = "0.85.3"
-cranelift-native = "0.85.3"
-cranelift-jit = { version = "0.85.3", optional = true }
-cranelift-object = "0.85.3"
+cranelift-codegen = { version = "0.87.0", features = ["unwind", "all-arch"] }
+cranelift-frontend = "0.87.0"
+cranelift-module = "0.87.0"
+cranelift-native = "0.87.0"
+cranelift-jit = { version = "0.87.0", optional = true }
+cranelift-object = "0.87.0"
 target-lexicon = "0.12.0"
 gimli = { version = "0.26.0", default-features = false, features = ["write"]}
-object = { version = "0.28.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
+object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.9.1"
