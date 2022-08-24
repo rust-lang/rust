@@ -31,7 +31,6 @@ pub(crate) enum Kind {
     Keyword,
     // Not in ItemKind
     ProcMacro,
-    PrimitiveType,
 }
 
 impl Kind {
@@ -54,13 +53,13 @@ impl Kind {
             Macro => true,
             ProcMacro => true,
 
-            ForeignType => todo!("IDK"),
-            Keyword => todo!("IDK"),
-            OpaqueTy => todo!("IDK"),
-            Primitive => todo!("IDK"),
-            PrimitiveType => todo!("IDK"),
-            ProcAttribute => todo!("IDK"),
-            ProcDerive => todo!("IDK"),
+            // FIXME(adotinthevoid): I'm not sure if these are corrent
+            ForeignType => false,
+            Keyword => false,
+            OpaqueTy => false,
+            Primitive => false,
+            ProcAttribute => false,
+            ProcDerive => false,
 
             // Only in traits
             AssocConst => false,
@@ -101,7 +100,6 @@ impl Kind {
             Kind::Primitive => false,
             Kind::Keyword => false,
             Kind::ProcMacro => false,
-            Kind::PrimitiveType => false,
         }
     }
 
@@ -139,7 +137,8 @@ impl Kind {
             ItemEnum::Static(_) => Static,
             ItemEnum::Macro(_) => Macro,
             ItemEnum::ProcMacro(_) => ProcMacro,
-            ItemEnum::PrimitiveType(_) => PrimitiveType,
+            // https://github.com/rust-lang/rust/issues/100961
+            ItemEnum::PrimitiveType(_) => Primitive,
             ItemEnum::ForeignType => ForeignType,
             ItemEnum::ExternCrate { .. } => ExternCrate,
             ItemEnum::AssocConst { .. } => AssocConst,

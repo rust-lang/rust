@@ -8,13 +8,14 @@ use rustdoc_json_types::{
     TypeBindingKind, Typedef, Union, Variant, WherePredicate,
 };
 
-use crate::{item_kind::Kind, Error};
+use crate::{item_kind::Kind, Error, ErrorKind};
 
 #[derive(Debug)]
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
     krate: &'a Crate,
     seen_ids: HashSet<&'a Id>,
+    missing_ids: HashSet<&'a Id>,
     todo: HashSet<&'a Id>,
 }
 
@@ -29,7 +30,13 @@ fn set_remove<T: Hash + Eq + Clone>(set: &mut HashSet<T>) -> Option<T> {
 
 impl<'a> Validator<'a> {
     pub fn new(krate: &'a Crate) -> Self {
-        Self { krate, errs: Vec::new(), seen_ids: HashSet::new(), todo: HashSet::new() }
+        Self {
+            krate,
+            errs: Vec::new(),
+            seen_ids: HashSet::new(),
+            todo: HashSet::new(),
+            missing_ids: HashSet::new(),
+        }
     }
 
     pub fn check_crate(&mut self) {
@@ -42,32 +49,39 @@ impl<'a> Validator<'a> {
     }
 
     fn check_item(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        match &item.inner {
-            ItemEnum::Import(x) => self.check_import(x),
-            ItemEnum::Union(x) => self.check_union(x),
-            ItemEnum::Struct(x) => self.check_struct(x),
-            ItemEnum::StructField(x) => self.check_struct_field(x),
-            ItemEnum::Enum(x) => self.check_enum(x),
-            ItemEnum::Variant(x) => self.check_variant(x),
-            ItemEnum::Function(x) => self.check_function(x),
-            ItemEnum::Trait(x) => self.check_trait(x),
-            ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
-            ItemEnum::Method(x) => self.check_method(x),
-            ItemEnum::Impl(x) => self.check_impl(x),
-            ItemEnum::Typedef(x) => self.check_typedef(x),
-            ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
-            ItemEnum::Constant(x) => self.check_constant(x),
-            ItemEnum::Static(x) => self.check_static(x),
-            ItemEnum::ForeignType => todo!(),
-            ItemEnum::Macro(x) => self.check_macro(x),
-            ItemEnum::ProcMacro(x) => self.check_proc_macro(x),
-            ItemEnum::PrimitiveType(x) => self.check_primitive_type(x),
-            ItemEnum::Module(x) => self.check_module(x),
-
-            ItemEnum::ExternCrate { .. } => todo!(),
-            ItemEnum::AssocConst { .. } => todo!(),
-            ItemEnum::AssocType { .. } => todo!(),
+        if let Some(item) = &self.krate.index.get(id) {
+            match &item.inner {
+                ItemEnum::Import(x) => self.check_import(x),
+                ItemEnum::Union(x) => self.check_union(x),
+                ItemEnum::Struct(x) => self.check_struct(x),
+                ItemEnum::StructField(x) => self.check_struct_field(x),
+                ItemEnum::Enum(x) => self.check_enum(x),
+                ItemEnum::Variant(x) => self.check_variant(x),
+                ItemEnum::Function(x) => self.check_function(x),
+                ItemEnum::Trait(x) => self.check_trait(x),
+                ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
+                ItemEnum::Method(x) => self.check_method(x),
+                ItemEnum::Impl(x) => self.check_impl(x),
+                ItemEnum::Typedef(x) => self.check_typedef(x),
+                ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
+                ItemEnum::Constant(x) => self.check_constant(x),
+                ItemEnum::Static(x) => self.check_static(x),
+                ItemEnum::ForeignType => todo!(),
+                ItemEnum::Macro(x) => self.check_macro(x),
+                ItemEnum::ProcMacro(x) => self.check_proc_macro(x),
+                ItemEnum::PrimitiveType(x) => self.check_primitive_type(x),
+                ItemEnum::Module(x) => self.check_module(x),
+                // FIXME: Why don't these have their own structs?
+                ItemEnum::ExternCrate { .. } => {}
+                ItemEnum::AssocConst { type_, default: _ } => self.check_type(type_),
+                ItemEnum::AssocType { generics, bounds, default } => {
+                    self.check_generics(generics);
+                    bounds.iter().for_each(|b| self.check_generic_bound(b));
+                    if let Some(ty) = default {
+                        self.check_type(ty);
+                    }
+                }
+            }
         }
     }
 
@@ -226,7 +240,7 @@ impl<'a> Validator<'a> {
                 self.check_path(trait_);
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
-            GenericBound::Outlives(_) => todo!(),
+            GenericBound::Outlives(_) => {}
         }
     }
 
@@ -337,7 +351,10 @@ impl<'a> Validator<'a> {
                 self.fail_expecting(id, expected);
             }
         } else {
-            self.fail(id, "Not found")
+            if !self.missing_ids.contains(id) {
+                self.missing_ids.insert(id);
+                self.fail(id, ErrorKind::NotFound)
+            }
         }
     }
 
@@ -368,11 +385,11 @@ impl<'a> Validator<'a> {
 
     fn fail_expecting(&mut self, id: &Id, expected: &str) {
         let kind = self.kind_of(id).unwrap(); // We know it has a kind, as it's wrong.
-        self.fail(id, format!("Expected {expected} but found {kind:?}"));
+        self.fail(id, ErrorKind::Custom(format!("Expected {expected} but found {kind:?}")));
     }
 
-    fn fail(&mut self, id: &Id, message: impl Into<String>) {
-        self.errs.push(Error { id: id.clone(), message: message.into() });
+    fn fail(&mut self, id: &Id, kind: ErrorKind) {
+        self.errs.push(Error { id: id.clone(), kind });
     }
 
     fn kind_of(&mut self, id: &Id) -> Option<Kind> {

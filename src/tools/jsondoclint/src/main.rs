@@ -9,8 +9,14 @@ mod validator;
 
 #[derive(Debug)]
 struct Error {
-    message: String,
+    kind: ErrorKind,
     id: Id,
+}
+
+#[derive(Debug)]
+enum ErrorKind {
+    NotFound,
+    Custom(String),
 }
 
 fn main() -> Result<()> {
@@ -24,7 +30,10 @@ fn main() -> Result<()> {
 
     if !validator.errs.is_empty() {
         for err in validator.errs {
-            eprintln!("`{}`: `{}`", err.id.0, err.message);
+            match err.kind {
+                ErrorKind::NotFound => eprintln!("{}: Not Found", err.id.0),
+                ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
+            }
         }
         bail!("Errors validating json");
     }
