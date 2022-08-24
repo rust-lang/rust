@@ -7,7 +7,7 @@ use crate::{on_disk_cache, Queries};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{Diagnostic, Handler};
-use rustc_middle::dep_graph::{self, DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
@@ -298,6 +298,23 @@ pub(crate) fn create_query_frame<
     QueryStackFrame::new(name, description, span, def_kind, hash)
 }
 
+pub(crate) fn try_load_from_on_disk_cache<'tcx, K, V>(
+    tcx: TyCtxt<'tcx>,
+    dep_node: DepNode,
+    recover: fn(TyCtxt<'tcx>, DepNode) -> Option<K>,
+    cache_on_disk: fn(TyCtxt<'tcx>, &K) -> bool,
+    do_query: fn(TyCtxt<'tcx>, K) -> V,
+) {
+    debug_assert!(tcx.dep_graph.is_green(&dep_node));
+
+    let key = recover(tcx, dep_node).unwrap_or_else(|| {
+        panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
+    });
+    if cache_on_disk(tcx, &key) {
+        let _ = do_query(tcx, key);
+    }
+}
+
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
 // invoked by `rustc_query_append`.
 macro_rules! define_queries {
@@ -457,21 +474,12 @@ macro_rules! define_queries {
                     }
                 }
 
-                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: DepNode) {
-                    debug_assert!(tcx.dep_graph.is_green(&dep_node));
-
-                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    if queries::$name::cache_on_disk(tcx, &key) {
-                        let _ = tcx.$name(key);
-                    }
-                }
-
                 DepKindStruct {
                     is_anon,
                     is_eval_always,
                     fingerprint_style,
                     force_from_dep_node: Some(force_from_dep_node),
-                    try_load_from_on_disk_cache: Some(try_load_from_on_disk_cache),
+                    try_load_from_on_disk_cache: Some(|tcx, key| $crate::plumbing::try_load_from_on_disk_cache(tcx, key, recover, queries::$name::cache_on_disk, TyCtxt::$name)),
                 }
             })*
         }
