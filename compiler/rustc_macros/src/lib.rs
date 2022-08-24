@@ -163,6 +163,7 @@ decl_derive!(
 decl_derive!(
     [SessionSubdiagnostic, attributes(
         // struct/variant attributes
+        diag,
         label,
         help,
         note,

@@ -1,3 +1,4 @@
+use rustc_codegen_ssa::session_diagnostic::DeserializeRlinkError;
 use rustc_macros::SessionDiagnostic;
 
 #[derive(SessionDiagnostic)]
@@ -9,7 +10,7 @@ pub(crate) struct RlinkUnableToRead {
 #[derive(SessionDiagnostic)]
 #[diag(driver::rlink_unable_to_deserialize)]
 pub(crate) struct RlinkUnableToDeserialize {
-    pub error_message: String,
+    pub err: DeserializeRlinkError,
 }
 
 #[derive(SessionDiagnostic)]

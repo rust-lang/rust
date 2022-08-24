@@ -590,8 +590,8 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             });
             let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
                 Ok(codegen) => codegen,
-                Err(error_message) => {
-                    sess.emit_fatal(RlinkUnableToDeserialize { error_message });
+                Err(err) => {
+                    sess.emit_fatal(RlinkUnableToDeserialize { err });
                 }
             };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);

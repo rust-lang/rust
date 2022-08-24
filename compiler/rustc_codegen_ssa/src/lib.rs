@@ -21,6 +21,7 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+use crate::session_diagnostic::{DeserializeRlinkError, DeserializeRlinkErrorSub};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -49,6 +50,7 @@ pub mod glue;
 pub mod meth;
 pub mod mir;
 pub mod mono_item;
+pub mod session_diagnostic;
 pub mod target_features;
 pub mod traits;
 
@@ -212,30 +214,40 @@ impl CodegenResults {
         encoder.finish()
     }
 
-    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {
+    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, DeserializeRlinkError> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
-            return Err("The input does not look like a .rlink file".to_string());
+            return Err(DeserializeRlinkError { sub: DeserializeRlinkErrorSub::WrongFileType });
         }
         let data = &data[RLINK_MAGIC.len()..];
         if data.len() < 4 {
-            return Err("The input does not contain version number".to_string());
+            return Err(DeserializeRlinkError {
+                sub: DeserializeRlinkErrorSub::EmptyVersionNumber,
+            });
         }
 
         let mut version_array: [u8; 4] = Default::default();
         version_array.copy_from_slice(&data[..4]);
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
-            return Err(".rlink file was produced with encoding version {version_array}, but the current version is {RLINK_VERSION}".to_string());
+            return Err(DeserializeRlinkError {
+                sub: DeserializeRlinkErrorSub::EncodingVersionMismatch {
+                    version_array: String::from_utf8_lossy(&version_array).to_string(),
+                    rlink_version: RLINK_VERSION.to_string(),
+                },
+            });
         }
 
         let mut decoder = MemDecoder::new(&data[4..], 0);
         let rustc_version = decoder.read_str();
         let current_version = RUSTC_VERSION.unwrap();
         if rustc_version != current_version {
-            return Err(format!(
-                ".rlink file was produced by rustc version {rustc_version}, but the current version is {current_version}."
-            ));
+            return Err(DeserializeRlinkError {
+                sub: DeserializeRlinkErrorSub::RustcVersionMismatch {
+                    rustc_version: rustc_version.to_string(),
+                    current_version: current_version.to_string(),
+                },
+            });
         }
 
         let codegen_results = CodegenResults::decode(&mut decoder);
