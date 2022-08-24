@@ -376,10 +376,23 @@ diagnostic struct.
       - `maybe-incorrect`
       - `has-placeholders`
       - `unspecified`
-- `#[primary_span]` (_Mandatory_ for labels and suggestions; _optional_ otherwise)
+- `#[multipart_suggestion{,_hidden,_short,_verbose}(slug, applicability = "...")]`
+  - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._
+  - _Mandatory_
+  - Defines the type to be representing a multipart suggestion.
+  - Slug (_Mandatory_): see `#[suggestion]`
+  - `applicability = "..."` (_Optional_): see `#[suggestion]`
+- `#[primary_span]` (_Mandatory_ for labels and suggestions; _optional_ otherwise; not applicable
+to multipart suggestions)
   - _Applied to `Span` fields._
   - Indicates the primary span of the subdiagnostic.
-- `#[applicability]` (_Optional_; only applicable to suggestions)
+- `#[suggestion_part(code = "...")]` (_Mandatory_; only applicable to multipart suggestions)
+  - _Applied to `Span` fields._
+  - Indicates the span to be one part of the multipart suggestion.
+  - `code = "..."` (_Mandatory_)
+    - Value is a format string indicating the code to be suggested as a
+      replacement.
+- `#[applicability]` (_Optional_; only applicable to (simple and multipart) suggestions)
   - _Applied to `Applicability` fields._
   - Indicates the applicability of the suggestion.
 - `#[skip_arg]` (_Optional_)
