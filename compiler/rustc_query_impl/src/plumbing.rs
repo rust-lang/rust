@@ -308,18 +308,6 @@ macro_rules! define_queries {
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
-        mod make_query {
-            use super::*;
-
-            // Create an eponymous constructor for each query.
-            $(#[allow(nonstandard_style)] $(#[$attr])*
-            pub fn $name<'tcx>(tcx: QueryCtxt<'tcx>, key: <queries::$name<'tcx> as QueryConfig>::Key) -> QueryStackFrame {
-                let kind = dep_graph::DepKind::$name;
-                let name = stringify!($name);
-                $crate::plumbing::create_query_frame(tcx, queries::$name::describe, key, kind, name)
-            })*
-        }
-
         #[allow(nonstandard_style)]
         mod queries {
             use std::marker::PhantomData;
@@ -531,9 +519,14 @@ macro_rules! define_queries_struct {
                 let mut jobs = QueryMap::default();
 
                 $(
+                    let make_query = |tcx, key| {
+                        let kind = dep_graph::DepKind::$name;
+                        let name = stringify!($name);
+                        $crate::plumbing::create_query_frame(tcx, queries::$name::describe, key, kind, name)
+                    };
                     self.$name.try_collect_active_jobs(
                         tcx,
-                        make_query::$name,
+                        make_query,
                         &mut jobs,
                     )?;
                 )*
