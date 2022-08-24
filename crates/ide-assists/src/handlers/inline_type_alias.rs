@@ -3,7 +3,9 @@
 // - Remove unused aliases if there are no longer any users, see inline_call.rs.
 
 use hir::{HasSource, PathResolution};
-use ide_db::{defs::Definition, search::FileReference};
+use ide_db::{
+    defs::Definition, imports::insert_use::remove_path_if_in_use_stmt, search::FileReference,
+};
 use itertools::Itertools;
 use std::collections::HashMap;
 use syntax::{
@@ -15,6 +17,8 @@ use crate::{
     assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
 };
+
+use super::inline_call::split_refs_and_uses;
 
 // Assist: inline_type_alias_uses
 //
@@ -31,7 +35,7 @@ use crate::{
 // ```
 // ->
 // ```
-// 
+//
 // fn id(x: i32) -> i32 {
 //     x
 // };
@@ -62,15 +66,10 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
                 builder.edit_file(file_id);
 
-                let path_types: Vec<ast::PathType> = refs
-                    .into_iter()
-                    .filter_map(|file_ref| match file_ref.name {
-                        ast::NameLike::NameRef(path_type) => {
-                            path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
-                        }
-                        _ => None,
-                    })
-                    .collect();
+                let (path_types, path_type_uses) =
+                    split_refs_and_uses(builder, refs, |path_type| {
+                        path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
+                    });
 
                 for (target, replacement) in path_types.into_iter().filter_map(|path_type| {
                     let replacement = inline(&ast_alias, &path_type)?.to_text(&concrete_type);
@@ -78,6 +77,10 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                     Some((target, replacement))
                 }) {
                     builder.replace(target, replacement);
+                }
+                if !path_type_uses.is_empty() {
+                    builder.edit_file(file_id);
+                    path_type_uses.iter().for_each(remove_path_if_in_use_stmt);
                 }
             };
 
@@ -993,7 +996,12 @@ fn foo() {
 }
 "#,
                 r#"
-use super::I;
+//- /lib.rs
+mod foo;
+
+
+//- /foo.rs
+
 fn foo() {
     let _: i32 = 0;
 }
