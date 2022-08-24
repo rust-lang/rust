@@ -32,8 +32,14 @@ impl Index<Bar<usize>> for [i32] {
 fn main() {
     Index::index(&[] as &[i32], 2u32);
     //~^ ERROR E0277
+    //~| ERROR E0277
+    //~| ERROR E0277
     Index::index(&[] as &[i32], Foo(2u32));
     //~^ ERROR E0277
+    //~| ERROR E0277
+    //~| ERROR E0277
     Index::index(&[] as &[i32], Bar(2u32));
     //~^ ERROR E0277
+    //~| ERROR E0277
+    //~| ERROR E0277
 }
