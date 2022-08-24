@@ -1,4 +1,4 @@
-use rustc_macros::LintDiagnostic;
+use rustc_macros::{LintDiagnostic, SessionDiagnostic};
 use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
@@ -95,6 +95,220 @@ pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
 #[diag(mir_build::unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe)]
 #[note]
 pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
+    #[label]
+    pub span: Span,
+    pub function: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::call_to_unsafe_fn_requires_unsafe, code = "E0133")]
+#[note]
+pub struct CallToUnsafeFunctionRequiresUnsafe<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub function: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::call_to_unsafe_fn_requires_unsafe_nameless, code = "E0133")]
+#[note]
+pub struct CallToUnsafeFunctionRequiresUnsafeNameless {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub function: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(
+    mir_build::call_to_unsafe_fn_requires_unsafe_nameless_unsafe_op_in_unsafe_fn_allowed,
+    code = "E0133"
+)]
+#[note]
+pub struct CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::inline_assembly_requires_unsafe, code = "E0133")]
+#[note]
+pub struct UseOfInlineAssemblyRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::inline_assembly_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::initializing_type_with_requires_unsafe, code = "E0133")]
+#[note]
+pub struct InitializingTypeWithRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(
+    mir_build::initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = "E0133"
+)]
+#[note]
+pub struct InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::mutable_static_requires_unsafe, code = "E0133")]
+#[note]
+pub struct UseOfMutableStaticRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::mutable_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::extern_static_requires_unsafe, code = "E0133")]
+#[note]
+pub struct UseOfExternStaticRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::deref_raw_pointer_requires_unsafe, code = "E0133")]
+#[note]
+pub struct DerefOfRawPointerRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::deref_raw_pointer_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::union_field_requires_unsafe, code = "E0133")]
+#[note]
+pub struct AccessToUnionFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::union_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::mutation_of_layout_constrained_field_requires_unsafe, code = "E0133")]
+#[note]
+pub struct MutationOfLayoutConstrainedFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(
+    mir_build::mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = "E0133"
+)]
+#[note]
+pub struct MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::borrow_of_layout_constrained_field_requires_unsafe, code = "E0133")]
+#[note]
+pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(
+    mir_build::borrow_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = "E0133"
+)]
+#[note]
+pub struct BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::call_to_fn_with_requires_unsafe, code = "E0133")]
+#[note]
+pub struct CallToFunctionWithRequiresUnsafe<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub function: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed, code = "E0133")]
+#[note]
+pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
+    #[primary_span]
     #[label]
     pub span: Span,
     pub function: &'a str,
