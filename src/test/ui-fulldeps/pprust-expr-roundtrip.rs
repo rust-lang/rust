@@ -25,6 +25,7 @@ extern crate rustc_data_structures;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate thin_vec;
 
 use rustc_ast::mut_visit::{self, visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
@@ -35,6 +36,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::source_map::{FileName, Spanned, DUMMY_SP};
 use rustc_span::symbol::Ident;
+use thin_vec::thin_vec;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
@@ -51,7 +53,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
 
 fn make_x() -> P<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
-    let path = Path { segments: vec![seg], span: DUMMY_SP, tokens: None };
+    let path = Path { segments: thin_vec![seg], span: DUMMY_SP, tokens: None };
     expr(ExprKind::Path(None, path))
 }
 
