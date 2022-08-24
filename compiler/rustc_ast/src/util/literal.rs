@@ -199,7 +199,7 @@ impl LitKind {
                 let symbol = if value { kw::True } else { kw::False };
                 (token::Bool, symbol, None)
             }
-            LitKind::Err => unreachable!(),
+            LitKind::Err => (token::Err, kw::Empty, None),
         };
 
         token::Lit::new(kind, symbol, suffix)

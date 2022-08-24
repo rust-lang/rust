@@ -1,0 +1,10 @@
+error: invalid suffix `u` for number literal
+  --> $DIR/issue-100948.rs:4:5
+   |
+LL |     1u;
+   |     ^^ invalid suffix `u`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to previous error
+
