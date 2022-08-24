@@ -1,4 +1,5 @@
 mod array_chunks;
+mod by_ref_sized;
 mod chain;
 mod cloned;
 mod copied;
