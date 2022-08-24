@@ -379,6 +379,10 @@ define_Conf! {
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR
+    ///
+    /// The maximum size of the `Err`-variant in a `Result` returned from a function
+    (large_error_threshold: u64 = 128),
 }
 
 /// Search for the configuration file.

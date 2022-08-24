@@ -668,10 +668,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(disallowed_names::DisallowedNames::new(disallowed_names.clone())));
     let too_many_arguments_threshold = conf.too_many_arguments_threshold;
     let too_many_lines_threshold = conf.too_many_lines_threshold;
+    let large_error_threshold = conf.large_error_threshold;
     store.register_late_pass(move || {
         Box::new(functions::Functions::new(
             too_many_arguments_threshold,
             too_many_lines_threshold,
+            large_error_threshold,
         ))
     });
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();

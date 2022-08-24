@@ -831,3 +831,53 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
         })
         .unwrap_or(false)
 }
+
+/// Comes up with an "at least" guesstimate for the type's size, not taking into
+/// account the layout of type parameters.
+pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
+    use rustc_middle::ty::layout::LayoutOf;
+    if !is_normalizable(cx, cx.param_env, ty) {
+        return 0;
+    }
+    match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
+        (Ok(size), _) => size,
+        (Err(_), ty::Tuple(list)) => list.as_substs().types().map(|t| approx_ty_size(cx, t)).sum(),
+        (Err(_), ty::Array(t, n)) => {
+            n.try_eval_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, *t)
+        },
+        (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .sum::<u64>()
+            })
+            .sum(),
+        (Err(_), ty::Adt(def, subst)) if def.is_enum() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .sum::<u64>()
+            })
+            .max()
+            .unwrap_or_default(),
+        (Err(_), ty::Adt(def, subst)) if def.is_union() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .max()
+                    .unwrap_or_default()
+            })
+            .max()
+            .unwrap_or_default(),
+        (Err(_), _) => 0,
+    }
+}

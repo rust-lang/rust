@@ -80,6 +80,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(functions::DOUBLE_MUST_USE),
     LintId::of(functions::MUST_USE_UNIT),
     LintId::of(functions::NOT_UNSAFE_PTR_ARG_DEREF),
+    LintId::of(functions::RESULT_LARGE_ERR),
     LintId::of(functions::RESULT_UNIT_ERR),
     LintId::of(functions::TOO_MANY_ARGUMENTS),
     LintId::of(if_let_mutex::IF_LET_MUTEX),
