@@ -4,6 +4,8 @@ use rustc_session::Session;
 
 use jobserver::HelperThread;
 
+// FIXME don't panic when a worker thread panics
+
 pub(super) struct ConcurrencyLimiter {
     helper_thread: Option<HelperThread>,
     state: Arc<Mutex<state::ConcurrencyLimiterState>>,
