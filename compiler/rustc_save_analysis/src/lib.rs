@@ -3,11 +3,15 @@
 #![feature(let_else)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![feature(never_type)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod dump_visitor;
 mod dumper;
 #[macro_use]
 mod span_utils;
+mod errors;
 mod sig;
 
 use rustc_ast as ast;
@@ -928,7 +932,7 @@ impl<'a> DumpHandler<'a> {
         info!("Writing output to {}", file_name.display());
 
         let output_file = BufWriter::new(File::create(&file_name).unwrap_or_else(|e| {
-            sess.fatal(&format!("Could not open {}: {}", file_name.display(), e))
+            sess.emit_fatal(errors::CouldNotOpen { file_name: file_name.as_path(), err: e })
         }));
 
         (output_file, file_name)

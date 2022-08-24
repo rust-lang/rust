@@ -43,6 +43,7 @@ fluent_messages! {
     passes => "../locales/en-US/passes.ftl",
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
+    save_analysis => "../locales/en-US/save_analysis.ftl",
     typeck => "../locales/en-US/typeck.ftl",
 }
 
