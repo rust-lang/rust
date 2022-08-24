@@ -75,7 +75,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_arm(&visitor.thir()[arm]);
             }
         }
-        Block { ref body } => visitor.visit_block(body),
+        Block { block } => visitor.visit_block(&visitor.thir()[block]),
         Assign { lhs, rhs } | AssignOp { lhs, rhs, op: _ } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);
@@ -174,7 +174,7 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             }
             visitor.visit_pat(pattern);
             if let Some(block) = else_block {
-                visitor.visit_block(block)
+                visitor.visit_block(&visitor.thir()[*block])
             }
         }
     }

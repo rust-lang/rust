@@ -2280,15 +2280,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         init: &Expr<'tcx>,
         initializer_span: Span,
-        else_block: &Block,
+        else_block: BlockId,
         visibility_scope: Option<SourceScope>,
         remainder_scope: region::Scope,
         remainder_span: Span,
         pattern: &Pat<'tcx>,
     ) -> BlockAnd<()> {
+        let else_block_span = self.thir[else_block].span;
         let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
-            let pat = Pat { ty: init.ty, span: else_block.span, kind: Box::new(PatKind::Wild) };
+            let pat = Pat { ty: init.ty, span: else_block_span, kind: Box::new(PatKind::Wild) };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
             this.declare_bindings(
                 visibility_scope,
@@ -2318,7 +2319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             // This block is for the failure case
             let failure = this.bind_pattern(
-                this.source_info(else_block.span),
+                this.source_info(else_block_span),
                 wildcard,
                 None,
                 &fake_borrow_temps,
@@ -2334,19 +2335,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // This place is not really used because this destination place
         // should never be used to take values at the end of the failure
         // block.
-        let dummy_place = self.temp(self.tcx.types.never, else_block.span);
+        let dummy_place = self.temp(self.tcx.types.never, else_block_span);
         let failure_block;
         unpack!(
             failure_block = self.ast_block(
                 dummy_place,
                 failure,
                 else_block,
-                self.source_info(else_block.span),
+                self.source_info(else_block_span),
             )
         );
         self.cfg.terminate(
             failure_block,
-            self.source_info(else_block.span),
+            self.source_info(else_block_span),
             TerminatorKind::Unreachable,
         );
         matching.unit()

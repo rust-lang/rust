@@ -108,8 +108,8 @@ impl<'tcx> Cx<'tcx> {
         //   // ^ error message points at this expression.
         // }
         let mut adjust_span = |expr: &mut Expr<'tcx>| {
-            if let ExprKind::Block { body } = &expr.kind {
-                if let Some(last_expr) = body.expr {
+            if let ExprKind::Block { block } = expr.kind {
+                if let Some(last_expr) = self.thir[block].expr {
                     span = self.thir[last_expr].span;
                     expr.span = span;
                 }
@@ -369,7 +369,7 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::AddressOf { mutability, arg: self.mirror_expr(arg) }
             }
 
-            hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: self.mirror_block(blk) },
+            hir::ExprKind::Block(ref blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 
             hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
                 ExprKind::Assign { lhs: self.mirror_expr(lhs), rhs: self.mirror_expr(rhs) }
@@ -680,8 +680,8 @@ impl<'tcx> Cx<'tcx> {
                 let body = self.thir.exprs.push(Expr {
                     ty: block_ty,
                     temp_lifetime,
-                    span: block.span,
-                    kind: ExprKind::Block { body: block },
+                    span: self.thir[block].span,
+                    kind: ExprKind::Block { block },
                 });
                 ExprKind::Loop { body }
             }

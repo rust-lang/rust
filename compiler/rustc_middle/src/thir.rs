@@ -75,6 +75,7 @@ macro_rules! thir_with_elements {
 
 thir_with_elements! {
     arms: ArmId => Arm<'tcx> => "a{}",
+    blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
 }
@@ -168,7 +169,7 @@ pub enum StmtKind<'tcx> {
         initializer: Option<ExprId>,
 
         /// `let pat: ty = <INIT> else { <ELSE> }
-        else_block: Option<Block>,
+        else_block: Option<BlockId>,
 
         /// The lint level for this `let` statement.
         lint_level: LintLevel,
@@ -292,7 +293,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A block.
     Block {
-        body: Block,
+        block: BlockId,
     },
     /// An assignment: `lhs = rhs`.
     Assign {
@@ -802,5 +803,5 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 88);
     static_assert_size!(Pat<'_>, 24);
-    static_assert_size!(Stmt<'_>, 120);
+    static_assert_size!(Stmt<'_>, 72);
 }

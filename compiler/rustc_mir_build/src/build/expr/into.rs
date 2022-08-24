@@ -46,7 +46,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 })
             }
-            ExprKind::Block { body: ref ast_block } => {
+            ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, ref arms } => {
