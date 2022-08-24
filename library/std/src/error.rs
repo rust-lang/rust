@@ -221,8 +221,8 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl std::error::Error for Error {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand
     ///             .provide_ref::<MyBacktrace>(&self.backtrace)
     ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
     ///     }
@@ -240,14 +240,14 @@ pub trait Error: Debug + Display {
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
     #[allow(unused_variables)]
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {}
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {}
 }
 
 #[cfg(bootstrap)]
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 impl<'b> Provider for dyn Error + 'b {
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        self.provide(req)
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        self.provide(demand)
     }
 }
 
@@ -659,8 +659,8 @@ impl<'a, T: Error + ?Sized> Error for &'a T {
         Error::source(&**self)
     }
 
-    fn provide<'b>(&'b self, req: &mut Demand<'b>) {
-        Error::provide(&**self, req);
+    fn provide<'b>(&'b self, demand: &mut Demand<'b>) {
+        Error::provide(&**self, demand);
     }
 }
 
@@ -681,8 +681,8 @@ impl<T: Error + ?Sized> Error for Arc<T> {
         Error::source(&**self)
     }
 
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        Error::provide(&**self, req);
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        Error::provide(&**self, demand);
     }
 }
 
@@ -1442,9 +1442,8 @@ impl<E> Report<E> {
     /// }
     ///
     /// impl Error for SuperErrorSideKick {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
-    ///             .provide_ref::<Backtrace>(&self.backtrace);
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref::<Backtrace>(&self.backtrace);
     ///     }
     /// }
     ///

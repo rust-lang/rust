@@ -182,8 +182,8 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl std::error::Error for Error {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand
     ///             .provide_ref::<MyBacktrace>(&self.backtrace)
     ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
     ///     }
@@ -201,7 +201,7 @@ pub trait Error: Debug + Display {
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
     #[allow(unused_variables)]
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {}
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {}
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
@@ -209,8 +209,8 @@ impl<E> Provider for E
 where
     E: Error + ?Sized,
 {
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        self.provide(req)
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        self.provide(demand)
     }
 }
 
@@ -463,8 +463,8 @@ impl<'a, T: Error + ?Sized> Error for &'a T {
         Error::source(&**self)
     }
 
-    fn provide<'b>(&'b self, req: &mut Demand<'b>) {
-        Error::provide(&**self, req);
+    fn provide<'b>(&'b self, demand: &mut Demand<'b>) {
+        Error::provide(&**self, demand);
     }
 }
 
