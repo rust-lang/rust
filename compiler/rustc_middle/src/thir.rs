@@ -15,19 +15,17 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
 use rustc_index::vec::IndexVec;
-use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
+use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts};
+use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
-
-use rustc_span::def_id::LocalDefId;
 use std::fmt;
 use std::ops::Index;
 
@@ -106,6 +104,8 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
+type UserTy<'tcx> = Option<Box<CanonicalUserType<'tcx>>>;
+
 #[derive(Clone, Debug, HashStable)]
 pub struct Adt<'tcx> {
     /// The ADT we're constructing.
@@ -116,7 +116,7 @@ pub struct Adt<'tcx> {
 
     /// Optional user-given substs: for something like `let x =
     /// Bar::<T> { ... }`.
-    pub user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    pub user_ty: UserTy<'tcx>,
 
     pub fields: Box<[FieldExpr]>,
     /// The base, e.g. `Foo {x: 1, .. base}`.
@@ -377,13 +377,13 @@ pub enum ExprKind<'tcx> {
     PlaceTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A type ascription on a value, e.g. `42: i32`.
     ValueTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A closure definition.
     Closure {
@@ -401,17 +401,17 @@ pub enum ExprKind<'tcx> {
     /// For literals that don't correspond to anything in the HIR
     NonHirLiteral {
         lit: ty::ScalarInt,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A literal of a ZST type.
     ZstLiteral {
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     ConstParam {
         param: ty::ParamConst,
@@ -800,7 +800,7 @@ mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block, 56);
-    static_assert_size!(Expr<'_>, 104);
+    static_assert_size!(Expr<'_>, 88);
     static_assert_size!(Pat<'_>, 24);
     static_assert_size!(Stmt<'_>, 120);
 }
