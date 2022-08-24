@@ -47,7 +47,7 @@ h4 {
 .docblock pre > code, pre > code {
 	color: #e6e1cf;
 }
-span code {
+.item-info code {
 	color: #e6e1cf;
 }
 .docblock a > code {
