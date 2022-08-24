@@ -1,4 +1,4 @@
-use rustc_infer::infer::{DefiningAnchor,TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable};

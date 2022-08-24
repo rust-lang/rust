@@ -1,5 +1,5 @@
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::{DefiningAnchor,TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
