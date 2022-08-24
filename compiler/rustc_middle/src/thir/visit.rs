@@ -1,5 +1,6 @@
 use super::{
-    Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
+    Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind,
+    Thir,
 };
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
@@ -126,7 +127,13 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         PlaceTypeAscription { source, user_ty: _ } | ValueTypeAscription { source, user_ty: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
-        Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
+        Closure(box ClosureExpr {
+            closure_id: _,
+            substs: _,
+            upvars: _,
+            movability: _,
+            fake_reads: _,
+        }) => {}
         Literal { lit: _, neg: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
         ZstLiteral { user_ty: _ } => {}

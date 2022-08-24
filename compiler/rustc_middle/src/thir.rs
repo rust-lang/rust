@@ -124,6 +124,15 @@ pub struct Adt<'tcx> {
     pub base: Option<FruInfo<'tcx>>,
 }
 
+#[derive(Clone, Debug, HashStable)]
+pub struct ClosureExpr<'tcx> {
+    pub closure_id: LocalDefId,
+    pub substs: UpvarSubsts<'tcx>,
+    pub upvars: Box<[ExprId]>,
+    pub movability: Option<hir::Movability>,
+    pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
+}
+
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
@@ -387,13 +396,7 @@ pub enum ExprKind<'tcx> {
         user_ty: UserTy<'tcx>,
     },
     /// A closure definition.
-    Closure {
-        closure_id: LocalDefId,
-        substs: UpvarSubsts<'tcx>,
-        upvars: Box<[ExprId]>,
-        movability: Option<hir::Movability>,
-        fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
-    },
+    Closure(Box<ClosureExpr<'tcx>>),
     /// A literal.
     Literal {
         lit: &'tcx hir::Lit,
@@ -801,7 +804,7 @@ mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block, 56);
-    static_assert_size!(Expr<'_>, 88);
+    static_assert_size!(Expr<'_>, 80);
     static_assert_size!(Pat<'_>, 24);
     static_assert_size!(Stmt<'_>, 72);
 }

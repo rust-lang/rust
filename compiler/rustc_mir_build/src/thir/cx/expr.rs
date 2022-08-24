@@ -548,7 +548,13 @@ impl<'tcx> Cx<'tcx> {
                     None => Vec::new(),
                 };
 
-                ExprKind::Closure { closure_id: def_id, substs, upvars, movability, fake_reads }
+                ExprKind::Closure(Box::new(ClosureExpr {
+                    closure_id: def_id,
+                    substs,
+                    upvars,
+                    movability,
+                    fake_reads,
+                }))
             }
 
             hir::ExprKind::Path(ref qpath) => {
