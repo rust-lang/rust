@@ -156,7 +156,7 @@ pub trait Drop {
     /// handled by the compiler, but when using unsafe code, can sometimes occur
     /// unintentionally, particularly when using [`ptr::drop_in_place`].
     ///
-    /// [E0040]: ../../error-index.html#E0040
+    /// [E0040]: ../../error_codes/E0040.html
     /// [`panic!`]: crate::panic!
     /// [`mem::drop`]: drop
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place
