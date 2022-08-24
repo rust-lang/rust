@@ -75,17 +75,13 @@
 +         _7 = const false;                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageLive(_10);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageLive(_11);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
-+         StorageLive(_12);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
-+         StorageLive(_13);                // scope 6 at $DIR/inline-generator.rs:15:5: 15:8
 +         _13 = deref_copy (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline-generator.rs:15:5: 15:8
 +         _12 = discriminant((*_13));      // scope 6 at $DIR/inline-generator.rs:15:5: 15:8
-+         StorageDead(_13);                // scope 6 at $DIR/inline-generator.rs:15:5: 15:8
 +         switchInt(move _12) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline-generator.rs:15:5: 15:8
       }
   
 -     bb3: {
 +     bb1: {
-+         StorageDead(_12);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageDead(_11);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageDead(_10);                // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
 +         StorageDead(_7);                 // scope 0 at $DIR/inline-generator.rs:+1:14: +1:46
@@ -124,10 +120,8 @@
 +         Deinit(_1);                      // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant(_1) = 0;            // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
-+         StorageLive(_14);                // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         _14 = deref_copy (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant((*_14)) = 3;        // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
-+         StorageDead(_14);                // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:11: 15:39
 +     }
 + 
@@ -138,10 +132,8 @@
 +         Deinit(_1);                      // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
 +         ((_1 as Complete).0: bool) = move _10; // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
 +         discriminant(_1) = 1;            // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
-+         StorageLive(_15);                // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
 +         _15 = deref_copy (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
 +         discriminant((*_15)) = 1;        // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
-+         StorageDead(_15);                // scope 6 at $DIR/inline-generator.rs:15:8: 15:8
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:8: 15:8
 +     }
 + 

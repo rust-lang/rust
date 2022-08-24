@@ -55,7 +55,6 @@
           StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
           _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
-          StorageLive(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           _10 = discriminant(_4);          // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
           switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
       }
@@ -116,7 +115,6 @@
           discriminant(_3) = 1;            // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_14);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_13);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 -         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
@@ -138,7 +136,6 @@
           discriminant(_3) = 0;            // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_12);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 -         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10

@@ -55,25 +55,18 @@
           _5 = &_6;                        // scope 2 at $DIR/derefer_terminator_test.rs:+3:17: +3:21
           _4 = &_5;                        // scope 2 at $DIR/derefer_terminator_test.rs:+3:15: +3:22
 -         switchInt((*(*(*(*_4))))) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         StorageLive(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _10 = deref_copy (*_4);          // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         StorageLive(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _11 = deref_copy (*_10);         // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         StorageDead(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         StorageLive(_12);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         _12 = deref_copy (*_11);         // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
-+         StorageDead(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
 +         switchInt((*_12)) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
       }
   
       bb3: {
-+         StorageDead(_12);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
           _3 = const ();                   // scope 2 at $DIR/derefer_terminator_test.rs:+5:18: +5:20
           goto -> bb5;                     // scope 2 at $DIR/derefer_terminator_test.rs:+5:18: +5:20
       }
   
       bb4: {
-+         StorageDead(_12);                // scope 2 at $DIR/derefer_terminator_test.rs:+3:5: +3:22
           StorageLive(_8);                 // scope 2 at $DIR/derefer_terminator_test.rs:+4:22: +4:23
           _8 = const 5_i32;                // scope 2 at $DIR/derefer_terminator_test.rs:+4:26: +4:27
           _3 = const ();                   // scope 2 at $DIR/derefer_terminator_test.rs:+4:17: +4:29

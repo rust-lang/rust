@@ -28,8 +28,6 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
             let mut last_len = 0;
             let mut last_deref_idx = 0;
 
-            let mut prev_temp: Option<Local> = None;
-
             for (idx, elem) in place.projection[0..].iter().enumerate() {
                 if *elem == ProjectionElem::Deref {
                     last_deref_idx = idx;
@@ -39,13 +37,11 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
             for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                 if !p_ref.projection.is_empty() && p_elem == ProjectionElem::Deref {
                     let ty = p_ref.ty(&self.local_decls, self.tcx).ty;
-                    let temp = self.patcher.new_local_with_info(
+                    let temp = self.patcher.new_internal_with_info(
                         ty,
                         self.local_decls[p_ref.local].source_info.span,
                         Some(Box::new(LocalInfo::DerefTemp)),
                     );
-
-                    self.patcher.add_statement(loc, StatementKind::StorageLive(temp));
 
                     // We are adding current p_ref's projections to our
                     // temp value, excluding projections we already covered.
@@ -66,21 +62,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                             Place::from(temp).project_deeper(&place.projection[idx..], self.tcx);
                         *place = temp_place;
                     }
-
-                    // We are destroying the previous temp since it's no longer used.
-                    if let Some(prev_temp) = prev_temp {
-                        self.patcher.add_statement(loc, StatementKind::StorageDead(prev_temp));
-                    }
-
-                    prev_temp = Some(temp);
                 }
-            }
-
-            // Since we won't be able to reach final temp, we destroy it outside the loop.
-            if let Some(prev_temp) = prev_temp {
-                let last_loc =
-                    Location { block: loc.block, statement_index: loc.statement_index + 1 };
-                self.patcher.add_statement(last_loc, StatementKind::StorageDead(prev_temp));
             }
         }
     }

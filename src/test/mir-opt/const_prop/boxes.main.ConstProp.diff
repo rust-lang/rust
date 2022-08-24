@@ -35,16 +35,12 @@
       bb1: {
           StorageLive(_7);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           _7 = ShallowInitBox(move _6, i32); // scope 0 at $DIR/boxes.rs:+1:14: +1:22
-          StorageLive(_8);                 // scope 0 at $DIR/boxes.rs:+1:19: +1:21
           _8 = (((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>).0: *const i32); // scope 0 at $DIR/boxes.rs:+1:19: +1:21
           (*_8) = const 42_i32;            // scope 0 at $DIR/boxes.rs:+1:19: +1:21
-          StorageDead(_8);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           _3 = move _7;                    // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           StorageDead(_7);                 // scope 0 at $DIR/boxes.rs:+1:21: +1:22
-          StorageLive(_9);                 // scope 0 at $DIR/boxes.rs:+1:13: +1:22
           _9 = (((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>).0: *const i32); // scope 0 at $DIR/boxes.rs:+1:13: +1:22
           _2 = (*_9);                      // scope 0 at $DIR/boxes.rs:+1:13: +1:22
-          StorageDead(_9);                 // scope 0 at $DIR/boxes.rs:+1:13: +1:26
           _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/boxes.rs:+1:13: +1:26
           StorageDead(_2);                 // scope 0 at $DIR/boxes.rs:+1:25: +1:26
           drop(_3) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/boxes.rs:+1:26: +1:27

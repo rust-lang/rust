@@ -55,14 +55,12 @@
           StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
           _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
-          StorageLive(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
           _10 = discriminant(_4);          // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
 -         switchInt(move _10) -> [0_isize: bb7, 1_isize: bb5, otherwise: bb6]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
 +         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
       }
   
       bb1: {
--         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 -         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 -         switchInt(move _5) -> [0_isize: bb2, 1_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
@@ -128,7 +126,6 @@
           StorageDead(_14);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_13);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
 -         goto -> bb1;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-+         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 +         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
@@ -151,7 +148,6 @@
           StorageDead(_12);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
 -         goto -> bb1;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-+         StorageDead(_10);                // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 +         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
