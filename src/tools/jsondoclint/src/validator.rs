@@ -8,7 +8,7 @@ use rustdoc_json_types::{
     TypeBindingKind, Typedef, Union, Variant, WherePredicate,
 };
 
-use crate::{item_kind::can_appear_in_mod, Error};
+use crate::{item_kind::Kind, Error};
 
 #[derive(Debug)]
 pub struct Validator<'a> {
@@ -329,63 +329,59 @@ impl<'a> Validator<'a> {
         }
     }
 
-    fn add_field_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if let ItemEnum::StructField(_) = item.inner {
-            self.add_id(id);
+    fn add_id_checked(&mut self, id: &'a Id, valid: fn(Kind) -> bool, expected: &str) {
+        if let Some(kind) = self.kind_of(id) {
+            if valid(kind) {
+                self.add_id(id);
+            } else {
+                self.fail_expecting(id, expected);
+            }
         } else {
-            self.fail(id, "Expecting field");
+            self.fail(id, "Not found")
         }
+    }
+
+    fn add_field_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_struct_field, "StructField");
     }
 
     fn add_mod_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if let ItemEnum::Module(_) = item.inner {
-            self.add_id(id);
-        } else {
-            self.fail(id, "Expecting module");
-        }
+        self.add_id_checked(id, Kind::is_module, "Module");
     }
-
     fn add_impl_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if let ItemEnum::StructField(_) = item.inner {
-            self.add_id(id);
-        } else {
-            self.fail(id, "Expecting impl");
-        }
+        self.add_id_checked(id, Kind::is_impl, "Impl");
     }
 
     fn add_variant_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if let ItemEnum::StructField(_) = item.inner {
-            self.add_id(id);
-        } else {
-            self.fail(id, "Expecting variant");
-        }
+        self.add_id_checked(id, Kind::is_variant, "Variant");
     }
 
     /// Add an Id that appeared in a trait
     fn add_trait_item_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if !can_appear_in_mod(&item.inner) {
-            self.fail(id, "Expecting item that can appear in trait");
-        } else {
-            self.add_id(id);
-        }
+        self.add_id_checked(id, Kind::can_appear_in_trait, "Trait inner item");
     }
 
     /// Add an Id that appeared in a mod
     fn add_mod_item_id(&mut self, id: &'a Id) {
-        let item = &self.krate.index[id];
-        if can_appear_in_mod(&item.inner) {
-            self.add_id(id);
-        } else {
-            self.fail(id, "Expecting item that can appear in trait");
-        }
+        self.add_id_checked(id, Kind::can_appear_in_mod, "Module inner item")
     }
 
-    fn fail(&mut self, id: &Id, msg: &str) {
-        self.errs.push(Error { id: id.clone(), message: msg.to_string() });
+    fn fail_expecting(&mut self, id: &Id, expected: &str) {
+        let kind = self.kind_of(id).unwrap(); // We know it has a kind, as it's wrong.
+        self.fail(id, format!("Expected {expected} but found {kind:?}"));
+    }
+
+    fn fail(&mut self, id: &Id, message: impl Into<String>) {
+        self.errs.push(Error { id: id.clone(), message: message.into() });
+    }
+
+    fn kind_of(&mut self, id: &Id) -> Option<Kind> {
+        if let Some(item) = self.krate.index.get(id) {
+            Some(Kind::from_item(item))
+        } else if let Some(summary) = self.krate.paths.get(id) {
+            Some(Kind::from_summary(summary))
+        } else {
+            None
+        }
     }
 }
