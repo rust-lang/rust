@@ -4,7 +4,7 @@ error[E0282]: type annotations needed for `&T`
 LL |     let &v = new();
    |         ^^
    |
-help: consider giving this pattern a type, where the placeholders `_` are specified
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
    |
 LL |     let &v: &T = new();
    |           ++++

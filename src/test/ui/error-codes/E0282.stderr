@@ -1,14 +1,20 @@
-error[E0282]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/E0282.rs:2:9
    |
 LL |     let x = "hello".chars().rev().collect();
-   |         ^
+   |         ^                         ------- type must be known at this point
    |
-help: consider giving `x` an explicit type
+   = note: cannot satisfy `_: FromIterator<char>`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL |     let x: _ = "hello".chars().rev().collect();
-   |          +++
+LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
+help: consider specifying the type argument in the function call
+   |
+LL |     let x = "hello".chars().rev().collect::<B>();
+   |                                          +++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0283`.

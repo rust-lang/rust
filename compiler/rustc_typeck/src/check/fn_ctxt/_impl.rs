@@ -13,7 +13,6 @@ use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
@@ -437,19 +436,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
-            self.require_type_meets(ty, span, code, lang_item);
+            if let Some(deferred_sized_obligations) =
+                &mut *self.deferred_sized_obligations.borrow_mut()
+            {
+                deferred_sized_obligations.push((ty, span, code));
+            } else {
+                self.require_type_is_sized_eager(ty, span, code);
+            }
         }
     }
 
-    pub fn require_type_is_sized_deferred(
+    pub fn require_type_is_sized_eager(
         &self,
         ty: Ty<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
+        let ty = self.normalize_associated_types_in(span, ty);
         if !ty.references_error() {
-            self.deferred_sized_obligations.borrow_mut().push((ty, span, code));
+            let lang_item = self.tcx.require_lang_item(hir::LangItem::Sized, None);
+            self.require_type_meets(ty, span, code, lang_item);
         }
     }
 

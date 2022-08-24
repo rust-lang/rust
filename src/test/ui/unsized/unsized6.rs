@@ -22,17 +22,13 @@ fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1;
     //~^ ERROR the size for values of type
     let y = *x2;
-    //~^ ERROR the size for values of type
     let (y, z) = (*x3, 4);
-    //~^ ERROR the size for values of type
 }
 fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1;
     //~^ ERROR the size for values of type
     let y = *x2;
-    //~^ ERROR the size for values of type
     let (y, z) = (*x3, 4);
-    //~^ ERROR the size for values of type
 }
 
 fn g1<X: ?Sized>(x: X) {}

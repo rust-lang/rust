@@ -450,6 +450,10 @@ fn typeck_with_fallback<'tcx>(
             fcx
         };
 
+        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().take().unwrap() {
+            fcx.require_type_is_sized_eager(ty, span, code);
+        }
+
         let fallback_has_occurred = fcx.type_inference_fallback();
 
         // Even though coercion casts provide type hints, we check casts after fallback for
@@ -465,11 +469,6 @@ fn typeck_with_fallback<'tcx>(
         // precise information on types to be captured.
         fcx.resolve_rvalue_scopes(def_id.to_def_id());
         fcx.resolve_generator_interiors(def_id.to_def_id());
-
-        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-            let ty = fcx.normalize_ty(span, ty);
-            fcx.require_type_is_sized(ty, span, code);
-        }
 
         fcx.select_all_obligations_or_error();
 

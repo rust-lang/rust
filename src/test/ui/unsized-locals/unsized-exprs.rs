@@ -22,7 +22,5 @@ fn main() {
     udrop::<(i32, [u8])>((42, *foo()));
     //~^ERROR E0277
     udrop::<A<[u8]>>(A { 0: *foo() });
-    //~^ERROR E0277
     udrop::<A<[u8]>>(A(*foo()));
-    //~^ERROR E0277
 }

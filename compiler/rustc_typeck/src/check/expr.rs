@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::LateBoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
-            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+            self.require_type_is_sized(output, expr.span, traits::SizedReturnType);
         }
 
         // We always require that the type provided as the value for

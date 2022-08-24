@@ -24,11 +24,9 @@ fn main() {
         //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
         //~| ERROR cannot use value of type `[u64]` for inline assembly
         asm!("{}", out(reg) v[..]);
-        //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
-        //~| ERROR cannot use value of type `[u64]` for inline assembly
+        //~^ ERROR cannot use value of type `[u64]` for inline assembly
         asm!("{}", inout(reg) v[..]);
-        //~^ ERROR the size for values of type `[u64]` cannot be known at compilation time
-        //~| ERROR cannot use value of type `[u64]` for inline assembly
+        //~^ ERROR cannot use value of type `[u64]` for inline assembly
 
         // Constants must be... constant
 

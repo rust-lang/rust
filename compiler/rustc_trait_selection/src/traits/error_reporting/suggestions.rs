@@ -1398,7 +1398,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
              (_, ty)| {
                 let ty = self.resolve_vars_if_possible(ty);
                 same &=
-                    !matches!(ty.kind(), ty::Error(_))
+                    !ty.references_error()
                         && last_ty.map_or(true, |last_ty| {
                             // FIXME: ideally we would use `can_coerce` here instead, but `typeck` comes
                             // *after* in the dependency graph.
