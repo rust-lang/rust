@@ -273,7 +273,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
             _ => {}
         }
     }
-    pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
+
+    fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
         category: &ConstraintCategory<'tcx>,
