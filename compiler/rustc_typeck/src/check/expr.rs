@@ -561,17 +561,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
-                    let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
+                    let arg_span = args.get(i).map(|a| a.span);
+                    let span = arg_span.unwrap_or(expr.span);
                     let input = self.replace_bound_vars_with_fresh_vars(
                         span,
                         infer::LateBoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
-                    self.require_type_is_sized_deferred(
-                        input,
-                        span,
-                        traits::SizedArgumentType(None),
-                    );
+                    self.require_type_is_sized(input, span, traits::SizedArgumentType(arg_span));
                 }
             }
             // Here we want to prevent struct constructors from returning unsized types.
