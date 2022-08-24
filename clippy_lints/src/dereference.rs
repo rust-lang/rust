@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{contains_ty, expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
+use clippy_utils::ty::{expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
 use clippy_utils::{fn_def_id, get_parent_expr, is_lint_allowed, meets_msrv, msrvs, path_to_local, walk_to_expr_usage};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
@@ -1158,7 +1158,7 @@ fn replace_types<'tcx>(
             .inputs_and_output
             .iter()
             .enumerate()
-            .all(|(i, ty)| (replaced.is_empty() && i == arg_index) || !contains_ty(ty, param_ty.to_ty(cx.tcx)))
+            .all(|(i, ty)| (replaced.is_empty() && i == arg_index) || !ty.contains(param_ty.to_ty(cx.tcx)))
         {
             return false;
         }
