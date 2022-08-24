@@ -19,9 +19,9 @@ use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-
 use std::convert::TryFrom;
 use std::mem;
+use thin_vec::ThinVec;
 use tracing::debug;
 
 impl<'a> Parser<'a> {
@@ -930,7 +930,8 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo(), tokens: None };
+        let mut prefix =
+            ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo(), tokens: None };
         let kind = if self.check(&token::OpenDelim(Delimiter::Brace))
             || self.check(&token::BinOp(token::Star))
             || self.is_import_coupler()
