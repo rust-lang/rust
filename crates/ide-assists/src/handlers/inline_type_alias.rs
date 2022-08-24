@@ -71,16 +71,13 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                         path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
                     });
 
+                path_type_uses.iter().for_each(remove_path_if_in_use_stmt);
                 for (target, replacement) in path_types.into_iter().filter_map(|path_type| {
                     let replacement = inline(&ast_alias, &path_type)?.to_text(&concrete_type);
                     let target = path_type.syntax().text_range();
                     Some((target, replacement))
                 }) {
                     builder.replace(target, replacement);
-                }
-                if !path_type_uses.is_empty() {
-                    builder.edit_file(file_id);
-                    path_type_uses.iter().for_each(remove_path_if_in_use_stmt);
                 }
             };
 
@@ -1001,7 +998,6 @@ mod foo;
 
 
 //- /foo.rs
-
 fn foo() {
     let _: i32 = 0;
 }
