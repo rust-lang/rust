@@ -14,16 +14,15 @@ pub struct IncorrectCguReuseType<'a> {
     pub cgu_user_name: &'a str,
     pub actual_reuse: CguReuse,
     pub expected_reuse: CguReuse,
-    pub at_least: &'a str,
+    pub at_least: u8,
 }
 
-//FIXME: Uncomment this once PR #100694 that implements `[fatal(..)]` is merged
-// #[derive(SessionDiagnostic)]
-// #[fatal(session::cgu_not_recorded)]
-// pub struct CguNotRecorded<'a> {
-//     pub cgu_user_name: &'a str,
-//     pub cgu_name: &'a str,
-// }
+#[derive(SessionDiagnostic)]
+#[diag(session::cgu_not_recorded)]
+pub struct CguNotRecorded<'a> {
+    pub cgu_user_name: &'a str,
+    pub cgu_name: &'a str,
+}
 
 #[derive(SessionDiagnostic)]
 #[diag(session::feature_gate_error, code = "E0658")]
