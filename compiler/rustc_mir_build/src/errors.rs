@@ -1,4 +1,4 @@
-use rustc_macros::{LintDiagnostic, SessionDiagnostic};
+use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
@@ -312,4 +312,27 @@ pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::unused_unsafe)]
+pub struct UnusedUnsafe {
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub enclosing: Option<UnusedUnsafeEnclosing>,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum UnusedUnsafeEnclosing {
+    #[label(mir_build::unused_unsafe_enclosing_block_label)]
+    Block {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(mir_build::unused_unsafe_enclosing_fn_label)]
+    Function {
+        #[primary_span]
+        span: Span,
+    },
 }
