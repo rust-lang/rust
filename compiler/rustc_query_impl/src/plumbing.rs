@@ -7,14 +7,16 @@ use crate::{on_disk_cache, Queries};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{Diagnostic, Handler};
-use rustc_middle::dep_graph::{self, DepKind, DepNode, DepNodeIndex, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{
+    self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryContext, QueryDescription, QueryJobId, QueryMap, QuerySideEffects,
-    QueryStackFrame,
+    force_query, QueryConfig, QueryContext, QueryDescription, QueryJobId, QueryMap,
+    QuerySideEffects, QueryStackFrame,
 };
 use std::any::Any;
 use std::num::NonZeroU64;
@@ -303,7 +305,7 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx, K: DepNodeParams<TyCtxt<'tcx>>, 
     tcx: TyCtxt<'tcx>,
     dep_node: DepNode,
     cache_on_disk: fn(TyCtxt<'tcx>, &K) -> bool,
-    do_query: fn(TyCtxt<'tcx>, K) -> V,
+    cache_query_deps: fn(TyCtxt<'tcx>, K) -> V,
 ) {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
@@ -311,11 +313,11 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx, K: DepNodeParams<TyCtxt<'tcx>>, 
         panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash)
     });
     if cache_on_disk(tcx, &key) {
-        let _ = do_query(tcx, key);
+        let _ = cache_query_deps(tcx, key);
     }
 }
 
-fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
+pub(crate) fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
     Q: QueryDescription<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
@@ -328,6 +330,39 @@ where
         true
     } else {
         false
+    }
+}
+
+pub(crate) fn query_callback<'tcx, Q: QueryConfig>(
+    // NOTE: we can't remove these function pointers, because `recover` is invariant -> `try_load_from_on_disk_cache` takes a concrete lifetime, not a universal lifetime.
+    // Instead, we infer the correct lifetime at the callsite, so we can pass in a HRTB function pointer to the DepKindStruct.
+    try_load_from_on_disk_cache: fn(TyCtxt<'_>, DepNode),
+    force_from_dep_node: fn(TyCtxt<'_>, DepNode) -> bool,
+    is_anon: bool,
+    is_eval_always: bool,
+) -> DepKindStruct
+where
+    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q::Key: DepNodeParams<TyCtxt<'tcx>>,
+{
+    let fingerprint_style = Q::Key::fingerprint_style();
+
+    if is_anon || !fingerprint_style.reconstructible() {
+        return DepKindStruct {
+            is_anon,
+            is_eval_always,
+            fingerprint_style,
+            force_from_dep_node: None,
+            try_load_from_on_disk_cache: None,
+        };
+    }
+
+    DepKindStruct {
+        is_anon,
+        is_eval_always,
+        fingerprint_style,
+        force_from_dep_node: Some(force_from_dep_node),
+        try_load_from_on_disk_cache: Some(try_load_from_on_disk_cache),
     }
 }
 
@@ -399,7 +434,6 @@ macro_rules! define_queries {
         #[allow(nonstandard_style)]
         mod query_callbacks {
             use super::*;
-            use rustc_query_system::dep_graph::DepNodeParams;
             use rustc_query_system::query::QueryDescription;
             use rustc_query_system::dep_graph::FingerprintStyle;
 
@@ -458,29 +492,14 @@ macro_rules! define_queries {
             $(pub(crate) fn $name()-> DepKindStruct {
                 let is_anon = is_anon!([$($modifiers)*]);
                 let is_eval_always = is_eval_always!([$($modifiers)*]);
+                type Q<'tcx> = queries::$name<'tcx>;
 
-                let fingerprint_style =
-                    <<queries::$name<'_> as QueryConfig>::Key as DepNodeParams<TyCtxt<'_>>>::fingerprint_style();
-
-                if is_anon || !fingerprint_style.reconstructible() {
-                    return DepKindStruct {
-                        is_anon,
-                        is_eval_always,
-                        fingerprint_style,
-                        force_from_dep_node: None,
-                        try_load_from_on_disk_cache: None,
-                    }
-                }
-
-                DepKindStruct {
+                $crate::plumbing::query_callback::<Q<'_>>(
+                    |tcx, key| $crate::plumbing::try_load_from_on_disk_cache::<<Q<'_> as QueryConfig>::Key, _>(tcx, key, <Q<'_>>::cache_on_disk, TyCtxt::$name),
+                    |tcx, key| $crate::plumbing::force_from_dep_node::<Q<'_>>(tcx, key),
                     is_anon,
-                    is_eval_always,
-                    fingerprint_style,
-                    force_from_dep_node: Some(|tcx, dep_node| $crate::plumbing::force_from_dep_node::<queries::$name<'_>>(tcx, dep_node)),
-                    try_load_from_on_disk_cache: Some(|tcx, key| $crate::plumbing::try_load_from_on_disk_cache::<
-                        <queries::$name<'_> as QueryConfig>::Key, _
-                    >(tcx, key, queries::$name::cache_on_disk, TyCtxt::$name)),
-                }
+                    is_eval_always
+                )
             })*
         }
 
