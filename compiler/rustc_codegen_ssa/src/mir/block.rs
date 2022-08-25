@@ -324,7 +324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.unreachable();
             return;
         }
-        let llval = match self.fn_abi.ret.mode {
+        let llval = match &self.fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => {
                 bx.ret_void();
                 return;
@@ -360,7 +360,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         llval
                     }
                 };
-                let ty = bx.cast_backend_type(&cast_ty);
+                let ty = bx.cast_backend_type(cast_ty);
                 let addr = bx.pointercast(llslot, bx.type_ptr_to(ty));
                 bx.load(ty, addr, self.fn_abi.ret.layout.align.abi)
             }
@@ -1222,8 +1222,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast(ty) = arg.mode {
-                let llty = bx.cast_backend_type(&ty);
+            if let PassMode::Cast(ty) = &arg.mode {
+                let llty = bx.cast_backend_type(ty);
                 let addr = bx.pointercast(llval, bx.type_ptr_to(llty));
                 llval = bx.load(llty, addr, align.min(arg.layout.align.abi));
             } else {

@@ -26,7 +26,7 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -42,7 +42,7 @@ pub enum PassMode {
     Pair(ArgAttributes, ArgAttributes),
     /// Pass the argument after casting it, to either
     /// a single uniform or a pair of registers.
-    Cast(CastTarget),
+    Cast(Box<CastTarget>),
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
@@ -548,7 +548,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(target.into());
+        self.mode = PassMode::Cast(Box::new(target.into()));
     }
 
     pub fn pad_with(&mut self, reg: Reg) {
@@ -737,6 +737,6 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(ArgAbi<'_, usize>, 208);
-    static_assert_size!(FnAbi<'_, usize>, 248);
+    static_assert_size!(ArgAbi<'_, usize>, 72);
+    static_assert_size!(FnAbi<'_, usize>, 112);
 }

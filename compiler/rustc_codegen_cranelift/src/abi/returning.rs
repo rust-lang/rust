@@ -44,7 +44,7 @@ pub(super) fn codegen_return_param<'tcx>(
         Some(RETURN_PLACE),
         None,
         &ret_param,
-        fx.fn_abi.as_ref().unwrap().ret.mode,
+        &fx.fn_abi.as_ref().unwrap().ret.mode,
         fx.fn_abi.as_ref().unwrap().ret.layout,
     );
 
@@ -92,7 +92,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx>(
             ret_place
                 .write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_arg_abi.layout));
         }
-        PassMode::Cast(cast) => {
+        PassMode::Cast(ref cast) => {
             let results =
                 fx.bcx.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>();
             let result =
@@ -131,7 +131,7 @@ pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
             let (ret_val_a, ret_val_b) = place.to_cvalue(fx).load_scalar_pair(fx);
             fx.bcx.ins().return_(&[ret_val_a, ret_val_b]);
         }
-        PassMode::Cast(cast) => {
+        PassMode::Cast(ref cast) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx);
             let ret_vals = super::pass_mode::to_casted_value(fx, ret_val, cast);
