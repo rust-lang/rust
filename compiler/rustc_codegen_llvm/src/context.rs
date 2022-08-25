@@ -3,6 +3,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
+use crate::errors::BranchProtectionRequiresAArch64;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -275,7 +276,7 @@ pub unsafe fn create_module<'ll>(
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch != "aarch64" {
-            sess.err("-Zbranch-protection is only supported on aarch64");
+            sess.emit_err(BranchProtectionRequiresAArch64);
         } else {
             llvm::LLVMRustAddModuleFlag(
                 llmod,
