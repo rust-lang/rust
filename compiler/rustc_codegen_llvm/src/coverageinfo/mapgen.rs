@@ -1,5 +1,6 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
@@ -37,7 +38,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
