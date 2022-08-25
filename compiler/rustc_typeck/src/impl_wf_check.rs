@@ -12,13 +12,15 @@ use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
+use crate::errors::{
+    AssociatedItemsNotDistinct, TypeParameterNotConstrainedForImpl, UnconstrainedParameterType,
+};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 mod min_specialization;
@@ -123,7 +125,12 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
+                    report_unused_parameter(
+                        tcx,
+                        tcx.def_span(param.def_id),
+                        UnconstrainedParameterType::Type,
+                        param_ty.name,
+                    );
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
@@ -134,7 +141,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
-                        "lifetime",
+                        UnconstrainedParameterType::Lifetime,
                         param.name,
                     );
                 }
@@ -145,7 +152,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                     report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
-                        "const",
+                        UnconstrainedParameterType::Const,
                         param_ct.name,
                     );
                 }
@@ -173,26 +180,13 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
-    let mut err = struct_span_err!(
-        tcx.sess,
-        span,
-        E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind,
-        name
-    );
-    err.span_label(span, format!("unconstrained {} parameter", kind));
-    if kind == "const" {
-        err.note(
-            "expressions using a const parameter must map each value to a distinct output value",
-        );
-        err.note(
-            "proving the result of expressions other than the parameter are unique is not supported",
-        );
-    }
-    err.emit();
+fn report_unused_parameter(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    kind: UnconstrainedParameterType,
+    name: Symbol,
+) {
+    tcx.sess.emit_err(TypeParameterNotConstrainedForImpl { span, kind, name });
 }
 
 /// Enforce that we do not have two items in an impl with the same name.
@@ -209,16 +203,11 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
         let ident = impl_item.ident(tcx);
         match seen_items.entry(ident.normalize_to_macros_2_0()) {
             Occupied(entry) => {
-                let mut err = struct_span_err!(
-                    tcx.sess,
+                tcx.sess.emit_err(AssociatedItemsNotDistinct {
                     span,
-                    E0201,
-                    "duplicate definitions with name `{}`:",
-                    ident
-                );
-                err.span_label(*entry.get(), format!("previous definition of `{}` here", ident));
-                err.span_label(span, "duplicate definition");
-                err.emit();
+                    ident: ident.to_string(),
+                    prev_definition_span: *entry.get(),
+                });
             }
             Vacant(entry) => {
                 entry.insert(span);

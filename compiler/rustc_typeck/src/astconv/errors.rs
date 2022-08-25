@@ -1,5 +1,8 @@
 use crate::astconv::AstConv;
-use crate::errors::{ManualImplementation, MissingTypeParams};
+use crate::errors::{
+    AssociatedTypeNotDefinedInTrait, AssociatedTypeNotDefinedInTraitComment, ManualImplementation,
+    MissingTypeParams,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -138,14 +141,21 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
         let span = if assoc_name.span != DUMMY_SP { assoc_name.span } else { span };
-        let mut err = struct_span_err!(
-            self.tcx().sess,
+        // let mut err = struct_span_err!(
+        //     self.tcx().sess,
+        //     span,
+        //     E0220,
+        //     "associated type `{}` not found for `{}`",
+        //     assoc_name,
+        //     ty_param_name
+        // );
+
+        let mut err = AssociatedTypeNotDefinedInTrait {
             span,
-            E0220,
-            "associated type `{}` not found for `{}`",
             assoc_name,
-            ty_param_name
-        );
+            ty_param_name,
+            comment: AssociatedTypeNotDefinedInTraitComment::CommentNotFound { span, assoc_name },
+        };
 
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
@@ -158,13 +168,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             find_best_match_for_name(&all_candidate_names, assoc_name.name, None),
             assoc_name.span != DUMMY_SP,
         ) {
-            err.span_suggestion(
-                assoc_name.span,
-                "there is an associated type with a similar name",
-                suggested_name,
-                Applicability::MaybeIncorrect,
-            );
-            return err.emit();
+            err.comment = AssociatedTypeNotDefinedInTraitComment::SuggestSimilarType {
+                span,
+                similar: suggested_name,
+            };
+
+            return self.tcx().sess.emit_err(err);
         }
 
         // If we didn't find a good item in the supertraits (or couldn't get
@@ -208,19 +217,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
                 .collect::<Vec<_>>()[..]
             {
-                err.span_label(
-                    assoc_name.span,
-                    format!(
-                        "there is a similarly named associated type `{suggested_name}` in the trait `{}`",
-                        self.tcx().def_path_str(*best_trait)
-                    ),
-                );
-                return err.emit();
+                err.comment = AssociatedTypeNotDefinedInTraitComment::LabelSimilarType {
+                    span,
+                    suggested_name,
+                    trait_name: self.tcx().def_path_str(*best_trait),
+                };
+
+                return self.tcx().sess.emit_err(err);
             }
         }
 
-        err.span_label(span, format!("associated type `{}` not found", assoc_name));
-        err.emit()
+        self.tcx().sess.emit_err(err)
     }
 
     /// When there are any missing associated types, emit an E0191 error and attempt to supply a

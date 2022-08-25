@@ -132,4 +132,169 @@ typeck_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
 
+typeck_safe_trait_implemented_as_unsafe =
+    implementing the trait `{$trait_name}` is not unsafe
+
+typeck_unsafe_trait_implemented_without_unsafe_keyword =
+    the trait `{$trait_name}` requires an `unsafe impl` declaration
+
+typeck_attribute_requires_unsafe_keyword =
+    requires an `unsafe impl` declaration due to `#[{$attr_name}]` attribute
+
+typeck_explicit_use_of_destructor =
+    explicit use of destructor method
+    .label = explicit destructor calls not allowed
+    .suggestion = consider using `drop` function
+
+typeck_unable_to_find_overloaded_call_trait =
+    failed to find an overloaded call trait for closure call
+    .help = make sure the `fn`/`fn_mut`/`fn_once` lang items are defined
+    and have associated `call`/`call_mut`/`call_once` functions
+
+typeck_type_parameter_not_constrained_for_impl =
+    the {$kind} parameter `{$name}` is not constrained by the impl trait, self type, or predicates
+    .label = unconstrained {$kind} parameter
+    .first_note = expressions using a const parameter must map each value to a distinct output value
+    .second_note = proving the result of expressions other than the parameter are unique is not supported
+
+typeck_associated_items_not_distinct =
+    duplicate definitions with name `{$ident}`:
+    .label = duplicate definition
+    .prev_def_label = previous definition of `{$ident}` here
+
+typeck_associated_items_not_defined_in_trait =
+    associated type `{$assoc_name}` not found for `{$ty_param_name}`
+    .suggest_similarily_named_type = there is an associated type with a similar name
+    .label_similarily_named_type = there is a similarly named associated type `{$suggested_name}` in the trait `{$trait_name}`
+    .label_type_not_found = associated type `{$assoc_name}` not found
+
+typeck_enum_discriminant_overflow =
+    enum discriminant overflowed
+    .label = overflowed on value after {$last_good_discriminant}
+    .note = explicitly set `{$overflown_discriminant} = {$wrapped_value}` if that is desired outcome
+
+typeck_rustc_paren_sugar_not_enabled =
+    the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
+    .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
+
+typeck_attribute_on_non_foreign_function =
+    `#[{$attr_name}]` may only be used on foreign functions
+
+typeck_ffi_const_and_ffi_pure_on_same_function =
+    `#[ffi_const]` function cannot be `#[ffi_pure]`
+
+typeck_cmse_nonsecure_entry_requires_c_abi =
+    `#[cmse_nonsecure_entry]` requires C ABI
+
+typeck_cmse_nonsecure_entry_requires_trust_zone_m_ext =
+    `#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension
+
+typeck_track_caller_requires_cabi =
+    `#[track_caller]` requires Rust ABI
+
+typeck_export_name_contains_null_characters =
+    `export_name` may not contain null characters
+
+typeck_instruction_set_unsupported_on_target =
+    target does not support `#[instruction_set]`
+
+typeck_varargs_on_non_cabi_function =
+    C-variadic function must have C or cdecl calling convention
+    .label = C-variadics require C or cdecl calling convention
+
+typeck_generic_params_on_main_function =
+    `main` function is not allowed to have generic parameters
+    .label = `main` cannot have generic parameters
+
+typeck_when_clause_on_main_function =
+    `main` function is not allowed to have a `where` clause
+    .label = `main` cannot have a `where` clause
+
+typeck_async_main_function =
+    `main` function is not allowed to be `async`
+    .label = `main` function is not allowed to be `async`
+
+typeck_generic_return_type_on_main =
+    `main` function return type is not allowed to have generic parameters
+
+typeck_type_parameter_on_start_function =
+    start function is not allowed to have type parameters
+    .label = start function cannot have type parameters
+
+typeck_where_clause_on_start_function =
+    start function is not allowed to have a `where` clause
+    .label = start function cannot have a `where` clause
+
+typeck_async_start_function =
+    `start` is not allowed to be `async`
+    .label = `start` is not allowed to be `async`
+
+typeck_ambiguous_associated_type =
+    ambiguous associated type
+    .fix_std_module_text = you are looking for the module in `std`, not the primitive type
+    .fix_use_fully_qualified_syntax = use fully-qualified syntax
+
+typeck_enum_variant_not_found =
+    no variant named `{$assoc_ident}` found for enum `{$self_type}`
+    .fix_similar_type = there is a variant with a similar name
+    .info_label = variant not found in `{$self_type}`
+    .info_label_at_enum = variant `{$assoc_ident}` not found here
+
 typeck_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
+
+typeck_invalid_dispatch_from_dyn_types_differ_too_much =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures with the same definition; expected `{$source_path}`, found `{$target_path}`
+
+typeck_invalid_dispatch_from_dyn_invalid_repr =
+    structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+
+typeck_invalid_dispatch_from_dyn_invalid_fields =
+    the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+    .note = extra field `{$field_name}` of type `{$ty_a}` is not allowed
+
+typeck_invalid_dispatch_from_dyn_no_coerced_fields =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced, none found
+
+typeck_invalid_dispatch_from_dyn_too_many_coerced_fields =
+    implementing the `DispatchFromDyn` trait requires multiple coercions
+    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
+    .fields_that_need_coercions_fields = currently, {$coerced_fields_len} fields need coercions: {$coerced_fields}
+
+typeck_invalid_dispatch_from_dyn_not_a_struct =
+    the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+
+typeck_coerce_unsized_invalid_definition =
+    the trait `CoerceUnsized` may only be implemented for a coercion between structures with the same definition; expected `{$source_path}`, found `{$target_path}
+
+typeck_coerce_unsized_no_coerced_field =
+    the trait `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced, none found
+    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
+    .fields_that_need_coercions_fields = currently, {$coerced_fields_len} fields need coercions: {$coerced_fields}
+    .label = requires multiple coercions
+
+typeck_coerce_unsized_not_a_struct =
+    the trait `CoerceUnsized` may only be implemented for a coercion between structures
+
+typeck_cannot_implement_primitives =
+    cannot define inherent `impl` for a type outside of the crate where the type is defined
+
+typeck_explicit_impl_of_internal_structs =
+    explicit impls for the `{$trait_name}` trait are not permitted
+    .label = impl of `{$trait_name}` not allowed
+
+typeck_marker_trait_impl_contains_items =
+    impls for marker traits cannot contain items
+
+typeck_type_automatically_implements_trait =
+    the object type `{$object_type}` automatically implements the trait `{$trait_path}`
+    .label = `{$object_type}` automatically implements trait `{$trait_path}`
+
+typeck_cross_crate_opt_out_trait_impl_on_invalid_target =
+    { $error_type ->
+        [cross_crate] cross-crate traits with a default impl, like `{$trait_path}`, can only be implemented for a struct/enum type defined in the current crate
+        *[invalid_type] cross-crate traits with a default impl, like `{$trait_path}`, can only be implemented for a struct/enum type, not `{$self_type}`
+    }
+    .label = { $error_type ->
+                [cross_crate] can't implement cross-crate trait for type in another crate
+                *[invalid_type] can't implement cross-crate trait with a default impl for non-struct/enum type
+            }

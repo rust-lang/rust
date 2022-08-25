@@ -1,6 +1,7 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use crate::errors::CrossCrateOptOutTraitImplOnInvalidTarget;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
@@ -172,32 +173,20 @@ fn do_orphan_check_impl<'tcx>(
                 if self_def_id.is_local() {
                     None
                 } else {
-                    Some((
-                        format!(
-                            "cross-crate traits with a default impl, like `{}`, \
-                                    can only be implemented for a struct/enum type \
-                                    defined in the current crate",
-                            tcx.def_path_str(trait_def_id)
-                        ),
-                        "can't implement cross-crate trait for type in another crate",
-                    ))
+                    Some((tcx.def_path_str(trait_def_id), "".to_string(), "cross_crate"))
                 }
             }
-            _ => Some((
-                format!(
-                    "cross-crate traits with a default impl, like `{}`, can \
-                                only be implemented for a struct/enum type, not `{}`",
-                    tcx.def_path_str(trait_def_id),
-                    self_ty
-                ),
-                "can't implement cross-crate trait with a default impl for \
-                        non-struct/enum type",
-            )),
+            _ => Some((tcx.def_path_str(trait_def_id), self_ty.to_string(), "invalid_type")),
         };
 
-        if let Some((msg, label)) = msg {
-            let reported =
-                struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
+        if let Some((trait_path, self_type, error_type)) = msg {
+            let reported = tcx.sess.emit_err(CrossCrateOptOutTraitImplOnInvalidTarget {
+                span: sp,
+                trait_path,
+                error_type,
+                self_type,
+            });
+
             return Err(reported);
         }
     }
