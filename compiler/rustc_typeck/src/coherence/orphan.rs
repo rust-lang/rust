@@ -277,9 +277,21 @@ fn emit_orphan_check_error<'tcx>(
         }
         traits::OrphanCheckErr::UncoveredTy(param_ty, idx, local_type) => {
             let sp;
+            let mut param_ty_in_fundamental_ty = false;
 
             match idx {
-                0 => sp = self_ty_span,
+                0 => {
+                    sp = self_ty_span;
+                    match *self_ty.kind() {
+                        ty::Ref(..) => {
+                            param_ty_in_fundamental_ty = true;
+                        }
+                        ty::Adt(def, _) => {
+                            param_ty_in_fundamental_ty = def.is_fundamental();
+                        }
+                        _ => (),
+                    }
+                }
                 _ => sp = generics[idx - 1].span(),
             }
 
@@ -288,23 +300,27 @@ fn emit_orphan_check_error<'tcx>(
                 _ => "type parameter",
             };
 
+            let fundamental_ty_msg =
+                if param_ty_in_fundamental_ty { "as argument to a fundamental type " } else { "" };
+
             match local_type {
                 Some(local_type) => struct_span_err!(
                     tcx.sess,
                     sp,
                     E0210,
-                    "{} `{}` must be covered by another type \
+                    "{} `{}` {}must be covered by another type \
                     when it appears before the first local type (`{}`)",
                     message,
                     param_ty,
+                    fundamental_ty_msg,
                     local_type
                 )
                 .span_label(
                     sp,
                     format!(
-                        "{} `{}` must be covered by another type \
+                        "{} `{}` {}must be covered by another type \
                         when it appears before the first local type (`{}`)",
-                        message, param_ty, local_type
+                        message, param_ty, fundamental_ty_msg, local_type
                     ),
                 )
                 .note(
@@ -324,18 +340,19 @@ fn emit_orphan_check_error<'tcx>(
                     tcx.sess,
                     sp,
                     E0210,
-                    "{} `{}` must be used as the type parameter for some \
+                    "{} `{}` {}must be used as the type parameter for some \
                     local type (e.g., `MyStruct<{}>`)",
                     message,
                     param_ty,
+                    fundamental_ty_msg,
                     param_ty
                 )
                 .span_label(
                     sp,
                     format!(
-                        "{} `{}` must be used as the type parameter for some \
+                        "{} `{}` {}must be used as the type parameter for some \
                         local type",
-                        message, param_ty,
+                        message, param_ty, fundamental_ty_msg
                     ),
                 )
                 .note(
