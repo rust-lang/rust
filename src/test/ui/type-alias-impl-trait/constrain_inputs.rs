@@ -12,7 +12,7 @@ mod lifetime_params {
     //~^ ERROR binding for associated type `Output` references an anonymous lifetime
 }
 
-mod type_params {
+mod lifetime_params_2 {
     type Ty<'a> = impl FnOnce() -> &'a str;
     fn defining(s: &str) -> Ty<'_> { move || s }
     fn execute(ty: Ty<'_>) -> &str { ty() }
@@ -20,7 +20,7 @@ mod type_params {
 }
 
 // regression test for https://github.com/rust-lang/rust/issues/97104
-mod type_params2 {
+mod type_params {
     type Ty<T> = impl Sized;
     fn define<T>(s: T) -> Ty<T> { s }
 
