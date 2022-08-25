@@ -9031,7 +9031,6 @@ public:
           auto ifound = gutils->invertedPointers.find(orig);
           assert(ifound != gutils->invertedPointers.end());
           auto placeholder = cast<PHINode>(&*ifound->second);
-          gutils->invertedPointers.erase(ifound);
 
           if (subretType == DIFFE_TYPE::DUP_ARG) {
             Value *shadow = placeholder;
@@ -9070,6 +9069,7 @@ public:
               if (Mode == DerivativeMode::ReverseModeGradient)
                 needsReplacement = false;
             }
+            gutils->invertedPointers.erase((const Value *)orig);
             gutils->invertedPointers.insert(std::make_pair(
                 (const Value *)orig, InvertedPointerVH(gutils, shadow)));
             if (needsReplacement) {
@@ -9078,6 +9078,7 @@ public:
               gutils->erase(placeholder);
             }
           } else {
+            gutils->invertedPointers.erase((const Value *)orig);
             gutils->erase(placeholder);
           }
         }
