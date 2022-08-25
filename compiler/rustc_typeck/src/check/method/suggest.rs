@@ -1066,16 +1066,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that had unsatisfied trait bounds
                     if unsatisfied_predicates.is_empty() {
                         let def_kind = lev_candidate.kind.as_def_kind();
-                        err.span_suggestion(
-                            span,
-                            &format!(
-                                "there is {} {} with a similar name",
-                                def_kind.article(),
-                                def_kind.descr(lev_candidate.def_id),
-                            ),
-                            lev_candidate.name,
-                            Applicability::MaybeIncorrect,
-                        );
+                        // Methods are defined within the context of a struct and their first parameter is always self,
+                        // which represents the instance of the struct the method is being called on
+                        // Associated functions don’t take self as a parameter and
+                        // they are not methods because they don’t have an instance of the struct to work with.
+                        if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
+                            err.span_suggestion(
+                                span,
+                                &format!("there is a method with a similar name",),
+                                lev_candidate.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_suggestion(
+                                span,
+                                &format!(
+                                    "there is {} {} with a similar name",
+                                    def_kind.article(),
+                                    def_kind.descr(lev_candidate.def_id),
+                                ),
+                                lev_candidate.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 }
 
