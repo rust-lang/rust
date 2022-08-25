@@ -35,7 +35,6 @@ fluent_messages! {
     ast_passes => "../locales/en-US/ast_passes.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
-    codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",

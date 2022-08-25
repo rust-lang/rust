@@ -21,7 +21,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-use crate::session_diagnostic::{DeserializeRlinkError, DeserializeRlinkErrorSub};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -50,7 +49,6 @@ pub mod glue;
 pub mod meth;
 pub mod mir;
 pub mod mono_item;
-pub mod session_diagnostic;
 pub mod target_features;
 pub mod traits;
 
@@ -170,6 +168,13 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
+pub enum CodegenErrors {
+    WrongFileType,
+    EmptyVersionNumber,
+    EncodingVersionMismatch { version_array: String, rlink_version: String },
+    RustcVersionMismatch { rustc_version: String, current_version: String },
+}
+
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
@@ -214,27 +219,23 @@ impl CodegenResults {
         encoder.finish()
     }
 
-    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, DeserializeRlinkError> {
+    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, CodegenErrors> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
-            return Err(DeserializeRlinkError { sub: DeserializeRlinkErrorSub::WrongFileType });
+            return Err(CodegenErrors::WrongFileType);
         }
         let data = &data[RLINK_MAGIC.len()..];
         if data.len() < 4 {
-            return Err(DeserializeRlinkError {
-                sub: DeserializeRlinkErrorSub::EmptyVersionNumber,
-            });
+            return Err(CodegenErrors::EmptyVersionNumber);
         }
 
         let mut version_array: [u8; 4] = Default::default();
         version_array.copy_from_slice(&data[..4]);
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
-            return Err(DeserializeRlinkError {
-                sub: DeserializeRlinkErrorSub::EncodingVersionMismatch {
-                    version_array: String::from_utf8_lossy(&version_array).to_string(),
-                    rlink_version: RLINK_VERSION.to_string(),
-                },
+            return Err(CodegenErrors::EncodingVersionMismatch {
+                version_array: String::from_utf8_lossy(&version_array).to_string(),
+                rlink_version: RLINK_VERSION.to_string(),
             });
         }
 
@@ -242,11 +243,9 @@ impl CodegenResults {
         let rustc_version = decoder.read_str();
         let current_version = RUSTC_VERSION.unwrap();
         if rustc_version != current_version {
-            return Err(DeserializeRlinkError {
-                sub: DeserializeRlinkErrorSub::RustcVersionMismatch {
-                    rustc_version: rustc_version.to_string(),
-                    current_version: current_version.to_string(),
-                },
+            return Err(CodegenErrors::RustcVersionMismatch {
+                rustc_version: rustc_version.to_string(),
+                current_version: current_version.to_string(),
             });
         }
 
