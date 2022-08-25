@@ -11,7 +11,8 @@ where
 {
     fn nested_borrow_mut(&mut self) -> &mut V {
         let u_ref = self.borrow_mut(); //~ ERROR E0311
-        u_ref.borrow_mut() //~ ERROR E0311
+        let v_ref = u_ref.borrow_mut(); //~ ERROR E0311
+        v_ref
     }
 }
 
