@@ -3,7 +3,11 @@
 
 #[warn(clippy::all, clippy::needless_borrow)]
 #[allow(unused_variables)]
-#[allow(clippy::uninlined_format_args, clippy::unnecessary_mut_passed)]
+#[allow(
+    clippy::uninlined_format_args,
+    clippy::unnecessary_mut_passed,
+    clippy::unnecessary_to_owned
+)]
 fn main() {
     let a = 5;
     let ref_a = &a;
@@ -134,6 +138,7 @@ fn main() {
     multiple_constraints([[""]]);
     multiple_constraints_normalizes_to_same(X, X);
     let _ = Some("").unwrap_or("");
+    let _ = std::fs::write("x", "".to_string());
 
     only_sized(&""); // Don't lint. `Sized` is only bound
     let _ = std::any::Any::type_id(&""); // Don't lint. `Any` is only bound
@@ -276,8 +281,9 @@ mod copyable_iterator {
     fn dont_warn(mut x: Iter) {
         takes_iter(&mut x);
     }
+    #[allow(unused_mut)]
     fn warn(mut x: &mut Iter) {
-        takes_iter(&mut x)
+        takes_iter(x)
     }
 }
 
@@ -326,4 +332,56 @@ fn issue9383() {
 
         ManuallyDrop::drop(&mut ocean.coral);
     }
+}
+
+#[allow(dead_code)]
+fn closure_test() {
+    let env = "env".to_owned();
+    let arg = "arg".to_owned();
+    let f = |arg| {
+        let loc = "loc".to_owned();
+        let _ = std::fs::write("x", &env); // Don't lint. In environment
+        let _ = std::fs::write("x", arg);
+        let _ = std::fs::write("x", loc);
+    };
+    let _ = std::fs::write("x", &env); // Don't lint. Borrowed by `f`
+    f(arg);
+}
+
+#[allow(dead_code)]
+mod significant_drop {
+    #[derive(Debug)]
+    struct X;
+
+    #[derive(Debug)]
+    struct Y;
+
+    impl Drop for Y {
+        fn drop(&mut self) {}
+    }
+
+    fn foo(x: X, y: Y) {
+        debug(x);
+        debug(&y); // Don't lint. Has significant drop
+    }
+
+    fn debug(_: impl std::fmt::Debug) {}
+}
+
+#[allow(dead_code)]
+mod used_exactly_once {
+    fn foo(x: String) {
+        use_x(x);
+    }
+    fn use_x(_: impl AsRef<str>) {}
+}
+
+#[allow(dead_code)]
+mod used_more_than_once {
+    fn foo(x: String) {
+        use_x(&x);
+        use_x_again(&x);
+    }
+    fn use_x(_: impl AsRef<str>) {}
+    fn use_x_again(_: impl AsRef<str>) {}
 }

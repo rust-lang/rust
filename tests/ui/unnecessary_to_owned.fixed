@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(clippy::ptr_arg)]
+#![allow(clippy::needless_borrow, clippy::ptr_arg)]
 #![warn(clippy::unnecessary_to_owned)]
 #![feature(custom_inner_attributes)]
 
