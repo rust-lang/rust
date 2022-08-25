@@ -7,7 +7,7 @@ pub(crate) enum UnknownCTargetFeature<'a> {
     UnknownFeature { feature: &'a str, rust_feature: Option<&'a str> },
 }
 
-impl SessionDiagnostic<'_, ()> for UnknownCTargetFeature {
+impl SessionDiagnostic<'_, ()> for UnknownCTargetFeature<'_> {
     fn into_diagnostic(
         self,
         sess: &'_ rustc_session::parse::ParseSess,
