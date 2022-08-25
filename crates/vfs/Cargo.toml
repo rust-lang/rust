@@ -12,6 +12,7 @@ doctest = false
 [dependencies]
 rustc-hash = "1.1.0"
 fst = "0.4.7"
+indexmap = "1.9.1"
 
 paths = { path = "../paths", version = "0.0.0" }
-indexmap = "1.9.1"
+stdx = { path = "../stdx", version = "0.0.0" }
