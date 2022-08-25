@@ -1,0 +1,12 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/cell.rs:+0:11: +0:11
+  
+      bb0: {
+          _0 = const ();                   // scope 0 at $DIR/cell.rs:+0:11: +2:2
+          return;                          // scope 0 at $DIR/cell.rs:+2:2: +2:2
+      }
+  }
+  

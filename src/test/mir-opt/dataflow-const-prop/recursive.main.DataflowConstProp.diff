@@ -1,0 +1,133 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/recursive.rs:+0:11: +0:11
+      let _1: S;                           // in scope 0 at $DIR/recursive.rs:+1:9: +1:10
+      let mut _3: &S;                      // in scope 0 at $DIR/recursive.rs:+2:20: +2:22
+      let _4: &S;                          // in scope 0 at $DIR/recursive.rs:+2:20: +2:22
+      let mut _6: &S;                      // in scope 0 at $DIR/recursive.rs:+3:20: +3:22
+      let _7: &S;                          // in scope 0 at $DIR/recursive.rs:+3:20: +3:22
+      let mut _9: isize;                   // in scope 0 at $DIR/recursive.rs:+5:9: +5:18
+      let mut _11: isize;                  // in scope 0 at $DIR/recursive.rs:+6:13: +6:22
+      let mut _13: isize;                  // in scope 0 at $DIR/recursive.rs:+7:17: +7:28
+      let mut _15: !;                      // in scope 0 at $DIR/recursive.rs:+8:22: +8:43
+      let mut _16: !;                      // in scope 0 at $DIR/recursive.rs:+10:18: +10:39
+      let mut _17: !;                      // in scope 0 at $DIR/recursive.rs:+12:14: +12:35
+      let mut _18: &S;                     // in scope 0 at $DIR/recursive.rs:+6:20: +6:21
+      let mut _19: &S;                     // in scope 0 at $DIR/recursive.rs:+6:20: +6:21
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/recursive.rs:+1:9: +1:10
+          let _2: S;                       // in scope 1 at $DIR/recursive.rs:+2:9: +2:10
+          scope 2 {
+              debug b => _2;               // in scope 2 at $DIR/recursive.rs:+2:9: +2:10
+              let _5: S;                   // in scope 2 at $DIR/recursive.rs:+3:9: +3:10
+              scope 3 {
+                  debug c => _5;           // in scope 3 at $DIR/recursive.rs:+3:9: +3:10
+                  let _8: u32;             // in scope 3 at $DIR/recursive.rs:+4:9: +4:10
+                  let _10: &S;             // in scope 3 at $DIR/recursive.rs:+5:16: +5:17
+                  scope 4 {
+                      debug d => _8;       // in scope 4 at $DIR/recursive.rs:+4:9: +4:10
+                  }
+                  scope 5 {
+                      debug b => _10;      // in scope 5 at $DIR/recursive.rs:+5:16: +5:17
+                      let _12: &&S;        // in scope 5 at $DIR/recursive.rs:+6:20: +6:21
+                      scope 6 {
+                          debug a => _12;  // in scope 6 at $DIR/recursive.rs:+6:20: +6:21
+                          let _14: &u32;   // in scope 6 at $DIR/recursive.rs:+7:24: +7:27
+                          scope 7 {
+                              debug num => _14; // in scope 7 at $DIR/recursive.rs:+7:24: +7:27
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/recursive.rs:+1:9: +1:10
+          Deinit(_1);                      // scope 0 at $DIR/recursive.rs:+1:13: +1:22
+          ((_1 as Num).0: u32) = const 0_u32; // scope 0 at $DIR/recursive.rs:+1:13: +1:22
+          discriminant(_1) = 1;            // scope 0 at $DIR/recursive.rs:+1:13: +1:22
+          StorageLive(_2);                 // scope 1 at $DIR/recursive.rs:+2:9: +2:10
+          StorageLive(_3);                 // scope 1 at $DIR/recursive.rs:+2:20: +2:22
+          StorageLive(_4);                 // scope 1 at $DIR/recursive.rs:+2:20: +2:22
+          _4 = &_1;                        // scope 1 at $DIR/recursive.rs:+2:20: +2:22
+          _3 = &(*_4);                     // scope 1 at $DIR/recursive.rs:+2:20: +2:22
+          Deinit(_2);                      // scope 1 at $DIR/recursive.rs:+2:13: +2:23
+          ((_2 as Rec).0: &S) = move _3;   // scope 1 at $DIR/recursive.rs:+2:13: +2:23
+          discriminant(_2) = 0;            // scope 1 at $DIR/recursive.rs:+2:13: +2:23
+          StorageDead(_3);                 // scope 1 at $DIR/recursive.rs:+2:22: +2:23
+          StorageDead(_4);                 // scope 1 at $DIR/recursive.rs:+2:23: +2:24
+          StorageLive(_5);                 // scope 2 at $DIR/recursive.rs:+3:9: +3:10
+          StorageLive(_6);                 // scope 2 at $DIR/recursive.rs:+3:20: +3:22
+          StorageLive(_7);                 // scope 2 at $DIR/recursive.rs:+3:20: +3:22
+          _7 = &_2;                        // scope 2 at $DIR/recursive.rs:+3:20: +3:22
+          _6 = &(*_7);                     // scope 2 at $DIR/recursive.rs:+3:20: +3:22
+          Deinit(_5);                      // scope 2 at $DIR/recursive.rs:+3:13: +3:23
+          ((_5 as Rec).0: &S) = move _6;   // scope 2 at $DIR/recursive.rs:+3:13: +3:23
+          discriminant(_5) = 0;            // scope 2 at $DIR/recursive.rs:+3:13: +3:23
+          StorageDead(_6);                 // scope 2 at $DIR/recursive.rs:+3:22: +3:23
+          StorageDead(_7);                 // scope 2 at $DIR/recursive.rs:+3:23: +3:24
+          StorageLive(_8);                 // scope 3 at $DIR/recursive.rs:+4:9: +4:10
+          _9 = discriminant(_5);           // scope 3 at $DIR/recursive.rs:+4:19: +4:20
+          switchInt(move _9) -> [0_isize: bb2, otherwise: bb1]; // scope 3 at $DIR/recursive.rs:+4:13: +4:20
+      }
+  
+      bb1: {
+          StorageLive(_17);                // scope 3 at $DIR/recursive.rs:+12:14: +12:35
+          _17 = exit(const 0_i32);         // scope 3 at $DIR/recursive.rs:+12:14: +12:35
+                                           // mir::Constant
+                                           // + span: $DIR/recursive.rs:21:14: 21:32
+                                           // + literal: Const { ty: fn(i32) -> ! {exit}, val: Value(<ZST>) }
+      }
+  
+      bb2: {
+          StorageLive(_10);                // scope 3 at $DIR/recursive.rs:+5:16: +5:17
+          _10 = ((_5 as Rec).0: &S);       // scope 3 at $DIR/recursive.rs:+5:16: +5:17
+          _11 = discriminant((*_10));      // scope 5 at $DIR/recursive.rs:+5:28: +5:29
+          switchInt(move _11) -> [0_isize: bb4, otherwise: bb3]; // scope 5 at $DIR/recursive.rs:+5:22: +5:29
+      }
+  
+      bb3: {
+          StorageLive(_16);                // scope 5 at $DIR/recursive.rs:+10:18: +10:39
+          _16 = exit(const 0_i32);         // scope 5 at $DIR/recursive.rs:+10:18: +10:39
+                                           // mir::Constant
+                                           // + span: $DIR/recursive.rs:19:18: 19:36
+                                           // + literal: Const { ty: fn(i32) -> ! {exit}, val: Value(<ZST>) }
+      }
+  
+      bb4: {
+          StorageLive(_12);                // scope 5 at $DIR/recursive.rs:+6:20: +6:21
+          _12 = &(((*_10) as Rec).0: &S);  // scope 5 at $DIR/recursive.rs:+6:20: +6:21
+          _18 = deref_copy (*_12);         // scope 6 at $DIR/recursive.rs:+6:32: +6:33
+          _13 = discriminant((*_18));      // scope 6 at $DIR/recursive.rs:+6:32: +6:33
+          switchInt(move _13) -> [1_isize: bb6, otherwise: bb5]; // scope 6 at $DIR/recursive.rs:+6:26: +6:33
+      }
+  
+      bb5: {
+          StorageLive(_15);                // scope 6 at $DIR/recursive.rs:+8:22: +8:43
+          _15 = exit(const 0_i32);         // scope 6 at $DIR/recursive.rs:+8:22: +8:43
+                                           // mir::Constant
+                                           // + span: $DIR/recursive.rs:17:22: 17:40
+                                           // + literal: Const { ty: fn(i32) -> ! {exit}, val: Value(<ZST>) }
+      }
+  
+      bb6: {
+          StorageLive(_14);                // scope 6 at $DIR/recursive.rs:+7:24: +7:27
+          _19 = deref_copy (*_12);         // scope 6 at $DIR/recursive.rs:+7:24: +7:27
+          _14 = &(((*_19) as Num).0: u32); // scope 6 at $DIR/recursive.rs:+7:24: +7:27
+-         _8 = (*_14);                     // scope 7 at $DIR/recursive.rs:+7:32: +7:36
++         _8 = const 0_u32;                // scope 7 at $DIR/recursive.rs:+7:32: +7:36
+          StorageDead(_14);                // scope 6 at $DIR/recursive.rs:+7:35: +7:36
+          StorageDead(_12);                // scope 5 at $DIR/recursive.rs:+9:13: +9:14
+          StorageDead(_10);                // scope 3 at $DIR/recursive.rs:+11:9: +11:10
+          _0 = const ();                   // scope 0 at $DIR/recursive.rs:+0:11: +14:2
+          StorageDead(_8);                 // scope 3 at $DIR/recursive.rs:+14:1: +14:2
+          StorageDead(_5);                 // scope 2 at $DIR/recursive.rs:+14:1: +14:2
+          StorageDead(_2);                 // scope 1 at $DIR/recursive.rs:+14:1: +14:2
+          StorageDead(_1);                 // scope 0 at $DIR/recursive.rs:+14:1: +14:2
+          return;                          // scope 0 at $DIR/recursive.rs:+14:2: +14:2
+      }
+  }
+  

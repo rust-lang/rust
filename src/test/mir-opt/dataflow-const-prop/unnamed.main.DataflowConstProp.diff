@@ -1,0 +1,38 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/unnamed.rs:+0:11: +0:11
+      let mut _1: i32;                     // in scope 0 at $DIR/unnamed.rs:+1:9: +1:14
+      let mut _2: i32;                     // in scope 0 at $DIR/unnamed.rs:+3:10: +3:11
+      let mut _3: &i32;                    // in scope 0 at $DIR/unnamed.rs:+3:10: +3:11
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/unnamed.rs:+1:9: +1:14
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/unnamed.rs:+1:9: +1:14
+          _1 = const 0_i32;                // scope 0 at $DIR/unnamed.rs:+1:17: +1:18
+-         _1 = Add(_1, const 1_i32);       // scope 1 at $DIR/unnamed.rs:+2:5: +2:11
++         _1 = const 1_i32;                // scope 1 at $DIR/unnamed.rs:+2:5: +2:11
+          StorageLive(_2);                 // scope 1 at $DIR/unnamed.rs:+3:10: +3:11
+          StorageLive(_3);                 // scope 1 at $DIR/unnamed.rs:+3:10: +3:11
+          _3 = const {alloc1: &i32};       // scope 1 at $DIR/unnamed.rs:+3:10: +3:11
+                                           // mir::Constant
+                                           // + span: $DIR/unnamed.rs:9:10: 9:11
+                                           // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
+          _2 = (*_3);                      // scope 1 at $DIR/unnamed.rs:+3:10: +3:11
+-         _1 = Add(_1, move _2);           // scope 1 at $DIR/unnamed.rs:+3:5: +3:11
++         _1 = Add(const 1_i32, move _2);  // scope 1 at $DIR/unnamed.rs:+3:5: +3:11
+          StorageDead(_2);                 // scope 1 at $DIR/unnamed.rs:+3:10: +3:11
+          StorageDead(_3);                 // scope 1 at $DIR/unnamed.rs:+3:11: +3:12
+          _0 = const ();                   // scope 0 at $DIR/unnamed.rs:+0:11: +4:2
+          StorageDead(_1);                 // scope 0 at $DIR/unnamed.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/unnamed.rs:+4:2: +4:2
+      }
+  }
+  
+  alloc1 (static: g, size: 4, align: 4) {
+      02 00 00 00                                     │ ....
+  }
+  
