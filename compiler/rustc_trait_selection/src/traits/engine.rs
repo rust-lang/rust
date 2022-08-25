@@ -124,7 +124,18 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let cause = ObligationCause::misc(span, hir_id);
         for ty in assumed_wf_types {
-            implied_bounds.insert(ty);
+            // FIXME(@lcnr): rustc currently does not check wf for types
+            // pre-normalization, meaning that implied bounds are sometimes
+            // incorrect. See #100910 for more details.
+            //
+            // Not adding the unnormalized types here mostly fixes that, except
+            // that there are projections which are still ambiguous in the item definition
+            // but do normalize successfully when using the item, see #98543.
+            //
+            // Anyways, I will hopefully soon change implied bounds to make all of this
+            // sound and then uncomment this line again.
+
+            // implied_bounds.insert(ty);
             let normalized = self.normalize(cause.clone(), param_env, ty);
             implied_bounds.insert(normalized);
         }
