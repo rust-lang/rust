@@ -1130,7 +1130,7 @@ pub enum TagEncoding {
 
     /// Niche (values invalid for a type) encoding the discriminant:
     /// Discriminant and variant index coincide.
-    /// The variant `dataful_variant` contains a niche at an arbitrary
+    /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
     /// `(d - niche_variants.start).wrapping_add(niche_start)`.
@@ -1139,7 +1139,7 @@ pub enum TagEncoding {
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     Niche {
-        dataful_variant: VariantIdx,
+        untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
     },

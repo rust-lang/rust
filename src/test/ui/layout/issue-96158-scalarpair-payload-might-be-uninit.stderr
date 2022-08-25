@@ -411,7 +411,7 @@ error: layout_of(NicheFirst) = Layout {
                    valid_range: 0..=4,
                },
                tag_encoding: Niche {
-                   dataful_variant: 0,
+                   untagged_variant: 0,
                    niche_variants: 1..=2,
                    niche_start: 3,
                },
@@ -555,7 +555,7 @@ error: layout_of(NicheSecond) = Layout {
                    valid_range: 0..=4,
                },
                tag_encoding: Niche {
-                   dataful_variant: 0,
+                   untagged_variant: 0,
                    niche_variants: 1..=2,
                    niche_start: 3,
                },

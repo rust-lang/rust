@@ -1047,7 +1047,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 assert!(def.is_enum());
 
                 // The current code for niche-filling relies on variant indices
-                // instead of actual discriminants, so dataful enums with
+                // instead of actual discriminants, so untagged enums with
                 // explicit discriminants (RFC #2363) would misbehave.
                 let no_explicit_discriminants = def
                     .variants()
@@ -1058,7 +1058,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // Niche-filling enum optimization.
                 if !def.repr().inhibit_enum_layout_opt() && no_explicit_discriminants {
-                    let mut dataful_variant = None;
+                    let mut untagged_variant = None;
                     let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
 
                     // Find one non-ZST variant.
@@ -1068,11 +1068,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                         for f in fields {
                             if !f.is_zst() {
-                                if dataful_variant.is_none() {
-                                    dataful_variant = Some(v);
+                                if untagged_variant.is_none() {
+                                    untagged_variant = Some(v);
                                     continue 'variants;
                                 } else {
-                                    dataful_variant = None;
+                                    untagged_variant = None;
                                     break 'variants;
                                 }
                             }
@@ -1081,10 +1081,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
 
                     if niche_variants.start() > niche_variants.end() {
-                        dataful_variant = None;
+                        untagged_variant = None;
                     }
 
-                    if let Some(i) = dataful_variant {
+                    if let Some(i) = untagged_variant {
                         let count = (niche_variants.end().as_u32()
                             - niche_variants.start().as_u32()
                             + 1) as u128;
@@ -1152,7 +1152,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 variants: Variants::Multiple {
                                     tag: niche_scalar,
                                     tag_encoding: TagEncoding::Niche {
-                                        dataful_variant: i,
+                                        untagged_variant: i,
                                         niche_variants,
                                         niche_start,
                                     },
@@ -2559,11 +2559,11 @@ where
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
                         tag_field,
                         ..
                     } if this.fields.offset(tag_field) == offset => {
-                        Some(this.for_variant(cx, dataful_variant))
+                        Some(this.for_variant(cx, untagged_variant))
                     }
                     _ => Some(this),
                 };

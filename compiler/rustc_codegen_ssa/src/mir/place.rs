@@ -244,7 +244,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 };
                 bx.intcast(tag.immediate(), cast_to, signed)
             }
-            TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
                 let niche_llty = bx.cx().immediate_backend_type(tag.layout);
@@ -302,7 +302,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 bx.select(
                     is_niche,
                     niche_discr,
-                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                    bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
                 )
             }
         }
@@ -337,11 +337,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             }
             Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
                 tag_field,
                 ..
             } => {
-                if variant_index != dataful_variant {
+                if variant_index != untagged_variant {
                     let niche = self.project_field(bx, tag_field);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();

@@ -53,8 +53,8 @@
 // cdb-command: dx niche128_none
 // cdb-check: niche128_none    : None [Type: enum2$<core::option::Option<core::num::nonzero::NonZeroI128> >]
 
-// cdb-command: dx wrapping_niche128_dataful
-// cdb-check: wrapping_niche128_dataful : X [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
+// cdb-command: dx wrapping_niche128_untagged
+// cdb-check: wrapping_niche128_untagged : X [Type: enum2$<msvc_pretty_enums::Wrapping128Niche>]
 // cdb-check:    [+0x[...]] __0              [Type: msvc_pretty_enums::Wrapping128]
 
 // cdb-command: dx wrapping_niche128_none1
@@ -213,7 +213,7 @@ fn main() {
     let niche128_some = Some(NonZeroI128::new(123456).unwrap());
     let niche128_none: Option<NonZeroI128> = None;
 
-    let wrapping_niche128_dataful =
+    let wrapping_niche128_untagged =
         unsafe { Wrapping128Niche::X(Wrapping128(340282366920938463463374607431768211454)) };
     let wrapping_niche128_none1 = Wrapping128Niche::Y;
     let wrapping_niche128_none2 = Wrapping128Niche::Z;

@@ -718,7 +718,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Return the cast value, and the index.
                 (discr_val, index.0)
             }
-            TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
@@ -736,7 +736,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
                         }
-                        dataful_variant
+                        untagged_variant
                     }
                     Ok(tag_bits) => {
                         let tag_bits = tag_bits.assert_bits(tag_layout.size);
@@ -766,7 +766,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             assert!(usize::try_from(variant_index).unwrap() < variants_len);
                             VariantIdx::from_u32(variant_index)
                         } else {
-                            dataful_variant
+                            untagged_variant
                         }
                     }
                 };
