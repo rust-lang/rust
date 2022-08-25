@@ -1,5 +1,8 @@
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
+};
 use rustc_hir as hir;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
@@ -614,7 +617,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             "trait `IndexMut` is required to modify indexed content, \
                                 but it is not implemented for `{ty}`",
                         ));
-                        self.suggest_map_index_mut_alternatives(ty, &mut err);
+                        self.suggest_map_index_mut_alternatives(ty, &mut err, span);
                     }
                     _ => (),
                 }
@@ -632,13 +635,120 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'_>,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        span: Span,
     ) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
             || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, did)
         {
-            err.help(format!("to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API"));
+            struct V<'a, 'b, 'tcx, G: EmissionGuarantee> {
+                assign_span: Span,
+                err: &'a mut DiagnosticBuilder<'b, G>,
+                ty: Ty<'tcx>,
+                suggested: bool,
+            }
+            impl<'a, 'b: 'a, 'hir, 'tcx, G: EmissionGuarantee> Visitor<'hir> for V<'a, 'b, 'tcx, G> {
+                fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'hir>) {
+                    hir::intravisit::walk_stmt(self, stmt);
+                    let expr = match stmt.kind {
+                        hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
+                        hir::StmtKind::Local(hir::Local { init: Some(expr), .. }) => expr,
+                        _ => {
+                            return;
+                        }
+                    };
+                    if let hir::ExprKind::Assign(place, rv, _sp) = expr.kind
+                        && let hir::ExprKind::Index(val, index) = place.kind
+                        && (expr.span == self.assign_span || place.span == self.assign_span)
+                    {
+                        // val[index] = rv;
+                        // ---------- place
+                        self.err.multipart_suggestions(
+                            &format!(
+                                "to modify a `{}`, use `.get_mut()`, `.insert()` or the entry API",
+                                self.ty,
+                            ),
+                            vec![
+                                vec![ // val.insert(index, rv);
+                                    (
+                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                        ".insert(".to_string(),
+                                    ),
+                                    (
+                                        index.span.shrink_to_hi().with_hi(rv.span.lo()),
+                                        ", ".to_string(),
+                                    ),
+                                    (rv.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                vec![ // val.get_mut(index).map(|v| { *v = rv; });
+                                    (
+                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                        ".get_mut(".to_string(),
+                                    ),
+                                    (
+                                        index.span.shrink_to_hi().with_hi(place.span.hi()),
+                                        ").map(|val| { *val".to_string(),
+                                    ),
+                                    (
+                                        rv.span.shrink_to_hi(),
+                                        "; })".to_string(),
+                                    ),
+                                ],
+                                vec![ // let x = val.entry(index).or_insert(rv);
+                                    (val.span.shrink_to_lo(), "let val = ".to_string()),
+                                    (
+                                        val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                        ".entry(".to_string(),
+                                    ),
+                                    (
+                                        index.span.shrink_to_hi().with_hi(rv.span.lo()),
+                                        ").or_insert(".to_string(),
+                                    ),
+                                    (rv.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                            ].into_iter(),
+                            Applicability::MachineApplicable,
+                        );
+                        self.suggested = true;
+                    } else if let hir::ExprKind::MethodCall(_path, args @ [_, ..], sp) = expr.kind
+                        && let hir::ExprKind::Index(val, index) = args[0].kind
+                        && expr.span == self.assign_span
+                    {
+                        // val[index].path(args..);
+                        self.err.multipart_suggestion(
+                            &format!("to modify a `{}` use `.get_mut()`", self.ty),
+                            vec![
+                                (
+                                    val.span.shrink_to_hi().with_hi(index.span.lo()),
+                                    ".get_mut(".to_string(),
+                                ),
+                                (
+                                    index.span.shrink_to_hi().with_hi(args[0].span.hi()),
+                                    ").map(|val| val".to_string(),
+                                ),
+                                (sp.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                        self.suggested = true;
+                    }
+                }
+            }
+            let hir_map = self.infcx.tcx.hir();
+            let def_id = self.body.source.def_id();
+            let hir_id = hir_map.local_def_id_to_hir_id(def_id.as_local().unwrap());
+            let node = hir_map.find(hir_id);
+            let Some(hir::Node::Item(item)) = node else { return; };
+            let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
+            let body = self.infcx.tcx.hir().body(body_id);
+            let mut v = V { assign_span: span, err, ty, suggested: false };
+            v.visit_body(body);
+            if !v.suggested {
+                err.help(&format!(
+                    "to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API",
+                ));
+            }
         }
     }
 
