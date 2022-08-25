@@ -1,0 +1,17 @@
+error: anonymous enums are not supported
+  --> $DIR/issue-100741-return-anonymous-enum.rs:3:17
+   |
+LL | fn foo<'a>() -> i32 | Vec<i32> | &str | &'a String | Foo {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using enum as return type: `SomeEnum`
+   |
+   = note: enum SomeEnum<'lifetime,'a>{
+               I32(i32)
+               Vec(Vec<...>)
+               StrRef(&'lifetime str)
+               StringRef(&'a String)
+               Foo(Foo)
+           }
+           
+
+error: aborting due to previous error
+

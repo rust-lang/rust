@@ -38,7 +38,7 @@ pub(super) enum AllowPlus {
     No,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub(super) enum RecoverQPath {
     Yes,
     No,
@@ -199,14 +199,32 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, FnRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
-            let ty = self.parse_ty_common(
-                allow_plus,
-                AllowCVariadic::No,
-                recover_qpath,
-                recover_return_sign,
-                None,
-                RecoverQuestionMark::Yes,
-            )?;
+
+            let mut tys = vec![];
+            let lo = self.token.span;
+            loop {
+                let ty = self.parse_ty_common(
+                    allow_plus,
+                    AllowCVariadic::No,
+                    recover_qpath,
+                    recover_return_sign,
+                    None,
+                    RecoverQuestionMark::Yes,
+                )?;
+                tys.push(ty);
+                // maybe a `|` for fn type of closure, `|a: &dyn Fn(i32) -> bool| { ... }`
+                if self.check_noexpect(&token::BinOp(token::Or))
+                    && self.look_ahead(1, |tok| tok == &token::OpenDelim(token::Delimiter::Brace))
+                {
+                    break;
+                }
+                if !self.eat_noexpect(&token::BinOp(token::Or)) {
+                    break;
+                }
+            }
+            let span = lo.to(self.prev_token.span);
+            self.check_anonymous_enum(span, &tys)?;
+            let ty = tys.into_iter().next().unwrap();
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't

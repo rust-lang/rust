@@ -30,6 +30,7 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 pub mod parser;
 use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
+mod utils;
 pub mod validate_attr;
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`

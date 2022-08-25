@@ -880,6 +880,97 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn check_anonymous_enum(&mut self, span: Span, tys: &[P<Ty>]) -> PResult<'a, ()> {
+        use std::fmt::Write;
+        if tys.len() <= 1 {
+            return Ok(());
+        }
+
+        fn variant_name_and_ty<'a>(
+            ty: &'a Ty,
+            lifetimes: &mut FxHashSet<&'a str>,
+        ) -> Option<(String, String)> {
+            match &ty.kind {
+                TyKind::Path(_, path) => {
+                    let mut name = String::new();
+                    let mut ty_string = String::new();
+
+                    if let Some(seg) = path.segments.iter().last() {
+                        name.push_str(seg.ident.name.as_str());
+                        ty_string.push_str(seg.ident.name.as_str());
+
+                        if let Some(_args) = &seg.args {
+                            ty_string.push('<');
+                            ty_string.push_str("...");
+                            ty_string.push('>');
+                        }
+                    }
+
+                    Some((name, ty_string))
+                }
+                TyKind::Rptr(lifetime, ty) => {
+                    if let Some((mut name, ty)) = variant_name_and_ty(&ty.ty, lifetimes) {
+                        name.push_str("Ref");
+                        let lifetime =
+                            lifetime.as_ref().map(|l| l.ident.name.as_str()).unwrap_or("'lifetime");
+                        lifetimes.insert(lifetime);
+                        Some((name, format!("&{} {}", lifetime, ty)))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        }
+
+        let mut err = self.struct_span_err(span, "anonymous enums are not supported");
+        let mut variant_content = String::new();
+        let mut variant_name_set = FxHashSet::default();
+        let mut lifetimes = FxHashSet::default();
+        tys.iter().for_each(|ty| {
+            let name_ty = variant_name_and_ty(ty, &mut lifetimes);
+            if let Some((variant_name, ty)) = name_ty {
+                let variant_name = crate::utils::to_camel_case(&variant_name);
+                if !variant_name_set.contains(&variant_name) {
+                    let _ = writeln!(
+                        &mut variant_content,
+                        "    {variant_name}({ty})",
+                        variant_name = variant_name,
+                        ty = ty
+                    );
+                    variant_name_set.insert(variant_name);
+                }
+            }
+        });
+
+        let mut suggestion_code = String::new();
+        suggestion_code.push_str("enum SomeEnum");
+        if lifetimes.len() > 0 {
+            suggestion_code.push_str("<");
+            #[allow(rustc::potential_query_instability)]
+            let mut iter = lifetimes.into_iter();
+            if let Some(lifetime) = iter.next() {
+                suggestion_code.push_str(lifetime);
+                while let Some(lifetime) = iter.next() {
+                    suggestion_code.push_str(",");
+                    suggestion_code.push_str(lifetime);
+                }
+            }
+            suggestion_code.push_str(">");
+        }
+        suggestion_code.push_str("{\n");
+        suggestion_code.push_str(&variant_content);
+        suggestion_code.push_str("}\n");
+        err.span_suggestion(
+            span,
+            "consider using enum as return type",
+            "SomeEnum",
+            Applicability::HasPlaceholders,
+        )
+        .note(suggestion_code);
+        Err(err)
+    }
+
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
