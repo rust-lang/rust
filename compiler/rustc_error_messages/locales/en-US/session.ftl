@@ -66,3 +66,5 @@ session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has
 session_crate_name_empty = crate name must not be empty
 
 session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
+
+session_expr_parentheses_needed = parentheses are required to parse this as an expression

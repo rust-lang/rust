@@ -2,7 +2,9 @@
 //! It also serves as an input to the parser itself.
 
 use crate::config::CheckCfg;
-use crate::errors::{FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError};
+use crate::errors::{
+    ExprParenthesesNeeded, FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError,
+};
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
 };
@@ -11,7 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
-    fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
+    fallback_fluent_bundle, AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticId,
     DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
@@ -325,11 +327,7 @@ impl ParseSess {
     /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
     /// parser to continue parsing the following operation as part of the same expression.
     pub fn expr_parentheses_needed(&self, err: &mut Diagnostic, span: Span) {
-        err.multipart_suggestion(
-            "parentheses are required to parse this as an expression",
-            vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],
-            Applicability::MachineApplicable,
-        );
+        ExprParenthesesNeeded::surrounding(span).add_to_diagnostic(err);
     }
 
     pub fn save_proc_macro_span(&self, span: Span) -> usize {

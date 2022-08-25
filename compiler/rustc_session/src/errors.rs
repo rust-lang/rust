@@ -219,3 +219,18 @@ impl IntoDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
         diag
     }
 }
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(session::expr_parentheses_needed, applicability = "machine-applicable")]
+pub struct ExprParenthesesNeeded {
+    #[suggestion_part(code = "(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+impl ExprParenthesesNeeded {
+    pub fn surrounding(s: Span) -> Self {
+        ExprParenthesesNeeded { left: s.shrink_to_lo(), right: s.shrink_to_hi() }
+    }
+}
