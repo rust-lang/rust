@@ -3,8 +3,6 @@ import * as vscode from "vscode";
 import { Env } from "./client";
 import { log } from "./util";
 
-export type UpdatesChannel = "stable" | "nightly";
-
 export type RunnableEnvCfg =
     | undefined
     | Record<string, string>
