@@ -30,7 +30,7 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
     goal: ParamEnvAnd<'tcx, T>,
 ) -> Result<T, NoSolution> {
     let ParamEnvAnd { param_env, value } = goal;
-    // HACK (ouz-a) This prevents MIRI ICE see #100967
+    // HACK (ouz-a) We bubble up here to prevent MIRI ICE see #100967
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter(|infcx| {
         let cause = ObligationCause::dummy();
         match infcx.at(&cause, param_env).normalize(value) {

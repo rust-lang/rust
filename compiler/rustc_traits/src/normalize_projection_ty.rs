@@ -21,7 +21,7 @@ fn normalize_projection_ty<'tcx>(
     debug!("normalize_provider(goal={:#?})", goal);
 
     tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
-    // HACK (ouz-a) This prevents MIRI ICE see #100967
+    // HACK (ouz-a) We bubble up here to prevent MIRI ICE see #100967
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_canonical_trait_query(
         &goal,
         |infcx, fulfill_cx, ParamEnvAnd { param_env, value: goal }| {
