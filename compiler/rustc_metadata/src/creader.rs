@@ -2,7 +2,7 @@
 
 use crate::errors::{
     ConflictingGlobalAlloc, CrateNotPanicRuntime, GlobalAllocRequired, NoMultipleGlobalAlloc,
-    NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime, ProfilerBuiltinsNeedsCore,
+    NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime,
 };
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
@@ -759,7 +759,7 @@ impl<'a> CrateLoader<'a> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
-    fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
+    fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.unstable_opts.no_profiler_runtime
             || !(self.sess.instrument_coverage()
                 || self.sess.opts.unstable_opts.profile
@@ -771,9 +771,6 @@ impl<'a> CrateLoader<'a> {
         info!("loading profiler");
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
-        if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
-            self.sess.emit_err(ProfilerBuiltinsNeedsCore);
-        }
 
         let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
         let data = self.cstore.get_crate_data(cnum);
@@ -927,7 +924,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
-        self.inject_profiler_runtime(krate);
+        self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
