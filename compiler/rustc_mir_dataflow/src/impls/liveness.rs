@@ -122,11 +122,7 @@ where
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        match DefUse::for_place(local.into(), context) {
-            Some(DefUse::Def) => self.0.kill(local),
-            Some(DefUse::Use) => self.0.gen(local),
-            None => {}
-        }
+        DefUse::apply(self.0, local.into(), context);
     }
 }
 
@@ -137,20 +133,12 @@ where
     T: GenKill<Local>,
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
-        match DefUse::for_place(*place, context) {
-            Some(DefUse::Def) => self.0.kill(place.local),
-            Some(DefUse::Use) => self.0.gen(place.local),
-            None => {}
-        }
+        DefUse::apply(self.0, *place, context);
         self.visit_projection(place.as_ref(), context, location);
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        match DefUse::for_place(local.into(), context) {
-            Some(DefUse::Def) => self.0.kill(local),
-            Some(DefUse::Use) => self.0.gen(local),
-            None => {}
-        }
+        DefUse::apply(self.0, local.into(), context);
     }
 }
 
@@ -161,6 +149,14 @@ enum DefUse {
 }
 
 impl DefUse {
+    fn apply<'tcx>(trans: &mut impl GenKill<Local>, place: Place<'tcx>, context: PlaceContext) {
+        match DefUse::for_place(place, context) {
+            Some(DefUse::Def) => trans.kill(place.local),
+            Some(DefUse::Use) => trans.gen(place.local),
+            None => {}
+        }
+    }
+
     fn for_place<'tcx>(place: Place<'tcx>, context: PlaceContext) -> Option<DefUse> {
         match context {
             PlaceContext::NonUse(_) => None,
