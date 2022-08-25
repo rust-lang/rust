@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
 
@@ -1159,8 +1159,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
     ) {
         // Fill padding with undef value, where applicable.
-        if let Some(ty) = arg.pad {
-            llargs.push(bx.const_undef(bx.reg_backend_type(&ty)))
+        if arg.pad_i32 {
+            llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())))
         }
 
         if arg.is_ignore() {

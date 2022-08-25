@@ -216,7 +216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         // Padding must be fully equal.
-        let pad_compat = || caller_abi.pad == callee_abi.pad;
+        let pad_compat = || caller_abi.pad_i32 == callee_abi.pad_i32;
         // When comparing the PassMode, we have to be smart about comparing the attributes.
         let arg_attr_compat = |a1: &ArgAttributes, a2: &ArgAttributes| {
             // There's only one regular attribute that matters for the call ABI: InReg.

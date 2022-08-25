@@ -345,8 +345,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         for arg in args {
             // add padding
-            if let Some(ty) = arg.pad {
-                llargument_tys.push(ty.llvm_type(cx));
+            if arg.pad_i32 {
+                llargument_tys.push(Reg::i32().llvm_type(cx));
             }
 
             let llarg_ty = match &arg.mode {
@@ -440,7 +440,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             _ => {}
         }
         for arg in self.args.iter() {
-            if arg.pad.is_some() {
+            if arg.pad_i32 {
                 apply(&ArgAttributes::new());
             }
             match &arg.mode {
@@ -516,7 +516,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
         }
         for arg in self.args.iter() {
-            if arg.pad.is_some() {
+            if arg.pad_i32 {
                 apply(bx.cx, &ArgAttributes::new());
             }
             match &arg.mode {

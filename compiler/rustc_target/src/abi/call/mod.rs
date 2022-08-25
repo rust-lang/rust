@@ -465,7 +465,7 @@ pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
 
     /// Dummy argument, which is emitted before the real argument.
-    pub pad: Option<Reg>,
+    pub pad_i32: bool,
 
     pub mode: PassMode,
 }
@@ -486,7 +486,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
-        ArgAbi { layout, pad: None, mode }
+        ArgAbi { layout, pad_i32: false, mode }
     }
 
     fn indirect_pass_mode(layout: &TyAndLayout<'a, Ty>) -> PassMode {
@@ -551,8 +551,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         self.mode = PassMode::Cast(Box::new(target.into()));
     }
 
-    pub fn pad_with(&mut self, reg: Reg) {
-        self.pad = Some(reg);
+    pub fn pad_with_i32(&mut self) {
+        self.pad_i32 = true;
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -737,6 +737,6 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(ArgAbi<'_, usize>, 72);
-    static_assert_size!(FnAbi<'_, usize>, 96);
+    static_assert_size!(ArgAbi<'_, usize>, 64);
+    static_assert_size!(FnAbi<'_, usize>, 88);
 }
