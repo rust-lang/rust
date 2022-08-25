@@ -29,7 +29,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::Variant { adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
                 span: match_pair.pattern.span,
                 kind: TestKind::Switch {
@@ -92,7 +92,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return false;
         };
 
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::Constant { value } => {
                 options
                     .entry(value)
@@ -130,7 +130,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return false;
         };
 
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::Variant { adt_def: _, variant_index, .. } => {
                 // We have a pattern testing for variant `variant_index`
                 // set the corresponding index to true
@@ -506,7 +506,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let (match_pair_index, match_pair) =
             candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
 
-        match (&test.kind, &*match_pair.pattern.kind) {
+        match (&test.kind, &match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
@@ -569,7 +569,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             match_pair_index,
                             candidate,
                             prefix,
-                            slice.as_ref(),
+                            slice,
                             suffix,
                         );
                         Some(0)
@@ -607,7 +607,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             match_pair_index,
                             candidate,
                             prefix,
-                            slice.as_ref(),
+                            slice,
                             suffix,
                         );
                         Some(0)
@@ -678,7 +678,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // However, at this point we can still encounter or-patterns that were extracted
                 // from previous calls to `sort_candidate`, so we need to manually address that
                 // case to avoid panicking in `self.test()`.
-                if let PatKind::Or { .. } = &*match_pair.pattern.kind {
+                if let PatKind::Or { .. } = &match_pair.pattern.kind {
                     return None;
                 }
 
@@ -708,9 +708,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair_index: usize,
         candidate: &mut Candidate<'pat, 'tcx>,
-        prefix: &'pat [Pat<'tcx>],
-        opt_slice: Option<&'pat Pat<'tcx>>,
-        suffix: &'pat [Pat<'tcx>],
+        prefix: &'pat [Box<Pat<'tcx>>],
+        opt_slice: &'pat Option<Box<Pat<'tcx>>>,
+        suffix: &'pat [Box<Pat<'tcx>>],
     ) {
         let removed_place = candidate.match_pairs.remove(match_pair_index).place;
         self.prefix_slice_suffix(

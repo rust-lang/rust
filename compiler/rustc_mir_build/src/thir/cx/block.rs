@@ -91,17 +91,17 @@ impl<'tcx> Cx<'tcx> {
                                     span: ty.span,
                                     inferred_ty: self.typeck_results.node_type(ty.hir_id),
                                 };
-                                pattern = Pat {
+                                pattern = Box::new(Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
-                                    kind: Box::new(PatKind::AscribeUserType {
+                                    kind: PatKind::AscribeUserType {
                                         ascription: Ascription {
                                             annotation,
                                             variance: ty::Variance::Covariant,
                                         },
                                         subpattern: pattern,
-                                    }),
-                                };
+                                    },
+                                });
                             }
                         }
 

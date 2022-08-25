@@ -493,7 +493,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         irrefutable_pat: Pat<'tcx>,
         initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
-        match *irrefutable_pat.kind {
+        match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
@@ -518,13 +518,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // broken.
             PatKind::AscribeUserType {
                 subpattern:
-                    Pat {
+                    box Pat {
                         kind:
-                            box PatKind::Binding {
-                                mode: BindingMode::ByValue,
-                                var,
-                                subpattern: None,
-                                ..
+                            PatKind::Binding {
+                                mode: BindingMode::ByValue, var, subpattern: None, ..
                             },
                         ..
                     },
@@ -744,7 +741,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
             pattern, pattern_user_ty
         );
-        match *pattern.kind {
+        match pattern.kind {
             PatKind::Binding {
                 mutability,
                 name,
@@ -1330,7 +1327,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // All of the or-patterns have been sorted to the end, so if the first
         // pattern is an or-pattern we only have or-patterns.
-        match *first_candidate.match_pairs[0].pattern.kind {
+        match first_candidate.match_pairs[0].pattern.kind {
             PatKind::Or { .. } => (),
             _ => {
                 self.test_candidates(
@@ -1350,7 +1347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut otherwise = None;
         for match_pair in match_pairs {
-            let PatKind::Or { ref pats } = &*match_pair.pattern.kind else {
+            let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
                 bug!("Or-patterns should have been sorted to the end");
             };
             let or_span = match_pair.pattern.span;
@@ -1384,7 +1381,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
         otherwise: &mut Option<BasicBlock>,
-        pats: &'pat [Pat<'tcx>],
+        pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
@@ -2289,7 +2286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let else_block_span = self.thir[else_block].span;
         let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
-            let pat = Pat { ty: init.ty, span: else_block_span, kind: Box::new(PatKind::Wild) };
+            let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
             this.declare_bindings(
                 visibility_scope,

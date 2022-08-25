@@ -214,7 +214,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &Pat<'tcx>) {
         if self.in_union_destructure {
-            match *pat.kind {
+            match pat.kind {
                 // binding to a variable allows getting stuff out of variable
                 PatKind::Binding { .. }
                 // match is conditional on having this value
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
         };
 
-        match &*pat.kind {
+        match &pat.kind {
             PatKind::Leaf { .. } => {
                 if let ty::Adt(adt_def, ..) = pat.ty.kind() {
                     if adt_def.is_union() {

@@ -26,9 +26,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pairs: &mut SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
         place: &PlaceBuilder<'tcx>,
-        prefix: &'pat [Pat<'tcx>],
-        opt_slice: Option<&'pat Pat<'tcx>>,
-        suffix: &'pat [Pat<'tcx>],
+        prefix: &'pat [Box<Pat<'tcx>>],
+        opt_slice: &'pat Option<Box<Pat<'tcx>>>,
+        suffix: &'pat [Box<Pat<'tcx>>],
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Ok(place_resolved) =

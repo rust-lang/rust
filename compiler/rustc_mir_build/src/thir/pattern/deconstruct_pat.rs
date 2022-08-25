@@ -71,9 +71,9 @@ use std::ops::RangeInclusive;
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
-        if let PatKind::Or { pats } = pat.kind.as_ref() {
+        if let PatKind::Or { pats } = &pat.kind {
             for pat in pats {
-                expand(pat, vec);
+                expand(&pat, vec);
             }
         } else {
             vec.push(pat)
@@ -255,7 +255,7 @@ impl IntRange {
             PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
+        Pat { ty, span: DUMMY_SP, kind }
     }
 
     /// Lint on likely incorrect range patterns (#63987)
@@ -1297,7 +1297,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         let mkpat = |pat| DeconstructedPat::from_pat(cx, pat);
         let ctor;
         let fields;
-        match pat.kind.as_ref() {
+        match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. } => return mkpat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return mkpat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
@@ -1342,9 +1342,9 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         fields = Fields::singleton(cx, pat);
                     }
                     ty::Adt(adt, _) => {
-                        ctor = match pat.kind.as_ref() {
+                        ctor = match pat.kind {
                             PatKind::Leaf { .. } => Single,
-                            PatKind::Variant { variant_index, .. } => Variant(*variant_index),
+                            PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
                         let variant = &adt.variant(ctor.variant_index_for_adt(*adt));
@@ -1429,7 +1429,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     FixedLen(prefix.len() + suffix.len())
                 };
                 ctor = Slice(Slice::new(array_len, kind));
-                fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(mkpat));
+                fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(|p| mkpat(&*p)));
             }
             PatKind::Or { .. } => {
                 ctor = Or;
@@ -1442,15 +1442,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'p, 'tcx>) -> Pat<'tcx> {
         let is_wildcard = |pat: &Pat<'_>| {
-            matches!(*pat.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
+            matches!(pat.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
         };
-        let mut subpatterns = self.iter_fields().map(|p| p.to_pat(cx));
-        let pat = match &self.ctor {
+        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_pat(cx)));
+        let kind = match &self.ctor {
             Single | Variant(_) => match self.ty.kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
                         .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .map(|(i, pattern)| FieldPat { field: Field::new(i), pattern })
                         .collect(),
                 },
                 ty::Adt(adt_def, _) if adt_def.is_box() => {
@@ -1506,7 +1506,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         }
                         let suffix: Vec<_> = subpatterns.collect();
                         let wild = Pat::wildcard_from_ty(self.ty);
-                        PatKind::Slice { prefix, slice: Some(wild), suffix }
+                        PatKind::Slice { prefix, slice: Some(Box::new(wild)), suffix }
                     }
                 }
             }
@@ -1523,7 +1523,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
         };
 
-        Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(pat) }
+        Pat { ty: self.ty, span: DUMMY_SP, kind }
     }
 
     pub(super) fn is_or_pat(&self) -> bool {
