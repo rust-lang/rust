@@ -76,9 +76,9 @@ impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
 }
 
 macro_rules! provide_one {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 $cdata
                     .root
                     .tables
@@ -89,9 +89,9 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 // We don't decode `table_direct`, since it's not a Lazy, but an actual value
                 $cdata
                     .root
@@ -102,11 +102,11 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
-        fn $name<$lt>(
-            $tcx: TyCtxt<$lt>,
-            def_id_arg: ty::query::query_keys::$name<$lt>,
-        ) -> ty::query::query_values::$name<$lt> {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
+        fn $name<'tcx>(
+            $tcx: TyCtxt<'tcx>,
+            def_id_arg: ty::query::query_keys::$name<'tcx>,
+        ) -> ty::query::query_values::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -130,11 +130,11 @@ macro_rules! provide_one {
 }
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => { $($compute:tt)* })*) => {
         pub fn provide_extern(providers: &mut ExternProviders) {
             $(provide_one! {
-                <$lt> $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
+                $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
             })*
 
             *providers = ExternProviders {
@@ -187,7 +187,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
     }
 }
 
-provide! { <'tcx> tcx, def_id, other, cdata,
+provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table }
     explicit_predicates_of => { table }
     generics_of => { table }
