@@ -18,14 +18,14 @@ pub(crate) struct RLinkEmptyVersionNumber;
 #[diag(driver::rlink_encoding_version_mismatch)]
 pub(crate) struct RLinkEncodingVersionMismatch {
     pub version_array: String,
-    pub rlink_version: String,
+    pub rlink_version: u32,
 }
 
 #[derive(SessionDiagnostic)]
 #[diag(driver::rlink_rustc_version_mismatch)]
-pub(crate) struct RLinkRustcVersionMismatch {
+pub(crate) struct RLinkRustcVersionMismatch<'a> {
     pub rustc_version: String,
-    pub current_version: String,
+    pub current_version: &'a str,
 }
 
 #[derive(SessionDiagnostic)]

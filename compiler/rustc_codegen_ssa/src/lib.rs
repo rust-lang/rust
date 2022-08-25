@@ -168,11 +168,11 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
-pub enum CodegenErrors {
+pub enum CodegenErrors<'a> {
     WrongFileType,
     EmptyVersionNumber,
-    EncodingVersionMismatch { version_array: String, rlink_version: String },
-    RustcVersionMismatch { rustc_version: String, current_version: String },
+    EncodingVersionMismatch { version_array: String, rlink_version: u32 },
+    RustcVersionMismatch { rustc_version: String, current_version: &'a str },
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -219,7 +219,7 @@ impl CodegenResults {
         encoder.finish()
     }
 
-    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, CodegenErrors> {
+    pub fn deserialize_rlink<'a>(data: Vec<u8>) -> Result<Self, CodegenErrors<'a>> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
@@ -235,7 +235,7 @@ impl CodegenResults {
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
             return Err(CodegenErrors::EncodingVersionMismatch {
                 version_array: String::from_utf8_lossy(&version_array).to_string(),
-                rlink_version: RLINK_VERSION.to_string(),
+                rlink_version: RLINK_VERSION,
             });
         }
 
@@ -245,7 +245,7 @@ impl CodegenResults {
         if rustc_version != current_version {
             return Err(CodegenErrors::RustcVersionMismatch {
                 rustc_version: rustc_version.to_string(),
-                current_version: current_version.to_string(),
+                current_version,
             });
         }
 
