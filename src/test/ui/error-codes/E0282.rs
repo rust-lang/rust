@@ -1,3 +1,3 @@
 fn main() {
-    let x = "hello".chars().rev().collect(); //~ ERROR E0283
+    let x: _ = "hello".chars().rev().collect(); //~ ERROR E0282
 }
