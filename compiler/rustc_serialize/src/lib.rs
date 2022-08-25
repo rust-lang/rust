@@ -16,6 +16,7 @@ Core encoding and decoding interfaces.
 #![feature(maybe_uninit_slice)]
 #![feature(let_else)]
 #![feature(new_uninit)]
+#![feature(allocator_api)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
 #![deny(rustc::untranslatable_diagnostic)]
