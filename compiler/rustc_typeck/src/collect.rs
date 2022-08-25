@@ -48,6 +48,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{abi, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use std::iter;
+use thin_vec::ThinVec;
 
 mod item_bounds;
 mod type_of;
@@ -3294,7 +3295,8 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     use rustc_ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
-    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
+    let meta_item_list: Option<&[ast::NestedMetaItem]> =
+        meta_item_list.as_ref().map(ThinVec::as_ref);
     let sole_meta_list = match meta_item_list {
         Some([item]) => item.literal(),
         Some(_) => {

@@ -1,11 +1,11 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
-
 use rustc_ast::{self as ast, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_debug(
     cx: &mut ExtCtxt<'_>,
@@ -72,7 +72,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     if fields.is_empty() {
         // Special case for no fields.
         let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
@@ -83,7 +83,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         };
         let fn_path_debug = cx.std_path(&[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = Vec::with_capacity(2 + fields.len() * args_per_field);
+        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt, name]);
         for i in 0..fields.len() {
             let field = &fields[i];
@@ -155,7 +155,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         };
         let fn_path_debug_internal = cx.std_path(&[sym::fmt, sym::Formatter, sym_debug]);
 
-        let mut args = Vec::with_capacity(4);
+        let mut args = ThinVec::with_capacity(4);
         args.push(fmt);
         args.push(name);
         if is_struct {

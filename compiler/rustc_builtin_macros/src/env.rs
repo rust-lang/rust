@@ -8,8 +8,8 @@ use rustc_ast::{self as ast, GenericArg};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-
 use std::env;
+use thin_vec::thin_vec;
 
 pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
@@ -41,7 +41,7 @@ pub fn expand_option_env<'cx>(
         Some(value) => cx.expr_call_global(
             sp,
             cx.std_path(&[sym::option, sym::Option, sym::Some]),
-            vec![cx.expr_str(sp, value)],
+            thin_vec![cx.expr_str(sp, value)],
         ),
     };
     MacEager::expr(e)

@@ -13,6 +13,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
+use thin_vec::{thin_vec, ThinVec};
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -315,7 +316,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                     cx.expr_call(
                         span,
                         proc_macro_ty_method_path(cx, custom_derive),
-                        vec![
+                        thin_vec![
                             cx.expr_str(span, cd.trait_name),
                             cx.expr_array_ref(
                                 span,
@@ -336,7 +337,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                     cx.expr_call(
                         span,
                         proc_macro_ty_method_path(cx, ident),
-                        vec![
+                        thin_vec![
                             cx.expr_str(span, ca.function_name.name),
                             local_path(cx, ca.function_name),
                         ],
@@ -370,7 +371,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
 
             let deprecated_attr = attr::mk_nested_word_item(Ident::new(sym::deprecated, span));
             let allow_deprecated_attr =
-                attr::mk_list_item(Ident::new(sym::allow, span), vec![deprecated_attr]);
+                attr::mk_list_item(Ident::new(sym::allow, span), thin_vec![deprecated_attr]);
             i.attrs.push(cx.attribute(allow_deprecated_attr));
 
             i
@@ -383,7 +384,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
     let anon_constant = cx.item_const(
         span,
         Ident::new(kw::Underscore, span),
-        cx.ty(span, ast::TyKind::Tup(Vec::new())),
+        cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
         block,
     );
 

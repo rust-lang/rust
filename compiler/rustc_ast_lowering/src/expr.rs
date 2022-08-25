@@ -12,7 +12,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -348,7 +348,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: Vec<AstP<Expr>>,
+        args: ThinVec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, ref mut path) = f.kind else {
@@ -1591,7 +1591,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let allow_ident = Ident::new(sym::allow, self.lower_span(span));
                 let uc_ident = Ident::new(sym::unreachable_code, self.lower_span(span));
                 let uc_nested = attr::mk_nested_word_item(uc_ident);
-                attr::mk_list_item(allow_ident, vec![uc_nested])
+                attr::mk_list_item(allow_ident, thin_vec![uc_nested])
             };
             attr::mk_attr_outer(allow)
         };

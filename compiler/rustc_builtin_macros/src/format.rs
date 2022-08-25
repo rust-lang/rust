@@ -9,16 +9,16 @@ use rustc_ast::{token, BlockCheckMode, UnsafeSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
+use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 use rustc_parse_format as parse;
+use rustc_parse_format::Count;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use smallvec::SmallVec;
-
-use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
-use rustc_parse_format::Count;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
+use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq)]
 enum ArgumentType {
@@ -831,7 +831,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let mut path = Context::rtpath(self.ecx, sym::Count);
             path.push(Ident::new(c, sp));
             match arg {
-                Some(arg) => self.ecx.expr_call_global(sp, path, vec![arg]),
+                Some(arg) => self.ecx.expr_call_global(sp, path, thin_vec![arg]),
                 None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
             }
         };
@@ -1081,14 +1081,14 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
-            ("new_v1", vec![pieces, args_slice])
+            ("new_v1", thin_vec![pieces, args_slice])
         } else {
             // Build up the static array which will store our precompiled
             // nonstandard placeholders, if there are any.
             let fmt = self.ecx.expr_array_ref(self.macsp, self.pieces);
 
             let path = self.ecx.std_path(&[sym::fmt, sym::UnsafeArg, sym::new]);
-            let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, Vec::new());
+            let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, ThinVec::new());
             let unsafe_expr = self.ecx.expr_block(P(ast::Block {
                 stmts: vec![self.ecx.stmt_expr(unsafe_arg)],
                 id: ast::DUMMY_NODE_ID,
@@ -1098,7 +1098,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 could_be_bare_literal: false,
             }));
 
-            ("new_v1_formatted", vec![pieces, args_slice, fmt, unsafe_expr])
+            ("new_v1_formatted", thin_vec![pieces, args_slice, fmt, unsafe_expr])
         };
 
         let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);
@@ -1118,7 +1118,7 @@ impl<'a, 'b> Context<'a, 'b> {
             Placeholder(trait_) => trait_,
             Count => {
                 let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, sym::from_usize]);
-                return ecx.expr_call_global(macsp, path, vec![arg]);
+                return ecx.expr_call_global(macsp, path, thin_vec![arg]);
             }
         };
         let new_fn_name = match trait_ {
@@ -1135,7 +1135,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let path = ecx.std_path(&[sym::fmt, sym::ArgumentV1, Symbol::intern(new_fn_name)]);
-        ecx.expr_call_global(sp, path, vec![arg])
+        ecx.expr_call_global(sp, path, thin_vec![arg])
     }
 }
 

@@ -11,6 +11,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
+use thin_vec::thin_vec;
 
 pub(super) type Expected = Option<&'static str>;
 
@@ -121,7 +122,7 @@ impl<'a> Parser<'a> {
                 // If there was a leading vert, treat this as an or-pattern. This improves
                 // diagnostics.
                 let span = leading_vert_span.to(self.prev_token.span);
-                return Ok((self.mk_pat(span, PatKind::Or(vec![first_pat])), trailing_vert));
+                return Ok((self.mk_pat(span, PatKind::Or(thin_vec![first_pat])), trailing_vert));
             }
 
             return Ok((first_pat, trailing_vert));
@@ -129,7 +130,7 @@ impl<'a> Parser<'a> {
 
         // Parse the patterns `p_1 | ... | p_n` where `n > 0`.
         let lo = leading_vert_span.unwrap_or(first_pat.span);
-        let mut pats = vec![first_pat];
+        let mut pats = thin_vec![first_pat];
         loop {
             match self.eat_or_separator(Some(lo)) {
                 EatOrResult::AteOr => {}

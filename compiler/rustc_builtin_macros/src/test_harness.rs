@@ -14,7 +14,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 use tracing::debug;
 
 use std::{iter, mem};
@@ -187,7 +187,8 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
                     let dc_nested =
                         attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
-                    let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
+                    let allow_dead_code_item =
+                        attr::mk_list_item(allow_ident, thin_vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
                     let attrs = attrs
                         .into_iter()
@@ -295,7 +296,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     test_runner.span = sp;
 
     let test_main_path_expr = ecx.expr_path(test_runner);
-    let call_test_main = ecx.expr_call(sp, test_main_path_expr, vec![mk_tests_slice(cx, sp)]);
+    let call_test_main = ecx.expr_call(sp, test_main_path_expr, thin_vec![mk_tests_slice(cx, sp)]);
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // extern crate test
@@ -309,7 +310,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let main_attr = ecx.attribute(main_meta);
 
     // pub fn main() { ... }
-    let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
+    let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
 
     // If no test runner is provided we need to import the test crate
     let main_body = if cx.test_runner.is_none() {
@@ -318,7 +319,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         ecx.block(sp, vec![call_test_main])
     };
 
-    let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
+    let decl = ecx.fn_decl(ThinVec::new(), ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
     let defaultness = ast::Defaultness::Final;
     let main = ast::ItemKind::Fn(Box::new(ast::Fn {

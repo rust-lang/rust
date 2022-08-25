@@ -71,14 +71,14 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
     for kind in 0..=19 {
         match kind {
             0 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Box(e))),
-            1 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, vec![]))),
+            1 => iter_exprs(depth - 1, &mut |e| g(ExprKind::Call(e, thin_vec![]))),
             2 => {
                 let seg = PathSegment::from_ident(Ident::from_str("x"));
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), e, vec![make_x()], DUMMY_SP))
+                    g(ExprKind::MethodCall(seg.clone(), e, thin_vec![make_x()], DUMMY_SP))
                 });
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), make_x(), vec![e], DUMMY_SP))
+                    g(ExprKind::MethodCall(seg.clone(), make_x(), thin_vec![e], DUMMY_SP))
                 });
             }
             3..=8 => {
@@ -112,7 +112,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             }
             11 => {
-                let decl = P(FnDecl { inputs: vec![], output: FnRetTy::Default(DUMMY_SP) });
+                let decl = P(FnDecl { inputs: thin_vec![], output: FnRetTy::Default(DUMMY_SP) });
                 iter_exprs(depth - 1, &mut |e| {
                     g(ExprKind::Closure(
                         ClosureBinder::NotPresent,

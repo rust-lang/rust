@@ -31,7 +31,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
-use std::vec::Vec;
+use thin_vec::ThinVec;
 
 const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
 const EXCEPT: Symbol = sym::except;
@@ -210,7 +210,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
     /// `loaded_from_disk=` attribute value
     fn loaded_from_disk(&self, attr: &Attribute) -> Labels {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(LOADED_FROM_DISK) {
                 let value = expect_associated_value(self.tcx, &item);
                 return self.resolve_labels(&item, value);
@@ -222,7 +222,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
     /// `except=` attribute value
     fn except(&self, attr: &Attribute) -> Labels {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
                 return self.resolve_labels(&item, value);
@@ -408,7 +408,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
     let mut cfg = None;
-    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+    for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
         if item.has_name(CFG) {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);

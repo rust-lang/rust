@@ -16,7 +16,7 @@ use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use std::iter;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
@@ -143,7 +143,7 @@ impl Attribute {
         }
     }
 
-    pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
+    pub fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
         match self.kind {
             AttrKind::Normal(ref normal) => match normal.item.meta_kind() {
                 Some(MetaItemKind::List(list)) => Some(list),
@@ -324,7 +324,7 @@ pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> Me
     MetaItem { path: Path::from_ident(ident), span, kind: MetaItemKind::NameValue(lit) }
 }
 
-pub fn mk_list_item(ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
+pub fn mk_list_item(ident: Ident, items: ThinVec<NestedMetaItem>) -> MetaItem {
     MetaItem { path: Path::from_ident(ident), span: ident.span, kind: MetaItemKind::List(items) }
 }
 
@@ -535,7 +535,7 @@ impl MetaItemKind {
 
     fn list_from_tokens(tokens: TokenStream) -> Option<MetaItemKind> {
         let mut tokens = tokens.into_trees().peekable();
-        let mut result = Vec::new();
+        let mut result = ThinVec::new();
         while tokens.peek().is_some() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);

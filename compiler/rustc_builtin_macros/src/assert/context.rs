@@ -13,7 +13,7 @@ use rustc_span::{
     symbol::{sym, Ident, Symbol},
     Span,
 };
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 pub(super) struct Context<'cx, 'a> {
     // An optimization.
@@ -119,11 +119,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 Ident::empty(),
                 thin_vec![self.cx.attribute(attr::mk_list_item(
                     Ident::new(sym::allow, self.span),
-                    vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
+                    thin_vec![attr::mk_nested_word_item(Ident::new(
+                        sym::unused_imports,
+                        self.span
+                    ))],
                 ))],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
-                    kind: UseTreeKind::Nested(vec![
+                    kind: UseTreeKind::Nested(thin_vec![
                         nested_tree(self, sym::TryCaptureGeneric),
                         nested_tree(self, sym::TryCapturePrintable),
                     ]),
@@ -139,7 +142,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         self.cx.expr_call(
             self.span,
             self.cx.expr_path(self.cx.path(self.span, unlikely_path)),
-            vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
+            thin_vec![self.cx.expr(self.span, ExprKind::Unary(UnOp::Not, cond_expr))],
         )
     }
 
@@ -340,7 +343,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let init = self.cx.expr_call(
             self.span,
             self.cx.expr_path(self.cx.path(self.span, init_std_path)),
-            vec![],
+            ThinVec::new(),
         );
         let capture = Capture { decl: self.cx.stmt_let(self.span, true, ident, init), ident };
         self.capture_decls.push(capture);
@@ -367,7 +370,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.expr_path(
                 self.cx.path(self.span, self.cx.std_path(&[sym::asserting, sym::Wrapper])),
             ),
-            vec![self.cx.expr_path(Path::from_ident(local_bind))],
+            thin_vec![self.cx.expr_path(Path::from_ident(local_bind))],
         );
         let try_capture_call = self
             .cx
@@ -379,7 +382,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     ident: Ident::new(sym::try_capture, self.span),
                 },
                 expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
-                vec![expr_addr_of_mut(
+                thin_vec![expr_addr_of_mut(
                     self.cx,
                     self.span,
                     self.cx.expr_path(Path::from_ident(capture)),
@@ -442,7 +445,7 @@ fn expr_method_call(
     cx: &ExtCtxt<'_>,
     path: PathSegment,
     receiver: P<Expr>,
-    args: Vec<P<Expr>>,
+    args: ThinVec<P<Expr>>,
     span: Span,
 ) -> P<Expr> {
     cx.expr(span, ExprKind::MethodCall(path, receiver, args, span))

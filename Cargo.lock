@@ -3602,6 +3602,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3965,6 +3966,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4658,6 +4660,7 @@ dependencies = [
  "rustc_ty_utils",
  "rustc_type_ir",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4689,7 +4692,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "thin-vec",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",

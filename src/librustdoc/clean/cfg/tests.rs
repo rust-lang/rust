@@ -5,6 +5,7 @@ use rustc_ast::Path;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
+use thin_vec::thin_vec;
 
 fn word_cfg(s: &str) -> Cfg {
     Cfg::Cfg(Symbol::intern(s), None)
@@ -26,7 +27,7 @@ macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:ident),* $(,)?]) => {
         MetaItem {
             path: Path::from_ident(Ident::from_str(stringify!($name))),
-            kind: MetaItemKind::List(vec![
+            kind: MetaItemKind::List(thin_vec![
                 $(
                     NestedMetaItem::MetaItem(
                         dummy_meta_item_word(stringify!($list)),
@@ -40,7 +41,7 @@ macro_rules! dummy_meta_item_list {
     ($name:ident, [$($list:expr),* $(,)?]) => {
         MetaItem {
             path: Path::from_ident(Ident::from_str(stringify!($name))),
-            kind: MetaItemKind::List(vec![
+            kind: MetaItemKind::List(thin_vec![
                 $(
                     NestedMetaItem::MetaItem($list),
                 )*

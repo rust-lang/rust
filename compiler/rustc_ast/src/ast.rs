@@ -254,7 +254,7 @@ pub struct ParenthesizedArgs {
     pub span: Span,
 
     /// `(A, B)`
-    pub inputs: Vec<P<Ty>>,
+    pub inputs: ThinVec<P<Ty>>,
 
     /// ```text
     /// Foo(A, B) -> C
@@ -546,7 +546,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g., `derive(..)` as in `#[derive(..)]`.
-    List(Vec<NestedMetaItem>),
+    List(ThinVec<NestedMetaItem>),
     /// Name value meta item.
     ///
     /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
@@ -609,7 +609,7 @@ impl Pat {
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
-                let mut tys = Vec::with_capacity(pats.len());
+                let mut tys = ThinVec::with_capacity(pats.len());
                 // FIXME(#48994) - could just be collected into an Option<Vec>
                 for pat in pats {
                     tys.push(pat.to_ty()?);
@@ -720,11 +720,11 @@ pub enum PatKind {
     Struct(Option<QSelf>, Path, Vec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<QSelf>, Path, Vec<P<Pat>>),
+    TupleStruct(Option<QSelf>, Path, ThinVec<P<Pat>>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(Vec<P<Pat>>),
+    Or(ThinVec<P<Pat>>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -733,7 +733,7 @@ pub enum PatKind {
     Path(Option<QSelf>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    Tuple(Vec<P<Pat>>),
+    Tuple(ThinVec<P<Pat>>),
 
     /// A `box` pattern.
     Box(P<Pat>),
@@ -748,7 +748,7 @@ pub enum PatKind {
     Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
-    Slice(Vec<P<Pat>>),
+    Slice(ThinVec<P<Pat>>),
 
     /// A rest pattern `..`.
     ///
@@ -1189,7 +1189,7 @@ impl Expr {
             ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
 
             ExprKind::Tup(exprs) => {
-                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<Vec<_>>>()?;
+                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<ThinVec<_>>>()?;
                 TyKind::Tup(tys)
             }
 
@@ -1330,7 +1330,7 @@ pub enum ExprKind {
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    Call(P<Expr>, Vec<P<Expr>>),
+    Call(P<Expr>, ThinVec<P<Expr>>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
     /// The `PathSegment` represents the method name and its generic arguments
@@ -1341,9 +1341,9 @@ pub enum ExprKind {
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
     /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
+    MethodCall(PathSegment, P<Expr>, ThinVec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
-    Tup(Vec<P<Expr>>),
+    Tup(ThinVec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
@@ -2014,7 +2014,7 @@ pub enum TyKind {
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D,...)`).
-    Tup(Vec<P<Ty>>),
+    Tup(ThinVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2295,7 +2295,7 @@ impl Param {
 /// which contains metadata about function safety, asyncness, constness and ABI.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FnDecl {
-    pub inputs: Vec<Param>,
+    pub inputs: ThinVec<Param>,
     pub output: FnRetTy,
 }
 
@@ -2473,7 +2473,7 @@ pub enum UseTreeKind {
     /// namespace.
     Simple(Option<Ident>, NodeId, NodeId),
     /// `use prefix::{...}`
-    Nested(Vec<(UseTree, NodeId)>),
+    Nested(ThinVec<(UseTree, NodeId)>),
     /// `use prefix::*`
     Glob,
 }
@@ -2637,11 +2637,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<FieldDef>, bool),
+    Struct(ThinVec<FieldDef>, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(Vec<FieldDef>, NodeId),
+    Tuple(ThinVec<FieldDef>, NodeId),
     /// Unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
@@ -3040,16 +3040,16 @@ mod size_asserts {
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr, 104);
-    static_assert_size!(ExprKind, 72);
+    static_assert_size!(Expr, 96);
+    static_assert_size!(ExprKind, 64);
     static_assert_size!(Fn, 160);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericBound, 56);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
-    static_assert_size!(Item, 152);
-    static_assert_size!(ItemKind, 80);
+    static_assert_size!(Item, 144);
+    static_assert_size!(ItemKind, 72);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Pat, 104);
