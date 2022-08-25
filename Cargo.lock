@@ -756,7 +756,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43a7bfdb147f57c498ca629c7802b57899de0bb82ae36b6f01f1540da41832f1"
 dependencies = [
  "cargo_metadata",
  "color-eyre",
