@@ -12,3 +12,6 @@ codegen_llvm_rust_feature =
 
 codegen_llvm_unknown_feature_fill_request =
     consider filing a feature request
+
+codegen_llvm_error_creating_import_library =
+    Error creating import library for {$lib_name}: {$error}

@@ -1,5 +1,6 @@
 use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
+use rustc_macros::SessionDiagnostic;
 use rustc_session::SessionDiagnostic;
 
 pub(crate) enum UnknownCTargetFeature<'a> {
@@ -33,4 +34,11 @@ impl SessionDiagnostic<'_, ()> for UnknownCTargetFeature<'_> {
             }
         }
     }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::error_creating_import_library)]
+pub(crate) struct ErrorCreatingImportLibrary<'a> {
+    pub lib_name: &'a str,
+    pub error: String,
 }
