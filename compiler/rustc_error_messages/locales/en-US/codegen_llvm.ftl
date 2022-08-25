@@ -15,3 +15,6 @@ codegen_llvm_unknown_feature_fill_request =
 
 codegen_llvm_error_creating_import_library =
     Error creating import library for {$lib_name}: {$error}
+
+codegen_llvm_instrument_coverage_requires_llvm_12 =
+    rustc option `-C instrument-coverage` requires LLVM 12 or higher.

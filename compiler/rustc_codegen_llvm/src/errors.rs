@@ -42,3 +42,7 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
     pub lib_name: &'a str,
     pub error: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::instrument_coverage_requires_llvm_12)]
+pub(crate) struct InstrumentCoverageRequiresLLVM12;
