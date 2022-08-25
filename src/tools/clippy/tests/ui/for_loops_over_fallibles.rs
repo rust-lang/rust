@@ -1,5 +1,6 @@
 #![warn(clippy::for_loops_over_fallibles)]
 #![allow(clippy::uninlined_format_args)]
+#![allow(for_loop_over_fallibles)]
 
 fn for_loops_over_fallibles() {
     let option = Some(1);
