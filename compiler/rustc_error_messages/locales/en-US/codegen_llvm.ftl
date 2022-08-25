@@ -18,3 +18,6 @@ codegen_llvm_error_creating_import_library =
 
 codegen_llvm_instrument_coverage_requires_llvm_12 =
     rustc option `-C instrument-coverage` requires LLVM 12 or higher.
+
+codegen_llvm_symbol_already_defined = 
+    symbol `{$symbol_name}` is already defined

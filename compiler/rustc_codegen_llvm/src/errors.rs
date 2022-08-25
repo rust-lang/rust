@@ -2,6 +2,7 @@ use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
 use rustc_macros::SessionDiagnostic;
 use rustc_session::SessionDiagnostic;
+use rustc_span::Span;
 
 pub(crate) enum UnknownCTargetFeature<'a> {
     UnknownFeaturePrefix { feature: &'a str },
@@ -46,3 +47,11 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 #[derive(SessionDiagnostic)]
 #[diag(codegen_llvm::instrument_coverage_requires_llvm_12)]
 pub(crate) struct InstrumentCoverageRequiresLLVM12;
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::SymbolAlreadyDefined)]
+pub(crate) struct SymbolAlreadyDefined<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub symbol_name: &'a str,
+}
