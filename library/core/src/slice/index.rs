@@ -48,10 +48,12 @@ const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
     panic!("range start index {index} out of range for slice of length {len}");
 }
 
+#[track_caller]
 const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice start index is out of range for slice");
 }
@@ -69,10 +71,12 @@ const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
     panic!("range end index {index} out of range for slice of length {len}");
 }
 
+#[track_caller]
 const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice end index is out of range for slice");
 }
@@ -88,10 +92,12 @@ const fn slice_index_order_fail(index: usize, end: usize) -> ! {
 }
 
 // FIXME const-hack
+#[track_caller]
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
     panic!("slice index starts at {index} but ends at {end}");
 }
 
+#[track_caller]
 const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice index start is larger than end");
 }
@@ -217,21 +223,23 @@ unsafe impl<T> const SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
+        let this = self;
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
         unsafe {
-            assert_unsafe_precondition!(self < slice.len());
+            assert_unsafe_precondition!([T](this: usize, slice: *const [T]) => this < slice.len());
             slice.as_ptr().add(self)
         }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
+        let this = self;
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(self < slice.len());
+            assert_unsafe_precondition!([T](this: usize, slice: *mut [T]) => this < slice.len());
             slice.as_mut_ptr().add(self)
         }
     }
@@ -276,22 +284,26 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
+        let this = ops::Range { start: self.start, end: self.end };
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
 
         unsafe {
-            assert_unsafe_precondition!(self.end >= self.start && self.end <= slice.len());
+            assert_unsafe_precondition!([T](this: ops::Range<usize>, slice: *const [T]) =>
+            this.end >= this.start && this.end <= slice.len());
             ptr::slice_from_raw_parts(slice.as_ptr().add(self.start), self.end - self.start)
         }
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
+        let this = ops::Range { start: self.start, end: self.end };
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(self.end >= self.start && self.end <= slice.len());
+            assert_unsafe_precondition!([T](this: ops::Range<usize>, slice: *mut [T]) =>
+                this.end >= this.start && this.end <= slice.len());
             ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start), self.end - self.start)
         }
     }

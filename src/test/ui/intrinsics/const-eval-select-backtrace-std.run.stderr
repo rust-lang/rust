@@ -1,0 +1,2 @@
+thread 'main' panicked at 'byte index 1 is out of bounds of ``', $DIR/const-eval-select-backtrace-std.rs:5:6
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

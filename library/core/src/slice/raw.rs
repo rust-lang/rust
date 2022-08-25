@@ -90,7 +90,7 @@ use crate::ptr;
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
     unsafe {
-        assert_unsafe_precondition!(
+        assert_unsafe_precondition!([T](data: *const T, len: usize) =>
             is_aligned_and_not_null(data)
                 && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
         );
@@ -134,7 +134,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
     unsafe {
-        assert_unsafe_precondition!(
+        assert_unsafe_precondition!([T](data: *mut T, len: usize) =>
             is_aligned_and_not_null(data)
                 && crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize
         );
