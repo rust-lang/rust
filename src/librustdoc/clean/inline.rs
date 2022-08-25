@@ -300,7 +300,7 @@ pub(crate) fn build_impls(
 }
 
 /// `parent_module` refers to the parent of the re-export, not the original item
-fn merge_attrs(
+pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     old_attrs: Attrs<'_>,
