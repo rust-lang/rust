@@ -1776,40 +1776,6 @@ impl<T, E> Result<Result<T, E>, E> {
     }
 }
 
-impl<T> Result<T, T> {
-    /// Returns the [`Ok`] value if `self` is `Ok`, and the [`Err`] value if
-    /// `self` is `Err`.
-    ///
-    /// In other words, this function returns the value (the `T`) of a
-    /// `Result<T, T>`, regardless of whether or not that result is `Ok` or
-    /// `Err`.
-    ///
-    /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
-    /// cases where you don't care if the result was `Ok` or not.
-    ///
-    /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_into_ok_or_err)]
-    /// let ok: Result<u32, u32> = Ok(3);
-    /// let err: Result<u32, u32> = Err(4);
-    ///
-    /// assert_eq!(ok.into_ok_or_err(), 3);
-    /// assert_eq!(err.into_ok_or_err(), 4);
-    /// ```
-    #[inline]
-    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
-    pub const fn into_ok_or_err(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(v) => v,
-        }
-    }
-}
-
 // This is a separate function to reduce the code size of the methods
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[inline(never)]
