@@ -341,7 +341,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| {
+        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
+        native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
@@ -355,7 +356,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .foreign_items
                         .contains(&id)
                 })
-                .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);

@@ -1,5 +1,5 @@
 use crate::base;
-use crate::common::CodegenCx;
+use crate::common::{self, CodegenCx};
 use crate::debuginfo;
 use crate::llvm::{self, True};
 use crate::llvm_util;
@@ -160,7 +160,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: &str,
-    span_def_id: DefId,
+    def_id: DefId,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
@@ -175,7 +175,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
             cx.sess().span_fatal(
-                cx.tcx.def_span(span_def_id),
+                cx.tcx.def_span(def_id),
                 "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
             )
         };
@@ -194,7 +194,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             real_name.push_str(sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
                 cx.sess().span_fatal(
-                    cx.tcx.def_span(span_def_id),
+                    cx.tcx.def_span(def_id),
                     &format!("symbol `{}` is already defined", &sym),
                 )
             });
@@ -202,6 +202,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             llvm::LLVMSetInitializer(g2, g1);
             g2
         }
+    } else if cx.tcx.sess.target.arch == "x86" &&
+        let Some(dllimport) = common::get_dllimport(cx.tcx, def_id, sym)
+    {
+        cx.declare_global(&common::i686_decorated_name(&dllimport, common::is_mingw_gnu_toolchain(&cx.tcx.sess.target), true), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global

@@ -1,10 +1,10 @@
-error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module
+error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module, import_name_type
   --> $DIR/link-attr-validation-late.rs:5:22
    |
 LL | #[link(name = "...", "literal")]
    |                      ^^^^^^^^^
 
-error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module
+error: unexpected `#[link]` argument, expected one of: name, kind, modifiers, cfg, wasm_import_module, import_name_type
   --> $DIR/link-attr-validation-late.rs:6:22
    |
 LL | #[link(name = "...", unknown)]
