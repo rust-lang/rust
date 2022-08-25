@@ -1,5 +1,6 @@
 use crate::back::write::create_informational_target_machine;
 use crate::llvm;
+use crate::errors::UnknownCTargetFeature;
 use libc::c_int;
 use rustc_codegen_ssa::target_features::{
     supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
@@ -434,12 +435,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ '+' | c @ '-') => c,
                 Some(_) => {
                     if diagnostics {
-                        let mut diag = sess.struct_warn(&format!(
-                            "unknown feature specified for `-Ctarget-feature`: `{}`",
-                            s
-                        ));
-                        diag.note("features must begin with a `+` to enable or `-` to disable it");
-                        diag.emit();
+                        sess.emit_warning(UnknownCTargetFeature::UnknownFeaturePrefix { feature: s.to_string() });
                     }
                     return None;
                 }
@@ -456,17 +452,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         None
                     }
                 });
-                let mut diag = sess.struct_warn(&format!(
-                    "unknown feature specified for `-Ctarget-feature`: `{}`",
-                    feature
-                ));
-                diag.note("it is still passed through to the codegen backend");
-                if let Some(rust_feature) = rust_feature {
-                    diag.help(&format!("you might have meant: `{}`", rust_feature));
-                } else {
-                    diag.note("consider filing a feature request");
-                }
-                diag.emit();
+                sess.emit_warning(UnknownCTargetFeature::UnknownFeature { feature: feature.to_string(), rust_feature: rust_feature.map(|f| f.to_string()) });
             }
 
             if diagnostics {

@@ -62,6 +62,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod intrinsic;
 
 // The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
