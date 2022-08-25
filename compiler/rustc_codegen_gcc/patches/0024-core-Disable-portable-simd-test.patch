@@ -14,7 +14,6 @@ index 06c7be0..359e2e7 100644
 @@ -75,7 +75,6 @@
  #![feature(never_type)]
  #![feature(unwrap_infallible)]
- #![feature(result_into_ok_or_err)]
 -#![feature(portable_simd)]
  #![feature(ptr_metadata)]
  #![feature(once_cell)]
