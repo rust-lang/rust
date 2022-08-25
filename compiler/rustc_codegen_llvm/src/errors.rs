@@ -55,3 +55,7 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
     pub span: Span,
     pub symbol_name: &'a str,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::branch_protection_requires_aarch64)]
+pub(crate) struct BranchProtectionRequiresAArch64;
