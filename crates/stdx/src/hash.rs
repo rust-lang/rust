@@ -1,3 +1,4 @@
+//! A none hashing [`Hasher`] implementation.
 use std::{
     hash::{BuildHasher, Hasher},
     marker::PhantomData,
