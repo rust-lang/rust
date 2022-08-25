@@ -117,7 +117,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             match self.ret.mode {
                 PassMode::Ignore => cx.type_void(),
                 PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
-                PassMode::Cast(ref cast) => cast.gcc_type(cx),
+                PassMode::Cast(ref cast, _) => cast.gcc_type(cx),
                 PassMode::Indirect { .. } => {
                     argument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                     cx.type_void()
@@ -125,11 +125,6 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             };
 
         for arg in self.args.iter() {
-            // add padding
-            if arg.pad_i32 {
-                argument_tys.push(Reg::i32().gcc_type(cx));
-            }
-
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_gcc_type(cx),
@@ -141,7 +136,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Indirect { extra_attrs: Some(_), .. } => {
                     unimplemented!();
                 }
-                PassMode::Cast(ref cast) => cast.gcc_type(cx),
+                PassMode::Cast(ref cast, pad_i32) => {
+                    // add padding
+                    if pad_i32 {
+                        argument_tys.push(Reg::i32().gcc_type(cx));
+                    }
+                    cast.gcc_type(cx)
+                }
                 PassMode::Indirect { extra_attrs: None, on_stack: true, .. } => {
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.memory_ty(cx)
