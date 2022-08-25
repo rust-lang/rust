@@ -137,11 +137,9 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 mod imp {
-    use crate::fs::File;
-    use crate::io::Read;
-    use crate::sys::os::errno;
+    use crate::io;
     use crate::sys::weak::weak;
     use libc::{c_int, c_void, size_t};
 
@@ -155,7 +153,7 @@ mod imp {
                 for s in v.chunks_mut(256) {
                     let ret = unsafe { f(s.as_mut_ptr() as *mut c_void, s.len()) };
                     if ret == -1 {
-                        panic!("unexpected getentropy error: {}", errno());
+                        panic!("unexpected getentropy error: {}", io::Error::last_os_error());
                     }
                 }
                 true
@@ -163,14 +161,64 @@ mod imp {
             .unwrap_or(false)
     }
 
+    #[cfg(target_os = "macos")]
+    fn fallback_fill_bytes(v: &mut [u8]) {
+        use crate::fs::File;
+        use crate::io::Read;
+
+        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
+        file.read_exact(v).expect("failed to read /dev/urandom")
+    }
+
+    // On iOS and MacOS `SecRandomCopyBytes` calls `CCRandomCopyBytes` with
+    // `kCCRandomDefault`. `CCRandomCopyBytes` manages a CSPRNG which is seeded
+    // from `/dev/random` and which runs on its own thread accessed via GCD.
+    //
+    // This is very heavyweight compared to the alternatives, but they may not be usable:
+    // - `getentropy` was added in iOS 10, but we support a minimum of iOS 7
+    // - `/dev/urandom` is not accessible inside the iOS app sandbox.
+    //
+    // Therefore `SecRandomCopyBytes` is only used on older iOS versions where no
+    // better options are present.
+    #[cfg(target_os = "ios")]
+    fn fallback_fill_bytes(v: &mut [u8]) {
+        use crate::ptr;
+
+        enum SecRandom {}
+
+        #[allow(non_upper_case_globals)]
+        const kSecRandomDefault: *const SecRandom = ptr::null();
+
+        extern "C" {
+            fn SecRandomCopyBytes(rnd: *const SecRandom, count: size_t, bytes: *mut u8) -> c_int;
+        }
+
+        let ret = unsafe { SecRandomCopyBytes(kSecRandomDefault, v.len(), v.as_mut_ptr()) };
+        if ret == -1 {
+            panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
+        }
+    }
+
+    // All supported versions of watchOS (>= 5) have support for `getentropy`.
+    #[cfg(target_os = "watchos")]
+    #[cold]
+    fn fallback_fill_bytes(_: &mut [u8]) {
+        unreachable!()
+    }
+
     pub fn fill_bytes(v: &mut [u8]) {
         if getentropy_fill_bytes(v) {
             return;
         }
 
-        // for older macos which doesn't support getentropy
-        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
-        file.read_exact(v).expect("failed to read /dev/urandom")
+        // Older macOS versions (< 10.12) don't support `getentropy`. Fallback to
+        // reading from `/dev/urandom` on these systems.
+        //
+        // Older iOS versions (< 10) don't support it either. Fallback to
+        // `SecRandomCopyBytes` on these systems. On watchOS, this is unreachable
+        // because the minimum supported version is 5 while `getentropy` became accessible
+        // in 3.
+        fallback_fill_bytes(v)
     }
 }
 
@@ -185,36 +233,6 @@ mod imp {
             if ret == -1 {
                 panic!("unexpected getentropy error: {}", errno());
             }
-        }
-    }
-}
-
-// On iOS and MacOS `SecRandomCopyBytes` calls `CCRandomCopyBytes` with
-// `kCCRandomDefault`. `CCRandomCopyBytes` manages a CSPRNG which is seeded
-// from `/dev/random` and which runs on its own thread accessed via GCD.
-// This seems needlessly heavyweight for the purposes of generating two u64s
-// once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
-// only used on iOS where direct access to `/dev/urandom` is blocked by the
-// sandbox.
-#[cfg(any(target_os = "ios", target_os = "watchos"))]
-mod imp {
-    use crate::io;
-    use crate::ptr;
-    use libc::{c_int, size_t};
-
-    enum SecRandom {}
-
-    #[allow(non_upper_case_globals)]
-    const kSecRandomDefault: *const SecRandom = ptr::null();
-
-    extern "C" {
-        fn SecRandomCopyBytes(rnd: *const SecRandom, count: size_t, bytes: *mut u8) -> c_int;
-    }
-
-    pub fn fill_bytes(v: &mut [u8]) {
-        let ret = unsafe { SecRandomCopyBytes(kSecRandomDefault, v.len(), v.as_mut_ptr()) };
-        if ret == -1 {
-            panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
         }
     }
 }
