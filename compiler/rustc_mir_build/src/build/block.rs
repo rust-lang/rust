@@ -160,7 +160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 ArmHasGuard(false),
                                                 Some((None, initializer_span)),
                                             );
-                                            this.expr_into_pattern(block, (**pattern).clone(), init) // irrefutable pattern
+                                            this.expr_into_pattern(block, pattern, init) // irrefutable pattern
                                         }
                                     })
                                 },

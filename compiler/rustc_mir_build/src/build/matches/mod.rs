@@ -490,7 +490,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
@@ -525,7 +525,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         ..
                     },
-                ascription: thir::Ascription { annotation, variance: _ },
+                ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -538,7 +538,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let ty_source_info = self.source_info(annotation.span);
 
-                let base = self.canonical_user_type_annotations.push(annotation);
+                let base = self.canonical_user_type_annotations.push(annotation.clone());
                 self.cfg.push(
                     block,
                     Statement {
@@ -578,7 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
