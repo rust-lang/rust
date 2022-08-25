@@ -436,7 +436,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(_) => {
                     if diagnostics {
                         sess.emit_warning(UnknownCTargetFeature::UnknownFeaturePrefix {
-                            feature: s.to_string(),
+                            feature: s,
                         });
                     }
                     return None;
@@ -455,8 +455,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     }
                 });
                 sess.emit_warning(UnknownCTargetFeature::UnknownFeature {
-                    feature: feature.to_string(),
-                    rust_feature: rust_feature.map(|f| f.to_string()),
+                    feature,
+                    rust_feature,
                 });
             }
 

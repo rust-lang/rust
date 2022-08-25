@@ -2,9 +2,9 @@ use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
 use rustc_session::SessionDiagnostic;
 
-pub(crate) enum UnknownCTargetFeature {
-    UnknownFeaturePrefix { feature: String },
-    UnknownFeature { feature: String, rust_feature: Option<String> },
+pub(crate) enum UnknownCTargetFeature<'a> {
+    UnknownFeaturePrefix { feature: &'a str },
+    UnknownFeature { feature: &'a str, rust_feature: Option<&'a str> },
 }
 
 impl SessionDiagnostic<'_, ()> for UnknownCTargetFeature {
