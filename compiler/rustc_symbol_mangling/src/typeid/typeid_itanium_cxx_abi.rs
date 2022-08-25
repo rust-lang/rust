@@ -888,7 +888,7 @@ pub fn typeid_for_fnabi<'tcx>(
             typeid.push('v');
         }
     } else {
-        for n in 0..fn_abi.fixed_count {
+        for n in 0..fn_abi.fixed_count as usize {
             let ty = transform_ty(tcx, fn_abi.args[n].layout.ty, transform_ty_options);
             typeid.push_str(&encode_ty(tcx, ty, &mut dict, encode_ty_options));
         }

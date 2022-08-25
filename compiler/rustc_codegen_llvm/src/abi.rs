@@ -325,7 +325,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
-        let args = if self.c_variadic { &self.args[..self.fixed_count] } else { &self.args };
+        let args =
+            if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
 
         let args_capacity: usize = args.iter().map(|arg|
             if arg.pad.is_some() { 1 } else { 0 } +

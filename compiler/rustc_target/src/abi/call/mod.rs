@@ -625,7 +625,7 @@ pub struct FnAbi<'a, Ty> {
     ///
     /// Should only be different from args.len() when c_variadic is true.
     /// This can be used to know whether an argument is variadic or not.
-    pub fixed_count: usize,
+    pub fixed_count: u32,
 
     pub conv: Conv,
 
@@ -738,5 +738,5 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(ArgAbi<'_, usize>, 72);
-    static_assert_size!(FnAbi<'_, usize>, 112);
+    static_assert_size!(FnAbi<'_, usize>, 104);
 }

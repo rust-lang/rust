@@ -3262,7 +3262,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .map(|(i, ty)| arg_of(ty, Some(i)))
                 .collect::<Result<_, _>>()?,
             c_variadic: sig.c_variadic,
-            fixed_count: inputs.len(),
+            fixed_count: inputs.len() as u32,
             conv,
             can_unwind: fn_can_unwind(self.tcx(), fn_def_id, sig.abi),
         };

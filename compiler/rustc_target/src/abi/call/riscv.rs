@@ -340,7 +340,7 @@ where
             arg,
             xlen,
             flen,
-            i >= fn_abi.fixed_count,
+            i >= fn_abi.fixed_count as usize,
             &mut avail_gprs,
             &mut avail_fprs,
         );
