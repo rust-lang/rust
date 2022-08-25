@@ -12,6 +12,7 @@ use std::str;
 use object::read::macho::FatArch;
 
 use crate::common;
+use crate::errors::ErrorCreatingImportLibrary;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -293,11 +294,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                sess.fatal(&format!(
-                    "Error creating import library for {}: {}",
+                sess.emit_fatal(ErrorCreatingImportLibrary {
                     lib_name,
-                    llvm::last_error().unwrap_or("unknown LLVM error".to_string())
-                ));
+                    error: llvm::last_error().unwrap_or("unknown LLVM error".to_string()),
+                });
             }
         };
 
