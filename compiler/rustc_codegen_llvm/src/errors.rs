@@ -49,7 +49,7 @@ pub(crate) struct ErrorCreatingImportLibrary<'a> {
 pub(crate) struct InstrumentCoverageRequiresLLVM12;
 
 #[derive(SessionDiagnostic)]
-#[diag(codegen_llvm::SymbolAlreadyDefined)]
+#[diag(codegen_llvm::symbol_already_defined)]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
     pub span: Span,
