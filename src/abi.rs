@@ -126,8 +126,8 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         for arg in self.args.iter() {
             // add padding
-            if let Some(ty) = arg.pad {
-                argument_tys.push(ty.gcc_type(cx));
+            if arg.pad_i32 {
+                argument_tys.push(Reg::i32().gcc_type(cx));
             }
 
             let arg_ty = match arg.mode {
