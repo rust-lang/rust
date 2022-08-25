@@ -2070,11 +2070,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }));
 
         let output = if let Some(ret_id) = make_ret_async {
-            self.lower_async_fn_ret_ty(
-                &decl.output,
-                fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
-                ret_id,
-            )
+            let fn_node_id = fn_node_id.expect("`make_ret_async` but no `fn_def_id`");
+            let fn_def_id = self.local_def_id(fn_node_id);
+
+            // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
+            // `impl Future` opaque type that `async fn` implicitly
+            // generates.
+            let mut output_itctx = ImplTraitContext::ReturnPositionOpaqueTy {
+                origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                impl_trait_inputs: &impl_trait_inputs,
+                generics,
+                parent_generics,
+            };
+
+            self.lower_async_fn_ret_ty(&decl.output, fn_node_id, ret_id, &mut output_itctx)
         } else {
             match decl.output {
                 FnRetTy::Ty(ref ty) => {
@@ -2145,12 +2154,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
     #[instrument(level = "debug", skip(self))]
-    fn lower_async_fn_ret_ty(
+    fn lower_async_fn_ret_ty<'itctx>(
         &mut self,
-        output: &FnRetTy,
+        output: &'itctx FnRetTy,
         fn_node_id: NodeId,
         opaque_ty_node_id: NodeId,
-    ) -> hir::FnRetTy<'hir> {
+        output_itctx: &mut ImplTraitContext<'_, 'itctx>,
+    ) -> hir::FnRetTy<'hir>
+    where
+        'a: 'itctx,
+    {
         let span = output.span();
 
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
@@ -2277,7 +2290,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Then, we will create `fn foo(..) -> Foo<'_, '_>`, and
                 // hence the elision takes place at the fn site.
                 let future_bound =
-                    this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span);
+                    this.lower_async_fn_output_type_to_future_bound(output, span, output_itctx);
 
                 let generic_params = this.arena.alloc_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime, _)| {
@@ -2367,26 +2380,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Transforms `-> T` into `Future<Output = T>`.
-    fn lower_async_fn_output_type_to_future_bound(
+    fn lower_async_fn_output_type_to_future_bound<'itctx>(
         &mut self,
-        output: &FnRetTy,
-        fn_def_id: LocalDefId,
+        output: &'itctx FnRetTy,
         span: Span,
-    ) -> hir::GenericBound<'hir> {
+        output_itctx: &mut ImplTraitContext<'_, 'itctx>,
+    ) -> hir::GenericBound<'hir>
+    where
+        'a: 'itctx,
+    {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FnRetTy::Ty(ty) => {
-                // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
-                // `impl Future` opaque type that `async fn` implicitly
-                // generates.
-                let mut context = ImplTraitContext::ReturnPositionOpaqueTy {
-                    origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
-                    impl_trait_inputs: &mut Vec::new(),
-                    generics: &Generics::default(),
-                    parent_generics: None,
-                };
-                self.lower_ty(ty, &mut context)
-            }
+            FnRetTy::Ty(ty) => self.lower_ty(ty, output_itctx),
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
 
