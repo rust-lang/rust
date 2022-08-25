@@ -197,6 +197,8 @@ const std::set<std::string> KnownInactiveFunctionInsts = {
 
 const std::set<std::string> KnownInactiveFunctions = {
     "abort",
+    "time",
+    "gettimeofday",
     "__assert_fail",
     "__cxa_atexit",
     "__cxa_guard_acquire",
