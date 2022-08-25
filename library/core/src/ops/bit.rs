@@ -144,6 +144,7 @@ impl const Not for ! {
     message = "no implementation for `{Self} & {Rhs}`",
     label = "no implementation for `{Self} & {Rhs}`"
 )]
+#[const_trait]
 pub trait BitAnd<Rhs = Self> {
     /// The resulting type after applying the `&` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -245,6 +246,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} | {Rhs}`",
     label = "no implementation for `{Self} | {Rhs}`"
 )]
+#[const_trait]
 pub trait BitOr<Rhs = Self> {
     /// The resulting type after applying the `|` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -346,6 +348,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} ^ {Rhs}`",
     label = "no implementation for `{Self} ^ {Rhs}`"
 )]
+#[const_trait]
 pub trait BitXor<Rhs = Self> {
     /// The resulting type after applying the `^` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -446,6 +449,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} << {Rhs}`",
     label = "no implementation for `{Self} << {Rhs}`"
 )]
+#[const_trait]
 pub trait Shl<Rhs = Self> {
     /// The resulting type after applying the `<<` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -565,6 +569,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
     message = "no implementation for `{Self} >> {Rhs}`",
     label = "no implementation for `{Self} >> {Rhs}`"
 )]
+#[const_trait]
 pub trait Shr<Rhs = Self> {
     /// The resulting type after applying the `>>` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -693,6 +698,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
     message = "no implementation for `{Self} &= {Rhs}`",
     label = "no implementation for `{Self} &= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitAndAssign<Rhs = Self> {
     /// Performs the `&=` operation.
     ///
@@ -765,6 +771,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} |= {Rhs}`",
     label = "no implementation for `{Self} |= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitOrAssign<Rhs = Self> {
     /// Performs the `|=` operation.
     ///
@@ -837,6 +844,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} ^= {Rhs}`",
     label = "no implementation for `{Self} ^= {Rhs}`"
 )]
+#[const_trait]
 pub trait BitXorAssign<Rhs = Self> {
     /// Performs the `^=` operation.
     ///
