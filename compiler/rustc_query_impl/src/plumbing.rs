@@ -96,6 +96,7 @@ impl QueryContext for QueryCtxt<'_> {
     fn start_query<R>(
         &self,
         token: QueryJobId,
+        depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R {
@@ -103,12 +104,16 @@ impl QueryContext for QueryCtxt<'_> {
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(**self, move |current_icx| {
+            if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
+                self.depth_limit_error();
+            }
+
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: **self,
                 query: Some(token),
                 diagnostics,
-                layout_depth: current_icx.layout_depth,
+                query_depth: current_icx.query_depth + depth_limit as usize,
                 task_deps: current_icx.task_deps,
             };
 
@@ -207,6 +212,18 @@ macro_rules! is_eval_always {
     }};
     ([$other:tt $($modifiers:tt)*]) => {
         is_eval_always!([$($modifiers)*])
+    };
+}
+
+macro_rules! depth_limit {
+    ([]) => {{
+        false
+    }};
+    ([(depth_limit) $($rest:tt)*]) => {{
+        true
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        depth_limit!([$($modifiers)*])
     };
 }
 
@@ -349,6 +366,7 @@ macro_rules! define_queries {
                 QueryVTable {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
+                    depth_limit: depth_limit!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: |tcx, mut error| handle_cycle_error!([$($modifiers)*][tcx, error]),

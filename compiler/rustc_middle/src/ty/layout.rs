@@ -229,49 +229,38 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, LayoutError<'tcx>> {
-    ty::tls::with_related_context(tcx, move |icx| {
-        let (param_env, ty) = query.into_parts();
-        debug!(?ty);
+    let (param_env, ty) = query.into_parts();
+    debug!(?ty);
 
-        if !tcx.recursion_limit().value_within_limit(icx.layout_depth) {
-            tcx.sess.fatal(&format!("overflow representing the type `{}`", ty));
+    let param_env = param_env.with_reveal_all_normalized(tcx);
+    let unnormalized_ty = ty;
+
+    // FIXME: We might want to have two different versions of `layout_of`:
+    // One that can be called after typecheck has completed and can use
+    // `normalize_erasing_regions` here and another one that can be called
+    // before typecheck has completed and uses `try_normalize_erasing_regions`.
+    let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
+        Ok(t) => t,
+        Err(normalization_error) => {
+            return Err(LayoutError::NormalizationFailure(ty, normalization_error));
         }
+    };
 
-        // Update the ImplicitCtxt to increase the layout_depth
-        let icx = ty::tls::ImplicitCtxt { layout_depth: icx.layout_depth + 1, ..icx.clone() };
+    if ty != unnormalized_ty {
+        // Ensure this layout is also cached for the normalized type.
+        return tcx.layout_of(param_env.and(ty));
+    }
 
-        ty::tls::enter_context(&icx, |_| {
-            let param_env = param_env.with_reveal_all_normalized(tcx);
-            let unnormalized_ty = ty;
+    let cx = LayoutCx { tcx, param_env };
 
-            // FIXME: We might want to have two different versions of `layout_of`:
-            // One that can be called after typecheck has completed and can use
-            // `normalize_erasing_regions` here and another one that can be called
-            // before typecheck has completed and uses `try_normalize_erasing_regions`.
-            let ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
-                Ok(t) => t,
-                Err(normalization_error) => {
-                    return Err(LayoutError::NormalizationFailure(ty, normalization_error));
-                }
-            };
+    let layout = cx.layout_of_uncached(ty)?;
+    let layout = TyAndLayout { ty, layout };
 
-            if ty != unnormalized_ty {
-                // Ensure this layout is also cached for the normalized type.
-                return tcx.layout_of(param_env.and(ty));
-            }
+    cx.record_layout_for_printing(layout);
 
-            let cx = LayoutCx { tcx, param_env };
+    sanity_check_layout(&cx, &layout);
 
-            let layout = cx.layout_of_uncached(ty)?;
-            let layout = TyAndLayout { ty, layout };
-
-            cx.record_layout_for_printing(layout);
-
-            sanity_check_layout(&cx, &layout);
-
-            Ok(layout)
-        })
-    })
+    Ok(layout)
 }
 
 pub struct LayoutCx<'tcx, C> {
