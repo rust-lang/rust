@@ -244,7 +244,7 @@ fn format_counts() {
                 fill: None,
                 align: AlignUnknown,
                 flags: 0,
-                precision: CountIsParam(0),
+                precision: CountIsStar(0),
                 precision_span: Some(InnerSpan { start: 3, end: 5 }),
                 width: CountImplied,
                 width_span: None,
