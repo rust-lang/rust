@@ -273,6 +273,17 @@ LL |     println!("{:.*}");
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ifmt-bad-arg.rs:97:15
+   |
+LL |     println!("{:.0$}");
+   |               ^^---^
+   |                 |
+   |                 this precision flag expects an `usize` argument at position 0, but no arguments were given
+   |
+   = note: positional arguments are zero-based
+   = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
+
 error[E0425]: cannot find value `foo` in this scope
   --> $DIR/ifmt-bad-arg.rs:27:18
    |
@@ -339,7 +350,7 @@ LL |     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
    |            ^^^^^^^^^^
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 37 previous errors
+error: aborting due to 38 previous errors
 
 Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.
