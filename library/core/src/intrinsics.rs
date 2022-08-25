@@ -737,28 +737,7 @@ extern "rust-intrinsic" {
     /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
-}
 
-// These have been renamed.
-//
-// These are the aliases for the old names.
-// To be removed when stdarch and panic_unwind have been updated.
-mod atomics {
-    pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
-    pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
-    pub use super::atomic_cxchg_acquire_acquire as atomic_cxchg_acq;
-    pub use super::atomic_cxchg_acquire_relaxed as atomic_cxchg_acq_failrelaxed;
-    pub use super::atomic_cxchg_relaxed_relaxed as atomic_cxchg_relaxed;
-    pub use super::atomic_cxchg_release_relaxed as atomic_cxchg_rel;
-    pub use super::atomic_cxchg_seqcst_acquire as atomic_cxchg_failacq;
-    pub use super::atomic_cxchg_seqcst_relaxed as atomic_cxchg_failrelaxed;
-    pub use super::atomic_cxchg_seqcst_seqcst as atomic_cxchg;
-    pub use super::atomic_store_seqcst as atomic_store;
-}
-
-pub use atomics::*;
-
-extern "rust-intrinsic" {
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
