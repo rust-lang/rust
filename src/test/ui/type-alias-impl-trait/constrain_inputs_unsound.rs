@@ -26,6 +26,6 @@ fn extend_lifetime(s: &str) -> Box<dyn AsRef<str> + 'static> {
 }
 
 fn main() {
-    //let extended = extend_lifetime(&String::from("hello"));
-    //println!("{}", extended.as_ref().as_ref());
+    let extended = extend_lifetime(&String::from("hello"));
+    println!("{}", extended.as_ref().as_ref());
 }
