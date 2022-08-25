@@ -704,6 +704,7 @@ dependencies = [
  "ide-db",
  "itertools",
  "parser",
+ "stdx",
  "syntax",
  "test-utils",
  "text-edit",
@@ -1921,6 +1922,7 @@ dependencies = [
  "indexmap",
  "paths",
  "rustc-hash",
+ "stdx",
 ]
 
 [[package]]
