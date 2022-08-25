@@ -554,7 +554,6 @@ pub(crate) fn report_cycle<'a>(
             usage: query.description,
         });
     }
-    // let cycle_usage = usage.map(|(span, query)| query.default_span(span))
 
     let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
         Some(crate::error::Alias::Ty)
