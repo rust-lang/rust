@@ -1,5 +1,6 @@
 use super::command::Command;
 use super::symbol_export;
+use crate::errors::LibDefWriteFailure;
 use rustc_span::symbol::sym;
 
 use std::ffi::{OsStr, OsString};
@@ -666,7 +667,7 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             };
             if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+                self.sess.emit_fatal(LibDefWriteFailure { error_description: format!("{e}") });
             }
         } else if is_windows {
             let res: io::Result<()> = try {
@@ -681,7 +682,7 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             };
             if let Err(e) = res {
-                self.sess.fatal(&format!("failed to write list.def file: {}", e));
+                self.sess.emit_fatal(LibDefWriteFailure { error_description: format!("{e}") });
             }
         } else {
             // Write an LD version script
@@ -972,7 +973,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             }
         };
         if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            self.sess.emit_fatal(LibDefWriteFailure { error_description: format!("{e}") });
         }
         let mut arg = OsString::from("/DEF:");
         arg.push(path);

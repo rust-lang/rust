@@ -7,3 +7,9 @@ use rustc_macros::SessionDiagnostic;
 pub struct MissingNativeStaticLibrary<'a> {
     pub library_name: &'a str,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_ssa::lib_def_write_failure)]
+pub struct LibDefWriteFailure {
+    pub error_description: String,
+}
