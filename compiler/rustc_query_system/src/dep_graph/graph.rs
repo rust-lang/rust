@@ -377,8 +377,8 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(
-        &self,
+    #[inline]
+    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(        &self,
         cx: Tcx,
         dep_kind: K,
         op: OP,
@@ -386,15 +386,39 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
+        self.with_hash_task(cx, dep_kind, op, |task_deps| {
+            // The dep node indices are hashed here instead of hashing the dep nodes of the
+            // dependencies. These indices may refer to different nodes per session, but this isn't
+            // a problem here because we that ensure the final dep node hash is per session only by
+            // combining it with the per session random number `anon_id_seed`. This hash only need
+            // to map the dependencies to a single value on a per session basis.
+            let mut hasher = StableHasher::new();
+            task_deps.reads.hash(&mut hasher);
+            hasher.finish()
+        })
+    }
+
+    /// Executes something within an "anonymous" task. The `hash` is used for
+    /// generating the `DepNode`.
+    pub fn with_hash_task<Ctxt: DepContext<DepKind = K>, OP, R, H>(
+        &self,
+        cx: Ctxt,
+        dep_kind: K,
+        op: OP,
+        hash: H,
+    ) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce() -> R,
+        H: FnOnce(&TaskDeps<K>) -> Fingerprint,
+    {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
         if let Some(ref data) = self.data {
             let task_deps = Lock::new(TaskDeps::default());
             let result = K::with_deps(TaskDepsRef::Allow(&task_deps), op);
             let task_deps = task_deps.into_inner();
-            let task_deps = task_deps.reads;
 
-            let dep_node_index = match task_deps.len() {
+            let dep_node_index = match task_deps.reads.len() {
                 0 => {
                     // Because the dep-node id of anon nodes is computed from the sets of its
                     // dependencies we already know what the ID of this dependency-less node is
@@ -405,29 +429,23 @@ impl<K: DepKind> DepGraph<K> {
                 }
                 1 => {
                     // When there is only one dependency, don't bother creating a node.
-                    task_deps[0]
+                    task_deps.reads[0]
                 }
                 _ => {
-                    // The dep node indices are hashed here instead of hashing the dep nodes of the
-                    // dependencies. These indices may refer to different nodes per session, but this isn't
-                    // a problem here because we that ensure the final dep node hash is per session only by
-                    // combining it with the per session random number `anon_id_seed`. This hash only need
-                    // to map the dependencies to a single value on a per session basis.
-                    let mut hasher = StableHasher::new();
-                    task_deps.hash(&mut hasher);
+                    let hash_result = hash(&task_deps);
 
                     let target_dep_node = DepNode {
                         kind: dep_kind,
                         // Fingerprint::combine() is faster than sending Fingerprint
                         // through the StableHasher (at least as long as StableHasher
                         // is so slow).
-                        hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                        hash: data.current.anon_id_seed.combine(hash_result).into(),
                     };
 
                     data.current.intern_new_node(
                         cx.profiler(),
                         target_dep_node,
-                        task_deps,
+                        task_deps.reads,
                         Fingerprint::ZERO,
                     )
                 }

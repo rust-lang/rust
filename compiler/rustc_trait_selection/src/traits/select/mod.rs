@@ -49,13 +49,17 @@ use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRe
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::sym;
 
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
+use std::hash::Hash;
 use std::iter;
 
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_query_system::dep_graph::TaskDeps;
 
 mod candidate_assembly;
 mod confirmation;
@@ -1017,7 +1021,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(cycle_result);
         }
 
-        let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
+        let (result, dep_node) = if cfg!(parallel_compiler) {
+            self.in_task_with_hash(
+                |this| this.evaluate_stack(&stack),
+                |_| {
+                    let mut hasher = StableHasher::new();
+                    (param_env, fresh_trait_pred).hash(&mut hasher);
+                    hasher.finish()
+                },
+            )
+        } else {
+            self.in_task(|this| this.evaluate_stack(&stack))
+        };
+
         let result = result?;
 
         if !result.must_apply_modulo_regions() {
@@ -1263,17 +1279,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             if !trait_pred.needs_infer() {
                 debug!(?trait_pred, ?result, "insert_evaluation_cache global");
-                // This may overwrite the cache with the same value
-                // FIXME: Due to #50507 this overwrites the different values
-                // This should be changed to use HashMapExt::insert_same
-                // when that is fixed
-                self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
+                self.tcx().evaluation_cache.insert_same((param_env, trait_pred), dep_node, result);
                 return;
             }
         }
 
         debug!(?trait_pred, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert((param_env, trait_pred), dep_node, result);
+        self.infcx.evaluation_cache.insert_same((param_env, trait_pred), dep_node, result);
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -1340,6 +1352,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let (result, dep_node) =
             self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
+        self.tcx().dep_graph.read_index(dep_node);
+        (result, dep_node)
+    }
+
+    fn in_task_with_hash<OP, R, H>(&mut self, op: OP, hash: H) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce(&mut Self) -> R,
+        H: FnOnce(&TaskDeps<DepKind>) -> Fingerprint,
+    {
+        let (result, dep_node) = self.tcx().dep_graph.with_hash_task(
+            self.tcx(),
+            DepKind::TraitSelect,
+            || op(self),
+            hash,
+        );
         self.tcx().dep_graph.read_index(dep_node);
         (result, dep_node)
     }
