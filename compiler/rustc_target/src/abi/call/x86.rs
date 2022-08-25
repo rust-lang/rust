@@ -49,7 +49,7 @@ where
         }
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }
@@ -72,7 +72,7 @@ where
 
         let mut free_regs = 2;
 
-        for arg in &mut fn_abi.args {
+        for arg in fn_abi.args.iter_mut() {
             let attrs = match arg.mode {
                 PassMode::Ignore
                 | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {

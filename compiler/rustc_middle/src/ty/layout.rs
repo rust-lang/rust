@@ -3334,7 +3334,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             };
             fixup(&mut fn_abi.ret);
-            for arg in &mut fn_abi.args {
+            for arg in fn_abi.args.iter_mut() {
                 fixup(arg);
             }
         } else {

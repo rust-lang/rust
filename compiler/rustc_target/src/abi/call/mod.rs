@@ -614,7 +614,7 @@ pub enum Conv {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgAbi<'a, Ty>>,
+    pub args: Box<[ArgAbi<'a, Ty>]>,
 
     /// LLVM return type.
     pub ret: ArgAbi<'a, Ty>,
@@ -738,5 +738,5 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(ArgAbi<'_, usize>, 72);
-    static_assert_size!(FnAbi<'_, usize>, 104);
+    static_assert_size!(FnAbi<'_, usize>, 96);
 }

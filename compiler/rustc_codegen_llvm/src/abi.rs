@@ -442,7 +442,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
             _ => {}
         }
-        for arg in &self.args {
+        for arg in self.args.iter() {
             if arg.pad.is_some() {
                 apply(&ArgAttributes::new());
             }
@@ -518,7 +518,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
             }
         }
-        for arg in &self.args {
+        for arg in self.args.iter() {
             if arg.pad.is_some() {
                 apply(bx.cx, &ArgAttributes::new());
             }
