@@ -2026,6 +2026,7 @@ impl Symbol {
     }
 
     /// Returns `true` if the symbol is `true` or `false`.
+    #[inline]
     pub fn is_bool_lit(self) -> bool {
         self == kw::True || self == kw::False
     }

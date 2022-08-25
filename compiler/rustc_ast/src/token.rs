@@ -471,11 +471,13 @@ impl Token {
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
     /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    #[inline]
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
-        match self.uninterpolate().kind {
+        match self.kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &**nt {
+                NtIdent(ident, false) if ident.name.is_bool_lit() => true,
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
                     ast::ExprKind::Lit(_) => true,
