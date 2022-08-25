@@ -1624,10 +1624,14 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
-    #[rustc_const_unstable(feature = "const_slice_split_at_not_mut", issue = "none")]
+    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+        // HACK: the const function `from_raw_parts` is used to make this
+        // function const; previously the implementation used
+        // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
+
         let len = self.len();
         let ptr = self.as_ptr();
 
