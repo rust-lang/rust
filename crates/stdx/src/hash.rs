@@ -53,10 +53,6 @@ impl Hasher for NoHashHasher {
         self.0 = i as u64;
     }
 
-    fn write_u128(&mut self, i: u128) {
-        self.0 = i as u64;
-    }
-
     fn write_usize(&mut self, i: usize) {
         self.0 = i as u64;
     }
@@ -74,10 +70,6 @@ impl Hasher for NoHashHasher {
     }
 
     fn write_i64(&mut self, i: i64) {
-        self.0 = i as u64;
-    }
-
-    fn write_i128(&mut self, i: i128) {
         self.0 = i as u64;
     }
 
