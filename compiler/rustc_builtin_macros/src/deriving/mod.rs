@@ -6,6 +6,7 @@ use rustc_ast::{GenericArg, Impl, ItemKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 macro path_local($x:ident) {
     generic::ty::Path::new_local(sym::$x)
@@ -187,7 +188,7 @@ fn inject_impl_of_structural_trait(
             generics,
             of_trait: Some(trait_ref),
             self_ty: self_type,
-            items: Vec::new(),
+            items: ThinVec::new(),
         })),
     );
 

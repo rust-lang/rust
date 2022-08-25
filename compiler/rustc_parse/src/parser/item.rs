@@ -662,12 +662,12 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
-    ) -> PResult<'a, Vec<T>> {
+    ) -> PResult<'a, ThinVec<T>> {
         let open_brace_span = self.token.span;
         self.expect(&token::OpenDelim(Delimiter::Brace))?;
         attrs.extend(self.parse_inner_attributes()?);
 
-        let mut items = Vec::new();
+        let mut items = ThinVec::new();
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.recover_doc_comment_before_brace() {
                 continue;
