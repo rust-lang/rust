@@ -15,7 +15,6 @@ use crate::check::{
 use crate::structured_errors::StructuredDiagnostic;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1618,12 +1617,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
     ) {
-        // Store a mapping from `(Span, Predicate) -> ObligationCause`, so that
-        // other errors that have the same span and predicate can also get fixed,
-        // even if their `ObligationCauseCode` isn't an `Expr*Obligation` kind.
-        // This is important since if we adjust one span but not the other, then
-        // we will have "duplicated" the error on the UI side.
-        let mut remap_cause = FxHashSet::default();
         let mut not_adjusted = vec![];
 
         for error in errors {
@@ -1634,6 +1627,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Store both the predicate and the predicate *without constness*
                 // since sometimes we instantiate and check both of these in a
                 // method call, for example.
+                let mut remap_cause = self.remap_fulfillment_cause.borrow_mut();
                 remap_cause.insert((
                     before_span,
                     error.obligation.predicate,
@@ -1652,9 +1646,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         for error in not_adjusted {
-            for (span, predicate, cause) in &remap_cause {
+            for (span, predicate, cause) in &*self.remap_fulfillment_cause.borrow() {
                 if *predicate == error.obligation.predicate
-                    && span.contains(error.obligation.cause.span)
+                    && span.overlaps(error.obligation.cause.span)
                 {
                     error.obligation.cause = cause.clone();
                     continue;
@@ -1667,7 +1661,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
-        let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
+        let (traits::ExprItemObligation(def_id, hir_id, idx)
+        | traits::ExprBindingObligation(def_id, _, hir_id, idx))
             = *error.obligation.cause.code().peel_derives() else { return false; };
         let hir = self.tcx.hir();
         let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };

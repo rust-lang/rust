@@ -22,7 +22,6 @@ fn dummy() {
 
     Outer(TestType);
     //~^ ERROR `dummy::TestType` cannot be sent between threads safely
-    //~| ERROR `dummy::TestType` cannot be sent between threads safely
 }
 
 fn dummy1b() {

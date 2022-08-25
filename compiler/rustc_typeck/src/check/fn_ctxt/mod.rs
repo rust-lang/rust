@@ -4,6 +4,7 @@ mod checks;
 mod suggestions;
 
 pub use _impl::*;
+use rustc_data_structures::fx::FxHashSet;
 pub use suggestions::*;
 
 use crate::astconv::AstConv;
@@ -129,6 +130,14 @@ pub struct FnCtxt<'a, 'tcx> {
 
     /// True if the return type has an Opaque type
     pub(super) return_type_has_opaque: bool,
+
+    // Store a mapping from `(Span, Predicate) -> ObligationCause`, so that
+    // other errors that have the same span and predicate can also get fixed,
+    // even if their `ObligationCauseCode` isn't an `Expr{Item,Binding}Obligation`.
+    // This is important since if we adjust one span but not the other, then
+    // we will have "duplicated" the error on the UI side.
+    pub(super) remap_fulfillment_cause:
+        RefCell<FxHashSet<(Span, ty::Predicate<'tcx>, ObligationCause<'tcx>)>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -156,6 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
             return_type_pre_known: true,
             return_type_has_opaque: false,
+            remap_fulfillment_cause: Default::default(),
         }
     }
 
