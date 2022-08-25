@@ -454,10 +454,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         None
                     }
                 });
-                sess.emit_warning(UnknownCTargetFeature::UnknownFeature {
-                    feature,
-                    rust_feature,
-                });
+                sess.emit_warning(UnknownCTargetFeature::UnknownFeature { feature, rust_feature });
             }
 
             if diagnostics {
