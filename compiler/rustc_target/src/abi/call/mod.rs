@@ -730,3 +730,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ok(())
     }
 }
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(ArgAbi<'_, usize>, 208);
+    static_assert_size!(FnAbi<'_, usize>, 248);
+}
