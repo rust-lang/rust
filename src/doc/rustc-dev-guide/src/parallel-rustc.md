@@ -1,14 +1,15 @@
 # Parallel Compilation
 
 As of <!-- date-check --> August 2022, the only stage of the compiler that 
-is already parallel is codegen. Some other parts of the nightly compiler 
-have parallel implementations, such as query evaluation, type check and 
-monomorphization, but there is still a lot of work to be done. The lack of 
-parallelism at other stages (for example, macro expansion) also represents 
-an opportunity for improving compiler performance.
+is already parallel is codegen. Some parts of the compiler already have 
+parallel implementations, such as query evaluation, type check and 
+monomorphization, but the general version of the compiler does not include 
+these parallelization functions. **To try out the current parallel compiler**, 
+one can install rustc from source code with `parallel-compiler = true` in 
+the `config.toml`.
 
-**To try out the current parallel compiler**, one can install rustc from 
-source code with `parallel-compiler = true` in the `config.toml`.
+The lack of parallelism at other stages (for example, macro expansion) also 
+represents an opportunity for improving compiler performance.
 
 These next few sections describe where and how parallelism is currently used,
 and the current status of making parallel compilation the default in `rustc`.
@@ -45,9 +46,15 @@ are implemented diferently depending on whether `parallel-compiler` is true.
 | MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
 | MetadataRef | [`OwningRef<Box<dyn Erased + Send + Sync>, [u8]>`][OwningRef] | [`OwningRef<Box<dyn Erased>, [u8]>`][OwningRef] |
 
-- There are currently a lot of global data structures that need to be made
-  thread-safe. A key strategy here has been converting interior-mutable
-  data-structures (e.g. `Cell`) into their thread-safe siblings (e.g. `Mutex`).
+- These thread-safe data structures interspersed during compilation can 
+  cause a lot of lock contention, which actually degrades performance as the
+  number of threads increases beyond 4. This inspires us to audit the use 
+  of these data structures, leading to either refactoring to reduce use of 
+  shared state, or persistent documentation covering invariants, atomicity, 
+  and lock orderings.
+
+- On the other hand, we still need to figure out what other invariants 
+  during compilation might not hold in parallel compilation.
 
 ### WorkLocal
 
@@ -64,10 +71,10 @@ can be accessed directly through `Deref::deref`.
 
 ## Parallel Iterator
 
-The parallel iterators provided by the [`rayon`] crate are efficient 
-ways to achieve parallelization. The current nightly rustc uses (a custom 
-fork of) [`rayon`] to run tasks in parallel. The custom fork allows the 
-execution of DAGs of tasks, not just trees.
+The parallel iterators provided by the [`rayon`] crate are easy ways 
+to implement parallelism. In the current implementation of the parallel 
+compiler we use a custom fork of [`rayon`] to run tasks in parallel. 
+*(more information wanted here)*
 
 Some iterator functions are implemented in the current nightly compiler to
 run loops in parallel when `parallel-compiler` is true.
@@ -124,9 +131,11 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
   start evaluating.
 - If there *is* another query invocation for the same key in progress, we
   release the lock, and just block the thread until the other invocation has
-  computed the result we are waiting for. **Deadlocks are possible**, in which
-  case `rustc_query_system::query::job::deadlock()` will be called to detect
-  and remove the deadlock and then return cycle error as the query result.
+  computed the result we are waiting for. **Cycle error detection** in the parallel 
+  compiler requires more complex logic than in single-threaded mode. When 
+  worker threads in parallel queries stop making progress due to interdependence, 
+  the compiler uses an extra thread *(named deadlock handler)* to detect, remove and 
+  report the cycle error.
 
 Parallel query still has a lot of work to do, most of which is related to 
 the previous `Data Structures` and `Parallel Iterators`. See [this tracking issue][tracking].
@@ -137,22 +146,7 @@ As of <!-- date-check--> May 2022, there are still a number of steps
 to complete before rustdoc rendering can be made parallel. More details on
 this issue can be found [here][parallel-rustdoc].
 
-## Current Status
-
-As of <!-- date-check --> May 2022, work on explicitly parallelizing the
-compiler has stalled. There is a lot of design and correctness work that needs
-to be done.
-
-As of <!-- date-check --> May 2022, much of this effort is on hold due
-to lack of manpower. We have a working prototype with promising performance
-gains in many cases. However, there are two blockers:
-
-- It's not clear what invariants need to be upheld that might not hold in the
-  face of concurrency. An auditing effort was underway, but seems to have
-  stalled at some point.
-
-- There is a lot of lock contention, which actually degrades performance as the
-  number of threads increases beyond 4.
+## Resources
 
 Here are some resources that can be used to learn more (note that some of them
 are a bit out of date):
