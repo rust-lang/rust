@@ -1,17 +1,6 @@
 #![doc = include_str!("../../core/src/error.md")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// A note about crates and the facade:
-//
-// Originally, the `Error` trait was defined in libcore, and the impls
-// were scattered about. However, coherence objected to this
-// arrangement, because to create the blanket impls for `Box` required
-// knowing that `&str: !Error`, and we have no means to deal with that
-// sort of conflict just now. Therefore, for the time being, we have
-// moved the `Error` trait into libstd. As we evolve a sol'n to the
-// coherence challenge (e.g., specialization, neg impls, etc) we can
-// reconsider what crate these items belong in.
-
 #[cfg(test)]
 mod tests;
 
@@ -996,10 +985,6 @@ impl dyn Error {
         // because that means the method can't be called on trait objects (we'd also need the
         // 'static bound, but that isn't allowed because methods with bounds on Self other than
         // Sized are not object-safe). Requiring an Unsize bound is not backwards compatible.
-        //
-        // Two possible solutions are to start the iterator at self.source() instead of self (see
-        // discussion on the tracking issue), or to wait for dyn* to exist (which would then permit
-        // the coercion).
 
         Sources { current: Some(self) }
     }
