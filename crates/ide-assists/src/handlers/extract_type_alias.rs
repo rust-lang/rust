@@ -357,4 +357,27 @@ impl<'outer, Outer, const OUTER: usize> () {
 "#,
         );
     }
+
+    #[test]
+    fn issue_11197 () {
+        check_assist(extract_type_alias,
+            r#"
+struct Foo<T, const N: usize>
+where
+    [T; N]: Sized,
+{
+    arr: $0[T; N]$0,
+}
+            "#,
+            r#"
+type $0Type<T, const N: usize> = [T; N];
+
+struct Foo<T, const N: usize>
+where
+    [T; N]: Sized,
+{
+    arr: Type<T, N>,
+}
+            "#);
+    }
 }
