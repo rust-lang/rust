@@ -46,5 +46,17 @@ index 4bc44e9..8e3c7a4 100644
  
  #[test]
  fn cell_allows_array_cycle() {
+diff --git a/library/core/tests/atomic.rs b/library/core/tests/atomic.rs
+index 13b12db..96fe4b9 100644
+--- a/library/core/tests/atomic.rs
++++ b/library/core/tests/atomic.rs
+@@ -185,6 +185,7 @@ fn ptr_bitops() {
+ }
+ 
+ #[test]
++#[cfg_attr(target_arch = "s390x", ignore)] // s390x backend doesn't support stack alignment >8 bytes
+ #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+ fn ptr_bitops_tagging() {
+     #[repr(align(16))]
 -- 
 2.21.0 (Apple Git-122)

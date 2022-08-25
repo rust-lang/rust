@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use super::rustc_info::{get_file_name, get_rustc_version};
+use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
 use super::utils::{spawn_and_wait, try_hard_link};
 use super::SysrootKind;
 
@@ -10,10 +10,12 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_build_dir: PathBuf,
+    cg_clif_build_dir: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
+    eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
+
     if target_dir.exists() {
         fs::remove_dir_all(target_dir).unwrap();
     }
@@ -35,11 +37,13 @@ pub(crate) fn build_sysroot(
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {
+        let wrapper_name = get_wrapper_file_name(wrapper, "bin");
+
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
         build_cargo_wrapper_cmd
             .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
-            .arg(target_dir.join(wrapper))
+            .arg(target_dir.join(wrapper_name))
             .arg("-g");
         spawn_and_wait(build_cargo_wrapper_cmd);
     }

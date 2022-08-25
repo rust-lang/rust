@@ -22,4 +22,4 @@ task:
     - # Reduce amount of benchmark runs as they are slow
     - export COMPILE_RUNS=2
     - export RUN_RUNS=2
-    - ./test.sh
+    - ./y.rs test

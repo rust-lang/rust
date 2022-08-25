@@ -1,5 +1,4 @@
 // run-rustfix
-#![feature(label_break_value)]
 
 // These are forbidden occurrences of label-break-value
 

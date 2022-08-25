@@ -647,14 +647,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
-            ast::ExprKind::Block(_, Some(label)) => {
-                gate_feature_post!(
-                    &self,
-                    label_break_value,
-                    label.ident.span,
-                    "labels on blocks are unstable"
-                );
-            }
             _ => {}
         }
         visit::walk_expr(self, e)
@@ -823,7 +815,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(label_break_value, "labels on blocks are unstable");
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
     gate_all!(type_ascription, "type ascription is experimental");
 

@@ -17,7 +17,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
-#![feature(label_break_value)]
+#![cfg_attr(bootstrap, feature(label_break_value))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]

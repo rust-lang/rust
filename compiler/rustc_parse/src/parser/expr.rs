@@ -2014,10 +2014,6 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if let Some(label) = opt_label {
-            self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
-        }
-
         if self.token.is_whole_block() {
             self.sess.emit_err(InvalidBlockMacroSegment {
                 span: self.token.span,

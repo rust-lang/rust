@@ -300,6 +300,12 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
+    "windows-sys",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_msvc",
 ];
 
 const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[

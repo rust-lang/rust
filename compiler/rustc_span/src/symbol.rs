@@ -1119,6 +1119,7 @@ symbols! {
         ptr_offset_from_unsigned,
         pub_macro_rules,
         pub_restricted,
+        public,
         pure,
         pushpop_unsafe,
         qreg,
