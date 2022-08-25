@@ -89,22 +89,20 @@ pub fn equal_up_to_regions<'tcx>(
 
     // Normalize lifetimes away on both sides, then compare.
     let normalize = |ty: Ty<'tcx>| {
-        tcx.normalize_erasing_regions(
-            param_env,
-            ty.fold_with(&mut BottomUpFolder {
-                tcx,
-                // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
-                // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
-                // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
-                // since one may have an `impl SomeTrait for fn(&32)` and
-                // `impl SomeTrait for fn(&'static u32)` at the same time which
-                // specify distinct values for Assoc. (See also #56105)
-                lt_op: |_| tcx.lifetimes.re_erased,
-                // Leave consts and types unchanged.
-                ct_op: |ct| ct,
-                ty_op: |ty| ty,
-            }),
-        )
+        let ty = ty.fold_with(&mut BottomUpFolder {
+            tcx,
+            // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
+            // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
+            // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
+            // since one may have an `impl SomeTrait for fn(&32)` and
+            // `impl SomeTrait for fn(&'static u32)` at the same time which
+            // specify distinct values for Assoc. (See also #56105)
+            lt_op: |_| tcx.lifetimes.re_erased,
+            // Leave consts and types unchanged.
+            ct_op: |ct| ct,
+            ty_op: |ty| ty,
+        });
+        tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty)
     };
     tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())
 }
