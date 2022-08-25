@@ -1,6 +1,6 @@
+use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
 use rustc_session::SessionDiagnostic;
-use rustc_errors::fluent;
 
 pub(crate) enum UnknownCTargetFeature {
     UnknownFeaturePrefix { feature: String },
@@ -8,7 +8,10 @@ pub(crate) enum UnknownCTargetFeature {
 }
 
 impl SessionDiagnostic<'_, ()> for UnknownCTargetFeature {
-    fn into_diagnostic(self, sess: &'_ rustc_session::parse::ParseSess) -> DiagnosticBuilder<'_, ()> {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> DiagnosticBuilder<'_, ()> {
         match self {
             UnknownCTargetFeature::UnknownFeaturePrefix { feature } => {
                 let mut diag = sess.struct_warn(fluent::codegen_llvm::unknown_ctarget_feature);
