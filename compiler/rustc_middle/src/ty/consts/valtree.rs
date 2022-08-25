@@ -18,7 +18,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ValTree`.
 pub enum ValTree<'tcx> {
-    /// ZSTs, integers, `bool`, `char` are represented as scalars.
+    /// integers, `bool`, `char` are represented as scalars.
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
     /// of these types have the same representation.
     Leaf(ScalarInt),
@@ -27,8 +27,11 @@ pub enum ValTree<'tcx> {
     // dont use SliceOrStr for now
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
+    ///
     /// Enums are represented by storing their discriminant as a field, followed by all
     /// the fields of the variant.
+    ///
+    /// ZST types are represented as an empty slice.
     Branch(&'tcx [ValTree<'tcx>]),
 }
 
