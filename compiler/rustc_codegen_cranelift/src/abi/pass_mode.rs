@@ -100,7 +100,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(ref cast) => cast_target_to_abi_params(cast),
+            PassMode::Cast(ref cast, pad_i32) => {
+                assert!(!pad_i32, "padding support not yet implemented");
+                cast_target_to_abi_params(cast)
+            }
             PassMode::Indirect { attrs, extra_attrs: None, on_stack } => {
                 if on_stack {
                     // Abi requires aligning struct size to pointer size
@@ -145,7 +148,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 }
                 _ => unreachable!("{:?}", self.layout.abi),
             },
-            PassMode::Cast(ref cast) => {
+            PassMode::Cast(ref cast, _) => {
                 (None, cast_target_to_abi_params(cast).into_iter().collect())
             }
             PassMode::Indirect { attrs: _, extra_attrs: None, on_stack } => {
@@ -226,7 +229,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
             let (a, b) = arg.load_scalar_pair(fx);
             smallvec![a, b]
         }
-        PassMode::Cast(ref cast) => to_casted_value(fx, arg, cast),
+        PassMode::Cast(ref cast, _) => to_casted_value(fx, arg, cast),
         PassMode::Indirect { .. } => {
             if is_owned {
                 match arg.force_stack(fx) {
@@ -284,7 +287,7 @@ pub(super) fn cvalue_for_param<'tcx>(
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
             Some(CValue::by_val_pair(block_params[0], block_params[1], arg_abi.layout))
         }
-        PassMode::Cast(ref cast) => {
+        PassMode::Cast(ref cast, _) => {
             Some(from_casted_value(fx, &block_params, arg_abi.layout, cast))
         }
         PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {

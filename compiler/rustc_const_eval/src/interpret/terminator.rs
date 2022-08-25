@@ -215,8 +215,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => false,
             }
         };
-        // Padding must be fully equal.
-        let pad_compat = || caller_abi.pad_i32 == callee_abi.pad_i32;
         // When comparing the PassMode, we have to be smart about comparing the attributes.
         let arg_attr_compat = |a1: &ArgAttributes, a2: &ArgAttributes| {
             // There's only one regular attribute that matters for the call ABI: InReg.
@@ -239,7 +237,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
                 arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
             }
-            (PassMode::Cast(c1), PassMode::Cast(c2)) => c1 == c2,
+            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && pad1 == pad2,
             (
                 PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
                 PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
@@ -251,7 +249,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => false,
         };
 
-        if layout_compat() && pad_compat() && mode_compat() {
+        if layout_compat() && mode_compat() {
             return true;
         }
         trace!(

@@ -339,7 +339,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            PassMode::Cast(cast_ty) => {
+            PassMode::Cast(cast_ty, _) => {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(Some(op)) => op,
                     LocalRef::Operand(None) => bug!("use of return before def"),
@@ -1158,39 +1158,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         llargs: &mut Vec<Bx::Value>,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
     ) {
-        // Fill padding with undef value, where applicable.
-        if arg.pad_i32 {
-            llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())))
-        }
-
-        if arg.is_ignore() {
-            return;
-        }
-
-        if let PassMode::Pair(..) = arg.mode {
-            match op.val {
+        match arg.mode {
+            PassMode::Ignore => return,
+            PassMode::Cast(_, true) => {
+                // Fill padding with undef value, where applicable.
+                llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())));
+            }
+            PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {
                     llargs.push(a);
                     llargs.push(b);
                     return;
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
-            }
-        } else if arg.is_unsized_indirect() {
-            match op.val {
+            },
+            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => match op.val {
                 Ref(a, Some(b), _) => {
                     llargs.push(a);
                     llargs.push(b);
                     return;
                 }
                 _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
-            }
+            },
+            _ => {}
         }
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect { .. } | PassMode::Cast(_) => {
+                PassMode::Indirect { .. } | PassMode::Cast(..) => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
@@ -1222,7 +1218,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast(ty) = &arg.mode {
+            if let PassMode::Cast(ty, _) = &arg.mode {
                 let llty = bx.cast_backend_type(ty);
                 let addr = bx.pointercast(llval, bx.type_ptr_to(llty));
                 llval = bx.load(llty, addr, align.min(arg.layout.align.abi));
@@ -1622,7 +1618,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
-                let op = if let PassMode::Cast(_) = ret_abi.mode {
+                let op = if let PassMode::Cast(..) = ret_abi.mode {
                     let tmp = PlaceRef::alloca(bx, ret_abi.layout);
                     tmp.storage_live(bx);
                     bx.store_arg(&ret_abi, llval, tmp);

@@ -40,9 +40,10 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either
-    /// a single uniform or a pair of registers.
-    Cast(Box<CastTarget>),
+    /// Pass the argument after casting it, to either a single uniform or a
+    /// pair of registers. The bool indicates if a `Reg::i32()` dummy argument
+    /// is emitted before the real argument.
+    Cast(Box<CastTarget>, bool),
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
@@ -463,10 +464,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
-
-    /// Dummy argument, which is emitted before the real argument.
-    pub pad_i32: bool,
-
     pub mode: PassMode,
 }
 
@@ -486,7 +483,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
-        ArgAbi { layout, pad_i32: false, mode }
+        ArgAbi { layout, mode }
     }
 
     fn indirect_pass_mode(layout: &TyAndLayout<'a, Ty>) -> PassMode {
@@ -548,11 +545,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(Box::new(target.into()));
+        self.mode = PassMode::Cast(Box::new(target.into()), false);
     }
 
-    pub fn pad_with_i32(&mut self) {
-        self.pad_i32 = true;
+    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
+        self.mode = PassMode::Cast(Box::new(target.into()), pad_i32);
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -737,6 +734,6 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(ArgAbi<'_, usize>, 64);
-    static_assert_size!(FnAbi<'_, usize>, 88);
+    static_assert_size!(ArgAbi<'_, usize>, 56);
+    static_assert_size!(FnAbi<'_, usize>, 80);
 }
