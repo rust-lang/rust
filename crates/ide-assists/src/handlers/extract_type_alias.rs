@@ -189,7 +189,7 @@ fn collect_used_generics<'gp>(
                     }
                 }
             }
-        },
+        }
         _ => (),
     });
     // stable resort to lifetime, type, const
@@ -378,8 +378,9 @@ impl<'outer, Outer, const OUTER: usize> () {
     }
 
     #[test]
-    fn issue_11197 () {
-        check_assist(extract_type_alias,
+    fn issue_11197() {
+        check_assist(
+            extract_type_alias,
             r#"
 struct Foo<T, const N: usize>
 where
@@ -397,6 +398,7 @@ where
 {
     arr: Type<T, N>,
 }
-            "#);
+            "#,
+        );
     }
 }
