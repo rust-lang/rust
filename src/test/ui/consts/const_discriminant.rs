@@ -15,7 +15,12 @@ const TEST_A: Discriminant<Test> = discriminant(&Test::A(5));
 const TEST_A_OTHER: Discriminant<Test> = discriminant(&Test::A(17));
 const TEST_B: Discriminant<Test> = discriminant(&Test::B);
 
-enum Void {}
+mod private {
+    enum PrivateVoid {}
+    pub struct VoidS(PrivateVoid);
+    pub enum Void { X(VoidS) }
+}
+use private::Void;
 
 enum SingleVariant {
     V,
