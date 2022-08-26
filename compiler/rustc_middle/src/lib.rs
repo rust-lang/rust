@@ -86,6 +86,7 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub(crate) mod error;
 pub mod hir;
 pub mod infer;
 pub mod lint;
