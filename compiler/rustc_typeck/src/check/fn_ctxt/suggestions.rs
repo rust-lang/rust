@@ -506,30 +506,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (
-            &fn_decl.output,
-            found.is_suggestable(self.tcx, false),
-            can_suggest,
-            expected.is_unit(),
-        ) {
-            (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
-                err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found });
-                true
-            }
-            (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
-                // that.
-                err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
-                true
-            }
-            (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
+        match &fn_decl.output {
+            &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() && !can_suggest => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.subdiagnostic(ExpectedReturnTypeLabel::Unit { span });
-                true
+                return true;
             }
-            // expectation was caused by something else, not the default return
-            (&hir::FnRetTy::DefaultReturn(_), _, _, false) => false,
-            (&hir::FnRetTy::Return(ref ty), _, _, _) => {
+            &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
+                if found.is_suggestable(self.tcx, false) {
+                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                    return true;
+                } else if let ty::Closure(_, substs) = found.kind()
+                    // FIXME(compiler-errors): Get better at printing binders...
+                    && let closure = substs.as_closure()
+                    && closure.sig().is_suggestable(self.tcx, false)
+                {
+                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: closure.print_as_impl_trait().to_string() });
+                    return true;
+                } else {
+                    // FIXME: if `found` could be `impl Iterator` we should suggest that.
+                    err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
+                    return true
+                }
+            }
+            &hir::FnRetTy::Return(ref ty) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
@@ -546,9 +546,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
                     return true;
                 }
-                false
             }
+            _ => {}
         }
+        false
     }
 
     /// check whether the return type is a generic type with a trait bound
