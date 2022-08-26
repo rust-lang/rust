@@ -1,7 +1,7 @@
 use crate::base;
 use crate::common::{self, CodegenCx};
 use crate::debuginfo;
-use crate::errors::{InvalidMinimumAlignment, LinkageConstOrMutType};
+use crate::errors::{InvalidMinimumAlignment, LinkageConstOrMutType, SymbolAlreadyDefined};
 use crate::llvm::{self, True};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -191,10 +191,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().span_fatal(
-                    cx.tcx.def_span(def_id),
-                    &format!("symbol `{}` is already defined", &sym),
-                )
+                cx.sess().emit_fatal(SymbolAlreadyDefined {
+                    span: cx.tcx.def_span(def_id),
+                    symbol_name: sym,
+                })
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
             llvm::LLVMSetInitializer(g2, g1);
