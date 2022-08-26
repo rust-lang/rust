@@ -225,3 +225,33 @@ metadata_cannot_find_crate =
 
 metadata_no_dylib_plugin =
     plugin `{$crate_name}` only found in rlib format, but must be available in dylib format
+
+metadata_target_not_installed =
+    the `{$locator_triple}` target may not be installed
+
+metadata_target_no_std_support =
+    the `{$locator_triple}` target may not support the standard library
+
+metadata_consider_downloading_target =
+    consider downloading the target with `rustup target add {$locator_triple}`
+
+metadata_std_required =
+    `std` is required by `{$current_crate}` because it does not declare `#![no_std]`
+
+metadata_consider_building_std =
+    consider building the standard library from source with `cargo build -Zbuild-std`
+
+metadata_compiler_missing_profiler =
+    the compiler may have been built without the profiler runtime
+
+metadata_install_missing_components =
+    maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`
+
+metadata_cant_find_crate =
+    can't find crate
+
+metadata_crate_location_unknown_type =
+    extern location for {$crate_name} is of an unknown type: {$path}
+
+metadata_lib_filename_form =
+    file name should be lib*.rlib or {dll_prefix}*.{dll_suffix}

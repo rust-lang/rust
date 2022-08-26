@@ -26,11 +26,8 @@ pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> 
     let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
     let result = fs::write(&out_filename, metadata);
 
-    if let Err(e) = result {
-        sess.emit_fatal(FailedWriteError {
-            filename: out_filename.display().to_string(),
-            err: e.to_string(),
-        });
+    if let Err(err) = result {
+        sess.emit_fatal(FailedWriteError { filename: out_filename, err });
     }
 
     out_filename
@@ -71,7 +68,7 @@ pub fn encode_and_write_metadata(
     let metadata_tmpdir = TempFileBuilder::new()
         .prefix("rmeta")
         .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailedCreateTempdir { err: err.to_string() }));
+        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailedCreateTempdir { err }));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
 
@@ -79,11 +76,8 @@ pub fn encode_and_write_metadata(
     // This simplifies the creation of the output `out_filename` when requested.
     match metadata_kind {
         MetadataKind::None => {
-            std::fs::File::create(&metadata_filename).unwrap_or_else(|e| {
-                tcx.sess.emit_fatal(FailedCreateFile {
-                    filename: metadata_filename.display().to_string(),
-                    err: e.to_string(),
-                });
+            std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
+                tcx.sess.emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
             });
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
@@ -98,11 +92,8 @@ pub fn encode_and_write_metadata(
     // this file always exists.
     let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
-        if let Err(e) = non_durable_rename(&metadata_filename, &out_filename) {
-            tcx.sess.emit_fatal(FailedWriteError {
-                filename: out_filename.display().to_string(),
-                err: e.to_string(),
-            });
+        if let Err(err) = non_durable_rename(&metadata_filename, &out_filename) {
+            tcx.sess.emit_fatal(FailedWriteError { filename: out_filename, err });
         }
         if tcx.sess.opts.json_artifact_notifications {
             tcx.sess
@@ -117,8 +108,8 @@ pub fn encode_and_write_metadata(
 
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
-        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|e| {
-            tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err: e.to_string() });
+        EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
+            tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err });
         });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;

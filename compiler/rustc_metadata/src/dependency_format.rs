@@ -140,7 +140,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 if src.rlib.is_some() {
                     continue;
                 }
-                sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum).to_string() });
+                sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
             }
             return Vec::new();
         }
@@ -224,10 +224,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                sess.emit_err(LibRequired {
-                    crate_name: tcx.crate_name(cnum).to_string(),
-                    kind: kind.to_string(),
-                });
+                sess.emit_err(LibRequired { crate_name: tcx.crate_name(cnum), kind: kind });
             }
         }
     }
@@ -251,8 +248,7 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                tcx.sess
-                    .emit_err(CrateDepMultiple { crate_name: tcx.crate_name(cnum).to_string() });
+                tcx.sess.emit_err(CrateDepMultiple { crate_name: tcx.crate_name(cnum) });
             }
         }
         None => {
@@ -347,8 +343,8 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
 
         if tcx.is_panic_runtime(cnum) {
             if let Some((prev, _)) = panic_runtime {
-                let prev_name = tcx.crate_name(prev).to_string();
-                let cur_name = tcx.crate_name(cnum).to_string();
+                let prev_name = tcx.crate_name(prev);
+                let cur_name = tcx.crate_name(cnum);
                 sess.emit_err(TwoPanicRuntimes { prev_name, cur_name });
             }
             panic_runtime = Some((
@@ -370,8 +366,8 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
         // our same strategy.
         if found_strategy != desired_strategy {
             sess.emit_err(BadPanicStrategy {
-                runtime: tcx.crate_name(runtime_cnum).to_string(),
-                strategy: desired_strategy.desc().to_string(),
+                runtime: tcx.crate_name(runtime_cnum),
+                strategy: desired_strategy,
             });
         }
 
@@ -390,17 +386,17 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
 
             if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
                 sess.emit_err(RequiredPanicStrategy {
-                    crate_name: tcx.crate_name(cnum).to_string(),
-                    found_strategy: found_strategy.desc().to_string(),
-                    desired_strategy: desired_strategy.desc().to_string() });
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy,
+                    desired_strategy});
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
             if tcx.sess.opts.unstable_opts.panic_in_drop != found_drop_strategy {
                 sess.emit_err(IncompatiblePanicInDropStrategy {
-                    crate_name: tcx.crate_name(cnum).to_string(),
-                    found_strategy: found_drop_strategy.desc().to_string(),
-                    desired_strategy: tcx.sess.opts.unstable_opts.panic_in_drop.desc().to_string(),
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy: found_drop_strategy,
+                    desired_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
                 });
             }
         }

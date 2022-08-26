@@ -124,7 +124,7 @@ impl<'tcx> Collector<'tcx> {
                                 NativeLibKind::RawDylib
                             }
                             kind => {
-                                sess.emit_err(UnknownLinkKind { span, kind: kind.to_string() });
+                                sess.emit_err(UnknownLinkKind { span, kind });
                                 continue;
                             }
                         };
@@ -249,10 +249,7 @@ impl<'tcx> Collector<'tcx> {
                     }
                     let assign_modifier = |dst: &mut Option<bool>| {
                         if dst.is_some() {
-                            sess.emit_err(MultipleModifiers {
-                                span,
-                                modifier: modifier.to_string(),
-                            });
+                            sess.emit_err(MultipleModifiers { span, modifier });
                         } else {
                             *dst = Some(value);
                         }
@@ -287,10 +284,7 @@ impl<'tcx> Collector<'tcx> {
                         }
 
                         _ => {
-                            sess.emit_err(UnknownLinkModifier {
-                                span,
-                                modifier: modifier.to_string(),
-                            });
+                            sess.emit_err(UnknownLinkModifier { span, modifier });
                         }
                     }
                 }
@@ -379,11 +373,11 @@ impl<'tcx> Collector<'tcx> {
                     .filter_map(|lib| lib.name.as_ref())
                     .any(|n| n.as_str() == lib.name);
                 if new_name.is_empty() {
-                    self.tcx.sess.emit_err(EmptyRenamingTarget { lib_name: lib.name.clone() });
+                    self.tcx.sess.emit_err(EmptyRenamingTarget { lib_name: &lib.name });
                 } else if !any_duplicate {
-                    self.tcx.sess.emit_err(RenamingNoLink { lib_name: lib.name.clone() });
+                    self.tcx.sess.emit_err(RenamingNoLink { lib_name: &lib.name });
                 } else if !renames.insert(&lib.name) {
-                    self.tcx.sess.emit_err(MultipleRenamings { lib_name: lib.name.clone() });
+                    self.tcx.sess.emit_err(MultipleRenamings { lib_name: &lib.name });
                 }
             }
         }

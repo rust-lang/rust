@@ -10,6 +10,7 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::{edition::Edition, Span, DUMMY_SP};
+use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -141,6 +142,12 @@ impl IntoDiagnosticArg for PathBuf {
 impl IntoDiagnosticArg for usize {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Number(self)
+    }
+}
+
+impl IntoDiagnosticArg for PanicStrategy {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.desc().to_string()))
     }
 }
 

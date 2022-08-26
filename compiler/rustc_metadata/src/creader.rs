@@ -750,13 +750,10 @@ impl<'a> CrateLoader<'a> {
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
         if !data.is_panic_runtime() {
-            self.sess.emit_err(CrateNotPanicRuntime { crate_name: name.to_string() });
+            self.sess.emit_err(CrateNotPanicRuntime { crate_name: name });
         }
         if data.required_panic_strategy() != Some(desired_strategy) {
-            self.sess.emit_err(NoPanicStrategy {
-                crate_name: name.to_string(),
-                strategy: desired_strategy.desc().to_string(),
-            });
+            self.sess.emit_err(NoPanicStrategy { crate_name: name, strategy: desired_strategy });
         }
 
         self.cstore.injected_panic_runtime = Some(cnum);
@@ -784,7 +781,7 @@ impl<'a> CrateLoader<'a> {
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
         if !data.is_profiler_runtime() {
-            self.sess.emit_err(NotProfilerRuntime { crate_name: name.to_string() });
+            self.sess.emit_err(NotProfilerRuntime { crate_name: name });
         }
     }
 
@@ -828,8 +825,8 @@ impl<'a> CrateLoader<'a> {
                 match global_allocator {
                     Some(other_crate) => {
                         self.sess.emit_err(ConflictingGlobalAlloc {
-                            crate_name: data.name().to_string(),
-                            other_crate_name: other_crate.to_string(),
+                            crate_name: data.name(),
+                            other_crate_name: other_crate,
                         });
                     }
                     None => global_allocator = Some(data.name()),
@@ -874,9 +871,9 @@ impl<'a> CrateLoader<'a> {
             let data = self.cstore.get_crate_data(dep);
             if needs_dep(&data) {
                 self.sess.emit_err(NoTransitiveNeedsDep {
-                    crate_name: self.cstore.get_crate_data(krate).name().to_string(),
-                    needs_crate_name: what.to_string(),
-                    deps_crate_name: data.name().to_string(),
+                    crate_name: self.cstore.get_crate_data(krate).name(),
+                    needs_crate_name: what,
+                    deps_crate_name: data.name(),
                 });
             }
         }

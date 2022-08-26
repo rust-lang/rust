@@ -3514,6 +3514,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_target",
  "serde",
  "serde_json",
  "termcolor",
