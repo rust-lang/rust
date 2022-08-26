@@ -979,7 +979,7 @@ enum TestKind<'tcx> {
     },
 
     /// Test whether the value falls within an inclusive or exclusive range
-    Range(PatRange<'tcx>),
+    Range(Box<PatRange<'tcx>>),
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },

@@ -134,7 +134,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
-            (RangeEnd::Excluded, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Excluded, Some(Ordering::Less)) => {
+                PatKind::Range(Box::new(PatRange { lo, hi, end }))
+            }
             // `x..y` where `x >= y`. The range is empty => error.
             (RangeEnd::Excluded, _) => {
                 struct_span_err!(
@@ -149,7 +151,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             // `x..=y` where `x == y`.
             (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
             // `x..=y` where `x < y`.
-            (RangeEnd::Included, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Included, Some(Ordering::Less)) => {
+                PatKind::Range(Box::new(PatRange { lo, hi, end }))
+            }
             // `x..=y` where `x > y` hence the range is empty => error.
             (RangeEnd::Included, _) => {
                 let mut err = struct_span_err!(
@@ -735,7 +739,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
-            PatKind::Range(range) => PatKind::Range(range),
+            PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),
                 slice: slice.fold_with(folder),

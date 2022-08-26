@@ -628,7 +628,7 @@ pub enum PatKind<'tcx> {
         value: mir::ConstantKind<'tcx>,
     },
 
-    Range(PatRange<'tcx>),
+    Range(Box<PatRange<'tcx>>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
@@ -653,7 +653,7 @@ pub enum PatKind<'tcx> {
     },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
+#[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
     pub lo: mir::ConstantKind<'tcx>,
     pub hi: mir::ConstantKind<'tcx>,
@@ -767,7 +767,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatKind::Constant { value } => write!(f, "{}", value),
-            PatKind::Range(PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;
                 write!(f, "{}", end)?;
                 write!(f, "{}", hi)
@@ -809,8 +809,8 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 128);
-    static_assert_size!(PatKind<'_>, 112);
+    static_assert_size!(Pat<'_>, 112);
+    static_assert_size!(PatKind<'_>, 96);
     static_assert_size!(Stmt<'_>, 56);
     static_assert_size!(StmtKind<'_>, 48);
 }

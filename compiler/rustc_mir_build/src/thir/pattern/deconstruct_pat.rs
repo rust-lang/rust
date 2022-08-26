@@ -252,7 +252,11 @@ impl IntRange {
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
         } else {
-            PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
+            PatKind::Range(Box::new(PatRange {
+                lo: lo_const,
+                hi: hi_const,
+                end: RangeEnd::Included,
+            }))
         };
 
         Pat { ty, span: DUMMY_SP, kind }
@@ -1402,7 +1406,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
             }
-            &PatKind::Range(PatRange { lo, hi, end }) => {
+            &PatKind::Range(box PatRange { lo, hi, end }) => {
                 let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
@@ -1511,7 +1515,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            &FloatRange(lo, hi, end) => PatKind::Range(Box::new(PatRange { lo, hi, end })),
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => bug!(
