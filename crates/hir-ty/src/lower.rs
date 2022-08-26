@@ -6,7 +6,7 @@
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, RefCell, RefMut},
     iter,
     sync::Arc,
 };
@@ -330,26 +330,26 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             TypeRef::Macro(macro_call) => {
-                let (expander, recursion_start) = {
-                    let mut expander = self.expander.borrow_mut();
-                    if expander.is_some() {
-                        (Some(expander), false)
-                    } else {
-                        *expander = Some(Expander::new(
-                            self.db.upcast(),
-                            macro_call.file_id,
-                            self.resolver.module(),
-                        ));
-                        (Some(expander), true)
+                let (mut expander, recursion_start) = {
+                    match RefMut::filter_map(self.expander.borrow_mut(), Option::as_mut) {
+                        Ok(expander) => (expander, false),
+                        Err(expander) => (
+                            RefMut::map(expander, |it| {
+                                it.insert(Expander::new(
+                                    self.db.upcast(),
+                                    macro_call.file_id,
+                                    self.resolver.module(),
+                                ))
+                            }),
+                            true,
+                        ),
                     }
                 };
-                let ty = if let Some(mut expander) = expander {
-                    let expander_mut = expander.as_mut().unwrap();
+                let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
-                    match expander_mut.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
+                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                            let ctx =
-                                LowerCtx::new(self.db.upcast(), expander_mut.current_file_id());
+                            let ctx = LowerCtx::new(self.db.upcast(), expander.current_file_id());
                             let type_ref = TypeRef::from_ast(&ctx, expanded);
 
                             drop(expander);
@@ -364,8 +364,6 @@ impl<'a> TyLoweringContext<'a> {
                         }
                         _ => None,
                     }
-                } else {
-                    None
                 };
                 if recursion_start {
                     *self.expander.borrow_mut() = None;
