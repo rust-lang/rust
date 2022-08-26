@@ -6,6 +6,8 @@
 
 import os
 import sys
+import re
+import logging
 
 # If this is python2, check if python3 is available and re-execute with that
 # interpreter. Only python3 allows downloading CI LLVM.
@@ -22,7 +24,22 @@ if sys.version_info.major < 3:
             pass
 
 rust_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
 
-import bootstrap
-bootstrap.main()
+# Temporary 'fix' for https://github.com/rust-lang/rust/issues/56650.
+# Various chunks of the build system can't correctly handle spaces in paths, and
+# will break in unexpected ways if there are any.  This tests to see if there
+# are spaces in the path, quitting with an error if there are any
+if re.search("\s", rust_dir):
+    logging.critical("There is a known bug in the build system "
+                     "(https://github.com/rust-lang/rust/issues/56650) "
+                     "that means that if there are spaces in your path then "
+                     "the build system will fail.  Your path ('%s') contains "
+                     "at least one space in it.  Either move your rust "
+                     "repository to a path that has no spaces in it, or "
+                     "change your path to remove all spaces.  Now quitting.",
+                     rust_dir)
+else:
+    sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
+
+    import bootstrap
+    bootstrap.main()
