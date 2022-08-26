@@ -1,7 +1,7 @@
 use crate::base;
 use crate::common::{self, CodegenCx};
 use crate::debuginfo;
-use crate::errors::InvalidMinimumAlignment;
+use crate::errors::{InvalidMinimumAlignment, LinkageConstOrMutType};
 use crate::llvm::{self, True};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -147,9 +147,7 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().emit_err(InvalidMinimumAlignment {
-                    err,
-                });
+                cx.sess().emit_err(InvalidMinimumAlignment { err });
             }
         }
     }
@@ -177,10 +175,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         let llty2 = if let ty::RawPtr(ref mt) = ty.kind() {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
-            cx.sess().span_fatal(
-                cx.tcx.def_span(def_id),
-                "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-            )
+            cx.sess().emit_fatal(LinkageConstOrMutType { span: cx.tcx.def_span(def_id) })
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
