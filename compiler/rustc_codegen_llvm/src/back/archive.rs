@@ -12,7 +12,7 @@ use std::str;
 use object::read::macho::FatArch;
 
 use crate::common;
-use crate::errors::{ErrorCreatingImportLibrary, ArchiveBuildFailure};
+use crate::errors::{ArchiveBuildFailure, ErrorCreatingImportLibrary, ErrorWritingDEFFile};
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -218,7 +218,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    sess.emit_fatal(ErrorWritingDEFFile { error: e });
                 }
             };
 

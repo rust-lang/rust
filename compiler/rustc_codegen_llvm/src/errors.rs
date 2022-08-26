@@ -90,3 +90,9 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 pub(crate) struct ArchiveBuildFailure {
     pub error: std::io::Error,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::error_writing_def_file)]
+pub(crate) struct ErrorWritingDEFFile {
+    pub error: std::io::Error,
+}

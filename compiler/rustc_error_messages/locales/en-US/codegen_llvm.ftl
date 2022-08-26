@@ -39,3 +39,6 @@ codegen_llvm_sanitizer_memtag_requires_mte =
 
 codegen_llvm_archive_build_failure =
     failed to build archive: {$error}
+
+codegen_llvm_error_writing_def_file =
+    Error writing .DEF file: {$error}
