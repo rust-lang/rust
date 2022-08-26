@@ -45,7 +45,7 @@ declare_clippy_lint! {
     ///    let mut vec: Vec<MaybeUninit<T>> = Vec::with_capacity(1000);
     ///    vec.set_len(1000);  // `MaybeUninit` can be uninitialized
     ///    ```
-    /// 3. If you are on nightly, `Vec::spare_capacity_mut()` is available:
+    /// 3. If you are on 1.60.0 or later, `Vec::spare_capacity_mut()` is available:
     ///    ```rust,ignore
     ///    let mut vec: Vec<u8> = Vec::with_capacity(1000);
     ///    let remaining = vec.spare_capacity_mut();  // `&mut [MaybeUninit<u8>]`
