@@ -59,3 +59,11 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[derive(SessionDiagnostic)]
 #[diag(codegen_llvm::branch_protection_requires_aarch64)]
 pub(crate) struct BranchProtectionRequiresAArch64;
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::layout_size_overflow)]
+pub(crate) struct LayoutSizeOverflow {
+    #[primary_span]
+    pub span: Span,
+    pub error: String,
+}
