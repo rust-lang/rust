@@ -107,26 +107,10 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>) {
         let mut on_stack_param_indices = FxHashSet::default();
-        let args_capacity: usize = self.args.iter().map(|arg|
-            if arg.pad.is_some() {
-                1
-            }
-            else {
-                0
-            } +
-            if let PassMode::Pair(_, _) = arg.mode {
-                2
-            } else {
-                1
-            }
-        ).sum();
+
+        // This capacity calculation is approximate.
         let mut argument_tys = Vec::with_capacity(
-            if let PassMode::Indirect { .. } = self.ret.mode {
-                1
-            }
-            else {
-                0
-            } + args_capacity,
+            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 }
         );
 
         let return_ty =
