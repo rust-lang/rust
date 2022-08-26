@@ -1804,7 +1804,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
             }
         };
 
-        let mut expr = &func.value;
+        let mut expr = func.value;
         loop {
             match expr.kind {
                 #[rustfmt::skip]
