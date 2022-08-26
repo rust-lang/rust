@@ -431,7 +431,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                 (
                     unsafe {
                         libloading::Library::new(lib_file_path)
-                            .expect("Failed to read specified shared object file")
+                            .expect("failed to read specified extern shared object file")
                     },
                     lib_file_path.clone(),
                 )
