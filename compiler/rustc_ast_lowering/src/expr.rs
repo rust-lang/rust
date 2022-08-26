@@ -1,3 +1,9 @@
+use super::errors::{
+    AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
+    GeneratorTooManyParameters, NotSupportedForLifetimeBinderAsyncClosure, RustcBoxAttributeError,
+    UnderscoreExprLhsAssign,
+};
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::{FnDeclKind, ImplTraitPosition};
@@ -6,7 +12,6 @@ use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
@@ -45,13 +50,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
-                            self.tcx.sess
-                                .struct_span_err(
-                                    e.span,
-                                    "#[rustc_box] requires precisely one argument \
-                                    and no other attributes are allowed",
-                                )
-                                .emit();
+                            self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
                             hir::ExprKind::Err
                         }
                     } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
@@ -211,13 +210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
                 ExprKind::Underscore => {
-                    self.tcx
-                        .sess.struct_span_err(
-                            e.span,
-                            "in expressions, `_` can only be used on the left-hand side of an assignment",
-                        )
-                        .span_label(e.span, "`_` not allowed here")
-                        .emit();
+                    self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
                     hir::ExprKind::Err
                 }
                 ExprKind::Path(ref qself, ref path) => {
@@ -249,11 +242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            self.tcx
-                                .sess
-                                .struct_span_err(*sp, "base expression required after `..`")
-                                .span_label(*sp, "add a base expression here")
-                                .emit();
+                            self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
                             Some(&*self.arena.alloc(self.expr_err(*sp)))
                         }
                         StructRest::None => None,
@@ -662,17 +651,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+                self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     dot_await_span,
-                    E0728,
-                    "`await` is only allowed inside `async` functions and blocks"
-                );
-                err.span_label(dot_await_span, "only allowed inside `async` functions and blocks");
-                if let Some(item_sp) = self.current_item {
-                    err.span_label(item_sp, "this is not `async`");
-                }
-                err.emit();
+                    item_span: self.current_item,
+                });
             }
         }
         let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
@@ -892,13 +874,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0628,
-                        "too many parameters for a generator (expected 0 or 1 parameters)"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(GeneratorTooManyParameters { fn_decl_span });
                 }
                 Some(movability)
             }
@@ -907,13 +883,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0697,
-                        "closures cannot be static"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(ClosureCannotBeStatic { fn_decl_span });
                 }
                 None
             }
@@ -946,10 +916,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
         if let &ClosureBinder::For { span, .. } = binder {
-            self.tcx.sess.span_err(
-                span,
-                "`for<...>` binders on `async` closures are not currently supported",
-            );
+            self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -960,17 +927,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = self.with_new_scopes(|this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
-                struct_span_err!(
-                    this.tcx.sess,
-                    fn_decl_span,
-                    E0708,
-                    "`async` non-`move` closures with parameters are not currently supported",
-                )
-                .help(
-                    "consider using `let` statements to manually capture \
-                    variables by reference before entering an `async move` closure",
-                )
-                .emit();
+                this.tcx.sess.emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
             }
 
             // Transform `async |x: u8| -> X { ... }` into
@@ -1210,20 +1167,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                e.span,
-                                "functional record updates are not allowed in destructuring \
-                                    assignments",
-                            )
-                            .span_suggestion(
-                                e.span,
-                                "consider removing the trailing pattern",
-                                "",
-                                rustc_errors::Applicability::MachineApplicable,
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignemnt {
+                            span: e.span,
+                        });
                         true
                     }
                     StructRest::Rest(_) => true,
@@ -1420,13 +1366,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0727,
-                    "`async` generators are not yet supported"
-                )
-                .emit();
+                self.tcx.sess.emit_err(AsyncGeneratorsNotSupported { span });
             }
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
         }
