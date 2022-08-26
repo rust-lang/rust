@@ -16,12 +16,16 @@
 
 use self::TargetLint::*;
 
+use crate::errors::{
+    CheckNameDeprecated, CheckNameUnknown, CheckNameUnknownTool, CheckNameWarning, RequestedLevel,
+    UnsupportedGroup,
+};
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err};
+use rustc_errors::add_elided_lifetime_in_path_suggestion;
 use rustc_errors::{
     Applicability, DecorateLint, LintDiagnosticBuilder, MultiSpan, SuggestionStyle,
 };
@@ -39,7 +43,7 @@ use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintI
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span};
 use rustc_target::abi;
 use tracing::debug;
 
@@ -326,68 +330,41 @@ impl LintStore {
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
         if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn(_)) {
-            struct_span_err!(
-                sess,
-                DUMMY_SP,
-                E0602,
-                "`{}` lint group is not supported with ´--force-warn´",
-                crate::WARNINGS.name_lower()
-            )
-            .emit();
+            sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             return;
         }
-        let db = match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
-            CheckLintNameResult::Ok(_) => None,
-            CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
-            CheckLintNameResult::NoLint(suggestion) => {
-                let mut err =
-                    struct_span_err!(sess, DUMMY_SP, E0602, "unknown lint: `{}`", lint_name);
-
-                if let Some(suggestion) = suggestion {
-                    err.help(&format!("did you mean: `{}`", suggestion));
-                }
-
-                Some(err.forget_guarantee())
+        let lint_name = lint_name.to_string();
+        match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
+            CheckLintNameResult::Warning(msg, _) => {
+                sess.emit_warning(CheckNameWarning {
+                    msg,
+                    sub: RequestedLevel { level, lint_name },
+                });
             }
-            CheckLintNameResult::Tool(result) => match result {
-                Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
-                    "lint name `{}` is deprecated \
-                     and does not have an effect anymore. \
-                     Use: {}",
-                    lint_name, new_name
-                ))),
-                _ => None,
-            },
-            CheckLintNameResult::NoTool => Some(
-                struct_span_err!(
-                    sess,
-                    DUMMY_SP,
-                    E0602,
-                    "unknown lint tool: `{}`",
-                    tool_name.unwrap()
-                )
-                .forget_guarantee(),
-            ),
+            CheckLintNameResult::NoLint(suggestion) => {
+                sess.emit_err(CheckNameUnknown {
+                    lint_name: lint_name.clone(),
+                    suggestion,
+                    sub: RequestedLevel { level, lint_name },
+                });
+            }
+            CheckLintNameResult::Tool(result) => {
+                if let Err((Some(_), new_name)) = result {
+                    sess.emit_warning(CheckNameDeprecated {
+                        lint_name: lint_name.clone(),
+                        new_name,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+            }
+            CheckLintNameResult::NoTool => {
+                sess.emit_err(CheckNameUnknownTool {
+                    tool_name: tool_name.unwrap(),
+                    sub: RequestedLevel { level, lint_name },
+                });
+            }
+            _ => {}
         };
-
-        if let Some(mut db) = db {
-            let msg = format!(
-                "requested on the command line with `{} {}`",
-                match level {
-                    Level::Allow => "-A",
-                    Level::Warn => "-W",
-                    Level::ForceWarn(_) => "--force-warn",
-                    Level::Deny => "-D",
-                    Level::Forbid => "-F",
-                    Level::Expect(_) => {
-                        unreachable!("lints with the level of `expect` should not run this code");
-                    }
-                },
-                lint_name
-            );
-            db.note(&msg);
-            db.emit();
-        }
     }
 
     /// True if this symbol represents a lint group name.
