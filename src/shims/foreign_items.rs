@@ -23,6 +23,7 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::helpers::{convert::Truncate, target_os_is_unix};
+use crate::shims::ffi_support::EvalContextExt as _;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
@@ -31,7 +32,7 @@ pub enum EmulateByNameResult<'mir, 'tcx> {
     NeedsJumping,
     /// Jumping has already been taken care of.
     AlreadyJumped,
-    /// A MIR body has been found for the function
+    /// A MIR body has been found for the function.
     MirBody(&'mir mir::Body<'tcx>, ty::Instance<'tcx>),
     /// The item is not supported.
     NotSupported,
@@ -368,6 +369,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
+
+        // First deal with any external C functions in linked .so file
+        // (if any SO file is specified, and if the host target == the session target)
+        if this.machine.external_so_lib.as_ref().is_some() {
+            // An Ok(false) here means that the function being called was not exported
+            // by the specified SO file; we should continue and check if it corresponds to
+            // a provided shim.
+            if this.call_external_c_fct(link_name, dest, args)? {
+                return Ok(EmulateByNameResult::NeedsJumping);
+            }
+        }
 
         // When adding a new shim, you should follow the following pattern:
         // ```
@@ -779,9 +791,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 target => throw_unsup_format!("the target `{}` is not supported", target),
             }
         };
-
         // We only fall through to here if we did *not* hit the `_` arm above,
-        // i.e., if we actually emulated the function.
+        // i.e., if we actually emulated the function with one of the shims.
         Ok(EmulateByNameResult::NeedsJumping)
     }
 

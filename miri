@@ -108,6 +108,7 @@ esac
 
 ## Prepare the environment
 # Determine some toolchain properties
+# export the target so its available in miri
 TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib

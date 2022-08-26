@@ -1,11 +1,40 @@
 use colored::*;
 use regex::Regex;
 use std::path::{Path, PathBuf};
-use std::{env, ffi::OsString};
+use std::{env, ffi::OsString, process::Command};
 use ui_test::{color_eyre::Result, Config, DependencyBuilder, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
+}
+
+// Build the shared object file for testing external C function calls.
+fn build_so_for_c_ffi_tests() -> PathBuf {
+    let cc = option_env!("CC").unwrap_or("cc");
+    // Target directory that we can write to.
+    let so_target_dir = Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-extern-so");
+    // Create the directory if it does not already exist.
+    std::fs::create_dir_all(&so_target_dir)
+        .expect("Failed to create directory for shared object file");
+    let so_file_path = so_target_dir.join("libtestlib.so");
+    let cc_output = Command::new(cc)
+        .args([
+            "-shared",
+            "-o",
+            so_file_path.to_str().unwrap(),
+            "tests/extern-so/test.c",
+            // Only add the functions specified in libcode.version to the shared object file.
+            // This is to avoid automatically adding `malloc`, etc.
+            // Source: https://anadoxin.org/blog/control-over-symbol-exports-in-gcc.html/
+            "-fPIC",
+            "-Wl,--version-script=tests/extern-so/libcode.version",
+        ])
+        .output()
+        .expect("failed to generate shared object file for testing external C function calls");
+    if !cc_output.status.success() {
+        panic!("error in generating shared object file for testing external C function calls");
+    }
+    so_file_path
 }
 
 fn run_tests(
@@ -38,6 +67,16 @@ fn run_tests(
     if let Some(target) = &target {
         flags.push("--target".into());
         flags.push(target.into());
+    }
+
+    // If we're on linux, and we're testing the extern-so functionality,
+    // then build the shared object file for testing external C function calls
+    // and push the relevant compiler flag.
+    if cfg!(target_os = "linux") && path.starts_with("tests/extern-so/") {
+        let so_file_path = build_so_for_c_ffi_tests();
+        let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
+        flag.push(so_file_path.into_os_string());
+        flags.push(flag);
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
@@ -176,6 +215,10 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass-dep", WithDependencies)?;
     ui(Mode::Panic, "tests/panic", WithDependencies)?;
     ui(Mode::Fail, "tests/fail", WithDependencies)?;
+    if cfg!(target_os = "linux") {
+        ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
+        ui(Mode::Fail, "tests/extern-so/fail", WithDependencies)?;
+    }
 
     Ok(())
 }

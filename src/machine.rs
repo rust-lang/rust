@@ -358,10 +358,14 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) report_progress: Option<u32>,
     /// The number of blocks that passed since the last progress report.
     pub(crate) since_progress_report: u32,
+
+    /// Handle of the optional shared object file for external functions.
+    pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
+        let target_triple = &layout_cx.tcx.sess.opts.target_triple.to_string();
         let local_crates = helpers::get_local_crates(layout_cx.tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
@@ -412,6 +416,24 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             since_progress_report: 0,
+            external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
+                // Check if host target == the session target.
+                if option_env!("TARGET") == Some(target_triple) {
+                    panic!(
+                        "calling external C functions in linked .so file requires target and host to be the same"
+                    );
+                }
+                // Note: it is the user's responsibility to provide a correct SO file.
+                // WATCH OUT: If an invalid/incorrect SO file is specified, this can cause
+                // undefined behaviour in Miri itself!
+                (
+                    unsafe {
+                        libloading::Library::new(lib_file_path)
+                            .expect("Failed to read specified shared object file")
+                    },
+                    lib_file_path.clone(),
+                )
+            }),
         }
     }
 
