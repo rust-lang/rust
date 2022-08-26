@@ -71,6 +71,12 @@ impl RawWaker {
 /// pointer of a properly constructed [`RawWaker`] object from inside the
 /// [`RawWaker`] implementation. Calling one of the contained functions using
 /// any other `data` pointer will cause undefined behavior.
+///
+/// These functions must all be thread-safe (even though [`RawWaker`] is
+/// <code>\![Send] + \![Sync]</code>)
+/// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
+/// arbitrary threads or invoked by `&` reference. For example, this means that if the
+/// `clone` and `drop` functions manage a reference count, they must do so atomically.
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
@@ -109,6 +115,12 @@ pub struct RawWakerVTable {
 impl RawWakerVTable {
     /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`,
     /// `wake_by_ref`, and `drop` functions.
+    ///
+    /// These functions must all be thread-safe (even though [`RawWaker`] is
+    /// <code>\![Send] + \![Sync]</code>)
+    /// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
+    /// arbitrary threads or invoked by `&` reference. For example, this means that if the
+    /// `clone` and `drop` functions manage a reference count, they must do so atomically.
     ///
     /// # `clone`
     ///
@@ -157,9 +169,9 @@ impl RawWakerVTable {
     }
 }
 
-/// The `Context` of an asynchronous task.
+/// The context of an asynchronous task.
 ///
-/// Currently, `Context` only serves to provide access to a `&Waker`
+/// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
 /// which can be used to wake the current task.
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Context<'a> {
@@ -172,7 +184,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    /// Create a new `Context` from a `&Waker`.
+    /// Create a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[must_use]
     #[inline]
@@ -180,7 +192,7 @@ impl<'a> Context<'a> {
         Context { waker, _marker: PhantomData }
     }
 
-    /// Returns a reference to the `Waker` for the current task.
+    /// Returns a reference to the [`Waker`] for the current task.
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[must_use]
     #[inline]
@@ -202,7 +214,18 @@ impl fmt::Debug for Context<'_> {
 /// This handle encapsulates a [`RawWaker`] instance, which defines the
 /// executor-specific wakeup behavior.
 ///
-/// Implements [`Clone`], [`Send`], and [`Sync`].
+/// The typical life of a `Waker` is that it is constructed by an executor, wrapped in a
+/// [`Context`], then passed to [`Future::poll()`]. Then, if the future chooses to return
+/// [`Poll::Pending`], it must also store the waker somehow and call [`Waker::wake()`] when
+/// the future should be polled again.
+///
+/// Implements [`Clone`], [`Send`], and [`Sync`]; therefore, a waker may be invoked
+/// from any thread, including ones not in any way managed by the executor. For example,
+/// this might be done to wake a future when a blocking function call completes on another
+/// thread.
+///
+/// [`Future::poll()`]: core::future::Future::poll
+/// [`Poll::Pending`]: core::task::Poll::Pending
 #[repr(transparent)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
@@ -219,18 +242,21 @@ unsafe impl Sync for Waker {}
 impl Waker {
     /// Wake up the task associated with this `Waker`.
     ///
-    /// As long as the runtime keeps running and the task is not finished, it is
-    /// guaranteed that each invocation of `wake` (or `wake_by_ref`) will be followed
-    /// by at least one `poll` of the task to which this `Waker` belongs. This makes
+    /// As long as the executor keeps running and the task is not finished, it is
+    /// guaranteed that each invocation of [`wake()`](Self::wake) (or
+    /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
+    /// [`poll()`] of the task to which this `Waker` belongs. This makes
     /// it possible to temporarily yield to other tasks while running potentially
     /// unbounded processing loops.
     ///
     /// Note that the above implies that multiple wake-ups may be coalesced into a
-    /// single `poll` invocation by the runtime.
+    /// single [`poll()`] invocation by the runtime.
     ///
     /// Also note that yielding to competing tasks is not guaranteed: it is the
     /// executor’s choice which task to run and the executor may choose to run the
     /// current task again.
+    ///
+    /// [`poll()`]: crate::future::Future::poll
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake(self) {
@@ -250,8 +276,8 @@ impl Waker {
 
     /// Wake up the task associated with this `Waker` without consuming the `Waker`.
     ///
-    /// This is similar to `wake`, but may be slightly less efficient in the case
-    /// where an owned `Waker` is available. This method should be preferred to
+    /// This is similar to [`wake()`](Self::wake), but may be slightly less efficient in
+    /// the case where an owned `Waker` is available. This method should be preferred to
     /// calling `waker.clone().wake()`.
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -263,7 +289,7 @@ impl Waker {
         unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
     }
 
-    /// Returns `true` if this `Waker` and another `Waker` have awoken the same task.
+    /// Returns `true` if this `Waker` and another `Waker` would awake the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `Waker`s would awaken the same task. However, if this function
