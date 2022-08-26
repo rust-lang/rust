@@ -12,7 +12,7 @@ use std::str;
 use object::read::macho::FatArch;
 
 use crate::common;
-use crate::errors::ErrorCreatingImportLibrary;
+use crate::errors::{ErrorCreatingImportLibrary, ArchiveBuildFailure};
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -148,7 +148,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     fn build(mut self: Box<Self>, output: &Path) -> bool {
         match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
-            Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
+            Err(e) => self.sess.emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
