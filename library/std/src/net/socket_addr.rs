@@ -2,9 +2,9 @@
 mod tests;
 
 use crate::cmp::Ordering;
-use crate::fmt;
+use crate::fmt::{self, Write};
 use crate::hash;
-use crate::io::{self, Write};
+use crate::io;
 use crate::iter;
 use crate::mem;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -14,6 +14,8 @@ use crate::sys::net::netc as c;
 use crate::sys_common::net::LookupHost;
 use crate::sys_common::{FromInner, IntoInner};
 use crate::vec;
+
+use super::display_buffer::DisplayBuffer;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
@@ -616,25 +618,18 @@ impl fmt::Debug for SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Fast path: if there's no alignment stuff, write to the output buffer
-        // directly
+        // If there are no alignment requirements, write the socket address directly to `f`.
+        // Otherwise, write it to a local buffer and then use `f.pad`.
         if f.precision().is_none() && f.width().is_none() {
             write!(f, "{}:{}", self.ip(), self.port())
         } else {
-            const IPV4_SOCKET_BUF_LEN: usize = (3 * 4)  // the segments
-                + 3  // the separators
-                + 1 + 5; // the port
-            let mut buf = [0; IPV4_SOCKET_BUF_LEN];
-            let mut buf_slice = &mut buf[..];
+            const LONGEST_IPV4_SOCKET_ADDR: &str = "255.255.255.255:65536";
 
-            // Unwrap is fine because writing to a sufficiently-sized
-            // buffer is infallible
-            write!(buf_slice, "{}:{}", self.ip(), self.port()).unwrap();
-            let len = IPV4_SOCKET_BUF_LEN - buf_slice.len();
+            let mut buf = DisplayBuffer::<{ LONGEST_IPV4_SOCKET_ADDR.len() }>::new();
+            // Buffer is long enough for the longest possible IPv4 socket address, so this should never fail.
+            write!(buf, "{}:{}", self.ip(), self.port()).unwrap();
 
-            // This unsafe is OK because we know what is being written to the buffer
-            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-            f.pad(buf)
+            f.pad(buf.as_str())
         }
     }
 }
@@ -649,35 +644,26 @@ impl fmt::Debug for SocketAddrV4 {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV6 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Fast path: if there's no alignment stuff, write to the output
-        // buffer directly
+        // If there are no alignment requirements, write the socket address directly to `f`.
+        // Otherwise, write it to a local buffer and then use `f.pad`.
         if f.precision().is_none() && f.width().is_none() {
             match self.scope_id() {
                 0 => write!(f, "[{}]:{}", self.ip(), self.port()),
                 scope_id => write!(f, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
             }
         } else {
-            const IPV6_SOCKET_BUF_LEN: usize = (4 * 8)  // The address
-            + 7  // The colon separators
-            + 2  // The brackets
-            + 1 + 10 // The scope id
-            + 1 + 5; // The port
+            const LONGEST_IPV6_SOCKET_ADDR: &str =
+                "[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff%4294967296]:65536";
 
-            let mut buf = [0; IPV6_SOCKET_BUF_LEN];
-            let mut buf_slice = &mut buf[..];
-
+            let mut buf = DisplayBuffer::<{ LONGEST_IPV6_SOCKET_ADDR.len() }>::new();
             match self.scope_id() {
-                0 => write!(buf_slice, "[{}]:{}", self.ip(), self.port()),
-                scope_id => write!(buf_slice, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
+                0 => write!(buf, "[{}]:{}", self.ip(), self.port()),
+                scope_id => write!(buf, "[{}%{}]:{}", self.ip(), scope_id, self.port()),
             }
-            // Unwrap is fine because writing to a sufficiently-sized
-            // buffer is infallible
+            // Buffer is long enough for the longest possible IPv6 socket address, so this should never fail.
             .unwrap();
-            let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
 
-            // This unsafe is OK because we know what is being written to the buffer
-            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-            f.pad(buf)
+            f.pad(buf.as_str())
         }
     }
 }
