@@ -107,27 +107,8 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             let mut visitor =
                 ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
-            for (block, BasicBlockData { statements, terminator, .. }) in
-                body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut()
-            {
-                let mut index = 0;
-                for statement in statements {
-                    let location = Location { block, statement_index: index };
-                    visitor.visit_statement(statement, location);
-                    index += 1;
-                }
-
-                let location = Location { block, statement_index: index };
-                match terminator {
-                    // yielding into a box is handled when lowering generators
-                    Some(Terminator { kind: TerminatorKind::Yield { value, .. }, .. }) => {
-                        visitor.visit_operand(value, location);
-                    }
-                    Some(terminator) => {
-                        visitor.visit_terminator(terminator, location);
-                    }
-                    None => {}
-                }
+            for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+                visitor.visit_basic_block_data(block, data);
             }
 
             visitor.patch.apply(body);

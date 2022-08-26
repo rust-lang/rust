@@ -750,16 +750,6 @@ pre, .rustdoc.source .example-wrap {
 	padding: 0;
 }
 
-.content .multi-column {
-	-moz-column-count: 5;
-	-moz-column-gap: 2.5em;
-	-webkit-column-count: 5;
-	-webkit-column-gap: 2.5em;
-	column-count: 5;
-	column-gap: 2.5em;
-}
-.content .multi-column li { width: 100%; display: inline-block; }
-
 .content > .methods > .method {
 	font-size: 1rem;
 	position: relative;

@@ -1541,13 +1541,14 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_not_mut", issue = "none")]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
+    pub const fn split_at(&self, mid: usize) -> (&[T], &[T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
+        // fulfills the requirements of `split_at_unchecked`.
         unsafe { self.split_at_unchecked(mid) }
     }
 
@@ -1626,11 +1627,19 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+    pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+        // HACK: the const function `from_raw_parts` is used to make this
+        // function const; previously the implementation used
+        // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
+
+        let len = self.len();
+        let ptr = self.as_ptr();
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
+        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.

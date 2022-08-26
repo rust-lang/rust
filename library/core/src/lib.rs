@@ -149,6 +149,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
+#![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]

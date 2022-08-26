@@ -199,7 +199,9 @@ impl LitKind {
                 let symbol = if value { kw::True } else { kw::False };
                 (token::Bool, symbol, None)
             }
-            LitKind::Err => unreachable!(),
+            // This only shows up in places like `-Zunpretty=hir` output, so we
+            // don't bother to produce something useful.
+            LitKind::Err => (token::Err, Symbol::intern("<bad-literal>"), None),
         };
 
         token::Lit::new(kind, symbol, suffix)
