@@ -2,10 +2,18 @@ target
 /doc
 tex/*/out
 *.dot
+*.out
 *.rs.bk
 .vscode
 *.mm_profdata
 perf.data
 perf.data.old
 flamegraph.svg
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+tests/extern-so/libtestlib.so
+=======
+>>>>>>> master
+>>>>>>> 58ba05a0 (C FFI support for functions with int args and returns)
 .auto-*

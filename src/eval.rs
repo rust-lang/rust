@@ -3,6 +3,7 @@
 use std::ffi::{OsStr, OsString};
 use std::iter;
 use std::panic::{self, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::thread;
 
 use log::info;
@@ -128,6 +129,9 @@ pub struct MiriConfig {
     pub report_progress: Option<u32>,
     /// Whether Stacked Borrows retagging should recurse into fields of datatypes.
     pub retag_fields: bool,
+    /// The location of a shared object file to load when calling external functions
+    /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
+    pub external_so_file: Option<PathBuf>,
 }
 
 impl Default for MiriConfig {
@@ -159,6 +163,7 @@ impl Default for MiriConfig {
             preemption_rate: 0.01, // 1%
             report_progress: None,
             retag_fields: false,
+            external_so_file: None,
         }
     }
 }
