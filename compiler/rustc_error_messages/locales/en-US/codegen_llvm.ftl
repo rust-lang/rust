@@ -45,3 +45,6 @@ codegen_llvm_error_writing_def_file =
 
 codegen_llvm_error_calling_dlltool =
     Error calling dlltool: {$error}
+
+codegen_llvm_dlltool_fail_import_library =
+    Dlltool could not create import library: {$stdout}\n{$stderr}

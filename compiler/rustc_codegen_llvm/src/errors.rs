@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
 use rustc_macros::SessionDiagnostic;
@@ -101,4 +103,11 @@ pub(crate) struct ErrorWritingDEFFile {
 #[diag(codegen_llvm::error_calling_dlltool)]
 pub(crate) struct ErrorCallingDllTool {
     pub error: std::io::Error,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::dlltool_fail_import_library)]
+pub(crate) struct DlltoolFailImportLibrary<'a> {
+    pub stdout: Cow<'a, str>,
+    pub stderr: Cow<'a, str>,
 }
