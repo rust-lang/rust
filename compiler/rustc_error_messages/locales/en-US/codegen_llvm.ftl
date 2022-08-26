@@ -30,3 +30,6 @@ codegen_llvm_layout_size_overflow =
 
 codegen_llvm_invalid_minimum_alignment =
     invalid minimum global alignment: {$err}
+
+codegen_llvm_linkage_const_or_mut_type =
+    must have type `*const T` or `*mut T` due to `#[linkage]` attribute
