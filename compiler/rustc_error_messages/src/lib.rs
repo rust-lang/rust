@@ -47,6 +47,7 @@ fluent_messages! {
     save_analysis => "../locales/en-US/save_analysis.ftl",
     ty_utils => "../locales/en-US/ty_utils.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
