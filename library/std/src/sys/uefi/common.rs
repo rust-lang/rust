@@ -340,3 +340,90 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
         _ => io::Error::new(ErrorKind::Uncategorized, format!("Status: {}", s.as_usize())),
     }
 }
+
+pub fn install_protocol<T>(
+    handle: &mut r_efi::efi::Handle,
+    mut guid: r_efi::efi::Guid,
+    interface: &mut T,
+) -> io::Result<()> {
+    let boot_services = uefi::env::get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let r = unsafe {
+        ((*boot_services.as_ptr()).install_protocol_interface)(
+            handle,
+            &mut guid,
+            r_efi::efi::NATIVE_INTERFACE,
+            interface as *mut T as *mut crate::ffi::c_void,
+        )
+    };
+    if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+}
+
+pub fn uninstall_protocol<T>(
+    handle: r_efi::efi::Handle,
+    mut guid: r_efi::efi::Guid,
+    interface: &mut T,
+) -> io::Result<()> {
+    let boot_services = uefi::env::get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let r = unsafe {
+        ((*boot_services.as_ptr()).uninstall_protocol_interface)(
+            handle,
+            &mut guid,
+            interface as *mut T as *mut crate::ffi::c_void,
+        )
+    };
+    if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+}
+
+pub trait Protocol {
+    const PROTOCOL_GUID: Guid;
+}
+
+pub struct ProtocolWrapper<P>
+where
+    P: Protocol,
+{
+    handle: NonNull<crate::ffi::c_void>,
+    protocol: Box<P>,
+}
+
+impl<P> ProtocolWrapper<P>
+where
+    P: Protocol,
+{
+    pub fn new(handle: NonNull<crate::ffi::c_void>, protocol: Box<P>) -> Self {
+        Self { handle, protocol }
+    }
+
+    pub fn install_protocol(protocol: P) -> io::Result<ProtocolWrapper<P>> {
+        let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
+        let mut protocol = Box::new(protocol);
+        install_protocol::<P>(&mut handle, P::PROTOCOL_GUID, &mut protocol)?;
+        let handle = NonNull::new(handle)
+            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "Found Null Handle"))?;
+        Ok(Self::new(handle, protocol))
+    }
+
+    pub fn install_protocol_in(
+        protocol: P,
+        mut handle: r_efi::efi::Handle,
+    ) -> io::Result<ProtocolWrapper<P>> {
+        let mut protocol = Box::new(protocol);
+        install_protocol::<P>(&mut handle, P::PROTOCOL_GUID, &mut protocol)?;
+        let handle = NonNull::new(handle)
+            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "Found Null Handle"))?;
+        Ok(Self::new(handle, protocol))
+    }
+
+    pub fn handle_non_null(&self) -> NonNull<crate::ffi::c_void> {
+        self.handle
+    }
+}
+
+impl<P> Drop for ProtocolWrapper<P>
+where
+    P: Protocol,
+{
+    fn drop(&mut self) {
+        let _ = uninstall_protocol::<P>(self.handle.as_ptr(), P::PROTOCOL_GUID, &mut self.protocol);
+    }
+}

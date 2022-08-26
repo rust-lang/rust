@@ -1,22 +1,62 @@
 //! An implementation of Pipes using UEFI variables
 
-use crate::os::uefi::ffi::OsStrExt;
-use crate::{
-    ffi::OsStr,
-    io::{self, IoSlice, IoSliceMut},
-};
+use super::common;
+use crate::io::{self, IoSlice, IoSliceMut};
+use crate::ptr::NonNull;
 
-pub struct AnonPipe(uefi_pipe::Pipe);
+pub struct AnonPipe {
+    _pipe_data: Option<Box<uefi_pipe_protocol::Pipedata>>,
+    _protocol: Option<common::ProtocolWrapper<uefi_pipe_protocol::Protocol>>,
+    handle: NonNull<crate::ffi::c_void>,
+}
+
+unsafe impl Send for AnonPipe {}
+
+// Safety: There are no threads in UEFI
+unsafe impl Sync for AnonPipe {}
 
 impl AnonPipe {
     #[inline]
-    pub(crate) fn new<K: AsRef<OsStr>>(key: K) -> Self {
-        AnonPipe(uefi_pipe::Pipe::new(key.as_ref().to_ffi_string()))
+    pub(crate) fn new(
+        pipe_data: Option<Box<uefi_pipe_protocol::Pipedata>>,
+        protocol: Option<common::ProtocolWrapper<uefi_pipe_protocol::Protocol>>,
+        handle: NonNull<crate::ffi::c_void>,
+    ) -> Self {
+        Self { _pipe_data: pipe_data, _protocol: protocol, handle }
+    }
+
+    pub(crate) fn null() -> Self {
+        let pipe = common::ProtocolWrapper::install_protocol(uefi_pipe_protocol::Protocol::null())
+            .unwrap();
+        let handle = pipe.handle_non_null();
+        Self::new(None, Some(pipe), handle)
+    }
+
+    pub(crate) fn make_pipe() -> Self {
+        const MIN_BUFFER: usize = 1024;
+        let mut pipe_data = Box::new(uefi_pipe_protocol::Pipedata::with_capacity(MIN_BUFFER));
+        let pipe = common::ProtocolWrapper::install_protocol(
+            uefi_pipe_protocol::Protocol::with_data(&mut pipe_data),
+        )
+        .unwrap();
+        let handle = pipe.handle_non_null();
+        Self::new(Some(pipe_data), Some(pipe), handle)
+    }
+
+    pub(crate) fn handle(&self) -> NonNull<crate::ffi::c_void> {
+        self.handle
     }
 
     #[inline]
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+        let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
+        unsafe { uefi_pipe_protocol::Protocol::read(protocol.as_ptr(), buf) }
+    }
+
+    #[inline]
+    pub(crate) fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
+        unsafe { uefi_pipe_protocol::Protocol::read_to_end(protocol.as_ptr(), buf) }
     }
 
     #[inline]
@@ -31,7 +71,8 @@ impl AnonPipe {
 
     #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
+        unsafe { uefi_pipe_protocol::Protocol::write(protocol.as_ptr(), buf) }
     }
 
     #[inline]
@@ -50,185 +91,91 @@ impl AnonPipe {
 }
 
 pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
-    p1.0.read_to_end(v1)?;
-    p2.0.read_to_end(v2)?;
+    p1.read_to_end(v1)?;
+    p2.read_to_end(v2)?;
     Ok(())
 }
 
-// Impementation of Pipes using variables in UEFI. Might evolve into a Protocol or something in the
-// future
-pub(crate) mod uefi_pipe {
-    use super::super::common::{self, status_to_io_error};
+pub mod uefi_pipe_protocol {
+    use crate::collections::VecDeque;
     use crate::io;
-    use crate::os::uefi;
+    use crate::sys::uefi::common;
+    use io::{Read, Write};
+    use r_efi::efi::Guid;
 
-    type Ucs2Key = Vec<u16>;
-
-    const PIPE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
-        0x49e41342,
-        0x5446,
-        0x4914,
-        0x92,
-        0xc3,
-        &[0xa6, 0x40, 0xee, 0x90, 0x18, 0xd9],
+    pub const PROTOCOL_GUID: Guid = Guid::from_fields(
+        0x3c4acb49,
+        0xfb4c,
+        0x45fb,
+        0x93,
+        0xe4,
+        &[0x63, 0x5d, 0x71, 0x48, 0x4c, 0x0f],
     );
 
-    pub struct Pipe {
-        key: Ucs2Key,
+    #[repr(C)]
+    #[derive(Debug)]
+    pub struct Pipedata {
+        data: VecDeque<u8>,
     }
 
-    impl Pipe {
-        #[inline]
-        pub fn new(key: Ucs2Key) -> Self {
-            Pipe { key }
+    impl Pipedata {
+        pub fn with_capacity(capacity: usize) -> Pipedata {
+            Pipedata { data: VecDeque::with_capacity(capacity) }
         }
 
-        #[inline]
-        pub fn clear(&self) -> io::Result<()> {
-            unsafe {
-                Self::write_raw(
-                    self.key.as_ptr() as *mut u16,
-                    r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
-                    0,
-                    crate::ptr::null_mut(),
-                )
+        pub unsafe fn read(data: *mut Pipedata, buf: &mut [u8]) -> io::Result<usize> {
+            unsafe { (*data).data.read(buf) }
+        }
+
+        pub unsafe fn read_to_end(data: *mut Pipedata, buf: &mut Vec<u8>) -> io::Result<usize> {
+            unsafe { (*data).data.read_to_end(buf) }
+        }
+
+        pub unsafe fn write(data: *mut Pipedata, buf: &[u8]) -> io::Result<usize> {
+            unsafe { (*data).data.write(buf) }
+        }
+    }
+
+    #[repr(C)]
+    pub struct Protocol {
+        data: *mut Pipedata,
+    }
+
+    impl common::Protocol for Protocol {
+        const PROTOCOL_GUID: Guid = PROTOCOL_GUID;
+    }
+
+    impl Protocol {
+        pub fn with_data(data: &mut Pipedata) -> Self {
+            Self { data }
+        }
+
+        pub fn null() -> Self {
+            Self { data: crate::ptr::null_mut() }
+        }
+
+        pub unsafe fn read(protocol: *mut Protocol, buf: &mut [u8]) -> io::Result<usize> {
+            if unsafe { (*protocol).data.is_null() } {
+                Ok(0)
+            } else {
+                unsafe { Pipedata::read((*protocol).data, buf) }
             }
         }
 
-        pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-            let mut buf_size = buf.len();
-
-            match unsafe {
-                Self::read_raw(
-                    self.key.as_ptr() as *mut u16,
-                    &mut buf_size,
-                    buf.as_mut_ptr().cast(),
-                )
-            } {
-                Ok(()) => {
-                    // Reaching this means whole buffer has been read
-                    let _ = self.clear();
-                    return Ok(buf_size);
-                }
-                Err(e) => match e.kind() {
-                    io::ErrorKind::FileTooLarge => {}
-                    // Variable Already Cleared
-                    io::ErrorKind::NotFound => return Ok(0),
-                    _ => return Err(e),
-                },
-            }
-
-            let mut new_buf: Vec<u8> = Vec::with_capacity(buf_size);
-            unsafe {
-                Self::read_raw(
-                    self.key.as_ptr() as *mut u16,
-                    &mut buf_size,
-                    new_buf.as_mut_ptr().cast(),
-                )
-            }?;
-            unsafe { new_buf.set_len(buf_size) };
-
-            buf.copy_from_slice(&new_buf[..(buf.len())]);
-            unsafe {
-                Self::write_raw(
-                    self.key.as_ptr() as *mut u16,
-                    r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
-                    buf_size - buf.len(),
-                    (&mut new_buf[(buf.len())..]).as_mut_ptr().cast(),
-                )
-            }?;
-            Ok(buf.len())
-        }
-
-        pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<()> {
-            let mut buf_size = buf.capacity();
-
-            match unsafe {
-                Self::read_raw(
-                    self.key.as_ptr() as *mut u16,
-                    &mut buf_size,
-                    buf.as_mut_ptr().cast(),
-                )
-            } {
-                Ok(()) => {
-                    // Reaching this means whole buffer has been read
-                    let _ = self.clear();
-                    unsafe { buf.set_len(buf_size) };
-                    return Ok(());
-                }
-                Err(e) => match e.kind() {
-                    io::ErrorKind::FileTooLarge => {}
-                    // Variable Already Cleared
-                    io::ErrorKind::NotFound => return Ok(()),
-                    _ => return Err(e),
-                },
-            }
-
-            buf.reserve(buf_size);
-            unsafe {
-                Self::read_raw(
-                    self.key.as_ptr() as *mut u16,
-                    &mut buf_size,
-                    buf.as_mut_ptr().cast(),
-                )
-            }?;
-            unsafe { buf.set_len(buf_size) };
-
-            let _ = self.clear();
-            Ok(())
-        }
-
-        unsafe fn read_raw(
-            key: *mut u16,
-            buf_size: *mut usize,
-            buf: *mut crate::ffi::c_void,
-        ) -> io::Result<()> {
-            let runtime_services =
-                uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
-            let mut guid = PIPE_GUID;
-            let r = unsafe {
-                ((*runtime_services.as_ptr()).get_variable)(
-                    key,
-                    &mut guid,
-                    crate::ptr::null_mut(),
-                    buf_size,
-                    buf,
-                )
-            };
-            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
-        }
-
-        pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-            let mut buf = buf.to_vec();
-            let buf_len = buf.len();
-            const ATTR: u32 =
-                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS | r_efi::efi::VARIABLE_APPEND_WRITE;
-            match unsafe {
-                Self::write_raw(
-                    self.key.as_ptr() as *mut u16,
-                    ATTR,
-                    buf_len,
-                    buf.as_mut_ptr().cast(),
-                )
-            } {
-                Ok(_) => Ok(buf_len),
-                Err(e) => Err(e),
+        pub unsafe fn read_to_end(protocol: *mut Protocol, buf: &mut Vec<u8>) -> io::Result<usize> {
+            if unsafe { (*protocol).data.is_null() } {
+                Ok(0)
+            } else {
+                unsafe { Pipedata::read_to_end((*protocol).data, buf) }
             }
         }
 
-        unsafe fn write_raw(
-            key: *mut u16,
-            attr: u32,
-            buf_len: usize,
-            buf: *mut crate::ffi::c_void,
-        ) -> io::Result<()> {
-            let runtime_services =
-                uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
-            let mut guid = PIPE_GUID;
-            let r = unsafe {
-                ((*runtime_services.as_ptr()).set_variable)(key, &mut guid, attr, buf_len, buf)
-            };
-            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+        pub unsafe fn write(protocol: *mut Protocol, buf: &[u8]) -> io::Result<usize> {
+            if unsafe { (*protocol).data.is_null() } {
+                Ok(buf.len())
+            } else {
+                unsafe { Pipedata::write((*protocol).data, buf) }
+            }
         }
     }
 }

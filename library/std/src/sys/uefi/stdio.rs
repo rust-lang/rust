@@ -1,4 +1,6 @@
+use super::super::process::uefi_command_protocol;
 use super::common::{self, status_to_io_error};
+use crate::sys::pipe;
 use crate::sys_common::ucs2;
 use crate::{io, os::uefi, ptr::NonNull};
 use r_efi::protocols::{simple_text_input, simple_text_output};
@@ -72,14 +74,16 @@ impl io::Read for Stdin {
     // FIXME: Implement buffered reading. Currently backspace and other characters are read as
     // normal characters. Thus it might look like line-editing but it actually isn't
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        if let Ok(current_exe) = crate::env::current_exe() {
-            if let Ok(v) = crate::env::var(format!("{}_stdin", current_exe.to_string_lossy())) {
-                if v.as_str() == "null" {
-                    return Ok(buf.len());
-                }
+        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
+        if let Some(command_protocol) =
+            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        {
+            if let Some(pipe_protocol) =
+                NonNull::new(unsafe { (*command_protocol.as_ptr()).stdout })
+            {
+                return pipe::AnonPipe::new(None, None, pipe_protocol).read(buf);
             }
         }
-
         let global_system_table =
             uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
         let con_in = get_con_in(global_system_table)?;
@@ -125,15 +129,17 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if let Ok(current_exe) = crate::env::current_exe() {
-            if let Ok(v) = crate::env::var(format!("{}_stdout", current_exe.to_string_lossy())) {
-                if v.as_str() == "null" {
-                    return Ok(buf.len());
-                } else {
-                    return super::pipe::AnonPipe::new(v).write(buf);
-                }
+        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
+        if let Some(command_protocol) =
+            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        {
+            if let Some(pipe_protocol) =
+                NonNull::new(unsafe { (*command_protocol.as_ptr()).stdout })
+            {
+                return pipe::AnonPipe::new(None, None, pipe_protocol).write(buf);
             }
         }
+
         let global_system_table =
             uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
         let con_out = get_con_out(global_system_table)?;
@@ -155,16 +161,16 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if let Ok(current_exe) = crate::env::current_exe() {
-            if let Ok(v) = crate::env::var(format!("{}_stderr", current_exe.to_string_lossy())) {
-                if v.as_str() == "null" {
-                    return Ok(buf.len());
-                } else {
-                    return super::pipe::AnonPipe::new(v).write(buf);
-                }
+        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
+        if let Some(command_protocol) =
+            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        {
+            if let Some(pipe_protocol) =
+                NonNull::new(unsafe { (*command_protocol.as_ptr()).stderr })
+            {
+                return pipe::AnonPipe::new(None, None, pipe_protocol).write(buf);
             }
         }
-
         let global_system_table =
             uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
         let std_err = get_std_err(global_system_table)?;
