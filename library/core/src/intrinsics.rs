@@ -2179,6 +2179,7 @@ macro_rules! assert_unsafe_precondition {
         if cfg!(debug_assertions) {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
+            #[inline(always)]
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // abort instead of panicking to reduce impact on code size
