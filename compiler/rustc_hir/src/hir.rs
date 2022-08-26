@@ -1438,7 +1438,7 @@ pub struct BodyId {
 #[derive(Debug, HashStable_Generic)]
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
-    pub value: Expr<'hir>,
+    pub value: &'hir Expr<'hir>,
     pub generator_kind: Option<GeneratorKind>,
 }
 
@@ -2561,23 +2561,23 @@ pub enum TyKind<'hir> {
 pub enum InlineAsmOperand<'hir> {
     In {
         reg: InlineAsmRegOrRegClass,
-        expr: Expr<'hir>,
+        expr: &'hir Expr<'hir>,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Option<Expr<'hir>>,
+        expr: Option<&'hir Expr<'hir>>,
     },
     InOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Expr<'hir>,
+        expr: &'hir Expr<'hir>,
     },
     SplitInOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        in_expr: Expr<'hir>,
-        out_expr: Option<Expr<'hir>>,
+        in_expr: &'hir Expr<'hir>,
+        out_expr: Option<&'hir Expr<'hir>>,
     },
     Const {
         anon_const: AnonConst,
@@ -3496,7 +3496,7 @@ mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block<'_>, 48);
-    static_assert_size!(Body<'_>, 80);
+    static_assert_size!(Body<'_>, 32);
     static_assert_size!(Expr<'_>, 56);
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(FnDecl<'_>, 40);
