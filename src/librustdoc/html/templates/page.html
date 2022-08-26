@@ -13,13 +13,13 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}SourceCodePro-Regular.ttf.woff2"> {#- -#}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}SourceSerif4-Bold.ttf.woff2"> {#- -#}
     <link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}SourceCodePro-Semibold.ttf.woff2"> {#- -#}
-    <link rel="stylesheet" type="text/css" {# -#}
+    <link rel="stylesheet" {# -#}
           href="{{static_root_path|safe}}normalize{{page.resource_suffix}}.css"> {#- -#}
-    <link rel="stylesheet" type="text/css" {# -#}
+    <link rel="stylesheet" {# -#}
           href="{{static_root_path|safe}}rustdoc{{page.resource_suffix}}.css" {# -#}
           id="mainThemeStyle"> {#- -#}
     {%- for theme in themes -%}
-        <link rel="stylesheet" type="text/css" {# -#}
+        <link rel="stylesheet" {# -#}
             href="{{static_root_path|safe}}{{theme}}{{page.resource_suffix}}.css" {# -#}
         {%- if theme == "light" -%}
             id="themeStyle"
@@ -51,7 +51,7 @@
            href="{{static_root_path|safe}}noscript{{page.resource_suffix}}.css"> {#- -#}
     </noscript> {#- -#}
     {%- if layout.css_file_extension.is_some() -%}
-        <link rel="stylesheet" type="text/css" {# -#}
+        <link rel="stylesheet" {# -#}
             href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {#- -#}
     {%- endif -%}
     {%- if !layout.favicon.is_empty() -%}
