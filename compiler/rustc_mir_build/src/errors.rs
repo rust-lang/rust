@@ -429,3 +429,31 @@ impl<'a> SessionDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_>
         diag
     }
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::static_in_pattern, code = "E0158")]
+pub struct StaticInPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::assoc_const_in_pattern, code = "E0158")]
+pub struct AssocConstInPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::const_param_in_pattern, code = "E0158")]
+pub struct ConstParamInPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::non_const_path, code = "E0080")]
+pub struct NonConstPath {
+    #[primary_span]
+    pub span: Span,
+}

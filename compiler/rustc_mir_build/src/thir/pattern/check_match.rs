@@ -4,7 +4,7 @@ use super::usefulness::{
 };
 use super::{PatCtxt, PatternError};
 
-use crate::errors::NonExhaustivePatternsTypeNotEmpty;
+use crate::errors::*;
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
@@ -106,27 +106,19 @@ impl PatCtxt<'_, '_> {
         for error in &self.errors {
             match *error {
                 PatternError::StaticInPattern(span) => {
-                    self.span_e0158(span, "statics cannot be referenced in patterns")
+                    self.tcx.sess.emit_err(StaticInPattern { span });
                 }
                 PatternError::AssocConstInPattern(span) => {
-                    self.span_e0158(span, "associated consts cannot be referenced in patterns")
+                    self.tcx.sess.emit_err(AssocConstInPattern { span });
                 }
                 PatternError::ConstParamInPattern(span) => {
-                    self.span_e0158(span, "const parameters cannot be referenced in patterns")
+                    self.tcx.sess.emit_err(ConstParamInPattern { span });
                 }
                 PatternError::NonConstPath(span) => {
-                    rustc_middle::mir::interpret::struct_error(
-                        self.tcx.at(span),
-                        "runtime values cannot be referenced in patterns",
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(NonConstPath { span });
                 }
             }
         }
-    }
-
-    fn span_e0158(&self, span: Span, text: &str) {
-        struct_span_err!(self.tcx.sess, span, E0158, "{}", text).emit();
     }
 }
 
