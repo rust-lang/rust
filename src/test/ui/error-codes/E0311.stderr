@@ -1,45 +1,24 @@
-error[E0311]: the parameter type `U` may not live long enough
-  --> $DIR/E0311.rs:13:21
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/E0311.rs:2:5
    |
-LL |         let u_ref = self.borrow_mut();
-   |                     ^^^^^^^^^^^^^^^^^
+LL |     with_restriction::<T>(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the parameter type `U` must be valid for the anonymous lifetime defined here...
-  --> $DIR/E0311.rs:12:26
+note: the parameter type `T` must be valid for the anonymous lifetime defined here...
+  --> $DIR/E0311.rs:1:25
    |
-LL |     fn nested_borrow_mut(&mut self) -> &mut V {
-   |                          ^^^^^^^^^
-note: ...so that the type `U` will meet its required lifetime bounds
-  --> $DIR/E0311.rs:13:21
+LL | fn no_restriction<T>(x: &()) -> &() {
+   |                         ^^^
+note: ...so that the type `T` will meet its required lifetime bounds
+  --> $DIR/E0311.rs:2:5
    |
-LL |         let u_ref = self.borrow_mut();
-   |                     ^^^^^^^^^^^^^^^^^
+LL |     with_restriction::<T>(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^
 help: consider adding an explicit lifetime bound...
    |
-LL |     U: BorrowMut<V> + 'a, // Error is caused by missing lifetime here
-   |                     ++++
+LL | fn no_restriction<T: 'a>(x: &()) -> &() {
+   |                    ++++
 
-error[E0311]: the parameter type `U` may not live long enough
-  --> $DIR/E0311.rs:14:21
-   |
-LL |         let v_ref = u_ref.borrow_mut();
-   |                     ^^^^^^^^^^^^^^^^^^
-   |
-note: the parameter type `U` must be valid for the anonymous lifetime defined here...
-  --> $DIR/E0311.rs:12:26
-   |
-LL |     fn nested_borrow_mut(&mut self) -> &mut V {
-   |                          ^^^^^^^^^
-note: ...so that the type `U` will meet its required lifetime bounds
-  --> $DIR/E0311.rs:14:21
-   |
-LL |         let v_ref = u_ref.borrow_mut();
-   |                     ^^^^^^^^^^^^^^^^^^
-help: consider adding an explicit lifetime bound...
-   |
-LL |     U: BorrowMut<V> + 'a, // Error is caused by missing lifetime here
-   |                     ++++
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0311`.

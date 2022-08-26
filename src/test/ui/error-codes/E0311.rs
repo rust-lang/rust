@@ -1,19 +1,9 @@
-use std::borrow::BorrowMut;
-
-trait NestedBorrowMut<U, V> {
-    fn nested_borrow_mut(&mut self) -> &mut V;
+fn no_restriction<T>(x: &()) -> &() {
+    with_restriction::<T>(x) //~ ERROR E0311
 }
 
-impl<T, U, V> NestedBorrowMut<U, V> for T
-where
-    T: BorrowMut<U>,
-    U: BorrowMut<V>, // Error is caused by missing lifetime here
-{
-    fn nested_borrow_mut(&mut self) -> &mut V {
-        let u_ref = self.borrow_mut(); //~ ERROR E0311
-        let v_ref = u_ref.borrow_mut(); //~ ERROR E0311
-        v_ref
-    }
+fn with_restriction<'a, T: 'a>(x: &'a ()) -> &'a () {
+    x
 }
 
 fn main() {}
