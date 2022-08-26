@@ -557,7 +557,10 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // For cases like #95134 we would like to catch overflows early
                 // otherwise they slip away away and cause ICE.
                 let recursion_limit = self.tcx().recursion_limit();
-                if !recursion_limit.value_within_limit(self.depth) {
+                if !recursion_limit.value_within_limit(self.depth)
+                    // HACK: Don't overflow when running cargo doc see #100991
+                    && !self.tcx().sess.opts.actually_rustdoc
+                {
                     let obligation = Obligation::with_depth(
                         self.cause.clone(),
                         recursion_limit.0,
