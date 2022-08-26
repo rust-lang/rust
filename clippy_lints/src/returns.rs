@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
-use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, PatKind, StmtKind};
@@ -11,7 +10,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -152,10 +150,6 @@ impl<'tcx> LateLintPass<'tcx> for Return {
     }
 }
 
-fn attr_is_cfg(attr: &Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.has_name(sym::cfg)
-}
-
 fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {
     if let Some(expr) = block.expr {
         check_final_expr(cx, expr, Some(expr.span), RetReplacement::Empty);
@@ -178,9 +172,7 @@ fn check_final_expr<'tcx>(
     match expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
-            // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
-            let attrs = cx.tcx.hir().attrs(expr.hir_id);
-            if !attrs.iter().any(attr_is_cfg) {
+            if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {
                     emit_return_lint(
