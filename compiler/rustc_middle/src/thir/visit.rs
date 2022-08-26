@@ -1,5 +1,6 @@
 use super::{
-    Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
+    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat,
+    PatKind, Stmt, StmtKind, Thir,
 };
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
@@ -75,7 +76,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_arm(&visitor.thir()[arm]);
             }
         }
-        Block { ref body } => visitor.visit_block(body),
+        Block { block } => visitor.visit_block(&visitor.thir()[block]),
         Assign { lhs, rhs } | AssignOp { lhs, rhs, op: _ } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);
@@ -108,7 +109,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box crate::thir::Adt {
+        Adt(box AdtExpr {
             ref fields,
             ref base,
             adt_def: _,
@@ -126,14 +127,20 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         PlaceTypeAscription { source, user_ty: _ } | ValueTypeAscription { source, user_ty: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
-        Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
+        Closure(box ClosureExpr {
+            closure_id: _,
+            substs: _,
+            upvars: _,
+            movability: _,
+            fake_reads: _,
+        }) => {}
         Literal { lit: _, neg: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
         ZstLiteral { user_ty: _ } => {}
         NamedConst { def_id: _, substs: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
-        InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
+        InlineAsm(box InlineAsmExpr { ref operands, template: _, options: _, line_spans: _ }) => {
             for op in &**operands {
                 use InlineAsmOperand::*;
                 match op {
@@ -174,7 +181,7 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             }
             visitor.visit_pat(pattern);
             if let Some(block) = else_block {
-                visitor.visit_block(block)
+                visitor.visit_block(&visitor.thir()[*block])
             }
         }
     }

@@ -11,7 +11,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         block: BasicBlock,
-        ast_block: &Block,
+        ast_block: BlockId,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let Block {
@@ -22,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr,
             targeted_by_break,
             safety_mode,
-        } = *ast_block;
+        } = self.thir[ast_block];
         let expr = expr.map(|expr| &self.thir[expr]);
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
@@ -146,7 +146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 block,
                                                 init,
                                                 initializer_span,
-                                                else_block,
+                                                *else_block,
                                                 visibility_scope,
                                                 last_remainder_scope,
                                                 remainder_span,

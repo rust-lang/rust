@@ -83,8 +83,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Don't bother with StorageLive and Dead for these temporaries,
             // they are never assigned.
             ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
-            ExprKind::Block { body: Block { expr: None, targeted_by_break: false, .. } }
-                if expr_ty.is_never() => {}
+            ExprKind::Block { block }
+                if let Block { expr: None, targeted_by_break: false, .. } = this.thir[block]
+                    && expr_ty.is_never() => {}
             _ => {
                 this.cfg
                     .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });

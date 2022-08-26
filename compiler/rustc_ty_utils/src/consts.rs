@@ -311,8 +311,15 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             //     bar::<{ N + 1 }>();
             // }
             // ```
-            ExprKind::Block { body: thir::Block { stmts: box [], expr: Some(e), .. } } => {
-                self.recurse_build(*e)?
+            ExprKind::Block { block } => {
+                if let thir::Block { stmts: box [], expr: Some(e), .. } = &self.body.blocks[*block] {
+                    self.recurse_build(*e)?
+                } else {
+                    self.maybe_supported_error(
+                        node.span,
+                        "blocks are not supported in generic constant",
+                    )?
+                }
             }
             // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
             // "coercion cast" i.e. using a coercion or is a no-op.
@@ -348,10 +355,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             ExprKind::Repeat { .. } | ExprKind::Array { .. } =>  self.maybe_supported_error(
                 node.span,
                 "array construction is not supported in generic constants",
-            )?,
-            ExprKind::Block { .. } => self.maybe_supported_error(
-                node.span,
-                "blocks are not supported in generic constant",
             )?,
             ExprKind::NeverToAny { .. } => self.maybe_supported_error(
                 node.span,
