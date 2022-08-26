@@ -232,6 +232,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(misc_early::UNNEEDED_WILDCARD_PATTERN),
     LintId::of(misc_early::ZERO_PREFIXED_LITERAL),
     LintId::of(mixed_read_write_in_expression::DIVERGING_SUB_EXPRESSION),
+    LintId::of(multi_assignments::MULTI_ASSIGNMENTS),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(mut_reference::UNNECESSARY_MUT_PASSED),
     LintId::of(needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
