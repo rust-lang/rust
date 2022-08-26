@@ -4,6 +4,7 @@ use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
 use crate::errors::BranchProtectionRequiresAArch64;
+use crate::errors::LayoutSizeOverflow;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -952,7 +953,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -970,7 +971,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
