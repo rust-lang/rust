@@ -1,7 +1,7 @@
-use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::Expr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
@@ -11,6 +11,9 @@ use rustc_span::{BytePos, InnerSpan, Span};
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
+
+mod ast;
+use ast::*;
 
 mod expand;
 use expand::expand_parsed_format_args;
@@ -23,160 +26,7 @@ use expand::expand_parsed_format_args;
 //  3. Finally, `expand_parsed_format_args` will turn that `FormatArgs` structure
 //     into the expression that the macro expands to.
 
-// Definitions:
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-// └──────────────────────────────────────────────┘
-//                     FormatArgs
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//                                     └─────────┘
-//                                      argument
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//              └───────────────────┘
-//                     template
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//               └────┘└─────────┘└┘
-//                      pieces
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//               └────┘           └┘
-//                   literal pieces
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//                     └─────────┘
-//                     placeholder
-//
-// format_args!("hello {abc:.xyz$}!!", abc="world");
-//                      └─┘  └─┘
-//                      positions (could be names, numbers, empty, or `*`)
-
-/// (Parsed) format args.
-///
-/// Basically the "AST" for a complete `format_args!()`.
-///
-/// E.g., `format_args!("hello {name}");`.
-#[derive(Clone, Debug)]
-pub struct FormatArgs {
-    pub span: Span,
-    pub template: Vec<FormatArgsPiece>,
-    pub arguments: Vec<(P<ast::Expr>, FormatArgKind)>,
-}
-
-#[derive(Clone, Debug)]
-pub enum FormatArgsPiece {
-    Literal(Symbol),
-    Placeholder(FormatPlaceholder),
-}
-
-#[derive(Clone, Debug)]
-pub enum FormatArgKind {
-    /// `format_args(…, arg)`
-    Normal,
-    /// `format_args(…, arg = 1)`
-    Named(Ident),
-    /// `format_args("… {arg} …")`
-    Captured(Ident),
-}
-
-impl FormatArgKind {
-    pub fn ident(&self) -> Option<Ident> {
-        match self {
-            &Self::Normal => None,
-            &Self::Named(id) => Some(id),
-            &Self::Captured(id) => Some(id),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FormatPlaceholder {
-    /// Index into [`FormatArgs::arguments`].
-    pub argument: FormatArgPosition,
-    /// The span inside the format string for the full `{…}` placeholder.
-    pub span: Option<Span>,
-    /// `{}`, `{:?}`, or `{:x}`, etc.
-    pub format_trait: FormatTrait,
-    /// `{}` or `{:.5}` or `{:-^20}`, etc.
-    pub format_options: FormatOptions,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FormatArgPosition {
-    /// Which argument this position refers to (Ok),
-    /// or would've referred to if it existed (Err).
-    pub index: Result<usize, usize>,
-    /// What kind of position this is. See [`FormatArgsPositionKind`].
-    pub kind: FormatArgPositionKind,
-    /// The span of the name or number.
-    pub span: Option<Span>,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum FormatArgPositionKind {
-    /// `{}` or `{.*}`
-    Implicit,
-    /// `{1}` or `{:1$}` or `{:.1$}`
-    Number,
-    /// `{a}` or `{:a$}` or `{:.a$}`
-    Named,
-}
-
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum FormatTrait {
-    /// `{}`
-    Display,
-    /// `{:?}`
-    Debug,
-    /// `{:e}`
-    LowerExp,
-    /// `{:E}`
-    UpperExp,
-    /// `{:o}`
-    Octal,
-    /// `{:p}`
-    Pointer,
-    /// `{:b}`
-    Binary,
-    /// `{:x}`
-    LowerHex,
-    /// `{:X}`
-    UpperHex,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct FormatOptions {
-    /// The width. E.g. `{:5}` or `{:width$}`.
-    pub width: Option<FormatCount>,
-    /// The precision. E.g. `{:.5}` or `{:.precision$}`.
-    pub precision: Option<FormatCount>,
-    /// The alignment. E.g. `{:>}` or `{:<}` or `{:^}`.
-    pub alignment: Option<FormatAlignment>,
-    /// The fill character. E.g. the `.` in `{:.>10}`.
-    pub fill: Option<char>,
-    /// The `+`, `-`, `0`, `#`, `x?` and `X?` flags.
-    pub flags: u32,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FormatAlignment {
-    /// `{:<}`
-    Left,
-    /// `{:>}`
-    Right,
-    /// `{:^}`
-    Center,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FormatCount {
-    /// `{:0}` or `{:.0}`
-    Literal(usize),
-    /// `{:.*}`, `{:.0$}`, or `{:a$}`, etc.
-    Argument(FormatArgPosition),
-}
+// See format/ast.rs forthe FormatArgs structure.
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
@@ -201,8 +51,8 @@ fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<ast::Expr>, Vec<(P<ast::Expr>, FormatArgKind)>)> {
-    let mut args = Vec::<(P<ast::Expr>, FormatArgKind)>::new();
+) -> PResult<'a, (P<Expr>, Vec<(P<Expr>, FormatArgKind)>)> {
+    let mut args = Vec::<(P<Expr>, FormatArgKind)>::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
@@ -305,8 +155,8 @@ fn parse_args<'a>(
 
 pub fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
-    efmt: P<ast::Expr>,
-    mut args: Vec<(P<ast::Expr>, FormatArgKind)>,
+    efmt: P<Expr>,
+    mut args: Vec<(P<Expr>, FormatArgKind)>,
     append_newline: bool,
 ) -> Result<FormatArgs, ()> {
     let start_of_named_args =
@@ -341,8 +191,8 @@ pub fn make_format_args(
     };
 
     let str_style = match fmt_style {
-        ast::StrStyle::Cooked => None,
-        ast::StrStyle::Raw(raw) => Some(raw as usize),
+        rustc_ast::StrStyle::Cooked => None,
+        rustc_ast::StrStyle::Raw(raw) => Some(raw as usize),
     };
 
     let fmt_str = fmt_str.as_str(); // for the suggestions below
@@ -669,7 +519,7 @@ pub fn make_format_args(
             ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: arg_name.span.into(),
                 msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
-                node_id: ast::CRATE_NODE_ID,
+                node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
                     position_sp_to_replace,
@@ -850,7 +700,7 @@ fn report_invalid_references(
     template: &[FormatArgsPiece],
     fmt_span: Span,
     num_explicit_args: usize,
-    args: &[(P<ast::Expr>, FormatArgKind)],
+    args: &[(P<Expr>, FormatArgKind)],
     parser: parse::Parser<'_>,
 ) {
     let num_args_desc = match num_explicit_args {
