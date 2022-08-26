@@ -24,6 +24,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(loops::MUT_RANGE_BOUND),
     LintId::of(methods::NO_EFFECT_REPLACE),
     LintId::of(methods::SUSPICIOUS_MAP),
+    LintId::of(multi_assignments::MULTI_ASSIGNMENTS),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
     LintId::of(operators::FLOAT_EQUALITY_WITHOUT_ABS),

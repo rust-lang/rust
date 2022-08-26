@@ -398,6 +398,7 @@ store.register_lints(&[
     mixed_read_write_in_expression::MIXED_READ_WRITE_IN_EXPRESSION,
     module_style::MOD_MODULE_FILES,
     module_style::SELF_NAMED_MODULE_FILES,
+    multi_assignments::MULTI_ASSIGNMENTS,
     mut_key::MUTABLE_KEY_TYPE,
     mut_mut::MUT_MUT,
     mut_reference::UNNECESSARY_MUT_PASSED,

@@ -289,6 +289,7 @@ mod missing_enforced_import_rename;
 mod missing_inline;
 mod mixed_read_write_in_expression;
 mod module_style;
+mod multi_assignments;
 mod mut_key;
 mod mut_mut;
 mod mut_reference;
@@ -896,6 +897,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(partialeq_to_none::PartialeqToNone));
     store.register_late_pass(|| Box::new(manual_empty_string_creations::ManualEmptyStringCreations));
     store.register_late_pass(|| Box::new(unused_peekable::UnusedPeekable));
+    store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
