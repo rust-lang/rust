@@ -6,7 +6,7 @@
 //! but it is incapable of producing all possible weak behaviours allowed by the model. There are
 //! certain weak behaviours observable on real hardware but not while using this.
 //!
-//! Note that this implementation does not take into account of C++20's memory model revision to SC accesses
+//! Note that this implementation does not fully take into account of C++20's memory model revision to SC accesses
 //! and fences introduced by P0668 (<https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html>).
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows (<https://github.com/rust-lang/miri/issues/2301>).
@@ -133,9 +133,17 @@ struct StoreElement {
     // (partially) uninitialized data.
     val: Scalar<Provenance>,
 
+    /// Metadata about loads from this store element,
+    /// behind a RefCell to keep load op take &self
+    load_info: RefCell<LoadInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct LoadInfo {
     /// Timestamp of first loads from this store element by each thread
-    /// Behind a RefCell to keep load op take &self
-    loads: RefCell<FxHashMap<VectorIdx, VTimestamp>>,
+    timestamps: FxHashMap<VectorIdx, VTimestamp>,
+    /// Whether this store element has been read by an SC load
+    sc_loaded: bool,
 }
 
 impl StoreBufferAlloc {
@@ -235,18 +243,23 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             timestamp: 0,
             val: init,
             is_seqcst: false,
-            loads: RefCell::new(FxHashMap::default()),
+            load_info: RefCell::new(LoadInfo::default()),
         };
         ret.buffer.push_back(store_elem);
         ret
     }
 
     /// Reads from the last store in modification order
-    fn read_from_last_store(&self, global: &DataRaceState, thread_mgr: &ThreadManager<'_, '_>) {
+    fn read_from_last_store(
+        &self,
+        global: &DataRaceState,
+        thread_mgr: &ThreadManager<'_, '_>,
+        is_seqcst: bool,
+    ) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
             let (index, clocks) = global.current_thread_state(thread_mgr);
-            store_elem.load_impl(index, &clocks);
+            store_elem.load_impl(index, &clocks, is_seqcst);
         }
     }
 
@@ -276,7 +289,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         validate()?;
 
         let (index, clocks) = global.current_thread_state(thread_mgr);
-        let loaded = store_elem.load_impl(index, &clocks);
+        let loaded = store_elem.load_impl(index, &clocks, is_seqcst);
         Ok((loaded, recency))
     }
 
@@ -321,9 +334,9 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                     // then we can't read-from anything earlier in modification order.
                     // C++20 §6.9.2.2 [intro.races] paragraph 18
                     false
-                } else if store_elem.loads.borrow().iter().any(|(&load_index, &load_timestamp)| {
-                    load_timestamp <= clocks.clock[load_index]
-                }) {
+                } else if store_elem.load_info.borrow().timestamps.iter().any(
+                    |(&load_index, &load_timestamp)| load_timestamp <= clocks.clock[load_index],
+                ) {
                     // CoRR: if there was a load from this store which happened-before the current load,
                     // then we cannot read-from anything earlier in modification order.
                     // C++20 §6.9.2.2 [intro.races] paragraph 16
@@ -340,12 +353,22 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                     // cannot read-before the last SC store executed before the fence.
                     // C++17 §32.4 [atomics.order] paragraph 4
                     false
-                } else if is_seqcst && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index] {
+                } else if is_seqcst
+                    && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index]
+                {
                     // The current SC load cannot read-before the last store sequenced-before
                     // the last SC fence.
                     // C++17 §32.4 [atomics.order] paragraph 5
                     false
-                } else {true};
+                } else if is_seqcst && store_elem.load_info.borrow().sc_loaded {
+                    // The current SC load cannot read-before a store that an earlier SC load has observed.
+                    // See https://github.com/rust-lang/miri/issues/2301#issuecomment-1222720427
+                    // Consequences of C++20 §31.4 [atomics.order] paragraph 3.1, 3.3 (coherence-ordered before)
+                    // and 4.1 (coherence-ordered before between SC makes global total order S)
+                    false
+                } else {
+                    true
+                };
 
                 true
             })
@@ -386,7 +409,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             // access
             val,
             is_seqcst,
-            loads: RefCell::new(FxHashMap::default()),
+            load_info: RefCell::new(LoadInfo::default()),
         };
         self.buffer.push_back(store_elem);
         if self.buffer.len() > STORE_BUFFER_LIMIT {
@@ -414,8 +437,15 @@ impl StoreElement {
     /// buffer regardless of subsequent loads by the same thread; if the earliest load of another
     /// thread doesn't happen before the current one, then no subsequent load by the other thread
     /// can happen before the current one.
-    fn load_impl(&self, index: VectorIdx, clocks: &ThreadClockSet) -> Scalar<Provenance> {
-        let _ = self.loads.borrow_mut().try_insert(index, clocks.clock[index]);
+    fn load_impl(
+        &self,
+        index: VectorIdx,
+        clocks: &ThreadClockSet,
+        is_seqcst: bool,
+    ) -> Scalar<Provenance> {
+        let mut load_info = self.load_info.borrow_mut();
+        load_info.sc_loaded |= is_seqcst;
+        let _ = load_info.timestamps.try_insert(index, clocks.clock[index]);
         self.val
     }
 }
@@ -475,7 +505,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             let range = alloc_range(base_offset, place.layout.size);
             let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, init)?;
-            buffer.read_from_last_store(global, threads);
+            buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(new_val, global, threads, atomic == AtomicRwOrd::SeqCst)?;
         }
         Ok(())
@@ -582,7 +612,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 let buffer = alloc_buffers
                     .get_or_create_store_buffer(alloc_range(base_offset, size), init)?;
-                buffer.read_from_last_store(global, &this.machine.threads);
+                buffer.read_from_last_store(
+                    global,
+                    &this.machine.threads,
+                    atomic == AtomicReadOrd::SeqCst,
+                );
             }
         }
         Ok(())
