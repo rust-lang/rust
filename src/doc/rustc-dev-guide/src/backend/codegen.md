@@ -1,13 +1,16 @@
 # Code generation
 
-Code generation or "codegen" is the part of the compiler that actually
-generates an executable binary. Usually, rustc uses LLVM for code generation;
-there is also support for [Cranelift]. The key is that rustc doesn't implement
-codegen itself. It's worth noting, though, that in the Rust source code, many
-parts of the backend have `codegen` in their names (there are no hard
-boundaries).
+Code generation (or "codegen") is the part of the compiler
+that actually generates an executable binary.
+Usually, rustc uses LLVM for code generation,
+bu there is also support for [Cranelift] and [GCC].
+The key is that rustc doesn't implement codegen itself.
+It's worth noting, though, that in the Rust source code,
+many parts of the backend have `codegen` in their names
+(there are no hard boundaries).
 
-[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift
+[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/main/cranelift
+[GCC]: https://github.com/rust-lang/rustc_codegen_gcc
 
 > NOTE: If you are looking for hints on how to debug code generation bugs,
 > please see [this section of the debugging chapter][debugging].
