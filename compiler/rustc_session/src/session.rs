@@ -110,6 +110,12 @@ impl Mul<usize> for Limit {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for Limit {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub struct Limits {
     /// The maximum recursion limit for potentially infinitely recursive

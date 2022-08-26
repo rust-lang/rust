@@ -3,6 +3,7 @@
 
 use super::*;
 
+use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
@@ -830,8 +831,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let def_id = unevaluated.def.did;
-                                    let reported = tcx.sess.struct_span_err(tcx.def_span(def_id), &format!("unable to construct a constant value for the unevaluated constant {:?}", unevaluated)).emit();
-
+                                    let reported =
+                                        tcx.sess.emit_err(UnableToConstructConstantValue {
+                                            span: tcx.def_span(def_id),
+                                            unevaluated,
+                                        });
                                     Err(ErrorHandled::Reported(reported))
                                 }
                                 Err(err) => Err(err),

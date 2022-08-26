@@ -8,6 +8,10 @@ use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::errors::{
+    EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
+};
+
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
 
@@ -35,21 +39,6 @@ pub struct OnUnimplementedNote {
     pub append_const_msg: Option<Option<Symbol>>,
 }
 
-fn parse_error(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    message: &str,
-    label: &str,
-    note: Option<&str>,
-) -> ErrorGuaranteed {
-    let mut diag = struct_span_err!(tcx.sess, span, E0232, "{}", message);
-    diag.span_label(span, label);
-    if let Some(note) = note {
-        diag.note(note);
-    }
-    diag.emit()
-}
-
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
         tcx: TyCtxt<'tcx>,
@@ -70,25 +59,9 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| {
-                    parse_error(
-                        tcx,
-                        span,
-                        "empty `on`-clause in `#[rustc_on_unimplemented]`",
-                        "empty on-clause here",
-                        None,
-                    )
-                })?
+                .ok_or_else(|| tcx.sess.emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item()
-                .ok_or_else(|| {
-                    parse_error(
-                        tcx,
-                        span,
-                        "invalid `on`-clause in `#[rustc_on_unimplemented]`",
-                        "invalid on-clause here",
-                        None,
-                    )
-                })?;
+                .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value && let Err(guar) = parse_value(value) {
                     errored = Some(guar);
@@ -150,13 +123,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
 
             // nothing found
-            parse_error(
-                tcx,
-                item.span(),
-                "this attribute must have a valid value",
-                "expected value here",
-                Some(r#"eg `#[rustc_on_unimplemented(message="foo")]`"#),
-            );
+            tcx.sess.emit_err(NoValueInOnUnimplemented { span: item.span() });
         }
 
         if let Some(reported) = errored {
