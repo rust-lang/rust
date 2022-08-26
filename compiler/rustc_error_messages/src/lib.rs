@@ -38,6 +38,7 @@ fluent_messages! {
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
+    driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",

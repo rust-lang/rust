@@ -3820,6 +3820,7 @@ dependencies = [
  "rustc_interface",
  "rustc_lint",
  "rustc_log",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
  "rustc_parse",

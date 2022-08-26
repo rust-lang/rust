@@ -9,6 +9,8 @@
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -16,7 +18,7 @@ extern crate tracing;
 pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
+use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
@@ -56,6 +58,12 @@ use std::time::Instant;
 
 pub mod args;
 pub mod pretty;
+mod session_diagnostics;
+
+use crate::session_diagnostics::{
+    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
+};
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -581,18 +589,35 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to read rlink file: {}", err));
+                sess.emit_fatal(RlinkUnableToRead { err });
             });
             let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
                 Ok(codegen) => codegen,
-                Err(error) => {
-                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                Err(err) => {
+                    match err {
+                        CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),
+                        CodegenErrors::EmptyVersionNumber => {
+                            sess.emit_fatal(RLinkEmptyVersionNumber)
+                        }
+                        CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => {
+                            sess.emit_fatal(RLinkEncodingVersionMismatch {
+                                version_array,
+                                rlink_version,
+                            })
+                        }
+                        CodegenErrors::RustcVersionMismatch { rustc_version, current_version } => {
+                            sess.emit_fatal(RLinkRustcVersionMismatch {
+                                rustc_version,
+                                current_version,
+                            })
+                        }
+                    };
                 }
             };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
-            sess.fatal("rlink must be a file")
+            sess.emit_fatal(RlinkNotAFile {})
         }
         Compilation::Stop
     } else {
