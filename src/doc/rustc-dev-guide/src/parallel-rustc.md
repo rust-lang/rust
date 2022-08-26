@@ -73,11 +73,10 @@ can be accessed directly through `Deref::deref`.
 
 The parallel iterators provided by the [`rayon`] crate are easy ways 
 to implement parallelism. In the current implementation of the parallel 
-compiler we use a custom fork of [`rayon`] to run tasks in parallel. 
-*(more information wanted here)*
+compiler we use a custom [fork][rustc-rayon] of [`rayon`] to run tasks in parallel.
 
-Some iterator functions are implemented in the current nightly compiler to
-run loops in parallel when `parallel-compiler` is true.
+Some iterator functions are implemented to run loops in parallel 
+when `parallel-compiler` is true.
 
 | Function(Omit `Send` and `Sync`)                             | Introduction                                                 | Owning Module              |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------- |
@@ -108,7 +107,7 @@ are as follows:
 | rustc_interface::passes::analysis                       | Deathness checking                                           | Map::par_for_each_module |
 | rustc_interface::passes::analysis                       | Privacy checking                                             | Map::par_for_each_module |
 | rustc_lint::late::check_crate                           | Run per-module lints                                         | Map::par_for_each_module |
-| rustc_typeck::check_crate                               | Well formed checking                                         | Map::par_for_each_module |
+| rustc_typeck::check_crate                               | Well-formedness checking                                         | Map::par_for_each_module |
 
 There are still many loops that have the potential to use parallel iterators.
 
@@ -156,6 +155,7 @@ are a bit out of date):
 - [This IRLO thread by alexchricton about performance][irlo1]
 
 [`rayon`]: https://crates.io/crates/rayon
+[rustc-rayon]: https://github.com/rust-lang/rustc-rayon
 [irlo0]: https://internals.rust-lang.org/t/parallelizing-rustc-using-rayon/6606
 [imlist]: https://github.com/nikomatsakis/rustc-parallelization/blob/master/interior-mutability-list.md
 [irlo1]: https://internals.rust-lang.org/t/help-test-parallel-rustc/11503
