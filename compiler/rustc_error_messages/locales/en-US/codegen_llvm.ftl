@@ -36,3 +36,6 @@ codegen_llvm_linkage_const_or_mut_type =
 
 codegen_llvm_sanitizer_memtag_requires_mte =
     `-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`
+
+codegen_llvm_archive_build_failure =
+    failed to build archive: {$error}

@@ -84,3 +84,9 @@ pub(crate) struct LinkageConstOrMutType {
 #[derive(SessionDiagnostic)]
 #[diag(codegen_llvm::sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::archive_build_failure)]
+pub(crate) struct ArchiveBuildFailure {
+    pub error: std::io::Error,
+}
