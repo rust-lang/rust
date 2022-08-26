@@ -22,8 +22,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as u128 }`, found `{ O as u128 }`
    |
-   = note: expected type `{ N as u128 }`
-              found type `{ O as u128 }`
+   = note: expected constant `{ N as u128 }`
+              found constant `{ O as u128 }`
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:20:19
@@ -49,8 +54,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as _ }`, found `{ O as u128 }`
    |
-   = note: expected type `{ N as _ }`
-              found type `{ O as u128 }`
+   = note: expected constant `{ N as _ }`
+              found constant `{ O as u128 }`
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:23:5
@@ -58,8 +68,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `12`, found `13`
    |
-   = note: expected type `12`
-              found type `13`
+   = note: expected constant `12`
+              found constant `13`
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:25:5
@@ -67,8 +82,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `13`, found `14`
    |
-   = note: expected type `13`
-              found type `14`
+   = note: expected constant `13`
+              found constant `14`
+note: required by a bound in `use_trait_impl::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:14:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl::assert_impl`
 
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:35:19
@@ -94,8 +114,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as u128 }`, found `{ O as u128 }`
    |
-   = note: expected type `{ N as u128 }`
-              found type `{ O as u128 }`
+   = note: expected constant `{ N as u128 }`
+              found constant `{ O as u128 }`
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error: unconstrained generic constant
   --> $DIR/abstract-const-as-cast-3.rs:38:19
@@ -121,8 +146,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<{ N + 1 }, { N as _ }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{ N as _ }`, found `{ O as u128 }`
    |
-   = note: expected type `{ N as _ }`
-              found type `{ O as u128 }`
+   = note: expected constant `{ N as _ }`
+              found constant `{ O as u128 }`
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:41:5
@@ -130,8 +160,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<13, { 12 as u128 }>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `12`, found `13`
    |
-   = note: expected type `12`
-              found type `13`
+   = note: expected constant `12`
+              found constant `13`
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:43:5
@@ -139,8 +174,13 @@ error[E0308]: mismatched types
 LL |     assert_impl::<HasCastInTraitImpl<14, 13>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `13`, found `14`
    |
-   = note: expected type `13`
-              found type `14`
+   = note: expected constant `13`
+              found constant `14`
+note: required by a bound in `use_trait_impl_2::assert_impl`
+  --> $DIR/abstract-const-as-cast-3.rs:32:23
+   |
+LL |     fn assert_impl<T: Trait>() {}
+   |                       ^^^^^ required by this bound in `use_trait_impl_2::assert_impl`
 
 error: aborting due to 12 previous errors
 
