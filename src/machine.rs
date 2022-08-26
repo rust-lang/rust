@@ -418,9 +418,11 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             since_progress_report: 0,
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
                 // Check if host target == the session target.
-                if option_env!("TARGET") == Some(target_triple) {
+                if env!("TARGET") != target_triple {
                     panic!(
-                        "calling external C functions in linked .so file requires target and host to be the same"
+                        "calling external C functions in linked .so file requires host and target to be the same: host={}, target={}",
+                        env!("TARGET"),
+                        target_triple,
                     );
                 }
                 // Note: it is the user's responsibility to provide a correct SO file.

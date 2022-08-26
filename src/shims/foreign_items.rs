@@ -370,11 +370,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
-        // First deal with any external C functions in linked .so file
-        // (if any SO file is specified, and if the host target == the session target)
+        // First deal with any external C functions in linked .so file.
         if this.machine.external_so_lib.as_ref().is_some() {
             // An Ok(false) here means that the function being called was not exported
-            // by the specified SO file; we should continue and check if it corresponds to
+            // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
             if this.call_external_c_fct(link_name, dest, args)? {
                 return Ok(EmulateByNameResult::NeedsJumping);
