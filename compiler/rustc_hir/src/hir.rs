@@ -2991,7 +2991,7 @@ pub enum ItemKind<'hir> {
     /// A MBE macro definition (`macro_rules!` or `macro`).
     Macro(ast::MacroDef, MacroKind),
     /// A module.
-    Mod(Mod<'hir>),
+    Mod(&'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).

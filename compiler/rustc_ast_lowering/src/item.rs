@@ -120,7 +120,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-            hir::OwnerNode::Crate(lctx.arena.alloc(module))
+            hir::OwnerNode::Crate(module)
         })
     }
 
@@ -158,14 +158,18 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn lower_mod(&mut self, items: &[P<Item>], spans: &ModSpans) -> hir::Mod<'hir> {
-        hir::Mod {
+    pub(super) fn lower_mod(
+        &mut self,
+        items: &[P<Item>],
+        spans: &ModSpans,
+    ) -> &'hir hir::Mod<'hir> {
+        self.arena.alloc(hir::Mod {
             spans: hir::ModSpans {
                 inner_span: self.lower_span(spans.inner_span),
                 inject_use_span: self.lower_span(spans.inject_use_span),
             },
             item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
-        }
+        })
     }
 
     pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
