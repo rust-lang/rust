@@ -13,7 +13,8 @@ use object::read::macho::FatArch;
 
 use crate::common;
 use crate::errors::{
-    ArchiveBuildFailure, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
+    ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
+    ErrorWritingDEFFile,
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
@@ -244,11 +245,12 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 Err(e) => {
                     sess.emit_fatal(ErrorCallingDllTool { error: e });
                 }
-                Ok(output) if !output.status.success() => sess.fatal(&format!(
-                    "Dlltool could not create import library: {}\n{}",
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                )),
+                Ok(output) if !output.status.success() => {
+                    sess.emit_fatal(DlltoolFailImportLibrary {
+                        stdout: String::from_utf8_lossy(&output.stdout),
+                        stderr: String::from_utf8_lossy(&output.stderr),
+                    })
+                }
                 _ => {}
             }
         } else {
