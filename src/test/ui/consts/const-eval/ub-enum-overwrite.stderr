@@ -1,13 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum-overwrite.rs:8:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-enum-overwrite.rs:13:14
    |
-LL | const _: u8 = {
-   | ^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               __                                              │ ░
-           }
+LL |     unsafe { *p }
+   |              ^^ using uninitialized data, but this operation requires initialized memory
 
 error: aborting due to previous error
 

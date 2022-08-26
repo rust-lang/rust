@@ -123,17 +123,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether, when checking alignment, we should `force_int` and thus support
+    /// Whether, when checking alignment, we should look at the actual address and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
     ///
-    /// Requires Provenance::OFFSET_IS_ADDR to be true.
-    fn force_int_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
+    fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
-
-    /// Whether to enforce integers and floats being initialized.
-    fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -437,14 +434,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type FrameExtra = ();
 
     #[inline(always)]
-    fn force_int_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not support `force_int`.
+    fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        // We do not support `use_addr`.
         false
-    }
-
-    #[inline(always)]
-    fn enforce_number_init(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
     }
 
     #[inline(always)]

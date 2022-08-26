@@ -3,7 +3,7 @@ use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
     Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
-    ScalarMaybeUninit, StackPopCleanup,
+    StackPopCleanup,
 };
 
 use rustc_hir::def::DefKind;
@@ -170,10 +170,7 @@ pub(super) fn op_to_const<'tcx>(
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
-            Immediate::Scalar(x) => match x {
-                ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
-            },
+            Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.

@@ -22,19 +22,14 @@ error[E0308]: mismatched types
 LL |   get_flag::<42, 0x5ad>();
    |                  ^^^^^ expected `char`, found `u8`
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:38:21
+error[E0080]: evaluation of constant value failed
+  --> $DIR/invalid-patterns.rs:38:32
    |
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               __ __ __ __                                     │ ░░░░
-           }
+   |                                ^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:40:14
+  --> $DIR/invalid-patterns.rs:41:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x42, but expected a boolean
@@ -45,7 +40,7 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:14
+  --> $DIR/invalid-patterns.rs:43:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x42, but expected a boolean
@@ -55,16 +50,11 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
                42                                              │ B
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:47
+error[E0080]: evaluation of constant value failed
+  --> $DIR/invalid-patterns.rs:43:58
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               __ __ __ __                                     │ ░░░░
-           }
+   |                                                          ^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error: aborting due to 8 previous errors
 
