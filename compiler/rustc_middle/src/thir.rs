@@ -809,8 +809,8 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 112);
-    static_assert_size!(PatKind<'_>, 96);
+    static_assert_size!(Pat<'_>, 80);
+    static_assert_size!(PatKind<'_>, 64);
     static_assert_size!(Stmt<'_>, 56);
     static_assert_size!(StmtKind<'_>, 48);
 }

@@ -522,11 +522,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         fake_borrow_temps,
                     )
                 );
-                if let Some(box user_ty) = user_ty {
+                if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty: *user_ty,
+                            user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
 
@@ -551,11 +551,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let source = &this.thir[source];
                 let temp =
                     unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
-                if let Some(box user_ty) = user_ty {
+                if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty: *user_ty,
+                            user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
                     this.cfg.push(

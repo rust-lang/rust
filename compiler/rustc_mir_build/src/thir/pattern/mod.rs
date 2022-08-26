@@ -443,7 +443,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             let annotation = CanonicalUserTypeAnnotation {
-                user_ty,
+                user_ty: Box::new(user_ty),
                 span,
                 inferred_ty: self.typeck_results.node_type(hir_id),
             };
@@ -512,7 +512,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let user_provided_types = self.typeck_results().user_provided_types();
                 if let Some(&user_ty) = user_provided_types.get(id) {
                     let annotation = CanonicalUserTypeAnnotation {
-                        user_ty,
+                        user_ty: Box::new(user_ty),
                         span,
                         inferred_ty: self.typeck_results().node_type(id),
                     };

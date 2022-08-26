@@ -378,10 +378,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 let inferred_ty = expr.ty;
-                let user_ty = user_ty.as_ref().map(|box user_ty| {
+                let user_ty = user_ty.as_ref().map(|user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span: source_info.span,
-                        user_ty: *user_ty,
+                        user_ty: user_ty.clone(),
                         inferred_ty,
                     })
                 });
