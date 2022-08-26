@@ -469,14 +469,10 @@ impl<'a> SessionSubdiagnosticDeriveBuilder<'a> {
         };
 
         let span_field = self.span_field.as_ref().map(|(span, _)| span);
-        let applicability = match self.applicability.clone() {
-            Some((applicability, _)) => Some(applicability),
-            None if is_suggestion => {
-                span_err(self.span, "suggestion without `applicability`").emit();
-                Some(quote! { rustc_errors::Applicability::Unspecified })
-            }
-            None => None,
-        };
+        let applicability = self.applicability.take().map_or_else(
+            || quote! { rustc_errors::Applicability::Unspecified },
+            |(applicability, _)| applicability,
+        );
 
         let diag = &self.diag;
         let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);

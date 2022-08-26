@@ -401,7 +401,6 @@ struct AK {
 
 #[derive(SessionSubdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
-//~^ ERROR suggestion without `applicability`
 struct AL {
     #[primary_span]
     span: Span,
@@ -412,7 +411,6 @@ struct AL {
 
 #[derive(SessionSubdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
-//~^ ERROR suggestion without `applicability`
 struct AM {
     #[primary_span]
     span: Span,
@@ -448,8 +446,7 @@ struct AQ;
 
 #[derive(SessionSubdiagnostic)]
 #[suggestion(parser::add_paren, code = "...")]
-//~^ ERROR suggestion without `applicability`
-//~^^ ERROR suggestion without `#[primary_span]` field
+//~^ ERROR suggestion without `#[primary_span]` field
 struct AR {
     var: String,
 }
