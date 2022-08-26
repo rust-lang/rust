@@ -1200,14 +1200,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	float: right;
 }
 
-.variants_table {
-	width: 100%;
-}
-
-.variants_table tbody tr td:first-child {
-	width: 1%; /* make the variant name as small as possible */
-}
-
 td.summary-column {
 	width: 100%;
 }
