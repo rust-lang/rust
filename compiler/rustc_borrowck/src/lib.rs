@@ -18,7 +18,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
@@ -49,6 +49,8 @@ use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::MoveDataParamEnv;
+
+use crate::session_diagnostics::VarNeedNotMut;
 
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
@@ -424,17 +426,9 @@ fn do_mir_borrowck<'a, 'tcx>(
             continue;
         }
 
-        tcx.struct_span_lint_hir(UNUSED_MUT, lint_root, span, |lint| {
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-            lint.build("variable does not need to be mutable")
-                .span_suggestion_short(
-                    mut_span,
-                    "remove this `mut`",
-                    "",
-                    Applicability::MachineApplicable,
-                )
-                .emit();
-        })
+        let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+
+        tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }
 
     let tainted_by_errors = mbcx.emit_errors();
