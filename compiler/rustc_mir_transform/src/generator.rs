@@ -1182,8 +1182,6 @@ fn create_cases<'tcx>(
     transform: &TransformVisitor<'tcx>,
     operation: Operation,
 ) -> Vec<(usize, BasicBlock)> {
-    let tcx = transform.tcx;
-
     let source_info = SourceInfo::outermost(body.span);
 
     transform
@@ -1216,85 +1214,13 @@ fn create_cases<'tcx>(
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = Local::new(2); // 0 = return, 1 = self
-
-                    // handle `box yield` properly
-                    let box_place = if let [projection @ .., ProjectionElem::Deref] =
-                        &**point.resume_arg.projection
-                    {
-                        let box_place =
-                            Place::from(point.resume_arg.local).project_deeper(projection, tcx);
-
-                        let box_ty = box_place.ty(&body.local_decls, tcx).ty;
-
-                        if box_ty.is_box() { Some((box_place, box_ty)) } else { None }
-                    } else {
-                        None
-                    };
-
-                    if let Some((box_place, box_ty)) = box_place {
-                        let unique_did = box_ty
-                            .ty_adt_def()
-                            .expect("expected Box to be an Adt")
-                            .non_enum_variant()
-                            .fields[0]
-                            .did;
-
-                        let Some(nonnull_def) = tcx.type_of(unique_did).ty_adt_def() else {
-                            span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
-                        };
-
-                        let nonnull_did = nonnull_def.non_enum_variant().fields[0].did;
-
-                        let (unique_ty, nonnull_ty, ptr_ty) =
-                            crate::elaborate_box_derefs::build_ptr_tys(
-                                tcx,
-                                box_ty.boxed_ty(),
-                                unique_did,
-                                nonnull_did,
-                            );
-
-                        let ptr_local = body.local_decls.push(LocalDecl::new(ptr_ty, body.span));
-
-                        statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::StorageLive(ptr_local),
-                        });
-
-                        statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                Place::from(ptr_local),
-                                Rvalue::Use(Operand::Copy(box_place.project_deeper(
-                                    &crate::elaborate_box_derefs::build_projection(
-                                        unique_ty, nonnull_ty, ptr_ty,
-                                    ),
-                                    tcx,
-                                ))),
-                            ))),
-                        });
-
-                        statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                Place::from(ptr_local)
-                                    .project_deeper(&[ProjectionElem::Deref], tcx),
-                                Rvalue::Use(Operand::Move(resume_arg.into())),
-                            ))),
-                        });
-
-                        statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::StorageDead(ptr_local),
-                        });
-                    } else {
-                        statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::Assign(Box::new((
-                                point.resume_arg,
-                                Rvalue::Use(Operand::Move(resume_arg.into())),
-                            ))),
-                        });
-                    }
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::Assign(Box::new((
+                            point.resume_arg,
+                            Rvalue::Use(Operand::Move(resume_arg.into())),
+                        ))),
+                    });
                 }
 
                 // Then jump to the real target
