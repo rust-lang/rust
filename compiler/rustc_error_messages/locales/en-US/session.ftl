@@ -14,3 +14,29 @@ session_feature_diagnostic_for_issue =
 
 session_feature_diagnostic_help =
     add `#![feature({$feature})]` to the crate attributes to enable
+
+session_target_data_layout_parse_error = {$err}
+
+session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
+
+session_profile_use_file_does_not_exist = File `{$path}` passed to `-C profile-use` does not exist.
+
+session_linker_plugin_lto_windows_not_supported = Linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets"
+
+session_profile_sample_use_file_does_not_exist = File `{$path}` passed to `-C profile-sample-use` does not exist.
+
+session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`."
+
+session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
+
+session_sanitizers_not_supported = {$us} sanitizers are not supported for this target
+
+session_cannot_mix_and_match_sanitizers = `-Zsanitizer={$first}` is incompatible with `-Zsanitizer={$second}`
+
+session_cannot_enable_crt_static_linux = sanitizer is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`
+
+session_sanitizer_cfi_enabled = `-Zsanitizer=cfi` requires `-Clto`
+
+session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
+
+session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
