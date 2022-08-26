@@ -7,8 +7,7 @@ use crate::const_prop::ConstPropMode;
 use crate::MirLint;
 use rustc_const_eval::const_eval::ConstEvalErr;
 use rustc_const_eval::interpret::{
-    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar,
-    ScalarMaybeUninit, StackPopCleanup,
+    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -239,7 +238,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.read_immediate_raw(&op, /*force*/ false) {
+        Some(match self.ecx.read_immediate_raw(&op) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -401,8 +400,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_ty = left.ty(self.local_decls, self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
-            let r_bits = r.to_scalar().ok();
-            let r_bits = r_bits.and_then(|r| r.to_bits(right_size).ok());
+            let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", source_info);
                 self.report_assert_as_lint(
@@ -625,7 +623,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
                 if let Some(ref value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
-                    let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
+                    let expected = Scalar::from_bool(*expected);
                     let value_const = self.ecx.read_scalar(&value).unwrap();
                     if expected != value_const {
                         enum DbgVal<T> {

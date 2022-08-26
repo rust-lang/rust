@@ -8,13 +8,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/detect-extra-ub.rs:15:21
    |
 LL |     let _x: usize = transmute(&3u8);
-   |                     ^^^^^^^^^^^^^^^ constructing invalid value: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+   |                     ^^^^^^^^^^^^^^^ constructing invalid value: encountered (potentially part of) a pointer, but expected an integer
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/detect-extra-ub.rs:22:30
    |
 LL |     let _x: (usize, usize) = transmute(x);
-   |                              ^^^^^^^^^^^^ constructing invalid value at .0: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+   |                              ^^^^^^^^^^^^ constructing invalid value at .0: encountered (potentially part of) a pointer, but expected an integer
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/detect-extra-ub.rs:28:20

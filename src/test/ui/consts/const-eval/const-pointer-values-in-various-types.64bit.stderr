@@ -44,19 +44,14 @@ LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:46:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:46:47
    |
 LL |     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ ░░░░░░░░░░░░░░░░
-           }
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:49:43
+  --> $DIR/const-pointer-values-in-various-types.rs:50:43
    |
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -65,7 +60,7 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:53:45
+  --> $DIR/const-pointer-values-in-various-types.rs:54:45
    |
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -74,7 +69,7 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:57:45
+  --> $DIR/const-pointer-values-in-various-types.rs:58:45
    |
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -83,7 +78,7 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:61:45
+  --> $DIR/const-pointer-values-in-various-types.rs:62:45
    |
 LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -91,19 +86,14 @@ LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-pointer-values-in-various-types.rs:65:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-pointer-values-in-various-types.rs:66:47
    |
 LL |     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ ░░░░░░░░░░░░░░░░
-           }
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:68:45
+  --> $DIR/const-pointer-values-in-various-types.rs:70:45
    |
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -112,7 +102,7 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:72:45
+  --> $DIR/const-pointer-values-in-various-types.rs:74:45
    |
 LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -121,7 +111,7 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:76:47
+  --> $DIR/const-pointer-values-in-various-types.rs:78:47
    |
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
    |     ------------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -130,7 +120,7 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:80:47
+  --> $DIR/const-pointer-values-in-various-types.rs:82:47
    |
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
    |     ------------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -139,7 +129,7 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:84:39
+  --> $DIR/const-pointer-values-in-various-types.rs:86:39
    |
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |     ----------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -148,7 +138,7 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:88:41
+  --> $DIR/const-pointer-values-in-various-types.rs:90:41
    |
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -157,7 +147,7 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:92:41
+  --> $DIR/const-pointer-values-in-various-types.rs:94:41
    |
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -166,7 +156,7 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:96:41
+  --> $DIR/const-pointer-values-in-various-types.rs:98:41
    |
 LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -175,7 +165,7 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:100:43
+  --> $DIR/const-pointer-values-in-various-types.rs:102:43
    |
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -184,7 +174,7 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:104:39
+  --> $DIR/const-pointer-values-in-various-types.rs:106:39
    |
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |     ----------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -193,7 +183,7 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:108:41
+  --> $DIR/const-pointer-values-in-various-types.rs:110:41
    |
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -202,7 +192,7 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:112:41
+  --> $DIR/const-pointer-values-in-various-types.rs:114:41
    |
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -211,7 +201,7 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:116:41
+  --> $DIR/const-pointer-values-in-various-types.rs:118:41
    |
 LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -220,7 +210,7 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:120:43
+  --> $DIR/const-pointer-values-in-various-types.rs:122:43
    |
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -229,7 +219,7 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:124:41
+  --> $DIR/const-pointer-values-in-various-types.rs:126:41
    |
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -238,7 +228,7 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:128:41
+  --> $DIR/const-pointer-values-in-various-types.rs:130:41
    |
 LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -247,7 +237,7 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:132:43
+  --> $DIR/const-pointer-values-in-various-types.rs:134:43
    |
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -256,7 +246,7 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:136:43
+  --> $DIR/const-pointer-values-in-various-types.rs:138:43
    |
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -324,7 +314,7 @@ LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uin
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:49:43
+  --> $DIR/const-pointer-values-in-various-types.rs:50:43
    |
 LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -335,7 +325,7 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:53:45
+  --> $DIR/const-pointer-values-in-various-types.rs:54:45
    |
 LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int_16 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -346,7 +336,7 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:57:45
+  --> $DIR/const-pointer-values-in-various-types.rs:58:45
    |
 LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int_32 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -357,7 +347,7 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:61:45
+  --> $DIR/const-pointer-values-in-various-types.rs:62:45
    |
 LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int_64 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -368,7 +358,7 @@ LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:68:45
+  --> $DIR/const-pointer-values-in-various-types.rs:70:45
    |
 LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -379,7 +369,7 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:72:45
+  --> $DIR/const-pointer-values-in-various-types.rs:74:45
    |
 LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.float_64 };
    |     ----------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -390,7 +380,7 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:76:47
+  --> $DIR/const-pointer-values-in-various-types.rs:78:47
    |
 LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.truthy_falsey };
    |     ------------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -401,7 +391,7 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:80:47
+  --> $DIR/const-pointer-values-in-various-types.rs:82:47
    |
 LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.character };
    |     ------------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -412,7 +402,7 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:84:39
+  --> $DIR/const-pointer-values-in-various-types.rs:86:39
    |
 LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |     ----------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -423,7 +413,7 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:88:41
+  --> $DIR/const-pointer-values-in-various-types.rs:90:41
    |
 LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -434,7 +424,7 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:92:41
+  --> $DIR/const-pointer-values-in-various-types.rs:94:41
    |
 LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -445,7 +435,7 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:96:41
+  --> $DIR/const-pointer-values-in-various-types.rs:98:41
    |
 LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -456,7 +446,7 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:100:43
+  --> $DIR/const-pointer-values-in-various-types.rs:102:43
    |
 LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_128 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -467,7 +457,7 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:104:39
+  --> $DIR/const-pointer-values-in-various-types.rs:106:39
    |
 LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |     ----------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -478,7 +468,7 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:108:41
+  --> $DIR/const-pointer-values-in-various-types.rs:110:41
    |
 LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -489,7 +479,7 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:112:41
+  --> $DIR/const-pointer-values-in-various-types.rs:114:41
    |
 LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -500,7 +490,7 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:116:41
+  --> $DIR/const-pointer-values-in-various-types.rs:118:41
    |
 LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -511,7 +501,7 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:120:43
+  --> $DIR/const-pointer-values-in-various-types.rs:122:43
    |
 LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128 };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -522,7 +512,7 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:124:41
+  --> $DIR/const-pointer-values-in-various-types.rs:126:41
    |
 LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -533,7 +523,7 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:128:41
+  --> $DIR/const-pointer-values-in-various-types.rs:130:41
    |
 LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 };
    |     ------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -544,7 +534,7 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:132:43
+  --> $DIR/const-pointer-values-in-various-types.rs:134:43
    |
 LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_falsey };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
@@ -555,7 +545,7 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
-  --> $DIR/const-pointer-values-in-various-types.rs:136:43
+  --> $DIR/const-pointer-values-in-various-types.rs:138:43
    |
 LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.character };
    |     --------------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes

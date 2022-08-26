@@ -129,8 +129,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let cond_val =
-                    self.read_immediate(&self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
+                let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {

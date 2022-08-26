@@ -1,37 +1,20 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:14:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:14:33
    |
 LL | const FIELD3: Field3 = unsafe { UNION.field3 };
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
-           }
+   |                                 ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:16:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:20:17
    |
-LL | const FIELD_PATH: Struct = Struct {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .b: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               __ __ __ __ __ __ __ __ 2a __ __ __ __ __ __ __ │ ░░░░░░░░*░░░░░░░
-           }
+LL |     b: unsafe { UNION.field3 },
+   |                 ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:26:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/union-ice.rs:33:18
    |
-LL | const FIELD_PATH2: Struct2 = Struct2 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .b[1]: encountered uninitialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 40, align: 8) {
-               0x00 │ 15 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
-               0x10 │ 17 00 00 00 00 00 00 00 18 00 00 00 00 00 00 00 │ ................
-               0x20 │ 2a __ __ __ __ __ __ __                         │ *░░░░░░░
-           }
+LL |         unsafe { UNION.field3 },
+   |                  ^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error: aborting due to 3 previous errors
 

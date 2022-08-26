@@ -37,19 +37,14 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
                00 00 00 00                                     │ ....
            }
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:33:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-nonnull.rs:33:36
    |
 LL | const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered uninitialized bytes, but expected initialized bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               __                                              │ ░
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:41:1
+  --> $DIR/ub-nonnull.rs:42:1
    |
 LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 42, but expected something in the range 10..=30
@@ -60,7 +55,7 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:47:1
+  --> $DIR/ub-nonnull.rs:48:1
    |
 LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 20, but expected something less or equal to 10, or greater or equal to 30
