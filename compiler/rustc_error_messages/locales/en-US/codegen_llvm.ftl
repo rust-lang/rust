@@ -27,3 +27,6 @@ codegen_llvm_branch_protection_requires_aarch64 =
 
 codegen_llvm_layout_size_overflow =
     {$error}
+
+codegen_llvm_invalid_minimum_alignment =
+    invalid minimum global alignment: {$err}
