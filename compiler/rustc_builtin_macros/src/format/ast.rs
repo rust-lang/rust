@@ -88,7 +88,7 @@ pub struct FormatArgPosition {
     /// Which argument this position refers to (Ok),
     /// or would've referred to if it existed (Err).
     pub index: Result<usize, usize>,
-    /// What kind of position this is. See [`FormatArgsPositionKind`].
+    /// What kind of position this is. See [`FormatArgPositionKind`].
     pub kind: FormatArgPositionKind,
     /// The span of the name or number.
     pub span: Option<Span>,
