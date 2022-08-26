@@ -2015,11 +2015,14 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
             }
-            Some(CompareMode::SplitDwarf) => {
+            Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
+            Some(CompareMode::SplitDwarf) => {
+                rustc.args(&["-Csplit-debuginfo=unpacked"]);
+            }
             Some(CompareMode::SplitDwarfSingle) => {
-                rustc.args(&["-Csplit-debuginfo=packed", "-Zunstable-options"]);
+                rustc.args(&["-Csplit-debuginfo=packed"]);
             }
             None => {}
         }

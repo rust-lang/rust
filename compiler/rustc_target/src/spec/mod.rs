@@ -468,7 +468,57 @@ impl fmt::Display for LinkOutputKind {
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+/// Which kind of debuginfo does the target use?
+///
+/// Useful in determining whether a target supports Split DWARF (a target with
+/// `DebuginfoKind::Dwarf` and supporting `SplitDebuginfo::Unpacked` for example).
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub enum DebuginfoKind {
+    /// DWARF debuginfo (such as that used on `x86_64_unknown_linux_gnu`).
+    #[default]
+    Dwarf,
+    /// DWARF debuginfo in dSYM files (such as on Apple platforms).
+    DwarfDsym,
+    /// Program database files (such as on Windows).
+    Pdb,
+}
+
+impl DebuginfoKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            DebuginfoKind::Dwarf => "dwarf",
+            DebuginfoKind::DwarfDsym => "dwarf-dsym",
+            DebuginfoKind::Pdb => "pdb",
+        }
+    }
+}
+
+impl FromStr for DebuginfoKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        Ok(match s {
+            "dwarf" => DebuginfoKind::Dwarf,
+            "dwarf-dsym" => DebuginfoKind::DwarfDsym,
+            "pdb" => DebuginfoKind::Pdb,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for DebuginfoKind {
+    fn to_json(&self) -> Json {
+        self.as_str().to_json()
+    }
+}
+
+impl fmt::Display for DebuginfoKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum SplitDebuginfo {
     /// Split debug-information is disabled, meaning that on supported platforms
     /// you can find all debug information in the executable itself. This is
@@ -476,7 +526,8 @@ pub enum SplitDebuginfo {
     ///
     /// * Windows - not supported
     /// * macOS - don't run `dsymutil`
-    /// * ELF - `.dwarf_*` sections
+    /// * ELF - `.debug_*` sections
+    #[default]
     Off,
 
     /// Split debug-information can be found in a "packed" location separate
@@ -484,7 +535,7 @@ pub enum SplitDebuginfo {
     ///
     /// * Windows - `*.pdb`
     /// * macOS - `*.dSYM` (run `dsymutil`)
-    /// * ELF - `*.dwp` (run `rust-llvm-dwp`)
+    /// * ELF - `*.dwp` (run `thorin`)
     Packed,
 
     /// Split debug-information can be found in individual object files on the
@@ -509,7 +560,7 @@ impl SplitDebuginfo {
 impl FromStr for SplitDebuginfo {
     type Err = ();
 
-    fn from_str(s: &str) -> Result<SplitDebuginfo, ()> {
+    fn from_str(s: &str) -> Result<Self, ()> {
         Ok(match s {
             "off" => SplitDebuginfo::Off,
             "unpacked" => SplitDebuginfo::Unpacked,
@@ -1436,9 +1487,13 @@ pub struct TargetOptions {
     /// thumb and arm interworking.
     pub has_thumb_interworking: bool,
 
+    /// Which kind of debuginfo is used by this target?
+    pub debuginfo_kind: DebuginfoKind,
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+    /// Which kinds of split debuginfo are supported by the target?
+    pub supported_split_debuginfo: StaticCow<[SplitDebuginfo]>,
 
     /// The sanitizers supported by this target
     ///
@@ -1596,7 +1651,10 @@ impl Default for TargetOptions {
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
-            split_debuginfo: SplitDebuginfo::Off,
+            debuginfo_kind: Default::default(),
+            split_debuginfo: Default::default(),
+            // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
+            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
             c_enum_min_bits: 32,
@@ -1869,6 +1927,19 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, DebuginfoKind) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<DebuginfoKind>() {
+                        Ok(level) => base.$key_name = level,
+                        _ => return Some(Err(
+                            format!("'{s}' is not a valid value for debuginfo-kind. Use 'dwarf', \
+                                  'dwarf-dsym' or 'pdb'.")
+                        )),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, SplitDebuginfo) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
@@ -1904,6 +1975,25 @@ impl Target {
                         incorrect_type.push(name)
                     }
                 }
+            } );
+            ($key_name:ident, falliable_list) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|j| {
+                    if let Some(v) = j.as_array() {
+                        match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
+                            Ok(l) => { base.$key_name = l },
+                            // FIXME: `falliable_list` can't re-use the `key!` macro for list
+                            // elements and the error messages from that macro, so it has a bad
+                            // generic message instead
+                            Err(_) => return Some(Err(
+                                format!("`{:?}` is not a valid value for `{}`", j, name)
+                            )),
+                        }
+                    } else {
+                        incorrect_type.push(name)
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
             } );
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -2191,7 +2281,9 @@ impl Target {
         key!(use_ctors_section, bool);
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
+        key!(debuginfo_kind, DebuginfoKind)?;
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_split_debuginfo, falliable_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(c_enum_min_bits, u64);
@@ -2435,7 +2527,9 @@ impl ToJson for Target {
         target_option_val!(use_ctors_section);
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
+        target_option_val!(debuginfo_kind);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);

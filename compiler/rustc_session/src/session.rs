@@ -31,7 +31,7 @@ use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
-    SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+    DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
 use std::cell::{self, RefCell};
@@ -670,8 +670,9 @@ impl Session {
             )
     }
 
+    /// Returns `true` if the target can use the current split debuginfo configuration.
     pub fn target_can_use_split_dwarf(&self) -> bool {
-        !self.target.is_like_windows && !self.target.is_like_osx
+        self.target.debuginfo_kind == DebuginfoKind::Dwarf
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
@@ -1551,6 +1552,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if dwarf_version > 5 {
             sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
         }
+    }
+
+    if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
+        && !sess.opts.unstable_opts.unstable_options
+    {
+        sess.err(&format!(
+            "`-Csplit-debuginfo={}` is unstable on this platform",
+            sess.split_debuginfo()
+        ));
     }
 }
 

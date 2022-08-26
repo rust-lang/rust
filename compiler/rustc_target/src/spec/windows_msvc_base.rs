@@ -1,4 +1,4 @@
-use crate::spec::{cvs, TargetOptions};
+use crate::spec::{cvs, DebuginfoKind, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let base = super::msvc_base::opts();
@@ -28,6 +28,7 @@ pub fn opts() -> TargetOptions {
         // not ever be possible for us to pass this flag.
         no_default_libraries: false,
         has_thread_local: true,
+        debuginfo_kind: DebuginfoKind::Pdb,
 
         ..base
     }

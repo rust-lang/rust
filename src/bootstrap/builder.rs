@@ -1759,23 +1759,21 @@ impl<'a> Builder<'a> {
             },
         );
 
-        if !target.contains("windows") {
-            let needs_unstable_opts = target.contains("linux")
-                || target.contains("solaris")
-                || target.contains("windows")
-                || target.contains("bsd")
-                || target.contains("dragonfly")
-                || target.contains("illumos");
+        let split_debuginfo_is_stable = target.contains("linux")
+            || target.contains("apple")
+            || (target.contains("msvc")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.contains("windows")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
-            if needs_unstable_opts {
-                rustflags.arg("-Zunstable-options");
-            }
-            match self.config.rust_split_debuginfo {
-                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
-                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
-                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
-            };
+        if !split_debuginfo_is_stable {
+            rustflags.arg("-Zunstable-options");
         }
+        match self.config.rust_split_debuginfo {
+            SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+            SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+            SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+        };
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
