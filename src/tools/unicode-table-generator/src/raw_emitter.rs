@@ -170,6 +170,15 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     }
 }
 
+pub fn emit_whitespace(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
+    emitter.blank_line();
+
+    let mut cascading = emitter.clone();
+    cascading.emit_cascading_map(&ranges);
+    *emitter = cascading;
+    emitter.desc = String::from("cascading");
+}
+
 struct Canonicalized {
     canonical_words: Vec<u64>,
     canonicalized_words: Vec<(u8, u8)>,
