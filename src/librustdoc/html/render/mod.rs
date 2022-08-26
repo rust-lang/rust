@@ -191,12 +191,6 @@ impl StylePath {
     }
 }
 
-fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
-    if let Some(l) = cx.src_href(item) {
-        write!(buf, "<a class=\"srclink\" href=\"{}\">source</a>", l)
-    }
-}
-
 #[derive(Debug, Eq, PartialEq, Hash)]
 struct ItemEntry {
     url: String,
@@ -522,7 +516,14 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!("Portability {:?} - {:?} = {:?}", item.cfg, parent.and_then(|p| p.cfg.as_ref()), cfg);
+    debug!(
+        "Portability {:?} {:?} (parent: {:?}) - {:?} = {:?}",
+        item.name,
+        item.cfg,
+        parent,
+        parent.and_then(|p| p.cfg.as_ref()),
+        cfg
+    );
 
     Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
 }
@@ -840,12 +841,13 @@ fn assoc_method(
 /// Note that it is possible for an unstable function to be const-stable. In that case, the span
 /// will include the const-stable version, but no stable version will be emitted, as a natural
 /// consequence of the above rules.
-fn render_stability_since_raw(
+fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
     ver: Option<Symbol>,
     const_stability: Option<ConstStability>,
     containing_ver: Option<Symbol>,
     containing_const_ver: Option<Symbol>,
+    extra_class: &str,
 ) -> bool {
     let stable_version = ver.filter(|inner| !inner.is_empty() && Some(*inner) != containing_ver);
 
@@ -893,10 +895,28 @@ fn render_stability_since_raw(
     }
 
     if !stability.is_empty() {
-        write!(w, r#"<span class="since" title="{}">{}</span>"#, title, stability);
+        write!(w, r#"<span class="since{extra_class}" title="{title}">{stability}</span>"#);
     }
 
     !stability.is_empty()
+}
+
+#[inline]
+fn render_stability_since_raw(
+    w: &mut Buffer,
+    ver: Option<Symbol>,
+    const_stability: Option<ConstStability>,
+    containing_ver: Option<Symbol>,
+    containing_const_ver: Option<Symbol>,
+) -> bool {
+    render_stability_since_raw_with_extra(
+        w,
+        ver,
+        const_stability,
+        containing_ver,
+        containing_const_ver,
+        "",
+    )
 }
 
 fn render_assoc_item(
@@ -1681,23 +1701,29 @@ fn render_rightside(
         RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
         RenderMode::ForDeref { .. } => (None, None),
     };
+    let src_href = cx.src_href(item);
+    let has_src_ref = src_href.is_some();
 
     let mut rightside = Buffer::new();
-    let has_stability = render_stability_since_raw(
+    let has_stability = render_stability_since_raw_with_extra(
         &mut rightside,
         item.stable_since(tcx),
         const_stability,
         containing_item.stable_since(tcx),
         const_stable_since,
+        if has_src_ref { "" } else { " rightside" },
     );
-    let mut srclink = Buffer::empty_from(w);
-    write_srclink(cx, item, &mut srclink);
-    if has_stability && !srclink.is_empty() {
-        rightside.write_str(" · ");
+    if let Some(l) = src_href {
+        if has_stability {
+            write!(rightside, " · <a class=\"srclink\" href=\"{}\">source</a>", l)
+        } else {
+            write!(rightside, "<a class=\"srclink rightside\" href=\"{}\">source</a>", l)
+        }
     }
-    rightside.push_buffer(srclink);
-    if !rightside.is_empty() {
+    if has_stability && has_src_ref {
         write!(w, "<span class=\"rightside\">{}</span>", rightside.into_inner());
+    } else {
+        w.push_buffer(rightside);
     }
 }
 

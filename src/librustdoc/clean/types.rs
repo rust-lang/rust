@@ -482,7 +482,7 @@ impl Item {
         cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
-        trace!("name={:?}, def_id={:?}", name, def_id);
+        trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
 
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
@@ -800,6 +800,31 @@ impl ItemKind {
             | StrippedItem(_)
             | KeywordItem => [].iter(),
         }
+    }
+
+    /// Returns `true` if this item does not appear inside an impl block.
+    pub(crate) fn is_non_assoc(&self) -> bool {
+        matches!(
+            self,
+            StructItem(_)
+                | UnionItem(_)
+                | EnumItem(_)
+                | TraitItem(_)
+                | ModuleItem(_)
+                | ExternCrateItem { .. }
+                | FunctionItem(_)
+                | TypedefItem(_)
+                | OpaqueTyItem(_)
+                | StaticItem(_)
+                | ConstantItem(_)
+                | TraitAliasItem(_)
+                | ForeignFunctionItem(_)
+                | ForeignStaticItem(_)
+                | ForeignTypeItem
+                | MacroItem(_)
+                | ProcMacroItem(_)
+                | PrimitiveItem(_)
+        )
     }
 }
 

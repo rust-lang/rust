@@ -165,7 +165,7 @@ details.rustdoc-toggle > summary::before {
 	background: none;
 }
 
-.rightside,
+.rightside:not(a),
 .out-of-band {
 	color: grey;
 }
