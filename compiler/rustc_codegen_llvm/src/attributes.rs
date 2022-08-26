@@ -12,7 +12,7 @@ use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtec
 use smallvec::SmallVec;
 
 use crate::attributes;
-use crate::errors::SanitizerMemtagRequiresMte;
+use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
@@ -394,13 +394,11 @@ pub fn from_fn_attrs<'ll, 'tcx>(
             .get_attrs(instance.def_id(), sym::target_feature)
             .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        let msg = format!(
-            "the target features {} must all be either enabled or disabled together",
-            f.join(", ")
-        );
-        let mut err = cx.tcx.sess.struct_span_err(span, &msg);
-        err.help("add the missing features in a `target_feature` attribute");
-        err.emit();
+        cx.tcx
+            .sess
+            .create_err(TargetFeatureDisableOrEnable { features: f, span: Some(span) })
+            .subdiagnostic(MissingFeatures)
+            .emit();
         return;
     }
 
