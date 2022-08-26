@@ -216,11 +216,6 @@ fn emit_unused_generic_params_error<'tcx>(
             if unused_parameters.contains(param.index).unwrap_or(false) {
                 debug!(?param);
                 let def_span = tcx.def_span(param.def_id);
-                // 🤔 The docs say
-                //
-                //     Any attribute applied to a Vec<T> will be repeated for each element of the vector.
-                //
-                // But they don't say what template variable to use to substitute each value into the message!?
                 param_spans.push(def_span);
                 param_names.push(param.name.to_string());
             }
