@@ -333,7 +333,7 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         .map_or(&[][..], |a| a.args)
         .iter()
         .filter_map(|a| match a {
-            hir::GenericArg::Type(ty) => Some(ty),
+            hir::GenericArg::Type(ty) => Some(*ty),
             _ => None,
         })
 }
