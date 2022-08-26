@@ -4,6 +4,8 @@ use super::usefulness::{
 };
 use super::{PatCtxt, PatternError};
 
+use crate::errors::NonExhaustivePatternsTypeNotEmpty;
+
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
@@ -743,15 +745,17 @@ fn non_exhaustive_match<'p, 'tcx>(
     // informative.
     let mut err;
     let pattern;
-    let mut patterns_len = 0;
+    let patterns_len;
     if is_empty_match && !non_empty_enum {
-        err = create_e0004(
-            cx.tcx.sess,
-            sp,
-            format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
-        );
-        pattern = "_".to_string();
+        cx.tcx.sess.emit_err(NonExhaustivePatternsTypeNotEmpty {
+            cx,
+            expr_span,
+            span: sp,
+            ty: scrut_ty,
+        });
+        return;
     } else {
+        // FIXME: migration of this diagnostic will require list support
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
         err = create_e0004(
             cx.tcx.sess,
