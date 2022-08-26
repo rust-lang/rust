@@ -1,6 +1,7 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
+use crate::errors::TargetDataLayoutParseError;
 pub use crate::options::*;
 
 use crate::search_paths::SearchPath;
@@ -898,7 +899,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
     let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
-        sess.emit_fatal(err);
+        sess.emit_fatal(TargetDataLayoutParseError { err });
     });
 
     let mut ret = CrateConfig::default();
