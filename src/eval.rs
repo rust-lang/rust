@@ -377,10 +377,13 @@ pub fn eval_entry<'tcx>(
     });
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
-    // might cause data races (https://github.com/rust-lang/miri/issues/2020) or Stacked Borrows
-    // errors (https://github.com/rust-lang/miri/issues/2396) if we deallocate here.
+    // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
     if ecx.have_all_terminated() {
-        EnvVars::cleanup(&mut ecx).unwrap();
+        // Even if all threads have terminated, we have to beware of data races since some threads
+        // might not have joined the main thread (https://github.com/rust-lang/miri/issues/2020,
+        // https://github.com/rust-lang/miri/issues/2508).
+        ecx.allow_data_races_all_threads_done();
+        EnvVars::cleanup(&mut ecx).expect("error during env var cleanup");
     }
 
     // Process the result.
