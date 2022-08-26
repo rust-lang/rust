@@ -534,14 +534,14 @@ fn main() {
             let filename = param.to_string();
             if std::path::Path::new(&filename).exists() {
                 if let Some(other_filename) = miri_config.external_so_file {
-                    panic!(
-                        "-Zmiri-extern-so-file external SO file is already set to {}",
+                    show_error!(
+                        "-Zmiri-extern-so-file is already set to {}",
                         other_filename.display()
                     );
                 }
                 miri_config.external_so_file = Some(filename.into());
             } else {
-                panic!("-Zmiri-extern-so-file path {} does not exist", filename);
+                show_error!("-Zmiri-extern-so-file `{}` does not exist", filename);
             }
         } else {
             // Forward to rustc.
