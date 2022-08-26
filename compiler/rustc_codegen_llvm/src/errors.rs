@@ -67,3 +67,9 @@ pub(crate) struct LayoutSizeOverflow {
     pub span: Span,
     pub error: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::invalid_minimum_alignment)]
+pub(crate) struct InvalidMinimumAlignment {
+    pub err: String
+}

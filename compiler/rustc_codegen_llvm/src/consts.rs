@@ -1,6 +1,7 @@
 use crate::base;
 use crate::common::{self, CodegenCx};
 use crate::debuginfo;
+use crate::errors::InvalidMinimumAlignment;
 use crate::llvm::{self, True};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -146,7 +147,9 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().err(&format!("invalid minimum global alignment: {}", err));
+                cx.sess().emit_err(InvalidMinimumAlignment {
+                    err,
+                });
             }
         }
     }
