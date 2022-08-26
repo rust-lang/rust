@@ -14,7 +14,7 @@ use object::read::macho::FatArch;
 use crate::common;
 use crate::errors::{
     ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
-    ErrorWritingDEFFile,
+    ErrorWritingDEFFile, UnknownArchiveKind,
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
@@ -312,9 +312,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 impl<'a> LlvmArchiveBuilder<'a> {
     fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
-        let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
-            self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
-        });
+        let kind = kind
+            .parse::<ArchiveKind>()
+            .map_err(|_| kind)
+            .unwrap_or_else(|kind| self.sess.emit_fatal(UnknownArchiveKind { kind: kind }));
 
         let mut additions = mem::take(&mut self.additions);
         let mut strings = Vec::new();

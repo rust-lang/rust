@@ -48,3 +48,6 @@ codegen_llvm_error_calling_dlltool =
 
 codegen_llvm_dlltool_fail_import_library =
     Dlltool could not create import library: {$stdout}\n{$stderr}
+
+codegen_llvm_unknown_archive_kind =
+    Don't know how to build archive of type: {$kind}

@@ -111,3 +111,9 @@ pub(crate) struct DlltoolFailImportLibrary<'a> {
     pub stdout: Cow<'a, str>,
     pub stderr: Cow<'a, str>,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::unknown_archive_kind)]
+pub(crate) struct UnknownArchiveKind<'a> {
+    pub kind: &'a str,
+}
