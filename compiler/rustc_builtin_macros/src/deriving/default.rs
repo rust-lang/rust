@@ -24,6 +24,7 @@ pub fn expand_deriving_default(
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),
+        skip_path_as_bound: has_a_default_variant(item),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         supports_unions: false,
@@ -261,4 +262,23 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
             rustc_ast::visit::walk_attribute(self, attr);
         }
     }
+}
+
+fn has_a_default_variant(item: &Annotatable) -> bool {
+    struct HasDefaultAttrOnVariant {
+        found: bool,
+    }
+
+    impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
+        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) {
+            if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
+                self.found = true;
+            }
+            // no need to subrecurse.
+        }
+    }
+
+    let mut visitor = HasDefaultAttrOnVariant { found: false };
+    item.visit_with(&mut visitor);
+    visitor.found
 }
