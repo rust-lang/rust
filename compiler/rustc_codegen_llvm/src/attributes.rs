@@ -12,6 +12,7 @@ use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtec
 use smallvec::SmallVec;
 
 use crate::attributes;
+use crate::errors::SanitizerMemtagRequiresMte;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
@@ -82,7 +83,7 @@ pub fn sanitize_attrs<'ll>(
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+            cx.tcx.sess.emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
