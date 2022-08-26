@@ -21,7 +21,6 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 use super::{
     alloc_range, AllocId, AllocMap, AllocRange, Allocation, CheckInAllocMsg, GlobalAlloc, InterpCx,
     InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
-    ScalarMaybeUninit,
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -445,8 +444,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
-                    if M::force_int_for_alignment_check(self) {
-                        // `force_int_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
+                    if M::use_addr_for_alignment_check(self) {
+                        // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
                         check_offset_align(ptr.addr().bytes(), align)?;
                     } else {
                         // Check allocation alignment and offset alignment.
@@ -901,11 +900,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
 /// Reading and writing.
 impl<'tcx, 'a, Prov: Provenance, Extra> AllocRefMut<'a, 'tcx, Prov, Extra> {
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn write_scalar(
-        &mut self,
-        range: AllocRange,
-        val: ScalarMaybeUninit<Prov>,
-    ) -> InterpResult<'tcx> {
+    pub fn write_scalar(&mut self, range: AllocRange, val: Scalar<Prov>) -> InterpResult<'tcx> {
         let range = self.range.subrange(range);
         debug!("write_scalar at {:?}{range:?}: {val:?}", self.alloc_id);
         Ok(self
@@ -915,11 +910,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRefMut<'a, 'tcx, Prov, Extra> {
     }
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
-    pub fn write_ptr_sized(
-        &mut self,
-        offset: Size,
-        val: ScalarMaybeUninit<Prov>,
-    ) -> InterpResult<'tcx> {
+    pub fn write_ptr_sized(&mut self, offset: Size, val: Scalar<Prov>) -> InterpResult<'tcx> {
         self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
     }
 
@@ -938,7 +929,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
         &self,
         range: AllocRange,
         read_provenance: bool,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Prov>> {
+    ) -> InterpResult<'tcx, Scalar<Prov>> {
         let range = self.range.subrange(range);
         let res = self
             .alloc
@@ -949,12 +940,12 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn read_integer(&self, range: AllocRange) -> InterpResult<'tcx, ScalarMaybeUninit<Prov>> {
+    pub fn read_integer(&self, range: AllocRange) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(range, /*read_provenance*/ false)
     }
 
     /// `offset` is relative to this allocation reference, not the base of the allocation.
-    pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, ScalarMaybeUninit<Prov>> {
+    pub fn read_pointer(&self, offset: Size) -> InterpResult<'tcx, Scalar<Prov>> {
         self.read_scalar(
             alloc_range(offset, self.tcx.data_layout().pointer_size),
             /*read_provenance*/ true,
@@ -962,15 +953,10 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn check_bytes(
-        &self,
-        range: AllocRange,
-        allow_uninit: bool,
-        allow_ptr: bool,
-    ) -> InterpResult<'tcx> {
+    pub fn check_bytes(&self, range: AllocRange) -> InterpResult<'tcx> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit, allow_ptr)
+            .check_bytes(&self.tcx, self.range.subrange(range))
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 

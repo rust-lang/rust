@@ -184,7 +184,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bitreverse => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let val = self.read_scalar(&args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?;
                 let bits = val.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(scalar) => scalar.primitive(),
@@ -256,7 +256,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val = r.to_scalar()?.to_bits(layout.size)?;
+                    let r_val = r.to_scalar().to_bits(layout.size)?;
                     if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
                         throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
                     } else {
@@ -269,9 +269,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val = self.read_scalar(&args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?;
                 let val_bits = val.to_bits(layout.size)?;
-                let raw_shift = self.read_scalar(&args[1])?.check_init()?;
+                let raw_shift = self.read_scalar(&args[1])?;
                 let raw_shift_bits = raw_shift.to_bits(layout.size)?;
                 let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
@@ -507,7 +507,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
             }
             sym::assume => {
-                let cond = self.read_scalar(&args[0])?.check_init()?.to_bool()?;
+                let cond = self.read_scalar(&args[0])?.to_bool()?;
                 if !cond {
                     throw_ub_format!("`assume` intrinsic called with `false`");
                 }
@@ -570,7 +570,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // term since the sign of the second term can be inferred from this and
                 // the fact that the operation has overflowed (if either is 0 no
                 // overflow can occur)
-                let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                let first_term: u128 = l.to_scalar().to_bits(l.layout.size)?;
                 let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
                 if first_term_positive {
                     // Negative overflow not possible since the positive first term

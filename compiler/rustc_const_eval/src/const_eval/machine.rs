@@ -347,8 +347,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         };
         match intrinsic_name {
             sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                let a = ecx.read_immediate(&args[0])?.to_scalar()?;
-                let b = ecx.read_immediate(&args[1])?.to_scalar()?;
+                let a = ecx.read_scalar(&args[0])?;
+                let b = ecx.read_scalar(&args[1])?;
                 let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
                     ecx.guaranteed_eq(a, b)?
                 } else {
