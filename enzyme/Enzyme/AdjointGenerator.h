@@ -11555,6 +11555,27 @@ public:
 #else
         auto callval = orig->getCalledValue();
 #endif
+        Value *uncast = callval;
+        while (auto CE = dyn_cast<ConstantExpr>(uncast)) {
+          if (CE->isCast()) {
+            uncast = CE->getOperand(0);
+            continue;
+          }
+          break;
+        }
+        if (isa<ConstantInt>(uncast)) {
+          std::string str;
+          raw_string_ostream ss(str);
+          ss << "cannot find shadow for " << *callval;
+          if (CustomErrorHandler) {
+            CustomErrorHandler(ss.str().c_str(), wrap(orig),
+                               ErrorType::NoDerivative, nullptr);
+          }
+
+          llvm::errs() << *gutils->oldFunc << "\n";
+          llvm::errs() << ss.str() << "\n";
+          report_fatal_error("cannot call active int operand");
+        }
         newcalled = gutils->invertPointerM(callval, BuilderZ);
 
         if (Mode != DerivativeMode::ReverseModeGradient)
@@ -11591,7 +11612,6 @@ public:
             differetIdx = 2;
           }
         }
-
       } else {
         if (Mode == DerivativeMode::ReverseModePrimal ||
             Mode == DerivativeMode::ReverseModeCombined) {
@@ -11622,11 +11642,15 @@ public:
         auto found = subdata->returns.find(AugmentedStruct::DifferentialReturn);
         if (found != subdata->returns.end()) {
           differetIdx = found->second;
+        } else {
+          assert(!shadowReturnUsed);
         }
 
         found = subdata->returns.find(AugmentedStruct::Return);
         if (found != subdata->returns.end()) {
           returnIdx = found->second;
+        } else {
+          assert(!subretused);
         }
 
         found = subdata->returns.find(AugmentedStruct::Tape);
