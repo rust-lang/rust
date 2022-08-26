@@ -1,5 +1,5 @@
 use crate::back::write::create_informational_target_machine;
-use crate::errors::UnknownCTargetFeature;
+use crate::errors::{TargetFeatureDisableOrEnable, UnknownCTargetFeature};
 use crate::llvm;
 use libc::c_int;
 use rustc_codegen_ssa::target_features::{
@@ -480,10 +480,10 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     features.extend(feats);
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.err(&format!(
-            "target features {} must all be enabled or disabled together",
-            f.join(", ")
-        ));
+        sess.emit_err(TargetFeatureDisableOrEnable {
+            features: f,
+            span: None
+        });
     }
 
     features

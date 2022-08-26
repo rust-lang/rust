@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use rustc_errors::fluent;
 use rustc_errors::DiagnosticBuilder;
-use rustc_macros::SessionDiagnostic;
+use rustc_errors::ErrorGuaranteed;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_session::SessionDiagnostic;
 use rustc_span::Span;
 
@@ -116,4 +117,30 @@ pub(crate) struct DlltoolFailImportLibrary<'a> {
 #[diag(codegen_llvm::unknown_archive_kind)]
 pub(crate) struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
+}
+
+pub(crate) struct TargetFeatureDisableOrEnable<'a> {
+    pub features: &'a [&'a str],
+    pub span: Option<Span>,
+}
+
+#[derive(SessionSubdiagnostic)]
+#[help(codegen_llvm::missing_features)]
+pub(crate) struct MissingFeatures;
+
+impl SessionDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = if let Some(span) = self.span {
+            let mut diag = sess.struct_err(fluent::codegen_llvm::target_feature_disable_or_enable);
+            diag.set_span(span);
+            diag
+        } else {
+            sess.struct_err(fluent::codegen_llvm::target_feature_disable_or_enable)
+        };
+        diag.set_arg("features", self.features.join(", "));
+        diag
+    }
 }
