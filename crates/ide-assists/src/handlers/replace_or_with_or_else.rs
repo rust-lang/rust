@@ -14,13 +14,18 @@ use crate::{AssistContext, Assists};
 // Replace `unwrap_or` with `unwrap_or_else` and `ok_or` with `ok_or_else`.
 //
 // ```
-// let a = Some(1);
-// a.unwra$0p_or(2);
+// # //- minicore:option
+// fn foo() {
+//     let a = Some(1);
+//     a.unwra$0p_or(2);
+// }
 // ```
 // ->
 // ```
-// let a = Some(1);
-// a.unwrap_or_else(|| 2);
+// fn foo() {
+//     let a = Some(1);
+//     a.unwrap_or_else(|| 2);
+// }
 // ```
 pub(crate) fn replace_or_with_or_else(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
@@ -71,13 +76,18 @@ pub(crate) fn replace_or_with_or_else(acc: &mut Assists, ctx: &AssistContext<'_>
 // Replace `unwrap_or_else` with `unwrap_or` and `ok_or_else` with `ok_or`.
 //
 // ```
-// let a = Some(1);
-// a.unwra$0p_or_else(|| 2);
+// # //- minicore:option
+// fn foo() {
+//     let a = Some(1);
+//     a.unwra$0p_or_else(|| 2);
+// }
 // ```
 // ->
 // ```
-// let a = Some(1);
-// a.unwrap_or(2);
+// fn foo() {
+//     let a = Some(1);
+//     a.unwrap_or(2);
+// }
 // ```
 pub(crate) fn replace_or_else_with_or(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
