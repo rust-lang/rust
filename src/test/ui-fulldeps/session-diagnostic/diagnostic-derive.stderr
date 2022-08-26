@@ -237,21 +237,19 @@ LL |     #[suggestion(typeck::suggestion, code = "{name}")]
    |                                             ^^^^^^^^
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/diagnostic-derive.rs:175:16
+  --> $DIR/diagnostic-derive.rs:175:10
    |
 LL | #[derive(Diagnostic)]
-   |           -    ^ expected `'}'` in format string
-   |           |
-   |           because of this opening brace
+   |          ^^^^^^^^^^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/diagnostic-derive.rs:185:15
+  --> $DIR/diagnostic-derive.rs:185:10
    |
 LL | #[derive(Diagnostic)]
-   |               ^ unmatched `}` in format string
+   |          ^^^^^^^^^^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
