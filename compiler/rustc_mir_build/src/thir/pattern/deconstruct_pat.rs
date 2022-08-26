@@ -72,7 +72,7 @@ use std::ops::RangeInclusive;
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
         if let PatKind::Or { pats } = &pat.kind {
-            for pat in pats {
+            for pat in pats.iter() {
                 expand(&pat, vec);
             }
         } else {
@@ -1433,7 +1433,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     FixedLen(prefix.len() + suffix.len())
                 };
                 ctor = Slice(Slice::new(array_len, kind));
-                fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(|p| mkpat(&*p)));
+                fields =
+                    Fields::from_iter(cx, prefix.iter().chain(suffix.iter()).map(|p| mkpat(&*p)));
             }
             PatKind::Or { .. } => {
                 ctor = Or;
@@ -1489,7 +1490,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     FixedLen(_) => PatKind::Slice {
                         prefix: subpatterns.collect(),
                         slice: None,
-                        suffix: vec![],
+                        suffix: Box::new([]),
                     },
                     VarLen(prefix, _) => {
                         let mut subpatterns = subpatterns.peekable();
@@ -1508,9 +1509,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                                 subpatterns.next();
                             }
                         }
-                        let suffix: Vec<_> = subpatterns.collect();
+                        let suffix: Box<[_]> = subpatterns.collect();
                         let wild = Pat::wildcard_from_ty(self.ty);
-                        PatKind::Slice { prefix, slice: Some(Box::new(wild)), suffix }
+                        PatKind::Slice {
+                            prefix: prefix.into_boxed_slice(),
+                            slice: Some(Box::new(wild)),
+                            suffix,
+                        }
                     }
                 }
             }

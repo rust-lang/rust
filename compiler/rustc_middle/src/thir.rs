@@ -634,22 +634,22 @@ pub enum PatKind<'tcx> {
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Vec<Box<Pat<'tcx>>>,
+        prefix: Box<[Box<Pat<'tcx>>]>,
         slice: Option<Box<Pat<'tcx>>>,
-        suffix: Vec<Box<Pat<'tcx>>>,
+        suffix: Box<[Box<Pat<'tcx>>]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Vec<Box<Pat<'tcx>>>,
+        prefix: Box<[Box<Pat<'tcx>>]>,
         slice: Option<Box<Pat<'tcx>>>,
-        suffix: Vec<Box<Pat<'tcx>>>,
+        suffix: Box<[Box<Pat<'tcx>>]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Vec<Box<Pat<'tcx>>>,
+        pats: Box<[Box<Pat<'tcx>>]>,
     },
 }
 
@@ -775,7 +775,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 write!(f, "[")?;
-                for p in prefix {
+                for p in prefix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 if let Some(ref slice) = *slice {
@@ -786,13 +786,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     }
                     write!(f, "..")?;
                 }
-                for p in suffix {
+                for p in suffix.iter() {
                     write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 write!(f, "]")
             }
             PatKind::Or { ref pats } => {
-                for pat in pats {
+                for pat in pats.iter() {
                     write!(f, "{}{}", start_or_continue(" | "), pat)?;
                 }
                 Ok(())
@@ -809,8 +809,8 @@ mod size_asserts {
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
-    static_assert_size!(Pat<'_>, 80);
-    static_assert_size!(PatKind<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Stmt<'_>, 56);
     static_assert_size!(StmtKind<'_>, 48);
 }

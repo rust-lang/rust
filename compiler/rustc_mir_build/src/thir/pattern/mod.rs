@@ -344,7 +344,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Vec<Box<Pat<'tcx>>> {
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Box<Pat<'tcx>>]> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
@@ -648,6 +648,12 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<T> {
 }
 
 impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Vec<T> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        self.iter().map(|t| t.fold_with(folder)).collect()
+    }
+}
+
+impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<[T]> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|t| t.fold_with(folder)).collect()
     }

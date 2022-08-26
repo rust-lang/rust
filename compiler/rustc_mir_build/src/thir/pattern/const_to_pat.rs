@@ -400,7 +400,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     .map(|val| self.recur(*val, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
-                suffix: Vec::new(),
+                suffix: Box::new([]),
             },
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // These are not allowed and will error elsewhere anyway.
@@ -436,7 +436,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
+                                suffix: Box::new([]),
                             },
                             span,
                             ty: *pointee_ty,
@@ -462,7 +462,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
+                                suffix: Box::new([]),
                             },
                             span,
                             ty: tcx.mk_slice(elem_ty),

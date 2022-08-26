@@ -764,7 +764,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
-                for subpattern in prefix {
+                for subpattern in prefix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
                 for subpattern in slice {
@@ -774,7 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         f,
                     );
                 }
-                for subpattern in suffix {
+                for subpattern in suffix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
@@ -827,7 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // may not all be in the leftmost subpattern. For example in
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
-                for subpattern in pats {
+                for subpattern in pats.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
                 }
             }
