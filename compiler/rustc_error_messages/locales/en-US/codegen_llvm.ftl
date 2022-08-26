@@ -42,3 +42,6 @@ codegen_llvm_archive_build_failure =
 
 codegen_llvm_error_writing_def_file =
     Error writing .DEF file: {$error}
+
+codegen_llvm_error_calling_dlltool =
+    Error calling dlltool: {$error}
