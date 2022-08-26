@@ -167,8 +167,8 @@ enum P {
 #[derive(SessionSubdiagnostic)]
 enum Q {
     #[bar]
-//~^ ERROR `#[bar]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
@@ -179,8 +179,8 @@ enum Q {
 #[derive(SessionSubdiagnostic)]
 enum R {
     #[bar = "..."]
-//~^ ERROR `#[bar = ...]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar = ...]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
@@ -191,8 +191,8 @@ enum R {
 #[derive(SessionSubdiagnostic)]
 enum S {
     #[bar = 4]
-//~^ ERROR `#[bar = ...]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar = ...]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
@@ -203,8 +203,8 @@ enum S {
 #[derive(SessionSubdiagnostic)]
 enum T {
     #[bar("...")]
-//~^ ERROR `#[bar("...")]` is not a valid attribute
-//~^^ ERROR cannot find attribute `bar` in this scope
+    //~^ ERROR `#[bar(...)]` is not a valid attribute
+    //~^^ ERROR cannot find attribute `bar` in this scope
     A {
         #[primary_span]
         span: Span,
@@ -215,7 +215,7 @@ enum T {
 #[derive(SessionSubdiagnostic)]
 enum U {
     #[label(code = "...")]
-//~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
     A {
         #[primary_span]
         span: Span,
@@ -232,7 +232,7 @@ enum V {
         var: String,
     },
     B {
-//~^ ERROR subdiagnostic kind not specified
+    //~^ ERROR subdiagnostic kind not specified
         #[primary_span]
         span: Span,
         var: String,
@@ -331,16 +331,16 @@ struct AE {
 #[label(parser::add_paren)]
 struct AF {
     #[primary_span]
-//~^ NOTE previously specified here
+    //~^ NOTE previously specified here
     span_a: Span,
     #[primary_span]
-//~^ ERROR specified multiple times
+    //~^ ERROR specified multiple times
     span_b: Span,
 }
 
 #[derive(SessionSubdiagnostic)]
 struct AG {
-//~^ ERROR subdiagnostic kind not specified
+    //~^ ERROR subdiagnostic kind not specified
     #[primary_span]
     span: Span,
 }
@@ -392,10 +392,10 @@ struct AK {
     #[primary_span]
     span: Span,
     #[applicability]
-//~^ NOTE previously specified here
+    //~^ NOTE previously specified here
     applicability_a: Applicability,
     #[applicability]
-//~^ ERROR specified multiple times
+    //~^ ERROR specified multiple times
     applicability_b: Applicability,
 }
 
@@ -405,7 +405,7 @@ struct AL {
     #[primary_span]
     span: Span,
     #[applicability]
-//~^ ERROR the `#[applicability]` attribute can only be applied to fields of type `Applicability`
+    //~^ ERROR the `#[applicability]` attribute can only be applied to fields of type `Applicability`
     applicability: Span,
 }
 
