@@ -80,3 +80,7 @@ pub(crate) struct LinkageConstOrMutType {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::sanitizer_memtag_requires_mte)]
+pub(crate) struct SanitizerMemtagRequiresMte;

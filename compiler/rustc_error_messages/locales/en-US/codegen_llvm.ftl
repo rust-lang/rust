@@ -33,3 +33,6 @@ codegen_llvm_invalid_minimum_alignment =
 
 codegen_llvm_linkage_const_or_mut_type =
     must have type `*const T` or `*mut T` due to `#[linkage]` attribute
+
+codegen_llvm_sanitizer_memtag_requires_mte =
+    `-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`
