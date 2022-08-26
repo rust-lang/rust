@@ -516,7 +516,14 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!("Portability {:?} - {:?} = {:?}", item.cfg, parent.and_then(|p| p.cfg.as_ref()), cfg);
+    debug!(
+        "Portability {:?} {:?} (parent: {:?}) - {:?} = {:?}",
+        item.name,
+        item.cfg,
+        parent,
+        parent.and_then(|p| p.cfg.as_ref()),
+        cfg
+    );
 
     Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
 }
