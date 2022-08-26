@@ -183,3 +183,11 @@ mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type
     .reference_note = references are always considered inhabited
     .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
     .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
+
+mir_build_static_in_pattern = statics cannot be referenced in patterns
+
+mir_build_assoc_const_in_pattern = associated consts cannot be referenced in patterns
+
+mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
+
+mir_build_non_const_path = runtime values cannot be referenced in patterns
