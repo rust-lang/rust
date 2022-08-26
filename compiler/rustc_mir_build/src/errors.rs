@@ -1,4 +1,8 @@
+use crate::thir::pattern::MatchCheckCtxt;
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
+use rustc_middle::ty::{self, Ty};
+use rustc_session::{parse::ParseSess, SessionDiagnostic};
 use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
@@ -335,4 +339,93 @@ pub enum UnusedUnsafeEnclosing {
         #[primary_span]
         span: Span,
     },
+}
+
+pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
+    pub cx: &'m MatchCheckCtxt<'p, 'tcx>,
+    pub expr_span: Span,
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+impl<'a> SessionDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
+    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.span_diagnostic.struct_span_err_with_code(
+            self.span,
+            rustc_errors::fluent::mir_build::non_exhaustive_patterns_type_not_empty,
+            error_code!(E0004),
+        );
+
+        let peeled_ty = self.ty.peel_refs();
+        diag.set_arg("ty", self.ty);
+        diag.set_arg("peeled_ty", peeled_ty);
+
+        if let ty::Adt(def, _) = peeled_ty.kind() {
+            let def_span = self
+                .cx
+                .tcx
+                .hir()
+                .get_if_local(def.did())
+                .and_then(|node| node.ident())
+                .map(|ident| ident.span)
+                .unwrap_or_else(|| self.cx.tcx.def_span(def.did()));
+
+            // workaround to make test pass
+            let mut span: MultiSpan = def_span.into();
+            span.push_span_label(def_span, "");
+
+            diag.span_note(span, rustc_errors::fluent::mir_build::def_note);
+        }
+
+        let is_variant_list_non_exhaustive = match self.ty.kind() {
+            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => {
+                true
+            }
+            _ => false,
+        };
+
+        if is_variant_list_non_exhaustive {
+            diag.note(rustc_errors::fluent::mir_build::non_exhaustive_type_note);
+        } else {
+            diag.note(rustc_errors::fluent::mir_build::type_note);
+        }
+
+        if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
+            if self.cx.tcx.is_ty_uninhabited_from(self.cx.module, *sub_ty, self.cx.param_env) {
+                diag.note(rustc_errors::fluent::mir_build::reference_note);
+            }
+        }
+
+        let mut suggestion = None;
+        let sm = self.cx.tcx.sess.source_map();
+        if self.span.eq_ctxt(self.expr_span) {
+            // Get the span for the empty match body `{}`.
+            let (indentation, more) = if let Some(snippet) = sm.indentation_before(self.span) {
+                (format!("\n{}", snippet), "    ")
+            } else {
+                (" ".to_string(), "")
+            };
+            suggestion = Some((
+                self.span.shrink_to_hi().with_hi(self.expr_span.hi()),
+                format!(
+                    " {{{indentation}{more}_ => todo!(),{indentation}}}",
+                    indentation = indentation,
+                    more = more,
+                ),
+            ));
+        }
+
+        if let Some((span, sugg)) = suggestion {
+            diag.span_suggestion_verbose(
+                span,
+                rustc_errors::fluent::mir_build::suggestion,
+                sugg,
+                Applicability::HasPlaceholders,
+            );
+        } else {
+            diag.help(rustc_errors::fluent::mir_build::help);
+        }
+
+        diag
+    }
 }

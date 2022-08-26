@@ -175,3 +175,11 @@ mir_build_unused_unsafe = unnecessary `unsafe` block
 
 mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
 mir_build_unused_unsafe_enclosing_fn_label = because it's nested under this `unsafe` fn
+
+mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type `{$ty}` is non-empty
+    .def_note = `{$peeled_ty}` defined here
+    .type_note = the matched value is of type `{$ty}`
+    .non_exhaustive_type_note = the matched value is of type `{$ty}`, which is marked as non-exhaustive
+    .reference_note = references are always considered inhabited
+    .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+    .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
