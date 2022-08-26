@@ -16,8 +16,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, ScalarSizeMismatch, UndefinedBehaviorInfo,
-    UninitBytesAccess, UnsupportedOpInfo,
+    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess,
+    UnsupportedOpInfo,
 };
 use crate::ty;
 
@@ -415,25 +415,10 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 
 /// Reading and writing.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
-    /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
-    /// relocation. If `allow_uninit`/`allow_ptr` is `false`, also enforces that the memory in the
-    /// given range contains no uninitialized bytes/relocations.
-    pub fn check_bytes(
-        &self,
-        cx: &impl HasDataLayout,
-        range: AllocRange,
-        allow_uninit: bool,
-        allow_ptr: bool,
-    ) -> AllocResult {
-        // Check bounds and relocations on the edges.
-        self.get_bytes_with_uninit_and_ptr(cx, range)?;
-        // Check uninit and ptr.
-        if !allow_uninit {
-            self.check_init(range)?;
-        }
-        if !allow_ptr {
-            self.check_relocations(cx, range)?;
-        }
+    /// Validates that this memory range is initiailized and contains no relocations.
+    pub fn check_bytes(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+        // This implicitly does all the checking we are asking for.
+        self.get_bytes(cx, range)?;
         Ok(())
     }
 
@@ -452,16 +437,14 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         cx: &impl HasDataLayout,
         range: AllocRange,
         read_provenance: bool,
-    ) -> AllocResult<ScalarMaybeUninit<Prov>> {
+    ) -> AllocResult<Scalar<Prov>> {
         if read_provenance {
             assert_eq!(range.size, cx.data_layout().pointer_size);
         }
 
         // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
-            // This inflates uninitialized bytes to the entire scalar, even if only a few
-            // bytes are uninitialized.
-            return Ok(ScalarMaybeUninit::Uninit);
+            return Err(AllocError::InvalidUninitBytes(None));
         }
 
         // If we are doing a pointer read, and there is a relocation exactly where we
@@ -471,7 +454,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
             let bytes = self.get_bytes_even_more_internal(range);
             let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
             let ptr = Pointer::new(prov, Size::from_bytes(bits));
-            return Ok(ScalarMaybeUninit::from_pointer(ptr, cx));
+            return Ok(Scalar::from_pointer(ptr, cx));
         }
 
         // If we are *not* reading a pointer, and we can just ignore relocations,
@@ -480,7 +463,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
             // We just strip provenance.
             let bytes = self.get_bytes_even_more_internal(range);
             let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-            return Ok(ScalarMaybeUninit::Scalar(Scalar::from_uint(bits, range.size)));
+            return Ok(Scalar::from_uint(bits, range.size));
         }
 
         // It's complicated. Better make sure there is no provenance anywhere.
@@ -492,7 +475,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         //   underlying bits.
         let bytes = self.get_bytes(cx, range)?;
         let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-        Ok(ScalarMaybeUninit::Scalar(Scalar::from_uint(bits, range.size)))
+        Ok(Scalar::from_uint(bits, range.size))
     }
 
     /// Writes a *non-ZST* scalar.
@@ -507,16 +490,9 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-        val: ScalarMaybeUninit<Prov>,
+        val: Scalar<Prov>,
     ) -> AllocResult {
         assert!(self.mutability == Mutability::Mut);
-
-        let val = match val {
-            ScalarMaybeUninit::Scalar(scalar) => scalar,
-            ScalarMaybeUninit::Uninit => {
-                return self.write_uninit(cx, range);
-            }
-        };
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.

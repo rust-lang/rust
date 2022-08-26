@@ -28,7 +28,7 @@ use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
     ImmTy, Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, PlaceTy,
-    Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
+    Pointer, Scalar, StackPopCleanup, StackPopUnwind,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -440,7 +440,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.read_immediate_raw(&op, /*force*/ false) {
+        Some(match self.ecx.read_immediate_raw(&op) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -532,8 +532,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_ty = left.ty(self.local_decls, self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
-            let r_bits = r.to_scalar().ok();
-            let r_bits = r_bits.and_then(|r| r.to_bits(right_size).ok());
+            let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 return None;
             }
@@ -562,7 +561,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // and use it to do const-prop here and everywhere else
                     // where it makes sense.
                     if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
-                        ScalarMaybeUninit::Scalar(scalar),
+                        scalar,
                     )) = *value
                     {
                         *operand = self.operand_from_scalar(
@@ -675,7 +674,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     return this.ecx.eval_rvalue_into_place(rvalue, place);
                 }
 
-                let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
+                let arg_value = const_arg.to_scalar().to_bits(const_arg.layout.size)?;
                 let dest = this.ecx.eval_place(place)?;
 
                 match op {
@@ -689,7 +688,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     BinOp::Mul if const_arg.layout.ty.is_integral() && arg_value == 0 => {
                         if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
                             let val = Immediate::ScalarPair(
-                                const_arg.to_scalar()?.into(),
+                                const_arg.to_scalar().into(),
                                 Scalar::from_bool(false).into(),
                             );
                             this.ecx.write_immediate(val, &dest)
@@ -743,21 +742,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME> figure out what to do when read_immediate_raw fails
-        let imm = self.use_ecx(|this| this.ecx.read_immediate_raw(value, /*force*/ false));
+        let imm = self.use_ecx(|this| this.ecx.read_immediate_raw(value));
 
         if let Some(Ok(imm)) = imm {
             match *imm {
-                interpret::Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar)) => {
+                interpret::Immediate::Scalar(scalar) => {
                     *rval = Rvalue::Use(self.operand_from_scalar(
                         scalar,
                         value.layout.ty,
                         source_info.span,
                     ));
                 }
-                Immediate::ScalarPair(
-                    ScalarMaybeUninit::Scalar(_),
-                    ScalarMaybeUninit::Scalar(_),
-                ) => {
+                Immediate::ScalarPair(..) => {
                     // Found a value represented as a pair. For now only do const-prop if the type
                     // of `rvalue` is also a tuple with two scalars.
                     // FIXME: enable the general case stated above ^.
@@ -812,13 +808,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         match **op {
-            interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUninit::Scalar(s))) => {
-                s.try_to_int().is_ok()
+            interpret::Operand::Immediate(Immediate::Scalar(s)) => s.try_to_int().is_ok(),
+            interpret::Operand::Immediate(Immediate::ScalarPair(l, r)) => {
+                l.try_to_int().is_ok() && r.try_to_int().is_ok()
             }
-            interpret::Operand::Immediate(Immediate::ScalarPair(
-                ScalarMaybeUninit::Scalar(l),
-                ScalarMaybeUninit::Scalar(r),
-            )) => l.try_to_int().is_ok() && r.try_to_int().is_ok(),
             _ => false,
         }
     }
@@ -1079,7 +1072,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::Assert { expected, ref mut cond, .. } => {
                 if let Some(ref value) = self.eval_operand(&cond) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
-                    let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
+                    let expected = Scalar::from_bool(*expected);
                     let value_const = self.ecx.read_scalar(&value).unwrap();
                     if expected != value_const {
                         // Poison all places this operand references so that further code
@@ -1092,13 +1085,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         }
                     } else {
                         if self.should_const_prop(value) {
-                            if let ScalarMaybeUninit::Scalar(scalar) = value_const {
-                                *cond = self.operand_from_scalar(
-                                    scalar,
-                                    self.tcx.types.bool,
-                                    source_info.span,
-                                );
-                            }
+                            *cond = self.operand_from_scalar(
+                                value_const,
+                                self.tcx.types.bool,
+                                source_info.span,
+                            );
                         }
                     }
                 }
