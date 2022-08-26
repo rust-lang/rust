@@ -6,6 +6,7 @@ mod deconstruct_pat;
 mod usefulness;
 
 pub(crate) use self::check_match::check_match;
+pub(crate) use self::usefulness::MatchCheckCtxt;
 
 use crate::thir::util::UserAnnotatedTyHelpers;
 
