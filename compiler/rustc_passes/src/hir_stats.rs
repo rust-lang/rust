@@ -74,16 +74,16 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     };
     tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
-    collector.print("HIR STATS");
+    collector.print("HIR STATS", "hir-stats");
 }
 
-pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
+pub fn print_ast_stats(krate: &ast::Crate, title: &str, prefix: &str) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
         StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
-    collector.print(title);
+    collector.print(title, prefix);
 }
 
 impl<'k> StatCollector<'k> {
@@ -119,23 +119,26 @@ impl<'k> StatCollector<'k> {
         }
     }
 
-    fn print(&self, title: &str) {
+    fn print(&self, title: &str, prefix: &str) {
         let mut nodes: Vec<_> = self.nodes.iter().collect();
         nodes.sort_by_key(|&(_, ref node)| node.stats.count * node.stats.size);
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
-        eprintln!("\n{}\n", title);
-
-        eprintln!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
-        eprintln!("----------------------------------------------------------------");
+        eprintln!("{} {}", prefix, title);
+        eprintln!(
+            "{} {:<18}{:>18}{:>14}{:>14}",
+            prefix, "Name", "Accumulated Size", "Count", "Item Size"
+        );
+        eprintln!("{} ----------------------------------------------------------------", prefix);
 
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
         for (label, node) in nodes {
             let size = node.stats.count * node.stats.size;
             eprintln!(
-                "{:<18}{:>10} ({:4.1}%){:>14}{:>14}",
+                "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
+                prefix,
                 label,
                 to_readable_str(size),
                 percent(size, total_size),
@@ -149,7 +152,8 @@ impl<'k> StatCollector<'k> {
                 for (label, subnode) in subnodes {
                     let size = subnode.count * subnode.size;
                     eprintln!(
-                        "- {:<18}{:>10} ({:4.1}%){:>14}",
+                        "{} - {:<18}{:>10} ({:4.1}%){:>14}",
+                        prefix,
                         label,
                         to_readable_str(size),
                         percent(size, total_size),
@@ -158,8 +162,9 @@ impl<'k> StatCollector<'k> {
                 }
             }
         }
-        eprintln!("----------------------------------------------------------------");
-        eprintln!("{:<18}{:>10}\n", "Total", to_readable_str(total_size));
+        eprintln!("{} ----------------------------------------------------------------", prefix);
+        eprintln!("{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size));
+        eprintln!("{}", prefix);
     }
 }
 
