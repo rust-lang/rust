@@ -689,6 +689,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             Ok(())
         }
     }
+
+    /// After all threads are done running, this allows data races to occur for subsequent
+    /// 'administrative' machine accesses (that logically happen outside of the Abstract Machine).
+    fn allow_data_races_all_threads_done(&mut self) {
+        let this = self.eval_context_ref();
+        assert!(this.have_all_terminated());
+        if let Some(data_race) = &this.machine.data_race {
+            let old = data_race.ongoing_action_data_race_free.replace(true);
+            assert!(!old, "cannot nest allow_data_races");
+        }
+    }
 }
 
 /// Vector clock metadata for a logical memory allocation.
@@ -955,8 +966,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
-            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
-            data_race.ongoing_action_data_race_free.set(true);
+            let old = data_race.ongoing_action_data_race_free.replace(true);
+            assert!(!old, "cannot nest allow_data_races");
         }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
@@ -975,8 +986,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {
-            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
-            data_race.ongoing_action_data_race_free.set(true);
+            let old = data_race.ongoing_action_data_race_free.replace(true);
+            assert!(!old, "cannot nest allow_data_races");
         }
         let result = op(this);
         if let Some(data_race) = &this.machine.data_race {
