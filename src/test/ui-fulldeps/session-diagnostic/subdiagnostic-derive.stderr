@@ -249,36 +249,13 @@ LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
 error: the `#[applicability]` attribute can only be applied to fields of type `Applicability`
-  --> $DIR/subdiagnostic-derive.rs:408:5
+  --> $DIR/subdiagnostic-derive.rs:407:5
    |
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:403:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | | struct AL {
-LL | |     #[primary_span]
-...  |
-LL | |     applicability: Span,
-LL | | }
-   | |_^
-
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:414:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | | struct AM {
-LL | |     #[primary_span]
-LL | |     span: Span,
-LL | | }
-   | |_^
-
 error: suggestion without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:422:1
+  --> $DIR/subdiagnostic-derive.rs:420:1
    |
 LL | / #[suggestion(parser::add_paren)]
 LL | |
@@ -290,27 +267,15 @@ LL | | }
    | |_^
 
 error: invalid applicability
-  --> $DIR/subdiagnostic-derive.rs:432:46
+  --> $DIR/subdiagnostic-derive.rs:430:46
    |
 LL | #[suggestion(parser::add_paren, code ="...", applicability = "foo")]
    |                                              ^^^^^^^^^^^^^^^^^^^^^
 
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:450:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | |
-LL | | struct AR {
-LL | |     var: String,
-LL | | }
-   | |_^
-
 error: suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:450:1
+  --> $DIR/subdiagnostic-derive.rs:448:1
    |
 LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
 LL | |
 LL | | struct AR {
 LL | |     var: String,
@@ -318,19 +283,19 @@ LL | | }
    | |_^
 
 error: unsupported type attribute for subdiagnostic enum
-  --> $DIR/subdiagnostic-derive.rs:465:1
+  --> $DIR/subdiagnostic-derive.rs:462:1
    |
 LL | #[label]
    | ^^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:485:39
+  --> $DIR/subdiagnostic-derive.rs:482:39
    |
 LL | #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
    |                                       ^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:504:43
+  --> $DIR/subdiagnostic-derive.rs:501:43
    |
 LL |     #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
    |                                           ^^^^^^^
@@ -395,6 +360,6 @@ error[E0425]: cannot find value `slug` in module `rustc_errors::fluent`
 LL | #[label(slug)]
    |         ^^^^ not found in `rustc_errors::fluent`
 
-error: aborting due to 52 previous errors
+error: aborting due to 49 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
