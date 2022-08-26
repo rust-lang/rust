@@ -987,7 +987,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script type="text/javascript" src="/implementors/A/trait.Foo.js"
+    // <script src="/implementors/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1013,9 +1013,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .map(|cnum| cx.shared.tcx.crate_name(cnum).to_string())
         .collect::<Vec<_>>()
         .join(",");
+    let (extern_before, extern_after) =
+        if extern_crates.is_empty() { ("", "") } else { (" data-ignore-extern-crates=\"", "\"") };
     write!(
         w,
-        "<script type=\"text/javascript\" src=\"{src}\" data-ignore-extern-crates=\"{extern_crates}\" async></script>",
+        "<script src=\"{src}\"{extern_before}{extern_crates}{extern_after} async></script>",
         src = js_src_path.finish(),
     );
 }
