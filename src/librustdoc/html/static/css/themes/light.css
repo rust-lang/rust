@@ -148,7 +148,7 @@ details.rustdoc-toggle > summary::before {
 .stab { background: #FFF5D6; border-color: #FFC600; }
 .stab.portability > code { background: none; }
 
-.rightside,
+.rightside:not(a),
 .out-of-band {
 	color: grey;
 }

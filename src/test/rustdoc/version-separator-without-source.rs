@@ -16,7 +16,7 @@ pub fn foo() {}
 pub struct Bar;
 
 impl Bar {
-    // @has - '//*[@id="method.bar"]/*[@class="rightside"]' '2.0'
+    // @has - '//*[@id="method.bar"]/*[@class="since rightside"]' '2.0'
     // @!has - '//*[@id="method.bar"]/*[@class="rightside"]' '2.0 ·'
     #[stable(feature = "foobar", since = "2.0")]
     pub fn bar() {}
