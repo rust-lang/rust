@@ -44,7 +44,9 @@ error[E0565]: literal in `deprecated` value must be a string
   --> $DIR/deprecation-sanity.rs:19:25
    |
 LL |     #[deprecated(note = b"test")]
-   |                         ^^^^^^^ help: consider removing the prefix: `"test"`
+   |                         -^^^^^^
+   |                         |
+   |                         help: consider removing the prefix
 
 error[E0565]: item in `deprecated` must be a key/value pair
   --> $DIR/deprecation-sanity.rs:22:18

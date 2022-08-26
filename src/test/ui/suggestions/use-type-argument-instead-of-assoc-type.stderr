@@ -12,7 +12,7 @@ LL | pub trait T<X, Y> {
 help: replace the generic bounds with the associated types
    |
 LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
-   |                                ~~~~~~~~~  ~~~~~~~~~
+   |                                +++        +++
 
 error[E0191]: the value of the associated types `A` (from trait `T`), `C` (from trait `T`) must be specified
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16

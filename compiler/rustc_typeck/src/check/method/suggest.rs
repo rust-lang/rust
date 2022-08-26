@@ -1299,7 +1299,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // local binding
                     if let hir::def::Res::Local(hir_id) = path.res {
                         let span = tcx.hir().span(hir_id);
-                        let snippet = tcx.sess.source_map().span_to_snippet(span);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                         let parent_node =
@@ -1309,7 +1308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             concrete_type,
                         );
 
-                        match (filename, parent_node, snippet) {
+                        match (filename, parent_node) {
                             (
                                 FileName::Real(_),
                                 Node::Local(hir::Local {
@@ -1317,14 +1316,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ty,
                                     ..
                                 }),
-                                Ok(ref snippet),
                             ) => {
+                                let type_span = ty.map(|ty| ty.span.with_lo(span.hi())).unwrap_or(span.shrink_to_hi());
                                 err.span_suggestion(
                                     // account for `let x: _ = 42;`
-                                    //                  ^^^^
-                                    span.to(ty.as_ref().map(|ty| ty.span).unwrap_or(span)),
+                                    //                   ^^^
+                                    type_span,
                                     &msg,
-                                    format!("{}: {}", snippet, concrete_type),
+                                    format!(": {concrete_type}"),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
