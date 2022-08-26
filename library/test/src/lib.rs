@@ -17,6 +17,7 @@
 #![doc(test(attr(deny(warnings))))]
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
+#![feature(is_terminal)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(test)]
