@@ -96,3 +96,9 @@ pub(crate) struct ArchiveBuildFailure {
 pub(crate) struct ErrorWritingDEFFile {
     pub error: std::io::Error,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_llvm::error_calling_dlltool)]
+pub(crate) struct ErrorCallingDllTool {
+    pub error: std::io::Error,
+}

@@ -12,7 +12,9 @@ use std::str;
 use object::read::macho::FatArch;
 
 use crate::common;
-use crate::errors::{ArchiveBuildFailure, ErrorCreatingImportLibrary, ErrorWritingDEFFile};
+use crate::errors::{
+    ArchiveBuildFailure, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
+};
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
@@ -240,7 +242,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
             match result {
                 Err(e) => {
-                    sess.fatal(&format!("Error calling dlltool: {}", e));
+                    sess.emit_fatal(ErrorCallingDllTool { error: e });
                 }
                 Ok(output) if !output.status.success() => sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
