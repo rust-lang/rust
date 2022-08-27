@@ -10,7 +10,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{GeneratorKind, Node};
+use rustc_hir::{GeneratorKind, ImplicitSelfKind, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
@@ -169,13 +169,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                         // Make sure that inferred closure args have no type span
                         .and_then(|ty| if arg.pat.span != ty.span { Some(ty.span) } else { None });
                     self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                        match fn_decl.implicit_self {
-                            hir::ImplicitSelfKind::Imm => Some(ImplicitSelfKind::Imm),
-                            hir::ImplicitSelfKind::Mut => Some(ImplicitSelfKind::Mut),
-                            hir::ImplicitSelfKind::ImmRef => Some(ImplicitSelfKind::ImmRef),
-                            hir::ImplicitSelfKind::MutRef => Some(ImplicitSelfKind::MutRef),
-                            _ => None,
-                        }
+                        Some(fn_decl.implicit_self)
                     } else {
                         None
                     };
