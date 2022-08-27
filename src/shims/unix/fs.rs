@@ -761,7 +761,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let communicate = this.machine.communicate();
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
-            let bytes = this.read_bytes_ptr(buf, Size::from_bytes(count))?;
+            let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?;
             let result =
                 file_descriptor.write(communicate, bytes)?.map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)

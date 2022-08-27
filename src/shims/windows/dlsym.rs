@@ -78,7 +78,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this.read_bytes_ptr(buf, Size::from_bytes(u64::from(n)))?;
+                    let buf_cont =
+                        this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(u64::from(n)))?;
                     let res = if this.machine.mute_stdout_stderr {
                         Ok(buf_cont.len())
                     } else if handle == -11 {

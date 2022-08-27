@@ -2,9 +2,9 @@
 
 union MyUninit {
     init: (),
-    uninit: char,
+    uninit: [char; 1],
 }
 
 fn main() {
-    let _b = unsafe { MyUninit { init: () }.uninit }; //~ ERROR: uninitialized
+    let _b = unsafe { MyUninit { init: () }.uninit }; //~ ERROR: constructing invalid value
 }
