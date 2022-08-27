@@ -1,6 +1,6 @@
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics;
+use crate::intrinsics::{self, assert_unsafe_precondition};
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
@@ -761,6 +761,7 @@ impl<T: ?Sized> *const T {
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
+            #[cfg(not(miri))]
             assert_unsafe_precondition!(
                 "ptr::sub_ptr requires `this >= origin`",
                 [T](this: *const T, origin: *const T) => this >= origin

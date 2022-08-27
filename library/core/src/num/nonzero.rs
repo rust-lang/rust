@@ -56,6 +56,7 @@ macro_rules! nonzero_integers {
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
+                        #[cfg(not(miri))] // This precondition is already always checked by Miri
                         core::intrinsics::assert_unsafe_precondition!(
                             concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
                             (n: $Int) => n != 0

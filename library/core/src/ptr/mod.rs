@@ -371,9 +371,9 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{
-    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
-};
+use crate::intrinsics;
+#[cfg(not(miri))]
+use crate::intrinsics::{assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping};
 
 use crate::mem::{self, MaybeUninit};
 
@@ -895,6 +895,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
+    #[cfg(not(miri))] // This precondition is already always checked by Miri
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe {
@@ -998,6 +999,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
+        #[cfg(not(miri))] // This precondition is already always checked by Miri
         assert_unsafe_precondition!(
             "ptr::replace requires that the pointer argument is aligned and non-null",
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
@@ -1496,6 +1498,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
+        #[cfg(not(miri))] // This precondition is already always checked by Miri
         assert_unsafe_precondition!(
             "ptr::read_volatile requires that the pointer argument is aligned and non-null",
             [T](src: *const T) => is_aligned_and_not_null(src)
@@ -1570,6 +1573,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
+        #[cfg(not(miri))] // This precondition is already always checked by Miri
         assert_unsafe_precondition!(
             "ptr::write_volatile requires that the pointer argument is aligned and non-null",
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
