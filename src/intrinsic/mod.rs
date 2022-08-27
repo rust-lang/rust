@@ -130,7 +130,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 sym::volatile_load | sym::unaligned_volatile_load => {
                     let tp_ty = substs.type_at(0);
                     let mut ptr = args[0].immediate();
-                    if let PassMode::Cast(ty) = fn_abi.ret.mode {
+                    if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                         ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
                     }
                     let load = self.volatile_load(ptr.get_type(), ptr);
@@ -320,7 +320,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
@@ -416,7 +416,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         }
-        else if let PassMode::Cast(cast) = self.mode {
+        else if let PassMode::Cast(ref cast, _) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -481,7 +481,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { extra_attrs: Some(_), .. } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             },
-            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(_) => {
+            PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(..) => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             },
