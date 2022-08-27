@@ -301,24 +301,6 @@ LL | enum LR {
    | ^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `std::mem::MaybeUninit<bool>` does not definitely permit being left uninitialized
-  --> $DIR/panic-uninitialized-zeroed.rs:233:20
-   |
-LL |         let _val = mem::uninitialized::<MaybeUninit<bool>>();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                    |
-   |                    this code causes undefined behavior when executed
-   |                    help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
-   |
-note: the lint level is defined here
-  --> $DIR/panic-uninitialized-zeroed.rs:12:37
-   |
-LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
-   |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
-   = note: type might not be allowed to be left uninitialized
-
-Future breakage diagnostic:
 warning: the type `[std::ptr::NonNull<()>; 1]` does not definitely permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:289:24
    |
