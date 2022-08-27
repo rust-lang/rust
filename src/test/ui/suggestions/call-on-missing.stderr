@@ -1,0 +1,26 @@
+error[E0599]: no method named `bar` found for fn item `fn() -> Foo {foo}` in the current scope
+  --> $DIR/call-on-missing.rs:12:9
+   |
+LL |     foo.bar();
+   |         ^^^ method not found in `fn() -> Foo {foo}`
+   |
+help: use parentheses to call this function
+   |
+LL |     foo().bar();
+   |        ++
+
+error[E0609]: no field `i` on type `fn() -> Foo {foo}`
+  --> $DIR/call-on-missing.rs:16:9
+   |
+LL |     foo.i;
+   |         ^
+   |
+help: use parentheses to call this function
+   |
+LL |     foo().i;
+   |        ++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.
