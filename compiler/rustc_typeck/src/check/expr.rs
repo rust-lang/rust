@@ -21,7 +21,6 @@ use crate::errors::{
 };
 use crate::type_error_struct;
 
-use super::suggest_call_constructor;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -44,7 +43,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::FieldMisMatch;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeVisitable};
+use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -2280,35 +2279,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx().ty_error()
     }
 
-    fn check_call_constructor(
-        &self,
-        err: &mut Diagnostic,
-        base: &'tcx hir::Expr<'tcx>,
-        def_id: DefId,
-    ) {
-        if let Some(local_id) = def_id.as_local() {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_id);
-            let node = self.tcx.hir().get(hir_id);
-
-            if let Some(fields) = node.tuple_fields() {
-                let kind = match self.tcx.opt_def_kind(local_id) {
-                    Some(DefKind::Ctor(of, _)) => of,
-                    _ => return,
-                };
-
-                suggest_call_constructor(base.span, kind, fields.len(), err);
-            }
-        } else {
-            // The logic here isn't smart but `associated_item_def_ids`
-            // doesn't work nicely on local.
-            if let DefKind::Ctor(of, _) = self.tcx.def_kind(def_id) {
-                let parent_def_id = self.tcx.parent(def_id);
-                let fields = self.tcx.associated_item_def_ids(parent_def_id);
-                suggest_call_constructor(base.span, of, fields.len(), err);
-            }
-        }
-    }
-
     fn suggest_await_on_field_access(
         &self,
         err: &mut Diagnostic,
@@ -2378,11 +2348,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Opaque(_, _) => {
                 self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
-            ty::FnDef(def_id, _) => {
-                self.check_call_constructor(&mut err, base, def_id);
-            }
             _ => {}
         }
+
+        self.suggest_fn_call(&mut err, base, base_ty, |output_ty| {
+            if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
+                def.non_enum_variant().fields.iter().any(|field| {
+                    field.ident(self.tcx) == ident
+                        && field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                })
+            } else if let ty::Tuple(tys) = output_ty.kind()
+                && let Ok(idx) = ident.as_str().parse::<usize>()
+            {
+                idx < tys.len()
+            } else {
+                false
+            }
+        });
 
         if ident.name == kw::Await {
             // We know by construction that `<expr>.await` is either on Rust 2015
