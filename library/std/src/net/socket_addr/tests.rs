@@ -52,6 +52,75 @@ fn to_socket_addr_string() {
 }
 
 #[test]
+fn ipv4_socket_addr_to_string() {
+    // Shortest possible IPv4 length.
+    assert_eq!(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0).to_string(), "0.0.0.0:0");
+
+    // Longest possible IPv4 length.
+    assert_eq!(
+        SocketAddrV4::new(Ipv4Addr::new(255, 255, 255, 255), u16::MAX).to_string(),
+        "255.255.255.255:65535"
+    );
+
+    // Test padding.
+    assert_eq!(
+        &format!("{:16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
+        "1.1.1.1:53      "
+    );
+    assert_eq!(
+        &format!("{:>16}", SocketAddrV4::new(Ipv4Addr::new(1, 1, 1, 1), 53)),
+        "      1.1.1.1:53"
+    );
+}
+
+#[test]
+fn ipv6_socket_addr_to_string() {
+    // IPv4-mapped address.
+    assert_eq!(
+        SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280), 8080, 0, 0)
+            .to_string(),
+        "[::ffff:192.0.2.128]:8080"
+    );
+
+    // IPv4-compatible address.
+    assert_eq!(
+        SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280), 8080, 0, 0).to_string(),
+        "[::192.0.2.128]:8080"
+    );
+
+    // IPv6 address with no zero segments.
+    assert_eq!(
+        SocketAddrV6::new(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15), 80, 0, 0).to_string(),
+        "[8:9:a:b:c:d:e:f]:80"
+    );
+
+    // Shortest possible IPv6 length.
+    assert_eq!(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0).to_string(), "[::]:0");
+
+    // Longest possible IPv6 length.
+    assert_eq!(
+        SocketAddrV6::new(
+            Ipv6Addr::new(0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777, 0x8888),
+            u16::MAX,
+            u32::MAX,
+            u32::MAX,
+        )
+        .to_string(),
+        "[1111:2222:3333:4444:5555:6666:7777:8888%4294967295]:65535"
+    );
+
+    // Test padding.
+    assert_eq!(
+        &format!("{:22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
+        "[1:2:3:4:5:6:7:8]:9   "
+    );
+    assert_eq!(
+        &format!("{:>22}", SocketAddrV6::new(Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8), 9, 0, 0)),
+        "   [1:2:3:4:5:6:7:8]:9"
+    );
+}
+
+#[test]
 fn bind_udp_socket_bad() {
     // rust-lang/rust#53957: This is a regression test for a parsing problem
     // discovered as part of issue rust-lang/rust#23076, where we were
