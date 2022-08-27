@@ -114,6 +114,15 @@ impl IntoDiagnosticArg for char {
     }
 }
 
+impl<T: IntoDiagnosticArg> IntoDiagnosticArg for Option<T> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self {
+            Some(t) => t.into_diagnostic_arg(),
+            None => DiagnosticArgValue::Str(Cow::Borrowed("None")),
+        }
+    }
+}
+
 impl IntoDiagnosticArg for Symbol {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         self.to_ident_string().into_diagnostic_arg()
