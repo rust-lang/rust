@@ -164,18 +164,32 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
             .collect(),
     );
 
-    let has_any_format_options = fmt.template.iter().any(|piece| {
-        let FormatArgsPiece::Placeholder(placeholder) = piece else { return false };
-        placeholder.format_options != Default::default()
-    });
+    // Whether we'll use the `Arguments::new_v1_formatted` form (true),
+    // or the `Arguments::new_v1` form (false).
+    let mut use_format_options = false;
 
-    let (args, format_options) = if has_any_format_options {
-        // Create a list of all _unique_ (argument, format trait) combinations.
-        // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
-        let mut argmap = FxIndexSet::default();
+    // Create a list of all _unique_ (argument, format trait) combinations.
+    // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
+    let mut argmap = FxIndexSet::default();
+    for piece in &fmt.template {
+        let FormatArgsPiece::Placeholder(placeholder) = piece else { continue };
+        if placeholder.format_options != Default::default() {
+            // Can't use basic form if there's any formatting options.
+            use_format_options = true;
+        }
+        if let Ok(index) = placeholder.argument.index {
+            if !argmap.insert((index, ArgumentType::Format(placeholder.format_trait))) {
+                // Duplicate (argument, format trait) combination,
+                // which we'll only put once in the args array.
+                use_format_options = true;
+            }
+        }
+    }
+
+    let format_options = use_format_options.then(|| {
         // Generate:
         //     &[format_spec_0, format_spec_1, format_spec_2]
-        let format_options = ecx.expr_array_ref(
+        ecx.expr_array_ref(
             macsp,
             fmt.template
                 .iter()
@@ -184,34 +198,18 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
                     Some(make_format_spec(ecx, macsp, placeholder, &mut argmap))
                 })
                 .collect(),
-        );
-        (Vec::from_iter(argmap), Some(format_options))
-    } else {
-        // Create a list of all (argument, format trait) pairs, one for each placeholder.
-        // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (0, Display), (1, Display)]
-        let args = fmt
-            .template
-            .iter()
-            .filter_map(|piece| {
-                let FormatArgsPiece::Placeholder(placeholder) = piece else { return None };
-                Some((
-                    placeholder.argument.index.ok()?,
-                    ArgumentType::Format(placeholder.format_trait),
-                ))
-            })
-            .collect();
-        (args, None)
-    };
+        )
+    });
 
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.
     // However, if there's a yield point in any argument except the first one,
     // we don't do this, because an ArgumentV1 cannot be kept across yield points.
-    let use_simple_array = args.len() == fmt.arguments.len()
-        && args.iter().enumerate().all(|(i, &(j, _))| i == j)
+    let use_simple_array = argmap.len() == fmt.arguments.len()
+        && argmap.iter().enumerate().all(|(i, &(j, _))| i == j)
         && fmt.arguments.iter().skip(1).all(|(arg, _)| !may_contain_yield_point(arg));
 
-    let args_expr = if use_simple_array {
+    let args = if use_simple_array {
         // Generate:
         //     &[
         //         ::core::fmt::ArgumentV1::new_display(&arg0),
@@ -222,7 +220,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
             macsp,
             fmt.arguments
                 .into_iter()
-                .zip(args)
+                .zip(argmap)
                 .map(|((arg, _), (_, ty))| {
                     let sp = arg.span.with_ctxt(macsp.ctxt());
                     make_argument(ecx, sp, ecx.expr_addr_of(sp, arg), ty)
@@ -239,7 +237,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
         //         ]
         //     }
         let args_ident = Ident::new(sym::args, macsp);
-        let args = args
+        let args = argmap
             .iter()
             .map(|&(arg_index, ty)| {
                 if let Some((arg, _)) = fmt.arguments.get(arg_index) {
@@ -270,8 +268,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
                         .map(|(arg, _)| ecx.expr_addr_of(arg.span.with_ctxt(macsp.ctxt()), arg))
                         .collect(),
                 ),
-                [ecx.arm(macsp, ecx.pat_ident(macsp, args_ident), ecx.expr_array(macsp, args))]
-                    .into(),
+                vec![ecx.arm(macsp, ecx.pat_ident(macsp, args_ident), ecx.expr_array(macsp, args))],
             ),
         )
     };
@@ -289,7 +286,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
             ecx.std_path(&[sym::fmt, sym::Arguments, sym::new_v1_formatted]),
             vec![
                 lit_pieces,
-                args_expr,
+                args,
                 format_options,
                 ecx.expr_block(P(ast::Block {
                     stmts: vec![ecx.stmt_expr(ecx.expr_call_global(
@@ -314,7 +311,7 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
         ecx.expr_call_global(
             macsp,
             ecx.std_path(&[sym::fmt, sym::Arguments, sym::new_v1]),
-            vec![lit_pieces, args_expr],
+            vec![lit_pieces, args],
         )
     }
 }
