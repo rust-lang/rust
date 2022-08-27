@@ -127,6 +127,10 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
 
+### How to use [mem-trace](https://github.com/antoyo/mem-trace)
+
+`rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
+
 ### How to build a cross-compiling libgccjit
 
 #### Building libgccjit
@@ -142,6 +146,5 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Since rustc doesn't support this architecture yet, set it back to `TARGET_TRIPLE="mips-unknown-linux-gnu"` (or another target having the same attributes). Alternatively, create a [target specification file](https://book.avr-rust.com/005.1-the-target-specification-json-file.html) (note that the `arch` specified in this file must be supported by the rust compiler).
  * Set `linker='-Clinker=m68k-linux-gcc'`.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
- * Disable the 128-bit integer types if the target doesn't support them by using `let i128_type = context.new_type::<i64>();` in `context.rs` (same for u128_type).
  * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
  * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).

@@ -273,7 +273,7 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         assert_eq!(offset.align_to(padding_align) + padding, target_offset);
         result.push(cx.type_padding_filler(padding, padding_align));
 
-        result.push(field.gcc_type(cx, !field.ty.is_any_ptr())); // FIXME(antoyo): might need to check if the type is inside another, like Box<Type>.
+        result.push(field.gcc_type(cx));
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }

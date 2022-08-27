@@ -8,6 +8,8 @@ use gccjit::{
 };
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
+#[cfg(feature="master")]
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::mir::mono::Linkage;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
@@ -19,6 +21,15 @@ use rustc_span::Symbol;
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+
+#[cfg(feature="master")]
+pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
+    match linkage {
+        Visibility::Default => gccjit::Visibility::Default,
+        Visibility::Hidden => gccjit::Visibility::Hidden,
+        Visibility::Protected => gccjit::Visibility::Protected,
+    }
+}
 
 pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
     match linkage {
@@ -81,11 +92,25 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // TODO(antoyo): only add the following cli argument if the feature is supported.
         context.add_command_line_option("-msse2");
         context.add_command_line_option("-mavx2");
-        context.add_command_line_option("-msha");
-        context.add_command_line_option("-mpclmul");
         // FIXME(antoyo): the following causes an illegal instruction on vmovdqu64 in std_example on my CPU.
         // Only add if the CPU supports it.
-        //context.add_command_line_option("-mavx512f");
+        context.add_command_line_option("-msha");
+        context.add_command_line_option("-mpclmul");
+        context.add_command_line_option("-mfma");
+        context.add_command_line_option("-mfma4");
+        context.add_command_line_option("-m64");
+        context.add_command_line_option("-mbmi");
+        context.add_command_line_option("-mgfni");
+        context.add_command_line_option("-mavxvnni");
+        context.add_command_line_option("-mf16c");
+        context.add_command_line_option("-maes");
+        context.add_command_line_option("-mxsavec");
+        context.add_command_line_option("-mbmi2");
+        context.add_command_line_option("-mrtm");
+        context.add_command_line_option("-mvaes");
+        context.add_command_line_option("-mvpclmulqdq");
+        context.add_command_line_option("-mavx");
+
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }

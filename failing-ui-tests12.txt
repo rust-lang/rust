@@ -1,0 +1,17 @@
+src/test/ui/intrinsics/const-eval-select-x86_64.rs
+src/test/ui/packed/packed-struct-drop-aligned.rs
+src/test/ui/packed/packed-struct-generic-layout.rs
+src/test/ui/packed/packed-struct-layout.rs
+src/test/ui/packed/packed-struct-optimized-enum.rs
+src/test/ui/packed/packed-struct-size.rs
+src/test/ui/packed/packed-struct-vec.rs
+src/test/ui/packed/packed-tuple-struct-layout.rs
+src/test/ui/simd/array-type.rs
+src/test/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs
+src/test/ui/simd/intrinsic/generic-cast-pass.rs
+src/test/ui/simd/intrinsic/generic-cast-pointer-width.rs
+src/test/ui/simd/intrinsic/generic-elements-pass.rs
+src/test/ui/simd/intrinsic/inlining-issue67557-ice.rs
+src/test/ui/simd/intrinsic/inlining-issue67557.rs
+src/test/ui/simd/monomorphize-shuffle-index.rs
+src/test/ui/simd/shuffle.rs

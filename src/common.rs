@@ -133,7 +133,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .1;
         let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
+            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }
@@ -178,8 +178,18 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
-                // TODO(bjorn3): assert size is correct
-                self.const_bitcast(value, ty)
+                let bytesize = layout.size(self).bytes();
+                if bitsize > 1 && ty.is_integral() && bytesize as u32 == ty.get_size() {
+                    // NOTE: since the intrinsic _xabort is called with a bitcast, which
+                    // is non-const, but expects a constant, do a normal cast instead of a bitcast.
+                    // FIXME(antoyo): fix bitcast to work in constant contexts.
+                    // TODO(antoyo): perhaps only use bitcast for pointers?
+                    self.context.new_cast(None, value, ty)
+                }
+                else {
+                    // TODO(bjorn3): assert size is correct
+                    self.const_bitcast(value, ty)
+                }
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
@@ -231,7 +241,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: ConstAllocation<'tcx>, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
         assert_eq!(alloc.inner().align, layout.align.abi);
-        let ty = self.type_ptr_to(layout.gcc_type(self, true));
+        let ty = self.type_ptr_to(layout.gcc_type(self));
         let value =
             if layout.size == Size::ZERO {
                 let value = self.const_usize(alloc.inner().align.bytes());
