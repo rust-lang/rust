@@ -200,3 +200,10 @@ mir_build_const_pattern_depends_on_generic_parameter =
     constant pattern depends on a generic parameter
 
 mir_build_could_not_eval_const_pattern = could not evaluate constant pattern
+
+mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
+    lower range bound must be less than or equal to upper
+    .label = lower bound larger than upper bound
+    .teach_note = When matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range.
+
+mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
