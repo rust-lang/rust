@@ -634,3 +634,39 @@ pub struct LibFilenameForm<'a> {
     pub dll_prefix: &'a str,
     pub dll_suffix: &'a str,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::multiple_import_name_type)]
+pub struct MultipleImportNameType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::import_name_type_form)]
+pub struct ImportNameTypeForm {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::import_name_type_x86)]
+pub struct ImportNameTypeX86 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::unknown_import_name_type)]
+pub struct UnknownImportNameType<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub import_name_type: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(metadata::import_name_type_raw)]
+pub struct ImportNameTypeRaw {
+    #[primary_span]
+    pub span: Span,
+}

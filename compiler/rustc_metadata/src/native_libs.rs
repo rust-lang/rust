@@ -13,13 +13,14 @@ use rustc_target::spec::abi::Abi;
 
 use crate::errors::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, EmptyRenamingTarget,
-    FrameworkOnlyWindows, IncompatibleWasmLink, InvalidLinkModifier, LibFrameworkApple,
-    LinkCfgForm, LinkCfgSinglePredicate, LinkFrameworkApple, LinkKindForm, LinkModifiersForm,
-    LinkNameForm, LinkOrdinalRawDylib, LinkRequiresName, MultipleCfgs, MultipleKindsInLink,
-    MultipleLinkModifiers, MultipleModifiers, MultipleNamesInLink, MultipleRenamings,
-    MultipleWasmImport, NoLinkModOverride, RawDylibNoNul, RenamingNoLink, UnexpectedLinkArg,
-    UnknownLinkKind, UnknownLinkModifier, UnsupportedAbi, UnsupportedAbiI686, WasmImportForm,
-    WholeArchiveNeedsStatic,
+    FrameworkOnlyWindows, ImportNameTypeForm, ImportNameTypeRaw, ImportNameTypeX86,
+    IncompatibleWasmLink, InvalidLinkModifier, LibFrameworkApple, LinkCfgForm,
+    LinkCfgSinglePredicate, LinkFrameworkApple, LinkKindForm, LinkModifiersForm, LinkNameForm,
+    LinkOrdinalRawDylib, LinkRequiresName, MultipleCfgs, MultipleImportNameType,
+    MultipleKindsInLink, MultipleLinkModifiers, MultipleModifiers, MultipleNamesInLink,
+    MultipleRenamings, MultipleWasmImport, NoLinkModOverride, RawDylibNoNul, RenamingNoLink,
+    UnexpectedLinkArg, UnknownImportNameType, UnknownLinkKind, UnknownLinkModifier, UnsupportedAbi,
+    UnsupportedAbiI686, WasmImportForm, WholeArchiveNeedsStatic,
 };
 
 pub(crate) fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
@@ -178,18 +179,15 @@ impl<'tcx> Collector<'tcx> {
                     }
                     sym::import_name_type => {
                         if import_name_type.is_some() {
-                            let msg = "multiple `import_name_type` arguments in a single `#[link]` attribute";
-                            sess.span_err(item.span(), msg);
+                            sess.emit_err(MultipleImportNameType { span: item.span() });
                             continue;
                         }
                         let Some(link_import_name_type) = item.value_str() else {
-                            let msg = "import name type must be of the form `import_name_type = \"string\"`";
-                            sess.span_err(item.span(), msg);
+                            sess.emit_err(ImportNameTypeForm { span: item.span() });
                             continue;
                         };
                         if self.tcx.sess.target.arch != "x86" {
-                            let msg = "import name type is only supported on x86";
-                            sess.span_err(item.span(), msg);
+                            sess.emit_err(ImportNameTypeX86 { span: item.span() });
                             continue;
                         }
 
@@ -198,11 +196,10 @@ impl<'tcx> Collector<'tcx> {
                             "noprefix" => PeImportNameType::NoPrefix,
                             "undecorated" => PeImportNameType::Undecorated,
                             import_name_type => {
-                                let msg = format!(
-                                    "unknown import name type `{import_name_type}`, expected one of: \
-                                     decorated, noprefix, undecorated"
-                                );
-                                sess.span_err(item.span(), msg);
+                                sess.emit_err(UnknownImportNameType {
+                                    span: item.span(),
+                                    import_name_type,
+                                });
                                 continue;
                             }
                         };
@@ -301,8 +298,7 @@ impl<'tcx> Collector<'tcx> {
             // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
             if let Some((_, span)) = import_name_type {
                 if kind != Some(NativeLibKind::RawDylib) {
-                    let msg = "import name type can only be used with link kind `raw-dylib`";
-                    sess.span_err(span, msg);
+                    sess.emit_err(ImportNameTypeRaw { span });
                 }
             }
 

@@ -255,3 +255,18 @@ metadata_crate_location_unknown_type =
 
 metadata_lib_filename_form =
     file name should be lib*.rlib or {dll_prefix}*.{dll_suffix}
+
+metadata_multiple_import_name_type =
+    multiple `import_name_type` arguments in a single `#[link]` attribute
+
+metadata_import_name_type_form =
+    import name type must be of the form `import_name_type = "string"`
+
+metadata_import_name_type_x86 =
+    import name type is only supported on x86
+
+metadata_unknown_import_name_type =
+    unknown import name type `{$import_name_type}`, expected one of: decorated, noprefix, undecorated
+
+metadata_import_name_type_raw =
+    import name type can only be used with link kind `raw-dylib`
