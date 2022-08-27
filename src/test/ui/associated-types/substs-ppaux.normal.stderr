@@ -11,7 +11,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>();
    |                                                                         ++
@@ -29,7 +29,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>();
    |                                                                          ++
@@ -47,7 +47,7 @@ LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz();
    |                                                        ++

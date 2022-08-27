@@ -103,7 +103,7 @@ LL |     let _: usize = T::baz;
    |
    = note: expected type `usize`
            found fn item `fn(usize, usize) -> usize {<_ as T>::baz}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = T::baz(_, _);
    |                          ++++++
@@ -121,7 +121,7 @@ LL |     let _: usize = T::bat;
    |
    = note: expected type `usize`
            found fn item `fn(usize) -> usize {<_ as T>::bat}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = T::bat(_);
    |                          +++
@@ -157,7 +157,7 @@ LL |     let _: usize = X::baz;
    |
    = note: expected type `usize`
            found fn item `fn(usize, usize) -> usize {<X as T>::baz}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::baz(_, _);
    |                          ++++++
@@ -175,7 +175,7 @@ LL |     let _: usize = X::bat;
    |
    = note: expected type `usize`
            found fn item `fn(usize) -> usize {<X as T>::bat}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bat(_);
    |                          +++
@@ -193,7 +193,7 @@ LL |     let _: usize = X::bax;
    |
    = note: expected type `usize`
            found fn item `fn(usize) -> usize {<X as T>::bax}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bax(_);
    |                          +++
@@ -211,7 +211,7 @@ LL |     let _: usize = X::bach;
    |
    = note: expected type `usize`
            found fn item `fn(usize) -> usize {<X as T>::bach}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bach(_);
    |                           +++
@@ -229,7 +229,7 @@ LL |     let _: usize = X::ban;
    |
    = note: expected type `usize`
            found fn item `for<'r> fn(&'r X) -> usize {<X as T>::ban}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::ban(_);
    |                          +++
@@ -247,7 +247,7 @@ LL |     let _: usize = X::bal;
    |
    = note: expected type `usize`
            found fn item `for<'r> fn(&'r X) -> usize {<X as T>::bal}`
-help: use parentheses to call this function
+help: use parentheses to call this associated function
    |
 LL |     let _: usize = X::bal(_);
    |                          +++

@@ -2,6 +2,7 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
+use hir::def_id::DefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -75,38 +76,75 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
+        enum DefIdOrName {
+            DefId(DefId),
+            Name(&'static str),
+        }
         // Autoderef is useful here because sometimes we box callables, etc.
-        let Some((def_id, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
+        let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
             match *found.kind() {
-                ty::FnPtr(fn_sig) => Some((None, fn_sig.output(), fn_sig.inputs().skip_binder().len())),
+                ty::FnPtr(fn_sig) =>
+                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs().skip_binder().len())),
                 ty::FnDef(def_id, _) => {
                     let fn_sig = found.fn_sig(self.tcx);
-                    Some((Some(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len()))
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len()))
                 }
                 ty::Closure(def_id, substs) => {
                     let fn_sig = substs.as_closure().sig();
-                    Some((Some(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1))
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1))
                 }
                 ty::Opaque(def_id, substs) => {
-                    let sig = self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
                         {
                             Some((
+                                DefIdOrName::DefId(def_id),
                                 pred.kind().rebind(proj.term.ty().unwrap()),
                                 args.len(),
                             ))
                         } else {
                             None
                         }
-                    });
-                    if let Some((output, inputs)) = sig {
-                        Some((Some(def_id), output, inputs))
-                    } else {
-                        None
-                    }
+                    })
+                }
+                ty::Dynamic(data, _) => {
+                    data.iter().find_map(|pred| {
+                        if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
+                        && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        // for existential projection, substs are shifted over by 1
+                        && let ty::Tuple(args) = proj.substs.type_at(0).kind()
+                        {
+                            Some((
+                                DefIdOrName::Name("trait object"),
+                                pred.rebind(proj.term.ty().unwrap()),
+                                args.len(),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                ty::Param(param) => {
+                    let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
+                    self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
+                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        && proj.projection_ty.self_ty() == found
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                DefIdOrName::DefId(def_id),
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                args.len(),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
                 }
                 _ => None,
             }
@@ -128,12 +166,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => ("...".to_string(), Applicability::HasPlaceholders),
             };
 
-            let msg = match def_id.map(|def_id| self.tcx.def_kind(def_id)) {
-                Some(DefKind::Fn) => "call this function",
-                Some(DefKind::Closure | DefKind::OpaqueTy) => "call this closure",
-                Some(DefKind::Ctor(CtorOf::Struct, _)) => "instantiate this tuple struct",
-                Some(DefKind::Ctor(CtorOf::Variant, _)) => "instantiate this tuple variant",
-                _ => "call this function",
+            let msg = match def_id_or_name {
+                DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
+                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
+                    DefKind::Ctor(CtorOf::Variant, _) => {
+                        "instantiate this tuple variant".to_string()
+                    }
+                    kind => format!("call this {}", kind.descr(def_id)),
+                },
+                DefIdOrName::Name(name) => format!("call this {name}"),
             };
 
             let sugg = match expr.kind {
