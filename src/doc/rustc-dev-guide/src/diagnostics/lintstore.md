@@ -1,4 +1,5 @@
 # Lints
+
 This page documents some of the machinery around lint registration and how we
 run lints in the compiler.
 
@@ -8,6 +9,7 @@ everything rotates. It's not available during the early parts of compilation
 lints, which can only happen after plugin registration.
 
 ## Lints vs. lint passes
+
 There are two parts to the linting mechanism within the compiler: lints and
 lint passes. Unfortunately, a lot of the documentation we have refers to both
 of these as just "lints."
@@ -15,11 +17,18 @@ of these as just "lints."
 First, we have the lint declarations themselves: this is where the name and
 default lint level and other metadata come from. These are normally defined by
 way of the [`declare_lint!`] macro, which boils down to a static with type
-`&rustc_session::lint::Lint`.
+[`&rustc_lint_defs::Lint`].
 
-As of <!-- date-check --> February 2022, we lint against direct declarations
-without the use of the macro today (although this may change in the future, as
-the macro is somewhat unwieldy to add new fields to, like all macros).
+First, we have the lint declarations themselves,
+and this is where the name and default lint level and other metadata come from.
+These are normally defined by way of the [`declare_lint!`] macro,
+which boils down to a static with type [`&rustc_lint_defs::Lint`]
+(although this may change in the future,
+as the macro is somewhat unwieldy to add new fields to,
+like all macros).
+
+As of <!-- date-check --> Aug 2022,
+we lint against direct declarations without the use of the macro.
 
 Lint declarations don't carry any "state" - they are merely global identifiers
 and descriptions of lints. We assert at runtime that they are not registered
@@ -34,8 +43,10 @@ lints are emitted as part of other work (e.g., type checking, etc.).
 ## Registration
 
 ### High-level overview
-In [`rustc_interface::register_plugins`] the [`LintStore`] is created and all
-lints are registered.
+
+In [`rustc_interface::register_plugins`],
+the [`LintStore`] is created,
+and all lints are registered.
 
 There are four 'sources' of lints:
 
@@ -61,6 +72,7 @@ then invoke the lint pass methods. The lint pass methods take `&mut self` so
 they can keep track of state internally.
 
 #### Internal lints
+
 These are lints used just by the compiler or plugins like `clippy`. They can be
 found in `rustc_lint::internal`.
 
@@ -73,16 +85,20 @@ function which is called when constructing a new lint store inside
 [`rustc_lint::new_lint_store`].
 
 ### Builtin Lints
-These are primarily described in two places: `rustc_session::lint::builtin` and
-`rustc_lint::builtin`. Often the first provides the definitions for the lints
-themselves, and the latter provides the lint pass definitions (and
-implementations), but this is not always true.
 
-The builtin lint registration happens in the [`rustc_lint::register_builtins`]
-function. Just like with internal lints, this happens inside of
-[`rustc_lint::new_lint_store`].
+These are primarily described in two places,
+`rustc_lint_defs::builtin` and `rustc_lint::builtin`.
+Often the first provides the definitions for the lints themselves,
+and the latter provides the lint pass definitions (and implementations),
+but this is not always true.
+
+The builtin lint registration happens in
+the [`rustc_lint::register_builtins`] function.
+Just like with internal lints,
+this happens inside of [`rustc_lint::new_lint_store`].
 
 #### Plugin lints
+
 This is one of the primary use cases remaining for plugins/drivers. Plugins are
 given access to the mutable `LintStore` during registration (which happens
 inside of [`rustc_interface::register_plugins`]) and they can call any
@@ -94,6 +110,7 @@ diagnostics and help text; otherwise plugin lints are mostly just as first
 class as rustc builtin lints.
 
 #### Driver lints
+
 These are the lints provided by drivers via the `rustc_interface::Config`
 [`register_lints`] field, which is a callback. Drivers should, if finding it
 already set, call the function currently set within the callback they add. The
@@ -102,6 +119,7 @@ best way for drivers to get access to this is by overriding the
 structure.
 
 ## Compiler lint passes are combined into one pass
+
 Within the compiler, for performance reasons, we usually do not register dozens
 of lint passes. Instead, we have a single lint pass of each variety (e.g.,
 `BuiltinCombinedModuleLateLintPass`) which will internally call all of the
@@ -121,3 +139,4 @@ approach, it is beneficial to do so for performance reasons.
 [`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/macro.declare_lint.html
 [`declare_tool_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/macro.declare_tool_lint.html
 [`register_lints`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html#structfield.register_lints
+[`&rustc_lint_defs::Lint`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/struct.Lint.html
