@@ -1,7 +1,6 @@
 // check-fail
 // compile-flags:--cfg foo
 
-#![deny(warnings)]
 #![cfg_attr(foo, crate_type="bin")]
 //~^ERROR `crate_type` within
 //~| WARN this was previously accepted
