@@ -9,11 +9,12 @@ use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::HirId;
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, Subst, TyCtxt};
 use rustc_span::Span;
 
 pub(crate) fn thir_body<'tcx>(
@@ -27,6 +28,13 @@ pub(crate) fn thir_body<'tcx>(
         return Err(reported);
     }
     let expr = cx.mirror_expr(&body.value);
+
+    let owner_id = hir.local_def_id_to_hir_id(owner_def.did);
+    if let Some(ref fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
+        let explicit_params = cx.explicit_params(owner_id, fn_decl, body);
+        cx.thir.params = explicit_params.collect();
+    }
+
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
@@ -84,6 +92,44 @@ impl<'tcx> Cx<'tcx> {
             node => bug!("pattern became {:?}", node),
         };
         pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
+    }
+
+    fn explicit_params<'a>(
+        &'a mut self,
+        owner_id: HirId,
+        fn_decl: &'tcx hir::FnDecl<'tcx>,
+        body: &'tcx hir::Body<'tcx>,
+    ) -> impl Iterator<Item = Param<'tcx>> + 'a {
+        let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
+
+        body.params.iter().enumerate().map(move |(index, param)| {
+            let ty_span = fn_decl
+                .inputs
+                .get(index)
+                // Make sure that inferred closure args have no type span
+                .and_then(|ty| if param.pat.span != ty.span { Some(ty.span) } else { None });
+
+            let self_kind = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
+                Some(fn_decl.implicit_self)
+            } else {
+                None
+            };
+
+            // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+            // (as it's created inside the body itself, not passed in from outside).
+            let ty = if fn_decl.c_variadic && index == fn_decl.inputs.len() {
+                let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
+
+                self.tcx
+                    .bound_type_of(va_list_did)
+                    .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+            } else {
+                fn_sig.inputs()[index]
+            };
+
+            let pat = self.pattern_from_hir(param.pat);
+            Param { pat, ty, ty_span, self_kind, hir_id: param.hir_id }
+        })
     }
 }
 
