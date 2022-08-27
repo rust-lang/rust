@@ -198,3 +198,5 @@ mir_build_unreachable_pattern = unreachable pattern
 
 mir_build_const_pattern_depends_on_generic_parameter =
     constant pattern depends on a generic parameter
+
+mir_build_could_not_eval_const_pattern = could not evaluate constant pattern
