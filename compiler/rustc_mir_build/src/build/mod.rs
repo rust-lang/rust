@@ -1,4 +1,3 @@
-use crate::build;
 pub(crate) use crate::build::expr::as_constant::lit_to_mir_constant;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
@@ -47,9 +46,7 @@ pub(crate) fn mir_built<'tcx>(
 
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
-    let id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_owner_kind = tcx.hir().body_owner_kind(def.did);
-    let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Ensure unsafeck and abstract const building is ran before we steal the THIR.
     // We can't use `ensure()` for `thir_abstract_const` as it doesn't compute the query
@@ -66,188 +63,37 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         }
     }
 
-    // Figure out what primary body this item has.
-    let body_id = tcx.hir().body_owned_by(def.did);
-    let span_with_body = tcx.hir().span_with_body(id);
-    let return_ty_span = if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(id) {
-        fn_decl.output.span()
-    } else {
-        match tcx.hir().get(id) {
-            Node::Item(hir::Item {
-                kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _),
-                ..
-            })
-            | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
-            | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(ty, _), .. }) => {
-                ty.span
+    let body = match tcx.thir_body(def) {
+        Err(error_reported) => construct_error(tcx, def.did, body_owner_kind, error_reported),
+        Ok((thir, expr)) => {
+            // We ran all queries that depended on THIR at the beginning
+            // of `mir_build`, so now we can steal it
+            let thir = thir.steal();
+
+            if body_owner_kind.is_fn_or_closure() {
+                construct_fn(tcx, def, &thir, expr)
+            } else {
+                construct_const(tcx, def, &thir, expr)
             }
-            Node::AnonConst(_) => tcx.def_span(def.did),
-            _ => span_bug!(tcx.def_span(def.did), "can't build MIR for {:?}", def.did),
         }
     };
 
-    tcx.infer_ctxt().enter(|infcx| {
-        let body = if let Some(error_reported) = typeck_results.tainted_by_errors {
-            build::construct_error(&infcx, def, id, body_id, body_owner_kind, error_reported)
-        } else if body_owner_kind.is_fn_or_closure() {
-            // fetch the fully liberated fn signature (that is, all bound
-            // types/lifetimes replaced)
-            let fn_sig = typeck_results.liberated_fn_sigs()[id];
-            let fn_def_id = tcx.hir().local_def_id(id);
+    lints::check(tcx, &body);
 
-            let safety = match fn_sig.unsafety {
-                hir::Unsafety::Normal => Safety::Safe,
-                hir::Unsafety::Unsafe => Safety::FnUnsafe,
-            };
+    // The borrow checker will replace all the regions here with its own
+    // inference variables. There's no point having non-erased regions here.
+    // The exception is `body.user_type_annotations`, which is used unmodified
+    // by borrow checking.
+    debug_assert!(
+        !(body.local_decls.has_free_regions()
+            || body.basic_blocks.has_free_regions()
+            || body.var_debug_info.has_free_regions()
+            || body.yield_ty().has_free_regions()),
+        "Unexpected free regions in MIR: {:?}",
+        body,
+    );
 
-            let body = tcx.hir().body(body_id);
-            let (thir, expr) = tcx
-                .thir_body(def)
-                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
-            // We ran all queries that depended on THIR at the beginning
-            // of `mir_build`, so now we can steal it
-            let thir = thir.steal();
-            let ty = tcx.type_of(fn_def_id);
-            let mut abi = fn_sig.abi;
-            let implicit_argument = match ty.kind() {
-                ty::Closure(..) => {
-                    // HACK(eddyb) Avoid having RustCall on closures,
-                    // as it adds unnecessary (and wrong) auto-tupling.
-                    abi = Abi::Rust;
-                    vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
-                }
-                ty::Generator(..) => {
-                    let gen_ty = tcx.typeck_body(body_id).node_type(id);
-
-                    // The resume argument may be missing, in that case we need to provide it here.
-                    // It will always be `()` in this case.
-                    if body.params.is_empty() {
-                        vec![
-                            ArgInfo(gen_ty, None, None, None),
-                            ArgInfo(tcx.mk_unit(), None, None, None),
-                        ]
-                    } else {
-                        vec![ArgInfo(gen_ty, None, None, None)]
-                    }
-                }
-                _ => vec![],
-            };
-
-            let explicit_arguments = body.params.iter().enumerate().map(|(index, arg)| {
-                let owner_id = tcx.hir().body_owner(body_id);
-                let opt_ty_info;
-                let self_arg;
-                if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-                    opt_ty_info = fn_decl
-                        .inputs
-                        .get(index)
-                        // Make sure that inferred closure args have no type span
-                        .and_then(|ty| if arg.pat.span != ty.span { Some(ty.span) } else { None });
-                    self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                        Some(fn_decl.implicit_self)
-                    } else {
-                        None
-                    };
-                } else {
-                    opt_ty_info = None;
-                    self_arg = None;
-                }
-
-                // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
-                // (as it's created inside the body itself, not passed in from outside).
-                let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
-                    let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
-
-                    tcx.bound_type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
-                } else {
-                    fn_sig.inputs()[index]
-                };
-
-                ArgInfo(ty, opt_ty_info, Some(&arg), self_arg)
-            });
-
-            let arguments = implicit_argument.into_iter().chain(explicit_arguments);
-
-            let (yield_ty, return_ty) = if body.generator_kind.is_some() {
-                let gen_ty = tcx.typeck_body(body_id).node_type(id);
-                let gen_sig = match gen_ty.kind() {
-                    ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
-                    _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
-                };
-                (Some(gen_sig.yield_ty), gen_sig.return_ty)
-            } else {
-                (None, fn_sig.output())
-            };
-
-            let mut mir = build::construct_fn(
-                &thir,
-                &infcx,
-                def,
-                id,
-                arguments,
-                safety,
-                abi,
-                return_ty,
-                return_ty_span,
-                body,
-                expr,
-                span_with_body,
-            );
-            if yield_ty.is_some() {
-                mir.generator.as_mut().unwrap().yield_ty = yield_ty;
-            }
-            mir
-        } else {
-            // Get the revealed type of this const. This is *not* the adjusted
-            // type of its body, which may be a subtype of this type. For
-            // example:
-            //
-            // fn foo(_: &()) {}
-            // static X: fn(&'static ()) = foo;
-            //
-            // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
-            // is not the same as the type of X. We need the type of the return
-            // place to be the type of the constant because NLL typeck will
-            // equate them.
-
-            let return_ty = typeck_results.node_type(id);
-
-            let (thir, expr) = tcx
-                .thir_body(def)
-                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
-            // We ran all queries that depended on THIR at the beginning
-            // of `mir_build`, so now we can steal it
-            let thir = thir.steal();
-
-            build::construct_const(
-                &thir,
-                &infcx,
-                expr,
-                def,
-                id,
-                return_ty,
-                return_ty_span,
-                span_with_body,
-            )
-        };
-
-        lints::check(tcx, &body);
-
-        // The borrow checker will replace all the regions here with its own
-        // inference variables. There's no point having non-erased regions here.
-        // The exception is `body.user_type_annotations`, which is used unmodified
-        // by borrow checking.
-        debug_assert!(
-            !(body.local_decls.has_free_regions()
-                || body.basic_blocks.has_free_regions()
-                || body.var_debug_info.has_free_regions()
-                || body.yield_ty().has_free_regions()),
-            "Unexpected free regions in MIR: {:?}",
-            body,
-        );
-
-        body
-    })
+    body
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -330,7 +176,7 @@ struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'a, 'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
@@ -600,141 +446,264 @@ struct ArgInfo<'tcx>(
     Option<ImplicitSelfKind>,
 );
 
-fn construct_fn<'tcx, A>(
-    thir: &Thir<'tcx>,
-    infcx: &InferCtxt<'_, 'tcx>,
+fn construct_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     fn_def: ty::WithOptConstParam<LocalDefId>,
-    fn_id: hir::HirId,
-    arguments: A,
-    safety: Safety,
-    abi: Abi,
-    return_ty: Ty<'tcx>,
-    return_ty_span: Span,
-    body: &'tcx hir::Body<'tcx>,
+    thir: &Thir<'tcx>,
     expr: ExprId,
-    span_with_body: Span,
-) -> Body<'tcx>
-where
-    A: Iterator<Item = ArgInfo<'tcx>>,
-{
+) -> Body<'tcx> {
+    let span = tcx.def_span(fn_def.did);
+    let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def.did);
+    let generator_kind = tcx.generator_kind(fn_def.did);
+
+    // Figure out what primary body this item has.
+    let body_id = tcx.hir().body_owned_by(fn_def.did);
+    let span_with_body = tcx.hir().span_with_body(fn_id);
+    let return_ty_span = tcx
+        .hir()
+        .fn_decl_by_hir_id(fn_id)
+        .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def.did))
+        .output
+        .span();
+
+    // fetch the fully liberated fn signature (that is, all bound
+    // types/lifetimes replaced)
+    let typeck_results = tcx.typeck_opt_const_arg(fn_def);
+    let fn_sig = typeck_results.liberated_fn_sigs()[fn_id];
+
+    let safety = match fn_sig.unsafety {
+        hir::Unsafety::Normal => Safety::Safe,
+        hir::Unsafety::Unsafe => Safety::FnUnsafe,
+    };
+
+    let body = tcx.hir().body(body_id);
+    let ty = tcx.type_of(fn_def.did);
+    let mut abi = fn_sig.abi;
+    let implicit_argument = match ty.kind() {
+        ty::Closure(..) => {
+            // HACK(eddyb) Avoid having RustCall on closures,
+            // as it adds unnecessary (and wrong) auto-tupling.
+            abi = Abi::Rust;
+            vec![ArgInfo(liberated_closure_env_ty(tcx, fn_id, body_id), None, None, None)]
+        }
+        ty::Generator(..) => {
+            let gen_ty = typeck_results.node_type(fn_id);
+
+            // The resume argument may be missing, in that case we need to provide it here.
+            // It will always be `()` in this case.
+            if body.params.is_empty() {
+                vec![ArgInfo(gen_ty, None, None, None), ArgInfo(tcx.mk_unit(), None, None, None)]
+            } else {
+                vec![ArgInfo(gen_ty, None, None, None)]
+            }
+        }
+        _ => vec![],
+    };
+
+    let explicit_arguments = body.params.iter().enumerate().map(|(index, arg)| {
+        let owner_id = tcx.hir().body_owner(body_id);
+        let opt_ty_info;
+        let self_arg;
+        if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
+            opt_ty_info = fn_decl
+                .inputs
+                .get(index)
+                // Make sure that inferred closure args have no type span
+                .and_then(|ty| if arg.pat.span != ty.span { Some(ty.span) } else { None });
+            self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
+                Some(fn_decl.implicit_self)
+            } else {
+                None
+            };
+        } else {
+            opt_ty_info = None;
+            self_arg = None;
+        }
+
+        // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
+        // (as it's created inside the body itself, not passed in from outside).
+        let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
+            let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
+
+            tcx.bound_type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
+        } else {
+            fn_sig.inputs()[index]
+        };
+
+        ArgInfo(ty, opt_ty_info, Some(&arg), self_arg)
+    });
+
+    let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+
+    let (yield_ty, return_ty) = if generator_kind.is_some() {
+        let gen_ty = typeck_results.node_type(fn_id);
+        let gen_sig = match gen_ty.kind() {
+            ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
+            _ => {
+                span_bug!(span, "generator w/o generator type: {:?}", ty)
+            }
+        };
+        (Some(gen_sig.yield_ty), gen_sig.return_ty)
+    } else {
+        (None, fn_sig.output())
+    };
+
     let arguments: Vec<_> = arguments.collect();
 
-    let tcx = infcx.tcx;
-    let span = tcx.hir().span(fn_id);
+    let mut body = tcx.infer_ctxt().enter(|infcx| {
+        let mut builder = Builder::new(
+            thir,
+            infcx,
+            fn_def,
+            fn_id,
+            span_with_body,
+            arguments.len(),
+            safety,
+            return_ty,
+            return_ty_span,
+            generator_kind,
+        );
 
-    let mut builder = Builder::new(
-        thir,
-        infcx,
-        fn_def,
-        fn_id,
-        span_with_body,
-        arguments.len(),
-        safety,
-        return_ty,
-        return_ty_span,
-        body.generator_kind,
-    );
+        let call_site_scope =
+            region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
+        let arg_scope =
+            region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
+        let source_info = builder.source_info(span);
+        let call_site_s = (call_site_scope, source_info);
+        unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+            let arg_scope_s = (arg_scope, source_info);
+            // Attribute epilogue to function's closing brace
+            let fn_end = span_with_body.shrink_to_hi();
+            let return_block = unpack!(builder.in_breakable_scope(
+                None,
+                Place::return_place(),
+                fn_end,
+                |builder| {
+                    Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
+                        builder.args_and_body(
+                            START_BLOCK,
+                            fn_def.did,
+                            &arguments,
+                            arg_scope,
+                            &thir[expr],
+                        )
+                    }))
+                }
+            ));
+            let source_info = builder.source_info(fn_end);
+            builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
+            builder.build_drop_trees();
+            return_block.unit()
+        }));
 
-    let call_site_scope =
-        region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
-    let arg_scope =
-        region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::Arguments };
-    let source_info = builder.source_info(span);
-    let call_site_s = (call_site_scope, source_info);
-    unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-        let arg_scope_s = (arg_scope, source_info);
-        // Attribute epilogue to function's closing brace
-        let fn_end = span_with_body.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
-                Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
-                    builder.args_and_body(
-                        START_BLOCK,
-                        fn_def.did,
-                        &arguments,
-                        arg_scope,
-                        &thir[expr],
-                    )
-                }))
-            }));
-        let source_info = builder.source_info(fn_end);
-        builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-        builder.build_drop_trees();
-        return_block.unit()
-    }));
+        builder.finish()
+    });
 
-    let spread_arg = if abi == Abi::RustCall {
+    body.spread_arg = if abi == Abi::RustCall {
         // RustCall pseudo-ABI untuples the last argument.
         Some(Local::new(arguments.len()))
     } else {
         None
     };
-
-    let mut body = builder.finish();
-    body.spread_arg = spread_arg;
+    if yield_ty.is_some() {
+        body.generator.as_mut().unwrap().yield_ty = yield_ty;
+    }
     body
 }
 
 fn construct_const<'a, 'tcx>(
-    thir: &'a Thir<'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    expr: ExprId,
+    tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-    hir_id: hir::HirId,
-    const_ty: Ty<'tcx>,
-    const_ty_span: Span,
-    span: Span,
+    thir: &'a Thir<'tcx>,
+    expr: ExprId,
 ) -> Body<'tcx> {
-    let mut builder = Builder::new(
-        thir,
-        infcx,
-        def,
-        hir_id,
-        span,
-        0,
-        Safety::Safe,
-        const_ty,
-        const_ty_span,
-        None,
-    );
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
-    let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
+    // Figure out what primary body this item has.
+    let (span, const_ty_span) = match tcx.hir().get(hir_id) {
+        Node::Item(hir::Item {
+            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _),
+            span,
+            ..
+        })
+        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), span, .. })
+        | Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(ty, Some(_)),
+            span,
+            ..
+        }) => (*span, ty.span),
+        Node::AnonConst(_) => {
+            let span = tcx.def_span(def.did);
+            (span, span)
+        }
+        _ => span_bug!(tcx.def_span(def.did), "can't build MIR for {:?}", def.did),
+    };
 
-    let source_info = builder.source_info(span);
-    builder.cfg.terminate(block, source_info, TerminatorKind::Return);
+    // Get the revealed type of this const. This is *not* the adjusted
+    // type of its body, which may be a subtype of this type. For
+    // example:
+    //
+    // fn foo(_: &()) {}
+    // static X: fn(&'static ()) = foo;
+    //
+    // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
+    // is not the same as the type of X. We need the type of the return
+    // place to be the type of the constant because NLL typeck will
+    // equate them.
+    let typeck_results = tcx.typeck_opt_const_arg(def);
+    let const_ty = typeck_results.node_type(hir_id);
 
-    builder.build_drop_trees();
+    tcx.infer_ctxt().enter(|infcx| {
+        let mut builder = Builder::new(
+            thir,
+            infcx,
+            def,
+            hir_id,
+            span,
+            0,
+            Safety::Safe,
+            const_ty,
+            const_ty_span,
+            None,
+        );
 
-    builder.finish()
+        let mut block = START_BLOCK;
+        unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
+
+        let source_info = builder.source_info(span);
+        builder.cfg.terminate(block, source_info, TerminatorKind::Return);
+
+        builder.build_drop_trees();
+
+        builder.finish()
+    })
 }
 
 /// Construct MIR for an item that has had errors in type checking.
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error<'a, 'tcx>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
-    hir_id: hir::HirId,
-    body_id: hir::BodyId,
+fn construct_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: LocalDefId,
     body_owner_kind: hir::BodyOwnerKind,
     err: ErrorGuaranteed,
 ) -> Body<'tcx> {
-    let tcx = infcx.tcx;
-    let span = tcx.hir().span(hir_id);
+    let span = tcx.def_span(def);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let generator_kind = tcx.generator_kind(def);
+
     let ty = tcx.ty_error();
-    let generator_kind = tcx.hir().body(body_id).generator_kind;
     let num_params = match body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(hir_id).unwrap().inputs.len(),
+        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
-            if generator_kind.is_some() {
-                // Generators have an implicit `self` parameter *and* a possibly
-                // implicit resume parameter.
-                2
-            } else {
-                // The implicit self parameter adds another local in MIR.
-                1 + tcx.hir().fn_decl_by_hir_id(hir_id).unwrap().inputs.len()
+            let ty = tcx.type_of(def);
+            match ty.kind() {
+                ty::Closure(_, substs) => {
+                    1 + substs.as_closure().sig().inputs().skip_binder().len()
+                }
+                ty::Generator(..) => 2,
+                _ => bug!("expected closure or generator, found {ty:?}"),
             }
         }
         hir::BodyOwnerKind::Const => 0,
@@ -765,7 +734,7 @@ fn construct_error<'a, 'tcx>(
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     let mut body = Body::new(
-        MirSource::item(def.did.to_def_id()),
+        MirSource::item(def.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
         local_decls,
@@ -783,7 +752,7 @@ fn construct_error<'a, 'tcx>(
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         thir: &'a Thir<'tcx>,
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: InferCtxt<'a, 'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
         hir_id: hir::HirId,
         span: Span,
