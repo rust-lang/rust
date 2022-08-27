@@ -12,7 +12,8 @@ Before building the compiler, you need the following things installed:
 
 If building LLVM from source (the default), you'll need additional tools:
 
-* `g++` 7.1 or later, `clang++` 5.0 or later, or MSVC 2019 or later.
+* `g++`, `clang++`, or MSVC with version listed on <!-- date-check: Aug 2022 -->
+  [LLVM's documentation](https://releases.llvm.org/13.0.0/docs/GettingStarted.html#host-c-toolchain-both-compiler-and-standard-library)
 * `ninja`, or GNU `make` 3.81 or later (ninja is recommended, especially on Windows)
 * `cmake` 3.13.4 or later
 
