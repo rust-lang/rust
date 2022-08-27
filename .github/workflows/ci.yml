@@ -56,11 +56,13 @@ jobs:
           echo $(readlink -f gcc-build) > gcc_path
           # NOTE: the filename is still libgccjit.so even when the artifact name is different.
           ln gcc-build/libgccjit.so gcc-build/libgccjit.so.0
+
     - name: Set env
       run: |
         echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+
     - name: Set RUST_COMPILER_RT_ROOT
       run: echo "RUST_COMPILER_RT_ROOT="${{ env.workspace }}/llvm/compiler-rt >> $GITHUB_ENV
 
@@ -108,11 +110,13 @@ jobs:
         ./build.sh ${{ matrix.libgccjit_version.extra }}
         cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./prepare.sh
+
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
       uses: actions-rs/cargo@v1.0.3
@@ -127,6 +131,7 @@ jobs:
     - name: Run tests
       run: |
         ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
+
   duplicates:
     runs-on: ubuntu-latest
     steps:

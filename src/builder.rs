@@ -1185,6 +1185,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn atomic_cmpxchg(&mut self, dst: RValue<'gcc>, cmp: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering, failure_order: AtomicOrdering, weak: bool) -> RValue<'gcc> {
         let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
         self.llbb().add_assignment(None, expected, cmp);
+        // NOTE: gcc doesn't support a failure memory model that is stronger than the success
+        // memory model.
+        let order =
+            if failure_order as i32 > order as i32 {
+                failure_order
+            }
+            else {
+                order
+            };
         let success = self.compare_exchange(dst, expected, src, order, failure_order, weak);
 
         let pair_type = self.cx.type_struct(&[src.get_type(), self.bool_type], false);
