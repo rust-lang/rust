@@ -195,3 +195,6 @@ mir_build_non_const_path = runtime values cannot be referenced in patterns
 mir_build_unreachable_pattern = unreachable pattern
     .label = unreachable pattern
     .catchall_label = matches any value
+
+mir_build_const_pattern_depends_on_generic_parameter =
+    constant pattern depends on a generic parameter
