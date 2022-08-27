@@ -18,6 +18,7 @@ use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDat
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
+use crate::errors::LayoutSizeOverflow;
 
 #[derive(Clone)]
 pub struct FuncSig<'gcc> {
@@ -477,7 +478,7 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -495,7 +496,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(LayoutSizeOverflow { span, error: err.to_string() })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {
