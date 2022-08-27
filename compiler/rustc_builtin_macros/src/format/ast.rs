@@ -96,7 +96,7 @@ pub struct FormatArgPosition {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FormatArgPositionKind {
-    /// `{}` or `{.*}`
+    /// `{}` or `{:.*}`
     Implicit,
     /// `{1}` or `{:1$}` or `{:.1$}`
     Number,

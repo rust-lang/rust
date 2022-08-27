@@ -26,7 +26,7 @@ use expand::expand_parsed_format_args;
 //  3. Finally, `expand_parsed_format_args` will turn that `FormatArgs` structure
 //     into the expression that the macro expands to.
 
-// See format/ast.rs forthe FormatArgs structure.
+// See format/ast.rs for the FormatArgs structure and glossary.
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
