@@ -43,7 +43,7 @@ Stabilized APIs
 - [Partially stabilize `const_slice_from_raw_parts`](https://github.com/rust-lang/rust/pull/97522/)
 - [Partial stabilization of `nonzero_checked_ops`.](https://github.com/rust-lang/rust/pull/97547/)
 - [Document and stabilize `process_set_process_group`](https://github.com/rust-lang/rust/pull/99088/)
-- [Stabilize `core::ffi:c_*` and rexport in `std::ffi`](https://github.com/rust-lang/rust/pull/98315/)
+- [Stabilize `core::ffi:c_*` and re-export in `std::ffi`](https://github.com/rust-lang/rust/pull/98315/)
 - [Stabilize `core::ffi::CStr`, `alloc::ffi::CString`, and friends](https://github.com/rust-lang/rust/pull/99277/)
 - [Stabilize Windows `FileTypeExt` with `is_symlink_dir` and `is_symlink_file`](https://github.com/rust-lang/rust/pull/98583/)
 - [Stabilize `into_future`](https://github.com/rust-lang/rust/pull/98718/)
