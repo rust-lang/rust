@@ -13,3 +13,10 @@ pub(crate) struct LinkageConstOrMutType {
     #[primary_span]
     pub span: Span
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_gcc::unwinding_inline_asm)]
+pub(crate) struct UnwindingInlineAsm {
+    #[primary_span]
+    pub span: Span
+}
