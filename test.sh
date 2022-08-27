@@ -327,6 +327,7 @@ EOF
     git checkout src/test/ui/lto/auxiliary/dylib.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
+    git checkout src/test/ui/macros/rfc-2011-nicer-assert-messages/auxiliary/common.rs
 
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
@@ -338,7 +339,7 @@ EOF
         xargs -a ../failing-ui-tests.txt -d'\n' rm
     else
         # Removing all tests.
-        find src/test/ui -type f -name '*.rs' -exec rm {} \;
+        find src/test/ui -type f -name '*.rs' -not -path '*/auxiliary/*' -delete
         # Putting back only the failing ones.
         xargs -a ../failing-ui-tests.txt -d'\n' git checkout --
     fi
@@ -354,7 +355,7 @@ EOF
         count=$((count + 1))
         split -d -l $count -a 1 ui_tests ui_tests.split
         # Removing all tests.
-        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" -exec rm {} \;
+        find src/test/ui -type f -name '*.rs' -not -path "*/auxiliary/*" -delete
         # Putting back only the ones we want to test.
         xargs -a "ui_tests.split$current_part" -d'\n' git checkout --
     fi
@@ -372,7 +373,7 @@ function test_successful_rustc() {
 }
 
 function clean_ui_tests() {
-    find rust/build/x86_64-unknown-linux-gnu/test/ui/ -name stamp -exec rm -rf {} \;
+    find rust/build/x86_64-unknown-linux-gnu/test/ui/ -name stamp -delete
 }
 
 function all() {
