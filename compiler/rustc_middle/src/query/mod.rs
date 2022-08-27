@@ -1607,7 +1607,7 @@ rustc_queries! {
         desc { "looking up late bound vars" }
     }
 
-    query visibility(def_id: DefId) -> ty::Visibility {
+    query visibility(def_id: DefId) -> ty::Visibility<DefId> {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

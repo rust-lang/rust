@@ -1777,7 +1777,7 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
+pub(crate) fn clean_visibility(vis: ty::Visibility<DefId>) -> Visibility {
     match vis {
         ty::Visibility::Public => Visibility::Public,
         ty::Visibility::Restricted(module) => Visibility::Restricted(module),
@@ -2111,8 +2111,8 @@ fn clean_use_statement<'tcx>(
     // `pub(super)` or higher. If the current module is the top level
     // module, there isn't really a parent module, which makes the results
     // meaningless. In this case, we make sure the answer is `false`.
-    let is_visible_from_parent_mod = visibility.is_accessible_from(parent_mod.to_def_id(), cx.tcx)
-        && !current_mod.is_top_level_module();
+    let is_visible_from_parent_mod =
+        visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
     if pub_underscore {
         if let Some(ref inline) = inline_attr {

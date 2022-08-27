@@ -42,7 +42,7 @@ impl AssocItem {
     }
 
     #[inline]
-    pub fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility {
+    pub fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility<DefId> {
         tcx.visibility(self.def_id)
     }
 

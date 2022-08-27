@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 if adt.is_struct();
                 let variant = adt.non_enum_variant();
                 if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
-                let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
+                let module_did = cx.tcx.parent_module(stmt.hir_id);
                 if variant
                     .fields
                     .iter()
