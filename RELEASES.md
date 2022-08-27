@@ -83,6 +83,7 @@ Misc
 
 Compatibility Notes
 -------------------
+- The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
 - [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
 - [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
 - [Add `PhantomData` marker for dropck to `BTreeMap`](https://github.com/rust-lang/rust/pull/99413/)
