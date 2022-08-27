@@ -592,15 +592,12 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
-        let mut err = lint.build("unreachable pattern");
-        if let Some(catchall) = catchall {
-            // We had a catchall pattern, hint at that.
-            err.span_label(span, "unreachable pattern");
-            err.span_label(catchall, "matches any value");
-        }
-        err.emit();
-    });
+    tcx.emit_spanned_lint(
+        UNREACHABLE_PATTERNS,
+        id,
+        span,
+        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
+    );
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {

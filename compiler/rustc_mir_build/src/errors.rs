@@ -457,3 +457,12 @@ pub struct NonConstPath {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::unreachable_pattern)]
+pub struct UnreachablePattern {
+    #[label]
+    pub span: Option<Span>,
+    #[label(mir_build::catchall_label)]
+    pub catchall: Option<Span>,
+}
