@@ -153,9 +153,6 @@ a {
 .sidebar h3 a {
 	color: white;
 }
-.search-results a {
-	color: #0096cf;
-}
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
@@ -359,7 +356,6 @@ h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type)
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
 .content a.static, .block a.current.static {}
 .content span.keyword,.content a.keyword,.block a.current.keyword {}
-pre.rust .comment {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
 .content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
 .block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
@@ -367,7 +363,6 @@ pre.rust .comment {}
 pre.rust .kw {}
 pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
-pre.rust .doccomment {}
 .stab.deprecated {}
 .content a.attr,.content a.derive,.content a.macro {}
 .stab.portability {}

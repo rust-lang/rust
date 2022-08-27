@@ -221,7 +221,7 @@ fn main() {
     let write_location = std::env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Must provide path to write unicode tables to");
         eprintln!(
-            "e.g. {} library/core/unicode/unicode_data.rs",
+            "e.g. {} library/core/src/unicode/unicode_data.rs",
             std::env::args().next().unwrap_or_default()
         );
         std::process::exit(1);

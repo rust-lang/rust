@@ -371,16 +371,21 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     }
                     clean::ImportKind::Glob => String::new(),
                 };
+                let stab_tags = stab_tags.unwrap_or_default();
+                let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
+                    ("", "")
+                } else {
+                    ("<div class=\"item-right docblock-short\">", "</div>")
+                };
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}import-item\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
-                     <div class=\"item-right docblock-short\">{stab_tags}</div>",
+                     {stab_tags_before}{stab_tags}{stab_tags_after}",
                     stab = stab.unwrap_or_default(),
                     vis = myitem.visibility.print_with_space(myitem.item_id, cx),
                     imp = import.print(cx),
-                    stab_tags = stab_tags.unwrap_or_default(),
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
@@ -412,6 +417,12 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
+                let docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string();
+                let (docs_before, docs_after) = if docs.is_empty() {
+                    ("", "")
+                } else {
+                    ("<div class=\"item-right docblock-short\">", "</div>")
+                };
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
@@ -420,11 +431,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         {unsafety_flag}\
                         {stab_tags}\
                      </div>\
-                     <div class=\"item-right docblock-short\">{docs}</div>",
+                     {docs_before}{docs}{docs_after}",
                     name = myitem.name.unwrap(),
                     visibility_emoji = visibility_emoji,
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
-                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_default(),
@@ -987,7 +997,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script type="text/javascript" src="/implementors/A/trait.Foo.js"
+    // <script src="/implementors/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1013,9 +1023,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .map(|cnum| cx.shared.tcx.crate_name(cnum).to_string())
         .collect::<Vec<_>>()
         .join(",");
+    let (extern_before, extern_after) =
+        if extern_crates.is_empty() { ("", "") } else { (" data-ignore-extern-crates=\"", "\"") };
     write!(
         w,
-        "<script type=\"text/javascript\" src=\"{src}\" data-ignore-extern-crates=\"{extern_crates}\" async></script>",
+        "<script src=\"{src}\"{extern_before}{extern_crates}{extern_after} async></script>",
         src = js_src_path.finish(),
     );
 }

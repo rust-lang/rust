@@ -3094,7 +3094,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// #![cfg_attr(debug_assertions, crate_type = "lib")]
     /// ```
     ///
@@ -3114,7 +3114,7 @@ declare_lint! {
     /// rustc instead of `#![cfg_attr(..., crate_type = "...")]` and
     /// `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]`.
     pub DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-    Warn,
+    Deny,
     "detects usage of `#![cfg_attr(..., crate_type/crate_name = \"...\")]`",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #91632 <https://github.com/rust-lang/rust/issues/91632>",

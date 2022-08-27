@@ -364,11 +364,6 @@ li {
 	margin-left: 0px;
 }
 
-nav.sub {
-	position: relative;
-	font-size: 1rem;
-}
-
 .sub-container {
 	display: flex;
 	flex-direction: row;
@@ -638,9 +633,6 @@ h2.location a {
 }
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short p {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin: 0;
@@ -777,7 +769,7 @@ pre, .rustdoc.source .example-wrap {
 .content .docblock >.impl-items table td {
 	padding: 0;
 }
-.content .docblock > .impl-items .table-display, .impl-items table td {
+.content .docblock > .impl-items .table-display {
 	border: none;
 }
 
@@ -820,6 +812,8 @@ pre, .rustdoc.source .example-wrap {
 }
 
 nav.sub {
+	position: relative;
+	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }
@@ -919,6 +913,7 @@ table,
 	position: relative;
 	display: flex;
 	height: 34px;
+	margin-top: 4px;
 }
 .search-container > * {
 	height: 100%;
@@ -989,9 +984,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 #crate-search > option {
 	font-size: 1rem;
-}
-.search-container {
-	margin-top: 4px;
 }
 .search-input {
 	/* Override Normalize.css: it has a rule that sets
@@ -1188,16 +1180,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
+	float: right;
 }
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
-}
-
-.rightside {
-	float: right;
 }
 
 td.summary-column {
@@ -1226,7 +1215,7 @@ a.test-arrow {
 .example-wrap:hover .test-arrow {
 	visibility: visible;
 }
-a.test-arrow:hover{
+a.test-arrow:hover {
 	text-decoration: none;
 }
 
@@ -1494,10 +1483,6 @@ pre.rust {
 	outline: none;
 }
 
-#copy-path {
-	height: 34px;
-	background-color: var(--main-background-color);
-}
 #settings-menu > a, #help-button > button, #copy-path {
 	padding: 5px;
 	width: 33px;
@@ -1555,7 +1540,8 @@ input:checked + .slider {
 }
 
 #copy-path {
-	background: initial;
+	height: 34px;
+	background-color: var(--main-background-color);
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
@@ -1571,12 +1557,6 @@ kbd {
 	border: solid 1px var(--border-color);
 	border-radius: 3px;
 	cursor: default;
-}
-
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
 }
 
 #implementations-list > h3 > span.in-band {
@@ -1841,10 +1821,6 @@ in storage.js plus the media query with (min-width: 701px)
 		display: none;
 	}
 
-	.sidebar-elems {
-		margin-top: 1em;
-	}
-
 	.sidebar {
 		position: fixed;
 		top: 45px;
@@ -1938,6 +1914,7 @@ in storage.js plus the media query with (min-width: 701px)
 	}
 
 	.sidebar-elems {
+		margin-top: 1em;
 		background-color: var(--sidebar-background-color);
 	}
 

@@ -1514,7 +1514,15 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         test_args.append(&mut builder.config.cmd.test_args());
 
-        cmd.args(&test_args);
+        // On Windows, replace forward slashes in test-args by backslashes
+        // so the correct filters are passed to libtest
+        if cfg!(windows) {
+            let test_args_win: Vec<String> =
+                test_args.iter().map(|s| s.replace("/", "\\")).collect();
+            cmd.args(&test_args_win);
+        } else {
+            cmd.args(&test_args);
+        }
 
         if builder.is_verbose() {
             cmd.arg("--verbose");
