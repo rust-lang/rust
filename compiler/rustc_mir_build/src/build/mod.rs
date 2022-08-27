@@ -1,14 +1,12 @@
 pub(crate) use crate::build::expr::as_constant::lit_to_mir_constant;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::pattern::pat_from_hir;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GeneratorKind, ImplicitSelfKind, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -17,8 +15,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, PatKind, Thir};
-use rustc_middle::ty::subst::Subst;
+use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, PatKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -439,10 +436,10 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'tcx>(
+struct ArgInfo<'thir, 'tcx>(
     Ty<'tcx>,
     Option<Span>,
-    Option<&'tcx hir::Param<'tcx>>,
+    Option<&'thir Param<'tcx>>,
     Option<ImplicitSelfKind>,
 );
 
@@ -500,38 +497,8 @@ fn construct_fn<'tcx>(
         _ => vec![],
     };
 
-    let explicit_arguments = body.params.iter().enumerate().map(|(index, arg)| {
-        let owner_id = tcx.hir().body_owner(body_id);
-        let opt_ty_info;
-        let self_arg;
-        if let Some(ref fn_decl) = tcx.hir().fn_decl_by_hir_id(owner_id) {
-            opt_ty_info = fn_decl
-                .inputs
-                .get(index)
-                // Make sure that inferred closure args have no type span
-                .and_then(|ty| if arg.pat.span != ty.span { Some(ty.span) } else { None });
-            self_arg = if index == 0 && fn_decl.implicit_self.has_implicit_self() {
-                Some(fn_decl.implicit_self)
-            } else {
-                None
-            };
-        } else {
-            opt_ty_info = None;
-            self_arg = None;
-        }
-
-        // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
-        // (as it's created inside the body itself, not passed in from outside).
-        let ty = if fn_sig.c_variadic && index == fn_sig.inputs().len() {
-            let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(arg.span));
-
-            tcx.bound_type_of(va_list_did).subst(tcx, &[tcx.lifetimes.re_erased.into()])
-        } else {
-            fn_sig.inputs()[index]
-        };
-
-        ArgInfo(ty, opt_ty_info, Some(&arg), self_arg)
-    });
+    let explicit_arguments =
+        thir.params.iter().map(|arg| ArgInfo(arg.ty, arg.ty_span, Some(&arg), arg.self_kind));
 
     let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
@@ -842,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         fn_def_id: LocalDefId,
-        arguments: &[ArgInfo<'tcx>],
+        arguments: &[ArgInfo<'_, 'tcx>],
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
@@ -853,9 +820,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {
+            if let Some(arg) = arg_opt && let Some(name) = arg.pat.simple_ident() {
                 self.var_debug_info.push(VarDebugInfo {
-                    name: ident.name,
+                    name,
                     source_info,
                     value: VarDebugInfoContents::Place(arg_local.into()),
                 });
@@ -943,15 +910,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let Some(arg) = arg_opt else {
                 continue;
             };
-            let pat = match tcx.hir().get(arg.pat.hir_id) {
-                Node::Pat(pat) => pat,
-                node => bug!("pattern became {:?}", node),
-            };
-            let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);
             let original_source_scope = self.source_scope;
-            let span = pattern.span;
+            let span = arg.pat.span;
             self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
-            match pattern.kind {
+            match arg.pat.kind {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     mutability,
@@ -983,15 +945,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     scope = self.declare_bindings(
                         scope,
                         expr.span,
-                        &pattern,
+                        &arg.pat,
                         matches::ArmHasGuard(false),
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(
-                        block =
-                            self.place_into_pattern(block, pattern.as_ref(), place_builder, false)
-                    );
+                    unpack!(block = self.place_into_pattern(block, &arg.pat, place_builder, false));
                 }
             }
             self.source_scope = original_source_scope;
