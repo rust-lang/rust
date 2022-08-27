@@ -666,6 +666,10 @@ changelog-seen = 2
 # target.
 #llvm-config = <none> (path)
 
+# Override detection of whether this is a Rust-patched LLVM. This would be used
+# in conjunction with either an llvm-config or build.submodules = false.
+#llvm-has-rust-patches = if llvm-config { false } else { true }
+
 # Normally the build system can find LLVM's FileCheck utility, but if
 # not, you can specify an explicit file name for it.
 #llvm-filecheck = "/path/to/llvm-version/bin/FileCheck"

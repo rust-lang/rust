@@ -112,6 +112,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use config::Target;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -854,12 +855,13 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        if self.config.llvm_from_ci && target == self.config.build {
-            return true;
-        }
-
         match self.config.target_config.get(&target) {
-            Some(ref c) => c.llvm_config.is_none(),
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            Some(Target { llvm_config, .. }) => {
+                // If the user set llvm-config we assume Rust is not patched,
+                // but first check to see if it was configured by llvm-from-ci.
+                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
+            }
             None => true,
         }
     }
