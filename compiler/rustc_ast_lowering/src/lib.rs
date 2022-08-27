@@ -39,6 +39,8 @@
 #[macro_use]
 extern crate tracing;
 
+use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
+
 use rustc_ast::ptr::P;
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
@@ -49,7 +51,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability, Handler, StashKey};
+use rustc_errors::{DiagnosticArgFromDisplay, Handler, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -75,6 +77,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod errors;
 mod expr;
 mod index;
 mod item;
@@ -1070,19 +1073,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn emit_bad_parenthesized_trait_in_assoc_ty(&self, data: &ParenthesizedArgs) {
-        let mut err = self.tcx.sess.struct_span_err(
-            data.span,
-            "parenthesized generic arguments cannot be used in associated type constraints",
-        );
         // Suggest removing empty parentheses: "Trait()" -> "Trait"
-        if data.inputs.is_empty() {
+        let sub = if data.inputs.is_empty() {
             let parentheses_span =
                 data.inputs_span.shrink_to_lo().to(data.inputs_span.shrink_to_hi());
-            err.multipart_suggestion(
-                "remove these parentheses",
-                vec![(parentheses_span, String::new())],
-                Applicability::MaybeIncorrect,
-            );
+            AssocTyParenthesesSub::Empty { parentheses_span }
         }
         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
         else {
@@ -1096,13 +1091,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // End of last argument to end of parameters
             let close_param =
                 data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
-            err.multipart_suggestion(
-                &format!("use angle brackets instead",),
-                vec![(open_param, String::from("<")), (close_param, String::from(">"))],
-                Applicability::MaybeIncorrect,
-            );
-        }
-        err.emit();
+            AssocTyParenthesesSub::NotEmpty { open_param, close_param }
+        };
+        self.tcx.sess.emit_err(AssocTyParentheses { span: data.span, sub });
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1341,14 +1332,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         path
                     }
                     ImplTraitContext::Disallowed(position) => {
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            t.span,
-                            E0562,
-                            "`impl Trait` only allowed in function and inherent method return types, not in {}",
-                            position
-                        );
-                        err.emit();
+                        self.tcx.sess.emit_err(MisplacedImplTrait {
+                            span: t.span,
+                            position: DiagnosticArgFromDisplay(&position),
+                        });
                         hir::TyKind::Err
                     }
                 }

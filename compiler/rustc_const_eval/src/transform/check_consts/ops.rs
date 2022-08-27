@@ -24,8 +24,11 @@ use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
 use crate::errors::{
-    MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
-    TransientMutBorrowErr, TransientMutBorrowErrRaw,
+    InteriorMutabilityBorrow, InteriorMutableDataRefer, MutDerefErr, NonConstFmtMacroCall,
+    NonConstFnCall, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
+    TransientMutBorrowErr, TransientMutBorrowErrRaw, UnallowedFnPointerCall,
+    UnallowedHeapAllocations, UnallowedInlineAsm, UnallowedMutableRefs, UnallowedMutableRefsRaw,
+    UnallowedOpInConstContext, UnstableConstFn,
 };
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
@@ -97,10 +100,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.struct_span_err(
-            span,
-            &format!("function pointer calls are not allowed in {}s", ccx.const_kind()),
-        )
+        ccx.tcx.sess.create_err(UnallowedFnPointerCall { span, kind: ccx.const_kind() })
     }
 }
 
@@ -308,22 +308,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 err
             }
             _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {
-                struct_span_err!(
-                    ccx.tcx.sess,
-                    span,
-                    E0015,
-                    "cannot call non-const formatting macro in {}s",
-                    ccx.const_kind(),
-                )
+                ccx.tcx.sess.create_err(NonConstFmtMacroCall { span, kind: ccx.const_kind() })
             }
-            _ => struct_span_err!(
-                ccx.tcx.sess,
+            _ => ccx.tcx.sess.create_err(NonConstFnCall {
                 span,
-                E0015,
-                "cannot call non-const fn `{}` in {}s",
-                ccx.tcx.def_path_str_with_substs(callee, substs),
-                ccx.const_kind(),
-            ),
+                def_path_str: ccx.tcx.def_path_str_with_substs(callee, substs),
+                kind: ccx.const_kind(),
+            }),
         };
 
         err.note(&format!(
@@ -354,10 +345,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
-        let mut err = ccx.tcx.sess.struct_span_err(
-            span,
-            &format!("`{}` is not yet stable as a const fn", ccx.tcx.def_path_str(def_id)),
-        );
+        let mut err = ccx
+            .tcx
+            .sess
+            .create_err(UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
@@ -392,9 +383,12 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
-            feature_err(&ccx.tcx.sess.parse_sess, sym::const_async_blocks, span, &msg)
+            ccx.tcx.sess.create_feature_err(
+                UnallowedOpInConstContext { span, msg },
+                sym::const_async_blocks,
+            )
         } else {
-            ccx.tcx.sess.struct_span_err(span, &msg)
+            ccx.tcx.sess.create_err(UnallowedOpInConstContext { span, msg })
         }
     }
 }
@@ -407,23 +401,11 @@ impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
+        ccx.tcx.sess.create_err(UnallowedHeapAllocations {
             span,
-            E0010,
-            "allocations are not allowed in {}s",
-            ccx.const_kind()
-        );
-        err.span_label(span, format!("allocation not allowed in {}s", ccx.const_kind()));
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "The value of statics and constants must be known at compile time, \
-                 and they live for the entire lifetime of a program. Creating a boxed \
-                 value allocates memory on the heap at runtime, and therefore cannot \
-                 be done at compile time.",
-            );
-        }
-        err
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(&error_code!(E0010)).then_some(()),
+        })
     }
 }
 
@@ -435,13 +417,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0015,
-            "inline assembly is not allowed in {}s",
-            ccx.const_kind()
-        )
+        ccx.tcx.sess.create_err(UnallowedInlineAsm { span, kind: ccx.const_kind() })
     }
 }
 
@@ -487,12 +463,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_refs_to_cell,
-            span,
-            "cannot borrow here, since the borrowed element may contain interior mutability",
-        )
+        ccx.tcx.sess.create_feature_err(InteriorMutabilityBorrow { span }, sym::const_refs_to_cell)
     }
 }
 
@@ -507,32 +478,22 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0492,
-            "{}s cannot refer to interior mutable data",
-            ccx.const_kind(),
-        );
-        err.span_label(
-            span,
-            "this borrow of an interior mutable value may end up in the final value",
-        );
+        // FIXME: Maybe a more elegant solution to this if else case
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
-            err.help(
-                "to fix this, the value can be extracted to a separate \
-                `static` item and then referenced",
-            );
+            ccx.tcx.sess.create_err(InteriorMutableDataRefer {
+                span,
+                opt_help: Some(()),
+                kind: ccx.const_kind(),
+                teach: ccx.tcx.sess.teach(&error_code!(E0492)).then_some(()),
+            })
+        } else {
+            ccx.tcx.sess.create_err(InteriorMutableDataRefer {
+                span,
+                opt_help: None,
+                kind: ccx.const_kind(),
+                teach: ccx.tcx.sess.teach(&error_code!(E0492)).then_some(()),
+            })
         }
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "A constant containing interior mutable data behind a reference can allow you
-                 to modify that data. This would make multiple uses of a constant to be able to
-                 see different values and allow circumventing the `Send` and `Sync` requirements
-                 for shared mutable data, which is unsound.",
-            );
-        }
-        err
     }
 }
 
@@ -558,33 +519,18 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let raw = match self.0 {
-            hir::BorrowKind::Raw => "raw ",
-            hir::BorrowKind::Ref => "",
-        };
-
-        let mut err = struct_span_err!(
-            ccx.tcx.sess,
-            span,
-            E0764,
-            "{}mutable references are not allowed in the final value of {}s",
-            raw,
-            ccx.const_kind(),
-        );
-
-        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
-            err.note(
-                "References in statics and constants may only refer \
-                      to immutable values.\n\n\
-                      Statics are shared everywhere, and if they refer to \
-                      mutable data one might violate memory safety since \
-                      holding multiple mutable references to shared data \
-                      is not allowed.\n\n\
-                      If you really want global mutable state, try using \
-                      static mut or a global UnsafeCell.",
-            );
+        match self.0 {
+            hir::BorrowKind::Raw => ccx.tcx.sess.create_err(UnallowedMutableRefsRaw {
+                span,
+                kind: ccx.const_kind(),
+                teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
+            }),
+            hir::BorrowKind::Ref => ccx.tcx.sess.create_err(UnallowedMutableRefs {
+                span,
+                kind: ccx.const_kind(),
+                teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
+            }),
         }
-        err
     }
 }
 

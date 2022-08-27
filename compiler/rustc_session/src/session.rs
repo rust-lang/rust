@@ -20,8 +20,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
-    ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    EmissionGuarantee, ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -467,6 +467,9 @@ impl Session {
         feature: Symbol,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.parse_sess.create_err(err);
+        if err.code.is_none() {
+            err.code = std::option::Option::Some(error_code!(E0658));
+        }
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }

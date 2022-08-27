@@ -21,6 +21,7 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{
+    errors::BuiltinEllpisisInclusiveRangePatterns,
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
@@ -1760,18 +1761,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={})", end),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err = cx.sess().struct_span_err_with_code(
-                        pat.span,
-                        msg,
-                        rustc_errors::error_code!(E0783),
-                    );
-                    err.span_suggestion(
-                        pat.span,
-                        suggestion,
+                    cx.sess().emit_err(BuiltinEllpisisInclusiveRangePatterns {
+                        span: pat.span,
+                        suggestion: pat.span,
                         replace,
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                    });
                 } else {
                     cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
                         lint.build(msg)
@@ -1787,18 +1781,11 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    let mut err = cx.sess().struct_span_err_with_code(
-                        pat.span,
-                        msg,
-                        rustc_errors::error_code!(E0783),
-                    );
-                    err.span_suggestion_short(
-                        join,
-                        suggestion,
-                        replace,
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                    cx.sess().emit_err(BuiltinEllpisisInclusiveRangePatterns {
+                        span: pat.span,
+                        suggestion: join,
+                        replace: replace.to_string(),
+                    });
                 } else {
                     cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, |lint| {
                         lint.build(msg)

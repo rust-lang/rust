@@ -29,3 +29,55 @@ const_eval_mut_deref =
 const_eval_transient_mut_borrow = mutable references are not allowed in {$kind}s
 
 const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {$kind}s
+
+const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
+
+const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {$kind}s
+
+const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
+
+const_eval_unallowed_mutable_refs =
+    mutable references are not allowed in the final value of {$kind}s
+    .teach_note =
+        References in statics and constants may only refer to immutable values.\n\n
+        Statics are shared everywhere, and if they refer to mutable data one might violate memory
+        safety since holding multiple mutable references to shared data is not allowed.\n\n
+        If you really want global mutable state, try using static mut or a global UnsafeCell.
+
+const_eval_unallowed_mutable_refs_raw =
+    raw mutable references are not allowed in the final value of {$kind}s
+    .teach_note =
+        References in statics and constants may only refer to immutable values.\n\n
+        Statics are shared everywhere, and if they refer to mutable data one might violate memory
+        safety since holding multiple mutable references to shared data is not allowed.\n\n
+        If you really want global mutable state, try using static mut or a global UnsafeCell.
+
+const_eval_non_const_fmt_macro_call =
+    cannot call non-const formatting macro in {$kind}s
+
+const_eval_non_const_fn_call =
+    cannot call non-const fn `{$def_path_str}` in {$kind}s
+
+const_eval_unallowed_op_in_const_context =
+    {$msg}
+
+const_eval_unallowed_heap_allocations =
+    allocations are not allowed in {$kind}s
+    .label = allocation not allowed in {$kind}s
+    .teach_note =
+        The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+
+const_eval_unallowed_inline_asm =
+    inline assembly is not allowed in {$kind}s
+
+const_eval_interior_mutable_data_refer =
+    {$kind}s cannot refer to interior mutable data
+    .label = this borrow of an interior mutable value may end up in the final value
+    .help = to fix this, the value can be extracted to a separate `static` item and then referenced
+    .teach_note =
+        A constant containing interior mutable data behind a reference can allow you to modify that data.
+        This would make multiple uses of a constant to be able to see different values and allow circumventing
+        the `Send` and `Sync` requirements for shared mutable data, which is unsound.
+
+const_eval_interior_mutability_borrow =
+    cannot borrow here, since the borrowed element may contain interior mutability

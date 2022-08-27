@@ -3,7 +3,7 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, LintDiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
@@ -22,6 +22,11 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
+
+use crate::errors::{
+    MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
+    UnknownToolInScopedLint,
+};
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
@@ -186,16 +191,26 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
                 };
                 if !fcw_warning {
-                    let mut diag_builder = struct_span_err!(
-                        self.sess,
-                        src.span(),
-                        E0453,
-                        "{}({}) incompatible with previous forbid",
-                        level.as_str(),
-                        src.name(),
-                    );
-                    decorate_diag(&mut diag_builder);
-                    diag_builder.emit();
+                    self.sess.emit_err(OverruledAttribute {
+                        span: src.span(),
+                        overruled: src.span(),
+                        lint_level: level.as_str().to_string(),
+                        lint_source: src.name(),
+                        sub: match old_src {
+                            LintLevelSource::Default => {
+                                OverruledAttributeSub::DefaultSource { id: id.to_string() }
+                            }
+                            LintLevelSource::Node(_, forbid_source_span, reason) => {
+                                OverruledAttributeSub::NodeSource {
+                                    span: forbid_source_span,
+                                    reason,
+                                }
+                            }
+                            LintLevelSource::CommandLine(_, _) => {
+                                OverruledAttributeSub::CommandLineSource
+                            }
+                        },
+                    });
                 } else {
                     self.struct_lint(
                         FORBIDDEN_LINT_GROUPS,
@@ -266,7 +281,6 @@ impl<'s> LintLevelsBuilder<'s> {
         self.cur = self.sets.list.push(LintSet { specs: FxHashMap::default(), parent: prev });
 
         let sess = self.sess;
-        let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for (attr_index, attr) in attrs.iter().enumerate() {
             if attr.has_name(sym::automatically_derived) {
                 self.current_specs_mut().insert(
@@ -317,20 +331,27 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 reason = Some(rationale);
                             } else {
-                                bad_attr(name_value.span)
-                                    .span_label(name_value.span, "reason must be a string literal")
-                                    .emit();
+                                sess.emit_err(MalformedAttribute {
+                                    span: name_value.span,
+                                    sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
+                                        name_value.span,
+                                    ),
+                                });
                             }
                             // found reason, reslice meta list to exclude it
                             metas.pop().unwrap();
                         } else {
-                            bad_attr(item.span)
-                                .span_label(item.span, "bad attribute argument")
-                                .emit();
+                            sess.emit_err(MalformedAttribute {
+                                span: item.span,
+                                sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                            });
                         }
                     }
                     ast::MetaItemKind::List(_) => {
-                        bad_attr(item.span).span_label(item.span, "bad attribute argument").emit();
+                        sess.emit_err(MalformedAttribute {
+                            span: item.span,
+                            sub: MalformedAttributeSub::BadAttributeArgument(item.span),
+                        });
                     }
                 }
             }
@@ -348,20 +369,21 @@ impl<'s> LintLevelsBuilder<'s> {
                 let meta_item = match li {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
-                        let mut err = bad_attr(sp);
-                        let mut add_label = true;
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
-                                    err.span_label(sp, "reason in lint attribute must come last");
-                                    add_label = false;
+                                    sess.emit_err(MalformedAttribute {
+                                        span: sp,
+                                        sub: MalformedAttributeSub::ReasonMustComeLast(sp),
+                                    });
+                                    continue;
                                 }
                             }
                         }
-                        if add_label {
-                            err.span_label(sp, "bad attribute argument");
-                        }
-                        err.emit();
+                        sess.emit_err(MalformedAttribute {
+                            span: sp,
+                            sub: MalformedAttributeSub::BadAttributeArgument(sp),
+                        });
                         continue;
                     }
                 };
@@ -485,22 +507,12 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
 
                     &CheckLintNameResult::NoTool => {
-                        let mut err = struct_span_err!(
-                            sess,
-                            tool_ident.map_or(DUMMY_SP, |ident| ident.span),
-                            E0710,
-                            "unknown tool name `{}` found in scoped lint: `{}::{}`",
-                            tool_name.unwrap(),
-                            tool_name.unwrap(),
-                            pprust::path_to_string(&meta_item.path),
-                        );
-                        if sess.is_nightly_build() {
-                            err.help(&format!(
-                                "add `#![register_tool({})]` to the crate root",
-                                tool_name.unwrap()
-                            ));
-                        }
-                        err.emit();
+                        sess.emit_err(UnknownToolInScopedLint {
+                            span: tool_ident.map(|ident| ident.span),
+                            tool_name: tool_name.unwrap(),
+                            lint_name: pprust::path_to_string(&meta_item.path),
+                            is_nightly_build: sess.is_nightly_build().then_some(()),
+                        });
                         continue;
                     }
 
