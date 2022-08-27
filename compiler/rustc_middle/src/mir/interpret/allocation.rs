@@ -130,6 +130,8 @@ pub enum AllocError {
     ReadPointerAsBytes,
     /// Partially overwriting a pointer.
     PartialPointerOverwrite(Size),
+    /// Partially copying a pointer.
+    PartialPointerCopy(Size),
     /// Using uninitialized data where it is not allowed.
     InvalidUninitBytes(Option<UninitBytesAccess>),
 }
@@ -151,6 +153,9 @@ impl AllocError {
             ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
             PartialPointerOverwrite(offset) => InterpError::Unsupported(
                 UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
+            ),
+            PartialPointerCopy(offset) => InterpError::Unsupported(
+                UnsupportedOpInfo::PartialPointerCopy(Pointer::new(alloc_id, offset)),
             ),
             InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
@@ -322,62 +327,35 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 /// Byte accessors.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
-    /// caring about provenance. It just deduplicates some code between `read_scalar`
-    /// and `get_bytes_internal`.
-    fn get_bytes_even_more_internal(&self, range: AllocRange) -> &[u8] {
-        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
-    }
-
-    /// The last argument controls whether we error out when there are uninitialized or pointer
-    /// bytes. However, we *always* error when there is provenance overlapping the edges of the
-    /// range.
-    ///
-    /// You should never call this, call `get_bytes` or `get_bytes_with_uninit_and_ptr` instead,
+    /// caring about provenance or initialization.
     ///
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
-    ///
-    /// It is the caller's responsibility to check bounds and alignment beforehand.
-    fn get_bytes_internal(
-        &self,
-        cx: &impl HasDataLayout,
-        range: AllocRange,
-        check_init_and_ptr: bool,
-    ) -> AllocResult<&[u8]> {
-        if check_init_and_ptr {
-            self.check_init(range)?;
-            self.check_provenance(cx, range)?;
-        } else {
-            // We still don't want provenance on the *edges*.
-            self.check_provenance_edges(cx, range)?;
-        }
-
-        Ok(self.get_bytes_even_more_internal(range))
+    #[inline]
+    pub fn get_bytes_unchecked(&self, range: AllocRange) -> &[u8] {
+        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
 
-    /// Checks that these bytes are initialized and not pointer bytes, and then return them
-    /// as a slice.
+    /// Checks that these bytes are initialized, and then strip provenance (if possible) and return
+    /// them.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     /// Most likely, you want to use the `PlaceTy` and `OperandTy`-based methods
     /// on `InterpCx` instead.
     #[inline]
-    pub fn get_bytes(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult<&[u8]> {
-        self.get_bytes_internal(cx, range, true)
-    }
-
-    /// It is the caller's responsibility to handle uninitialized and pointer bytes.
-    /// However, this still checks that there is no provenance on the *edges*.
-    ///
-    /// It is the caller's responsibility to check bounds and alignment beforehand.
-    #[inline]
-    pub fn get_bytes_with_uninit_and_ptr(
+    pub fn get_bytes_strip_provenance(
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
     ) -> AllocResult<&[u8]> {
-        self.get_bytes_internal(cx, range, false)
+        self.check_init(range)?;
+        if !Prov::OFFSET_IS_ADDR {
+            if self.range_has_provenance(cx, range) {
+                return Err(AllocError::ReadPointerAsBytes);
+            }
+        }
+        Ok(self.get_bytes_unchecked(range))
     }
 
     /// Just calling this already marks everything as defined and removes provenance,
@@ -415,13 +393,6 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 
 /// Reading and writing.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
-    /// Validates that this memory range is initiailized and contains no provenance.
-    pub fn check_bytes(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        // This implicitly does all the checking we are asking for.
-        self.get_bytes(cx, range)?;
-        Ok(())
-    }
-
     /// Reads a *non-ZST* scalar.
     ///
     /// If `read_provenance` is `true`, this will also read provenance; otherwise (if the machine
@@ -438,43 +409,53 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         range: AllocRange,
         read_provenance: bool,
     ) -> AllocResult<Scalar<Prov>> {
-        if read_provenance {
-            assert_eq!(range.size, cx.data_layout().pointer_size);
-        }
-
         // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
         }
 
-        // If we are doing a pointer read, and there is provenance exactly where we
-        // are reading, then we can put data and provenance back together and return that.
-        if read_provenance && let Some(&prov) = self.provenance.get(&range.start) {
-            // We already checked init and provenance, so we can use this function.
-            let bytes = self.get_bytes_even_more_internal(range);
-            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-            let ptr = Pointer::new(prov, Size::from_bytes(bits));
-            return Ok(Scalar::from_pointer(ptr, cx));
-        }
-
-        // If we are *not* reading a pointer, and we can just ignore provenance,
-        // then do exactly that.
-        if !read_provenance && Prov::OFFSET_IS_ADDR {
-            // We just strip provenance.
-            let bytes = self.get_bytes_even_more_internal(range);
-            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-            return Ok(Scalar::from_uint(bits, range.size));
-        }
-
-        // It's complicated. Better make sure there is no provenance anywhere.
-        // FIXME: If !OFFSET_IS_ADDR, this is the best we can do. But if OFFSET_IS_ADDR, then
-        // `read_pointer` is true and we ideally would distinguish the following two cases:
-        // - The entire `range` is covered by the same provenance, stored in two separate entries of
-        //   the provenance map. Then we should return a pointer with that provenance.
-        // - The range has inhomogeneous provenance. Then we should return just the
-        //   underlying bits.
-        let bytes = self.get_bytes(cx, range)?;
+        // Get the integer part of the result. We HAVE TO check provenance before returning this!
+        let bytes = self.get_bytes_unchecked(range);
         let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
+
+        if read_provenance {
+            assert_eq!(range.size, cx.data_layout().pointer_size);
+
+            // When reading data with provenance, the easy case is finding provenance exactly where we
+            // are reading, then we can put data and provenance back together and return that.
+            if let Some(&prov) = self.provenance.get(&range.start) {
+                // Now we can return the bits, with their appropriate provenance.
+                let ptr = Pointer::new(prov, Size::from_bytes(bits));
+                return Ok(Scalar::from_pointer(ptr, cx));
+            }
+
+            // If we can work on pointers byte-wise, join the byte-wise provenances.
+            if Prov::OFFSET_IS_ADDR {
+                let mut prov = self.offset_get_provenance(cx, range.start);
+                for offset in 1..range.size.bytes() {
+                    let this_prov =
+                        self.offset_get_provenance(cx, range.start + Size::from_bytes(offset));
+                    prov = Prov::join(prov, this_prov);
+                }
+                // Now use this provenance.
+                let ptr = Pointer::new(prov, Size::from_bytes(bits));
+                return Ok(Scalar::from_maybe_pointer(ptr, cx));
+            }
+        } else {
+            // We are *not* reading a pointer.
+            // If we can just ignore provenance, do exactly that.
+            if Prov::OFFSET_IS_ADDR {
+                // We just strip provenance.
+                return Ok(Scalar::from_uint(bits, range.size));
+            }
+        }
+
+        // Fallback path for when we cannot treat provenance bytewise or ignore it.
+        assert!(!Prov::OFFSET_IS_ADDR);
+        if self.range_has_provenance(cx, range) {
+            return Err(AllocError::ReadPointerAsBytes);
+        }
+        // There is no provenance, we can just return the bits.
         Ok(Scalar::from_uint(bits, range.size))
     }
 
@@ -534,6 +515,13 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
         self.provenance.range(Size::from_bytes(start)..range.end())
     }
 
+    /// Get the provenance of a single byte.
+    fn offset_get_provenance(&self, cx: &impl HasDataLayout, offset: Size) -> Option<Prov> {
+        let prov = self.range_get_provenance(cx, alloc_range(offset, Size::from_bytes(1)));
+        assert!(prov.len() <= 1);
+        prov.first().map(|(_offset, prov)| *prov)
+    }
+
     /// Returns whether this allocation has progrnance overlapping with the given range.
     ///
     /// Note: this function exists to allow `range_get_provenance` to be private, in order to somewhat
@@ -541,12 +529,6 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
     ///
     pub fn range_has_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
         !self.range_get_provenance(cx, range).is_empty()
-    }
-
-    /// Checks that there is no provenance overlapping with the given range.
-    #[inline(always)]
-    fn check_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        if self.range_has_provenance(cx, range) { Err(AllocError::ReadPointerAsBytes) } else { Ok(()) }
     }
 
     /// Removes all provenance inside the given range.
@@ -604,14 +586,6 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
         // i.e., this will not remove any other provenance just after the ones we care about.
         self.provenance.0.remove_range(first..last);
 
-        Ok(())
-    }
-
-    /// Errors if there is provenance overlapping with the edges of the given memory range.
-    #[inline]
-    fn check_provenance_edges(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        self.check_provenance(cx, alloc_range(range.start, Size::ZERO))?;
-        self.check_provenance(cx, alloc_range(range.end(), Size::ZERO))?;
         Ok(())
     }
 }

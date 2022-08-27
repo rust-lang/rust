@@ -953,10 +953,10 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn check_bytes(&self, range: AllocRange) -> InterpResult<'tcx> {
+    pub fn get_bytes_strip_provenance<'b>(&'b self) -> InterpResult<'tcx, &'a [u8]> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range))
+            .get_bytes_strip_provenance(&self.tcx, self.range)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 
@@ -967,10 +967,11 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Reads the given number of bytes from memory. Returns them as a slice.
+    /// Reads the given number of bytes from memory, and strips their provenance if possible.
+    /// Returns them as a slice.
     ///
     /// Performs appropriate bounds checks.
-    pub fn read_bytes_ptr(
+    pub fn read_bytes_ptr_strip_provenance(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
@@ -983,7 +984,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (We are staying inside the bounds here so all is good.)
         Ok(alloc_ref
             .alloc
-            .get_bytes(&alloc_ref.tcx, alloc_ref.range)
+            .get_bytes_strip_provenance(&alloc_ref.tcx, alloc_ref.range)
             .map_err(|e| e.to_interp_error(alloc_ref.alloc_id))?)
     }
 
@@ -1078,12 +1079,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         };
 
-        // This checks provenance edges on the src, which needs to happen before
+        // Checks provenance edges on the src, which needs to happen before
         // `prepare_provenance_copy`.
-        let src_bytes = src_alloc
-            .get_bytes_with_uninit_and_ptr(&tcx, src_range)
-            .map_err(|e| e.to_interp_error(src_alloc_id))?
-            .as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
+        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.start, Size::ZERO)) {
+            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.start)));
+        }
+        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.end(), Size::ZERO)) {
+            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.end())));
+        }
+        let src_bytes = src_alloc.get_bytes_unchecked(src_range).as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
         // first copy the provenance to a temporary buffer, because
         // `get_bytes_mut` will clear the provenance, which is correct,
         // since we don't want to keep any provenance at the target.

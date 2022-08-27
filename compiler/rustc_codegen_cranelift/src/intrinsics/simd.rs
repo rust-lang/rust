@@ -186,7 +186,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                         let size = Size::from_bytes(
                             4 * ret_lane_count, /* size_of([u32; ret_lane_count]) */
                         );
-                        alloc.inner().get_bytes(fx, alloc_range(offset, size)).unwrap()
+                        alloc
+                            .inner()
+                            .get_bytes_strip_provenance(fx, alloc_range(offset, size))
+                            .unwrap()
                     }
                     _ => unreachable!("{:?}", idx_const),
                 };

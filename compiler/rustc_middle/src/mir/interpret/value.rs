@@ -507,7 +507,7 @@ pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> 
     if let ConstValue::Slice { data, start, end } = val {
         let len = end - start;
         data.inner()
-            .get_bytes(
+            .get_bytes_strip_provenance(
                 cx,
                 AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
             )

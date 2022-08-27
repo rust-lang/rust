@@ -7,8 +7,6 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
-use std::hash::Hash;
-
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -22,7 +20,7 @@ use super::{
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Prov: Provenance + Eq + Hash + 'static,
+    Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     //# Field access

@@ -1275,7 +1275,7 @@ pub trait PrettyPrinter<'tcx>:
                                     let range =
                                         AllocRange { start: offset, size: Size::from_bytes(len) };
                                     if let Ok(byte_str) =
-                                        alloc.inner().get_bytes(&self.tcx(), range)
+                                        alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
                                     {
                                         p!(pretty_print_byte_str(byte_str))
                                     } else {

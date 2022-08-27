@@ -415,7 +415,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
-        let bytes = self.read_bytes_ptr(mplace.ptr, Size::from_bytes(len))?;
+        let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len))?;
         let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
         Ok(str)
     }

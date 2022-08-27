@@ -125,6 +125,9 @@ pub trait Provenance: Copy + fmt::Debug {
     /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
     /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
     fn get_alloc_id(self) -> Option<AllocId>;
+
+    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
+    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
 }
 
 impl Provenance for AllocId {
@@ -151,6 +154,10 @@ impl Provenance for AllocId {
 
     fn get_alloc_id(self) -> Option<AllocId> {
         Some(self)
+    }
+
+    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
+        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
     }
 }
 

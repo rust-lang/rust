@@ -2719,7 +2719,7 @@ fn pretty_print_const_value<'tcx>(
                 let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
-                let byte_str = alloc.inner().get_bytes(&tcx, range).unwrap();
+                let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();
                 fmt.write_str("*")?;
                 pretty_print_byte_str(fmt, byte_str)?;
                 return Ok(());
