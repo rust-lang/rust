@@ -25,15 +25,21 @@ pub fn main_inner(profile: Profile) {
     env::set_var("LD_LIBRARY_PATH", gcc_path);
     LangTester::new()
         .test_dir("tests/run")
-        .test_file_filter(|path| path.extension().expect("extension").to_str().expect("to_str") == "rs")
+        .test_file_filter(|path| {
+            path.extension()
+                .expect("extension")
+                .to_str()
+                .expect("to_str")
+                == "rs"
+        })
         .test_extract(|source| {
-            let lines =
-                source.lines()
-                    .skip_while(|l| !l.starts_with("//"))
-                    .take_while(|l| l.starts_with("//"))
-                    .map(|l| &l[2..])
-                    .collect::<Vec<_>>()
-                    .join("\n");
+            let lines = source
+                .lines()
+                .skip_while(|l| !l.starts_with("//"))
+                .take_while(|l| l.starts_with("//"))
+                .map(|l| &l[2..])
+                .collect::<Vec<_>>()
+                .join("\n");
             Some(lines)
         })
         .test_cmds(move |path| {
@@ -43,21 +49,25 @@ pub fn main_inner(profile: Profile) {
             exe.push(path.file_stem().expect("file_stem"));
             let mut compiler = Command::new("rustc");
             compiler.args(&[
-                &format!("-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so", current_dir),
-                "--sysroot", &format!("{}/build_sysroot/sysroot/", current_dir),
+                &format!(
+                    "-Zcodegen-backend={}/target/debug/librustc_codegen_gcc.so",
+                    current_dir
+                ),
+                "--sysroot",
+                &format!("{}/build_sysroot/sysroot/", current_dir),
                 "-Zno-parallel-llvm",
-                "-C", "panic=abort",
-                "-C", "link-arg=-lc",
-                "-o", exe.to_str().expect("to_str"),
+                "-C",
+                "panic=abort",
+                "-C",
+                "link-arg=-lc",
+                "-o",
+                exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
             ]);
             match profile {
                 Profile::Debug => {}
                 Profile::Release => {
-                    compiler.args(&[
-                        "-C", "opt-level=3",
-                        "-C", "lto=no",
-                    ]);
+                    compiler.args(&["-C", "opt-level=3", "-C", "lto=no"]);
                 }
             }
             // Test command 2: run `tempdir/x`.

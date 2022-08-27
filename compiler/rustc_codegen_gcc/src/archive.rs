@@ -80,8 +80,13 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             let file_name = String::from_utf8(entry.header().identifier().to_vec())
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
-                self.entries
-                    .push((file_name, ArchiveEntry::FromArchive { archive_index, entry_index: i }));
+                self.entries.push((
+                    file_name,
+                    ArchiveEntry::FromArchive {
+                        archive_index,
+                        entry_index: i,
+                    },
+                ));
             }
             i += 1;
         }
@@ -156,20 +161,22 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                         }
                     }
                 }
-                ArchiveEntry::File(file) =>
-                    match builder {
-                        BuilderKind::Bsd(ref mut builder) => {
-                            builder
-                                .append_file(entry_name.as_bytes(), &mut File::open(file).expect("file for bsd builder"))
-                                .unwrap()
-                        },
-                        BuilderKind::Gnu(ref mut builder) => {
-                            builder
-                                .append_file(entry_name.as_bytes(), &mut File::open(&file).expect(&format!("file {:?} for gnu builder", file)))
-                                .unwrap()
-                        },
-                        BuilderKind::NativeAr(archive_file) => add_file_using_ar(archive_file, &file),
-                    },
+                ArchiveEntry::File(file) => match builder {
+                    BuilderKind::Bsd(ref mut builder) => builder
+                        .append_file(
+                            entry_name.as_bytes(),
+                            &mut File::open(file).expect("file for bsd builder"),
+                        )
+                        .unwrap(),
+                    BuilderKind::Gnu(ref mut builder) => builder
+                        .append_file(
+                            entry_name.as_bytes(),
+                            &mut File::open(&file)
+                                .expect(&format!("file {:?} for gnu builder", file)),
+                        )
+                        .unwrap(),
+                    BuilderKind::NativeAr(archive_file) => add_file_using_ar(archive_file, &file),
+                },
             }
         }
 
@@ -177,11 +184,15 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         std::mem::drop(builder);
 
         // Run ranlib to be able to link the archive
-        let status =
-            std::process::Command::new("ranlib").arg(output).status().expect("Couldn't run ranlib");
+        let status = std::process::Command::new("ranlib")
+            .arg(output)
+            .status()
+            .expect("Couldn't run ranlib");
 
         if !status.success() {
-            self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+            self.config
+                .sess
+                .fatal(&format!("Ranlib exited with code {:?}", status.code()));
         }
 
         any_members

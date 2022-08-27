@@ -1,24 +1,20 @@
 use std::env;
 use std::time::Instant;
 
-use gccjit::{
-    Context,
-    FunctionType,
-    GlobalKind,
-};
-use rustc_middle::dep_graph;
-use rustc_middle::ty::TyCtxt;
-use rustc_middle::mir::mono::Linkage;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use gccjit::{Context, FunctionType, GlobalKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoMethods;
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_middle::dep_graph;
+use rustc_middle::mir::mono::Linkage;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
 
-use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+use crate::GccContext;
 
 pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
     match linkage {
@@ -52,7 +48,11 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
     }
 }
 
-pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_128bit_integers: bool) -> (ModuleCodegen<GccContext>, u64) {
+pub fn compile_codegen_unit<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cgu_name: Symbol,
+    supports_128bit_integers: bool,
+) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
 
@@ -71,7 +71,10 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
     // the time we needed for codegenning it.
     let cost = time_to_codegen.as_secs() * 1_000_000_000 + time_to_codegen.subsec_nanos() as u64;
 
-    fn module_codegen(tcx: TyCtxt<'_>, (cgu_name, supports_128bit_integers): (Symbol, bool)) -> ModuleCodegen<GccContext> {
+    fn module_codegen(
+        tcx: TyCtxt<'_>,
+        (cgu_name, supports_128bit_integers): (Symbol, bool),
+    ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
         //let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
@@ -96,7 +99,13 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
         context.add_command_line_option("-fno-strict-aliasing");
 
-        if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
+        if tcx
+            .sess
+            .opts
+            .unstable_opts
+            .function_sections
+            .unwrap_or(tcx.sess.target.function_sections)
+        {
             context.add_command_line_option("-ffunction-sections");
             context.add_command_line_option("-fdata-sections");
         }
@@ -143,9 +152,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
 
         ModuleCodegen {
             name: cgu_name.to_string(),
-            module_llvm: GccContext {
-                context
-            },
+            module_llvm: GccContext { context },
             kind: ModuleKind::Regular,
         }
     }

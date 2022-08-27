@@ -1,10 +1,10 @@
 use std::convert::TryInto;
 
 use gccjit::{RValue, Struct, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_codegen_ssa::common::TypeKind;
-use rustc_middle::{bug, ty};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::{bug, ty};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
 use crate::common::TypeReflection;
@@ -112,7 +112,8 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
-        self.context.new_function_pointer_type(None, return_type, params, false)
+        self.context
+            .new_function_pointer_type(None, return_type, params, false)
     }
 
     fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
@@ -120,12 +121,20 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         if let Some(typ) = self.struct_types.borrow().get(fields) {
             return typ.clone();
         }
-        let fields: Vec<_> = fields.iter().enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field{}_TODO", index)))
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                self.context
+                    .new_field(None, *field, &format!("field{}_TODO", index))
+            })
             .collect();
-        let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
+        let typ = self
+            .context
+            .new_struct_type(None, "struct", &fields)
+            .as_type();
         if packed {
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             typ.set_packed();
         }
         self.struct_types.borrow_mut().insert(types, typ);
@@ -135,17 +144,13 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
         if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
-        }
-        else if typ.is_compatible_with(self.float_type) {
+        } else if typ.is_compatible_with(self.float_type) {
             TypeKind::Float
-        }
-        else if typ.is_compatible_with(self.double_type) {
+        } else if typ.is_compatible_with(self.double_type) {
             TypeKind::Double
-        }
-        else if typ.is_vector() {
+        } else if typ.is_vector() {
             TypeKind::Vector
-        }
-        else {
+        } else {
             // TODO(antoyo): support other types.
             TypeKind::Void
         }
@@ -163,14 +168,11 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
         if let Some(typ) = ty.dyncast_array() {
             typ
-        }
-        else if let Some(vector_type) = ty.dyncast_vector() {
+        } else if let Some(vector_type) = ty.dyncast_vector() {
             vector_type.get_element_type()
-        }
-        else if let Some(typ) = ty.get_pointee() {
+        } else if let Some(typ) = ty.get_pointee() {
             typ
-        }
-        else {
+        } else {
             unreachable!()
         }
     }
@@ -184,11 +186,9 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let f64 = self.context.new_type::<f64>();
         if typ.is_compatible_with(f32) {
             32
-        }
-        else if typ.is_compatible_with(f64) {
+        } else if typ.is_compatible_with(f64) {
             64
-        }
-        else {
+        } else {
             panic!("Cannot get width of float type {:?}", typ);
         }
         // TODO(antoyo): support other sizes.
@@ -213,12 +213,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
-        let fields: Vec<_> = fields.iter().enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
+        let fields: Vec<_> = fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                self.context
+                    .new_field(None, *field, &format!("field_{}", index))
+            })
             .collect();
         typ.set_fields(None, &fields);
         if packed {
-            #[cfg(feature="master")]
+            #[cfg(feature = "master")]
             typ.as_type().set_packed();
         }
     }
@@ -253,7 +258,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {
+pub fn struct_fields<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    layout: TyAndLayout<'tcx>,
+) -> (Vec<Type<'gcc>>, bool) {
     let field_count = layout.fields.count();
 
     let mut packed = false;
@@ -263,8 +271,11 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
-        let effective_field_align =
-            layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);
+        let effective_field_align = layout
+            .align
+            .abi
+            .min(field.align.abi)
+            .restrict_for_offset(target_offset);
         packed |= effective_field_align < field.align.abi;
 
         assert!(target_offset >= offset);
@@ -279,7 +290,12 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
     }
     if !layout.is_unsized() && field_count > 0 {
         if offset > layout.size {
-            bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
+            bug!(
+                "layout: {:#?} stride: {:?} offset: {:?}",
+                layout,
+                layout.size,
+                offset
+            );
         }
         let padding = layout.size - offset;
         let padding_align = prev_effective_align;

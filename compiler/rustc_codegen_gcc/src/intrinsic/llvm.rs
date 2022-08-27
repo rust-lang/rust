@@ -2,9 +2,14 @@ use std::borrow::Cow;
 
 use gccjit::{Function, FunctionPtrType, RValue, ToRValue};
 
-use crate::{context::CodegenCx, builder::Builder};
+use crate::{builder::Builder, context::CodegenCx};
 
-pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, gcc_func: FunctionPtrType<'gcc>, mut args: Cow<'b, [RValue<'gcc>]>, func_name: &str) -> Cow<'b, [RValue<'gcc>]> {
+pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
+    builder: &Builder<'a, 'gcc, 'tcx>,
+    gcc_func: FunctionPtrType<'gcc>,
+    mut args: Cow<'b, [RValue<'gcc>]>,
+    func_name: &str,
+) -> Cow<'b, [RValue<'gcc>]> {
     // Some LLVM intrinsics do not map 1-to-1 to GCC intrinsics, so we add the missing
     // arguments here.
     if gcc_func.get_param_count() != args.len() {
@@ -143,17 +148,26 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
     // last argument type check.
     // FIXME(antoyo): find a way to refactor in order to avoid this hack.
     match func_name {
-        "__builtin_ia32_maxps512_mask" | "__builtin_ia32_maxpd512_mask"
-            | "__builtin_ia32_minps512_mask" | "__builtin_ia32_minpd512_mask" | "__builtin_ia32_sqrtps512_mask"
-            | "__builtin_ia32_sqrtpd512_mask" | "__builtin_ia32_addps512_mask" | "__builtin_ia32_addpd512_mask"
-            | "__builtin_ia32_subps512_mask" | "__builtin_ia32_subpd512_mask"
-            | "__builtin_ia32_mulps512_mask" | "__builtin_ia32_mulpd512_mask"
-            | "__builtin_ia32_divps512_mask" | "__builtin_ia32_divpd512_mask"
-            | "__builtin_ia32_vfmaddsubps512_mask" | "__builtin_ia32_vfmaddsubpd512_mask" => {
-                if index == args_len - 1 {
-                    return true;
-                }
-            },
+        "__builtin_ia32_maxps512_mask"
+        | "__builtin_ia32_maxpd512_mask"
+        | "__builtin_ia32_minps512_mask"
+        | "__builtin_ia32_minpd512_mask"
+        | "__builtin_ia32_sqrtps512_mask"
+        | "__builtin_ia32_sqrtpd512_mask"
+        | "__builtin_ia32_addps512_mask"
+        | "__builtin_ia32_addpd512_mask"
+        | "__builtin_ia32_subps512_mask"
+        | "__builtin_ia32_subpd512_mask"
+        | "__builtin_ia32_mulps512_mask"
+        | "__builtin_ia32_mulpd512_mask"
+        | "__builtin_ia32_divps512_mask"
+        | "__builtin_ia32_divpd512_mask"
+        | "__builtin_ia32_vfmaddsubps512_mask"
+        | "__builtin_ia32_vfmaddsubpd512_mask" => {
+            if index == args_len - 1 {
+                return true;
+            }
+        }
         "__builtin_ia32_vfmaddps512_mask" | "__builtin_ia32_vfmaddpd512_mask" => {
             // Since there are two LLVM intrinsics that map to each of these GCC builtins and only
             // one of them has a missing parameter before the last one, we check the number of
@@ -161,14 +175,14 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
             if args_len == 4 && index == args_len - 1 {
                 return true;
             }
-        },
+        }
         _ => (),
     }
 
     false
 }
 
-#[cfg(not(feature="master"))]
+#[cfg(not(feature = "master"))]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     match name {
         "llvm.x86.xgetbv" => {
@@ -176,12 +190,12 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
             let func = cx.context.get_builtin_function(gcc_name);
             cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
             return func;
-        },
+        }
         _ => unimplemented!("unsupported LLVM intrinsic {}", name),
     }
 }
 
-#[cfg(feature="master")]
+#[cfg(feature = "master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     let gcc_name = match name {
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",

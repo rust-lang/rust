@@ -1,13 +1,16 @@
 use std::fmt::Write;
 
-use gccjit::{Struct, Type};
 use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
+use gccjit::{Struct, Type};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};
+use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
+use rustc_target::abi::{
+    self, Abi, FieldsShape, Int, Integer, PointeeInfo, Pointer, Size, TyAbiInterface, Variants,
+    F32, F64,
+};
 
 use crate::abi::{FnAbiGccExt, GccType};
 use crate::context::CodegenCx;
@@ -25,7 +28,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     pub fn type_int_from_ty(&self, t: ty::IntTy) -> Type<'gcc> {
         match t {
             ty::IntTy::Isize => self.type_isize(),
@@ -37,7 +40,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     pub fn type_uint_from_ty(&self, t: ty::UintTy) -> Type<'gcc> {
         match t {
             ty::UintTy::Usize => self.type_isize(),
@@ -50,13 +53,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>, defer: &mut Option<(Struct<'gcc>, TyAndLayout<'tcx>)>) -> Type<'gcc> {
+pub fn uncached_gcc_type<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    layout: TyAndLayout<'tcx>,
+    defer: &mut Option<(Struct<'gcc>, TyAndLayout<'tcx>)>,
+) -> Type<'gcc> {
     match layout.abi {
         Abi::Scalar(_) => bug!("handled elsewhere"),
         Abi::Vector { ref element, count } => {
             let element = layout.scalar_gcc_type_at(cx, element, Size::ZERO);
             return cx.context.new_vector_type(element, count);
-        },
+        }
         Abi::ScalarPair(..) => {
             return cx.type_struct(
                 &[
@@ -111,22 +118,23 @@ pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLa
                     let gcc_type = cx.type_named_struct(name);
                     cx.set_struct_body(gcc_type, &[fill], packed);
                     gcc_type.as_type()
-                },
+                }
             }
         }
-        FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).gcc_type(cx, true), count),
-        FieldsShape::Arbitrary { .. } =>
-            match name {
-                None => {
-                    let (gcc_fields, packed) = struct_fields(cx, layout);
-                    cx.type_struct(&gcc_fields, packed)
-                },
-                Some(ref name) => {
-                    let gcc_type = cx.type_named_struct(name);
-                    *defer = Some((gcc_type, layout));
-                    gcc_type.as_type()
-                },
-            },
+        FieldsShape::Array { count, .. } => {
+            cx.type_array(layout.field(cx, 0).gcc_type(cx, true), count)
+        }
+        FieldsShape::Arbitrary { .. } => match name {
+            None => {
+                let (gcc_fields, packed) = struct_fields(cx, layout);
+                cx.type_struct(&gcc_fields, packed)
+            }
+            Some(ref name) => {
+                let gcc_type = cx.type_named_struct(name);
+                *defer = Some((gcc_type, layout));
+                gcc_type.as_type()
+            }
+        },
     }
 }
 
@@ -135,10 +143,24 @@ pub trait LayoutGccExt<'tcx> {
     fn is_gcc_scalar_pair(&self) -> bool;
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, set_fields: bool) -> Type<'gcc>;
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
-    fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc>;
-    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc>;
+    fn scalar_gcc_type_at<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        scalar: &abi::Scalar,
+        offset: Size,
+    ) -> Type<'gcc>;
+    fn scalar_pair_element_gcc_type<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        index: usize,
+        immediate: bool,
+    ) -> Type<'gcc>;
     fn gcc_field_index(&self, index: usize) -> u64;
-    fn pointee_info_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, offset: Size) -> Option<PointeeInfo>;
+    fn pointee_info_at<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        offset: Size,
+    ) -> Option<PointeeInfo>;
 }
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
@@ -176,27 +198,27 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
                 return ty;
             }
-            let ty =
-                match *self.ty.kind() {
-                    ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                        cx.type_ptr_to(cx.layout_of(ty).gcc_type(cx, set_fields))
-                    }
-                    ty::Adt(def, _) if def.is_box() => {
-                        cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).gcc_type(cx, true))
-                    }
-                    ty::FnPtr(sig) => cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty())),
-                    _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
-                };
+            let ty = match *self.ty.kind() {
+                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                    cx.type_ptr_to(cx.layout_of(ty).gcc_type(cx, set_fields))
+                }
+                ty::Adt(def, _) if def.is_box() => {
+                    cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).gcc_type(cx, true))
+                }
+                ty::FnPtr(sig) => {
+                    cx.fn_ptr_backend_type(&cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                }
+                _ => self.scalar_gcc_type_at(cx, scalar, Size::ZERO),
+            };
             cx.scalar_types.borrow_mut().insert(self.ty, ty);
             return ty;
         }
 
         // Check the cache.
-        let variant_index =
-            match self.variants {
-                Variants::Single { index } => Some(index),
-                _ => None,
-            };
+        let variant_index = match self.variants {
+            Variants::Single { index } => Some(index),
+            _ => None,
+        };
         let cached_type = cx.types.borrow().get(&(self.ty, variant_index)).cloned();
         if let Some(ty) = cached_type {
             let type_to_set_fields = cx.types_with_fields_to_set.borrow_mut().remove(&ty);
@@ -209,24 +231,26 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return ty;
         }
 
-        assert!(!self.ty.has_escaping_bound_vars(), "{:?} has escaping bound vars", self.ty);
+        assert!(
+            !self.ty.has_escaping_bound_vars(),
+            "{:?} has escaping bound vars",
+            self.ty
+        );
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.
         let normal_ty = cx.tcx.erase_regions(self.ty);
 
         let mut defer = None;
-        let ty =
-            if self.ty != normal_ty {
-                let mut layout = cx.layout_of(normal_ty);
-                if let Some(v) = variant_index {
-                    layout = layout.for_variant(cx, v);
-                }
-                layout.gcc_type(cx, true)
+        let ty = if self.ty != normal_ty {
+            let mut layout = cx.layout_of(normal_ty);
+            if let Some(v) = variant_index {
+                layout = layout.for_variant(cx, v);
             }
-            else {
-                uncached_gcc_type(cx, *self, &mut defer)
-            };
+            layout.gcc_type(cx, true)
+        } else {
+            uncached_gcc_type(cx, *self, &mut defer)
+        };
 
         cx.types.borrow_mut().insert((self.ty, variant_index), ty);
 
@@ -247,7 +271,12 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         self.gcc_type(cx, true)
     }
 
-    fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc> {
+    fn scalar_gcc_type_at<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        scalar: &abi::Scalar,
+        offset: Size,
+    ) -> Type<'gcc> {
         match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
@@ -255,19 +284,22 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             F64 => cx.type_f64(),
             Pointer => {
                 // If we know the alignment, pick something better than i8.
-                let pointee =
-                    if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                        cx.type_pointee_for_align(pointee.align)
-                    }
-                    else {
-                        cx.type_i8()
-                    };
+                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                    cx.type_pointee_for_align(pointee.align)
+                } else {
+                    cx.type_i8()
+                };
                 cx.type_ptr_to(pointee)
             }
         }
     }
 
-    fn scalar_pair_element_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
+    fn scalar_pair_element_gcc_type<'gcc>(
+        &self,
+        cx: &CodegenCx<'gcc, 'tcx>,
+        index: usize,
+        immediate: bool,
+    ) -> Type<'gcc> {
         // TODO(antoyo): remove llvm hack:
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
@@ -279,14 +311,19 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             // thin pointer boxes with scalar allocators are handled by the general logic below
             ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
-                return cx.layout_of(ptr_ty).scalar_pair_element_gcc_type(cx, index, immediate);
+                return cx
+                    .layout_of(ptr_ty)
+                    .scalar_pair_element_gcc_type(cx, index, immediate);
             }
             _ => {}
         }
 
         let (a, b) = match self.abi {
             Abi::ScalarPair(ref a, ref b) => (a, b),
-            _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
+            _ => bug!(
+                "TyAndLayout::scalar_pair_element_llty({:?}): not applicable",
+                self
+            ),
         };
         let scalar = [a, b][index];
 
@@ -301,13 +338,11 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return cx.type_i1();
         }
 
-        let offset =
-            if index == 0 {
-                Size::ZERO
-            }
-            else {
-                a.size(cx).align_to(b.align(cx).abi)
-            };
+        let offset = if index == 0 {
+            Size::ZERO
+        } else {
+            a.size(cx).align_to(b.align(cx).abi)
+        };
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 
@@ -336,7 +371,9 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
 
         let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
 
-        cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
+        cx.pointee_infos
+            .borrow_mut()
+            .insert((self.ty, offset), result);
         result
     }
 }
@@ -362,7 +399,12 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         layout.gcc_field_index(index)
     }
 
-    fn scalar_pair_element_backend_type(&self, layout: TyAndLayout<'tcx>, index: usize, immediate: bool) -> Type<'gcc> {
+    fn scalar_pair_element_backend_type(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        index: usize,
+        immediate: bool,
+    ) -> Type<'gcc> {
         layout.scalar_pair_element_gcc_type(self, index, immediate)
     }
 

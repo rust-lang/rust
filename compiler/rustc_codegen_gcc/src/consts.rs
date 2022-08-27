@@ -2,14 +2,16 @@ use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
-use rustc_middle::{bug, span_bug};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::interpret::{
+    self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
+};
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
-use rustc_span::Span;
+use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
 use crate::base;
@@ -48,7 +50,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
         #[cfg(feature = "master")]
-        self.global_lvalues.borrow().get(&global_value)
+        self.global_lvalues
+            .borrow()
+            .get(&global_value)
             .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
             .global_set_readonly();
         self.const_globals.borrow_mut().insert(cv, global_value);
@@ -58,25 +62,22 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn codegen_static(&self, def_id: DefId, is_mutable: bool) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
-        let value =
-            match codegen_static_initializer(&self, def_id) {
-                Ok((value, _)) => value,
-                // Error has already been reported
-                Err(_) => return,
-            };
+        let value = match codegen_static_initializer(&self, def_id) {
+            Ok((value, _)) => value,
+            // Error has already been reported
+            Err(_) => return,
+        };
 
         let global = self.get_static(def_id);
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
         let val_llty = self.val_ty(value);
-        let value =
-            if val_llty == self.type_i1() {
-                unimplemented!();
-            }
-            else {
-                value
-            };
+        let value = if val_llty == self.type_i1() {
+            unimplemented!();
+        } else {
+            value
+        };
 
         let instance = Instance::mono(self.tcx, def_id);
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
@@ -141,7 +142,14 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // Wasm statics with custom link sections get special treatment as they
         // go into custom sections of the wasm executable.
-        if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if self
+            .tcx
+            .sess
+            .opts
+            .target_triple
+            .triple()
+            .starts_with("wasm32")
+        {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
@@ -149,7 +157,9 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             // TODO(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED) || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+        if attrs.flags.contains(CodegenFnAttrFlags::USED)
+            || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+        {
             self.add_used_global(global.to_rvalue());
         }
     }
@@ -165,23 +175,27 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn static_addr_of_mut(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
-        let global =
-            match kind {
-                Some(kind) if !self.tcx.sess.fewer_names() => {
-                    let name = self.generate_local_symbol_name(kind);
-                    // TODO(antoyo): check if it's okay that no link_section is set.
+    pub fn static_addr_of_mut(
+        &self,
+        cv: RValue<'gcc>,
+        align: Align,
+        kind: Option<&str>,
+    ) -> RValue<'gcc> {
+        let global = match kind {
+            Some(kind) if !self.tcx.sess.fewer_names() => {
+                let name = self.generate_local_symbol_name(kind);
+                // TODO(antoyo): check if it's okay that no link_section is set.
 
-                    let typ = self.val_ty(cv).get_aligned(align.bytes());
-                    let global = self.declare_private_global(&name[..], typ);
-                    global
-                }
-                _ => {
-                    let typ = self.val_ty(cv).get_aligned(align.bytes());
-                    let global = self.declare_unnamed_global(typ);
-                    global
-                },
-            };
+                let typ = self.val_ty(cv).get_aligned(align.bytes());
+                let global = self.declare_private_global(&name[..], typ);
+                global
+            }
+            _ => {
+                let typ = self.val_ty(cv).get_aligned(align.bytes());
+                let global = self.declare_unnamed_global(typ);
+                global
+            }
+        };
         global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
         let rvalue = global.get_address(None);
@@ -196,8 +210,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return global;
         }
 
-        let defined_in_current_codegen_unit =
-            self.codegen_unit.items().contains_key(&MonoItem::Static(def_id));
+        let defined_in_current_codegen_unit = self
+            .codegen_unit
+            .items()
+            .contains_key(&MonoItem::Static(def_id));
         assert!(
             !defined_in_current_codegen_unit,
             "consts::get_static() should always hit the cache for \
@@ -208,84 +224,86 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let sym = self.tcx.symbol_name(instance).name;
 
-        let global =
-            if let Some(def_id) = def_id.as_local() {
-                let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                let llty = self.layout_of(ty).gcc_type(self, true);
-                // FIXME: refactor this to work without accessing the HIR
-                let global = match self.tcx.hir().get(id) {
-                    Node::Item(&hir::Item { span, kind: hir::ItemKind::Static(..), .. }) => {
-                        if let Some(global) = self.get_declared_value(&sym) {
-                            if self.val_ty(global) != self.type_ptr_to(llty) {
-                                span_bug!(span, "Conflicting types for static");
-                            }
+        let global = if let Some(def_id) = def_id.as_local() {
+            let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+            let llty = self.layout_of(ty).gcc_type(self, true);
+            // FIXME: refactor this to work without accessing the HIR
+            let global = match self.tcx.hir().get(id) {
+                Node::Item(&hir::Item {
+                    span,
+                    kind: hir::ItemKind::Static(..),
+                    ..
+                }) => {
+                    if let Some(global) = self.get_declared_value(&sym) {
+                        if self.val_ty(global) != self.type_ptr_to(llty) {
+                            span_bug!(span, "Conflicting types for static");
                         }
-
-                        let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(
-                            &sym,
-                            llty,
-                            GlobalKind::Exported,
-                            is_tls,
-                            fn_attrs.link_section,
-                        );
-
-                        if !self.tcx.is_reachable_non_generic(def_id) {
-                            // TODO(antoyo): set visibility.
-                        }
-
-                        global
                     }
 
-                    Node::ForeignItem(&hir::ForeignItem {
-                        span,
-                        kind: hir::ForeignItemKind::Static(..),
-                        ..
-                    }) => {
-                        let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                        check_and_apply_linkage(&self, &fn_attrs, ty, sym, span)
+                    let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+                    let global = self.declare_global(
+                        &sym,
+                        llty,
+                        GlobalKind::Exported,
+                        is_tls,
+                        fn_attrs.link_section,
+                    );
+
+                    if !self.tcx.is_reachable_non_generic(def_id) {
+                        // TODO(antoyo): set visibility.
                     }
 
-                    item => bug!("get_static: expected static, found {:?}", item),
-                };
-
-                global
-            }
-            else {
-                // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-                //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
-
-                let attrs = self.tcx.codegen_fn_attrs(def_id);
-                let span = self.tcx.def_span(def_id);
-                let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
-
-                let needs_dll_storage_attr = false; // TODO(antoyo)
-
-                // If this assertion triggers, there's something wrong with commandline
-                // argument validation.
-                debug_assert!(
-                    !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                        && self.tcx.sess.target.options.is_like_msvc
-                        && self.tcx.sess.opts.cg.prefer_dynamic)
-                );
-
-                if needs_dll_storage_attr {
-                    // This item is external but not foreign, i.e., it originates from an external Rust
-                    // crate. Since we don't know whether this crate will be linked dynamically or
-                    // statically in the final application, we always mark such symbols as 'dllimport'.
-                    // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
-                    // to make things work.
-                    //
-                    // However, in some scenarios we defer emission of statics to downstream
-                    // crates, so there are cases where a static with an upstream DefId
-                    // is actually present in the current crate. We can find out via the
-                    // is_codegened_item query.
-                    if !self.tcx.is_codegened_item(def_id) {
-                        unimplemented!();
-                    }
+                    global
                 }
-                global
+
+                Node::ForeignItem(&hir::ForeignItem {
+                    span,
+                    kind: hir::ForeignItemKind::Static(..),
+                    ..
+                }) => {
+                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+                    check_and_apply_linkage(&self, &fn_attrs, ty, sym, span)
+                }
+
+                item => bug!("get_static: expected static, found {:?}", item),
             };
+
+            global
+        } else {
+            // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
+            //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
+
+            let attrs = self.tcx.codegen_fn_attrs(def_id);
+            let span = self.tcx.def_span(def_id);
+            let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
+
+            let needs_dll_storage_attr = false; // TODO(antoyo)
+
+            // If this assertion triggers, there's something wrong with commandline
+            // argument validation.
+            debug_assert!(
+                !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
+                    && self.tcx.sess.target.options.is_like_msvc
+                    && self.tcx.sess.opts.cg.prefer_dynamic)
+            );
+
+            if needs_dll_storage_attr {
+                // This item is external but not foreign, i.e., it originates from an external Rust
+                // crate. Since we don't know whether this crate will be linked dynamically or
+                // statically in the final application, we always mark such symbols as 'dllimport'.
+                // If final linkage happens to be static, we rely on compiler-emitted __imp_ stubs
+                // to make things work.
+                //
+                // However, in some scenarios we defer emission of statics to downstream
+                // crates, so there are cases where a static with an upstream DefId
+                // is actually present in the current crate. We can find out via the
+                // is_codegened_item query.
+                if !self.tcx.is_codegened_item(def_id) {
+                    unimplemented!();
+                }
+            }
+            global
+        };
 
         // TODO(antoyo): set dll storage class.
 
@@ -294,7 +312,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAllocation<'tcx>) -> RValue<'gcc> {
+pub fn const_alloc_to_gcc<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    alloc: ConstAllocation<'tcx>,
+) -> RValue<'gcc> {
     let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
@@ -315,21 +336,24 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
             let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(next_offset..offset);
             llvals.push(cx.const_bytes(bytes));
         }
-        let ptr_offset =
-            read_target_uint( dl.endian,
-                // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
-                // affect interpreter execution (we inspect the result after interpreter execution),
-                // and we properly interpret the relocation as a relocation pointer offset.
-                alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
-            )
-            .expect("const_alloc_to_llvm: could not read relocation pointer")
+        let ptr_offset = read_target_uint(
+            dl.endian,
+            // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
+            // affect interpreter execution (we inspect the result after interpreter execution),
+            // and we properly interpret the relocation as a relocation pointer offset.
+            alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
+        )
+        .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
         llvals.push(cx.scalar_to_backend(
             InterpScalar::from_pointer(
                 interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            abi::Scalar::Initialized { value: Primitive::Pointer, valid_range: WrappingRange::full(dl.pointer_size) },
+            abi::Scalar::Initialized {
+                value: Primitive::Pointer,
+                valid_range: WrappingRange::full(dl.pointer_size),
+            },
             cx.type_i8p(),
         ));
         next_offset = offset + pointer_size;
@@ -349,12 +373,21 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id: DefId) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
+pub fn codegen_static_initializer<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    def_id: DefId,
+) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }
 
-fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str, span: Span) -> LValue<'gcc> {
+fn check_and_apply_linkage<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    attrs: &CodegenFnAttrs,
+    ty: Ty<'tcx>,
+    sym: &str,
+    span: Span,
+) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     let llty = cx.layout_of(ty).gcc_type(cx, true);
     if let Some(linkage) = attrs.linkage {
@@ -363,18 +396,17 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // extern "C" fn() from being non-null, so we can't just declare a
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
-        let llty2 =
-            if let ty::RawPtr(ref mt) = ty.kind() {
-                cx.layout_of(mt.ty).gcc_type(cx, true)
-            }
-            else {
-                cx.sess().span_fatal(
-                    span,
-                    "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-                )
-            };
+        let llty2 = if let ty::RawPtr(ref mt) = ty.kind() {
+            cx.layout_of(mt.ty).gcc_type(cx, true)
+        } else {
+            cx.sess().span_fatal(
+                span,
+                "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
+            )
+        };
         // Declare a symbol `foo` with the desired linkage.
-        let global1 = cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));
+        let global1 =
+            cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -389,8 +421,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         global2.global_set_initializer_rvalue(global1.get_address(None));
         // TODO(antoyo): use global_set_initializer() when it will work.
         global2
-    }
-    else {
+    } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
 
