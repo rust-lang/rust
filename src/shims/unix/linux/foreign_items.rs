@@ -68,10 +68,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_setname_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let res = this.pthread_setname_np(
-                    this.read_scalar(thread)?.check_init()?,
-                    this.read_scalar(name)?.check_init()?,
-                )?;
+                let res =
+                    this.pthread_setname_np(this.read_scalar(thread)?, this.read_scalar(name)?)?;
                 this.write_scalar(res, dest)?;
             }
 

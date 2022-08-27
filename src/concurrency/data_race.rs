@@ -530,12 +530,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(
-            val.to_scalar(),
-            place,
-            atomic,
-            old.to_scalar(),
-        )?;
+        this.buffered_atomic_rmw(val.to_scalar(), place, atomic, old.to_scalar())?;
         Ok(old)
     }
 
@@ -586,12 +581,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(
-            new_val.to_scalar(),
-            place,
-            atomic,
-            old.to_scalar(),
-        )?;
+        this.buffered_atomic_rmw(new_val.to_scalar(), place, atomic, old.to_scalar())?;
 
         // Return the old value.
         Ok(old)
@@ -633,10 +623,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             } else {
                 true
             };
-        let res = Immediate::ScalarPair(
-            old.to_scalar(),
-            Scalar::from_bool(cmpxchg_success).into(),
-        );
+        let res = Immediate::ScalarPair(old.to_scalar(), Scalar::from_bool(cmpxchg_success));
 
         // Update ptr depending on comparison.
         // if successful, perform a full rw-atomic validation

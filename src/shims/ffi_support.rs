@@ -13,7 +13,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Extract the scalar value from the result of reading a scalar from the machine,
     /// and convert it to a `CArg`.
     fn scalar_to_carg(
-        k: ScalarMaybeUninit<Provenance>,
+        k: Scalar<Provenance>,
         arg_type: Ty<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, CArg> {

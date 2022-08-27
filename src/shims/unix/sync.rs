@@ -119,7 +119,7 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-                next_id.to_u32_scalar().into(),
+                next_id.to_u32_scalar(),
                 AtomicRwOrd::Relaxed,
                 AtomicReadOrd::Relaxed,
                 false,
@@ -160,7 +160,7 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-                next_id.to_u32_scalar().into(),
+                next_id.to_u32_scalar(),
                 AtomicRwOrd::Relaxed,
                 AtomicReadOrd::Relaxed,
                 false,
@@ -243,7 +243,7 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-                next_id.to_u32_scalar().into(),
+                next_id.to_u32_scalar(),
                 AtomicRwOrd::Relaxed,
                 AtomicReadOrd::Relaxed,
                 false,

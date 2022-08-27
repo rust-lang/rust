@@ -77,9 +77,7 @@ use std::{
     collections::VecDeque,
 };
 
-use rustc_const_eval::interpret::{
-    alloc_range, AllocRange, InterpResult, MPlaceTy, Scalar,
-};
+use rustc_const_eval::interpret::{alloc_range, AllocRange, InterpResult, MPlaceTy, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::*;
@@ -417,11 +415,7 @@ impl StoreElement {
     /// buffer regardless of subsequent loads by the same thread; if the earliest load of another
     /// thread doesn't happen before the current one, then no subsequent load by the other thread
     /// can happen before the current one.
-    fn load_impl(
-        &self,
-        index: VectorIdx,
-        clocks: &ThreadClockSet,
-    ) -> Scalar<Provenance> {
+    fn load_impl(&self, index: VectorIdx, clocks: &ThreadClockSet) -> Scalar<Provenance> {
         let _ = self.loads.borrow_mut().try_insert(index, clocks.clock[index]);
         self.val
     }

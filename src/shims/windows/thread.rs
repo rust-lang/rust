@@ -20,14 +20,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let security = this.read_pointer(security_op)?;
-
         // stacksize is ignored, but still needs to be a valid usize
         this.read_scalar(stacksize_op)?.to_machine_usize(this)?;
-
         let start_routine = this.read_pointer(start_op)?;
-
         let func_arg = this.read_immediate(arg_op)?;
-
         let flags = this.read_scalar(flags_op)?.to_u32()?;
 
         let thread = if this.ptr_is_null(this.read_pointer(thread_op)?)? {
@@ -66,8 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
 
-        let handle = this.read_scalar(handle_op)?.check_init()?;
-
+        let handle = this.read_scalar(handle_op)?;
         let timeout = this.read_scalar(timeout_op)?.to_u32()?;
 
         let thread = match Handle::from_scalar(handle, this)? {

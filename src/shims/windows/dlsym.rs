@@ -112,7 +112,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Dlsym::SetThreadDescription => {
                 let [handle, name] = check_arg_count(args)?;
 
-                let handle = this.read_scalar(handle)?.check_init()?;
+                let handle = this.read_scalar(handle)?;
 
                 let name = this.read_wide_str(this.read_pointer(name)?)?;
 

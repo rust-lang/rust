@@ -396,11 +396,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let dest_len = u32::try_from(dest_len).unwrap();
                 let bitmask_len = u32::try_from(bitmask_len).unwrap();
 
-                let mask: u64 = this
-                    .read_scalar(mask)?
-                    .to_bits(mask.layout.size)?
-                    .try_into()
-                    .unwrap();
+                let mask: u64 =
+                    this.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap();
                 for i in 0..dest_len {
                     let mask = mask
                         & 1u64
