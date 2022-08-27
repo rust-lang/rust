@@ -568,7 +568,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             _ => {
                 let place_builder = unpack!(block = self.as_place_builder(block, initializer));
-                self.place_into_pattern(block, irrefutable_pat, place_builder, true)
+                self.place_into_pattern(block, &irrefutable_pat, place_builder, true)
             }
         }
     }
