@@ -3294,6 +3294,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "replace-version-placeholder"
+version = "0.1.0"
+dependencies = [
+ "tidy",
+ "walkdir",
+]
+
+[[package]]
 name = "rls"
 version = "1.41.0"
 dependencies = [

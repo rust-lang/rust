@@ -3,12 +3,14 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-use std::fs::File;
-use std::io::Read;
-use walkdir::{DirEntry, WalkDir};
+use walk::{filter_dirs, walk, walk_many, walk_no_read};
 
-use std::path::Path;
-
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The expression that failed
+/// * The error itself
+/// * (optionally) a path connected to the error (e.g. failure to open a file)
+#[macro_export]
 macro_rules! t {
     ($e:expr, $p:expr) => {
         match $e {
@@ -28,7 +30,8 @@ macro_rules! t {
 macro_rules! tidy_error {
     ($bad:expr, $fmt:expr) => ({
         *$bad = true;
-        eprintln!("tidy error: {}", $fmt);
+        eprint!("tidy error: ");
+        eprintln!($fmt);
     });
     ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
         *$bad = true;
@@ -52,59 +55,4 @@ pub mod target_specific_tests;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
-
-fn filter_dirs(path: &Path) -> bool {
-    let skip = [
-        "tidy-test-file",
-        "compiler/rustc_codegen_cranelift",
-        "compiler/rustc_codegen_gcc",
-        "src/llvm-project",
-        "library/backtrace",
-        "library/portable-simd",
-        "library/stdarch",
-        "src/tools/cargo",
-        "src/tools/clippy",
-        "src/tools/miri",
-        "src/tools/rls",
-        "src/tools/rust-analyzer",
-        "src/tools/rust-installer",
-        "src/tools/rustfmt",
-        "src/doc/book",
-        // Filter RLS output directories
-        "target/rls",
-    ];
-    skip.iter().any(|p| path.ends_with(p))
-}
-
-fn walk_many(
-    paths: &[&Path],
-    skip: &mut dyn FnMut(&Path) -> bool,
-    f: &mut dyn FnMut(&DirEntry, &str),
-) {
-    for path in paths {
-        walk(path, skip, f);
-    }
-}
-
-fn walk(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry, &str)) {
-    let mut contents = String::new();
-    walk_no_read(path, skip, &mut |entry| {
-        contents.clear();
-        if t!(File::open(entry.path()), entry.path()).read_to_string(&mut contents).is_err() {
-            contents.clear();
-        }
-        f(&entry, &contents);
-    });
-}
-
-fn walk_no_read(path: &Path, skip: &mut dyn FnMut(&Path) -> bool, f: &mut dyn FnMut(&DirEntry)) {
-    let walker = WalkDir::new(path).into_iter().filter_entry(|e| !skip(e.path()));
-    for entry in walker {
-        if let Ok(entry) = entry {
-            if entry.file_type().is_dir() {
-                continue;
-            }
-            f(&entry);
-        }
-    }
-}
+pub mod walk;

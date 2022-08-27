@@ -175,6 +175,36 @@ pub fn check(
         tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 
+    let (version, channel) = get_version_and_channel(src_path);
+
+    let all_features_iter = features
+        .iter()
+        .map(|feat| (feat, "lang"))
+        .chain(lib_features.iter().map(|feat| (feat, "lib")));
+    for ((feature_name, feature), kind) in all_features_iter {
+        let since = if let Some(since) = feature.since { since } else { continue };
+        if since > version && since != Version::CurrentPlaceholder {
+            tidy_error!(
+                bad,
+                "The stabilization version {since} of {kind} feature `{feature_name}` is newer than the current {version}"
+            );
+        }
+        if channel == "nightly" && since == version {
+            tidy_error!(
+                bad,
+                "The stabilization version {since} of {kind} feature `{feature_name}` is written out but should be {}",
+                version::VERSION_PLACEHOLDER
+            );
+        }
+        if channel != "nightly" && since == Version::CurrentPlaceholder {
+            tidy_error!(
+                bad,
+                "The placeholder use of {kind} feature `{feature_name}` is not allowed on the {} channel",
+                version::VERSION_PLACEHOLDER
+            );
+        }
+    }
+
     if *bad {
         return CollectedFeatures { lib: lib_features, lang: features };
     }
@@ -193,6 +223,14 @@ pub fn check(
     }
 
     CollectedFeatures { lib: lib_features, lang: features }
+}
+
+fn get_version_and_channel(src_path: &Path) -> (Version, String) {
+    let version_str = t!(std::fs::read_to_string(src_path.join("version")));
+    let version_str = version_str.trim();
+    let version = t!(std::str::FromStr::from_str(&version_str).map_err(|e| format!("{e:?}")));
+    let channel_str = t!(std::fs::read_to_string(src_path.join("ci").join("channel")));
+    (version, channel_str.trim().to_owned())
 }
 
 fn format_features<'a>(

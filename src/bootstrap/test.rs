@@ -2528,6 +2528,43 @@ impl Step for TierCheck {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ReplacePlaceholderTest;
+
+impl Step for ReplacePlaceholderTest {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    /// Ensure the version placeholder replacement tool builds
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("build check for version replacement placeholder");
+
+        // Test the version placeholder replacement tool itself.
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/replace-version-placeholder",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/replace-version-placeholder")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct LintDocs {
     pub compiler: Compiler,
     pub target: TargetSelection,
