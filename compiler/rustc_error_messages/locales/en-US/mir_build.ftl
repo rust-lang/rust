@@ -191,3 +191,7 @@ mir_build_assoc_const_in_pattern = associated consts cannot be referenced in pat
 mir_build_const_param_in_pattern = const parameters cannot be referenced in patterns
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
+
+mir_build_unreachable_pattern = unreachable pattern
+    .label = unreachable pattern
+    .catchall_label = matches any value
