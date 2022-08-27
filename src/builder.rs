@@ -30,7 +30,7 @@ use rustc_codegen_ssa::traits::{
     OverflowOp,
     StaticBuilderMethods,
 };
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -820,16 +820,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn type_metadata(&mut self, _function: RValue<'gcc>, _typeid: String) {
-        // Unsupported.
-    }
-
-    fn typeid_metadata(&mut self, _typeid: String) -> RValue<'gcc> {
-        // Unsupported.
-        self.context.new_rvalue_from_int(self.int_type, 0)
-    }
-
-
     fn store(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
@@ -1195,6 +1185,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn atomic_cmpxchg(&mut self, dst: RValue<'gcc>, cmp: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering, failure_order: AtomicOrdering, weak: bool) -> RValue<'gcc> {
         let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
         self.llbb().add_assignment(None, expected, cmp);
+        // NOTE: gcc doesn't support a failure memory model that is stronger than the success
+        // memory model.
+        let order =
+            if failure_order as i32 > order as i32 {
+                failure_order
+            }
+            else {
+                order
+            };
         let success = self.compare_exchange(dst, expected, src, order, failure_order, weak);
 
         let pair_type = self.cx.type_struct(&[src.get_type(), self.bool_type], false);

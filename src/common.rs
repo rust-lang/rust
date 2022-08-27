@@ -9,10 +9,8 @@ use rustc_codegen_ssa::traits::{
     StaticMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::ty::ScalarInt;
 use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
-use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, Pointer, Size};
 
 use crate::consts::const_alloc_to_gcc;
@@ -125,12 +123,15 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_rvalue_from_double(typ, val)
     }
 
-    fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
-        let s_str = s.as_str();
-        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
-            self.global_string(s_str)
-        });
-        let len = s_str.len();
+    fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
+        let str_global = *self
+            .const_str_cache
+            .borrow_mut()
+            .raw_entry_mut()
+            .from_key(s)
+            .or_insert_with(|| (s.to_owned(), self.global_string(s)))
+            .1;
+        let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
@@ -157,13 +158,13 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         None
     }
 
+    fn zst_to_backend(&self, _ty: Type<'gcc>) -> RValue<'gcc> {
+        self.const_undef(self.type_ix(0))
+    }
+
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
-            Scalar::Int(ScalarInt::ZST) => {
-                assert_eq!(0, layout.size(self).bytes());
-                self.const_undef(self.type_ix(0))
-            }
             Scalar::Int(int) => {
                 let data = int.assert_bits(layout.size(self));
 
@@ -210,6 +211,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAlloc::Function(fn_instance) => {
                             self.get_fn_addr(fn_instance)
                         },
+                        GlobalAlloc::VTable(ty, trait_ref) => {
+                            let alloc = self.tcx.global_alloc(self.tcx.vtable_allocation((ty, trait_ref))).unwrap_memory();
+                            let init = const_alloc_to_gcc(self, alloc);
+                            self.static_addr_of(init, alloc.inner().align, None)
+                        }
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
                             self.get_static(def_id).get_address(None)

@@ -1,25 +1,25 @@
-From b1ae000f6da1abd3b8e9b80c40bc11c89b8ae93c Mon Sep 17 00:00:00 2001
-From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Thu, 30 Dec 2021 16:54:40 +0100
-Subject: [PATCH] [core] Disable portable-simd test
+From f845df4056f5ba16b9f5bd703460c4ac40ea03b9 Mon Sep 17 00:00:00 2001
+From: Antoni Boucher <bouanto@zoho.com>
+Date: Fri, 26 Aug 2022 20:38:58 -0400
+Subject: [PATCH] Edit
 
 ---
- library/core/tests/lib.rs | 1 -
- 1 file changed, 1 deletion(-)
+ library/core/tests/lib.rs | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
-index 06c7be0..359e2e7 100644
+index 59510d3..179bf26 100644
 --- a/library/core/tests/lib.rs
 +++ b/library/core/tests/lib.rs
-@@ -75,7 +75,6 @@
- #![feature(never_type)]
+@@ -77,7 +77,6 @@
  #![feature(unwrap_infallible)]
  #![feature(result_into_ok_or_err)]
+ #![feature(pointer_byte_offsets)]
 -#![feature(portable_simd)]
  #![feature(ptr_metadata)]
  #![feature(once_cell)]
  #![feature(option_result_contains)]
-@@ -127,7 +126,6 @@ mod pin;
+@@ -135,7 +134,6 @@ mod pin;
  mod pin_macro;
  mod ptr;
  mod result;
@@ -27,3 +27,6 @@ index 06c7be0..359e2e7 100644
  mod slice;
  mod str;
  mod str_lossy;
+-- 
+2.26.2.7.g19db9cfb68.dirty
+

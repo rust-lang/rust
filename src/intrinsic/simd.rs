@@ -395,9 +395,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         args: &[OperandRef<'tcx, RValue<'gcc>>],
     ) -> Result<RValue<'gcc>, ()> {
         macro_rules! emit_error {
-            ($msg: tt) => {
-                emit_error!($msg, )
-            };
             ($msg: tt, $($fmt: tt)*) => {
                 span_invalid_monomorphization_error(
                     bx.sess(), span,
