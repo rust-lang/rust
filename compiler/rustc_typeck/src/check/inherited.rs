@@ -37,6 +37,7 @@ pub struct Inherited<'a, 'tcx> {
 
     // Some additional `Sized` obligations badly affect type inference.
     // These obligations are added in a later stage of typeck.
+    // Removing these may also cause additional complications, see #101066.
     pub(super) deferred_sized_obligations:
         RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
 
