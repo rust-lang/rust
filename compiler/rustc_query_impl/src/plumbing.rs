@@ -339,7 +339,7 @@ macro_rules! define_queries {
         }
 
         impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
-            rustc_query_description! { $name<'tcx> }
+            rustc_query_description! { $name }
 
             type Cache = query_storage::$name<'tcx>;
 

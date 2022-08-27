@@ -265,13 +265,13 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
         let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
             // Use custom code to load the query from disk
             quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
                     = Some(|#tcx, #id| { #block });
             }
         } else {
             // Use the default code to load the query from disk
             quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
+                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
                     = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
             }
         };
@@ -298,7 +298,7 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
                 false
             }
 
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
+            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
         }
     };
 
@@ -307,7 +307,7 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(tcx: QueryCtxt<$tcx>, key: Self::Key) -> String {
+        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
             let (#tcx, #key) = (*tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths!(
                 format!(#desc)
@@ -316,7 +316,7 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
     };
 
     impls.extend(quote! {
-        (#name<$tcx:tt>) => {
+        (#name) => {
             #desc
             #cache
         };
@@ -411,15 +411,15 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ([$($macro:tt)*]) => {
-                $($macro)* {
+            ($macro:ident !) => {
+                $macro! {
                     #query_stream
                 }
             }
         }
         macro_rules! rustc_dep_node_append {
-            ([$($macro:tt)*][$($other:tt)*]) => {
-                $($macro)*(
+            ($macro:ident! [$($other:tt)*]) => {
+                $macro!(
                     $($other)*
 
                     #dep_node_def_stream
@@ -428,8 +428,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
         #[macro_export]
         macro_rules! rustc_cached_queries {
-            ($($macro:tt)*) => {
-                $($macro)*(#cached_queries);
+            ( $macro:ident! ) => {
+                $macro!(#cached_queries);
             }
         }
         #[macro_export]

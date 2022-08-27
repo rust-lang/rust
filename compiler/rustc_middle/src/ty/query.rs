@@ -332,7 +332,7 @@ macro_rules! define_callbacks {
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
-rustc_query_append! { [define_callbacks!] }
+rustc_query_append! { define_callbacks! }
 
 mod sealed {
     use super::{DefId, LocalDefId};

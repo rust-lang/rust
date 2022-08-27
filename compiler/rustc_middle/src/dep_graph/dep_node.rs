@@ -179,7 +179,7 @@ macro_rules! define_dep_nodes {
     );
 }
 
-rustc_dep_node_append!([define_dep_nodes!][
+rustc_dep_node_append!(define_dep_nodes![
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
