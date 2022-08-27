@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 use std::fmt;
 
 use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
-use rustc_span::{Span, SpanData};
+use rustc_span::{Span, SpanData, DUMMY_SP};
 use rustc_target::abi::Size;
 
 use crate::helpers::CurrentSpan;
@@ -91,6 +91,7 @@ impl fmt::Display for InvalidationCause {
 
 #[derive(Clone, Debug)]
 struct Protection {
+    /// The parent tag from which this protected tag was derived.
     orig_tag: ProvenanceExtra,
     tag: SbTag,
     span: Span,
@@ -342,32 +343,39 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
         let protected = protector_tag
             .and_then(|protector| {
-                self.history.protectors.iter().find_map(|protection| {
-                    if protection.tag == protector {
-                        Some((protection.orig_tag, protection.span.data()))
-                    } else {
-                        None
-                    }
+                self.history.protectors.iter().find(|protection| {
+                    protection.tag == protector
                 })
             })
-            .and_then(|(tag, call_span)| {
+            .and_then(|protection| {
                 self.history.creations.iter().rev().find_map(|event| {
-                    if ProvenanceExtra::Concrete(event.retag.new_tag) == tag {
-                        Some((event.retag.orig_tag, event.span.data(), call_span))
+                    if ProvenanceExtra::Concrete(event.retag.new_tag) == protection.orig_tag {
+                        Some((protection, event))
                     } else {
                         None
                     }
                 })
             })
-            .map(|(protecting_tag, protecting_tag_span, protection_span)| {
+            .map(|(protection, protection_parent)| {
+                let protected_tag = protection.tag;
                 [
                     (
                         format!(
-                            "{tag:?} was protected due to {protecting_tag:?} which was created here"
+                            "{tag:?} cannot be used for memory access because that would remove protected tag {protected_tag:?}, protected by this function call",
                         ),
-                        protecting_tag_span,
+                        protection.span.data(),
                     ),
-                    (format!("this protector is live for this call"), protection_span),
+                    if protection_parent.retag.new_tag == tag {
+                        (format!("{protected_tag:?} was derived from {tag:?}, the tag used for this memory access"), DUMMY_SP.data())
+                    } else {
+                        (
+                            format!(
+                                "{protected_tag:?} was derived from {protected_parent_tag:?}, which in turn was created here",
+                                protected_parent_tag = protection_parent.retag.new_tag,
+                            ),
+                            protection_parent.span.data()
+                        )
+                    }
                 ]
             });
 

@@ -1,5 +1,5 @@
 error: Undefined Behavior: not granting access to tag <TAG> because incompatible item [SharedReadOnly for <TAG>] is protected by call ID
-  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
    |
 LL |     unsafe { *x = 0 };
    |              ^^^^^^ not granting access to tag <TAG> because incompatible item [SharedReadOnly for <TAG>] is protected by call ID
@@ -7,17 +7,12 @@ LL |     unsafe { *x = 0 };
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
-  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
    |
 LL |     let xraw = &mut x as *mut _;
    |                ^^^^^^
-help: <TAG> was protected due to <TAG> which was created here
-  --> $DIR/invalidate_against_barrier2.rs:LL:CC
-   |
-LL |     inner(xraw, xref);
-   |                 ^^^^
-help: this protector is live for this call
-  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
    |
 LL | / fn inner(x: *mut i32, _y: &i32) {
 LL | |     // If `x` and `y` alias, retagging is fine with this... but we really
@@ -26,10 +21,15 @@ LL | |     // immutable for the duration of this call.
 LL | |     unsafe { *x = 0 };
 LL | | }
    | |_^
+help: <TAG> was derived from <TAG>, which in turn was created here
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
+   |
+LL |     inner(xraw, xref);
+   |                 ^^^^
    = note: backtrace:
-   = note: inside `inner` at $DIR/invalidate_against_barrier2.rs:LL:CC
-note: inside `main` at $DIR/invalidate_against_barrier2.rs:LL:CC
-  --> $DIR/invalidate_against_barrier2.rs:LL:CC
+   = note: inside `inner` at $DIR/invalidate_against_protector2.rs:LL:CC
+note: inside `main` at $DIR/invalidate_against_protector2.rs:LL:CC
+  --> $DIR/invalidate_against_protector2.rs:LL:CC
    |
 LL |     inner(xraw, xref);
    |     ^^^^^^^^^^^^^^^^^

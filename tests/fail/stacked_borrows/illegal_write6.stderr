@@ -11,12 +11,7 @@ help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
    |
 LL |     let p = x as *mut u32;
    |             ^
-help: <TAG> was protected due to <TAG> which was created here
-  --> $DIR/illegal_write6.rs:LL:CC
-   |
-LL |     foo(x, p);
-   |         ^
-help: this protector is live for this call
+help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
   --> $DIR/illegal_write6.rs:LL:CC
    |
 LL | / fn foo(a: &mut u32, y: *mut u32) -> u32 {
@@ -26,6 +21,11 @@ LL | |     unsafe { *y = 2 };
 LL | |     return *a;
 LL | | }
    | |_^
+help: <TAG> was derived from <TAG>, which in turn was created here
+  --> $DIR/illegal_write6.rs:LL:CC
+   |
+LL |     foo(x, p);
+   |         ^
    = note: backtrace:
    = note: inside `foo` at $DIR/illegal_write6.rs:LL:CC
 note: inside `main` at $DIR/illegal_write6.rs:LL:CC
