@@ -67,3 +67,7 @@ pub struct IncrementCompilation {
     pub run_cmd: String,
     pub dep_node: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(query_system::query_overflow)]
+pub struct QueryOverflow;
