@@ -1573,12 +1573,6 @@ kbd {
 	cursor: default;
 }
 
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
-}
-
 #implementations-list > h3 > span.in-band {
 	width: 100%;
 }
