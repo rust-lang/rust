@@ -970,6 +970,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
+        let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
@@ -1021,7 +1022,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                     look_at_return = false;
                 }
             }
@@ -1047,7 +1048,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
                     );
-                    err.span_label(self.body.span, "in this closure");
+                    err.span_label(closure_span, "in this closure");
                 }
                 _ => {}
             }

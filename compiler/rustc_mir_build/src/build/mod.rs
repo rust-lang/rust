@@ -68,49 +68,24 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     }
 
     // Figure out what primary body this item has.
-    let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
-        Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Closure(hir::Closure { fn_decl, body, .. }),
-            ..
-        }) => (*body, fn_decl.output.span(), None),
-        Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
-            span,
-            ..
-        })
-        | Node::ImplItem(hir::ImplItem {
-            kind: hir::ImplItemKind::Fn(hir::FnSig { decl, .. }, body_id),
-            span,
-            ..
-        })
-        | Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
-            span,
-            ..
-        }) => {
-            // Use the `Span` of the `Item/ImplItem/TraitItem` as the body span,
-            // since the def span of a function does not include the body
-            (*body_id, decl.output.span(), Some(*span))
+    let body_id = tcx.hir().body_owned_by(def.did);
+    let span_with_body = tcx.hir().span_with_body(id);
+    let return_ty_span = if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(id) {
+        fn_decl.output.span()
+    } else {
+        match tcx.hir().get(id) {
+            Node::Item(hir::Item {
+                kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _),
+                ..
+            })
+            | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
+            | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Const(ty, _), .. }) => {
+                ty.span
+            }
+            Node::AnonConst(_) => tcx.def_span(def.did),
+            _ => span_bug!(tcx.def_span(def.did), "can't build MIR for {:?}", def.did),
         }
-        Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(ty, _, body_id) | hir::ItemKind::Const(ty, body_id),
-            ..
-        })
-        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
-        | Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(ty, Some(body_id)),
-            ..
-        }) => (*body_id, ty.span, None),
-        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
-            (*body, tcx.hir().span(*hir_id), None)
-        }
-
-        _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def.did),
     };
-
-    // If we don't have a specialized span for the body, just use the
-    // normal def span.
-    let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
 
     tcx.infer_ctxt().enter(|infcx| {
         let body = if let Some(error_reported) = typeck_results.tainted_by_errors {
@@ -244,8 +219,6 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
-
-            let span_with_body = span_with_body.to(tcx.hir().span(body_id.hir_id));
 
             build::construct_const(
                 &thir,
