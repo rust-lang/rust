@@ -8,7 +8,7 @@ note: ...which requires const-evaluating + checking `A`...
   --> $DIR/issue-36163.rs:1:1
    |
 LL | const A: isize = Foo::B as isize;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating + checking `Foo::B::{constant#0}`, completing the cycle
 note: cycle used when simplifying constant for the type system `Foo::B::{constant#0}`
   --> $DIR/issue-36163.rs:4:9

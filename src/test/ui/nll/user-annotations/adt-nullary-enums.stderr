@@ -30,14 +30,15 @@ error[E0597]: `c` does not live long enough
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here
-LL |     let _closure = || {
-   |                     - `c` dropped here while still borrowed
 ...
 LL |             SomeEnum::SomeVariant(Cell::new(&c)),
    |                                   ----------^^-
    |                                   |         |
    |                                   |         borrowed value does not live long enough
    |                                   argument requires that `c` is borrowed for `'a`
+...
+LL |     };
+   |     - `c` dropped here while still borrowed
 
 error: aborting due to 3 previous errors
 
