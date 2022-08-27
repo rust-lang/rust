@@ -103,18 +103,14 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             }
         })
         .map(|def_id| {
-            let (export_level, used) = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
-                // We won't link right if these symbols are stripped during LTO.
-                let used = match name {
-                    "rust_eh_personality"
-                    | "rust_eh_register_frames"
-                    | "rust_eh_unregister_frames" => true,
-                    _ => false,
-                };
-                (SymbolExportLevel::Rust, used)
+            // We won't link right if this symbol is stripped during LTO.
+            let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
+            let used = name == "rust_eh_personality";
+
+            let export_level = if special_runtime_crate {
+                SymbolExportLevel::Rust
             } else {
-                (symbol_export_level(tcx, def_id.to_def_id()), false)
+                symbol_export_level(tcx, def_id.to_def_id())
             };
             let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
