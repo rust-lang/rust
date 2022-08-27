@@ -53,7 +53,7 @@ codegen_llvm_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
 codegen_llvm_target_feature_disable_or_enable =
-    target features {$features} must all be enabled or disabled together
+    the target features {$features} must all be enabled or disabled together
 
 codegen_llvm_missing_features =
     add the missing features in a `target_feature` attribute
