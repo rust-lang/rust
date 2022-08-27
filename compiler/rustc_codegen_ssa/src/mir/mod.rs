@@ -283,7 +283,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 for i in 0..tupled_arg_tys.len() {
                     let arg = &fx.fn_abi.args[idx];
                     idx += 1;
-                    if arg.pad.is_some() {
+                    if let PassMode::Cast(_, true) = arg.mode {
                         llarg_idx += 1;
                     }
                     let pr_field = place.project_field(bx, i);
@@ -309,7 +309,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let arg = &fx.fn_abi.args[idx];
             idx += 1;
-            if arg.pad.is_some() {
+            if let PassMode::Cast(_, true) = arg.mode {
                 llarg_idx += 1;
             }
 

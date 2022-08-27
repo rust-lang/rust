@@ -3251,7 +3251,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .map(|(i, ty)| arg_of(ty, Some(i)))
                 .collect::<Result<_, _>>()?,
             c_variadic: sig.c_variadic,
-            fixed_count: inputs.len(),
+            fixed_count: inputs.len() as u32,
             conv,
             can_unwind: fn_can_unwind(self.tcx(), fn_def_id, sig.abi),
         };
@@ -3323,7 +3323,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             };
             fixup(&mut fn_abi.ret);
-            for arg in &mut fn_abi.args {
+            for arg in fn_abi.args.iter_mut() {
                 fixup(arg);
             }
         } else {
