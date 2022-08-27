@@ -293,3 +293,29 @@ pub mod details {
     /// </details>
     pub struct Details;
 }
+
+pub mod doc_block_table {
+
+    pub trait DocBlockTableTrait {
+        fn func();
+    }
+
+    /// Struct doc.
+    ///
+    /// | header1                  | header2                  |
+    /// |--------------------------|--------------------------|
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    pub struct DocBlockTable {}
+
+    impl DocBlockTableTrait for DocBlockTable {
+        /// Trait impl func doc for struct.
+        ///
+        /// | header1                  | header2                  |
+        /// |--------------------------|--------------------------|
+        /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+        fn func() {
+            println!();
+        }
+    }
+
+}

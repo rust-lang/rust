@@ -777,7 +777,7 @@ pre, .rustdoc.source .example-wrap {
 .content .docblock >.impl-items table td {
 	padding: 0;
 }
-.content .docblock > .impl-items .table-display, .impl-items table td {
+.content .docblock > .impl-items .table-display {
 	border: none;
 }
 
