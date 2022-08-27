@@ -1731,7 +1731,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         if !vis.is_at_least(self.required_visibility, self.tcx) {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
-                ty::Visibility::Invisible => "private",
                 ty::Visibility::Restricted(vis_def_id) => {
                     if vis_def_id == self.tcx.parent_module(hir_id).to_def_id() {
                         "private"

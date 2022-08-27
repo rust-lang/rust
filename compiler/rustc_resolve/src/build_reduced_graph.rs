@@ -380,7 +380,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             has_attributes: !item.attrs.is_empty(),
             root_span,
             root_id,
-            vis: Cell::new(vis),
+            vis: Cell::new(Some(vis)),
             used: Cell::new(false),
         });
 
@@ -588,7 +588,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
-                    max_vis: Cell::new(ty::Visibility::Invisible),
+                    max_vis: Cell::new(None),
                 };
                 self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
@@ -650,7 +650,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         true,
                         // The whole `use` item
                         item,
-                        ty::Visibility::Invisible,
+                        ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod()),
                         root_span,
                     );
                 }
@@ -885,7 +885,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             root_span: item.span,
             span: item.span,
             module_path: Vec::new(),
-            vis: Cell::new(vis),
+            vis: Cell::new(Some(vis)),
             used: Cell::new(used),
         });
         self.r.potentially_unused_imports.push(import);
@@ -1118,7 +1118,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Cell::new(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())),
+                vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id()))),
                 used: Cell::new(false),
             })
         };
