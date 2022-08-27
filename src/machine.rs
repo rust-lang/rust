@@ -126,7 +126,7 @@ impl fmt::Display for MiriMemoryKind {
 }
 
 /// Pointer provenance.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub enum Provenance {
     Concrete {
         alloc_id: AllocId,
@@ -134,6 +134,24 @@ pub enum Provenance {
         sb: SbTag,
     },
     Wildcard,
+}
+
+// This needs to be `Eq`+`Hash` because the `Machine` trait needs that because validity checking
+// *might* be recursive and then it has to track which places have already been visited.
+// However, comparing provenance is meaningless, since `Wildcard` might be any provenance -- and of
+// course we don't actually do recursive checking.
+// We could change `RefTracking` to strip provenance for its `seen` set but that type is generic so that is quite annoying.
+// Instead owe add the required instances but make them panic.
+impl PartialEq for Provenance {
+    fn eq(&self, _other: &Self) -> bool {
+        panic!("Provenance must not be compared")
+    }
+}
+impl Eq for Provenance {}
+impl std::hash::Hash for Provenance {
+    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {
+        panic!("Provenance must not be hashed")
+    }
 }
 
 /// The "extra" information a pointer has over a regular AllocId.
