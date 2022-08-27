@@ -1460,15 +1460,47 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
+    #[cfg(feature="master")]
+    pub fn vector_reduce_fadd(&mut self, acc: RValue<'gcc>, src: RValue<'gcc>) -> RValue<'gcc> {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        (0..element_count).into_iter()
+            .map(|i| self.context
+                .new_vector_access(None, src, self.context.new_rvalue_from_int(self.int_type, i as _))
+                .to_rvalue())
+            .fold(acc, |x, i| x + i)
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce_fadd(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
     pub fn vector_reduce_fmul_fast(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
+    }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce_fmul(&mut self, acc: RValue<'gcc>, src: RValue<'gcc>) -> RValue<'gcc> {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        (0..element_count).into_iter()
+            .map(|i| self.context
+                .new_vector_access(None, src, self.context.new_rvalue_from_int(self.int_type, i as _))
+                .to_rvalue())
+            .fold(acc, |x, i| x * i)
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce_fmul(&mut self, _acc: RValue<'gcc>, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!()
     }
 
     // Inspired by Hacker's Delight min implementation.
     pub fn vector_reduce_min(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_reduce(src, |a, b, context| {
             let differences_or_zeros = difference_or_zero(a, b, context);
-            context.new_binary_op(None, BinaryOp::Minus, a.get_type(), a, differences_or_zeros)
+            context.new_binary_op(None, BinaryOp::Plus, b.get_type(), b, differences_or_zeros)
         })
     }
 
@@ -1476,9 +1508,50 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn vector_reduce_max(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_reduce(src, |a, b, context| {
             let differences_or_zeros = difference_or_zero(a, b, context);
-            context.new_binary_op(None, BinaryOp::Plus, b.get_type(), b, differences_or_zeros)
+            context.new_binary_op(None, BinaryOp::Minus, a.get_type(), a, differences_or_zeros)
         })
     }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce_fmin(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        let mut acc = self.context.new_vector_access(None, src, self.context.new_rvalue_zero(self.int_type)).to_rvalue();
+        for i in 1..element_count {
+            let elem = self.context
+                .new_vector_access(None, src, self.context.new_rvalue_from_int(self.int_type, i as _))
+                .to_rvalue();
+            let cmp = self.context.new_comparison(None, ComparisonOp::LessThan, acc, elem);
+            acc = self.select(cmp, acc, elem);
+        }
+        acc
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce_fmin(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    #[cfg(feature="master")]
+    pub fn vector_reduce_fmax(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
+        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_count = vector_type.get_num_units();
+        let mut acc = self.context.new_vector_access(None, src, self.context.new_rvalue_zero(self.int_type)).to_rvalue();
+        for i in 1..element_count {
+            let elem = self.context
+                .new_vector_access(None, src, self.context.new_rvalue_from_int(self.int_type, i as _))
+                .to_rvalue();
+            let cmp = self.context.new_comparison(None, ComparisonOp::GreaterThan, acc, elem);
+            acc = self.select(cmp, acc, elem);
+        }
+        acc
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn vector_reduce_fmax(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
 
     pub fn vector_select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, else_val: RValue<'gcc>) -> RValue<'gcc> {
         // cond is a vector of integers, not of bools.

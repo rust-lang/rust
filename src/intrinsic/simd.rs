@@ -2,7 +2,7 @@
 use gccjit::{ToRValue, ComparisonOp, UnaryOp};
 use gccjit::{BinaryOp, RValue, Type};
 use rustc_codegen_ssa::base::compare_simd_types;
-use rustc_codegen_ssa::common::{TypeKind, span_invalid_monomorphization_error};
+use rustc_codegen_ssa::common::{IntPredicate, TypeKind, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods};
@@ -667,9 +667,24 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         mul,
         1.0
     );
+    arith_red!(
+        simd_reduce_add_ordered: BinaryOp::Plus,
+        vector_reduce_fadd,
+        true,
+        add,
+        0.0
+    );
+    arith_red!(
+        simd_reduce_mul_ordered: BinaryOp::Mult,
+        vector_reduce_fmul,
+        true,
+        mul,
+        1.0
+    );
+
 
     macro_rules! minmax_red {
-        ($name:ident: $reduction:ident) => {
+        ($name:ident: $int_red:ident, $float_red:ident) => {
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
@@ -679,7 +694,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                     ret_ty
                 );
                 return match in_elem.kind() {
-                    ty::Int(_) | ty::Uint(_) | ty::Float(_) => Ok(bx.$reduction(args[0].immediate())),
+                    ty::Int(_) | ty::Uint(_) => Ok(bx.$int_red(args[0].immediate())),
+                    ty::Float(_) => Ok(bx.$float_red(args[0].immediate())),
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
                         sym::$name,
@@ -692,8 +708,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         };
     }
 
-    minmax_red!(simd_reduce_min: vector_reduce_min);
-    minmax_red!(simd_reduce_max: vector_reduce_max);
+    minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
+    minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
+    // TODO(sadlerap): revisit these intrinsics to generate more optimal reductions
+    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin);
+    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax);
 
     macro_rules! bitwise_red {
         ($name:ident : $op:expr, $boolean:expr) => {
@@ -719,15 +738,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                         ),
                     }
 
-                    // boolean reductions operate on vectors of i1s:
-                    let i1 = bx.type_i1();
-                    let i1xn = bx.type_vector(i1, in_len as u64);
-                    bx.trunc(args[0].immediate(), i1xn)
+                    args[0].immediate()
                 };
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
                         let r = bx.vector_reduce_op(input, $op);
-                        Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
+                        Ok(if !$boolean { r } else { bx.icmp(IntPredicate::IntNE, r, bx.context.new_rvalue_zero(r.get_type())) })
                     }
                     _ => return_error!(
                         "unsupported {} from `{}` with element `{}` to `{}`",
@@ -743,6 +759,9 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
     bitwise_red!(simd_reduce_and: BinaryOp::BitwiseAnd, false);
     bitwise_red!(simd_reduce_or: BinaryOp::BitwiseOr, false);
+    bitwise_red!(simd_reduce_xor: BinaryOp::BitwiseXor, false);
+    bitwise_red!(simd_reduce_all: BinaryOp::BitwiseAnd, true);
+    bitwise_red!(simd_reduce_any: BinaryOp::BitwiseOr, true);
 
     unimplemented!("simd {}", name);
 }
