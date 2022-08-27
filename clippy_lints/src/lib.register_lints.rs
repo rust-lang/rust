@@ -358,6 +358,7 @@ store.register_lints(&[
     methods::STRING_EXTEND_CHARS,
     methods::SUSPICIOUS_MAP,
     methods::SUSPICIOUS_SPLITN,
+    methods::SUSPICIOUS_TO_OWNED,
     methods::UNINIT_ASSUMED_INIT,
     methods::UNIT_HASH,
     methods::UNNECESSARY_FILTER_MAP,
