@@ -2605,32 +2605,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((fields, substs)) =
             self.get_field_candidates_considering_privacy(span, expr_t, mod_id)
         {
-            for candidate_field in fields {
-                if let Some(mut field_path) = self.check_for_nested_field_satisfying(
-                    span,
-                    &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
-                    candidate_field,
-                    substs,
-                    vec![],
-                    mod_id,
-                ) {
-                    // field_path includes `field` that we're looking for, so pop it.
+            let candidate_fields: Vec<_> = fields
+                .filter_map(|candidate_field| {
+                    self.check_for_nested_field_satisfying(
+                        span,
+                        &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
+                        candidate_field,
+                        substs,
+                        vec![],
+                        mod_id,
+                    )
+                })
+                .map(|mut field_path| {
                     field_path.pop();
-
-                    let field_path_str = field_path
+                    field_path
                         .iter()
                         .map(|id| id.name.to_ident_string())
                         .collect::<Vec<String>>()
-                        .join(".");
-                    debug!("field_path_str: {:?}", field_path_str);
+                        .join(".")
+                })
+                .collect::<Vec<_>>();
 
-                    err.span_suggestion_verbose(
-                        field.span.shrink_to_lo(),
-                        "one of the expressions' fields has a field of the same name",
-                        format!("{field_path_str}."),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+            let len = candidate_fields.len();
+            if len > 0 {
+                err.span_suggestions(
+                    field.span.shrink_to_lo(),
+                    format!(
+                        "{} of the expressions' fields {} a field of the same name",
+                        if len > 1 { "some" } else { "one" },
+                        if len > 1 { "have" } else { "has" },
+                    ),
+                    candidate_fields.iter().map(|path| format!("{path}.")),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
         err
