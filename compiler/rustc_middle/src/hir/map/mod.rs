@@ -17,28 +17,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
-    match node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
-        Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
-        | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, ..), .. }) => {
-            Some(fn_decl)
-        }
-        _ => None,
-    }
-}
-
-pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
-    match &node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(sig),
-        _ => None,
-    }
-}
-
 #[inline]
 pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
@@ -389,7 +367,7 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_decl(node)
+            node.fn_decl()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }
@@ -397,7 +375,7 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_sig(node)
+            node.fn_sig()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }

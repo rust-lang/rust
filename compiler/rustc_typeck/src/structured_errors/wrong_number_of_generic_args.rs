@@ -4,7 +4,6 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_middle::hir::map::fn_sig;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
@@ -368,7 +367,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
-        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(fn_sig);
+        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.map_or(false, |fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {

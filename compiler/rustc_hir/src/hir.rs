@@ -3216,7 +3216,7 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn fn_decl(&self) -> Option<&FnDecl<'hir>> {
+    pub fn fn_decl(self) -> Option<&'hir FnDecl<'hir>> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
@@ -3400,19 +3400,20 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    pub fn fn_decl(&self) -> Option<&'hir FnDecl<'hir>> {
+    pub fn fn_decl(self) -> Option<&'hir FnDecl<'hir>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
-            Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
+            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
                 Some(fn_decl)
             }
             _ => None,
         }
     }
 
-    pub fn fn_sig(&self) -> Option<&'hir FnSig<'hir>> {
+    pub fn fn_sig(self) -> Option<&'hir FnSig<'hir>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
