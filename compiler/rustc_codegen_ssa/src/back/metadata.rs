@@ -6,8 +6,8 @@ use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, pe, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
+    elf, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, SectionFlags,
+    SectionKind, SymbolFlags, SymbolKind, SymbolScope,
 };
 
 use snap::write::FrameEncoder;
@@ -219,44 +219,8 @@ pub enum MetadataPosition {
 // * ELF - All other targets are similar to Windows in that there's a
 //   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 //   automatically removed from the final output.
-pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataPosition) {
-    let Some(mut file) = create_object_file(sess) else {
-        // This is used to handle all "other" targets. This includes targets
-        // in two categories:
-        //
-        // * Some targets don't have support in the `object` crate just yet
-        //   to write an object file. These targets are likely to get filled
-        //   out over time.
-        //
-        // * Targets like WebAssembly don't support dylibs, so the purpose
-        //   of putting metadata in object files, to support linking rlibs
-        //   into dylibs, is moot.
-        //
-        // In both of these cases it means that linking into dylibs will
-        // not be supported by rustc. This doesn't matter for targets like
-        // WebAssembly and for targets not supported by the `object` crate
-        // yet it means that work will need to be done in the `object` crate
-        // to add a case above.
-        return (metadata.to_vec(), MetadataPosition::Last);
-    };
-    let section = file.add_section(
-        file.segment_name(StandardSegment::Debug).to_vec(),
-        b".rmeta".to_vec(),
-        SectionKind::Debug,
-    );
-    match file.format() {
-        BinaryFormat::Coff => {
-            file.section_mut(section).flags =
-                SectionFlags::Coff { characteristics: pe::IMAGE_SCN_LNK_REMOVE };
-        }
-        BinaryFormat::Elf => {
-            file.section_mut(section).flags =
-                SectionFlags::Elf { sh_flags: elf::SHF_EXCLUDE as u64 };
-        }
-        _ => {}
-    };
-    file.append_section_data(section, metadata, 1);
-    (file.write().unwrap(), MetadataPosition::First)
+pub fn create_rmeta_file(_sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataPosition) {
+    return (metadata.to_vec(), MetadataPosition::First);
 }
 
 // Historical note:
