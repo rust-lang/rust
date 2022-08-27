@@ -718,6 +718,8 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
 
                         GlobalAsmOperandRef::SymFn { instance } => {
+                            let function = self.rvalue_as_function(get_fn(self, instance));
+                            self.add_used_function(function);
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O)
                             // or byte count suffixes (x86 Windows).
@@ -726,6 +728,7 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
 
                         GlobalAsmOperandRef::SymStatic { def_id } => {
+                            // TODO(antoyo): set the global variable as used.
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);

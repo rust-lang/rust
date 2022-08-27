@@ -1,4 +1,6 @@
-use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
+#[cfg(feature = "master")]
+use gccjit::FnAttribute;
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -159,12 +161,19 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn add_compiler_used_global(&self, _global: RValue<'gcc>) {
-        // TODO(antoyo)
+    fn add_compiler_used_global(&self, global: RValue<'gcc>) {
+        // NOTE: seems like GCC does not make the distinction between compiler.used and used.
+        self.add_used_global(global);
     }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    #[cfg_attr(not(feature="master"), allow(unused_variables))]
+    pub fn add_used_function(&self, function: Function<'gcc>) {
+        #[cfg(feature = "master")]
+        function.add_attribute(FnAttribute::Used);
+    }
+
     pub fn static_addr_of_mut(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
         let global =
             match kind {
