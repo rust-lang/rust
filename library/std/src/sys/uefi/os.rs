@@ -110,7 +110,7 @@ impl Iterator for Env {
         self.last_var_name = k;
         match val {
             None => self.next(),
-            Some(x) => Some((OsString::from_ucs2_lossy(&key), x)),
+            Some(x) => Some((OsString::from_ucs2_null_termintated(&key), x)),
         }
     }
 }
@@ -271,12 +271,17 @@ pub(crate) mod uefi_vars {
         last_var_name: &[u16],
         last_guid: &r_efi::efi::Guid,
     ) -> io::Result<(Vec<u16>, r_efi::efi::Guid)> {
+        #[inline]
+        fn buf_size(s: usize) -> usize {
+            s / size_of::<u16>()
+        }
+
         let mut var_name = Vec::from(last_var_name);
         let mut var_size = var_name.capacity() * size_of::<u16>();
         let mut guid: r_efi::efi::Guid = *last_guid;
         match unsafe { get_next_variable_raw(&mut var_size, var_name.as_mut_ptr(), &mut guid) } {
             Ok(_) => {
-                unsafe { var_name.set_len(var_size / size_of::<u16>()) };
+                unsafe { var_name.set_len(buf_size(var_size)) };
                 return Ok((var_name, guid));
             }
             Err(e) => {
@@ -286,12 +291,11 @@ pub(crate) mod uefi_vars {
             }
         }
 
-        var_name.reserve(var_size - (var_name.capacity() * size_of::<u16>()));
+        var_name.reserve(buf_size(var_size) - var_name.capacity() + 1);
         var_size = var_name.capacity() * size_of::<u16>();
 
         unsafe { get_next_variable_raw(&mut var_size, var_name.as_mut_ptr(), &mut guid) }?;
-
-        unsafe { var_name.set_len(var_size / size_of::<u16>()) };
+        unsafe { var_name.set_len(buf_size(var_size)) };
         Ok((var_name, guid))
     }
 
