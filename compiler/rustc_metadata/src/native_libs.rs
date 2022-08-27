@@ -5,7 +5,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
-use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib};
+use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib, PeImportNameType};
 use rustc_session::parse::feature_err;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
@@ -61,6 +61,7 @@ impl<'tcx> Collector<'tcx> {
             let mut modifiers = None;
             let mut cfg = None;
             let mut wasm_import_module = None;
+            let mut import_name_type = None;
             for item in items.iter() {
                 match item.name_or_empty() {
                     sym::name => {
@@ -199,9 +200,51 @@ impl<'tcx> Collector<'tcx> {
                         };
                         wasm_import_module = Some((link_wasm_import_module, item.span()));
                     }
+                    sym::import_name_type => {
+                        if import_name_type.is_some() {
+                            let msg = "multiple `import_name_type` arguments in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_import_name_type) = item.value_str() else {
+                            let msg = "import name type must be of the form `import_name_type = \"string\"`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        if self.tcx.sess.target.arch != "x86" {
+                            let msg = "import name type is only supported on x86";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+
+                        let link_import_name_type = match link_import_name_type.as_str() {
+                            "decorated" => PeImportNameType::Decorated,
+                            "noprefix" => PeImportNameType::NoPrefix,
+                            "undecorated" => PeImportNameType::Undecorated,
+                            import_name_type => {
+                                let msg = format!(
+                                    "unknown import name type `{import_name_type}`, expected one of: \
+                                     decorated, noprefix, undecorated"
+                                );
+                                sess.span_err(item.span(), msg);
+                                continue;
+                            }
+                        };
+                        if !features.raw_dylib {
+                            let span = item.name_value_literal_span().unwrap();
+                            feature_err(
+                                &sess.parse_sess,
+                                sym::raw_dylib,
+                                span,
+                                "import name type is unstable",
+                            )
+                            .emit();
+                        }
+                        import_name_type = Some((link_import_name_type, item.span()));
+                    }
                     _ => {
                         let msg = "unexpected `#[link]` argument, expected one of: \
-                                   name, kind, modifiers, cfg, wasm_import_module";
+                                   name, kind, modifiers, cfg, wasm_import_module, import_name_type";
                         sess.span_err(item.span(), msg);
                     }
                 }
@@ -315,6 +358,14 @@ impl<'tcx> Collector<'tcx> {
                 .emit();
             }
 
+            // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
+            if let Some((_, span)) = import_name_type {
+                if kind != Some(NativeLibKind::RawDylib) {
+                    let msg = "import name type can only be used with link kind `raw-dylib`";
+                    sess.span_err(span, msg);
+                }
+            }
+
             let dll_imports = match kind {
                 Some(NativeLibKind::RawDylib) => {
                     if let Some((name, span)) = name && name.as_str().contains('\0') {
@@ -325,7 +376,13 @@ impl<'tcx> Collector<'tcx> {
                     }
                     foreign_mod_items
                         .iter()
-                        .map(|child_item| self.build_dll_import(abi, child_item))
+                        .map(|child_item| {
+                            self.build_dll_import(
+                                abi,
+                                import_name_type.map(|(import_name_type, _)| import_name_type),
+                                child_item,
+                            )
+                        })
                         .collect()
                 }
                 _ => {
@@ -486,7 +543,12 @@ impl<'tcx> Collector<'tcx> {
             .sum()
     }
 
-    fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef) -> DllImport {
+    fn build_dll_import(
+        &self,
+        abi: Abi,
+        import_name_type: Option<PeImportNameType>,
+        item: &hir::ForeignItemRef,
+    ) -> DllImport {
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
@@ -518,11 +580,18 @@ impl<'tcx> Collector<'tcx> {
             }
         };
 
+        let import_name_type = self
+            .tcx
+            .codegen_fn_attrs(item.id.def_id)
+            .link_ordinal
+            .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
+
         DllImport {
             name: item.ident.name,
-            ordinal: self.tcx.codegen_fn_attrs(item.id.def_id).link_ordinal,
+            import_name_type,
             calling_convention,
             span: item.span,
+            is_fn: self.tcx.def_kind(item.id.def_id).is_fn_like(),
         }
     }
 }
