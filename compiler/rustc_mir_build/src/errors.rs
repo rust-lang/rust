@@ -466,3 +466,10 @@ pub struct UnreachablePattern {
     #[label(mir_build::catchall_label)]
     pub catchall: Option<Span>,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::const_pattern_depends_on_generic_parameter)]
+pub struct ConstPatternDependsOnGenericParameter {
+    #[primary_span]
+    pub span: Span,
+}

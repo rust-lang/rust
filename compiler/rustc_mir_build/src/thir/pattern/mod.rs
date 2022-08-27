@@ -8,6 +8,7 @@ mod usefulness;
 pub(crate) use self::check_match::check_match;
 pub(crate) use self::usefulness::MatchCheckCtxt;
 
+use crate::errors::ConstPatternDependsOnGenericParameter;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 use rustc_errors::struct_span_err;
@@ -530,7 +531,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Err(ErrorHandled::TooGeneric) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
-                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                 pat_from_kind(PatKind::Wild)
             }
             Err(_) => {
@@ -562,9 +563,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                     ConstKind::Unevaluated(_) => {
                         // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                        self.tcx
-                            .sess
-                            .span_err(span, "constant pattern depends on a generic parameter");
+                        self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                         return PatKind::Wild;
                     }
                     _ => bug!("Expected either ConstKind::Param or ConstKind::Unevaluated"),
