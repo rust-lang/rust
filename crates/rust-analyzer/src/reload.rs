@@ -175,10 +175,8 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let mut res = Vec::new();
-            for ws in workspaces.iter() {
-                res.push(ws.run_build_scripts(&config, &progress));
-            }
+            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
     }

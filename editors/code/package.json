@@ -421,6 +421,21 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.buildScripts.invocationStrategy": {
+                    "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace_with_manifest_path` is set, the command will be executed for each\nworkspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and\nthe command will be executed from the project root.\nIf `per_workspace` is set, the command will be executed for each workspace and the\ncommand will be executed from the corresponding workspace root.\nIf `once_in_root` is set, the command will be executed once in the project root.",
+                    "default": "per_workspace",
+                    "type": "string",
+                    "enum": [
+                        "per_workspace",
+                        "per_workspace_with_manifest_path",
+                        "once_in_root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed for each workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and the command will be executed from the project root.",
+                        "The command will be executed for each workspace and the command will be executed from the corresponding workspace root.",
+                        "The command will be executed once in the project root."
+                    ]
+                },
                 "rust-analyzer.cargo.buildScripts.overrideCommand": {
                     "markdownDescription": "Override the command rust-analyzer uses to run build scripts and\nbuild procedural macros. The command is required to output json\nand should therefore include `--message-format=json` or a similar\noption.\n\nBy default, a cargo invocation will be constructed for the configured\ntargets and features, with the following base command line:\n\n```bash\ncargo check --quiet --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,

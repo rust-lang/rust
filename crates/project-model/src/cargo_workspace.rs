@@ -14,8 +14,8 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::CfgOverrides;
 use crate::{utf8_stdout, ManifestPath};
+use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -106,6 +106,7 @@ pub struct CargoConfig {
     pub run_build_script_command: Option<Vec<String>>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
+    pub invocation_strategy: InvocationStrategy,
 }
 
 impl CargoConfig {

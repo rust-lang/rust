@@ -69,6 +69,14 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace_with_manifest_path` is set, the command will be executed for each
+        /// workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and
+        /// the command will be executed from the project root.
+        /// If `per_workspace` is set, the command will be executed for each workspace and the
+        /// command will be executed from the corresponding workspace root.
+        /// If `once_in_root` is set, the command will be executed once in the project root.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
         /// and should therefore include `--message-format=json` or a similar
@@ -1056,6 +1064,13 @@ impl Config {
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
+            invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
+                InvocationStrategy::OnceInRoot => project_model::InvocationStrategy::OnceInRoot,
+                InvocationStrategy::PerWorkspaceWithManifestPath => {
+                    project_model::InvocationStrategy::PerWorkspaceWithManifestPath
+                }
+                InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
+            },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
@@ -1588,6 +1603,14 @@ enum CargoFeaturesDef {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationStrategy {
+    OnceInRoot,
+    PerWorkspaceWithManifestPath,
+    PerWorkspace,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum LifetimeElisionDef {
     #[serde(deserialize_with = "true_or_always")]
@@ -1999,6 +2022,15 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Render annotations above the name of the item.",
                 "Render annotations above the whole item, including documentation comments and attributes."
+            ],
+        },
+        "InvocationStrategy" => set! {
+            "type": "string",
+            "enum": ["per_workspace", "per_workspace_with_manifest_path", "once_in_root"],
+            "enumDescriptions": [
+                "The command will be executed for each workspace, `--manifest-path {workspace-dir}` will be passed to the invoked command and the command will be executed from the project root.",
+                "The command will be executed for each workspace and the command will be executed from the corresponding workspace root.",
+                "The command will be executed once in the project root."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),
