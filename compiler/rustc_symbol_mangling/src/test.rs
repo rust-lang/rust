@@ -4,6 +4,7 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
+use crate::errors::InvalidSymbolName;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
@@ -59,7 +60,10 @@ impl SymbolNamesTest<'_> {
                 tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
-            tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
+            tcx.sess.emit_err(InvalidSymbolName {
+                span: attr.span,
+                mangled_formatted: &format!("{mangled}"),
+            });
             if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
                 tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
                 tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
