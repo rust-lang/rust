@@ -1718,19 +1718,23 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         );
 
         match in_elem.kind() {
-            ty::RawPtr(p) => require!(
-                p.ty.is_sized(bx.tcx.at(span), ty::ParamEnv::reveal_all()),
-                "cannot cast pointer to unsized type `{}`",
-                in_elem
-            ),
+            ty::RawPtr(p) => {
+                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                });
+                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
+                require!(metadata.is_unit(), "cannot cast fat pointer `{}`", in_elem)
+            }
             _ => return_error!("expected pointer, got `{}`", in_elem),
         }
         match out_elem.kind() {
-            ty::RawPtr(p) => require!(
-                p.ty.is_sized(bx.tcx.at(span), ty::ParamEnv::reveal_all()),
-                "cannot cast to pointer to unsized type `{}`",
-                out_elem
-            ),
+            ty::RawPtr(p) => {
+                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                    bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
+                });
+                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
+                require!(metadata.is_unit(), "cannot cast to fat pointer `{}`", out_elem)
+            }
             _ => return_error!("expected pointer, got `{}`", out_elem),
         }
 
