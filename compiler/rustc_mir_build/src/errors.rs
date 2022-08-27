@@ -480,3 +480,20 @@ pub struct CouldNotEvalConstPattern {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::lower_range_bound_must_be_less_than_or_equal_to_upper, code = "E0030")]
+pub struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note(mir_build::teach_note)]
+    pub teach: Option<()>,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::lower_range_bound_must_be_less_than_upper, code = "E0579")]
+pub struct LowerRangeBoundMustBeLessThanUpper {
+    #[primary_span]
+    pub span: Span,
+}

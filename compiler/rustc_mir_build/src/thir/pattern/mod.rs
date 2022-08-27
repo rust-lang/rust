@@ -11,7 +11,7 @@ pub(crate) use self::usefulness::MatchCheckCtxt;
 use crate::errors::*;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::error_code;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -139,13 +139,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Excluded, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
             // `x..y` where `x >= y`. The range is empty => error.
             (RangeEnd::Excluded, _) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0579,
-                    "lower range bound must be less than upper"
-                )
-                .emit();
+                self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanUpper { span });
                 PatKind::Wild
             }
             // `x..=y` where `x == y`.
@@ -154,23 +148,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             (RangeEnd::Included, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
             // `x..=y` where `x > y` hence the range is empty => error.
             (RangeEnd::Included, _) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+                self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                     span,
-                    E0030,
-                    "lower range bound must be less than or equal to upper"
-                );
-                err.span_label(span, "lower bound larger than upper bound");
-                if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                    err.note(
-                        "When matching against a range, the compiler \
-                              verifies that the range is non-empty. Range \
-                              patterns include both end-points, so this is \
-                              equivalent to requiring the start of the range \
-                              to be less than or equal to the end of the range.",
-                    );
-                }
-                err.emit();
+                    teach: if self.tcx.sess.teach(&error_code!(E0030)) { Some(()) } else { None },
+                });
                 PatKind::Wild
             }
         }
