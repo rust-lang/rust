@@ -226,8 +226,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 let float_finite = |x: &ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
                     Ok(match x.layout.ty.kind() {
-                        ty::Float(FloatTy::F32) => x.to_scalar()?.to_f32()?.is_finite(),
-                        ty::Float(FloatTy::F64) => x.to_scalar()?.to_f64()?.is_finite(),
+                        ty::Float(FloatTy::F32) => x.to_scalar().to_f32()?.is_finite(),
+                        ty::Float(FloatTy::F64) => x.to_scalar().to_f64()?.is_finite(),
                         _ => bug!(
                             "`{intrinsic_name}` called with non-float input type {ty:?}",
                             ty = x.layout.ty,
@@ -345,9 +345,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let res = match val.layout.ty.kind() {
                     ty::Float(FloatTy::F32) =>
-                        this.float_to_int_unchecked(val.to_scalar()?.to_f32()?, dest.layout.ty)?,
+                        this.float_to_int_unchecked(val.to_scalar().to_f32()?, dest.layout.ty)?,
                     ty::Float(FloatTy::F64) =>
-                        this.float_to_int_unchecked(val.to_scalar()?.to_f64()?, dest.layout.ty)?,
+                        this.float_to_int_unchecked(val.to_scalar().to_f64()?, dest.layout.ty)?,
                     _ =>
                         span_bug!(
                             this.cur_span(),

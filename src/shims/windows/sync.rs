@@ -14,13 +14,12 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
             .atomic_compare_exchange_scalar(
                 &value_place,
                 &ImmTy::from_uint(0u32, ecx.machine.layouts.u32),
-                next_id.to_u32_scalar().into(),
+                next_id.to_u32_scalar(),
                 AtomicRwOrd::Relaxed,
                 AtomicReadOrd::Relaxed,
                 false,
             )?
-            .to_scalar_pair()
-            .expect("compare_exchange returns a scalar pair");
+            .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // Caller of the closure needs to allocate next_id

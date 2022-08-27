@@ -77,9 +77,7 @@ use std::{
     collections::VecDeque,
 };
 
-use rustc_const_eval::interpret::{
-    alloc_range, AllocRange, InterpResult, MPlaceTy, ScalarMaybeUninit,
-};
+use rustc_const_eval::interpret::{alloc_range, AllocRange, InterpResult, MPlaceTy, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::*;
@@ -130,10 +128,10 @@ struct StoreElement {
     /// The timestamp of the storing thread when it performed the store
     timestamp: VTimestamp,
     /// The value of this store
-    // FIXME: this means the store is either fully initialized or fully uninitialized;
+    // FIXME: this means the store must be fully initialized;
     // we will have to change this if we want to support atomics on
-    // partially initialized data.
-    val: ScalarMaybeUninit<Provenance>,
+    // (partially) uninitialized data.
+    val: Scalar<Provenance>,
 
     /// Timestamp of first loads from this store element by each thread
     /// Behind a RefCell to keep load op take &self
@@ -180,7 +178,7 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer<'tcx>(
         &self,
         range: AllocRange,
-        init: ScalarMaybeUninit<Provenance>,
+        init: Scalar<Provenance>,
     ) -> InterpResult<'tcx, Ref<'_, StoreBuffer>> {
         let access_type = self.store_buffers.borrow().access_type(range);
         let pos = match access_type {
@@ -205,7 +203,7 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer_mut<'tcx>(
         &mut self,
         range: AllocRange,
-        init: ScalarMaybeUninit<Provenance>,
+        init: Scalar<Provenance>,
     ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffers = self.store_buffers.get_mut();
         let access_type = buffers.access_type(range);
@@ -226,7 +224,7 @@ impl StoreBufferAlloc {
 }
 
 impl<'mir, 'tcx: 'mir> StoreBuffer {
-    fn new(init: ScalarMaybeUninit<Provenance>) -> Self {
+    fn new(init: Scalar<Provenance>) -> Self {
         let mut buffer = VecDeque::new();
         buffer.reserve(STORE_BUFFER_LIMIT);
         let mut ret = Self { buffer };
@@ -259,7 +257,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         is_seqcst: bool,
         rng: &mut (impl rand::Rng + ?Sized),
         validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, (ScalarMaybeUninit<Provenance>, LoadRecency)> {
+    ) -> InterpResult<'tcx, (Scalar<Provenance>, LoadRecency)> {
         // Having a live borrow to store_buffer while calling validate_atomic_load is fine
         // because the race detector doesn't touch store_buffer
 
@@ -284,7 +282,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
 
     fn buffered_write(
         &mut self,
-        val: ScalarMaybeUninit<Provenance>,
+        val: Scalar<Provenance>,
         global: &DataRaceState,
         thread_mgr: &ThreadManager<'_, '_>,
         is_seqcst: bool,
@@ -375,7 +373,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
     /// ATOMIC STORE IMPL in the paper (except we don't need the location's vector clock)
     fn store_impl(
         &mut self,
-        val: ScalarMaybeUninit<Provenance>,
+        val: Scalar<Provenance>,
         index: VectorIdx,
         thread_clock: &VClock,
         is_seqcst: bool,
@@ -417,11 +415,7 @@ impl StoreElement {
     /// buffer regardless of subsequent loads by the same thread; if the earliest load of another
     /// thread doesn't happen before the current one, then no subsequent load by the other thread
     /// can happen before the current one.
-    fn load_impl(
-        &self,
-        index: VectorIdx,
-        clocks: &ThreadClockSet,
-    ) -> ScalarMaybeUninit<Provenance> {
+    fn load_impl(&self, index: VectorIdx, clocks: &ThreadClockSet) -> Scalar<Provenance> {
         let _ = self.loads.borrow_mut().try_insert(index, clocks.clock[index]);
         self.val
     }
@@ -464,10 +458,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
     fn buffered_atomic_rmw(
         &mut self,
-        new_val: ScalarMaybeUninit<Provenance>,
+        new_val: Scalar<Provenance>,
         place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicRwOrd,
-        init: ScalarMaybeUninit<Provenance>,
+        init: Scalar<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
@@ -492,9 +486,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         &self,
         place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
-        latest_in_mo: ScalarMaybeUninit<Provenance>,
+        latest_in_mo: Scalar<Provenance>,
         validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         if let Some(global) = &this.machine.data_race {
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
@@ -529,10 +523,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
     fn buffered_atomic_write(
         &mut self,
-        val: ScalarMaybeUninit<Provenance>,
+        val: Scalar<Provenance>,
         dest: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicWriteOrd,
-        init: ScalarMaybeUninit<Provenance>,
+        init: Scalar<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr)?;
@@ -576,7 +570,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         &self,
         place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
-        init: ScalarMaybeUninit<Provenance>,
+        init: Scalar<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
 

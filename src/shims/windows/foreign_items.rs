@@ -104,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SetLastError" => {
                 let [error] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let error = this.read_scalar(error)?.check_init()?;
+                let error = this.read_scalar(error)?;
                 this.set_last_error(error)?;
             }
             "GetLastError" => {
@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
-                let new_data = this.read_scalar(new_ptr)?.check_init()?;
+                let new_data = this.read_scalar(new_ptr)?;
                 this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
                 // Return success (`1`).

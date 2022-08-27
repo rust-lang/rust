@@ -116,8 +116,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
         let const_val = this.eval_to_allocation(cid)?;
-        let const_val = this.read_scalar(&const_val.into())?;
-        const_val.check_init()
+        this.read_scalar(&const_val.into())
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
@@ -567,7 +566,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         let errno_place = this.last_error_place()?;
-        this.read_scalar(&errno_place.into())?.check_init()
+        this.read_scalar(&errno_place.into())
     }
 
     /// This function tries to produce the most similar OS error from the `std::io::ErrorKind`
@@ -680,22 +679,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
         layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.read_scalar(&value_place.into())
+    }
+
+    fn write_immediate_at_offset(
+        &mut self,
+        op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+        value: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        let value_place = this.deref_operand_and_offset(op, offset, value.layout)?;
+        this.write_immediate(**value, &value_place.into())
     }
 
     fn write_scalar_at_offset(
         &mut self,
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
-        value: impl Into<ScalarMaybeUninit<Provenance>>,
+        value: impl Into<Scalar<Provenance>>,
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
-        this.write_scalar(value, &value_place.into())
+        self.write_immediate_at_offset(op, offset, &ImmTy::from_scalar(value.into(), layout))
     }
 
     /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`

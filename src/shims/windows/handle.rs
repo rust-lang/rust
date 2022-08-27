@@ -158,7 +158,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let handle = this.read_scalar(handle_op)?.check_init()?;
+        let handle = this.read_scalar(handle_op)?;
 
         match Handle::from_scalar(handle, this)? {
             Some(Handle::Thread(thread)) =>

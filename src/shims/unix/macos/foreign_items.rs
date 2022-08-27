@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__error" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             // File related shims
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let dtor = this.read_pointer(dtor)?;
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
-                let data = this.read_scalar(data)?.check_init()?;
+                let data = this.read_scalar(data)?;
                 let active_thread = this.get_active_thread();
                 this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;
             }
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_setname_np" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let thread = this.pthread_self()?;
-                this.pthread_setname_np(thread, this.read_scalar(name)?.check_init()?)?;
+                this.pthread_setname_np(thread, this.read_scalar(name)?)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
@@ -185,7 +185,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
                 let [addr, _, _, _, _, _] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let addr = this.read_scalar(addr)?.check_init()?;
+                let addr = this.read_scalar(addr)?;
                 this.write_scalar(addr, dest)?;
             }
 

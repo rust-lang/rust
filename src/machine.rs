@@ -149,7 +149,7 @@ static_assert_size!(Pointer<Provenance>, 24);
 // #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 //static_assert_size!(Pointer<Option<Provenance>>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ScalarMaybeUninit<Provenance>, 32);
+static_assert_size!(Scalar<Provenance>, 32);
 
 impl interpret::Provenance for Provenance {
     /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
@@ -581,18 +581,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn force_int_for_alignment_check(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
+    fn use_addr_for_alignment_check(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
         ecx.machine.check_alignment == AlignmentCheck::Int
     }
 
     #[inline(always)]
     fn enforce_validity(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
         ecx.machine.validate
-    }
-
-    #[inline(always)]
-    fn enforce_number_init(_ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        true
     }
 
     #[inline(always)]

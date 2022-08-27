@@ -32,16 +32,14 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
                 let left = match **left {
-                    Immediate::Scalar(l) => (l.check_init()?.to_bits(size)?, 0),
-                    Immediate::ScalarPair(l1, l2) =>
-                        (l1.check_init()?.to_bits(size)?, l2.check_init()?.to_bits(size)?),
-                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
+                    Immediate::Scalar(l) => (l.to_bits(size)?, 0),
+                    Immediate::ScalarPair(l1, l2) => (l1.to_bits(size)?, l2.to_bits(size)?),
+                    Immediate::Uninit => panic!("we should never see uninit data here"),
                 };
                 let right = match **right {
-                    Immediate::Scalar(r) => (r.check_init()?.to_bits(size)?, 0),
-                    Immediate::ScalarPair(r1, r2) =>
-                        (r1.check_init()?.to_bits(size)?, r2.check_init()?.to_bits(size)?),
-                    Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
+                    Immediate::Scalar(r) => (r.to_bits(size)?, 0),
+                    Immediate::ScalarPair(r1, r2) => (r1.to_bits(size)?, r2.to_bits(size)?),
+                    Immediate::Uninit => panic!("we should never see uninit data here"),
                 };
                 let res = match bin_op {
                     Eq => left == right,
@@ -57,8 +55,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
             Offset => {
                 assert!(left.layout.ty.is_unsafe_ptr());
-                let ptr = left.to_scalar()?.to_pointer(self)?;
-                let offset = right.to_scalar()?.to_machine_isize(self)?;
+                let ptr = left.to_scalar().to_pointer(self)?;
+                let offset = right.to_scalar().to_machine_isize(self)?;
 
                 let pointee_ty =
                     left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
@@ -71,11 +69,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             Add | Sub | BitOr | BitAnd | BitXor => {
                 assert!(left.layout.ty.is_unsafe_ptr());
                 assert!(right.layout.ty.is_unsafe_ptr());
-                let ptr = left.to_scalar()?.to_pointer(self)?;
+                let ptr = left.to_scalar().to_pointer(self)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), self.machine.layouts.usize);
                 let right = ImmTy::from_uint(
-                    right.to_scalar()?.to_machine_usize(self)?,
+                    right.to_scalar().to_machine_usize(self)?,
                     self.machine.layouts.usize,
                 );
                 let (result, overflowing, _ty) =

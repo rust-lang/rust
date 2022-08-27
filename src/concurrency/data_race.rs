@@ -447,7 +447,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         offset: u64,
         layout: TyAndLayout<'tcx>,
         atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.read_scalar_atomic(&value_place, atomic)
@@ -458,7 +458,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         &mut self,
         op: &OpTy<'tcx, Provenance>,
         offset: u64,
-        value: impl Into<ScalarMaybeUninit<Provenance>>,
+        value: impl Into<Scalar<Provenance>>,
         layout: TyAndLayout<'tcx>,
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
@@ -472,7 +472,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         &self,
         place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         this.atomic_access_check(place)?;
         // This will read from the last store in the modification order of this location. In case
@@ -490,7 +490,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     /// Perform an atomic write operation at the memory location.
     fn write_scalar_atomic(
         &mut self,
-        val: ScalarMaybeUninit<Provenance>,
+        val: Scalar<Provenance>,
         dest: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
@@ -530,12 +530,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(
-            val.to_scalar_or_uninit(),
-            place,
-            atomic,
-            old.to_scalar_or_uninit(),
-        )?;
+        this.buffered_atomic_rmw(val.to_scalar(), place, atomic, old.to_scalar())?;
         Ok(old)
     }
 
@@ -544,9 +539,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn atomic_exchange_scalar(
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>,
-        new: ScalarMaybeUninit<Provenance>,
+        new: Scalar<Provenance>,
         atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place)?;
 
@@ -574,7 +569,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
-        let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
+        let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
 
         let new_val = if min {
             if lt { &old } else { &rhs }
@@ -586,12 +581,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         this.validate_atomic_rmw(place, atomic)?;
 
-        this.buffered_atomic_rmw(
-            new_val.to_scalar_or_uninit(),
-            place,
-            atomic,
-            old.to_scalar_or_uninit(),
-        )?;
+        this.buffered_atomic_rmw(new_val.to_scalar(), place, atomic, old.to_scalar())?;
 
         // Return the old value.
         Ok(old)
@@ -607,7 +597,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>,
         expect_old: &ImmTy<'tcx, Provenance>,
-        new: ScalarMaybeUninit<Provenance>,
+        new: Scalar<Provenance>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
@@ -627,16 +617,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // If the operation would succeed, but is "weak", fail some portion
         // of the time, based on `success_rate`.
         let success_rate = 1.0 - this.machine.cmpxchg_weak_failure_rate;
-        let cmpxchg_success = eq.to_scalar()?.to_bool()?
+        let cmpxchg_success = eq.to_scalar().to_bool()?
             && if can_fail_spuriously {
                 this.machine.rng.get_mut().gen_bool(success_rate)
             } else {
                 true
             };
-        let res = Immediate::ScalarPair(
-            old.to_scalar_or_uninit(),
-            Scalar::from_bool(cmpxchg_success).into(),
-        );
+        let res = Immediate::ScalarPair(old.to_scalar(), Scalar::from_bool(cmpxchg_success));
 
         // Update ptr depending on comparison.
         // if successful, perform a full rw-atomic validation
@@ -644,14 +631,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if cmpxchg_success {
             this.allow_data_races_mut(|this| this.write_scalar(new, &place.into()))?;
             this.validate_atomic_rmw(place, success)?;
-            this.buffered_atomic_rmw(new, place, success, old.to_scalar_or_uninit())?;
+            this.buffered_atomic_rmw(new, place, success, old.to_scalar())?;
         } else {
             this.validate_atomic_load(place, fail)?;
             // A failed compare exchange is equivalent to a load, reading from the latest store
             // in the modification order.
             // Since `old` is only a value and not the store element, we need to separately
             // find it in our store buffer and perform load_impl on it.
-            this.perform_read_on_buffered_latest(place, fail, old.to_scalar_or_uninit())?;
+            this.perform_read_on_buffered_latest(place, fail, old.to_scalar())?;
         }
 
         // Return the old value.

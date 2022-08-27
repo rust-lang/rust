@@ -26,10 +26,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_set_name_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let res = this.pthread_setname_np(
-                    this.read_scalar(thread)?.check_init()?,
-                    this.read_scalar(name)?.check_init()?,
-                )?;
+                let res =
+                    this.pthread_setname_np(this.read_scalar(thread)?, this.read_scalar(name)?)?;
                 this.write_scalar(res, dest)?;
             }
 
@@ -37,7 +35,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "__error" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref(this).to_scalar()?, dest)?;
+                this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             _ => return Ok(EmulateByNameResult::NotSupported),
