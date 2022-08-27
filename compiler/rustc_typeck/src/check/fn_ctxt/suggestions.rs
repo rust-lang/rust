@@ -61,55 +61,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
-    /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
-    /// the ctor would successfully solve the type mismatch and if so, suggest it:
+    /// When encountering an fn-like type, try accessing the output of the type
+    /// // and suggesting calling it if it satisfies a predicate (i.e. if the
+    /// output has a method or a field):
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> usize { x }
     /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
     /// ```
-    fn suggest_fn_call(
+    pub(crate) fn suggest_fn_call(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        expected: Ty<'tcx>,
         found: Ty<'tcx>,
+        can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let (def_id, output, inputs) = match *found.kind() {
-            ty::FnDef(def_id, _) => {
-                let fn_sig = found.fn_sig(self.tcx);
-                (def_id, fn_sig.output(), fn_sig.inputs().skip_binder().len())
-            }
-            ty::Closure(def_id, substs) => {
-                let fn_sig = substs.as_closure().sig();
-                (def_id, fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1)
-            }
-            ty::Opaque(def_id, substs) => {
-                let sig = self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
-                    // args tuple will always be substs[1]
-                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                    {
-                        Some((
-                            pred.kind().rebind(proj.term.ty().unwrap()),
-                            args.len(),
-                        ))
+        // Autoderef is useful here because sometimes we box callables, etc.
+        let Some((def_id, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
+            match *found.kind() {
+                ty::FnPtr(fn_sig) => Some((None, fn_sig.output(), fn_sig.inputs().skip_binder().len())),
+                ty::FnDef(def_id, _) => {
+                    let fn_sig = found.fn_sig(self.tcx);
+                    Some((Some(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len()))
+                }
+                ty::Closure(def_id, substs) => {
+                    let fn_sig = substs.as_closure().sig();
+                    Some((Some(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1))
+                }
+                ty::Opaque(def_id, substs) => {
+                    let sig = self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                args.len(),
+                            ))
+                        } else {
+                            None
+                        }
+                    });
+                    if let Some((output, inputs)) = sig {
+                        Some((Some(def_id), output, inputs))
                     } else {
                         None
                     }
-                });
-                if let Some((output, inputs)) = sig {
-                    (def_id, output, inputs)
-                } else {
-                    return false;
                 }
+                _ => None,
             }
-            _ => return false,
-        };
+        }) else { return false; };
 
         let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
-        let output = self.normalize_associated_types_in(expr.span, output);
-        if !output.is_ty_var() && self.can_coerce(output, expected) {
+        // We don't want to register any extra obligations, which should be
+        // implied by wf, but also because that would possibly result in
+        // erroneous errors later on.
+        let infer::InferOk { value: output, obligations: _ } =
+            self.normalize_associated_types_in_as_infer_ok(expr.span, output);
+        if !output.is_ty_var() && can_satisfy(output) {
             let (sugg_call, mut applicability) = match inputs {
                 0 => ("".to_string(), Applicability::MachineApplicable),
                 1..=4 => (
@@ -119,11 +128,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => ("...".to_string(), Applicability::HasPlaceholders),
             };
 
-            let msg = match self.tcx.def_kind(def_id) {
-                DefKind::Fn => "call this function",
-                DefKind::Closure | DefKind::OpaqueTy => "call this closure",
-                DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct",
-                DefKind::Ctor(CtorOf::Variant, _) => "instantiate this tuple variant",
+            let msg = match def_id.map(|def_id| self.tcx.def_kind(def_id)) {
+                Some(DefKind::Fn) => "call this function",
+                Some(DefKind::Closure | DefKind::OpaqueTy) => "call this closure",
+                Some(DefKind::Ctor(CtorOf::Struct, _)) => "instantiate this tuple struct",
+                Some(DefKind::Ctor(CtorOf::Variant, _)) => "instantiate this tuple variant",
                 _ => "call this function",
             };
 
@@ -178,12 +187,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
-        } else if let (ty::FnDef(def_id, ..), true) =
-            (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
+        } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
+            && let ty::FnDef(def_id, ..) = &found.kind()
+            && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
         {
-            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
-                err.span_label(sp, format!("{found} defined here"));
-            }
+            err.span_label(sp, format!("{found} defined here"));
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
