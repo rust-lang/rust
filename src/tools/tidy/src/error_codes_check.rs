@@ -217,7 +217,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     println!("Checking which error codes lack tests...");
 
     for path in paths {
-        super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+        super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
             let file_name = entry.file_name();
             let entry_path = entry.path();
 
