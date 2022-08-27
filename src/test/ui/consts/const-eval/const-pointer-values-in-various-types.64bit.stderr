@@ -7,6 +7,8 @@ LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:30:43
@@ -16,6 +18,8 @@ LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:34:45
@@ -25,6 +29,8 @@ LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uin
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:38:45
@@ -34,6 +40,8 @@ LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uin
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:42:45
@@ -43,6 +51,8 @@ LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uin
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-pointer-values-in-various-types.rs:46:47
@@ -58,6 +68,8 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:54:45
@@ -67,6 +79,8 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:58:45
@@ -76,6 +90,8 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:62:45
@@ -85,6 +101,8 @@ LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-pointer-values-in-various-types.rs:66:47
@@ -100,6 +118,8 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:74:45
@@ -109,6 +129,8 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:78:47
@@ -118,6 +140,8 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:82:47
@@ -127,6 +151,8 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:86:39
@@ -136,6 +162,8 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:90:41
@@ -145,6 +173,8 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:94:41
@@ -154,6 +184,8 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:98:41
@@ -163,6 +195,8 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:102:43
@@ -172,6 +206,8 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:106:39
@@ -181,6 +217,8 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:110:41
@@ -190,6 +228,8 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:114:41
@@ -199,6 +239,8 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:118:41
@@ -208,6 +250,8 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:122:43
@@ -217,6 +261,8 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:126:41
@@ -226,6 +272,8 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:130:41
@@ -235,6 +283,8 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:134:43
@@ -244,6 +294,8 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: any use of this value will cause an error
   --> $DIR/const-pointer-values-in-various-types.rs:138:43
@@ -253,6 +305,8 @@ LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.charact
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: aborting due to 29 previous errors
 
@@ -267,6 +321,8 @@ LL |     const I32_REF_USIZE_UNION: usize = unsafe { Nonsense { int_32_ref: &3 }
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -278,6 +334,8 @@ LL |     const I32_REF_U8_UNION: u8 = unsafe { Nonsense { int_32_ref: &3 }.uint_
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -289,6 +347,8 @@ LL |     const I32_REF_U16_UNION: u16 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -300,6 +360,8 @@ LL |     const I32_REF_U32_UNION: u32 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -311,6 +373,8 @@ LL |     const I32_REF_U64_UNION: u64 = unsafe { Nonsense { int_32_ref: &3 }.uin
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -322,6 +386,8 @@ LL |     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -333,6 +399,8 @@ LL |     const I32_REF_I16_UNION: i16 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -344,6 +412,8 @@ LL |     const I32_REF_I32_UNION: i32 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -355,6 +425,8 @@ LL |     const I32_REF_I64_UNION: i64 = unsafe { Nonsense { int_32_ref: &3 }.int
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -366,6 +438,8 @@ LL |     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -377,6 +451,8 @@ LL |     const I32_REF_F64_UNION: f64 = unsafe { Nonsense { int_32_ref: &3 }.flo
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -388,6 +464,8 @@ LL |     const I32_REF_BOOL_UNION: bool = unsafe { Nonsense { int_32_ref: &3 }.t
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -399,6 +477,8 @@ LL |     const I32_REF_CHAR_UNION: char = unsafe { Nonsense { int_32_ref: &3 }.c
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -410,6 +490,8 @@ LL |     const STR_U8_UNION: u8 = unsafe { Nonsense { stringy: "3" }.uint_8 };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -421,6 +503,8 @@ LL |     const STR_U16_UNION: u16 = unsafe { Nonsense { stringy: "3" }.uint_16 }
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -432,6 +516,8 @@ LL |     const STR_U32_UNION: u32 = unsafe { Nonsense { stringy: "3" }.uint_32 }
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -443,6 +529,8 @@ LL |     const STR_U64_UNION: u64 = unsafe { Nonsense { stringy: "3" }.uint_64 }
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -454,6 +542,8 @@ LL |     const STR_U128_UNION: u128 = unsafe { Nonsense { stringy: "3" }.uint_12
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -465,6 +555,8 @@ LL |     const STR_I8_UNION: i8 = unsafe { Nonsense { stringy: "3" }.int_8 };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -476,6 +568,8 @@ LL |     const STR_I16_UNION: i16 = unsafe { Nonsense { stringy: "3" }.int_16 };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -487,6 +581,8 @@ LL |     const STR_I32_UNION: i32 = unsafe { Nonsense { stringy: "3" }.int_32 };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -498,6 +594,8 @@ LL |     const STR_I64_UNION: i64 = unsafe { Nonsense { stringy: "3" }.int_64 };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -509,6 +607,8 @@ LL |     const STR_I128_UNION: i128 = unsafe { Nonsense { stringy: "3" }.int_128
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -520,6 +620,8 @@ LL |     const STR_F32_UNION: f32 = unsafe { Nonsense { stringy: "3" }.float_32 
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -531,6 +633,8 @@ LL |     const STR_F64_UNION: f64 = unsafe { Nonsense { stringy: "3" }.float_64 
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -542,6 +646,8 @@ LL |     const STR_BOOL_UNION: bool = unsafe { Nonsense { stringy: "3" }.truthy_
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 Future breakage diagnostic:
 error: any use of this value will cause an error
@@ -553,4 +659,6 @@ LL |     const STR_CHAR_UNION: char = unsafe { Nonsense { stringy: "3" }.charact
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
