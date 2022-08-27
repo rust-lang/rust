@@ -40,6 +40,7 @@ fluent_messages! {
     const_eval => "../locales/en-US/const_eval.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
+    incremental => "../locales/en-US/incremental.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",

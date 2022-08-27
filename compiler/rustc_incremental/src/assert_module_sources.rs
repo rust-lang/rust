@@ -22,6 +22,7 @@
 //! allows for doing a more fine-grained check to see if pre- or post-lto data
 //! was re-used.
 
+use crate::errors;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -66,10 +67,9 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 sym::post_dash_lto => (CguReuse::PostLto, ComparisonKind::Exact),
                 sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
                 other => {
-                    self.tcx.sess.span_fatal(
-                        attr.span,
-                        &format!("unknown cgu-reuse-kind `{}` specified", other),
-                    );
+                    self.tcx
+                        .sess
+                        .emit_fatal(errors::UnknownReuseKind { span: attr.span, kind: other });
                 }
             }
         } else {
@@ -77,10 +77,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         };
 
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-            self.tcx.sess.span_fatal(
-                attr.span,
-                "found CGU-reuse attribute but `-Zquery-dep-graph` was not specified",
-            );
+            self.tcx.sess.emit_fatal(errors::MissingQueryDepGraph { span: attr.span });
         }
 
         if !self.check_config(attr) {
@@ -92,13 +89,11 @@ impl<'tcx> AssertModuleSource<'tcx> {
         let crate_name = self.tcx.crate_name(LOCAL_CRATE).to_string();
 
         if !user_path.starts_with(&crate_name) {
-            let msg = format!(
-                "Found malformed codegen unit name `{}`. \
-                Codegen units names must always start with the name of the \
-                crate (`{}` in this case).",
-                user_path, crate_name
-            );
-            self.tcx.sess.span_fatal(attr.span, &msg);
+            self.tcx.sess.emit_fatal(errors::MalformedCguName {
+                span: attr.span,
+                user_path,
+                crate_name,
+            });
         }
 
         // Split of the "special suffix" if there is one.
@@ -125,15 +120,12 @@ impl<'tcx> AssertModuleSource<'tcx> {
             let mut cgu_names: Vec<&str> =
                 self.available_cgus.iter().map(|cgu| cgu.as_str()).collect();
             cgu_names.sort();
-            self.tcx.sess.span_err(
-                attr.span,
-                &format!(
-                    "no module named `{}` (mangled: {}). Available modules: {}",
-                    user_path,
-                    cgu_name,
-                    cgu_names.join(", ")
-                ),
-            );
+            self.tcx.sess.emit_err(errors::NoModuleNamed {
+                span: attr.span,
+                user_path,
+                cgu_name,
+                cgu_names: cgu_names.join(", "),
+            });
         }
 
         self.tcx.sess.cgu_reuse_tracker.set_expectation(
@@ -151,15 +143,15 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 if let Some(value) = item.value_str() {
                     return value;
                 } else {
-                    self.tcx.sess.span_fatal(
-                        item.span(),
-                        &format!("associated value expected for `{}`", name),
-                    );
+                    self.tcx.sess.emit_fatal(errors::FieldAssociatedValueExpected {
+                        span: item.span(),
+                        name,
+                    });
                 }
             }
         }
 
-        self.tcx.sess.span_fatal(attr.span, &format!("no field `{}`", name));
+        self.tcx.sess.emit_fatal(errors::NoField { span: attr.span, name });
     }
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a
