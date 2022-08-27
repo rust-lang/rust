@@ -61,6 +61,7 @@ mod type_of;
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
+use crate::errors::LTONotSupported;
 use gccjit::{Context, OptimizationLevel, CType};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
@@ -99,7 +100,7 @@ pub struct GccCodegenBackend {
 impl CodegenBackend for GccCodegenBackend {
     fn init(&self, sess: &Session) {
         if sess.lto() != Lto::No {
-            sess.warn("LTO is not supported. You may get a linker error.");
+            sess.emit_warning(LTONotSupported {});
         }
 
         let temp_dir = TempDir::new().expect("cannot create temporary directory");
