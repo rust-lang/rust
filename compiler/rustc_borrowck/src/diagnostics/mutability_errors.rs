@@ -9,10 +9,7 @@ use rustc_middle::mir::{Mutability, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     hir::place::PlaceBase,
-    mir::{
-        self, BindingForm, ClearCrossCrate, ImplicitSelfKind, Local, LocalDecl, LocalInfo,
-        LocalKind, Location,
-    },
+    mir::{self, BindingForm, ClearCrossCrate, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
@@ -312,7 +309,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     && !matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
-                            ImplicitSelfKind::MutRef
+                            hir::ImplicitSelfKind::MutRef
                         ))))
                     )
                 {
@@ -1074,7 +1071,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
             //
             // Deliberately fall into this case for all implicit self types,
             // so that we don't fall in to the next case with them.
-            *kind == mir::ImplicitSelfKind::MutRef
+            *kind == hir::ImplicitSelfKind::MutRef
         }
         _ if Some(kw::SelfLower) == local_name => {
             // Otherwise, check if the name is the `self` keyword - in which case

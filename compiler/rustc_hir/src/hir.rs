@@ -2661,7 +2661,7 @@ pub struct FnDecl<'hir> {
 }
 
 /// Represents what type of implicit self a function has, if any.
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum ImplicitSelfKind {
     /// Represents a `fn x(self);`.
     Imm,
