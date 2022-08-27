@@ -676,7 +676,7 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.inner().relocations().values().map(|id| *id)
+        alloc.inner().provenance().values().map(|id| *id)
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
@@ -778,7 +778,7 @@ pub fn write_allocations<'tcx>(
 /// If the allocation is small enough to fit into a single line, no start address is given.
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
-/// This also prints relocations adequately.
+/// This also prints provenance adequately.
 pub fn display_allocation<'a, 'tcx, Prov, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &'a Allocation<Prov, Extra>,
@@ -873,34 +873,34 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&prov) = alloc.relocations().get(&i) {
-            // Memory with a relocation must be defined
+        if let Some(&prov) = alloc.provenance().get(&i) {
+            // Memory with provenance must be defined
             assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
             let offset = alloc
                 .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
-            let relocation_width = |bytes| bytes * 3;
+            let provenance_width = |bytes| bytes * 3;
             let ptr = Pointer::new(prov, offset);
             let mut target = format!("{:?}", ptr);
-            if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
+            if target.len() > provenance_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.
                 target = format!("{:#?}", ptr);
             }
             if ((i - line_start) + ptr_size).bytes_usize() > BYTES_PER_LINE {
-                // This branch handles the situation where a relocation starts in the current line
+                // This branch handles the situation where a provenance starts in the current line
                 // but ends in the next one.
                 let remainder = Size::from_bytes(BYTES_PER_LINE) - (i - line_start);
                 let overflow = ptr_size - remainder;
-                let remainder_width = relocation_width(remainder.bytes_usize()) - 2;
-                let overflow_width = relocation_width(overflow.bytes_usize() - 1) + 1;
+                let remainder_width = provenance_width(remainder.bytes_usize()) - 2;
+                let overflow_width = provenance_width(overflow.bytes_usize() - 1) + 1;
                 ascii.push('╾');
                 for _ in 0..remainder.bytes() - 1 {
                     ascii.push('─');
                 }
                 if overflow_width > remainder_width && overflow_width >= target.len() {
-                    // The case where the relocation fits into the part in the next line
+                    // The case where the provenance fits into the part in the next line
                     write!(w, "╾{0:─^1$}", "", remainder_width)?;
                     line_start =
                         write_allocation_newline(w, line_start, &ascii, pos_width, prefix)?;
@@ -921,11 +921,11 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
                 i += ptr_size;
                 continue;
             } else {
-                // This branch handles a relocation that starts and ends in the current line.
-                let relocation_width = relocation_width(ptr_size.bytes_usize() - 1);
-                oversized_ptr(&mut target, relocation_width);
+                // This branch handles a provenance that starts and ends in the current line.
+                let provenance_width = provenance_width(ptr_size.bytes_usize() - 1);
+                oversized_ptr(&mut target, provenance_width);
                 ascii.push('╾');
-                write!(w, "╾{0:─^1$}╼", target, relocation_width)?;
+                write!(w, "╾{0:─^1$}╼", target, provenance_width)?;
                 for _ in 0..ptr_size.bytes() - 2 {
                     ascii.push('─');
                 }
@@ -935,7 +935,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
         } else if alloc.init_mask().is_range_initialized(i, i + Size::from_bytes(1)).is_ok() {
             let j = i.bytes_usize();
 
-            // Checked definedness (and thus range) and relocations. This access also doesn't
+            // Checked definedness (and thus range) and provenance. This access also doesn't
             // influence interpreter execution but is only for debugging.
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
             write!(w, "{:02x}", c)?;

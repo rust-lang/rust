@@ -2692,8 +2692,8 @@ fn pretty_print_const_value<'tcx>(
                 match inner.kind() {
                     ty::Slice(t) => {
                         if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and there are
-                            // no relocations (we have an active slice reference here). We don't use
+                            // The `inspect` here is okay since we checked the bounds, and `u8` carries
+                            // no provenance (we have an active slice reference here). We don't use
                             // this result to affect interpreter execution.
                             let byte_str = data
                                 .inner()
@@ -2703,8 +2703,8 @@ fn pretty_print_const_value<'tcx>(
                         }
                     }
                     ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
+                        // The `inspect` here is okay since we checked the bounds, and `str` carries
+                        // no provenance (we have an active `str` reference here). We don't use this
                         // result to affect interpreter execution.
                         let slice = data
                             .inner()
