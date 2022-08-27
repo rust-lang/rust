@@ -3,7 +3,6 @@
 // Test that we can handle unsized types with an extern type tail part.
 // Regression test for issue #91827.
 
-#![feature(const_ptr_offset_from)]
 #![feature(extern_types)]
 
 use std::ptr::addr_of;
