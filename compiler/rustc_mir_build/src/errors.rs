@@ -473,3 +473,10 @@ pub struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::could_not_eval_const_pattern)]
+pub struct CouldNotEvalConstPattern {
+    #[primary_span]
+    pub span: Span,
+}

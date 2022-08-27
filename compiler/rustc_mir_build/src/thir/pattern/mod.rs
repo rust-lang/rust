@@ -8,7 +8,7 @@ mod usefulness;
 pub(crate) use self::check_match::check_match;
 pub(crate) use self::usefulness::MatchCheckCtxt;
 
-use crate::errors::ConstPatternDependsOnGenericParameter;
+use crate::errors::*;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 use rustc_errors::struct_span_err;
@@ -484,7 +484,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             Err(_) => {
-                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
                 return pat_from_kind(PatKind::Wild);
             }
         };
@@ -535,7 +535,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 pat_from_kind(PatKind::Wild)
             }
             Err(_) => {
-                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
                 pat_from_kind(PatKind::Wild)
             }
         }
