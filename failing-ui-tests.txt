@@ -8,8 +8,6 @@ src/test/ui/allocator/no_std-alloc-error-handler-default.rs
 src/test/ui/allocator/xcrate-use.rs
 src/test/ui/allocator/xcrate-use2.rs
 src/test/ui/asm/may_unwind.rs
-src/test/ui/asm/x86_64/const.rs
-src/test/ui/asm/x86_64/issue-96797.rs
 src/test/ui/asm/x86_64/multiple-clobber-abi.rs
 src/test/ui/async-await/async-fn-size-moved-locals.rs
 src/test/ui/async-await/async-fn-size-uninit-locals.rs

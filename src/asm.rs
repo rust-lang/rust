@@ -695,17 +695,16 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref string) => {
-                    for line in string.lines() {
+                    let mut index = 0;
+                    while index < string.len() {
                         // NOTE: gcc does not allow inline comment, so remove them.
-                        let line =
-                            if let Some(index) = line.rfind("//") {
-                                &line[..index]
-                            }
-                            else {
-                                line
-                            };
-                        template_str.push_str(line);
-                        template_str.push('\n');
+                        let comment_index = string[index..].find("//")
+                            .map(|comment_index| comment_index + index)
+                            .unwrap_or(string.len());
+                        template_str.push_str(&string[index..comment_index]);
+                        index = string[comment_index..].find('\n')
+                            .map(|index| index + comment_index)
+                            .unwrap_or(string.len());
                     }
                 },
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {

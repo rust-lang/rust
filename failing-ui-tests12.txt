@@ -1,3 +1,4 @@
+src/test/ui/asm/x86_64/issue-96797.rs
 src/test/ui/intrinsics/const-eval-select-x86_64.rs
 src/test/ui/packed/packed-struct-drop-aligned.rs
 src/test/ui/packed/packed-struct-generic-layout.rs
