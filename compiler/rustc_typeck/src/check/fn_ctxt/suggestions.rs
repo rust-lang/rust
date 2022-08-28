@@ -76,16 +76,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((def_id_or_name, output, num_inputs)) = self.extract_callable_info(expr, found)
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(expr, found)
             else { return false; };
         if can_satisfy(output) {
-            let (sugg_call, mut applicability) = match num_inputs {
+            let (sugg_call, mut applicability) = match inputs.len() {
                 0 => ("".to_string(), Applicability::MachineApplicable),
                 1..=4 => (
-                    (0..num_inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
-                    Applicability::MachineApplicable,
+                    inputs
+                        .iter()
+                        .map(|ty| {
+                            if ty.is_suggestable(self.tcx, false) {
+                                format!("/* {ty} */")
+                            } else {
+                                "".to_string()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    Applicability::HasPlaceholders,
                 ),
-                _ => ("...".to_string(), Applicability::HasPlaceholders),
+                _ => ("/* ... */".to_string(), Applicability::HasPlaceholders),
             };
 
             let msg = match def_id_or_name {
@@ -137,19 +147,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &Expr<'_>,
         found: Ty<'tcx>,
-    ) -> Option<(DefIdOrName, Ty<'tcx>, usize)> {
+    ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
         // Autoderef is useful here because sometimes we box callables, etc.
         let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
             match *found.kind() {
                 ty::FnPtr(fn_sig) =>
-                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs().skip_binder().len())),
+                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
                 ty::FnDef(def_id, _) => {
                     let fn_sig = found.fn_sig(self.tcx);
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len()))
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
                 }
                 ty::Closure(def_id, substs) => {
                     let fn_sig = substs.as_closure().sig();
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1))
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
                 ty::Opaque(def_id, substs) => {
                     self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
@@ -161,7 +171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Some((
                                 DefIdOrName::DefId(def_id),
                                 pred.kind().rebind(proj.term.ty().unwrap()),
-                                args.len(),
+                                pred.kind().rebind(args.as_slice()),
                             ))
                         } else {
                             None
@@ -178,7 +188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Some((
                                 DefIdOrName::Name("trait object"),
                                 pred.rebind(proj.term.ty().unwrap()),
-                                args.len(),
+                                pred.rebind(args.as_slice()),
                             ))
                         } else {
                             None
@@ -197,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Some((
                                 DefIdOrName::DefId(def_id),
                                 pred.kind().rebind(proj.term.ty().unwrap()),
-                                args.len(),
+                                pred.kind().rebind(args.as_slice()),
                             ))
                         } else {
                             None
@@ -209,6 +219,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }) else { return None; };
 
         let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
+        let inputs = inputs
+            .skip_binder()
+            .iter()
+            .map(|ty| {
+                self.replace_bound_vars_with_fresh_vars(
+                    expr.span,
+                    infer::FnCall,
+                    inputs.rebind(*ty),
+                )
+            })
+            .collect();
 
         // We don't want to register any extra obligations, which should be
         // implied by wf, but also because that would possibly result in
@@ -228,23 +249,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((_, lhs_output_ty, num_lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
+        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
             else { return false; };
-        let Some((_, rhs_output_ty, num_rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
+        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
             else { return false; };
 
         if can_satisfy(lhs_output_ty, rhs_output_ty) {
             let mut sugg = vec![];
             let mut applicability = Applicability::MachineApplicable;
 
-            for (expr, num_inputs) in [(lhs_expr, num_lhs_inputs), (rhs_expr, num_rhs_inputs)] {
-                let (sugg_call, this_applicability) = match num_inputs {
+            for (expr, inputs) in [(lhs_expr, lhs_inputs), (rhs_expr, rhs_inputs)] {
+                let (sugg_call, this_applicability) = match inputs.len() {
                     0 => ("".to_string(), Applicability::MachineApplicable),
                     1..=4 => (
-                        (0..num_inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
-                        Applicability::MachineApplicable,
+                        inputs
+                            .iter()
+                            .map(|ty| {
+                                if ty.is_suggestable(self.tcx, false) {
+                                    format!("/* {ty} */")
+                                } else {
+                                    "/* value */".to_string()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        Applicability::HasPlaceholders,
                     ),
-                    _ => ("...".to_string(), Applicability::HasPlaceholders),
+                    _ => ("/* ... */".to_string(), Applicability::HasPlaceholders),
                 };
 
                 applicability = applicability.max(this_applicability);

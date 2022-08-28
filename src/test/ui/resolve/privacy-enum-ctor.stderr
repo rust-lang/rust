@@ -329,8 +329,8 @@ LL |         let _: Z = Z::Fn;
            found fn item `fn(u8) -> Z {Z::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
-LL |         let _: Z = Z::Fn(_);
-   |                         +++
+LL |         let _: Z = Z::Fn(/* u8 */);
+   |                         ++++++++++
 
 error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
@@ -364,8 +364,8 @@ LL |     let _: E = m::E::Fn;
            found fn item `fn(u8) -> E {E::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
-LL |     let _: E = m::E::Fn(_);
-   |                        +++
+LL |     let _: E = m::E::Fn(/* u8 */);
+   |                        ++++++++++
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
@@ -399,8 +399,8 @@ LL |     let _: E = E::Fn;
            found fn item `fn(u8) -> E {E::Fn}`
 help: use parentheses to instantiate this tuple variant
    |
-LL |     let _: E = E::Fn(_);
-   |                     +++
+LL |     let _: E = E::Fn(/* u8 */);
+   |                     ++++++++++
 
 error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16

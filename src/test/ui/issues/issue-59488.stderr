@@ -30,8 +30,8 @@ LL |     bar > 13;
    |
 help: use parentheses to call this function
    |
-LL |     bar(_) > 13;
-   |        +++
+LL |     bar(/* i64 */) > 13;
+   |        +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-59488.rs:18:11

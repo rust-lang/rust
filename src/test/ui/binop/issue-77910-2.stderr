@@ -8,8 +8,8 @@ LL |     if foo == y {}
    |
 help: use parentheses to call this function
    |
-LL |     if foo(_) == y {}
-   |           +++
+LL |     if foo(/* &i32 */) == y {}
+   |           ++++++++++++
 
 error: aborting due to previous error
 
