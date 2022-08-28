@@ -594,6 +594,7 @@ pub mod alloc;
 
 // Private support modules
 mod panicking;
+mod personality;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes)]

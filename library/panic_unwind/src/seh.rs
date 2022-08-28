@@ -326,13 +326,3 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
         exception.data.take().unwrap()
     }
 }
-
-// This is required by the compiler to exist (e.g., it's a lang item), but
-// it's never actually called by the compiler because __C_specific_handler
-// or _except_handler3 is the personality function that is always used.
-// Hence this is just an aborting stub.
-#[lang = "eh_personality"]
-#[cfg(not(test))]
-fn rust_eh_personality() {
-    core::intrinsics::abort()
-}

@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-use crate::dwarf::DwarfReader;
+use super::DwarfReader;
 use core::mem;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
