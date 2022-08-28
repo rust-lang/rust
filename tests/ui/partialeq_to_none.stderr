@@ -7,55 +7,55 @@ LL |     if f != None { "yay" } else { "nay" }
    = note: `-D clippy::partialeq-to-none` implied by `-D warnings`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:32:13
+  --> $DIR/partialeq_to_none.rs:44:13
    |
 LL |     let _ = x == None;
    |             ^^^^^^^^^ help: use `Option::is_none()` instead: `x.is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:33:13
+  --> $DIR/partialeq_to_none.rs:45:13
    |
 LL |     let _ = x != None;
    |             ^^^^^^^^^ help: use `Option::is_some()` instead: `x.is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:34:13
+  --> $DIR/partialeq_to_none.rs:46:13
    |
 LL |     let _ = None == x;
    |             ^^^^^^^^^ help: use `Option::is_none()` instead: `x.is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:35:13
+  --> $DIR/partialeq_to_none.rs:47:13
    |
 LL |     let _ = None != x;
    |             ^^^^^^^^^ help: use `Option::is_some()` instead: `x.is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:37:8
+  --> $DIR/partialeq_to_none.rs:49:8
    |
 LL |     if foobar() == None {}
    |        ^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `foobar().is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:39:8
+  --> $DIR/partialeq_to_none.rs:51:8
    |
 LL |     if bar().ok() != None {}
    |        ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `bar().ok().is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:41:13
+  --> $DIR/partialeq_to_none.rs:53:13
    |
 LL |     let _ = Some(1 + 2) != None;
    |             ^^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `Some(1 + 2).is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:43:13
+  --> $DIR/partialeq_to_none.rs:55:13
    |
 LL |     let _ = { Some(0) } == None;
    |             ^^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `{ Some(0) }.is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:45:13
+  --> $DIR/partialeq_to_none.rs:57:13
    |
 LL |       let _ = {
    |  _____________^
@@ -77,31 +77,31 @@ LL ~     }.is_some();
    |
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:55:13
+  --> $DIR/partialeq_to_none.rs:67:13
    |
 LL |     let _ = optref() == &&None;
    |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `optref().is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:56:13
+  --> $DIR/partialeq_to_none.rs:68:13
    |
 LL |     let _ = &&None != optref();
    |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `optref().is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:57:13
+  --> $DIR/partialeq_to_none.rs:69:13
    |
 LL |     let _ = **optref() == None;
    |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_none()` instead: `optref().is_none()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:58:13
+  --> $DIR/partialeq_to_none.rs:70:13
    |
 LL |     let _ = &None != *optref();
    |             ^^^^^^^^^^^^^^^^^^ help: use `Option::is_some()` instead: `optref().is_some()`
 
 error: binary comparison to literal `Option::None`
-  --> $DIR/partialeq_to_none.rs:61:13
+  --> $DIR/partialeq_to_none.rs:73:13
    |
 LL |     let _ = None != *x;
    |             ^^^^^^^^^^ help: use `Option::is_some()` instead: `(*x).is_some()`
