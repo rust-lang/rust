@@ -269,9 +269,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     );
                     throw_inval!(AlreadyReported(guar));
                 } else {
+                    // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
+                    // so this should be unreachable.
                     let path = ecx.tcx.def_path_str(def.did);
-                    Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))
-                        .into())
+                    bug!("trying to call extern function `{path}` at compile-time");
                 }
             }
             _ => Ok(ecx.tcx.instance_mir(instance)),
@@ -469,7 +470,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _ptr: Pointer<AllocId>,
     ) -> InterpResult<'tcx> {
-        Err(ConstEvalErrKind::NeedsRfc("exposing pointers".to_string()).into())
+        // This is only reachable with -Zunleash-the-miri-inside-of-you.
+        throw_unsup_format!("exposing pointers is not possible at compile-time")
     }
 
     #[inline(always)]

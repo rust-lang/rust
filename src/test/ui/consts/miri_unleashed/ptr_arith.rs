@@ -8,7 +8,7 @@
 static PTR_INT_CAST: () = {
     let x = &0 as *const _ as usize;
     //~^ ERROR could not evaluate static initializer
-    //~| "exposing pointers" needs an rfc before being allowed inside constants
+    //~| exposing pointers
     let _v = x == x;
 };
 
