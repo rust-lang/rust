@@ -1,4 +1,4 @@
-use super::{repeat, Cursor, ReadBuf, SeekFrom};
+use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
@@ -159,24 +159,24 @@ fn read_exact_slice() {
 
 #[test]
 fn read_buf_exact() {
-    let mut buf = [0; 4];
-    let mut buf = ReadBuf::new(&mut buf);
+    let buf: &mut [_] = &mut [0; 4];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
     let mut c = Cursor::new(&b""[..]);
-    assert_eq!(c.read_buf_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+    assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 
     let mut c = Cursor::new(&b"123456789"[..]);
-    c.read_buf_exact(&mut buf).unwrap();
+    c.read_buf_exact(buf.unfilled()).unwrap();
     assert_eq!(buf.filled(), b"1234");
 
     buf.clear();
 
-    c.read_buf_exact(&mut buf).unwrap();
+    c.read_buf_exact(buf.unfilled()).unwrap();
     assert_eq!(buf.filled(), b"5678");
 
     buf.clear();
 
-    assert_eq!(c.read_buf_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+    assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 }
 
 #[test]
@@ -615,10 +615,10 @@ fn bench_take_read(b: &mut test::Bencher) {
 #[bench]
 fn bench_take_read_buf(b: &mut test::Bencher) {
     b.iter(|| {
-        let mut buf = [MaybeUninit::uninit(); 64];
+        let buf: &mut [_] = &mut [MaybeUninit::uninit(); 64];
 
-        let mut rbuf = ReadBuf::uninit(&mut buf);
+        let mut buf: BorrowedBuf<'_> = buf.into();
 
-        [255; 128].take(64).read_buf(&mut rbuf).unwrap();
+        [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
 }
