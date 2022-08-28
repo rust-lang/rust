@@ -1,5 +1,142 @@
-use rustc_macros::LintDiagnostic;
-use rustc_span::{Symbol, Span};
+use rustc_errors::{fluent, AddSubdiagnostic, DecorateLint, EmissionGuarantee};
+use rustc_macros::{LintDiagnostic, SessionSubdiagnostic};
+use rustc_span::{Span, Symbol};
+
+#[derive(LintDiagnostic)]
+#[diag(lint_range_endpoint_out_of_range)]
+pub struct RangeEndpointOutOfRange<'a> {
+    pub ty: &'a str,
+    #[suggestion(code = "{start}..={literal}{suffix}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub start: String,
+    pub literal: u128,
+    pub suffix: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_overflowing_bin_hex)]
+pub struct OverflowingBinHex<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+    pub dec: u128,
+    pub actually: String,
+    #[subdiagnostic]
+    pub sign: OverflowingBinHexSign,
+    #[subdiagnostic]
+    pub sub: Option<OverflowingBinHexSub<'a>>,
+}
+
+pub enum OverflowingBinHexSign {
+    Positive,
+    Negative,
+}
+
+impl AddSubdiagnostic for OverflowingBinHexSign {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self {
+            OverflowingBinHexSign::Positive => {
+                diag.note(fluent::positive_note);
+            }
+            OverflowingBinHexSign::Negative => {
+                diag.note(fluent::negative_note);
+                diag.note(fluent::negative_becomes_note);
+            }
+        }
+    }
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum OverflowingBinHexSub<'a> {
+    #[suggestion(
+        suggestion,
+        code = "{sans_suffix}{suggestion_ty}",
+        applicability = "machine-applicable"
+    )]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        suggestion_ty: &'a str,
+        sans_suffix: &'a str,
+    },
+    #[help(help)]
+    Help { suggestion_ty: &'a str },
+}
+
+pub struct OverflowingInt<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+    pub min: i128,
+    pub max: u128,
+    pub suggestion_ty: Option<&'a str>,
+}
+
+// FIXME: refactor with `Option<&'a str>` in macro
+impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for OverflowingInt<'a> {
+    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
+        let mut diag = diag.build(fluent::lint_overflowing_int);
+        diag.set_arg("ty", self.ty);
+        diag.set_arg("lit", self.lit);
+        diag.set_arg("min", self.min);
+        diag.set_arg("max", self.max);
+        diag.note(fluent::note);
+        if let Some(suggestion_ty) = self.suggestion_ty {
+            diag.set_arg("suggestion_ty", suggestion_ty);
+            diag.help(fluent::help);
+        }
+        diag.emit();
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_only_cast_u8_to_char)]
+pub struct OnlyCastu8ToChar {
+    #[suggestion(code = "'\\u{{{literal:X}}}'", applicability = "machine-applicable")]
+    pub span: Span,
+    pub literal: u128,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_overflowing_uint)]
+#[note]
+pub struct OverflowingUInt<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+    pub min: u128,
+    pub max: u128,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_overflowing_literal)]
+#[note]
+pub struct OverflowingLiteral<'a> {
+    pub ty: &'a str,
+    pub lit: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_comparisons)]
+pub struct UnusedComparisons;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_variant_size_differences)]
+pub struct VariantSizeDifferencesDiag {
+    pub largest: u64,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_atomic_ordering_load)]
+#[help]
+pub struct AtomicOrderingLoad;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_atomic_ordering_store)]
+#[help]
+pub struct AtomicOrderingStore;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_atomic_ordering_fence)]
+#[help]
+pub struct AtomicOrderingFence;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_atomic_ordering_invalid)]
