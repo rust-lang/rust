@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let _: A<'a, u32, {2u32}, {3u32}> = A::<'a, u32, {2u32 + 2u32}, {3u32}> { data: PhantomData };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
    |
-   = note: expected type `2`
-              found type `4`
+   = note: expected constant `2`
+              found constant `4`
 
 error[E0308]: mismatched types
   --> $DIR/types-mismatch-const-args.rs:16:41

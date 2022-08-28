@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     Foo::<N, { N + 2 }>
    |     ^^^^^^^^^^^^^^^^^^^ expected `{ N + 1 }`, found `{ N + 2 }`
    |
-   = note: expected type `{ N + 1 }`
-              found type `{ N + 2 }`
+   = note: expected constant `{ N + 1 }`
+              found constant `{ N + 2 }`
 
 error: aborting due to previous error
 
