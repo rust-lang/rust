@@ -11,18 +11,18 @@ help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
    |
 LL |     let ptr = Box::into_raw(Box::new(0i32));
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: <TAG> was protected due to <TAG> which was created here
-  --> $DIR/newtype_retagging.rs:LL:CC
-   |
-LL |             Newtype(&mut *ptr),
-   |             ^^^^^^^^^^^^^^^^^^
-help: this protector is live for this call
+help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
   --> $DIR/newtype_retagging.rs:LL:CC
    |
 LL | / fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
 LL | |     dealloc();
 LL | | }
    | |_^
+help: <TAG> was derived from <TAG>, which in turn was created here
+  --> $DIR/newtype_retagging.rs:LL:CC
+   |
+LL |             Newtype(&mut *ptr),
+   |             ^^^^^^^^^^^^^^^^^^
    = note: backtrace:
    = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
    = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC

@@ -11,16 +11,12 @@ help: <TAG> was created by a Unique retag at offsets [0x0..0x4]
    |
 LL |     let xraw: *mut i32 = unsafe { mem::transmute(&mut x) };
    |                                                  ^^^^^^
-help: <TAG> was protected due to <TAG> which was created here
-  --> $DIR/aliasing_mut1.rs:LL:CC
-   |
-LL |     let xraw: *mut i32 = unsafe { mem::transmute(&mut x) };
-   |                                                  ^^^^^^
-help: this protector is live for this call
+help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
   --> $DIR/aliasing_mut1.rs:LL:CC
    |
 LL | pub fn safe(_x: &mut i32, _y: &mut i32) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: <TAG> was derived from <TAG>, the tag used for this memory access
    = note: backtrace:
    = note: inside `safe` at $DIR/aliasing_mut1.rs:LL:CC
 note: inside `main` at $DIR/aliasing_mut1.rs:LL:CC
