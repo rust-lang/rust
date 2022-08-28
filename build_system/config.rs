@@ -1,4 +1,5 @@
-use std::{fs, process};
+use std::fs;
+use std::process;
 
 fn load_config_file() -> Vec<(String, Option<String>)> {
     fs::read_to_string("config.txt")

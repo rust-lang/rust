@@ -1,10 +1,11 @@
-use super::build_sysroot;
-use super::config;
-use super::utils::spawn_and_wait;
-use build_system::SysrootKind;
 use std::env;
 use std::path::Path;
 use std::process::Command;
+
+use super::build_sysroot;
+use super::config;
+use super::utils::spawn_and_wait;
+use super::SysrootKind;
 
 pub(crate) fn run(
     channel: &str,
