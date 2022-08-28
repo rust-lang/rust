@@ -432,12 +432,13 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if target.starts_with("riscv") && !target.contains("freebsd") {
+        if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd")
+        {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
             // detect this. Therefore it is set manually here.
-            // FreeBSD uses Clang as its system compiler and
+            // Some BSD uses Clang as its system compiler and
             // provides no libatomic in its base system so does
             // not want this.
             ldflags.exe.push(" -latomic");

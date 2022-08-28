@@ -285,6 +285,7 @@ target | std | host | notes
 `riscv32imc-esp-espidf` | ✓ |  | RISC-V ESP-IDF
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
+[`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 `s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
