@@ -973,6 +973,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+                // If this place is smaller than a pointer, we know that it can't contain any
+                // pointers we need to retag, so we can stop recursion early.
+                // This optimization is crucial for ZSTs, because they can contain way more fields
+                // than we can ever visit.
+                if !place.layout.is_unsized() && place.layout.size < self.ecx.pointer_size() {
+                    return Ok(());
+                }
+
                 if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
                     self.retag_place(place, ref_kind, self.retag_cause, protector)?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
