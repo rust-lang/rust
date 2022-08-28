@@ -18,7 +18,7 @@ LL |     let x = y.neg();
 help: you must specify a type for this binding, like `f32`
    |
 LL |     let y: f32 = 2.0;
-   |         ~~~~~~
+   |          +++++
 
 error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
   --> $DIR/method-on-ambiguous-numeric-type.rs:19:26
@@ -37,7 +37,7 @@ LL |     local_bar.pow(2);
 help: you must specify a type for this binding, like `i32`
    |
 LL |     ($ident:ident) => { let $ident: i32 = 42; }
-   |                             ~~~~~~~~~~~
+   |                                   +++++
 
 error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
   --> $DIR/method-on-ambiguous-numeric-type.rs:30:9
@@ -46,10 +46,10 @@ LL |     bar.pow(2);
    |         ^^^
    |
 help: you must specify a type for this binding, like `i32`
-  --> $DIR/auxiliary/macro-in-other-crate.rs:3:29
+  --> $DIR/auxiliary/macro-in-other-crate.rs:3:35
    |
 LL |     ($ident:ident) => { let $ident: i32 = 42; }
-   |                             ~~~~~~~~~~~
+   |                                   +++++
 
 error: aborting due to 5 previous errors
 

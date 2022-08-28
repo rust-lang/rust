@@ -223,14 +223,12 @@ impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
             error_code!(E0565),
         );
         if self.is_bytestr {
-            if let Ok(lint_str) = sess.source_map().span_to_snippet(self.span) {
-                diag.span_suggestion(
-                    self.span,
-                    fluent::attr::unsupported_literal_suggestion,
-                    &lint_str[1..],
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            diag.span_suggestion(
+                sess.source_map().start_point(self.span),
+                fluent::attr::unsupported_literal_suggestion,
+                "",
+                Applicability::MaybeIncorrect,
+            );
         }
         diag
     }
