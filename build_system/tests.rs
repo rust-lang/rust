@@ -465,8 +465,7 @@ impl TestRunner {
         out_dir.push("out");
 
         let is_native = host_triple == target_triple;
-        let jit_supported =
-            target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
+        let jit_supported = target_triple.contains("x86_64") && is_native;
 
         let mut rust_flags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
         let mut run_wrapper = Vec::new();
