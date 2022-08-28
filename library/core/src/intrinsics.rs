@@ -1287,6 +1287,17 @@ extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// Consider using [`pointer::mask`] instead.
+    #[cfg(not(bootstrap))]
+    pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
+
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
