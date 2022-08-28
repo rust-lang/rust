@@ -4,6 +4,26 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{self, Command, Stdio};
 
+pub(crate) fn cargo_command(
+    cargo: impl AsRef<Path>,
+    subcommand: &str,
+    triple: Option<&str>,
+    source_dir: &Path,
+) -> Command {
+    let mut cmd = Command::new(cargo.as_ref());
+    cmd.arg(subcommand)
+        .arg("--manifest-path")
+        .arg(source_dir.join("Cargo.toml"))
+        .arg("--target-dir")
+        .arg(source_dir.join("target"));
+
+    if let Some(triple) = triple {
+        cmd.arg("--target").arg(triple);
+    }
+
+    cmd
+}
+
 #[track_caller]
 pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     let src = src.as_ref();

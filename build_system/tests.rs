@@ -1,7 +1,7 @@
 use super::build_sysroot;
 use super::config;
 use super::rustc_info::get_wrapper_file_name;
-use super::utils::{spawn_and_wait, spawn_and_wait_with_input};
+use super::utils::{cargo_command, spawn_and_wait, spawn_and_wait_with_input};
 use build_system::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
@@ -218,20 +218,14 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {
         runner.in_dir(["rand"], |runner| {
-            runner.run_cargo(["clean"]);
+            runner.run_cargo("clean", []);
 
             if runner.host_triple == runner.target_triple {
                 eprintln!("[TEST] rust-random/rand");
-                runner.run_cargo(["test", "--workspace"]);
+                runner.run_cargo("test", ["--workspace"]);
             } else {
                 eprintln!("[AOT] rust-random/rand");
-                runner.run_cargo([
-                    "build",
-                    "--workspace",
-                    "--target",
-                    &runner.target_triple,
-                    "--tests",
-                ]);
+                runner.run_cargo("build", ["--workspace", "--tests"]);
             }
         });
     }),
@@ -247,11 +241,19 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 bench_compile.arg("--warmup");
                 bench_compile.arg("1");
                 bench_compile.arg("--prepare");
-                bench_compile.arg(format!("{:?}", runner.cargo_command(["clean"])));
+                bench_compile.arg(format!("{:?}", runner.cargo_command("clean", [])));
 
                 bench_compile.arg("cargo build");
 
-                bench_compile.arg(format!("{:?}", runner.cargo_command(["build"])));
+                let cargo_clif = runner
+                    .root_dir
+                    .clone()
+                    .join("build")
+                    .join(get_wrapper_file_name("cargo-clif", "bin"));
+                let mut clif_build_cmd = cargo_command(cargo_clif, "build", None, Path::new("."));
+                clif_build_cmd.env("RUSTFLAGS", &runner.rust_flags);
+                bench_compile.arg(format!("{:?}", clif_build_cmd));
+
                 spawn_and_wait(bench_compile);
 
                 eprintln!("[BENCH RUN] ebobby/simple-raytracer");
@@ -265,51 +267,39 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 bench_run.arg(PathBuf::from("./raytracer_cg_clif"));
                 spawn_and_wait(bench_run);
             } else {
-                runner.run_cargo(["clean"]);
+                runner.run_cargo("clean", []);
                 eprintln!("[BENCH COMPILE] ebobby/simple-raytracer (skipped)");
                 eprintln!("[COMPILE] ebobby/simple-raytracer");
-                runner.run_cargo(["build", "--target", &runner.target_triple]);
+                runner.run_cargo("build", []);
                 eprintln!("[BENCH RUN] ebobby/simple-raytracer (skipped)");
             }
         });
     }),
     TestCase::new("test.libcore", &|runner| {
         runner.in_dir(["build_sysroot", "sysroot_src", "library", "core", "tests"], |runner| {
-            runner.run_cargo(["clean"]);
+            runner.run_cargo("clean", []);
 
             if runner.host_triple == runner.target_triple {
-                runner.run_cargo(["test"]);
+                runner.run_cargo("test", []);
             } else {
                 eprintln!("Cross-Compiling: Not running tests");
-                runner.run_cargo(["build", "--target", &runner.target_triple, "--tests"]);
+                runner.run_cargo("build", ["--tests"]);
             }
         });
     }),
     TestCase::new("test.regex-shootout-regex-dna", &|runner| {
         runner.in_dir(["regex"], |runner| {
-            runner.run_cargo(["clean"]);
+            runner.run_cargo("clean", []);
 
             // newer aho_corasick versions throw a deprecation warning
             let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
 
-            let mut build_cmd = runner.cargo_command([
-                "build",
-                "--example",
-                "shootout-regex-dna",
-                "--target",
-                &runner.target_triple,
-            ]);
+            let mut build_cmd = runner.cargo_command("build", ["--example", "shootout-regex-dna"]);
             build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
             spawn_and_wait(build_cmd);
 
             if runner.host_triple == runner.target_triple {
-                let mut run_cmd = runner.cargo_command([
-                    "run",
-                    "--example",
-                    "shootout-regex-dna",
-                    "--target",
-                    &runner.target_triple,
-                ]);
+                let mut run_cmd = runner.cargo_command("run", ["--example", "shootout-regex-dna"]);
                 run_cmd.env("RUSTFLAGS", lint_rust_flags);
 
                 let input =
@@ -350,28 +340,30 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     }),
     TestCase::new("test.regex", &|runner| {
         runner.in_dir(["regex"], |runner| {
-            runner.run_cargo(["clean"]);
+            runner.run_cargo("clean", []);
 
             // newer aho_corasick versions throw a deprecation warning
             let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
 
             if runner.host_triple == runner.target_triple {
-                let mut run_cmd = runner.cargo_command([
+                let mut run_cmd = runner.cargo_command(
                     "test",
-                    "--tests",
-                    "--",
-                    "--exclude-should-panic",
-                    "--test-threads",
-                    "1",
-                    "-Zunstable-options",
-                    "-q",
-                ]);
+                    [
+                        "--tests",
+                        "--",
+                        "--exclude-should-panic",
+                        "--test-threads",
+                        "1",
+                        "-Zunstable-options",
+                        "-q",
+                    ],
+                );
                 run_cmd.env("RUSTFLAGS", lint_rust_flags);
                 spawn_and_wait(run_cmd);
             } else {
                 eprintln!("Cross-Compiling: Not running tests");
                 let mut build_cmd =
-                    runner.cargo_command(["build", "--tests", "--target", &runner.target_triple]);
+                    runner.cargo_command("build", ["--tests", "--target", &runner.target_triple]);
                 build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
                 spawn_and_wait(build_cmd);
             }
@@ -379,11 +371,11 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     }),
     TestCase::new("test.portable-simd", &|runner| {
         runner.in_dir(["portable-simd"], |runner| {
-            runner.run_cargo(["clean"]);
-            runner.run_cargo(["build", "--all-targets", "--target", &runner.target_triple]);
+            runner.run_cargo("clean", []);
+            runner.run_cargo("build", ["--all-targets", "--target", &runner.target_triple]);
 
             if runner.host_triple == runner.target_triple {
-                runner.run_cargo(["test", "-q"]);
+                runner.run_cargo("test", ["-q"]);
             }
         });
     }),
@@ -590,25 +582,29 @@ impl TestRunner {
         spawn_and_wait(cmd);
     }
 
-    fn cargo_command<I, S>(&self, args: I) -> Command
+    fn cargo_command<'a, I>(&self, subcommand: &str, args: I) -> Command
     where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
+        I: IntoIterator<Item = &'a str>,
     {
         let mut cargo_clif = self.root_dir.clone();
         cargo_clif.push("build");
         cargo_clif.push(get_wrapper_file_name("cargo-clif", "bin"));
 
-        let mut cmd = Command::new(cargo_clif);
+        let mut cmd = cargo_command(
+            cargo_clif,
+            subcommand,
+            if subcommand == "clean" { None } else { Some(&self.target_triple) },
+            Path::new("."),
+        );
         cmd.args(args);
         cmd.env("RUSTFLAGS", &self.rust_flags);
         cmd
     }
 
-    fn run_cargo<'a, I>(&self, args: I)
+    fn run_cargo<'a, I>(&self, subcommand: &str, args: I)
     where
         I: IntoIterator<Item = &'a str>,
     {
-        spawn_and_wait(self.cargo_command(args));
+        spawn_and_wait(self.cargo_command(subcommand, args));
     }
 }

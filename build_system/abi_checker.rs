@@ -1,10 +1,9 @@
 use std::env;
 use std::path::Path;
-use std::process::Command;
 
 use super::build_sysroot;
 use super::config;
-use super::utils::spawn_and_wait;
+use super::utils::{cargo_command, spawn_and_wait};
 use super::SysrootKind;
 
 pub(crate) fn run(
@@ -38,14 +37,11 @@ pub(crate) fn run(
     eprintln!("Running abi-checker");
     let mut abi_checker_path = env::current_dir().unwrap();
     abi_checker_path.push("abi-checker");
-    env::set_current_dir(abi_checker_path.clone()).unwrap();
+    env::set_current_dir(&abi_checker_path.clone()).unwrap();
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = Command::new("cargo");
-    cmd.arg("run");
-    cmd.arg("--target");
-    cmd.arg(target_triple);
+    let mut cmd = cargo_command("cargo", "run", Some(target_triple), &abi_checker_path);
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);

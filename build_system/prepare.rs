@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
-use super::utils::{copy_dir_recursively, spawn_and_wait};
+use super::utils::{cargo_command, copy_dir_recursively, spawn_and_wait};
 
 pub(crate) fn prepare() {
     prepare_sysroot();
@@ -52,8 +52,7 @@ pub(crate) fn prepare() {
     );
 
     eprintln!("[LLVM BUILD] simple-raytracer");
-    let mut build_cmd = Command::new("cargo");
-    build_cmd.arg("build").env_remove("CARGO_TARGET_DIR").current_dir("simple-raytracer");
+    let build_cmd = cargo_command("cargo", "build", None, Path::new("simple-raytracer"));
     spawn_and_wait(build_cmd);
     fs::copy(
         Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin")),

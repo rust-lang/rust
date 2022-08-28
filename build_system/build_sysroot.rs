@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
-use super::utils::{spawn_and_wait, try_hard_link};
+use super::utils::{cargo_command, spawn_and_wait, try_hard_link};
 use super::SysrootKind;
 
 pub(crate) fn build_sysroot(
@@ -185,8 +185,7 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut build_cmd = Command::new("cargo");
-    build_cmd.arg("build").arg("--target").arg(triple).current_dir("build_sysroot");
+    let mut build_cmd = cargo_command("cargo", "build", Some(triple), Path::new("build_sysroot"));
     let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
     if channel == "release" {
