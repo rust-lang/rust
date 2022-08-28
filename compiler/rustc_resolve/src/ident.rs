@@ -953,7 +953,10 @@ impl<'a> Resolver<'a> {
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
-            if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
+            let Some(import_vis) = single_import.vis.get() else {
+                continue;
+            };
+            if !self.is_accessible_from(import_vis, parent_scope.module) {
                 continue;
             }
             let Some(module) = single_import.imported_module.get() else {
@@ -1018,7 +1021,10 @@ impl<'a> Resolver<'a> {
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         for glob_import in module.globs.borrow().iter() {
-            if !self.is_accessible_from(glob_import.vis.get(), parent_scope.module) {
+            let Some(import_vis) = glob_import.vis.get() else {
+                continue;
+            };
+            if !self.is_accessible_from(import_vis, parent_scope.module) {
                 continue;
             }
             let module = match glob_import.imported_module.get() {

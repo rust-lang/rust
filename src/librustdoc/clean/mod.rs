@@ -1776,11 +1776,6 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
     match vis {
         ty::Visibility::Public => Visibility::Public,
-        // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
-        // while rustdoc really does mean inherited. That means that for enum variants, such as
-        // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
-        // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
-        ty::Visibility::Invisible => Visibility::Inherited,
         ty::Visibility::Restricted(module) => Visibility::Restricted(module),
     }
 }

@@ -1500,24 +1500,18 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
         // If there is not LTO and the visibility in public, we have to assume that the vtable can
         // be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
         (Lto::No | Lto::ThinLocal, Visibility::Public, _)
-        | (Lto::No, Visibility::Restricted(_) | Visibility::Invisible, false) => {
-            VCallVisibility::Public
-        }
+        | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
         // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
         // all known by the `LinkageUnit`.
         // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
         // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
         (Lto::Fat | Lto::Thin, Visibility::Public, _)
-        | (
-            Lto::ThinLocal | Lto::Thin | Lto::Fat,
-            Visibility::Restricted(_) | Visibility::Invisible,
-            false,
-        ) => VCallVisibility::LinkageUnit,
+        | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
+            VCallVisibility::LinkageUnit
+        }
         // If there is only one CGU, private vtables can only be seen by that CGU/translation unit
         // and therefore we know of all usages of functions in the vtable.
-        (_, Visibility::Restricted(_) | Visibility::Invisible, true) => {
-            VCallVisibility::TranslationUnit
-        }
+        (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
