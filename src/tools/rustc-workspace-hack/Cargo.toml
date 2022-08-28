@@ -24,6 +24,7 @@ features = [
   "errhandlingapi",
   "evntrace",
   "fibersapi",
+  "handleapi",
   "in6addr",
   "inaddr",
   "ioapiset",
@@ -72,11 +73,8 @@ features = [
 
 [dependencies]
 bstr = { version = "0.2.17", features = ["default"] }
-byteorder = { version = "1", features = ['default', 'std'] }
 clap = { version = "3.1.1", features = ["derive", "clap_derive"]}
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
-crossbeam-utils = { version = "0.8.0", features = ["nightly"] }
-libc = { version = "0.2.79", features = ["align"] }
 # Ensure default features of libz-sys, which are disabled in some scenarios.
 libz-sys = { version = "1.1.2" }
 # The only user of memchr's deprecated `use_std` feature is `combine`, so this can be
@@ -84,13 +82,8 @@ libz-sys = { version = "1.1.2" }
 memchr = { version = "2.5", features = ["std", "use_std"] }
 # Ensure default features of regex, which are disabled in some scenarios.
 regex = { version = "1.5.6" }
-proc-macro2 = { version = "1", features = ["default"] }
-quote = { version = "1", features = ["default"] }
-rand_core_0_5 = { package = "rand_core", version = "0.5.1", features = ["getrandom", "alloc", "std"] }
-serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
-smallvec = { version = "1.8.1", features = ['union', 'may_dangle'] }
-syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'visit-mut'] }
+syn = { version = "1", features = ['full', 'visit'] }
 url = { version = "2.0", features = ['serde'] }
 
 [target.'cfg(not(windows))'.dependencies]

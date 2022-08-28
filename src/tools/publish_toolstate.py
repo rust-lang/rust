@@ -31,7 +31,6 @@ except ImportError:
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung'},
-    'rls': {'Xanewok'},
     'book': {'carols10cents'},
     'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
     'reference': {'Havvy', 'matthewjasper', 'ehuss'},
@@ -43,7 +42,6 @@ MAINTAINERS = {
 
 LABELS = {
     'miri': ['A-miri', 'C-bug'],
-    'rls': ['A-rls', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],
@@ -55,7 +53,6 @@ LABELS = {
 
 REPOS = {
     'miri': 'https://github.com/rust-lang/miri',
-    'rls': 'https://github.com/rust-lang/rls',
     'book': 'https://github.com/rust-lang/book',
     'nomicon': 'https://github.com/rust-lang/nomicon',
     'reference': 'https://github.com/rust-lang/reference',

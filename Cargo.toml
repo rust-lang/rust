@@ -97,21 +97,6 @@ gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
 
-# We want the RLS to use the version of Cargo that we've got vendored in this
-# repository to ensure that the same exact version of Cargo is used by both the
-# RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
-# so we use a `[patch]` here to override the github repository with our local
-# vendored copy.
-[patch."https://github.com/rust-lang/cargo"]
-cargo = { path = "src/tools/cargo" }
-cargo-util = { path = "src/tools/cargo/crates/cargo-util" }
-
-[patch."https://github.com/rust-lang/rustfmt"]
-# Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
-# that we're shipping as well (to ensure that the rustfmt in RLS and the
-# `rustfmt` executable are the same exact version).
-rustfmt-nightly = { path = "src/tools/rustfmt" }
-
 [patch.crates-io]
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on
 # here

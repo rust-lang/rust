@@ -431,7 +431,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
               SCRIPT: python x.py dist
-              DIST_REQUIRE_ALL_TOOLS: 0
+              DIST_REQUIRE_ALL_TOOLS: 1
               WINDOWS_SDK_20348_HACK: 1
             os: windows-latest-xl
           - name: dist-i686-mingw
