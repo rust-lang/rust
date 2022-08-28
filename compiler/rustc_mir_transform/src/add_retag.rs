@@ -66,7 +66,6 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // We need an `AllCallEdges` pass before we can do any work.
         super::add_call_guards::AllCallEdges.run_pass(tcx, body);
 
-        let (span, arg_count) = (body.span, body.arg_count);
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &body.local_decls;
         let needs_retag = |place: &Place<'tcx>| {
@@ -90,20 +89,18 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // PART 1
         // Retag arguments at the beginning of the start block.
         {
-            // FIXME: Consider using just the span covering the function
-            // argument declaration.
-            let source_info = SourceInfo::outermost(span);
             // Gather all arguments, skip return value.
-            let places = local_decls
-                .iter_enumerated()
-                .skip(1)
-                .take(arg_count)
-                .map(|(local, _)| Place::from(local))
-                .filter(needs_retag);
+            let places = local_decls.iter_enumerated().skip(1).take(body.arg_count).filter_map(
+                |(local, decl)| {
+                    let place = Place::from(local);
+                    needs_retag(&place).then_some((place, decl.source_info))
+                },
+            );
+
             // Emit their retags.
             basic_blocks[START_BLOCK].statements.splice(
                 0..0,
-                places.map(|place| Statement {
+                places.map(|(place, source_info)| Statement {
                     source_info,
                     kind: StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
                 }),

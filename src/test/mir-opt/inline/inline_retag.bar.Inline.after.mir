@@ -52,8 +52,8 @@ fn bar() -> bool {
         Retag(_7);                       // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
         _6 = &(*_7);                     // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
         Retag(_6);                       // scope 1 at $DIR/inline-retag.rs:+2:11: +2:14
-        Retag(_3);                       // scope 2 at $DIR/inline-retag.rs:16:1: 18:2
-        Retag(_6);                       // scope 2 at $DIR/inline-retag.rs:16:1: 18:2
+        Retag(_3);                       // scope 2 at $DIR/inline-retag.rs:16:8: 16:9
+        Retag(_6);                       // scope 2 at $DIR/inline-retag.rs:16:17: 16:18
         StorageLive(_11);                // scope 2 at $DIR/inline-retag.rs:17:5: 17:7
         _11 = (*_3);                     // scope 2 at $DIR/inline-retag.rs:17:5: 17:7
         StorageLive(_12);                // scope 2 at $DIR/inline-retag.rs:17:11: 17:13

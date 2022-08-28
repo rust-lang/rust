@@ -7,8 +7,8 @@ fn <impl at $DIR/retag.rs:12:1: 12:10>::foo(_1: &Test, _2: &mut i32) -> &mut i32
     let mut _3: &mut i32;                // in scope 0 at $DIR/retag.rs:+1:9: +1:10
 
     bb0: {
-        Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:+0:5: +2:6
-        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:+0:5: +2:6
+        Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:+0:16: +0:21
+        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:+0:23: +0:24
         StorageLive(_3);                 // scope 0 at $DIR/retag.rs:+1:9: +1:10
         _3 = &mut (*_2);                 // scope 0 at $DIR/retag.rs:+1:9: +1:10
         Retag(_3);                       // scope 0 at $DIR/retag.rs:+1:9: +1:10
