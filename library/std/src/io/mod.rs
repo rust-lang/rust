@@ -887,6 +887,10 @@ pub trait Read {
     /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
     /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
+    /// The default implementation calls `read` for each byte,
+    /// which can be very inefficient for data that's not in memory,
+    /// such as [`File`]. Consider using a [`BufReader`] in such cases.
+    ///
     /// # Examples
     ///
     /// [`File`]s implement `Read`:
@@ -899,10 +903,11 @@ pub trait Read {
     /// ```no_run
     /// use std::io;
     /// use std::io::prelude::*;
+    /// use std::io::BufReader;
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = BufReader::new(File::open("foo.txt")?);
     ///
     ///     for byte in f.bytes() {
     ///         println!("{}", byte.unwrap());
