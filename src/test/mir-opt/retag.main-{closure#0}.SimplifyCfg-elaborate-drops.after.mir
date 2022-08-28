@@ -10,7 +10,7 @@ fn main::{closure#0}(_1: &[closure@main::{closure#0}], _2: &i32) -> &i32 {
 
     bb0: {
         Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:+0:31: +0:48
-        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:+0:31: +0:48
+        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:+0:32: +0:33
         StorageLive(_3);                 // scope 0 at $DIR/retag.rs:42:13: 42:15
         _3 = _2;                         // scope 0 at $DIR/retag.rs:42:18: 42:19
         Retag(_3);                       // scope 0 at $DIR/retag.rs:42:18: 42:19
