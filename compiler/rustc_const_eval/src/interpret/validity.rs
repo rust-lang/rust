@@ -19,6 +19,8 @@ use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, Wr
 
 use std::hash::Hash;
 
+// for the validation errors
+use super::UndefinedBehaviorInfo::*;
 use super::{
     CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine,
     MemPlaceMeta, OpTy, Scalar, ValueVisitor,
@@ -59,6 +61,7 @@ macro_rules! throw_validation_failure {
 /// });
 /// ```
 ///
+/// The patterns must be of type `UndefinedBehaviorInfo`.
 /// An additional expected parameter can also be added to the failure message:
 ///
 /// ```
@@ -86,7 +89,7 @@ macro_rules! try_validation {
             // allocation here as this can only slow down builds that fail anyway.
             Err(e) => match e.kind() {
                 $(
-                    $($p)|+ =>
+                    InterpError::UndefinedBehavior($($p)|+) =>
                        throw_validation_failure!(
                             $where,
                             { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
@@ -312,7 +315,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(try_validation!(
             self.ecx.read_immediate(op),
             self.path,
-            err_ub!(InvalidUninitBytes(None)) => { "uninitialized memory" } expected { "{expected}" }
+            InvalidUninitBytes(None) => { "uninitialized memory" } expected { "{expected}" }
         ))
     }
 
@@ -337,8 +340,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let (_ty, _trait) = try_validation!(
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
-                    err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(InvalidVTablePointer(..)) =>
+                    DanglingIntPointer(..) |
+                    InvalidVTablePointer(..) =>
                         { "{vtable}" } expected { "a vtable pointer" },
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?
@@ -374,7 +377,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size_and_align = try_validation!(
             self.ecx.size_and_align_of_mplace(&place),
             self.path,
-            err_ub!(InvalidMeta(msg)) => { "invalid {} metadata: {}", kind, msg },
+            InvalidMeta(msg) => { "invalid {} metadata: {}", kind, msg },
         );
         let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
@@ -390,21 +393,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            err_ub!(AlignmentCheckFailed { required, has }) =>
+            AlignmentCheckFailed { required, has } =>
                 {
                     "an unaligned {kind} (required {} byte alignment but found {})",
                     required.bytes(),
                     has.bytes()
                 },
-            err_ub!(DanglingIntPointer(0, _)) =>
+            DanglingIntPointer(0, _) =>
                 { "a null {kind}" },
-            err_ub!(DanglingIntPointer(i, _)) =>
+            DanglingIntPointer(i, _) =>
                 { "a dangling {kind} (address {i:#x} is unallocated)" },
-            err_ub!(PointerOutOfBounds { .. }) =>
+            PointerOutOfBounds { .. } =>
                 { "a dangling {kind} (going beyond the bounds of its allocation)" },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
-            err_ub!(PointerUseAfterFree(..)) =>
+            PointerUseAfterFree(..) =>
                 { "a dangling {kind} (use-after-free)" },
         );
         // Do not allow pointers to uninhabited types.
@@ -475,7 +478,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    err_ub!(InvalidBool(..)) =>
+                    InvalidBool(..) =>
                         { "{:x}", value } expected { "a boolean" },
                 );
                 Ok(true)
@@ -485,7 +488,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    err_ub!(InvalidChar(..)) =>
+                    InvalidChar(..) =>
                         { "{:x}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
                 );
                 Ok(true)
@@ -544,8 +547,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
-                        err_ub!(DanglingIntPointer(..)) |
-                        err_ub!(InvalidFunctionPointer(..)) =>
+                        DanglingIntPointer(..) |
+                        InvalidFunctionPointer(..) =>
                             { "{ptr}" } expected { "a function pointer" },
                     );
                     // FIXME: Check if the signature matches
@@ -660,9 +663,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(try_validation!(
                 this.ecx.read_discriminant(op),
                 this.path,
-                err_ub!(InvalidTag(val)) =>
+                InvalidTag(val) =>
                     { "{:x}", val } expected { "a valid enum tag" },
-                err_ub!(InvalidUninitBytes(None)) =>
+                InvalidUninitBytes(None) =>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
             )
             .1)
@@ -805,7 +808,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 try_validation!(
                     self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
                     self.path,
-                    err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
+                    InvalidUninitBytes(..) => { "uninitialized data in `str`" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
