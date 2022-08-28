@@ -45,7 +45,7 @@ impl AddCallGuards {
         // We need a place to store the new blocks generated
         let mut new_blocks = Vec::new();
 
-        let cur_len = body.basic_blocks().len();
+        let cur_len = body.basic_blocks.len();
 
         for block in body.basic_blocks_mut() {
             match block.terminator {

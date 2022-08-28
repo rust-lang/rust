@@ -100,9 +100,9 @@ impl<D: Direction> MockAnalysis<'_, D> {
 
     fn mock_entry_sets(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
         let empty = self.bottom_value(self.body);
-        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks());
+        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks);
 
-        for (bb, _) in self.body.basic_blocks().iter_enumerated() {
+        for (bb, _) in self.body.basic_blocks.iter_enumerated() {
             ret[bb] = self.mock_entry_set(bb);
         }
 
@@ -169,7 +169,7 @@ impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     const NAME: &'static str = "mock";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks().len())
+        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -271,9 +271,7 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     cursor.allow_unreachable();
 
     let every_target = || {
-        body.basic_blocks()
-            .iter_enumerated()
-            .flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
+        body.basic_blocks.iter_enumerated().flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
     };
 
     let mut seek_to_target = |targ| {

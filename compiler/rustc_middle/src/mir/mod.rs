@@ -332,11 +332,6 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        &self.basic_blocks
-    }
-
-    #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.basic_blocks.as_mut()
     }
@@ -490,7 +485,7 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
 
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks()[index]
+        &self.basic_blocks[index]
     }
 }
 
