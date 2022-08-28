@@ -249,11 +249,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 bench_compile.arg("--prepare");
                 bench_compile.arg(format!("{:?}", runner.cargo_command(["clean"])));
 
-                if cfg!(windows) {
-                    bench_compile.arg("cmd /C \"set RUSTFLAGS= && cargo build\"");
-                } else {
-                    bench_compile.arg("RUSTFLAGS='' cargo build");
-                }
+                bench_compile.arg("cargo build");
 
                 bench_compile.arg(format!("{:?}", runner.cargo_command(["build"])));
                 spawn_and_wait(bench_compile);
