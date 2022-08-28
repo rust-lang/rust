@@ -1,51 +1,17 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_trait_method;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::iter;
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects uses of `Vec::sort_by` passing in a closure
-    /// which compares the two arguments, either directly or indirectly.
-    ///
-    /// ### Why is this bad?
-    /// It is more clear to use `Vec::sort_by_key` (or `Vec::sort` if
-    /// possible) than to use `Vec::sort_by` and a more complicated
-    /// closure.
-    ///
-    /// ### Known problems
-    /// If the suggested `Vec::sort_by_key` uses Reverse and it isn't already
-    /// imported by a use statement, then it will need to be added manually.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # struct A;
-    /// # impl A { fn foo(&self) {} }
-    /// # let mut vec: Vec<A> = Vec::new();
-    /// vec.sort_by(|a, b| a.foo().cmp(&b.foo()));
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # struct A;
-    /// # impl A { fn foo(&self) {} }
-    /// # let mut vec: Vec<A> = Vec::new();
-    /// vec.sort_by_key(|a| a.foo());
-    /// ```
-    #[clippy::version = "1.46.0"]
-    pub UNNECESSARY_SORT_BY,
-    complexity,
-    "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer"
-}
-
-declare_lint_pass!(UnnecessarySortBy => [UNNECESSARY_SORT_BY]);
+use super::UNNECESSARY_SORT_BY;
 
 enum LintTrigger {
     Sort(SortDetection),
@@ -54,7 +20,6 @@ enum LintTrigger {
 
 struct SortDetection {
     vec_name: String,
-    unstable: bool,
 }
 
 struct SortByKeyDetection {
@@ -62,7 +27,6 @@ struct SortByKeyDetection {
     closure_arg: String,
     closure_body: String,
     reverse: bool,
-    unstable: bool,
 }
 
 /// Detect if the two expressions are mirrored (identical, except one
@@ -150,20 +114,20 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
     }
 }
 
-fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
+fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
     if_chain! {
-        if let ExprKind::MethodCall(name_ident, args, _) = &expr.kind;
-        if let name = name_ident.ident.name.to_ident_string();
-        if name == "sort_by" || name == "sort_unstable_by";
-        if let [vec, Expr { kind: ExprKind::Closure(Closure { body: closure_body_id, .. }), .. }] = args;
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(vec), sym::Vec);
-        if let closure_body = cx.tcx.hir().body(*closure_body_id);
+        if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+        if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
+        if cx.tcx.type_of(impl_id).is_slice();
+        if let ExprKind::Closure(&Closure { body, .. }) = arg.kind;
+        if let closure_body = cx.tcx.hir().body(body);
         if let &[
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
             Param { pat: Pat { kind: PatKind::Binding(_, _, right_ident, _), .. }, .. }
         ] = &closure_body.params;
-        if let ExprKind::MethodCall(method_path, [ref left_expr, ref right_expr], _) = &closure_body.value.kind;
+        if let ExprKind::MethodCall(method_path, [left_expr, right_expr], _) = closure_body.value.kind;
         if method_path.ident.name == sym::cmp;
+        if is_trait_method(cx, &closure_body.value, sym::Ord);
         then {
             let (closure_body, closure_arg, reverse) = if mirrored_exprs(
                 left_expr,
@@ -177,19 +141,18 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
             } else {
                 return None;
             };
-            let vec_name = Sugg::hir(cx, &args[0], "..").to_string();
-            let unstable = name == "sort_unstable_by";
+            let vec_name = Sugg::hir(cx, recv, "..").to_string();
 
             if_chain! {
-            if let ExprKind::Path(QPath::Resolved(_, Path {
-                segments: [PathSegment { ident: left_name, .. }], ..
-            })) = &left_expr.kind;
-            if left_name == left_ident;
-            if cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
-                implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
-            });
+                if let ExprKind::Path(QPath::Resolved(_, Path {
+                    segments: [PathSegment { ident: left_name, .. }], ..
+                })) = &left_expr.kind;
+                if left_name == left_ident;
+                if cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
+                    implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])
+                });
                 then {
-                    return Some(LintTrigger::Sort(SortDetection { vec_name, unstable }));
+                    return Some(LintTrigger::Sort(SortDetection { vec_name }));
                 }
             }
 
@@ -199,7 +162,6 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
                     closure_arg,
                     closure_body,
                     reverse,
-                    unstable,
                 }));
             }
         }
@@ -213,46 +175,50 @@ fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(ty.kind(), ty::Ref(..)) || ty.walk().any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
 }
 
-impl LateLintPass<'_> for UnnecessarySortBy {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        match detect_lint(cx, expr) {
-            Some(LintTrigger::SortByKey(trigger)) => span_lint_and_sugg(
-                cx,
-                UNNECESSARY_SORT_BY,
-                expr.span,
-                "use Vec::sort_by_key here instead",
-                "try",
-                format!(
-                    "{}.sort{}_by_key(|{}| {})",
-                    trigger.vec_name,
-                    if trigger.unstable { "_unstable" } else { "" },
-                    trigger.closure_arg,
-                    if trigger.reverse {
-                        format!("std::cmp::Reverse({})", trigger.closure_body)
-                    } else {
-                        trigger.closure_body.to_string()
-                    },
-                ),
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    recv: &'tcx Expr<'_>,
+    arg: &'tcx Expr<'_>,
+    is_unstable: bool,
+) {
+    match detect_lint(cx, expr, recv, arg) {
+        Some(LintTrigger::SortByKey(trigger)) => span_lint_and_sugg(
+            cx,
+            UNNECESSARY_SORT_BY,
+            expr.span,
+            "use Vec::sort_by_key here instead",
+            "try",
+            format!(
+                "{}.sort{}_by_key(|{}| {})",
+                trigger.vec_name,
+                if is_unstable { "_unstable" } else { "" },
+                trigger.closure_arg,
                 if trigger.reverse {
-                    Applicability::MaybeIncorrect
+                    format!("std::cmp::Reverse({})", trigger.closure_body)
                 } else {
-                    Applicability::MachineApplicable
+                    trigger.closure_body.to_string()
                 },
             ),
-            Some(LintTrigger::Sort(trigger)) => span_lint_and_sugg(
-                cx,
-                UNNECESSARY_SORT_BY,
-                expr.span,
-                "use Vec::sort here instead",
-                "try",
-                format!(
-                    "{}.sort{}()",
-                    trigger.vec_name,
-                    if trigger.unstable { "_unstable" } else { "" },
-                ),
-                Applicability::MachineApplicable,
+            if trigger.reverse {
+                Applicability::MaybeIncorrect
+            } else {
+                Applicability::MachineApplicable
+            },
+        ),
+        Some(LintTrigger::Sort(trigger)) => span_lint_and_sugg(
+            cx,
+            UNNECESSARY_SORT_BY,
+            expr.span,
+            "use Vec::sort here instead",
+            "try",
+            format!(
+                "{}.sort{}()",
+                trigger.vec_name,
+                if is_unstable { "_unstable" } else { "" },
             ),
-            None => {},
-        }
+            Applicability::MachineApplicable,
+        ),
+        None => {},
     }
 }

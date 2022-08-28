@@ -179,4 +179,13 @@ fn main() {
 
     let _ = pattern_to_vec("hello world");
     let _ = complex_subpat();
+
+    // issue #8492
+    let _ = s.map_or(1, |string| string.len());
+    let _ = Some(10).map_or(5, |a| a + 1);
+
+    let res: Result<i32, i32> = Ok(5);
+    let _ = res.map_or(1, |a| a + 1);
+    let _ = res.map_or(1, |a| a + 1);
+    let _ = res.map_or(5, |a| a + 1);
 }
