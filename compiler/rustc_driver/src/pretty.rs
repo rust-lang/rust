@@ -1,5 +1,6 @@
 //! The various pretty-printing routines.
 
+use crate::session_diagnostics::UnprettyDumpFail;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
@@ -362,11 +363,10 @@ fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
         None => print!("{}", out),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
-                let mut err = sess.struct_fatal(&format!(
-                    "pretty-print failed to write {} due to error `{e}`",
-                    p.display()
-                ));
-                err.emit();
+                sess.emit_fatal(UnprettyDumpFail {
+                    path: p.display().to_string(),
+                    err: e.to_string(),
+                });
             }
         }
     }
