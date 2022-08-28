@@ -65,36 +65,12 @@
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    bootstrap,
-    rustc_on_unimplemented(
-        on(
-            all(_Self = "{integer}", Rhs = "{float}"),
-            message = "cannot add a float to an integer",
-        ),
-        on(
-            all(_Self = "{float}", Rhs = "{integer}"),
-            message = "cannot add an integer to a float",
-        ),
-        message = "cannot add `{Rhs}` to `{Self}`",
-        label = "no implementation for `{Self} + {Rhs}`"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_on_unimplemented(
-        on(
-            all(_Self = "{integer}", Rhs = "{float}"),
-            message = "cannot add a float to an integer",
-        ),
-        on(
-            all(_Self = "{float}", Rhs = "{integer}"),
-            message = "cannot add an integer to a float",
-        ),
-        message = "cannot add `{Rhs}` to `{Self}`",
-        label = "no implementation for `{Self} + {Rhs}`",
-        append_const_msg,
-    )
+#[rustc_on_unimplemented(
+    on(all(_Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
+    on(all(_Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
+    message = "cannot add `{Rhs}` to `{Self}`",
+    label = "no implementation for `{Self} + {Rhs}`",
+    append_const_msg
 )]
 #[doc(alias = "+")]
 #[const_trait]
@@ -202,7 +178,8 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
-    label = "no implementation for `{Self} - {Rhs}`"
+    label = "no implementation for `{Self} - {Rhs}`",
+    append_const_msg
 )]
 #[doc(alias = "-")]
 #[const_trait]
