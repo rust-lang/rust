@@ -116,6 +116,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) proc_macros_loaded: bool,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -256,6 +257,7 @@ impl GlobalState {
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
+            proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
         }
     }
 
