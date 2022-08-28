@@ -132,7 +132,7 @@ decl_derive!(
         diag,
         help,
         note,
-        warn_,
+        warning,
         // field attributes
         skip_arg,
         primary_span,
@@ -149,7 +149,7 @@ decl_derive!(
         diag,
         help,
         note,
-        warn_,
+        warning,
         // field attributes
         skip_arg,
         primary_span,
@@ -166,7 +166,7 @@ decl_derive!(
         label,
         help,
         note,
-        warn_,
+        warning,
         suggestion,
         suggestion_short,
         suggestion_hidden,
