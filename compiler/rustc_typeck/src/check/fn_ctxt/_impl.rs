@@ -1418,13 +1418,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
+        // Associated consts have `Self: ~const Trait` bounds that should be satisfiable when
+        // `Self: Trait` is satisfied because it does not matter whether the impl is `const`.
+        // Therefore we have to remap the param env here to be non-const.
+        let param_env = if let hir::def::DefKind::AssocConst = self.tcx.def_kind(def_id) {
+            self.param_env.without_const()
+        } else {
+            self.param_env
+        };
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
         for obligation in traits::predicates_for_generics(
             |idx, predicate_span| {
                 traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
             },
-            self.param_env,
+            param_env,
             bounds,
         ) {
             self.register_predicate(obligation);
