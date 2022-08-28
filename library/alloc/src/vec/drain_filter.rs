@@ -76,7 +76,7 @@ where
     /// // `vec` would be empty.
     /// assert_eq!(vec, ['b', 'c']);
     /// ```
-    #[unstable(feature = "drain_keep_rest", issue = "none")]
+    #[unstable(feature = "drain_keep_rest", issue = "101122")]
     pub fn keep_rest(self) {
         // At this moment layout looks like this:
         //
