@@ -1,3 +1,4 @@
+use crate::lints::InvalidAtomicOrderingDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -5,7 +6,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{fluent, Applicability, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
-use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
@@ -1550,15 +1550,6 @@ impl InvalidAtomicOrdering {
         let Some(fail_ordering) = Self::match_ordering(cx, fail_order_arg) else { return };
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
-            #[derive(LintDiagnostic)]
-            #[diag(lint_atomic_ordering_invalid)]
-            #[help]
-            struct InvalidAtomicOrderingDiag {
-                method: Symbol,
-                #[label]
-                fail_order_arg_span: Span,
-            }
-
             cx.emit_spanned_lint(
                 INVALID_ATOMIC_ORDERING,
                 fail_order_arg.span,
