@@ -2633,7 +2633,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.check_local(&body, local, local_decl);
         }
 
-        for (block, block_data) in body.basic_blocks().iter_enumerated() {
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let mut location = Location { block, statement_index: 0 };
             for stmt in &block_data.statements {
                 if !stmt.source_info.span.is_dummy() {

@@ -74,7 +74,7 @@ pub struct CfgSimplifier<'a, 'tcx> {
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     pub fn new(body: &'a mut Body<'tcx>) -> Self {
-        let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
+        let mut pred_count = IndexVec::from_elem(0u32, &body.basic_blocks);
 
         // we can't use mir.predecessors() here because that counts
         // dead blocks, which we don't want to.
@@ -263,7 +263,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
 pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let reachable = traversal::reachable_as_bitset(body);
-    let num_blocks = body.basic_blocks().len();
+    let num_blocks = body.basic_blocks.len();
     if num_blocks == reachable.count() {
         return;
     }

@@ -459,7 +459,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return outmost_back_edge;
             }
 
-            let block = &self.body.basic_blocks()[location.block];
+            let block = &self.body.basic_blocks[location.block];
 
             if location.statement_index < block.statements.len() {
                 let successor = location.successor_within_block();
@@ -518,7 +518,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         if loop_head.dominates(from, &self.dominators) {
-            let block = &self.body.basic_blocks()[from.block];
+            let block = &self.body.basic_blocks[from.block];
 
             if from.statement_index < block.statements.len() {
                 let successor = from.successor_within_block();
@@ -568,7 +568,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
             | UseSpans::FnSelfUse { var_span: span, .. } => {
-                let block = &self.body.basic_blocks()[location.block];
+                let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), _)),

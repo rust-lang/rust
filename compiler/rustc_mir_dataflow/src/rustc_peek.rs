@@ -101,7 +101,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
 
     let mut cursor = ResultsCursor::new(body, results);
 
-    let peek_calls = body.basic_blocks().iter_enumerated().filter_map(|(bb, block_data)| {
+    let peek_calls = body.basic_blocks.iter_enumerated().filter_map(|(bb, block_data)| {
         PeekCall::from_terminator(tcx, block_data.terminator()).map(|call| (bb, block_data, call))
     });
 

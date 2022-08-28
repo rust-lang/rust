@@ -61,14 +61,14 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
         let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;
             // We only apply this optimization if the last statement is a const assignment
-            let last_statement = self.body.basic_blocks()[location.block].statements.last()?;
+            let last_statement = self.body.basic_blocks[location.block].statements.last()?;
 
             if let (place, Rvalue::Use(Operand::Constant(_const))) =
                 last_statement.kind.as_assign()?
             {
                 // We found a constant being assigned to `place`.
                 // Now check that the target of this Goto switches on this place.
-                let target_bb = &self.body.basic_blocks()[target];
+                let target_bb = &self.body.basic_blocks[target];
 
                 // The `StorageDead(..)` statement does not affect the functionality of mir.
                 // We can move this part of the statement up to the predecessor.

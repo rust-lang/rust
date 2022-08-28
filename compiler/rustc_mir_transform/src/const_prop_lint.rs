@@ -105,7 +105,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
 
         let dummy_body = &Body::new(
             body.source,
-            body.basic_blocks().clone(),
+            (*body.basic_blocks).clone(),
             body.source_scopes.clone(),
             body.local_decls.clone(),
             Default::default(),
@@ -522,7 +522,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        for (bb, data) in body.basic_blocks().iter_enumerated() {
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
             self.visit_basic_block_data(bb, data);
         }
     }
