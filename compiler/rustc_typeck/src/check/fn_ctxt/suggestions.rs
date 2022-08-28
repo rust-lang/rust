@@ -76,10 +76,68 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        enum DefIdOrName {
-            DefId(DefId),
-            Name(&'static str),
+        let Some((def_id_or_name, output, num_inputs)) = self.extract_callable_info(expr, found)
+            else { return false; };
+        if can_satisfy(output) {
+            let (sugg_call, mut applicability) = match num_inputs {
+                0 => ("".to_string(), Applicability::MachineApplicable),
+                1..=4 => (
+                    (0..num_inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
+                    Applicability::MachineApplicable,
+                ),
+                _ => ("...".to_string(), Applicability::HasPlaceholders),
+            };
+
+            let msg = match def_id_or_name {
+                DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
+                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
+                    DefKind::Ctor(CtorOf::Variant, _) => {
+                        "instantiate this tuple variant".to_string()
+                    }
+                    kind => format!("call this {}", kind.descr(def_id)),
+                },
+                DefIdOrName::Name(name) => format!("call this {name}"),
+            };
+
+            let sugg = match expr.kind {
+                hir::ExprKind::Call(..)
+                | hir::ExprKind::Path(..)
+                | hir::ExprKind::Index(..)
+                | hir::ExprKind::Lit(..) => {
+                    vec![(expr.span.shrink_to_hi(), format!("({sugg_call})"))]
+                }
+                hir::ExprKind::Closure { .. } => {
+                    // Might be `{ expr } || { bool }`
+                    applicability = Applicability::MaybeIncorrect;
+                    vec![
+                        (expr.span.shrink_to_lo(), "(".to_string()),
+                        (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                    ]
+                }
+                _ => {
+                    vec![
+                        (expr.span.shrink_to_lo(), "(".to_string()),
+                        (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                    ]
+                }
+            };
+
+            err.multipart_suggestion_verbose(
+                format!("use parentheses to {msg}"),
+                sugg,
+                applicability,
+            );
+
+            return true;
         }
+        false
+    }
+
+    fn extract_callable_info(
+        &self,
+        expr: &Expr<'_>,
+        found: Ty<'tcx>,
+    ) -> Option<(DefIdOrName, Ty<'tcx>, usize)> {
         // Autoderef is useful here because sometimes we box callables, etc.
         let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
             match *found.kind() {
@@ -148,67 +206,83 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => None,
             }
-        }) else { return false; };
+        }) else { return None; };
 
         let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
+
         // We don't want to register any extra obligations, which should be
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let infer::InferOk { value: output, obligations: _ } =
             self.normalize_associated_types_in_as_infer_ok(expr.span, output);
-        if !output.is_ty_var() && can_satisfy(output) {
-            let (sugg_call, mut applicability) = match inputs {
-                0 => ("".to_string(), Applicability::MachineApplicable),
-                1..=4 => (
-                    (0..inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
-                    Applicability::MachineApplicable,
-                ),
-                _ => ("...".to_string(), Applicability::HasPlaceholders),
-            };
 
-            let msg = match def_id_or_name {
-                DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
-                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
-                    DefKind::Ctor(CtorOf::Variant, _) => {
-                        "instantiate this tuple variant".to_string()
+        if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
+    }
+
+    pub fn suggest_two_fn_call(
+        &self,
+        err: &mut Diagnostic,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_ty: Ty<'tcx>,
+        can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
+    ) -> bool {
+        let Some((_, lhs_output_ty, num_lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
+            else { return false; };
+        let Some((_, rhs_output_ty, num_rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
+            else { return false; };
+
+        if can_satisfy(lhs_output_ty, rhs_output_ty) {
+            let mut sugg = vec![];
+            let mut applicability = Applicability::MachineApplicable;
+
+            for (expr, num_inputs) in [(lhs_expr, num_lhs_inputs), (rhs_expr, num_rhs_inputs)] {
+                let (sugg_call, this_applicability) = match num_inputs {
+                    0 => ("".to_string(), Applicability::MachineApplicable),
+                    1..=4 => (
+                        (0..num_inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
+                        Applicability::MachineApplicable,
+                    ),
+                    _ => ("...".to_string(), Applicability::HasPlaceholders),
+                };
+
+                applicability = applicability.max(this_applicability);
+
+                match expr.kind {
+                    hir::ExprKind::Call(..)
+                    | hir::ExprKind::Path(..)
+                    | hir::ExprKind::Index(..)
+                    | hir::ExprKind::Lit(..) => {
+                        sugg.extend([(expr.span.shrink_to_hi(), format!("({sugg_call})"))]);
                     }
-                    kind => format!("call this {}", kind.descr(def_id)),
-                },
-                DefIdOrName::Name(name) => format!("call this {name}"),
-            };
-
-            let sugg = match expr.kind {
-                hir::ExprKind::Call(..)
-                | hir::ExprKind::Path(..)
-                | hir::ExprKind::Index(..)
-                | hir::ExprKind::Lit(..) => {
-                    vec![(expr.span.shrink_to_hi(), format!("({sugg_call})"))]
+                    hir::ExprKind::Closure { .. } => {
+                        // Might be `{ expr } || { bool }`
+                        applicability = Applicability::MaybeIncorrect;
+                        sugg.extend([
+                            (expr.span.shrink_to_lo(), "(".to_string()),
+                            (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                        ]);
+                    }
+                    _ => {
+                        sugg.extend([
+                            (expr.span.shrink_to_lo(), "(".to_string()),
+                            (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                        ]);
+                    }
                 }
-                hir::ExprKind::Closure { .. } => {
-                    // Might be `{ expr } || { bool }`
-                    applicability = Applicability::MaybeIncorrect;
-                    vec![
-                        (expr.span.shrink_to_lo(), "(".to_string()),
-                        (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
-                    ]
-                }
-                _ => {
-                    vec![
-                        (expr.span.shrink_to_lo(), "(".to_string()),
-                        (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
-                    ]
-                }
-            };
+            }
 
             err.multipart_suggestion_verbose(
-                format!("use parentheses to {msg}"),
+                format!("use parentheses to call these"),
                 sugg,
                 applicability,
             );
 
-            return true;
+            true
+        } else {
+            false
         }
-        false
     }
 
     pub fn suggest_deref_ref_or_into(
@@ -958,4 +1032,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false
         }
     }
+}
+
+enum DefIdOrName {
+    DefId(DefId),
+    Name(&'static str),
 }
