@@ -288,6 +288,7 @@
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
+#![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
