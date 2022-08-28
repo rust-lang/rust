@@ -1,96 +1,78 @@
-use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
+use crate::errors::RegionOriginNote;
+use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::{self, InferCtxt, SubregionOrigin};
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    fluent, struct_span_err, AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
+use super::ObligationCauseAsDiagArg;
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
-        let mut label_or_note = |span, msg: &str| {
-            let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
-            let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
-            let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);
-            if span_is_primary && sub_count == 0 && expanded_sub_count == 0 {
-                err.span_label(span, msg);
-            } else if span_is_primary && expanded_sub_count == 0 {
-                err.note(msg);
-            } else {
-                err.span_note(span, msg);
-            }
-        };
         match *origin {
-            infer::Subtype(ref trace) => {
-                if let Some((expected, found)) = self.values_str(trace.values) {
-                    label_or_note(
-                        trace.cause.span,
-                        &format!("...so that the {}", trace.cause.as_requirement_str()),
-                    );
-
-                    err.note_expected_found(&"", expected, &"", found);
-                } else {
-                    // FIXME: this really should be handled at some earlier stage. Our
-                    // handling of region checking when type errors are present is
-                    // *terrible*.
-
-                    label_or_note(
-                        trace.cause.span,
-                        &format!("...so that {}", trace.cause.as_requirement_str()),
-                    );
-                }
+            infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
+                span: trace.cause.span,
+                requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
+                expected_found: self.values_str(trace.values),
             }
-            infer::Reborrow(span) => {
-                label_or_note(span, "...so that reference does not outlive borrowed content");
-            }
+            .add_to_diagnostic(err),
+            infer::Reborrow(span) => RegionOriginNote::Plain { span, msg: fluent::infer::reborrow }
+                .add_to_diagnostic(err),
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                label_or_note(span, &format!("...so that closure can access `{}`", var_name));
+                RegionOriginNote::WithName {
+                    span,
+                    msg: fluent::infer::reborrow,
+                    name: &var_name.to_string(),
+                    continues: false,
+                }
+                .add_to_diagnostic(err);
             }
             infer::RelateObjectBound(span) => {
-                label_or_note(span, "...so that it can be closed over into an object");
+                RegionOriginNote::Plain { span, msg: fluent::infer::relate_object_bound }
+                    .add_to_diagnostic(err);
             }
             infer::DataBorrowed(ty, span) => {
-                label_or_note(
+                RegionOriginNote::WithName {
                     span,
-                    &format!(
-                        "...so that the type `{}` is not borrowed for too long",
-                        self.ty_to_string(ty)
-                    ),
-                );
+                    msg: fluent::infer::data_borrowed,
+                    name: &self.ty_to_string(ty),
+                    continues: false,
+                }
+                .add_to_diagnostic(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                label_or_note(
+                RegionOriginNote::WithName {
                     span,
-                    &format!(
-                        "...so that the reference type `{}` does not outlive the data it points at",
-                        self.ty_to_string(ty)
-                    ),
-                );
+                    msg: fluent::infer::reference_outlives_referent,
+                    name: &self.ty_to_string(ty),
+                    continues: false,
+                }
+                .add_to_diagnostic(err);
             }
-            infer::RelateParamBound(span, t, opt_span) => {
-                label_or_note(
+            infer::RelateParamBound(span, ty, opt_span) => {
+                RegionOriginNote::WithName {
                     span,
-                    &format!(
-                        "...so that the type `{}` will meet its required lifetime bounds{}",
-                        self.ty_to_string(t),
-                        if opt_span.is_some() { "..." } else { "" },
-                    ),
-                );
+                    msg: fluent::infer::relate_param_bound,
+                    name: &self.ty_to_string(ty),
+                    continues: opt_span.is_some(),
+                }
+                .add_to_diagnostic(err);
                 if let Some(span) = opt_span {
-                    err.span_note(span, "...that is required by this bound");
+                    RegionOriginNote::Plain { span, msg: fluent::infer::relate_param_bound_2 }
+                        .add_to_diagnostic(err);
                 }
             }
             infer::RelateRegionParamBound(span) => {
-                label_or_note(
-                    span,
-                    "...so that the declared lifetime parameter bounds are satisfied",
-                );
+                RegionOriginNote::Plain { span, msg: fluent::infer::relate_region_param_bound }
+                    .add_to_diagnostic(err);
             }
             infer::CompareImplItemObligation { span, .. } => {
-                label_or_note(
-                    span,
-                    "...so that the definition in impl matches the definition from the trait",
-                );
+                RegionOriginNote::Plain { span, msg: fluent::infer::compare_impl_item_obligation }
+                    .add_to_diagnostic(err);
             }
             infer::CheckAssociatedTypeBounds { ref parent, .. } => {
                 self.note_region_origin(err, &parent);
