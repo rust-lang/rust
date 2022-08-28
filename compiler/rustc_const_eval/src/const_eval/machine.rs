@@ -89,10 +89,10 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// exhaustion error.
     ///
     /// Setting this to `0` disables the limit and allows the interpreter to run forever.
-    pub steps_remaining: usize,
+    pub(super) steps_remaining: usize,
 
     /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
+    pub(super) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
 
     /// We need to make sure consts never point to anything mutable, even recursively. That is
     /// relied on for pattern matching on consts with references.
@@ -103,7 +103,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) can_access_statics: bool,
 
     /// Whether to check alignment during evaluation.
-    check_alignment: bool,
+    pub(super) check_alignment: bool,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {

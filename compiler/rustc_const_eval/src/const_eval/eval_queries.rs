@@ -74,7 +74,9 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
+    ecx.machine.check_alignment = false; // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
+    // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
