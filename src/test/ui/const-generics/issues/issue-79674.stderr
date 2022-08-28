@@ -4,8 +4,16 @@ error[E0308]: mismatched types
 LL |     requires_distinct("str", 12);
    |     ^^^^^^^^^^^^^^^^^ expected `true`, found `false`
    |
-   = note: expected type `true`
-              found type `false`
+   = note: expected constant `true`
+              found constant `false`
+note: required by a bound in `requires_distinct`
+  --> $DIR/issue-79674.rs:23:37
+   |
+LL | fn requires_distinct<A, B>(_a: A, _b: B) where
+   |    ----------------- required by a bound in this
+LL |     A: MiniTypeId, B: MiniTypeId,
+LL |     Lift<{is_same_type::<A, B>()}>: IsFalse {}
+   |                                     ^^^^^^^ required by this bound in `requires_distinct`
 
 error: aborting due to previous error
 

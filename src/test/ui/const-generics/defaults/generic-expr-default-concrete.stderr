@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     Foo::<10, 12>
    |     ^^^^^^^^^^^^^ expected `11`, found `12`
    |
-   = note: expected type `11`
-              found type `12`
+   = note: expected constant `11`
+              found constant `12`
 
 error: aborting due to previous error
 

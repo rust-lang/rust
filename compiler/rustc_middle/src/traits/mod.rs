@@ -469,6 +469,13 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             _ => None,
         }
     }
+
+    pub fn peel_match_impls(&self) -> &Self {
+        match self {
+            MatchImpl(cause, _) => cause.code(),
+            _ => self,
+        }
+    }
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
