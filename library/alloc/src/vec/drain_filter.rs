@@ -57,6 +57,25 @@ where
     }
 
     /// Keep unyielded elements in the source `Vec`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(drain_filter)]
+    /// #![feature(drain_keep_rest)]
+    ///
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain_filter(|_| true);
+    ///
+    /// assert_eq!(drain.next().unwrap(), 'a');
+    ///
+    /// // This call keeps 'b' and 'c' in the vec.
+    /// drain.keep_rest();
+    ///
+    /// // If we wouldn't call `keep_rest()`,
+    /// // `vec` would be empty.
+    /// assert_eq!(vec, ['b', 'c']);
+    /// ```
     #[unstable(feature = "drain_keep_rest", issue = "none")]
     pub fn keep_rest(self) {
         // At this moment layout looks like this:
