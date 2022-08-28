@@ -80,7 +80,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
-        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+        match mir_body.basic_blocks[mir::START_BLOCK].terminator().kind {
             TerminatorKind::Unreachable => {
                 trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
                 return;

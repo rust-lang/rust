@@ -217,7 +217,7 @@ where
     fn new(body: &Body<'_>) -> Self {
         LocationMap {
             map: body
-                .basic_blocks()
+                .basic_blocks
                 .iter()
                 .map(|block| vec![T::default(); block.statements.len() + 1])
                 .collect(),

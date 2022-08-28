@@ -710,7 +710,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     }
 
     fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks().last().unwrap();
+        let last = self.promoted.basic_blocks.last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo::outermost(span),
@@ -803,7 +803,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted.basic_blocks().last().unwrap();
+                    let last = self.promoted.basic_blocks.last().unwrap();
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {
@@ -1041,7 +1041,7 @@ pub fn is_const_fn_in_array_repeat_expression<'tcx>(
         _ => {}
     }
 
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {

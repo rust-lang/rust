@@ -12,14 +12,14 @@ pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Grap
 
     // Nodes
     let nodes: Vec<Node> = body
-        .basic_blocks()
+        .basic_blocks
         .iter_enumerated()
         .map(|(block, _)| bb_to_graph_node(block, body, dark_mode))
         .collect();
 
     // Edges
     let mut edges = Vec::new();
-    for (source, _) in body.basic_blocks().iter_enumerated() {
+    for (source, _) in body.basic_blocks.iter_enumerated() {
         let def_id = body.source.def_id();
         let terminator = body[source].terminator();
         let labels = terminator.kind.fmt_successor_labels();
