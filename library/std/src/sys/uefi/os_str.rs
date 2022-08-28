@@ -23,7 +23,6 @@ pub struct Slice {
 }
 
 impl fmt::Debug for Slice {
-    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is safe since Slice is always valid UTF-8
         fmt::Debug::fmt(&self.inner, formatter)
@@ -31,7 +30,6 @@ impl fmt::Debug for Slice {
 }
 
 impl fmt::Display for Slice {
-    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is safe since Slice is always valid UTF-8
         fmt::Display::fmt(&self.inner, formatter)
@@ -39,14 +37,12 @@ impl fmt::Display for Slice {
 }
 
 impl fmt::Debug for Buf {
-    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.as_slice(), formatter)
     }
 }
 
 impl fmt::Display for Buf {
-    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_slice(), formatter)
     }
@@ -65,14 +61,12 @@ impl Clone for Buf {
 }
 
 impl IntoInner<String> for Buf {
-    #[inline]
     fn into_inner(self) -> String {
         self.inner
     }
 }
 
 impl AsInner<str> for Buf {
-    #[inline]
     fn as_inner(&self) -> &str {
         &self.inner
     }

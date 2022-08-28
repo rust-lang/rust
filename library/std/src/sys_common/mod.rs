@@ -20,6 +20,8 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(target_os = "uefi", target_os = "windows"))]
+pub mod args;
 pub mod backtrace;
 pub mod fs;
 pub mod io;

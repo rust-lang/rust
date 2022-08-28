@@ -16,7 +16,6 @@ unsafe impl Send for AnonPipe {}
 unsafe impl Sync for AnonPipe {}
 
 impl AnonPipe {
-    #[inline]
     pub(crate) fn new(
         pipe_data: Option<Box<uefi_pipe_protocol::Pipedata>>,
         protocol: Option<common::ProtocolWrapper<uefi_pipe_protocol::Protocol>>,
@@ -28,7 +27,7 @@ impl AnonPipe {
     pub(crate) fn null() -> Self {
         let pipe = common::ProtocolWrapper::install_protocol(uefi_pipe_protocol::Protocol::null())
             .unwrap();
-        let handle = pipe.handle_non_null();
+        let handle = pipe.handle();
         Self::new(None, Some(pipe), handle)
     }
 
@@ -39,7 +38,7 @@ impl AnonPipe {
             uefi_pipe_protocol::Protocol::with_data(&mut pipe_data),
         )
         .unwrap();
-        let handle = pipe.handle_non_null();
+        let handle = pipe.handle();
         Self::new(Some(pipe_data), Some(pipe), handle)
     }
 
@@ -47,19 +46,16 @@ impl AnonPipe {
         self.handle
     }
 
-    #[inline]
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
         unsafe { uefi_pipe_protocol::Protocol::read(protocol.as_ptr(), buf) }
     }
 
-    #[inline]
     pub(crate) fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
         unsafe { uefi_pipe_protocol::Protocol::read_to_end(protocol.as_ptr(), buf) }
     }
 
-    #[inline]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
@@ -69,13 +65,11 @@ impl AnonPipe {
         false
     }
 
-    #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let protocol = common::open_protocol(self.handle, uefi_pipe_protocol::PROTOCOL_GUID)?;
         unsafe { uefi_pipe_protocol::Protocol::write(protocol.as_ptr(), buf) }
     }
 
-    #[inline]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
@@ -96,14 +90,14 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
     Ok(())
 }
 
-pub mod uefi_pipe_protocol {
+pub(crate) mod uefi_pipe_protocol {
     use crate::collections::VecDeque;
     use crate::io;
     use crate::sys::uefi::common;
     use io::{Read, Write};
     use r_efi::efi::Guid;
 
-    pub const PROTOCOL_GUID: Guid = Guid::from_fields(
+    pub(crate) const PROTOCOL_GUID: Guid = Guid::from_fields(
         0x3c4acb49,
         0xfb4c,
         0x45fb,
@@ -112,32 +106,40 @@ pub mod uefi_pipe_protocol {
         &[0x63, 0x5d, 0x71, 0x48, 0x4c, 0x0f],
     );
 
+    // Maybe the internal data needs to be wrapped in a Mutex?
     #[repr(C)]
     #[derive(Debug)]
-    pub struct Pipedata {
+    pub(crate) struct Pipedata {
         data: VecDeque<u8>,
     }
 
     impl Pipedata {
-        pub fn with_capacity(capacity: usize) -> Pipedata {
+        #[inline]
+        pub(crate) fn with_capacity(capacity: usize) -> Pipedata {
             Pipedata { data: VecDeque::with_capacity(capacity) }
         }
 
-        pub unsafe fn read(data: *mut Pipedata, buf: &mut [u8]) -> io::Result<usize> {
+        #[inline]
+        pub(crate) unsafe fn read(data: *mut Pipedata, buf: &mut [u8]) -> io::Result<usize> {
             unsafe { (*data).data.read(buf) }
         }
 
-        pub unsafe fn read_to_end(data: *mut Pipedata, buf: &mut Vec<u8>) -> io::Result<usize> {
+        #[inline]
+        pub(crate) unsafe fn read_to_end(
+            data: *mut Pipedata,
+            buf: &mut Vec<u8>,
+        ) -> io::Result<usize> {
             unsafe { (*data).data.read_to_end(buf) }
         }
 
-        pub unsafe fn write(data: *mut Pipedata, buf: &[u8]) -> io::Result<usize> {
+        #[inline]
+        pub(crate) unsafe fn write(data: *mut Pipedata, buf: &[u8]) -> io::Result<usize> {
             unsafe { (*data).data.write(buf) }
         }
     }
 
     #[repr(C)]
-    pub struct Protocol {
+    pub(crate) struct Protocol {
         data: *mut Pipedata,
     }
 
@@ -146,15 +148,17 @@ pub mod uefi_pipe_protocol {
     }
 
     impl Protocol {
-        pub fn with_data(data: &mut Pipedata) -> Self {
+        #[inline]
+        pub(crate) fn with_data(data: &mut Pipedata) -> Self {
             Self { data }
         }
 
-        pub fn null() -> Self {
+        #[inline]
+        pub(crate) fn null() -> Self {
             Self { data: crate::ptr::null_mut() }
         }
 
-        pub unsafe fn read(protocol: *mut Protocol, buf: &mut [u8]) -> io::Result<usize> {
+        pub(crate) unsafe fn read(protocol: *mut Protocol, buf: &mut [u8]) -> io::Result<usize> {
             if unsafe { (*protocol).data.is_null() } {
                 Ok(0)
             } else {
@@ -162,7 +166,10 @@ pub mod uefi_pipe_protocol {
             }
         }
 
-        pub unsafe fn read_to_end(protocol: *mut Protocol, buf: &mut Vec<u8>) -> io::Result<usize> {
+        pub(crate) unsafe fn read_to_end(
+            protocol: *mut Protocol,
+            buf: &mut Vec<u8>,
+        ) -> io::Result<usize> {
             if unsafe { (*protocol).data.is_null() } {
                 Ok(0)
             } else {
@@ -170,7 +177,7 @@ pub mod uefi_pipe_protocol {
             }
         }
 
-        pub unsafe fn write(protocol: *mut Protocol, buf: &[u8]) -> io::Result<usize> {
+        pub(crate) unsafe fn write(protocol: *mut Protocol, buf: &[u8]) -> io::Result<usize> {
             if unsafe { (*protocol).data.is_null() } {
                 Ok(buf.len())
             } else {

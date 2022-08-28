@@ -186,11 +186,6 @@ pub enum Prefix<'a> {
     /// Prefix `C:` for the given disk drive.
     #[stable(feature = "rust1", since = "1.0.0")]
     Disk(#[stable(feature = "rust1", since = "1.0.0")] u8),
-
-    /// UEFI Device Prefix. e.g., `PciRoot(0x0)/Pci(0x1,0x1)/Ata(0x0)/CDROM(0x0)`
-    /// Sometimes also represented like Windows Disks, but this is more general
-    #[unstable(feature = "uefi_std", issue = "100499")]
-    UefiDevice(&'a OsStr),
 }
 
 impl<'a> Prefix<'a> {
@@ -209,7 +204,6 @@ impl<'a> Prefix<'a> {
             UNC(x, y) => 2 + os_str_len(x) + if os_str_len(y) > 0 { 1 + os_str_len(y) } else { 0 },
             DeviceNS(x) => 4 + os_str_len(x),
             Disk(_) => 2,
-            UefiDevice(x) => os_str_len(x),
         }
     }
 
@@ -2165,7 +2159,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
+    fn prefix(&self) -> Option<Prefix<'_>> {
         self.components().prefix
     }
 

@@ -2,7 +2,7 @@ use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
-use crate::os::uefi;
+use crate::sys::uefi::common;
 use crate::time::Duration;
 
 pub struct Thread(());
@@ -24,7 +24,7 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        if let Some(boot_services) = uefi::env::get_boot_services() {
+        if let Some(boot_services) = common::get_boot_services() {
             let _ = unsafe { ((*boot_services.as_ptr()).stall)(dur.as_micros() as usize) };
         } else {
             panic!("Boot services needed for sleep")

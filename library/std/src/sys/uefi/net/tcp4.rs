@@ -15,19 +15,19 @@ use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 const TYPE_OF_SERVICE: u8 = 8;
 const TIME_TO_LIVE: u8 = 255;
 
-pub struct Tcp4Protocol {
+pub(crate) struct Tcp4Protocol {
     protocol: NonNull<tcp4::Protocol>,
     service_binding: ServiceBinding,
     child_handle: NonNull<crate::ffi::c_void>,
 }
 
 impl Tcp4Protocol {
-    pub fn create(service_binding: ServiceBinding) -> io::Result<Tcp4Protocol> {
+    pub(crate) fn create(service_binding: ServiceBinding) -> io::Result<Tcp4Protocol> {
         let child_handle = service_binding.create_child()?;
         Self::with_child_handle(service_binding, child_handle)
     }
 
-    pub fn default_config(
+    pub(crate) fn default_config(
         &self,
         use_default_address: bool,
         active_flag: bool,
@@ -55,16 +55,16 @@ impl Tcp4Protocol {
         self.configure(&mut config_data)
     }
 
-    pub fn configure(&self, config: &mut tcp4::ConfigData) -> io::Result<()> {
+    pub(crate) fn configure(&self, config: &mut tcp4::ConfigData) -> io::Result<()> {
         unsafe { Self::config_raw(self.protocol.as_ptr(), config) }
     }
 
     #[inline]
-    pub fn reset(&self) -> io::Result<()> {
+    pub(crate) fn reset(&self) -> io::Result<()> {
         unsafe { Self::config_raw(self.protocol.as_ptr(), crate::ptr::null_mut()) }
     }
 
-    pub fn accept(&self) -> io::Result<Tcp4Protocol> {
+    pub(crate) fn accept(&self) -> io::Result<Tcp4Protocol> {
         let accept_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
@@ -74,10 +74,8 @@ impl Tcp4Protocol {
         let completion_token =
             tcp4::CompletionToken { event: accept_event.as_raw_event(), status: Status::ABORTED };
 
-        let mut listen_token = tcp4::ListenToken {
-            completion_token,
-            new_child_handle: unsafe { MaybeUninit::<r_efi::efi::Handle>::uninit().assume_init() },
-        };
+        let mut listen_token =
+            tcp4::ListenToken { completion_token, new_child_handle: crate::ptr::null_mut() };
 
         unsafe { Self::accept_raw(self.protocol.as_ptr(), &mut listen_token) }?;
 
@@ -88,12 +86,12 @@ impl Tcp4Protocol {
             Err(status_to_io_error(r))
         } else {
             let child_handle = NonNull::new(listen_token.new_child_handle)
-                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Child Handle"))?;
+                .ok_or(io::const_io_error!(io::ErrorKind::Other, "null child handle"))?;
             Self::with_child_handle(self.service_binding, child_handle)
         }
     }
 
-    pub fn connect(&self) -> io::Result<()> {
+    pub(crate) fn connect(&self) -> io::Result<()> {
         let connect_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
@@ -109,7 +107,7 @@ impl Tcp4Protocol {
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    pub fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
         let transmit_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
@@ -132,21 +130,23 @@ impl Tcp4Protocol {
                 POOL_ALIGNMENT,
             )
         };
-        let mut transmit_data = VariableBox::<tcp4::TransmitData>::try_new_uninit(layout)
-            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        let mut transmit_data = VariableBox::<tcp4::TransmitData>::new_uninit(layout);
 
         // Initialize TransmitData
         unsafe {
-            let ptr = transmit_data.as_mut_ptr();
-            addr_of_mut!((*ptr).push).write(r_efi::efi::Boolean::TRUE);
-            addr_of_mut!((*ptr).urgent).write(r_efi::efi::Boolean::FALSE);
-            addr_of_mut!((*ptr).data_length).write(buf_size);
-            addr_of_mut!((*ptr).fragment_count).write(1);
-            (*ptr).fragment_table.as_mut_ptr().copy_from([fragment_table].as_ptr(), 1);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).push)
+                .write(r_efi::efi::Boolean::TRUE);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).urgent)
+                .write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).data_length).write(buf_size);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).fragment_count).write(1);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).fragment_table)
+                .cast::<tcp4::FragmentData>()
+                .copy_from_nonoverlapping([fragment_table].as_ptr(), 1);
         };
         let mut transmit_data = unsafe { transmit_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut() };
+        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut_ptr() };
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
@@ -160,7 +160,7 @@ impl Tcp4Protocol {
         }
     }
 
-    pub fn transmit_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn transmit_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
         let buf_size = crate::mem::size_of_val(buf);
         let transmit_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
@@ -185,25 +185,25 @@ impl Tcp4Protocol {
                 POOL_ALIGNMENT,
             )
         };
-        let mut transmit_data = VariableBox::<tcp4::TransmitData>::try_new_uninit(layout)
-            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        let mut transmit_data = VariableBox::<tcp4::TransmitData>::new_uninit(layout);
         let fragment_tables_len = fragment_tables.len();
 
         // Initialize TransmitData
         unsafe {
-            let ptr = transmit_data.as_mut_ptr();
-            addr_of_mut!((*ptr).push).write(r_efi::efi::Boolean::TRUE);
-            addr_of_mut!((*ptr).urgent).write(r_efi::efi::Boolean::FALSE);
-            addr_of_mut!((*ptr).data_length).write(buf_size as u32);
-            addr_of_mut!((*ptr).fragment_count).write(fragment_tables_len as u32);
-            (*ptr)
-                .fragment_table
-                .as_mut_ptr()
-                .copy_from(fragment_tables.as_ptr(), fragment_tables_len);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).push)
+                .write(r_efi::efi::Boolean::TRUE);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).urgent)
+                .write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).data_length).write(buf_size as u32);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).fragment_count)
+                .write(fragment_tables_len as u32);
+            addr_of_mut!((*transmit_data.as_uninit_mut_ptr()).fragment_table)
+                .cast::<tcp4::FragmentData>()
+                .copy_from_nonoverlapping(fragment_tables.as_ptr(), fragment_tables_len);
         };
         let mut transmit_data = unsafe { transmit_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut() };
+        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_mut_ptr() };
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
         unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
@@ -217,7 +217,7 @@ impl Tcp4Protocol {
         }
     }
 
-    pub fn receive(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn receive(&self, buf: &mut [u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
         let receive_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
@@ -237,18 +237,19 @@ impl Tcp4Protocol {
                 POOL_ALIGNMENT,
             )
         };
-        let mut receive_data = VariableBox::<tcp4::ReceiveData>::try_new_uninit(layout)
-            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        let mut receive_data = VariableBox::<tcp4::ReceiveData>::new_uninit(layout);
         unsafe {
-            let ptr = receive_data.as_mut_ptr();
-            addr_of_mut!((*ptr).urgent_flag).write(r_efi::efi::Boolean::FALSE);
-            addr_of_mut!((*ptr).data_length).write(buf_size);
-            addr_of_mut!((*ptr).fragment_count).write(1);
-            (*ptr).fragment_table.as_mut_ptr().copy_from([fragment_table].as_ptr(), 1);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).urgent_flag)
+                .write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).data_length).write(buf_size);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_count).write(1);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_table)
+                .cast::<tcp4::FragmentData>()
+                .copy_from_nonoverlapping([fragment_table].as_ptr(), 1);
         }
         let mut receive_data = unsafe { receive_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut() };
+        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut_ptr() };
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
@@ -264,7 +265,7 @@ impl Tcp4Protocol {
         }
     }
 
-    pub fn receive_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn receive_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let receive_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
@@ -289,21 +290,20 @@ impl Tcp4Protocol {
                 POOL_ALIGNMENT,
             )
         };
-        let mut receive_data = VariableBox::<tcp4::ReceiveData>::try_new_uninit(layout)
-            .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+        let mut receive_data = VariableBox::<tcp4::ReceiveData>::new_uninit(layout);
         unsafe {
-            let ptr = receive_data.as_mut_ptr();
-            addr_of_mut!((*ptr).urgent_flag).write(r_efi::efi::Boolean::FALSE);
-            addr_of_mut!((*ptr).data_length).write(buf_size);
-            addr_of_mut!((*ptr).fragment_count).write(fragment_tables_len as u32);
-            (*ptr)
-                .fragment_table
-                .as_mut_ptr()
-                .copy_from(fragment_tables.as_ptr(), fragment_tables_len);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).urgent_flag)
+                .write(r_efi::efi::Boolean::FALSE);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).data_length).write(buf_size);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_count)
+                .write(fragment_tables_len as u32);
+            addr_of_mut!((*receive_data.as_uninit_mut_ptr()).fragment_table)
+                .cast::<tcp4::FragmentData>()
+                .copy_from_nonoverlapping(fragment_tables.as_ptr(), fragment_tables_len);
         }
         let mut receive_data = unsafe { receive_data.assume_init() };
 
-        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut() };
+        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_mut_ptr() };
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
@@ -319,7 +319,7 @@ impl Tcp4Protocol {
         }
     }
 
-    pub fn close(&self, abort_on_close: bool) -> io::Result<()> {
+    pub(crate) fn close(&self, abort_on_close: bool) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
 
         let close_event = common::Event::create(
@@ -346,7 +346,7 @@ impl Tcp4Protocol {
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    pub fn remote_socket(&self) -> io::Result<SocketAddrV4> {
+    pub(crate) fn remote_socket(&self) -> io::Result<SocketAddrV4> {
         let config_data = self.get_config_data()?;
         Ok(SocketAddrV4::new(
             ipv4_from_r_efi(config_data.access_point.remote_address),
@@ -354,7 +354,7 @@ impl Tcp4Protocol {
         ))
     }
 
-    pub fn station_socket(&self) -> io::Result<SocketAddrV4> {
+    pub(crate) fn station_socket(&self) -> io::Result<SocketAddrV4> {
         let config_data = self.get_config_data()?;
         Ok(SocketAddrV4::new(
             ipv4_from_r_efi(config_data.access_point.station_address),
@@ -379,7 +379,7 @@ impl Tcp4Protocol {
         Ok(Self::new(tcp4_protocol, service_binding, child_handle))
     }
 
-    pub fn get_config_data(&self) -> io::Result<tcp4::ConfigData> {
+    pub(crate) fn get_config_data(&self) -> io::Result<tcp4::ConfigData> {
         // Using MaybeUninit::uninit() generates a Page Fault Here
         let mut config_data: MaybeUninit<tcp4::ConfigData> = MaybeUninit::zeroed();
         unsafe {
@@ -465,7 +465,7 @@ impl Drop for Tcp4Protocol {
 }
 
 #[no_mangle]
-pub extern "efiapi" fn nop_notify4(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
+extern "efiapi" fn nop_notify4(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
 
 // Safety: No one besides us has the raw pointer (since the handle was created using the Service binding Protocol).
 // Also there are no threads to transfer the pointer to.

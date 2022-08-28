@@ -287,7 +287,7 @@ pub(crate) use error::const_io_error;
 mod buffered;
 pub(crate) mod copy;
 mod cursor;
-pub(crate) mod error;
+mod error;
 mod impls;
 pub mod prelude;
 mod readbuf;

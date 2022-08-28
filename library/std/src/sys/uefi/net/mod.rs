@@ -13,21 +13,21 @@ mod uefi_service_binding {
     use r_efi::protocols::service_binding;
 
     #[derive(Clone, Copy)]
-    pub struct ServiceBinding {
+    pub(crate) struct ServiceBinding {
         service_binding_guid: r_efi::efi::Guid,
         handle: NonNull<crate::ffi::c_void>,
     }
 
     impl ServiceBinding {
         #[inline]
-        pub fn new(
+        pub(crate) fn new(
             service_binding_guid: r_efi::efi::Guid,
             handle: NonNull<crate::ffi::c_void>,
         ) -> Self {
             Self { service_binding_guid, handle }
         }
 
-        pub fn create_child(&self) -> io::Result<NonNull<crate::ffi::c_void>> {
+        pub(crate) fn create_child(&self) -> io::Result<NonNull<crate::ffi::c_void>> {
             let service_binding_protocol: NonNull<service_binding::Protocol> =
                 common::open_protocol(self.handle, self.service_binding_guid)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
@@ -42,11 +42,14 @@ mod uefi_service_binding {
                 Err(status_to_io_error(r))
             } else {
                 NonNull::new(unsafe { child_handle.assume_init() })
-                    .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Handle"))
+                    .ok_or(io::const_io_error!(io::ErrorKind::Other, "null handle"))
             }
         }
 
-        pub fn destroy_child(&self, child_handle: NonNull<crate::ffi::c_void>) -> io::Result<()> {
+        pub(crate) fn destroy_child(
+            &self,
+            child_handle: NonNull<crate::ffi::c_void>,
+        ) -> io::Result<()> {
             let service_binding_protocol: NonNull<service_binding::Protocol> =
                 common::open_protocol(self.handle, self.service_binding_guid)?;
             let r = unsafe {

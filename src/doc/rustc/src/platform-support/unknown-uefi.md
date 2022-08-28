@@ -174,7 +174,6 @@ pub extern "C" fn main(_h: *mut core::ffi::c_void, _st: *mut core::ffi::c_void) 
 }
 ```
 
-
 ## Example: Hello World
 This is an example UEFI application that prints "Hello World!", then waits for
 key input before it exits. It serves as base example how to write UEFI

@@ -1,46 +1,39 @@
 //! UEFI-specific extensions to the primitives in `std::env` module
 
-use super::raw::{BootServices, RuntimeServices, SystemTable};
 use crate::ffi::c_void;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 
-static GLOBAL_SYSTEM_TABLE: AtomicPtr<SystemTable> = AtomicPtr::new(crate::ptr::null_mut());
-static GLOBAL_SYSTEM_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
+static GLOBAL_SYSTEM_TABLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
+static GLOBAL_IMAGE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
 
-/// Initializes Global Atomic Pointers to SystemTable and Handle.
-/// Should only be called once in the program execution under normal circumstances.
-/// The caller should ensure that the pointers are valid.
+/// Initializes the global System Table and Image Handle pointers.
+///
+/// The standard library requires access to the UEFI System Table and the Application Image Handle
+/// to operate. Those are provided to UEFI Applications via their application entry point. By
+/// calling `init_globals()`, those pointers are retained by the standard library for future use.
+/// The pointers are never exposed to any entity outside of this application and it is guaranteed
+/// that, once the application exited, these pointers are never dereferenced again.
+///
+/// Callers are required to ensure the pointers are valid for the entire lifetime of this
+/// application. In particular, UEFI Boot Services must not be exited while an application with the
+/// standard library is loaded.
+///
+/// This function must not be called more than once.
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub fn init_globals(handle: NonNull<c_void>, system_table: NonNull<SystemTable>) {
-    GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::SeqCst);
-    GLOBAL_SYSTEM_HANDLE.store(handle.as_ptr(), Ordering::SeqCst);
+pub unsafe fn init_globals(handle: NonNull<c_void>, system_table: NonNull<c_void>) {
+    GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::Release);
+    GLOBAL_IMAGE_HANDLE.store(handle.as_ptr(), Ordering::Release);
 }
 
 /// Get the SystemTable Pointer.
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub fn get_system_table() -> Option<NonNull<SystemTable>> {
-    NonNull::new(GLOBAL_SYSTEM_TABLE.load(Ordering::SeqCst))
+pub fn system_table() -> Option<NonNull<c_void>> {
+    NonNull::new(GLOBAL_SYSTEM_TABLE.load(Ordering::Acquire))
 }
 
 /// Get the SystemHandle Pointer.
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub fn get_system_handle() -> Option<NonNull<c_void>> {
-    NonNull::new(GLOBAL_SYSTEM_HANDLE.load(Ordering::SeqCst))
-}
-
-/// Get the BootServices Pointer.
-#[unstable(feature = "uefi_std", issue = "100499")]
-pub fn get_boot_services() -> Option<NonNull<BootServices>> {
-    let system_table = get_system_table()?;
-    let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
-    NonNull::new(boot_services)
-}
-
-/// Get the RuntimeServices Pointer.
-#[unstable(feature = "uefi_std", issue = "100499")]
-pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
-    let system_table = get_system_table()?;
-    let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
-    NonNull::new(runtime_services)
+pub fn image_handle() -> Option<NonNull<c_void>> {
+    NonNull::new(GLOBAL_IMAGE_HANDLE.load(Ordering::Acquire))
 }

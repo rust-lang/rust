@@ -2,7 +2,6 @@
 
 use crate::ffi::OsStr;
 use crate::io;
-use crate::os::uefi::ffi::OsStrExt;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::ptr::NonNull;
 use crate::sys::uefi::common;
@@ -32,7 +31,35 @@ unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
     unsafe { crate::mem::transmute(bytes) }
 }
 
-pub fn parse_prefix(p: &OsStr) -> Option<Prefix<'_>> {
+pub fn parse_prefix(_p: &OsStr) -> Option<Prefix<'_>> {
+    None
+}
+
+pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
+    match device_prefix(path.as_os_str()) {
+        // If no prefix, then use the current prefix
+        None => match crate::env::current_dir() {
+            Ok(x) => {
+                if x.as_os_str().bytes().last() == Some(&b'/') {
+                    Ok(PathBuf::from(format!(
+                        "{}\\{}",
+                        x.to_string_lossy(),
+                        path.to_string_lossy()
+                    )))
+                } else {
+                    Ok(x.join(format!("\\{}", path.to_string_lossy())))
+                }
+            }
+            Err(_) => {
+                Err(io::const_io_error!(io::ErrorKind::Other, "failed to convert to absolute path"))
+            }
+        },
+        // If Device Path Prefix present, then path should already be absolute
+        Some(_) => Ok(path.to_path_buf()),
+    }
+}
+
+pub(crate) fn device_prefix(p: &OsStr) -> Option<&OsStr> {
     let pos = p.bytes().iter().take_while(|b| !is_sep_byte(**b)).count();
     if pos == 0 || pos == p.bytes().len() {
         // Relative Path
@@ -40,26 +67,11 @@ pub fn parse_prefix(p: &OsStr) -> Option<Prefix<'_>> {
     } else {
         if p.bytes()[pos - 1] == b'/' {
             let prefix = unsafe { bytes_as_os_str(&p.bytes()[0..pos]) };
-            Some(Prefix::UefiDevice(prefix))
+            Some(prefix)
         } else {
             // The between UEFI prefix and file-path seems to be `/\`
             None
         }
-    }
-}
-
-pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
-    match parse_prefix(path.as_os_str()) {
-        // If no prefix, then use the current prefix
-        None => match crate::env::current_dir() {
-            Ok(x) => Ok(x.join(format!("\\{}", path.to_string_lossy()))),
-            Err(_) => Err(io::error::const_io_error!(
-                io::ErrorKind::Other,
-                "Failed to convert to absolute path"
-            )),
-        },
-        // If Device Path Prefix present, then path should already be absolute
-        Some(_) => Ok(path.to_path_buf()),
     }
 }
 
@@ -80,7 +92,7 @@ pub(crate) fn device_path_to_path(path: &mut device_path::Protocol) -> io::Resul
                 r_efi::efi::Boolean::FALSE,
             )
         };
-        let ucs2_iter = match unsafe { ucs2::Ucs2Units::new(path_ucs2) } {
+        let ucs2_iter = match unsafe { crate::sys_common::args::WStrUnits::new(path_ucs2) } {
             None => break,
             Some(x) => x,
         };
@@ -97,10 +109,9 @@ pub(crate) fn device_path_to_path(path: &mut device_path::Protocol) -> io::Resul
         unsafe { Global.deallocate(NonNull::new_unchecked(path_ucs2 as *mut u16).cast(), layout) }
         return Ok(PathBuf::from(path));
     }
-    Err(crate::io::error::const_io_error!(
-        crate::io::ErrorKind::InvalidData,
-        "Failed to Convert to text representation",
-    ))
+    Err(
+        io::const_io_error!(io::ErrorKind::InvalidData, "failed to convert to text representation",),
+    )
 }
 
 pub(crate) fn device_path_from_os_str(path: &OsStr) -> io::Result<Box<device_path::Protocol>> {
@@ -113,12 +124,13 @@ pub(crate) fn device_path_from_os_str(path: &OsStr) -> io::Result<Box<device_pat
                 Err(_) => continue,
             };
         let device_path = unsafe {
-            ((*protocol.as_ptr()).convert_text_to_device_path)(path.to_ffi_string().as_mut_ptr())
+            ((*protocol.as_ptr()).convert_text_to_device_path)(
+                common::to_ffi_string(path).as_mut_ptr(),
+            )
         };
         return unsafe { Ok(Box::from_raw(device_path)) };
     }
-    Err(crate::io::error::const_io_error!(
-        crate::io::ErrorKind::InvalidData,
-        "Failed to Convert to text representation",
-    ))
+    Err(
+        io::const_io_error!(io::ErrorKind::InvalidData, "failed to convert to text representation",),
+    )
 }

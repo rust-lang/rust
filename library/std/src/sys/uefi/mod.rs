@@ -1,7 +1,7 @@
 //! Platform-specific extensions to `std` for UEFI platforms.
 //!
-//! Provides access to platform-level information on Unix platforms, and
-//! exposes Unix-specific functions that would otherwise be inappropriate as
+//! Provides access to platform-level information on UEFI platforms, and
+//! exposes UEFI-specific functions that would otherwise be inappropriate as
 //! part of the core `std` library.
 //!
 //! It exposes more ways to deal with platform-specific strings ([`OsStr`],
@@ -81,35 +81,20 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 pub fn abort_internal() -> ! {
     // First try to use EFI_BOOT_SERVICES.Exit()
     if let (Some(boot_services), Some(handle)) =
-        (uefi::env::get_boot_services(), uefi::env::get_system_handle())
+        (common::get_boot_services(), uefi::env::image_handle())
     {
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),
                 r_efi::efi::Status::ABORTED,
                 0,
-                [0].as_mut_ptr(),
+                crate::ptr::null_mut(),
             )
         };
     }
 
-    // In case SystemTable and SystemHandle cannot be reached, do things the Windows way
-    #[allow(unused)]
-    const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
-    unsafe {
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
-            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
-            } else if #[cfg(target_arch = "aarch64")] {
-                core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
-            } else {
-                core::intrinsics::abort();
-            }
-        }
-        core::intrinsics::unreachable();
-    }
+    // In case SystemTable and SystemHandle cannot be reached, use `core::intrinsics::abort`
+    core::intrinsics::abort();
 }
 
 // This function is needed by the panic runtime. The symbol is named in
@@ -160,14 +145,16 @@ pub unsafe extern "efiapi" fn efi_main(
     handle: r_efi::efi::Handle,
     st: *mut r_efi::efi::SystemTable,
 ) -> r_efi::efi::Status {
-    if let (Some(system_table), Some(system_handle)) = (NonNull::new(st), NonNull::new(handle)) {
-        uefi::env::init_globals(system_handle, system_table);
+    // Null SystemTable and ImageHandle is an ABI violoation
+    assert!(!st.is_null());
+    assert!(!handle.is_null());
 
-        match unsafe { main(0, crate::ptr::null()) } {
-            0 => r_efi::efi::Status::SUCCESS,
-            _ => r_efi::efi::Status::ABORTED, // Or some other status code
-        }
-    } else {
-        r_efi::efi::Status::ABORTED
+    let system_table = unsafe { NonNull::new_unchecked(st) };
+    let image_handle = unsafe { NonNull::new_unchecked(handle) };
+    unsafe { uefi::env::init_globals(image_handle, system_table.cast()) };
+
+    match unsafe { main(0, crate::ptr::null()) } {
+        0 => r_efi::efi::Status::SUCCESS,
+        _ => r_efi::efi::Status::ABORTED, // Or some other status code
     }
 }

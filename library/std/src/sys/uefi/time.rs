@@ -1,6 +1,5 @@
 use super::common;
 use crate::mem::MaybeUninit;
-use crate::os::uefi;
 use crate::ptr::NonNull;
 use crate::sys_common::mul_div_u64;
 use crate::time::Duration;
@@ -52,7 +51,7 @@ impl Instant {
             return Instant(Duration::from_nanos(ns));
         }
 
-        if let Some(runtime_services) = uefi::env::get_runtime_services() {
+        if let Some(runtime_services) = common::get_runtime_services() {
             // Finally just use `EFI_RUNTIME_SERVICES.GetTime()`
             let mut t = r_efi::efi::Time::default();
             let r =
@@ -88,7 +87,7 @@ impl Instant {
 // Using Unix representation of Time.
 impl SystemTime {
     pub fn now() -> SystemTime {
-        if let Some(runtime_services) = uefi::env::get_runtime_services() {
+        if let Some(runtime_services) = common::get_runtime_services() {
             let mut t = r_efi::efi::Time::default();
             let r =
                 unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
@@ -148,7 +147,11 @@ fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
 }
 
 // This algorithm is taken from: http://howardhinnant.github.io/date_algorithms.html
-pub fn uefi_time_from_duration(dur: Duration, daylight: u8, timezone: i16) -> r_efi::system::Time {
+pub(crate) fn uefi_time_from_duration(
+    dur: Duration,
+    daylight: u8,
+    timezone: i16,
+) -> r_efi::system::Time {
     let secs = dur.as_secs();
 
     let days = secs / SEC_IN_DAY;

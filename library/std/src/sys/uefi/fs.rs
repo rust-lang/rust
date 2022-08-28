@@ -3,15 +3,15 @@
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::hash::Hash;
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
+use crate::ptr::addr_of;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use r_efi::protocols::file;
 
 pub struct File {
     ptr: uefi_fs::FileProtocol,
-    path: PathBuf,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -67,57 +67,55 @@ pub struct DirBuilder {
 }
 
 impl FileAttr {
-    #[inline]
     pub fn size(&self) -> u64 {
         self.size
     }
 
-    #[inline]
     pub fn perm(&self) -> FilePermissions {
         self.perm
     }
 
-    #[inline]
     pub fn file_type(&self) -> FileType {
         self.file_type
     }
 
-    #[inline]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(self.modification_time)
     }
 
-    #[inline]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(self.last_accessed_time)
     }
 
-    #[inline]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(self.created_time)
     }
 }
 
-impl From<&file::Info> for FileAttr {
-    fn from(info: &file::Info) -> Self {
-        FileAttr {
-            size: info.file_size,
-            perm: FilePermissions { attr: info.attribute },
-            file_type: FileType { attr: info.attribute },
-            created_time: SystemTime::from(info.create_time),
-            last_accessed_time: SystemTime::from(info.last_access_time),
-            modification_time: SystemTime::from(info.modification_time),
+impl From<&super::common::VariableBox<file::Info>> for FileAttr {
+    fn from(info: &super::common::VariableBox<file::Info>) -> Self {
+        unsafe {
+            FileAttr {
+                size: addr_of!((*info.as_ptr()).file_size).read(),
+                perm: FilePermissions { attr: addr_of!((*info.as_ptr()).attribute).read() },
+                file_type: FileType { attr: addr_of!((*info.as_ptr()).attribute).read() },
+                created_time: SystemTime::from(addr_of!((*info.as_ptr()).create_time).read()),
+                last_accessed_time: SystemTime::from(
+                    addr_of!((*info.as_ptr()).last_access_time).read(),
+                ),
+                modification_time: SystemTime::from(
+                    addr_of!((*info.as_ptr()).modification_time).read(),
+                ),
+            }
         }
     }
 }
 
 impl FilePermissions {
-    #[inline]
     pub fn readonly(&self) -> bool {
         self.attr & file::READ_ONLY != 0
     }
 
-    #[inline]
     pub fn set_readonly(&mut self, readonly: bool) {
         if readonly {
             self.attr |= file::READ_ONLY;
@@ -128,26 +126,22 @@ impl FilePermissions {
 }
 
 impl FileType {
-    #[inline]
     pub fn is_dir(&self) -> bool {
         self.attr & file::DIRECTORY != 0
     }
 
     // Not sure if Archive is a file
-    #[inline]
     pub fn is_file(&self) -> bool {
         !self.is_dir()
     }
 
     // Doesn't seem like symlink can be detected/supported.
-    #[inline]
     pub fn is_symlink(&self) -> bool {
         false
     }
 }
 
 impl fmt::Debug for ReadDir {
-    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.path, f)
     }
@@ -174,48 +168,40 @@ impl Iterator for ReadDir {
 }
 
 impl FileTimes {
-    #[inline]
     pub fn set_accessed(&mut self, t: SystemTime) {
         self.last_accessed_time = Some(t);
     }
 
-    #[inline]
     pub fn set_modified(&mut self, t: SystemTime) {
         self.modification_time = Some(t);
     }
 }
 
 impl Default for FileTimes {
-    #[inline]
     fn default() -> Self {
         Self { last_accessed_time: None, modification_time: None }
     }
 }
 
 impl DirEntry {
-    #[inline]
     pub fn path(&self) -> PathBuf {
         self.path.clone()
     }
 
-    #[inline]
     pub fn file_name(&self) -> OsString {
         self.name.clone()
     }
 
-    #[inline]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(self.attr)
     }
 
-    #[inline]
     pub fn file_type(&self) -> io::Result<FileType> {
         Ok(self.attr.file_type())
     }
 }
 
 impl OpenOptions {
-    #[inline]
     pub fn new() -> OpenOptions {
         // These options open file in readonly mode
         OpenOptions {
@@ -227,7 +213,6 @@ impl OpenOptions {
         }
     }
 
-    #[inline]
     pub fn read(&mut self, read: bool) {
         if read {
             self.open_mode |= file::MODE_READ;
@@ -236,7 +221,6 @@ impl OpenOptions {
         }
     }
 
-    #[inline]
     pub fn write(&mut self, write: bool) {
         if write {
             self.open_mode |= file::MODE_WRITE;
@@ -250,12 +234,10 @@ impl OpenOptions {
         self.append = append;
     }
 
-    #[inline]
     pub fn truncate(&mut self, truncate: bool) {
         self.truncate = truncate;
     }
 
-    #[inline]
     pub fn create(&mut self, create: bool) {
         if create {
             self.open_mode |= file::MODE_CREATE;
@@ -274,12 +256,11 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let full_path = super::path::absolute(path)?;
         let file_opened = uefi_fs::FileProtocol::from_path(path, opts.open_mode, opts.attr)?;
-        let file = File { ptr: file_opened, path: full_path };
+        let file = File { ptr: file_opened };
         if opts.create_new {
             if file.file_attr()?.size != 0 {
-                return Err(io::error::const_io_error!(
+                return Err(io::const_io_error!(
                     io::ErrorKind::AlreadyExists,
                     "File already exists"
                 ));
@@ -295,20 +276,17 @@ impl File {
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let info = self.ptr.get_file_info()?;
-        Ok(FileAttr::from(info.as_ref()))
+        Ok(FileAttr::from(&info))
     }
 
-    #[inline]
     pub fn fsync(&self) -> io::Result<()> {
         self.ptr.flush()
     }
 
-    #[inline]
     pub fn datasync(&self) -> io::Result<()> {
         self.fsync()
     }
 
-    #[inline]
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         self.ptr.set_file_size(size)
     }
@@ -319,7 +297,6 @@ impl File {
         Ok(buf_len)
     }
 
-    #[inline]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         crate::io::default_read_vectored(|buf| self.read(buf), bufs)
     }
@@ -329,25 +306,20 @@ impl File {
         false
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let mut buffer_size = buf.remaining();
-        let buffer = unsafe { buf.unfilled_mut() };
-
-        self.ptr.read(buffer, &mut buffer_size)?;
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        let mut buffer_size = buf.capacity();
+        unsafe { self.ptr.read(buf.as_mut(), &mut buffer_size) }?;
 
         unsafe {
-            buf.assume_init(buffer_size);
+            buf.advance(buffer_size);
         }
-        buf.add_filled(buffer_size);
         Ok(())
     }
 
-    #[inline]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.ptr.write(buf)
     }
 
-    #[inline]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
@@ -357,7 +329,6 @@ impl File {
         false
     }
 
-    #[inline]
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
@@ -376,19 +347,16 @@ impl File {
         unsupported()
     }
 
-    #[inline]
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         self.ptr.set_file_attr(perm.attr)
     }
 
-    #[inline]
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         self.ptr.set_file_times(times)
     }
 }
 
 impl DirBuilder {
-    #[inline]
     pub fn new() -> DirBuilder {
         DirBuilder {
             attr: file::DIRECTORY,
@@ -405,7 +373,9 @@ impl DirBuilder {
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut b = f.debug_struct("File");
-        b.field("Path", &self.path);
+        if let Ok(x) = self.ptr.get_file_name() {
+            b.field("Name", &x);
+        }
         b.finish()
     }
 }
@@ -495,7 +465,6 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 // Shoule be same as stat since symlinks are not implemented anyway
-#[inline]
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     stat(p)
 }
@@ -551,13 +520,11 @@ mod uefi_fs {
     use super::FileTimes;
     use super::{DirEntry, FileAttr};
     use crate::default::Default;
-    use crate::ffi::OsStr;
-    use crate::ffi::OsString;
+    use crate::ffi::{OsStr, OsString};
     use crate::io;
     use crate::mem::MaybeUninit;
-    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
-    use crate::path::{Path, PathBuf};
-    use crate::ptr::NonNull;
+    use crate::path::Path;
+    use crate::ptr::{addr_of, addr_of_mut, NonNull};
     use crate::sys::uefi::alloc::POOL_ALIGNMENT;
     use crate::sys::uefi::common::{self, status_to_io_error, VariableBox};
     use r_efi::protocols::file;
@@ -569,37 +536,26 @@ mod uefi_fs {
     }
 
     impl FileProtocol {
-        #[inline]
-        fn new(inner: NonNull<file::Protocol>) -> FileProtocol {
+        unsafe fn new(inner: NonNull<file::Protocol>) -> FileProtocol {
             FileProtocol { inner }
         }
 
         // Can open any file as long as it is possible to convert path to EFI_DEVICE_PATH_PROTOCOL
         // using `EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL.ConvertTextToDevicePath()`.
         // If relative path is provided, then opens the file in the EFI_LOADED_IMAGE_DEVICE_PATH
-        pub fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
-            match path.prefix() {
+        pub(crate) fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
+            match super::super::path::device_prefix(path.as_os_str()) {
                 None => {
                     let rootfs = Self::get_rootfs()?;
                     rootfs.open(path, open_mode, attr)
                 }
-                Some(x) => match x {
-                    crate::path::Prefix::UefiDevice(prefix) => {
-                        let vol = Self::get_volume_from_prefix(prefix)?;
-                        let new_path: PathBuf = path
-                            .components()
-                            .skip_while(|p| match p {
-                                crate::path::Component::Prefix(_) => true,
-                                _ => false,
-                            })
-                            .collect();
-                        vol.open(&new_path, open_mode, attr)
-                    }
-                    _ => Err(io::error::const_io_error!(
-                        io::ErrorKind::InvalidFilename,
-                        "Invalid File Path"
-                    )),
-                },
+                Some(prefix) => {
+                    let vol = Self::get_volume_from_prefix(prefix)?;
+                    let new_path = path.strip_prefix(prefix).map_err(|_| {
+                        io::const_io_error!(io::ErrorKind::NotFound, "ill-formatted path")
+                    })?;
+                    vol.open(&new_path, open_mode, attr)
+                }
             }
         }
 
@@ -607,21 +563,18 @@ mod uefi_fs {
         fn get_rootfs() -> io::Result<FileProtocol> {
             use r_efi::protocols::loaded_image;
 
-            let mut loaded_image_guid = loaded_image::PROTOCOL_GUID;
             let loaded_image_protocol =
                 common::get_current_handle_protocol::<loaded_image::Protocol>(
-                    &mut loaded_image_guid,
+                    loaded_image::PROTOCOL_GUID,
                 )
-                .ok_or(io::error::const_io_error!(
+                .ok_or(io::const_io_error!(
                     io::ErrorKind::Other,
                     "Error getting Loaded Image Protocol"
                 ))?;
 
             let device_handle = unsafe { (*loaded_image_protocol.as_ptr()).device_handle };
-            let device_handle = NonNull::new(device_handle).ok_or(io::error::const_io_error!(
-                io::ErrorKind::Other,
-                "Error getting Device Handle"
-            ))?;
+            let device_handle = NonNull::new(device_handle)
+                .ok_or(io::const_io_error!(io::ErrorKind::Other, "Error getting Device Handle"))?;
 
             Self::get_volume(device_handle)
         }
@@ -652,21 +605,17 @@ mod uefi_fs {
                     return Self::get_volume(handle);
                 }
             }
-            Err(io::error::const_io_error!(io::ErrorKind::NotFound, "Volume Not Found"))
+            Err(io::const_io_error!(io::ErrorKind::NotFound, "Volume Not Found"))
         }
 
         // Open volume on device_handle using SIMPLE_FILE_SYSTEM_PROTOCOL
         fn get_volume(device_handle: NonNull<crate::ffi::c_void>) -> io::Result<Self> {
             use r_efi::protocols::simple_file_system;
 
-            let mut simple_file_guid = simple_file_system::PROTOCOL_GUID;
-            let simple_file_system_protocol = common::get_handle_protocol::<
-                simple_file_system::Protocol,
-            >(device_handle, &mut simple_file_guid)
-            .ok_or(io::error::const_io_error!(
-                io::ErrorKind::Other,
-                "Error getting Simple File System"
-            ))?;
+            let simple_file_system_protocol = common::open_protocol::<simple_file_system::Protocol>(
+                device_handle,
+                simple_file_system::PROTOCOL_GUID,
+            )?;
 
             let mut file_protocol: MaybeUninit<*mut file::Protocol> = MaybeUninit::uninit();
             let r = unsafe {
@@ -679,41 +628,46 @@ mod uefi_fs {
                 Err(status_to_io_error(r))
             } else {
                 let p = NonNull::new(unsafe { file_protocol.assume_init() })
-                    .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Rootfs"))?;
-                Ok(Self::new(p))
+                    .ok_or(io::const_io_error!(io::ErrorKind::Other, "Null Rootfs"))?;
+                unsafe { Ok(Self::new(p)) }
             }
         }
 
         // Open a file from current EFI_FILE_PATH_PROTOCOL
-        pub fn open(&self, path: &Path, open_mode: u64, attr: u64) -> io::Result<FileProtocol> {
+        pub(crate) fn open(
+            &self,
+            path: &Path,
+            open_mode: u64,
+            attr: u64,
+        ) -> io::Result<FileProtocol> {
             let mut file_opened: MaybeUninit<*mut file::Protocol> = MaybeUninit::uninit();
             unsafe {
                 Self::open_raw(
                     self.inner.as_ptr(),
                     file_opened.as_mut_ptr(),
-                    path.as_os_str().to_ffi_string().as_mut_ptr(),
+                    common::to_ffi_string(path.as_os_str()).as_mut_ptr(),
                     open_mode,
                     attr,
                 )
             }?;
             let p = NonNull::new(unsafe { file_opened.assume_init() })
-                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "File is Null"))?;
-            Ok(FileProtocol::new(p))
+                .ok_or(io::const_io_error!(io::ErrorKind::Other, "File is Null"))?;
+            unsafe { Ok(FileProtocol::new(p)) }
         }
 
         // Only Absolute seek is supported in UEFI
-        pub fn set_position(&self, pos: u64) -> io::Result<u64> {
+        pub(crate) fn set_position(&self, pos: u64) -> io::Result<u64> {
             unsafe { Self::set_position_raw(self.inner.as_ptr(), pos) }?;
             Ok(pos)
         }
 
-        pub fn get_position(&self) -> io::Result<u64> {
+        pub(crate) fn get_position(&self) -> io::Result<u64> {
             let mut pos: u64 = 0;
             unsafe { Self::get_position_raw(self.inner.as_ptr(), &mut pos) }?;
             Ok(pos)
         }
 
-        pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
             let mut buffer_size = buf.len();
             unsafe {
                 Self::write_raw(
@@ -725,18 +679,16 @@ mod uefi_fs {
             Ok(buffer_size)
         }
 
-        #[inline]
-        pub fn read<T>(&self, buf: &mut [T], buffer_size: &mut usize) -> io::Result<()> {
+        pub(crate) fn read<T>(&self, buf: &mut [T], buffer_size: &mut usize) -> io::Result<()> {
             unsafe { Self::read_raw(self.inner.as_ptr(), buffer_size, buf.as_mut_ptr().cast()) }
         }
 
-        #[inline]
-        pub fn flush(&self) -> io::Result<()> {
+        pub(crate) fn flush(&self) -> io::Result<()> {
             unsafe { Self::flush_raw(self.inner.as_ptr()) }
         }
 
         // Read a Directory.
-        pub fn read_dir_entry(&self, base_path: &Path) -> Option<io::Result<DirEntry>> {
+        pub(crate) fn read_dir_entry(&self, base_path: &Path) -> Option<io::Result<DirEntry>> {
             let mut buf_size = 0usize;
             if let Err(e) = unsafe {
                 Self::read_raw(self.inner.as_ptr(), &mut buf_size, crate::ptr::null_mut())
@@ -754,31 +706,27 @@ mod uefi_fs {
             let layout = unsafe {
                 crate::alloc::Layout::from_size_align_unchecked(buf_size, POOL_ALIGNMENT)
             };
-            let mut buf = match VariableBox::<file::Info>::try_new_uninit(layout) {
-                Ok(x) => x,
-                Err(_) => return Some(Err(common::VARIABEL_BOX_ERROR)),
-            };
+            let mut buf = VariableBox::<file::Info>::new_uninit(layout);
             if let Err(e) = unsafe {
-                Self::read_raw(
-                    self.inner.as_ptr(),
-                    &mut buf_size,
-                    buf.as_mut() as *mut _ as *mut crate::ffi::c_void,
-                )
+                Self::read_raw(self.inner.as_ptr(), &mut buf_size, buf.as_mut_ptr().cast())
             } {
                 return Some(Err(e));
             }
 
             let mut buf = unsafe { buf.assume_init() };
-            let name_len: usize = (buf_size - crate::mem::size_of::<file::Info>()) >> 1;
-            let name = unsafe { OsString::from_ffi(buf.file_name.as_mut_ptr(), name_len) };
-            let attr = FileAttr::from(buf.as_ref());
+            let name_bytes: usize = buf_size - crate::mem::size_of::<file::Info>();
+            let name = common::from_ffi_string(
+                unsafe { (*buf.as_mut_ptr()).file_name.as_mut_ptr() },
+                name_bytes,
+            );
+            let attr = FileAttr::from(&buf);
 
             let path = base_path.join(&name);
             Some(Ok(DirEntry { attr, name, path }))
         }
 
         // Get current file info
-        pub fn get_file_info(&self) -> io::Result<VariableBox<file::Info>> {
+        pub(crate) fn get_file_info(&self) -> io::Result<VariableBox<file::Info>> {
             let mut buf_size = 0usize;
             match unsafe {
                 Self::get_info_raw(
@@ -797,14 +745,13 @@ mod uefi_fs {
             let layout = unsafe {
                 crate::alloc::Layout::from_size_align_unchecked(buf_size, POOL_ALIGNMENT)
             };
-            let mut buf = VariableBox::<file::Info>::try_new_uninit(layout)
-                .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+            let mut buf = VariableBox::<file::Info>::new_uninit(layout);
             match unsafe {
                 Self::get_info_raw(
                     self.inner.as_ptr(),
                     file::INFO_ID,
                     &mut buf_size,
-                    buf.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                    buf.as_mut_ptr().cast(),
                 )
             } {
                 Ok(()) => unsafe { Ok(buf.assume_init()) },
@@ -812,73 +759,91 @@ mod uefi_fs {
             }
         }
 
+        pub(crate) fn get_file_name(&self) -> io::Result<OsString> {
+            let mut info = self.get_file_info()?;
+            let name_bytes: usize = info.layout().size() - crate::mem::size_of::<file::Info>();
+            Ok(common::from_ffi_string(
+                unsafe { (*info.as_mut_ptr()).file_name.as_mut_ptr() },
+                name_bytes,
+            ))
+        }
+
         // Set file size. Useful for truncation
-        pub fn set_file_size(&self, file_size: u64) -> io::Result<()> {
+        pub(crate) fn set_file_size(&self, file_size: u64) -> io::Result<()> {
             use r_efi::efi::Time;
 
             let mut old_info = self.get_file_info()?;
             // Update fields with new values
-            old_info.file_size = file_size;
-            // Pass 0 for time values. That means the time stuff will not be updated.
-            old_info.create_time = Time::default();
-            old_info.modification_time = Time::default();
-            old_info.last_access_time = Time::default();
+            unsafe {
+                addr_of_mut!((*old_info.as_mut_ptr()).file_size).write(file_size);
+                // Pass 0 for time values. That means the time stuff will not be updated.
+                addr_of_mut!((*old_info.as_mut_ptr()).create_time).write(Time::default());
+                addr_of_mut!((*old_info.as_mut_ptr()).modification_time).write(Time::default());
+                addr_of_mut!((*old_info.as_mut_ptr()).last_access_time).write(Time::default());
+            }
             unsafe {
                 Self::set_info_raw(
                     self.inner.as_ptr(),
                     file::INFO_ID,
                     old_info.layout().size(),
-                    old_info.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                    old_info.as_mut_ptr().cast(),
                 )
             }
         }
 
         // Set file attributes
-        pub fn set_file_attr(&self, attribute: u64) -> io::Result<()> {
+        pub(crate) fn set_file_attr(&self, attribute: u64) -> io::Result<()> {
             use r_efi::efi::Time;
 
             let mut old_info = self.get_file_info()?;
-            // Update fields with new values
-            old_info.attribute = attribute;
-            // Pass 0 alues. That means the time stuff will not be updated.
-            old_info.create_time = Time::default();
-            old_info.modification_time = Time::default();
-            old_info.last_access_time = Time::default();
+
+            unsafe {
+                addr_of_mut!((*old_info.as_mut_ptr()).attribute).write(attribute);
+                // Pass 0 for time values. That means the time stuff will not be updated.
+                addr_of_mut!((*old_info.as_mut_ptr()).create_time).write(Time::default());
+                addr_of_mut!((*old_info.as_mut_ptr()).modification_time).write(Time::default());
+                addr_of_mut!((*old_info.as_mut_ptr()).last_access_time).write(Time::default());
+            }
+
             unsafe {
                 Self::set_info_raw(
                     self.inner.as_ptr(),
                     file::INFO_ID,
                     old_info.layout().size(),
-                    old_info.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                    old_info.as_mut_ptr().cast(),
                 )
             }
         }
 
         // Change file name. It seems possible to provide a relative path as file name. Thus it
         // also acts as move
-        pub fn set_file_name(&self, file_name: &OsStr) -> io::Result<()> {
-            use crate::ptr::addr_of_mut;
+        pub(crate) fn set_file_name(&self, file_name: &OsStr) -> io::Result<()> {
             use r_efi::efi::Time;
 
-            let file_name = file_name.to_ffi_string();
+            let file_name = common::to_ffi_string(file_name);
             let old_info = self.get_file_info()?;
             let new_size =
                 crate::mem::size_of::<file::Info>() + crate::mem::size_of_val(&file_name);
             let layout = unsafe {
                 crate::alloc::Layout::from_size_align_unchecked(new_size, POOL_ALIGNMENT)
             };
-            let mut new_info = VariableBox::<file::Info>::try_new_uninit(layout)
-                .map_err(|_| common::VARIABEL_BOX_ERROR)?;
+            let mut new_info = VariableBox::<file::Info>::new_uninit(layout);
             unsafe {
-                let ptr = new_info.as_mut_ptr();
-                addr_of_mut!((*ptr).size).write(new_size as u64);
-                addr_of_mut!((*ptr).file_size).write(old_info.file_size);
-                addr_of_mut!((*ptr).physical_size).write(old_info.physical_size);
-                addr_of_mut!((*ptr).create_time).write(Time::default());
-                addr_of_mut!((*ptr).modification_time).write(Time::default());
-                addr_of_mut!((*ptr).last_access_time).write(Time::default());
-                addr_of_mut!((*ptr).attribute).write(old_info.attribute);
-                (*ptr).file_name.as_mut_ptr().copy_from(file_name.as_ptr(), file_name.len());
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).size).write(new_size as u64);
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).file_size)
+                    .write((*old_info.as_ptr()).file_size);
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).physical_size)
+                    .write((*old_info.as_ptr()).physical_size);
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).create_time).write(Time::default());
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).modification_time)
+                    .write(Time::default());
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).last_access_time)
+                    .write(Time::default());
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).attribute)
+                    .write((*old_info.as_ptr()).attribute);
+                addr_of_mut!((*new_info.as_uninit_mut_ptr()).file_name)
+                    .cast::<u16>()
+                    .copy_from_nonoverlapping(file_name.as_ptr(), file_name.len())
             }
 
             let mut new_info = unsafe { new_info.assume_init() };
@@ -887,27 +852,37 @@ mod uefi_fs {
                     self.inner.as_ptr(),
                     file::INFO_ID,
                     new_info.layout().size(),
-                    new_info.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                    new_info.as_mut_ptr().cast(),
                 )
             }
         }
 
-        pub fn set_file_times(&self, file_times: FileTimes) -> io::Result<()> {
+        pub(crate) fn set_file_times(&self, file_times: FileTimes) -> io::Result<()> {
             let mut old_info = self.get_file_info()?;
+            let last_access_time =
+                unsafe { addr_of!((*old_info.as_ptr()).last_access_time).read() };
 
             if let Some(t) = file_times.last_accessed_time {
-                old_info.last_access_time = super::super::time::uefi_time_from_duration(
-                    t.get_duration(),
-                    old_info.last_access_time.daylight,
-                    old_info.last_access_time.timezone,
-                );
+                unsafe {
+                    addr_of_mut!((*old_info.as_mut_ptr()).last_access_time).write(
+                        super::super::time::uefi_time_from_duration(
+                            t.get_duration(),
+                            last_access_time.daylight,
+                            last_access_time.timezone,
+                        ),
+                    )
+                };
             }
             if let Some(t) = file_times.modification_time {
-                old_info.modification_time = super::super::time::uefi_time_from_duration(
-                    t.get_duration(),
-                    old_info.modification_time.daylight,
-                    old_info.modification_time.timezone,
-                );
+                unsafe {
+                    addr_of_mut!((*old_info.as_mut_ptr()).last_access_time).write(
+                        super::super::time::uefi_time_from_duration(
+                            t.get_duration(),
+                            last_access_time.daylight,
+                            last_access_time.timezone,
+                        ),
+                    )
+                };
             }
 
             unsafe {
@@ -915,13 +890,13 @@ mod uefi_fs {
                     self.inner.as_ptr(),
                     file::INFO_ID,
                     old_info.layout().size(),
-                    old_info.as_mut() as *mut _ as *mut crate::ffi::c_void,
+                    old_info.as_mut_ptr().cast(),
                 )
             }
         }
 
         // Delete a file.
-        pub fn delete(self) -> io::Result<()> {
+        pub(crate) fn delete(self) -> io::Result<()> {
             // Deleting the file makes the pointer invalid. Thus calling drop on it later will
             // cause UB
             let file = crate::mem::ManuallyDrop::new(self);

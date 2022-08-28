@@ -3,31 +3,33 @@ use crate::sealed::Sealed;
 use crate::sys_common::ucs2;
 
 #[unstable(feature = "uefi_std", issue = "100499")]
-pub trait OsStrExt: Sealed {
-    /// This function does not do any allocation
-    fn to_ucs2<'a>(&'a self) -> ucs2::EncodeUcs2<'a>;
+pub use ucs2::EncodeUcs2;
 
-    /// Creates a UCS-2 Vec which can be passed for FFI.
-    /// Note: This function will replace `NULL` and other characters which are not valid in UEFI
-    /// strings with `std::sys_common::ucs::Ucs2Char::REPLACEMENT_CHARACTER`
-    fn to_ffi_string(&self) -> Vec<u16> {
-        let mut v: Vec<u16> = self
-            .to_ucs2()
-            .map(|x| match x {
-                Ok(c) => c,
-                Err(_) => ucs2::Ucs2Char::REPLACEMENT_CHARACTER,
-            })
-            .map(u16::from)
-            .collect();
-        v.push(0);
-        v.shrink_to_fit();
-        v
-    }
+#[unstable(feature = "uefi_std", issue = "100499")]
+pub trait OsStrExt: Sealed {
+    /// Re-encodes an `OsStr` as a wide character sequence, i.e., UCS-2
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use std::os::uefi::ffi::*;
+    ///
+    /// // UTF-2 encoding for "Unicode".
+    /// let source = [0x0055, 0x006E, 0x0069, 0x0063, 0x006F, 0x0064, 0x0065];
+    ///
+    /// let string = OsString::from_wide(&source[..]);
+    ///
+    /// let result: Vec<u16> = string.encode_wide().collect();
+    /// assert_eq!(&source[..], &result[..]);
+    /// ```
+    fn encode_wide<'a>(&'a self) -> EncodeUcs2<'a>;
 }
 
 impl OsStrExt for OsStr {
-    fn to_ucs2<'a>(&'a self) -> ucs2::EncodeUcs2<'a> {
-        // This conversion should never fail since the underlying OsStr is UTF-8 encoded
+    fn encode_wide<'a>(&'a self) -> EncodeUcs2<'a> {
+        // SAFETY: Calling unwrap on `self.to_str` is safe since the underlying OsStr is UTF-8
+        // encoded
         ucs2::EncodeUcs2::from_str(self.to_str().unwrap())
     }
 }
@@ -37,26 +39,23 @@ pub trait OsStringExt: Sealed
 where
     Self: Sized,
 {
-    fn from_ucs2_lossy(ucs: &[u16]) -> Self;
-
-    // For Null terminated UCS-2 Strings.
-    #[inline]
-    fn from_ucs2_null_termintated(ucs: &[u16]) -> Self {
-        Self::from_ucs2_lossy(&ucs[..(ucs.len() - 1)])
-    }
-
-    // Create OsString from an FFI obtained pointer.
-    // Len is the number of elemented in the string, not number of bytes.
-    // Note: This string is assumed to be null terminated
-    #[inline]
-    unsafe fn from_ffi(ucs: *mut u16, len: usize) -> Self {
-        let s = crate::slice::from_raw_parts(ucs, len);
-        Self::from_ucs2_null_termintated(s)
-    }
+    /// Creates an `OsString` from a UCS-2 slice of 16-bit code units.
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use std::os::uefi::ffi::*;
+    ///
+    /// // UTF-16 encoding for "Unicode".
+    /// let source = [0x0055, 0x006E, 0x0069, 0x0063, 0x006F, 0x0064, 0x0065];
+    ///
+    /// let string = OsString::from_wide(&source[..]);
+    /// ```
+    fn from_wide(ucs: &[u16]) -> Self;
 }
 
 impl OsStringExt for OsString {
-    fn from_ucs2_lossy(ucs: &[u16]) -> Self {
+    fn from_wide(ucs: &[u16]) -> Self {
         // Min capacity(in case of all ASCII) is `ucs.len()`
         let mut buf = String::with_capacity(ucs.len());
 

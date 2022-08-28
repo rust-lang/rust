@@ -39,7 +39,7 @@ impl Stdin {
         if r.is_error() {
             Err(status_to_io_error(r))
         } else if input_key.scan_code != 0 {
-            Err(io::error::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Input"))
+            Err(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Input"))
         } else {
             Ok(input_key.unicode_char)
         }
@@ -74,9 +74,9 @@ impl io::Read for Stdin {
     // FIXME: Implement buffered reading. Currently backspace and other characters are read as
     // normal characters. Thus it might look like line-editing but it actually isn't
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-        if let Some(command_protocol) =
-            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        if let Some(command_protocol) = common::get_current_handle_protocol::<
+            uefi_command_protocol::Protocol,
+        >(uefi_command_protocol::PROTOCOL_GUID)
         {
             if let Some(pipe_protocol) =
                 NonNull::new(unsafe { (*command_protocol.as_ptr()).stdout })
@@ -85,7 +85,7 @@ impl io::Read for Stdin {
             }
         }
         let global_system_table =
-            uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
+            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
         let con_in = get_con_in(global_system_table)?;
         let con_out = get_con_out(global_system_table)?;
         let wait_for_event = get_wait_for_event()?;
@@ -100,10 +100,8 @@ impl io::Read for Stdin {
             Stdin::read_key_stroke(con_in.as_ptr())?
         };
 
-        let ch = ucs2::Ucs2Char::from_u16(ch).ok_or(io::error::const_io_error!(
-            io::ErrorKind::InvalidInput,
-            "Invalid Character Input"
-        ))?;
+        let ch = ucs2::Ucs2Char::from_u16(ch)
+            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Character Input"))?;
         Stdin::write_character(con_out.as_ptr(), ch)?;
 
         let ch = char::from(ch);
@@ -129,9 +127,9 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-        if let Some(command_protocol) =
-            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        if let Some(command_protocol) = common::get_current_handle_protocol::<
+            uefi_command_protocol::Protocol,
+        >(uefi_command_protocol::PROTOCOL_GUID)
         {
             if let Some(pipe_protocol) =
                 NonNull::new(unsafe { (*command_protocol.as_ptr()).stdout })
@@ -141,7 +139,7 @@ impl io::Write for Stdout {
         }
 
         let global_system_table =
-            uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
+            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
         let con_out = get_con_out(global_system_table)?;
         unsafe { simple_text_output_write(con_out.as_ptr(), buf) }
     }
@@ -161,9 +159,9 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-        if let Some(command_protocol) =
-            common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(&mut guid)
+        if let Some(command_protocol) = common::get_current_handle_protocol::<
+            uefi_command_protocol::Protocol,
+        >(uefi_command_protocol::PROTOCOL_GUID)
         {
             if let Some(pipe_protocol) =
                 NonNull::new(unsafe { (*command_protocol.as_ptr()).stderr })
@@ -172,7 +170,7 @@ impl io::Write for Stderr {
             }
         }
         let global_system_table =
-            uefi::env::get_system_table().ok_or(common::SYSTEM_TABLE_ERROR)?;
+            uefi::env::system_table().ok_or(common::SYSTEM_TABLE_ERROR)?.cast();
         let std_err = get_std_err(global_system_table)?;
         unsafe { simple_text_output_write(std_err.as_ptr(), buf) }
     }
@@ -194,15 +192,15 @@ pub fn panic_output() -> Option<impl io::Write> {
 }
 
 fn utf8_to_ucs2(buf: &[u8], output: &mut [u16]) -> io::Result<usize> {
-    let iter = ucs2::EncodeUcs2::from_bytes(buf).map_err(|_| {
-        io::error::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Output buffer")
-    })?;
+    let iter = ucs2::EncodeUcs2::from_bytes(buf)
+        .map_err(|_| io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Output buffer"))?;
     let mut count = 0;
     let mut bytes_read = 0;
 
     for ch in iter {
         let c = match ch {
-            Ok(x) => x,
+            // This is safe since x is always a valid Ucs2Char
+            Ok(x) => ucs2::Ucs2Char::from_u16(x).unwrap(),
             Err(_) => ucs2::Ucs2Char::REPLACEMENT_CHARACTER,
         };
 
@@ -243,32 +241,32 @@ unsafe fn simple_text_output_write(
 // Returns error if `SystemTable->ConIn` is null.
 #[inline]
 fn get_con_in(
-    st: NonNull<uefi::raw::SystemTable>,
+    st: NonNull<r_efi::efi::SystemTable>,
 ) -> io::Result<NonNull<simple_text_input::Protocol>> {
     let con_in = unsafe { (*st.as_ptr()).con_in };
-    NonNull::new(con_in).ok_or(io::error::const_io_error!(io::ErrorKind::NotFound, "ConIn"))
+    NonNull::new(con_in).ok_or(io::const_io_error!(io::ErrorKind::NotFound, "ConIn"))
 }
 
 #[inline]
 fn get_wait_for_event() -> io::Result<BootWaitForEvent> {
-    let boot_services = uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+    let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
     Ok(unsafe { (*boot_services.as_ptr()).wait_for_event })
 }
 
 // Returns error if `SystemTable->ConOut` is null.
 #[inline]
 fn get_con_out(
-    st: NonNull<uefi::raw::SystemTable>,
+    st: NonNull<r_efi::efi::SystemTable>,
 ) -> io::Result<NonNull<simple_text_output::Protocol>> {
     let con_out = unsafe { (*st.as_ptr()).con_out };
-    NonNull::new(con_out).ok_or(io::error::const_io_error!(io::ErrorKind::NotFound, "ConOut"))
+    NonNull::new(con_out).ok_or(io::const_io_error!(io::ErrorKind::NotFound, "ConOut"))
 }
 
 // Returns error if `SystemTable->StdErr` is null.
 #[inline]
 fn get_std_err(
-    st: NonNull<uefi::raw::SystemTable>,
+    st: NonNull<r_efi::efi::SystemTable>,
 ) -> io::Result<NonNull<simple_text_output::Protocol>> {
     let std_err = unsafe { (*st.as_ptr()).std_err };
-    NonNull::new(std_err).ok_or(io::error::const_io_error!(io::ErrorKind::NotFound, "StdErr"))
+    NonNull::new(std_err).ok_or(io::const_io_error!(io::ErrorKind::NotFound, "StdErr"))
 }

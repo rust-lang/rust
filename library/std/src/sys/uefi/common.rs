@@ -1,42 +1,27 @@
 use r_efi::efi::{EventNotify, Guid, Tpl};
 
 use crate::alloc::{AllocError, Allocator, Global, Layout};
-use crate::io;
+use crate::ffi::{OsStr, OsString};
+use crate::io::{self, const_io_error};
 use crate::mem::{self, MaybeUninit};
-use crate::ops::{Deref, DerefMut};
 use crate::os::uefi;
-use crate::ptr::{NonNull, Unique};
+use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+use crate::ptr::NonNull;
 
-pub const BOOT_SERVICES_ERROR: io::Error =
-    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire Boot Services",);
-pub const RUNTIME_SERVICES_ERROR: io::Error =
-    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire Runtime Services",);
-pub const SYSTEM_TABLE_ERROR: io::Error =
-    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire System Table",);
-pub const SYSTEM_HANDLE_ERROR: io::Error =
-    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire System Handle",);
-pub const VARIABEL_BOX_ERROR: io::Error =
-    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to Allocate Varible Box",);
+pub(crate) const BOOT_SERVICES_ERROR: io::Error =
+    const_io_error!(io::ErrorKind::Other, "failed to acquire boot services",);
+pub(crate) const RUNTIME_SERVICES_ERROR: io::Error =
+    const_io_error!(io::ErrorKind::Other, "failed to acquire runtime services",);
+pub(crate) const SYSTEM_TABLE_ERROR: io::Error =
+    const_io_error!(io::ErrorKind::Other, "failed to acquire system table",);
+pub(crate) const IMAGE_HANDLE_ERROR: io::Error =
+    const_io_error!(io::ErrorKind::Other, "failed to acquire system handle",);
 
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
-pub(crate) fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
-    let system_handle = uefi::env::get_system_handle()?;
-    get_handle_protocol(system_handle, protocol_guid)
-}
-
-pub(crate) fn get_handle_protocol<T>(
-    handle: NonNull<crate::ffi::c_void>,
-    protocol_guid: &mut Guid,
-) -> Option<NonNull<T>> {
-    let boot_services = uefi::env::get_boot_services()?;
-    let mut protocol: *mut crate::ffi::c_void = crate::ptr::null_mut();
-
-    let r = unsafe {
-        ((*boot_services.as_ptr()).handle_protocol)(handle.as_ptr(), protocol_guid, &mut protocol)
-    };
-
-    if r.is_error() { None } else { NonNull::new(protocol.cast()) }
+pub(crate) fn get_current_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>> {
+    let system_handle = uefi::env::image_handle()?;
+    open_protocol(system_handle, protocol_guid).ok()
 }
 
 #[repr(transparent)]
@@ -45,10 +30,12 @@ pub(crate) struct Event {
 }
 
 impl Event {
+    #[inline]
     fn new(inner: NonNull<crate::ffi::c_void>) -> Self {
         Self { inner }
     }
 
+    #[inline]
     fn from_raw_event(ptr: r_efi::efi::Event) -> Option<Self> {
         Some(Self::new(NonNull::new(ptr)?))
     }
@@ -59,10 +46,7 @@ impl Event {
         notify_function: Option<EventNotify>,
         notify_context: Option<NonNull<crate::ffi::c_void>>,
     ) -> io::Result<Self> {
-        let boot_services = uefi::env::get_boot_services().ok_or(io::error::const_io_error!(
-            io::ErrorKind::Other,
-            "Failed to Acquire Boot Services"
-        ))?;
+        let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
 
         let mut event: r_efi::efi::Event = crate::ptr::null_mut();
         let notify_context = match notify_context {
@@ -84,15 +68,12 @@ impl Event {
             Err(status_to_io_error(r))
         } else {
             Self::from_raw_event(event)
-                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Event is Null"))
+                .ok_or(const_io_error!(io::ErrorKind::Other, "event is null"))
         }
     }
 
     pub(crate) fn wait(&self) -> io::Result<()> {
-        let boot_services = uefi::env::get_boot_services().ok_or(io::error::const_io_error!(
-            io::ErrorKind::Other,
-            "Failed to Acquire Boot Services"
-        ))?;
+        let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
 
         let mut index = 0usize;
         let r = unsafe {
@@ -106,6 +87,7 @@ impl Event {
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
+    #[inline]
     pub(crate) fn as_raw_event(&self) -> r_efi::efi::Event {
         self.inner.as_ptr()
     }
@@ -113,7 +95,7 @@ impl Event {
 
 impl Drop for Event {
     fn drop(&mut self) {
-        if let Some(boot_services) = uefi::env::get_boot_services() {
+        if let Some(boot_services) = get_boot_services() {
             // Always returns EFI_SUCCESS
             let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner.as_ptr()) };
         }
@@ -123,84 +105,83 @@ impl Drop for Event {
 // A type to make working with UEFI DSTs easier
 // The Layout of this type has to be explicitly supplied
 // Inspiered by Box
-pub struct VariableBox<T> {
-    inner: Unique<T>,
+pub(crate) struct VariableBox<T> {
+    inner: NonNull<T>,
     layout: Layout,
 }
 
 impl<T> VariableBox<T> {
-    #[inline]
-    pub const unsafe fn from_raw(inner: *mut T, layout: Layout) -> VariableBox<T> {
-        VariableBox { inner: unsafe { Unique::new_unchecked(inner) }, layout }
+    pub(crate) unsafe fn from_raw(inner: *mut T, layout: Layout) -> VariableBox<T> {
+        unsafe { VariableBox::new(NonNull::new_unchecked(inner), layout) }
     }
 
     #[inline]
-    pub const fn into_raw_with_layout(b: VariableBox<T>) -> (*mut T, Layout) {
-        let (leaked, layout) = VariableBox::into_unique(b);
+    pub(crate) unsafe fn new(inner: NonNull<T>, layout: Layout) -> VariableBox<T> {
+        VariableBox { inner, layout }
+    }
+
+    #[inline]
+    pub(crate) fn into_raw_with_layout(b: VariableBox<T>) -> (*mut T, Layout) {
+        let (leaked, layout) = VariableBox::into_non_null(b);
         (leaked.as_ptr(), layout)
     }
 
-    pub fn try_new_uninit(layout: Layout) -> Result<VariableBox<MaybeUninit<T>>, AllocError> {
+    pub(crate) fn new_uninit(layout: Layout) -> VariableBox<MaybeUninit<T>> {
+        match Self::try_new_uninit(layout) {
+            Ok(x) => x,
+            Err(_) => crate::alloc::handle_alloc_error(layout),
+        }
+    }
+
+    fn try_new_uninit(layout: Layout) -> Result<VariableBox<MaybeUninit<T>>, AllocError> {
         let inner = Global.allocate(layout)?.cast();
-        unsafe { Ok(VariableBox::from_raw(inner.as_ptr(), layout)) }
+        unsafe { Ok(VariableBox::new(inner, layout)) }
     }
 
     #[inline]
-    pub const fn leak<'a>(b: Self) -> &'a mut T {
+    pub(crate) fn leak<'a>(b: Self) -> &'a mut T {
         unsafe { &mut *mem::ManuallyDrop::new(b).inner.as_ptr() }
     }
 
     #[inline]
-    pub const fn into_unique(b: Self) -> (Unique<T>, Layout) {
+    pub(crate) fn into_non_null(b: Self) -> (NonNull<T>, Layout) {
         let layout = b.layout;
-        (Unique::from(VariableBox::leak(b)), layout)
+        (NonNull::from(VariableBox::leak(b)), layout)
     }
 
     #[inline]
-    pub fn layout(&self) -> Layout {
+    pub(crate) fn layout(&self) -> Layout {
         self.layout
+    }
+
+    #[inline]
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut T {
+        self.inner.as_ptr()
+    }
+
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const T {
+        self.inner.as_ptr()
     }
 }
 
 impl<T> VariableBox<MaybeUninit<T>> {
     #[inline]
-    pub unsafe fn assume_init(self) -> VariableBox<T> {
+    pub(crate) unsafe fn assume_init(self) -> VariableBox<T> {
         let (raw, layout) = VariableBox::into_raw_with_layout(self);
-        unsafe { VariableBox::from_raw(raw as *mut T, layout) }
+        unsafe { VariableBox::from_raw(raw.cast(), layout) }
     }
-}
 
-impl<T> AsRef<T> for VariableBox<T> {
-    fn as_ref(&self) -> &T {
-        unsafe { self.inner.as_ref() }
-    }
-}
-
-impl<T> AsMut<T> for VariableBox<T> {
-    fn as_mut(&mut self) -> &mut T {
-        unsafe { self.inner.as_mut() }
-    }
-}
-
-impl<T> Deref for VariableBox<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-impl<T> DerefMut for VariableBox<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_mut()
+    #[inline]
+    pub(crate) fn as_uninit_mut_ptr(&mut self) -> *mut T {
+        unsafe { (*self.inner.as_ptr()).as_mut_ptr() }
     }
 }
 
 impl<T> Drop for VariableBox<T> {
+    #[inline]
     fn drop(&mut self) {
-        unsafe {
-            Global.deallocate(NonNull::new_unchecked(self.inner.as_ptr()).cast(), self.layout)
-        }
+        unsafe { Global.deallocate(self.inner.cast(), self.layout) }
     }
 }
 
@@ -226,10 +207,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    let boot_services = uefi::env::get_boot_services().ok_or(io::error::const_io_error!(
-        io::ErrorKind::Other,
-        "Unable to acquire boot services"
-    ))?;
+    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
     let mut buf_len = 0usize;
 
     match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
@@ -261,10 +239,8 @@ pub(crate) fn open_protocol<T>(
     handle: NonNull<crate::ffi::c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
-    let boot_services = uefi::env::get_boot_services()
-        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get BootServices"))?;
-    let system_handle = uefi::env::get_system_handle()
-        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get System Handle"))?;
+    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let system_handle = uefi::env::image_handle().ok_or(IMAGE_HANDLE_ERROR)?;
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
     let r = unsafe {
@@ -282,7 +258,7 @@ pub(crate) fn open_protocol<T>(
         Err(status_to_io_error(r))
     } else {
         NonNull::new(unsafe { protocol.assume_init() })
-            .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Protocol"))
+            .ok_or(const_io_error!(io::ErrorKind::Other, "null protocol"))
     }
 }
 
@@ -290,63 +266,121 @@ pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> io::Error {
     use io::ErrorKind;
     use r_efi::efi::Status;
 
+    // Keep the List in Alphabetical Order
     match s {
-        Status::INVALID_PARAMETER => {
-            io::error::const_io_error!(ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
+        Status::ABORTED => {
+            const_io_error!(ErrorKind::ConnectionAborted, "EFI_ABORTED")
         }
-        Status::UNSUPPORTED => {
-            io::error::const_io_error!(ErrorKind::Unsupported, "EFI_UNSUPPORTED")
+        Status::ACCESS_DENIED => {
+            const_io_error!(ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED")
+        }
+        Status::ALREADY_STARTED => {
+            const_io_error!(ErrorKind::Other, "EFI_ALREADY_STARTED")
         }
         Status::BAD_BUFFER_SIZE => {
-            io::error::const_io_error!(ErrorKind::InvalidData, "EFI_BAD_BUFFER_SIZE")
+            const_io_error!(ErrorKind::InvalidData, "EFI_BAD_BUFFER_SIZE")
         }
-        Status::INVALID_LANGUAGE => {
-            io::error::const_io_error!(ErrorKind::InvalidData, "EFI_INVALID_LANGUAGE")
-        }
-        Status::CRC_ERROR => io::error::const_io_error!(ErrorKind::InvalidData, "EFI_CRC_ERROR"),
         Status::BUFFER_TOO_SMALL => {
-            io::error::const_io_error!(ErrorKind::FileTooLarge, "EFI_BUFFER_TOO_SMALL")
+            const_io_error!(ErrorKind::FileTooLarge, "EFI_BUFFER_TOO_SMALL")
         }
-        Status::NOT_READY => io::error::const_io_error!(ErrorKind::ResourceBusy, "EFI_NOT_READY"),
-        Status::WRITE_PROTECTED => {
-            io::error::const_io_error!(ErrorKind::ReadOnlyFilesystem, "EFI_WRITE_PROTECTED")
+        Status::COMPROMISED_DATA => {
+            const_io_error!(ErrorKind::Other, "EFI_COMPRIMISED_DATA")
         }
-        Status::VOLUME_FULL => {
-            io::error::const_io_error!(ErrorKind::StorageFull, "EFI_VOLUME_FULL")
+        Status::CONNECTION_FIN => {
+            const_io_error!(ErrorKind::ConnectionAborted, "EFI_CONNECTION_FIN")
         }
-        Status::MEDIA_CHANGED => {
-            io::error::const_io_error!(ErrorKind::StaleNetworkFileHandle, "EFI_MEDIA_CHANGED")
+        Status::CONNECTION_REFUSED => {
+            const_io_error!(ErrorKind::ConnectionRefused, "EFI_CONNECTION_REFUSED")
         }
-        Status::NOT_FOUND => io::error::const_io_error!(ErrorKind::NotFound, "EFI_NOT_FOUND"),
-        Status::ACCESS_DENIED => {
-            io::error::const_io_error!(ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED")
+        Status::CONNECTION_RESET => {
+            const_io_error!(ErrorKind::ConnectionReset, "EFI_CONNECTION_RESET")
         }
-        Status::SECURITY_VIOLATION => {
-            io::error::const_io_error!(ErrorKind::PermissionDenied, "EFI_SECURITY_VIOLATION")
-        }
-        Status::NO_RESPONSE => {
-            io::error::const_io_error!(ErrorKind::HostUnreachable, "EFI_NO_RESPONSE")
-        }
-        Status::TIMEOUT => io::error::const_io_error!(ErrorKind::TimedOut, "EFI_TIMEOUT"),
+        Status::CRC_ERROR => const_io_error!(ErrorKind::InvalidData, "EFI_CRC_ERROR"),
+        Status::DEVICE_ERROR => const_io_error!(ErrorKind::Other, "EFI_DEVICE_ERROR"),
         Status::END_OF_FILE => {
-            io::error::const_io_error!(ErrorKind::UnexpectedEof, "EFI_END_OF_FILE")
+            const_io_error!(ErrorKind::UnexpectedEof, "EFI_END_OF_FILE")
         }
-        Status::IP_ADDRESS_CONFLICT => {
-            io::error::const_io_error!(ErrorKind::AddrInUse, "EFI_IP_ADDRESS_CONFLICT")
+        Status::END_OF_MEDIA => {
+            const_io_error!(ErrorKind::UnexpectedEof, "EFI_END_OF_MEDIA")
+        }
+        Status::HOST_UNREACHABLE => {
+            const_io_error!(ErrorKind::HostUnreachable, "EFI_HOST_UNREACHABLE")
         }
         Status::HTTP_ERROR => {
-            io::error::const_io_error!(ErrorKind::NetworkUnreachable, "EFI_HTTP_ERROR")
+            const_io_error!(ErrorKind::NetworkUnreachable, "EFI_HTTP_ERROR")
+        }
+        Status::ICMP_ERROR => {
+            const_io_error!(ErrorKind::Other, "EFI_ICMP_ERROR")
+        }
+        Status::INCOMPATIBLE_VERSION => {
+            const_io_error!(ErrorKind::Other, "EFI_INCOMPATIBLE_VERSION")
+        }
+        Status::INVALID_LANGUAGE => {
+            const_io_error!(ErrorKind::InvalidData, "EFI_INVALID_LANGUAGE")
+        }
+        Status::INVALID_PARAMETER => {
+            const_io_error!(ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
+        }
+        Status::IP_ADDRESS_CONFLICT => {
+            const_io_error!(ErrorKind::AddrInUse, "EFI_IP_ADDRESS_CONFLICT")
+        }
+        Status::LOAD_ERROR => {
+            const_io_error!(ErrorKind::Other, "EFI_LOAD_ERROR")
+        }
+        Status::MEDIA_CHANGED => {
+            const_io_error!(ErrorKind::StaleNetworkFileHandle, "EFI_MEDIA_CHANGED")
+        }
+        Status::NETWORK_UNREACHABLE => {
+            const_io_error!(ErrorKind::NetworkUnreachable, "EFI_NETWORK_UNREACHABLE")
+        }
+        Status::NO_MAPPING => {
+            const_io_error!(ErrorKind::Other, "EFI_NO_MAPPING")
+        }
+        Status::NO_MEDIA => {
+            const_io_error!(ErrorKind::Other, "EFI_NO_MEDIA")
+        }
+        Status::NO_RESPONSE => {
+            const_io_error!(ErrorKind::HostUnreachable, "EFI_NO_RESPONSE")
+        }
+        Status::NOT_FOUND => const_io_error!(ErrorKind::NotFound, "EFI_NOT_FOUND"),
+        Status::NOT_READY => const_io_error!(ErrorKind::ResourceBusy, "EFI_NOT_READY"),
+        Status::NOT_STARTED => const_io_error!(ErrorKind::Other, "EFI_NOT_STARTED"),
+        Status::OUT_OF_RESOURCES => {
+            const_io_error!(ErrorKind::OutOfMemory, "EFI_OUT_OF_RESOURCES")
+        }
+        Status::PROTOCOL_ERROR => {
+            const_io_error!(ErrorKind::Other, "EFI_PROTOCOL_ERROR")
+        }
+        Status::PROTOCOL_UNREACHABLE => {
+            const_io_error!(ErrorKind::Other, "EFI_PROTOCOL_UNREACHABLE")
+        }
+        Status::SECURITY_VIOLATION => {
+            const_io_error!(ErrorKind::PermissionDenied, "EFI_SECURITY_VIOLATION")
+        }
+        Status::TFTP_ERROR => const_io_error!(ErrorKind::Other, "EFI_TFTP_ERROR"),
+        Status::TIMEOUT => const_io_error!(ErrorKind::TimedOut, "EFI_TIMEOUT"),
+        Status::UNSUPPORTED => {
+            const_io_error!(ErrorKind::Unsupported, "EFI_UNSUPPORTED")
+        }
+        Status::VOLUME_FULL => {
+            const_io_error!(ErrorKind::StorageFull, "EFI_VOLUME_FULL")
+        }
+        Status::VOLUME_CORRUPTED => {
+            const_io_error!(ErrorKind::Other, "EFI_VOLUME_CORRUPTED")
+        }
+        Status::WRITE_PROTECTED => {
+            const_io_error!(ErrorKind::ReadOnlyFilesystem, "EFI_WRITE_PROTECTED")
         }
         _ => io::Error::new(ErrorKind::Uncategorized, format!("Status: {}", s.as_usize())),
     }
 }
 
-pub fn install_protocol<T>(
+pub(crate) fn install_protocol<T>(
     handle: &mut r_efi::efi::Handle,
     mut guid: r_efi::efi::Guid,
     interface: &mut T,
 ) -> io::Result<()> {
-    let boot_services = uefi::env::get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
     let r = unsafe {
         ((*boot_services.as_ptr()).install_protocol_interface)(
             handle,
@@ -358,12 +392,12 @@ pub fn install_protocol<T>(
     if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
 }
 
-pub fn uninstall_protocol<T>(
+pub(crate) fn uninstall_protocol<T>(
     handle: r_efi::efi::Handle,
     mut guid: r_efi::efi::Guid,
     interface: &mut T,
 ) -> io::Result<()> {
-    let boot_services = uefi::env::get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
+    let boot_services = get_boot_services().ok_or(BOOT_SERVICES_ERROR)?;
     let r = unsafe {
         ((*boot_services.as_ptr()).uninstall_protocol_interface)(
             handle,
@@ -374,11 +408,13 @@ pub fn uninstall_protocol<T>(
     if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
 }
 
-pub trait Protocol {
+// A Helper trait for `ProtocolWrapper<P>`.
+pub(crate) trait Protocol {
     const PROTOCOL_GUID: Guid;
 }
 
-pub struct ProtocolWrapper<P>
+// A wrapper for creating protocols from Rust in Local scope. Uninstalls the protocol on Drop.
+pub(crate) struct ProtocolWrapper<P>
 where
     P: Protocol,
 {
@@ -390,31 +426,33 @@ impl<P> ProtocolWrapper<P>
 where
     P: Protocol,
 {
-    pub fn new(handle: NonNull<crate::ffi::c_void>, protocol: Box<P>) -> Self {
+    #[inline]
+    pub(crate) fn new(handle: NonNull<crate::ffi::c_void>, protocol: Box<P>) -> Self {
         Self { handle, protocol }
     }
 
-    pub fn install_protocol(protocol: P) -> io::Result<ProtocolWrapper<P>> {
+    pub(crate) fn install_protocol(protocol: P) -> io::Result<ProtocolWrapper<P>> {
         let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
         let mut protocol = Box::new(protocol);
         install_protocol::<P>(&mut handle, P::PROTOCOL_GUID, &mut protocol)?;
         let handle = NonNull::new(handle)
-            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "Found Null Handle"))?;
+            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
         Ok(Self::new(handle, protocol))
     }
 
-    pub fn install_protocol_in(
+    pub(crate) fn install_protocol_in(
         protocol: P,
         mut handle: r_efi::efi::Handle,
     ) -> io::Result<ProtocolWrapper<P>> {
         let mut protocol = Box::new(protocol);
         install_protocol::<P>(&mut handle, P::PROTOCOL_GUID, &mut protocol)?;
         let handle = NonNull::new(handle)
-            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "Found Null Handle"))?;
+            .ok_or(io::const_io_error!(io::ErrorKind::Uncategorized, "found null handle"))?;
         Ok(Self::new(handle, protocol))
     }
 
-    pub fn handle_non_null(&self) -> NonNull<crate::ffi::c_void> {
+    #[inline]
+    pub(crate) fn handle(&self) -> NonNull<crate::ffi::c_void> {
         self.handle
     }
 }
@@ -423,7 +461,44 @@ impl<P> Drop for ProtocolWrapper<P>
 where
     P: Protocol,
 {
+    #[inline]
     fn drop(&mut self) {
         let _ = uninstall_protocol::<P>(self.handle.as_ptr(), P::PROTOCOL_GUID, &mut self.protocol);
     }
+}
+
+/// Get the BootServices Pointer.
+pub(crate) fn get_boot_services() -> Option<NonNull<r_efi::efi::BootServices>> {
+    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table()?.cast();
+    let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
+    NonNull::new(boot_services)
+}
+
+/// Get the RuntimeServices Pointer.
+pub(crate) fn get_runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
+    let system_table: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table()?.cast();
+    let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
+    NonNull::new(runtime_services)
+}
+
+// Create UCS-2 Vector from OsStr
+pub(crate) fn to_ffi_string(s: &OsStr) -> Vec<u16> {
+    let mut v: Vec<u16> = s
+        .encode_wide()
+        .map(|x| match x {
+            Ok(c) => c,
+            Err(_) => u16::from(crate::sys_common::ucs2::Ucs2Char::REPLACEMENT_CHARACTER),
+        })
+        .collect();
+    v.push(0);
+    v.shrink_to_fit();
+    v
+}
+
+// Create OsString from UEFI UCS-2 String
+pub(crate) fn from_ffi_string(ucs: *mut u16, bytes: usize) -> OsString {
+    // Convert len in bytes to string length and do not count the null character
+    let len = bytes / crate::mem::size_of::<u16>() - 1;
+    let s = unsafe { crate::slice::from_raw_parts(ucs, len) };
+    OsString::from_wide(s)
 }

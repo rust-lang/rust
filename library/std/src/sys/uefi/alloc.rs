@@ -3,11 +3,11 @@
 //! Takes a lot of inspiration from Windows allocator for Alignment > 8.
 
 use crate::alloc::{GlobalAlloc, Layout, System};
-use crate::os::uefi;
+use crate::ptr;
+use crate::sys::uefi::common;
 
 pub(crate) const POOL_ALIGNMENT: usize = 8;
-// FIXME: Maybe allow chaing the MEMORY_TYPE. However, since allocation is done even before main,
-// there will be a few allocations with the default MEMORY_TYPE.
+
 const MEMORY_TYPE: u32 = r_efi::efi::LOADER_DATA;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
@@ -16,46 +16,39 @@ unsafe impl GlobalAlloc for System {
         let align = layout.align();
         let size = layout.size();
 
-        // Return NULL pointer if `layout.size == 0`
-        if size == 0 {
-            return core::ptr::null_mut();
-        }
-
         // Return NULL pointer if boot_services pointer cannot be obtained. The only time this
         // should happen is if SystemTable has not been initialized
-        let boot_services = match uefi::env::get_boot_services() {
+        let boot_services = match common::get_boot_services() {
             Some(x) => x,
-            None => return core::ptr::null_mut(),
+            None => return ptr::null_mut(),
         };
 
         let allocate_pool_ptr = unsafe { (*boot_services.as_ptr()).allocate_pool };
 
-        let mut ptr: *mut crate::ffi::c_void = crate::ptr::null_mut();
+        let mut ptr: *mut crate::ffi::c_void = ptr::null_mut();
         let aligned_size = align_size(size, align);
 
         let r = (allocate_pool_ptr)(MEMORY_TYPE, aligned_size, &mut ptr);
 
         if r.is_error() || ptr.is_null() {
-            return crate::ptr::null_mut();
+            return ptr::null_mut();
         }
 
         unsafe { align_ptr(ptr.cast(), align) }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        if layout.size() != 0 {
-            let boot_services = match uefi::env::get_boot_services() {
-                Some(x) => x,
-                None => return,
-            };
+        let boot_services = match common::get_boot_services() {
+            Some(x) => x,
+            None => return,
+        };
 
-            let free_pool_ptr = unsafe { (*boot_services.as_ptr()).free_pool };
+        let free_pool_ptr = unsafe { (*boot_services.as_ptr()).free_pool };
 
-            let ptr = unsafe { unalign_ptr(ptr, layout.align()) };
-            let r = (free_pool_ptr)(ptr.cast());
+        let ptr = unsafe { unalign_ptr(ptr, layout.align()) };
+        let r = (free_pool_ptr)(ptr.cast());
 
-            assert!(!r.is_error());
-        }
+        assert!(!r.is_error());
     }
 }
 

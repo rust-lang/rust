@@ -4,6 +4,7 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::num::NonZeroI32;
 use crate::path::Path;
+use crate::ptr::NonNull;
 use crate::sys::uefi::common;
 use crate::sys::uefi::{common::status_to_io_error, fs::File, pipe::AnonPipe, unsupported};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
@@ -89,63 +90,18 @@ impl Command {
         None
     }
 
-    fn setup_stdout(output: Stdio) -> io::Result<(r_efi::efi::Handle, Option<AnonPipe>)> {
+    fn setup_pipe<F>(output: Stdio, func: F) -> io::Result<(r_efi::efi::Handle, Option<AnonPipe>)>
+    where
+        F: Fn(NonNull<uefi_command_protocol::Protocol>) -> r_efi::efi::Handle,
+    {
         match output {
             Stdio::Inherit => {
-                let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-                if let Some(command_protocol) = common::get_current_handle_protocol::<
-                    uefi_command_protocol::Protocol,
-                >(&mut guid)
+                if let Some(command_protocol) =
+                    common::get_current_handle_protocol::<uefi_command_protocol::Protocol>(
+                        uefi_command_protocol::PROTOCOL_GUID,
+                    )
                 {
-                    Ok((unsafe { (*command_protocol.as_ptr()).stdout }, None))
-                } else {
-                    Ok((crate::ptr::null_mut(), None))
-                }
-            }
-            Stdio::Null => {
-                let pipe = AnonPipe::null();
-                Ok((pipe.handle().as_ptr(), Some(pipe)))
-            }
-            Stdio::MakePipe => {
-                let pipe = AnonPipe::make_pipe();
-                Ok((pipe.handle().as_ptr(), Some(pipe)))
-            }
-        }
-    }
-
-    fn setup_stdin(output: Stdio) -> io::Result<(r_efi::efi::Handle, Option<AnonPipe>)> {
-        match output {
-            Stdio::Inherit => {
-                let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-                if let Some(command_protocol) = common::get_current_handle_protocol::<
-                    uefi_command_protocol::Protocol,
-                >(&mut guid)
-                {
-                    Ok((unsafe { (*command_protocol.as_ptr()).stdin }, None))
-                } else {
-                    Ok((crate::ptr::null_mut(), None))
-                }
-            }
-            Stdio::Null => {
-                let pipe = AnonPipe::null();
-                Ok((pipe.handle().as_ptr(), Some(pipe)))
-            }
-            Stdio::MakePipe => {
-                let pipe = AnonPipe::make_pipe();
-                Ok((pipe.handle().as_ptr(), Some(pipe)))
-            }
-        }
-    }
-
-    fn setup_stderr(output: Stdio) -> io::Result<(r_efi::efi::Handle, Option<AnonPipe>)> {
-        match output {
-            Stdio::Inherit => {
-                let mut guid = uefi_command_protocol::PROTOCOL_GUID;
-                if let Some(command_protocol) = common::get_current_handle_protocol::<
-                    uefi_command_protocol::Protocol,
-                >(&mut guid)
-                {
-                    Ok((unsafe { (*command_protocol.as_ptr()).stderr }, None))
+                    Ok((func(command_protocol), None))
                 } else {
                     Ok((crate::ptr::null_mut(), None))
                 }
@@ -173,11 +129,17 @@ impl Command {
         let mut stdio_pipe = StdioPipes::default();
 
         (command_protocol.stdout, stdio_pipe.stdout) =
-            Self::setup_stdout(self.stdout.unwrap_or(default))?;
+            Self::setup_pipe(self.stdout.unwrap_or(default), |command_protocol| unsafe {
+                (*command_protocol.as_ptr()).stdout
+            })?;
         (command_protocol.stderr, stdio_pipe.stderr) =
-            Self::setup_stderr(self.stderr.unwrap_or(default))?;
+            Self::setup_pipe(self.stderr.unwrap_or(default), |command_protocol| unsafe {
+                (*command_protocol.as_ptr()).stderr
+            })?;
         (command_protocol.stdin, stdio_pipe.stdin) =
-            Self::setup_stdin(self.stdin.unwrap_or(default))?;
+            Self::setup_pipe(self.stdin.unwrap_or(default), |command_protocol| unsafe {
+                (*command_protocol.as_ptr()).stdin
+            })?;
 
         // Set env varibles
         for (key, val) in self.env.iter() {
@@ -222,8 +184,8 @@ impl From<File> for Stdio {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.args.fmt(f)
     }
 }
 
@@ -293,7 +255,7 @@ pub struct Process {
 }
 
 impl Process {
-    // Process does not have an id
+    // Process does not have an id in UEFI
     pub fn id(&self) -> u32 {
         unimplemented!()
     }
@@ -336,22 +298,19 @@ mod uefi_command {
     use crate::io;
     use crate::mem::{ManuallyDrop, MaybeUninit};
     use crate::os::uefi;
-    use crate::os::uefi::ffi::OsStrExt;
-    use crate::ptr::NonNull;
+    use crate::ptr::{addr_of_mut, NonNull};
     use r_efi::protocols::loaded_image;
 
-    pub struct Command {
+    pub(crate) struct Command {
         pub handle: NonNull<crate::ffi::c_void>,
         pub command_protocol:
             Option<common::ProtocolWrapper<super::uefi_command_protocol::Protocol>>,
     }
 
     impl Command {
-        pub fn load_image(p: &OsStr) -> io::Result<Self> {
-            let boot_services =
-                uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
-            let system_handle =
-                uefi::env::get_system_handle().ok_or(common::SYSTEM_HANDLE_ERROR)?;
+        pub(crate) fn load_image(p: &OsStr) -> io::Result<Self> {
+            let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+            let system_handle = uefi::env::image_handle().ok_or(common::IMAGE_HANDLE_ERROR)?;
             let mut path = super::super::path::device_path_from_os_str(p)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {
@@ -369,18 +328,16 @@ mod uefi_command {
             } else {
                 let child_handle = unsafe { child_handle.assume_init() };
                 match NonNull::new(child_handle) {
-                    None => Err(io::error::const_io_error!(
-                        io::ErrorKind::InvalidData,
-                        "Null Handle Received"
-                    )),
+                    None => {
+                        Err(io::const_io_error!(io::ErrorKind::InvalidData, "null handle received"))
+                    }
                     Some(x) => Ok(Self { handle: x, command_protocol: None }),
                 }
             }
         }
 
-        pub fn start_image(&self) -> io::Result<r_efi::efi::Status> {
-            let boot_services =
-                uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+        pub(crate) fn start_image(&self) -> io::Result<r_efi::efi::Status> {
+            let boot_services = common::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
             let mut exit_data_size: MaybeUninit<usize> = MaybeUninit::uninit();
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
             let r = unsafe {
@@ -400,23 +357,14 @@ mod uefi_command {
             Ok(r)
         }
 
-        pub fn set_args(&self, args: &OsStr) -> io::Result<()> {
-            let mut guid = loaded_image::PROTOCOL_GUID;
+        pub(crate) fn set_args(&self, args: &OsStr) -> io::Result<()> {
             let protocol: NonNull<loaded_image::Protocol> =
-                common::get_handle_protocol(self.handle, &mut guid).ok_or(
-                    io::error::const_io_error!(
-                        io::ErrorKind::Uncategorized,
-                        "Failed to acquire loaded image protocol for child handle",
-                    ),
-                )?;
-            let mut args = ManuallyDrop::new(args.to_ffi_string());
+                common::open_protocol(self.handle, loaded_image::PROTOCOL_GUID)?;
+            let mut args = ManuallyDrop::new(common::to_ffi_string(args));
             let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
             unsafe {
-                (*protocol.as_ptr()).load_options_size = args_size;
-                let _ = crate::mem::replace(
-                    &mut (*protocol.as_ptr()).load_options,
-                    args.as_mut_ptr() as *mut crate::ffi::c_void,
-                );
+                addr_of_mut!((*protocol.as_ptr()).load_options_size).write(args_size);
+                addr_of_mut!((*protocol.as_ptr()).load_options).replace(args.as_mut_ptr().cast());
             };
             Ok(())
         }
@@ -425,7 +373,7 @@ mod uefi_command {
     impl Drop for Command {
         // Unload Image
         fn drop(&mut self) {
-            if let Some(boot_services) = uefi::env::get_boot_services() {
+            if let Some(boot_services) = common::get_boot_services() {
                 self.command_protocol = None;
                 let _ = unsafe { ((*boot_services.as_ptr()).unload_image)(self.handle.as_ptr()) };
             }
@@ -433,11 +381,11 @@ mod uefi_command {
     }
 }
 
-pub mod uefi_command_protocol {
+pub(crate) mod uefi_command_protocol {
     use super::super::common;
     use r_efi::efi::{Guid, Handle};
 
-    pub const PROTOCOL_GUID: Guid = Guid::from_fields(
+    pub(crate) const PROTOCOL_GUID: Guid = Guid::from_fields(
         0xc3cc5ede,
         0xb029,
         0x4daa,
@@ -447,20 +395,22 @@ pub mod uefi_command_protocol {
     );
 
     #[repr(C)]
-    pub struct Protocol {
+    pub(crate) struct Protocol {
         pub stdout: Handle,
         pub stderr: Handle,
         pub stdin: Handle,
     }
 
     impl Default for Protocol {
+        #[inline]
         fn default() -> Self {
             Self::new(crate::ptr::null_mut(), crate::ptr::null_mut(), crate::ptr::null_mut())
         }
     }
 
     impl Protocol {
-        pub fn new(stdout: Handle, stderr: Handle, stdin: Handle) -> Self {
+        #[inline]
+        pub(crate) fn new(stdout: Handle, stderr: Handle, stdin: Handle) -> Self {
             Self { stdout, stderr, stdin }
         }
     }

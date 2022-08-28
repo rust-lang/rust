@@ -7,13 +7,12 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
-use crate::os::uefi::ffi::OsStrExt;
 use crate::path::{self, PathBuf};
 use crate::{error::Error as StdError, os::uefi::ffi::OsStringExt};
 
 // Return EFI_ABORTED as Status
 pub fn errno() -> i32 {
-    r_efi::efi::Status::ABORTED.as_usize() as i32
+    r_efi::efi::Status::SUCCESS.as_usize() as i32
 }
 
 pub fn error_string(errno: i32) -> String {
@@ -73,12 +72,13 @@ impl StdError for JoinPathsError {
 pub fn current_exe() -> io::Result<PathBuf> {
     use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
-    let mut protocol_guid = loaded_image_device_path::PROTOCOL_GUID;
-    match common::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
+    match common::get_current_handle_protocol::<device_path::Protocol>(
+        loaded_image_device_path::PROTOCOL_GUID,
+    ) {
         Some(mut x) => unsafe { super::path::device_path_to_path(x.as_mut()) },
-        None => Err(io::error::const_io_error!(
+        None => Err(io::const_io_error!(
             io::ErrorKind::Uncategorized,
-            "Failed to Acquire EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL",
+            "failed to acquire EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL",
         )),
     }
 }
@@ -110,7 +110,7 @@ impl Iterator for Env {
         self.last_var_name = k;
         match val {
             None => self.next(),
-            Some(x) => Some((OsString::from_ucs2_null_termintated(&key), x)),
+            Some(x) => Some((OsString::from_wide(&key[..(key.len() - 1)]), x)),
         }
     }
 }
@@ -125,7 +125,7 @@ pub fn env() -> Env {
 // Tries to get variable from bot RUST_VARIABLE_GUID and SHELL_VARIABLE_GUID. Precedence:
 // RUST_VARIABLE_GUID > SHELL_VARIABLE_GUID
 pub fn getenv(key: &OsStr) -> Option<OsString> {
-    let mut k = key.to_ffi_string();
+    let mut k = common::to_ffi_string(key);
     if let Some(x) = uefi_vars::get_variable_utf8(&mut k, uefi_vars::RUST_VARIABLE_GUID) {
         Some(x)
     } else {
@@ -141,7 +141,7 @@ pub fn setenv(key: &OsStr, val: &OsStr) -> io::Result<()> {
     } else {
         unsafe {
             uefi_vars::set_variable_raw(
-                key.to_ffi_string().as_mut_ptr(),
+                common::to_ffi_string(key).as_mut_ptr(),
                 uefi_vars::RUST_VARIABLE_GUID,
                 val.len(),
                 val.bytes().as_ptr() as *mut crate::ffi::c_void,
@@ -153,7 +153,7 @@ pub fn setenv(key: &OsStr, val: &OsStr) -> io::Result<()> {
 pub fn unsetenv(key: &OsStr) -> io::Result<()> {
     match unsafe {
         uefi_vars::set_variable_raw(
-            key.to_ffi_string().as_mut_ptr(),
+            common::to_ffi_string(key).as_mut_ptr(),
             uefi_vars::RUST_VARIABLE_GUID,
             0,
             crate::ptr::null_mut(),
@@ -184,7 +184,7 @@ pub fn exit(code: i32) -> ! {
 
     // First try to use EFI_BOOT_SERVICES.Exit()
     if let (Some(boot_services), Some(handle)) =
-        (uefi::env::get_boot_services(), uefi::env::get_system_handle())
+        (common::get_boot_services(), uefi::env::image_handle())
     {
         let _ =
             unsafe { ((*boot_services.as_ptr()).exit)(handle.as_ptr(), code, 0, [0].as_mut_ptr()) };
@@ -205,11 +205,10 @@ pub(crate) mod uefi_vars {
     use crate::ffi::OsString;
     use crate::io;
     use crate::mem::size_of;
-    use crate::os::uefi;
     use crate::os::uefi::ffi::OsStringExt;
 
     // Using Shell Variable Guid from edk2/ShellPkg
-    pub const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
+    pub(crate) const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x158def5a,
         0xf656,
         0x419c,
@@ -218,7 +217,7 @@ pub(crate) mod uefi_vars {
         &[0x7a, 0x31, 0x92, 0xc0, 0x79, 0xd2],
     );
 
-    pub const RUST_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
+    pub(crate) const RUST_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x49bb4029,
         0x7d2b,
         0x4bf7,
@@ -227,7 +226,7 @@ pub(crate) mod uefi_vars {
         &[0x0f, 0x18, 0xa1, 0xa8, 0x85, 0xc9],
     );
 
-    pub fn get_variable_utf8(key: &mut [u16], guid: r_efi::efi::Guid) -> Option<OsString> {
+    pub(crate) fn get_variable_utf8(key: &mut [u16], guid: r_efi::efi::Guid) -> Option<OsString> {
         let mut buf_size = 0;
 
         if let Err(e) = unsafe {
@@ -247,7 +246,7 @@ pub(crate) mod uefi_vars {
         Some(OsString::from(String::from_utf8(buf).ok()?))
     }
 
-    pub fn get_variable_ucs2(key: &mut [u16], guid: r_efi::efi::Guid) -> Option<OsString> {
+    pub(crate) fn get_variable_ucs2(key: &mut [u16], guid: r_efi::efi::Guid) -> Option<OsString> {
         let mut buf_size = 0;
 
         if let Err(e) = unsafe {
@@ -264,10 +263,10 @@ pub(crate) mod uefi_vars {
         }?;
 
         unsafe { buf.set_len(buf_size / size_of::<u16>()) };
-        Some(OsString::from_ucs2_lossy(&buf))
+        Some(OsString::from_wide(&buf))
     }
 
-    pub fn get_next_variable_name(
+    pub(crate) fn get_next_variable_name(
         last_var_name: &[u16],
         last_guid: &r_efi::efi::Guid,
     ) -> io::Result<(Vec<u16>, r_efi::efi::Guid)> {
@@ -299,14 +298,14 @@ pub(crate) mod uefi_vars {
         Ok((var_name, guid))
     }
 
-    pub unsafe fn set_variable_raw(
+    pub(crate) unsafe fn set_variable_raw(
         variable_name: *mut u16,
         mut guid: r_efi::efi::Guid,
         data_size: usize,
         data: *mut crate::ffi::c_void,
     ) -> io::Result<()> {
         let runtime_services =
-            uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
         let r = unsafe {
             ((*runtime_services.as_ptr()).set_variable)(
                 variable_name,
@@ -326,7 +325,7 @@ pub(crate) mod uefi_vars {
         data: *mut crate::ffi::c_void,
     ) -> io::Result<()> {
         let runtime_services =
-            uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key,
@@ -345,7 +344,7 @@ pub(crate) mod uefi_vars {
         vendor_guid: *mut r_efi::efi::Guid,
     ) -> io::Result<()> {
         let runtime_services =
-            uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
+            common::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_next_variable_name)(
                 variable_name_size,

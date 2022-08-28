@@ -10,12 +10,12 @@ use crate::{
 };
 use r_efi::protocols;
 
-pub enum TcpProtocol {
+pub(crate) enum TcpProtocol {
     V4(tcp4::Tcp4Protocol),
 }
 
 impl TcpProtocol {
-    pub fn bind(addr: &SocketAddr) -> io::Result<Self> {
+    pub(crate) fn bind(addr: &SocketAddr) -> io::Result<Self> {
         match addr {
             SocketAddr::V4(x) => {
                 let handles =
@@ -48,9 +48,9 @@ impl TcpProtocol {
                     }
                 }
 
-                Err(io::error::const_io_error!(
+                Err(io::const_io_error!(
                     io::ErrorKind::Other,
-                    "Failed to open any EFI_TCP6_PROTOCOL"
+                    "failed to open any EFI_TCP6_PROTOCOL"
                 ))
             }
             SocketAddr::V6(_x) => {
@@ -60,7 +60,7 @@ impl TcpProtocol {
     }
 
     // FIXME: Not reall tested properly yet
-    pub fn connect(addr: &SocketAddr) -> io::Result<Self> {
+    pub(crate) fn connect(addr: &SocketAddr) -> io::Result<Self> {
         match addr {
             SocketAddr::V4(addr) => {
                 let handles =
@@ -100,16 +100,16 @@ impl TcpProtocol {
                     }
                 }
 
-                Err(io::error::const_io_error!(
+                Err(io::const_io_error!(
                     io::ErrorKind::Other,
-                    "Failed to open any EFI_TCP6_PROTOCOL"
+                    "failed to open any EFI_TCP6_PROTOCOL"
                 ))
             }
             SocketAddr::V6(_) => unsupported(),
         }
     }
 
-    pub fn accept(&self) -> io::Result<(TcpProtocol, SocketAddr)> {
+    pub(crate) fn accept(&self) -> io::Result<(TcpProtocol, SocketAddr)> {
         let stream = match self {
             TcpProtocol::V4(x) => TcpProtocol::from(x.accept()?),
         };
@@ -118,34 +118,34 @@ impl TcpProtocol {
     }
 
     #[inline]
-    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+    pub(crate) fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.receive(buf),
         }
     }
 
     #[inline]
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub(crate) fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.receive_vectored(bufs),
         }
     }
 
     #[inline]
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+    pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.transmit(buf),
         }
     }
 
     #[inline]
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub(crate) fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self {
             TcpProtocol::V4(x) => x.transmit_vectored(bufs),
         }
     }
 
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+    pub(crate) fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         match how {
             Shutdown::Read => unsupported(),
             Shutdown::Write => unsupported(),
@@ -156,20 +156,20 @@ impl TcpProtocol {
     }
 
     #[inline]
-    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn peer_addr(&self) -> io::Result<SocketAddr> {
         match self {
             TcpProtocol::V4(x) => Ok(x.remote_socket()?.into()),
         }
     }
 
     #[inline]
-    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+    pub(crate) fn local_addr(&self) -> io::Result<SocketAddr> {
         match self {
             TcpProtocol::V4(x) => Ok(x.station_socket()?.into()),
         }
     }
 
-    pub fn nodelay(&self) -> io::Result<bool> {
+    pub(crate) fn nodelay(&self) -> io::Result<bool> {
         match self {
             TcpProtocol::V4(x) => {
                 let config_data = x.get_config_data()?;
@@ -179,7 +179,7 @@ impl TcpProtocol {
         }
     }
 
-    pub fn ttl(&self) -> io::Result<u32> {
+    pub(crate) fn ttl(&self) -> io::Result<u32> {
         match self {
             TcpProtocol::V4(x) => {
                 let config_data = x.get_config_data()?;
@@ -188,7 +188,7 @@ impl TcpProtocol {
         }
     }
 
-    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+    pub(crate) fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         match self {
             TcpProtocol::V4(x) => {
                 let mut config_data = x.get_config_data()?;
