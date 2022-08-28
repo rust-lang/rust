@@ -11,6 +11,11 @@
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows (<https://github.com/rust-lang/miri/issues/2301>).
 //!
+//! A modification is made to the paper's model to partially address C++20 changes.
+//! Specifically, if an SC load reads from an atomic store of any ordering, then a later SC load cannot read from
+//! an earlier store in the location's modification order. This is to prevent creating a backwards S edge from the second
+//! load to the first, as a result of C++20's coherence-ordered before rules.
+//!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
 //! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the
 //! same program is compiled and run natively. Unfortunately, no literature exists at the time of writing which proposes
