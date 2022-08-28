@@ -22,7 +22,7 @@ use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
-use crate::session_diagnostics::{CaptureCausedBy, ClosureCannotAgain};
+use crate::session_diagnostics::{CaptureCausedBy, ClosureCannotAgain, NotImplCopy};
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -391,14 +391,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         span: Option<Span>,
         move_prefix: &str,
     ) {
-        let message = format!(
-            "{}move occurs because {} has type `{}`, which does not implement the `Copy` trait",
-            move_prefix, place_desc, ty,
-        );
         if let Some(span) = span {
-            err.span_label(span, message);
+            err.subdiagnostic(NotImplCopy::Label { span, place_desc, ty, move_prefix });
         } else {
-            err.note(&message);
+            err.subdiagnostic(NotImplCopy::Note { place_desc, ty, move_prefix });
         }
     }
 
@@ -988,6 +984,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         loop_message,
                         span: fn_call_span,
                     };
+                    err.subdiagnostic(label);
                     let note = CaptureCausedBy::FnOnceVal { span: var_span };
                     err.subdiagnostic(note);
                 }

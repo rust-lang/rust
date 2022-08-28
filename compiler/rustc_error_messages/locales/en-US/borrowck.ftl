@@ -171,3 +171,6 @@ borrowck_moved_fnonce_value =
 
 borrowck_moved_by_call =
     {$place_name} {$partially_str}moved due to this call{$loop_message}
+
+borrowck_type_not_impl_Copy =
+    {$move_prefix}move occurs because {$place_desc} has type `{$ty}`, which does not implement the `Copy` trait

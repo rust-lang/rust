@@ -424,3 +424,17 @@ pub(crate) enum CaptureCausedBy<'a> {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum NotImplCopy<'a, 'tcx> {
+    #[label(borrowck::type_not_impl_Copy)]
+    Label {
+        place_desc: &'a str,
+        ty: Ty<'tcx>,
+        move_prefix: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::type_not_impl_Copy)]
+    Note { place_desc: &'a str, ty: Ty<'tcx>, move_prefix: &'a str },
+}
