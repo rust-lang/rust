@@ -257,6 +257,35 @@ fn test_sync_through_rmw_and_fences() {
     assert_ne!((a, b), (0, 0));
 }
 
+// Test case by @SabrinaJewson
+// https://github.com/rust-lang/miri/issues/2301#issuecomment-1221502757
+// Demonstrating C++20 SC access changes
+fn test_iriw_sc_rlx() {
+    let x = static_atomic_bool(false);
+    let y = static_atomic_bool(false);
+
+    x.store(false, Relaxed);
+    y.store(false, Relaxed);
+
+    let a = spawn(move || x.store(true, Relaxed));
+    let b = spawn(move || y.store(true, Relaxed));
+    let c = spawn(move || {
+        while !x.load(SeqCst) {}
+        y.load(SeqCst)
+    });
+    let d = spawn(move || {
+        while !y.load(SeqCst) {}
+        x.load(SeqCst)
+    });
+
+    a.join().unwrap();
+    b.join().unwrap();
+    let c = c.join().unwrap();
+    let d = d.join().unwrap();
+
+    assert!(c || d);
+}
+
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -267,5 +296,6 @@ pub fn main() {
         test_corr();
         test_sc_store_buffering();
         test_sync_through_rmw_and_fences();
+        test_iriw_sc_rlx();
     }
 }

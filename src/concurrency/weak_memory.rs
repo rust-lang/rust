@@ -6,10 +6,15 @@
 //! but it is incapable of producing all possible weak behaviours allowed by the model. There are
 //! certain weak behaviours observable on real hardware but not while using this.
 //!
-//! Note that this implementation does not take into account of C++20's memory model revision to SC accesses
+//! Note that this implementation does not fully take into account of C++20's memory model revision to SC accesses
 //! and fences introduced by P0668 (<https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0668r5.html>).
 //! This implementation is not fully correct under the revised C++20 model and may generate behaviours C++20
 //! disallows (<https://github.com/rust-lang/miri/issues/2301>).
+//!
+//! A modification is made to the paper's model to partially address C++20 changes.
+//! Specifically, if an SC load reads from an atomic store of any ordering, then a later SC load cannot read from
+//! an earlier store in the location's modification order. This is to prevent creating a backwards S edge from the second
+//! load to the first, as a result of C++20's coherence-ordered before rules.
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
 //! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the
@@ -133,9 +138,17 @@ struct StoreElement {
     // (partially) uninitialized data.
     val: Scalar<Provenance>,
 
+    /// Metadata about loads from this store element,
+    /// behind a RefCell to keep load op take &self
+    load_info: RefCell<LoadInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct LoadInfo {
     /// Timestamp of first loads from this store element by each thread
-    /// Behind a RefCell to keep load op take &self
-    loads: RefCell<FxHashMap<VectorIdx, VTimestamp>>,
+    timestamps: FxHashMap<VectorIdx, VTimestamp>,
+    /// Whether this store element has been read by an SC load
+    sc_loaded: bool,
 }
 
 impl StoreBufferAlloc {
@@ -235,18 +248,23 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             timestamp: 0,
             val: init,
             is_seqcst: false,
-            loads: RefCell::new(FxHashMap::default()),
+            load_info: RefCell::new(LoadInfo::default()),
         };
         ret.buffer.push_back(store_elem);
         ret
     }
 
     /// Reads from the last store in modification order
-    fn read_from_last_store(&self, global: &DataRaceState, thread_mgr: &ThreadManager<'_, '_>) {
+    fn read_from_last_store(
+        &self,
+        global: &DataRaceState,
+        thread_mgr: &ThreadManager<'_, '_>,
+        is_seqcst: bool,
+    ) {
         let store_elem = self.buffer.back();
         if let Some(store_elem) = store_elem {
             let (index, clocks) = global.current_thread_state(thread_mgr);
-            store_elem.load_impl(index, &clocks);
+            store_elem.load_impl(index, &clocks, is_seqcst);
         }
     }
 
@@ -276,7 +294,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         validate()?;
 
         let (index, clocks) = global.current_thread_state(thread_mgr);
-        let loaded = store_elem.load_impl(index, &clocks);
+        let loaded = store_elem.load_impl(index, &clocks, is_seqcst);
         Ok((loaded, recency))
     }
 
@@ -293,6 +311,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         Ok(())
     }
 
+    #[allow(clippy::if_same_then_else, clippy::needless_bool)]
     /// Selects a valid store element in the buffer.
     fn fetch_store<R: rand::Rng + ?Sized>(
         &self,
@@ -319,34 +338,43 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                 keep_searching = if store_elem.timestamp <= clocks.clock[store_elem.store_index] {
                     // CoWR: if a store happens-before the current load,
                     // then we can't read-from anything earlier in modification order.
-                    log::info!("Stopping due to coherent write-read");
+                    // C++20 §6.9.2.2 [intro.races] paragraph 18
                     false
-                } else if store_elem.loads.borrow().iter().any(|(&load_index, &load_timestamp)| {
-                    load_timestamp <= clocks.clock[load_index]
-                }) {
+                } else if store_elem.load_info.borrow().timestamps.iter().any(
+                    |(&load_index, &load_timestamp)| load_timestamp <= clocks.clock[load_index],
+                ) {
                     // CoRR: if there was a load from this store which happened-before the current load,
                     // then we cannot read-from anything earlier in modification order.
-                    log::info!("Stopping due to coherent read-read");
+                    // C++20 §6.9.2.2 [intro.races] paragraph 16
                     false
                 } else if store_elem.timestamp <= clocks.fence_seqcst[store_elem.store_index] {
-                    // The current load, which may be sequenced-after an SC fence, can only read-from
-                    // the last store sequenced-before an SC fence in another thread (or any stores
-                    // later than that SC fence)
-                    log::info!("Stopping due to coherent load sequenced after sc fence");
+                    // The current load, which may be sequenced-after an SC fence, cannot read-before
+                    // the last store sequenced-before an SC fence in another thread.
+                    // C++17 §32.4 [atomics.order] paragraph 6
                     false
                 } else if store_elem.timestamp <= clocks.write_seqcst[store_elem.store_index]
                     && store_elem.is_seqcst
                 {
-                    // The current non-SC load can only read-from the latest SC store (or any stores later than that
-                    // SC store)
-                    log::info!("Stopping due to needing to load from the last SC store");
+                    // The current non-SC load, which may be sequenced-after an SC fence,
+                    // cannot read-before the last SC store executed before the fence.
+                    // C++17 §32.4 [atomics.order] paragraph 4
                     false
-                } else if is_seqcst && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index] {
-                    // The current SC load can only read-from the last store sequenced-before
-                    // the last SC fence (or any stores later than the SC fence)
-                    log::info!("Stopping due to sc load needing to load from the last SC store before an SC fence");
+                } else if is_seqcst
+                    && store_elem.timestamp <= clocks.read_seqcst[store_elem.store_index]
+                {
+                    // The current SC load cannot read-before the last store sequenced-before
+                    // the last SC fence.
+                    // C++17 §32.4 [atomics.order] paragraph 5
                     false
-                } else {true};
+                } else if is_seqcst && store_elem.load_info.borrow().sc_loaded {
+                    // The current SC load cannot read-before a store that an earlier SC load has observed.
+                    // See https://github.com/rust-lang/miri/issues/2301#issuecomment-1222720427
+                    // Consequences of C++20 §31.4 [atomics.order] paragraph 3.1, 3.3 (coherence-ordered before)
+                    // and 4.1 (coherence-ordered before between SC makes global total order S)
+                    false
+                } else {
+                    true
+                };
 
                 true
             })
@@ -387,7 +415,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             // access
             val,
             is_seqcst,
-            loads: RefCell::new(FxHashMap::default()),
+            load_info: RefCell::new(LoadInfo::default()),
         };
         self.buffer.push_back(store_elem);
         if self.buffer.len() > STORE_BUFFER_LIMIT {
@@ -415,8 +443,15 @@ impl StoreElement {
     /// buffer regardless of subsequent loads by the same thread; if the earliest load of another
     /// thread doesn't happen before the current one, then no subsequent load by the other thread
     /// can happen before the current one.
-    fn load_impl(&self, index: VectorIdx, clocks: &ThreadClockSet) -> Scalar<Provenance> {
-        let _ = self.loads.borrow_mut().try_insert(index, clocks.clock[index]);
+    fn load_impl(
+        &self,
+        index: VectorIdx,
+        clocks: &ThreadClockSet,
+        is_seqcst: bool,
+    ) -> Scalar<Provenance> {
+        let mut load_info = self.load_info.borrow_mut();
+        load_info.sc_loaded |= is_seqcst;
+        let _ = load_info.timestamps.try_insert(index, clocks.clock[index]);
         self.val
     }
 }
@@ -476,7 +511,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             }
             let range = alloc_range(base_offset, place.layout.size);
             let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, init)?;
-            buffer.read_from_last_store(global, threads);
+            buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(new_val, global, threads, atomic == AtomicRwOrd::SeqCst)?;
         }
         Ok(())
@@ -583,7 +618,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
             if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
                 let buffer = alloc_buffers
                     .get_or_create_store_buffer(alloc_range(base_offset, size), init)?;
-                buffer.read_from_last_store(global, &this.machine.threads);
+                buffer.read_from_last_store(
+                    global,
+                    &this.machine.threads,
+                    atomic == AtomicReadOrd::SeqCst,
+                );
             }
         }
         Ok(())
