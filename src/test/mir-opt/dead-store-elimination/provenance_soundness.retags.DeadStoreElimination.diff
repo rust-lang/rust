@@ -6,7 +6,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/provenance_soundness.rs:+0:25: +0:25
   
       bb0: {
-          Retag([fn entry] _1);            // scope 0 at $DIR/provenance_soundness.rs:+0:1: +0:27
+          Retag([fn entry] _1);            // scope 0 at $DIR/provenance_soundness.rs:+0:11: +0:13
           _0 = const ();                   // scope 0 at $DIR/provenance_soundness.rs:+0:25: +0:27
           return;                          // scope 0 at $DIR/provenance_soundness.rs:+0:27: +0:27
       }
