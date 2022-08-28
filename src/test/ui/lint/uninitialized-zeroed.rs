@@ -38,10 +38,10 @@ enum OneFruit {
 fn generic<T: 'static>() {
     unsafe {
         let _val: &'static T = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: &'static T = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: &'static T = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Wrap<&'static T> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Wrap<&'static T> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Wrap<&'static T> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
     }
 }
 
@@ -49,56 +49,56 @@ fn main() {
     unsafe {
         // Things that cannot even be zero.
         let _val: ! = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: ! = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: ! = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: (i32, !) = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: (i32, !) = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: (i32, !) = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Void = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Void = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Void = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: &'static i32 = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: &'static i32 = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: &'static i32 = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Ref = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Ref = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Ref = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: fn() = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: fn() = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: fn() = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Wrap<fn()> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Wrap<fn()> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Wrap<fn()> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: WrapEnum<fn()> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: WrapEnum<fn()> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: WrapEnum<fn()> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Wrap<(RefPair, i32)> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Wrap<(RefPair, i32)> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Wrap<(RefPair, i32)> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: NonNull<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: NonNull<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: NonNull<i32> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: *const dyn Send = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: *const dyn Send = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: *const dyn Send = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: [fn(); 2] = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: [fn(); 2] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: [fn(); 2] = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         // Things that can be zero, but not uninit.
         let _val: bool = mem::zeroed();
-        let _val: bool = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: bool = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Wrap<char> = mem::zeroed();
-        let _val: Wrap<char> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Wrap<char> = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: NonBig = mem::zeroed();
-        let _val: NonBig = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: NonBig = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: Fruit = mem::zeroed();
-        let _val: Fruit = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Fruit = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: [bool; 2] = mem::zeroed();
-        let _val: [bool; 2] = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: [bool; 2] = MaybeUninit::uninit().assume_init(); //~ ERROR: does not permit being left uninitialized
 
         let _val: i32 = mem::zeroed();
         let _val: i32 = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
@@ -132,6 +132,6 @@ fn main() {
 
         // Some things that happen to work due to rustc implementation details,
         // but are not guaranteed to keep working.
-        let _val: OneFruit = mem::uninitialized();
+        let _val: OneFruit = MaybeUninit::uninit().assume_init();
     }
 }

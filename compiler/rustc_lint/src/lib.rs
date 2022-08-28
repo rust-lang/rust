@@ -57,6 +57,7 @@ mod internal;
 mod late;
 mod let_underscore;
 mod levels;
+mod mem_uninitialized;
 mod methods;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -68,6 +69,8 @@ mod redundant_semicolon;
 mod traits;
 mod types;
 mod unused;
+
+use mem_uninitialized::MemUninitialized;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
