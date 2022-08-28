@@ -10,7 +10,7 @@ pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_build_dir: &Path,
+    cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
@@ -29,7 +29,7 @@ pub(crate) fn run(
         channel,
         sysroot_kind,
         target_dir,
-        cg_clif_build_dir,
+        cg_clif_dylib,
         host_triple,
         target_triple,
     );
@@ -38,11 +38,6 @@ pub(crate) fn run(
     let mut abi_checker_path = env::current_dir().unwrap();
     abi_checker_path.push("abi-checker");
     env::set_current_dir(abi_checker_path.clone()).unwrap();
-
-    let build_dir = abi_checker_path.parent().unwrap().join("build");
-    let cg_clif_dylib_path = build_dir.join(if cfg!(windows) { "bin" } else { "lib" }).join(
-        env::consts::DLL_PREFIX.to_string() + "rustc_codegen_cranelift" + env::consts::DLL_SUFFIX,
-    );
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
@@ -54,7 +49,7 @@ pub(crate) fn run(
     cmd.arg("--pairs");
     cmd.args(pairs);
     cmd.arg("--add-rustc-codegen-backend");
-    cmd.arg(format!("cgclif:{}", cg_clif_dylib_path.display()));
+    cmd.arg(format!("cgclif:{}", cg_clif_dylib.display()));
 
     spawn_and_wait(cmd);
 }

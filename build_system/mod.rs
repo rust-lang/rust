@@ -130,7 +130,7 @@ pub fn main() {
         process::exit(1);
     }
 
-    let cg_clif_build_dir =
+    let cg_clif_dylib =
         build_backend::build_backend(channel, &host_triple, use_unstable_features);
     match command {
         Command::Test => {
@@ -138,7 +138,7 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );
@@ -147,7 +147,7 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );
@@ -157,7 +157,7 @@ pub fn main() {
                 channel,
                 sysroot_kind,
                 &target_dir,
-                &cg_clif_build_dir,
+                &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
             );

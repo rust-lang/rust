@@ -10,7 +10,7 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_build_dir: &Path,
+    cg_clif_dylib_src: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
@@ -23,7 +23,6 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(target_dir.join("lib")).unwrap();
 
     // Copy the backend
-    let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib");
     let cg_clif_dylib_path = target_dir
         .join(if cfg!(windows) {
             // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
@@ -32,8 +31,8 @@ pub(crate) fn build_sysroot(
         } else {
             "lib"
         })
-        .join(&cg_clif_dylib);
-    try_hard_link(cg_clif_build_dir.join(cg_clif_dylib), &cg_clif_dylib_path);
+        .join(get_file_name("rustc_codegen_cranelift", "dylib"));
+    try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {

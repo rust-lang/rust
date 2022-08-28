@@ -2,6 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::rustc_info::get_file_name;
 use super::utils::is_ci;
 
 pub(crate) fn build_backend(
@@ -41,5 +42,8 @@ pub(crate) fn build_backend(
     eprintln!("[BUILD] rustc_codegen_cranelift");
     super::utils::spawn_and_wait(cmd);
 
-    Path::new("target").join(host_triple).join(channel)
+    Path::new("target")
+        .join(host_triple)
+        .join(channel)
+        .join(get_file_name("rustc_codegen_cranelift", "dylib"))
 }
