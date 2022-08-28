@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
+use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, Read};
 use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -112,18 +112,16 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let res = unsafe {
-            self.synchronous_read(buf.unfilled_mut().as_mut_ptr(), buf.remaining(), None)
-        };
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let res =
+            unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 
         match res {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
-                    buf.assume_init(read as usize);
+                    cursor.advance(read as usize);
                 }
-                buf.add_filled(read as usize);
                 Ok(())
             }
 

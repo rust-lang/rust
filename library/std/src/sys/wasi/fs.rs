@@ -3,7 +3,7 @@
 use super::fd::WasiFd;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
@@ -439,8 +439,8 @@ impl File {
         true
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

@@ -2,7 +2,7 @@ use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
@@ -1037,8 +1037,8 @@ impl File {
         self.0.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.0.read_buf(buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
