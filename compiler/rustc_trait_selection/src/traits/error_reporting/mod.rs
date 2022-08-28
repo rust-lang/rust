@@ -1506,13 +1506,28 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 .emit();
             }
             FulfillmentErrorCode::CodeConstEquateError(ref expected_found, ref err) => {
-                self.report_mismatched_consts(
+                let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,
                     err.clone(),
-                )
-                .emit();
+                );
+                let code = error.obligation.cause.code().peel_derives().peel_match_impls();
+                if let ObligationCauseCode::BindingObligation(..)
+                | ObligationCauseCode::ItemObligation(..)
+                | ObligationCauseCode::ExprBindingObligation(..)
+                | ObligationCauseCode::ExprItemObligation(..) = code
+                {
+                    self.note_obligation_cause_code(
+                        &mut diag,
+                        &error.obligation.predicate,
+                        error.obligation.param_env,
+                        code,
+                        &mut vec![],
+                        &mut Default::default(),
+                    );
+                }
+                diag.emit();
             }
         }
     }
