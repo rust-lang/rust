@@ -6,8 +6,7 @@
 #![no_core]
 #![feature(no_core)]
 
-// @is "$.index[*][?(@.name=='style')].kind" \"module\"
-// @is "$.index[*][?(@.name=='style')].inner.is_stripped" "true"
+// @!has "$.index[*][?(@.name=='style')]"
 mod style {
     // @set color_struct_id = "$.index[*][?(@.kind=='struct' && @.name=='Color')].id"
     pub struct Color;

@@ -5,6 +5,7 @@
 //! docs for usage and details.
 
 mod conversions;
+mod import_finder;
 
 use std::cell::RefCell;
 use std::fs::{create_dir_all, File};
@@ -12,7 +13,7 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -39,6 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
+    imported_items: FxHashSet<DefId>,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -159,12 +161,16 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
+
+        let (krate, imported_items) = import_finder::get_imports(krate);
+
         Ok((
             JsonRenderer {
                 tcx,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
                 out_path: options.output,
                 cache: Rc::new(cache),
+                imported_items,
             },
             krate,
         ))
