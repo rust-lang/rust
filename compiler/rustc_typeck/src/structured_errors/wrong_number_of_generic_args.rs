@@ -697,7 +697,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         num_trait_generics_except_self
                     )
                 },
-                // TODO(hkmatsumoto): Emit similar suggestion for "x.<assoc fn>()"
+                // FIXME(hkmatsumoto): Emit similar suggestion for "x.<assoc fn>()"
                 hir::ExprKind::MethodCall(..) => return,
                 _ => return,
             }
