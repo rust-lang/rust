@@ -340,11 +340,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
         // CTFE-specific intrinsics.
         let Some(ret) = target else {
-            return Err(ConstEvalErrKind::NeedsRfc(format!(
-                "calling intrinsic `{}`",
-                intrinsic_name
-            ))
-            .into());
+            throw_unsup_format!("intrinsic `{intrinsic_name}` is not supported at compile-time");
         };
         match intrinsic_name {
             sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
@@ -401,11 +397,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             }
             _ => {
-                return Err(ConstEvalErrKind::NeedsRfc(format!(
-                    "calling intrinsic `{}`",
-                    intrinsic_name
-                ))
-                .into());
+                throw_unsup_format!(
+                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                );
             }
         }
 
@@ -448,7 +442,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _left: &ImmTy<'tcx>,
         _right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
+        throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {

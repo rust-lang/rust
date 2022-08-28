@@ -19,4 +19,7 @@ static PTR_INT_TRANSMUTE: () = unsafe {
     //~| unable to turn pointer into raw bytes
 };
 
+// I'd love to test pointer comparison, but that is not possible since
+// their `PartialEq` impl is non-`const`.
+
 fn main() {}
