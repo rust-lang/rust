@@ -87,6 +87,7 @@ use rustc_hir::{
     Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
     TraitRef, TyKind, UnOp,
 };
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
@@ -104,6 +105,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
+use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -2276,6 +2278,18 @@ pub fn walk_to_expr_usage<'tcx, T>(
         }
     }
     None
+}
+
+/// Checks whether a given span has any comment token
+/// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
+pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
+    let Ok(snippet) = sm.span_to_snippet(span) else { return false };
+    return tokenize(&snippet).any(|token| {
+        matches!(
+            token.kind,
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+        )
+    });
 }
 
 macro_rules! op_utils {
