@@ -527,7 +527,7 @@ LL |         let _val: bool = MaybeUninit::uninit().assume_init();
 error: aborting due to 43 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-warning: the type `&T` does not definitely permit being left uninitialized
+warning: the type `&T` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:41:32
    |
 LL |         let _val: &'static T = mem::uninitialized();
@@ -545,7 +545,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: references must be non-null
 
 Future breakage diagnostic:
-warning: the type `Wrap<&T>` does not definitely permit being left uninitialized
+warning: the type `Wrap<&T>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:44:38
    |
 LL |         let _val: Wrap<&'static T> = mem::uninitialized();
@@ -567,7 +567,7 @@ LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `!` does not definitely permit being left uninitialized
+warning: the type `!` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:52:23
    |
 LL |         let _val: ! = mem::uninitialized();
@@ -585,7 +585,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
-warning: the type `(i32, !)` does not definitely permit being left uninitialized
+warning: the type `(i32, !)` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:55:30
    |
 LL |         let _val: (i32, !) = mem::uninitialized();
@@ -603,7 +603,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
-warning: the type `Void` does not definitely permit being left uninitialized
+warning: the type `Void` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:58:26
    |
 LL |         let _val: Void = mem::uninitialized();
@@ -621,7 +621,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: enums with no variants have no valid value
 
 Future breakage diagnostic:
-warning: the type `&i32` does not definitely permit being left uninitialized
+warning: the type `&i32` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:61:34
    |
 LL |         let _val: &'static i32 = mem::uninitialized();
@@ -639,7 +639,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: references must be non-null
 
 Future breakage diagnostic:
-warning: the type `Ref` does not definitely permit being left uninitialized
+warning: the type `Ref` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:64:25
    |
 LL |         let _val: Ref = mem::uninitialized();
@@ -661,7 +661,7 @@ LL | struct Ref(&'static i32);
    |            ^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `fn()` does not definitely permit being left uninitialized
+warning: the type `fn()` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:67:26
    |
 LL |         let _val: fn() = mem::uninitialized();
@@ -679,7 +679,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
-warning: the type `Wrap<fn()>` does not definitely permit being left uninitialized
+warning: the type `Wrap<fn()>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:70:32
    |
 LL |         let _val: Wrap<fn()> = mem::uninitialized();
@@ -701,7 +701,7 @@ LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `WrapEnum<fn()>` does not definitely permit being left uninitialized
+warning: the type `WrapEnum<fn()>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:73:36
    |
 LL |         let _val: WrapEnum<fn()> = mem::uninitialized();
@@ -723,7 +723,7 @@ LL | enum WrapEnum<T> { Wrapped(T) }
    |                            ^
 
 Future breakage diagnostic:
-warning: the type `Wrap<(RefPair, i32)>` does not definitely permit being left uninitialized
+warning: the type `Wrap<(RefPair, i32)>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:76:42
    |
 LL |         let _val: Wrap<(RefPair, i32)> = mem::uninitialized();
@@ -745,7 +745,7 @@ LL | struct RefPair((&'static i32, i32));
    |                ^^^^^^^^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `std::ptr::NonNull<i32>` does not definitely permit being left uninitialized
+warning: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:79:34
    |
 LL |         let _val: NonNull<i32> = mem::uninitialized();
@@ -763,7 +763,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: `std::ptr::NonNull<i32>` must be non-null
 
 Future breakage diagnostic:
-warning: the type `*const dyn std::marker::Send` does not definitely permit being left uninitialized
+warning: the type `*const dyn std::marker::Send` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:82:37
    |
 LL |         let _val: *const dyn Send = mem::uninitialized();
@@ -781,7 +781,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: the vtable of a wide raw pointer must be non-null
 
 Future breakage diagnostic:
-warning: the type `[fn(); 2]` does not definitely permit being left uninitialized
+warning: the type `[fn(); 2]` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:85:31
    |
 LL |         let _val: [fn(); 2] = mem::uninitialized();
@@ -799,7 +799,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
-warning: the type `bool` does not definitely permit being left uninitialized
+warning: the type `bool` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:89:26
    |
 LL |         let _val: bool = mem::uninitialized();
@@ -817,7 +817,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
-warning: the type `Wrap<char>` does not definitely permit being left uninitialized
+warning: the type `Wrap<char>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:92:32
    |
 LL |         let _val: Wrap<char> = mem::uninitialized();
@@ -839,7 +839,7 @@ LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `NonBig` does not definitely permit being left uninitialized
+warning: the type `NonBig` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:95:28
    |
 LL |         let _val: NonBig = mem::uninitialized();
@@ -857,7 +857,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: `NonBig` must be initialized inside its custom valid range
 
 Future breakage diagnostic:
-warning: the type `Fruit` does not definitely permit being left uninitialized
+warning: the type `Fruit` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:98:27
    |
 LL |         let _val: Fruit = mem::uninitialized();
@@ -879,7 +879,7 @@ LL | enum Fruit {
    | ^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `[bool; 2]` does not definitely permit being left uninitialized
+warning: the type `[bool; 2]` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:101:31
    |
 LL |         let _val: [bool; 2] = mem::uninitialized();
@@ -897,7 +897,7 @@ LL | #![allow(deprecated, mem_uninitialized)]
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
-warning: the type `OneFruit` does not definitely permit being left uninitialized
+warning: the type `OneFruit` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:124:30
    |
 LL |         let _val: OneFruit = mem::uninitialized();

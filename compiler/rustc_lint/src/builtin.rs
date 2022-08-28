@@ -2633,7 +2633,29 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         /// Information about why a type cannot be initialized this way.
         /// Contains an error message and optionally a span to point at.
-        type InitError = (String, Option<Span>);
+        struct InitError {
+            msg: String,
+            span: Option<Span>,
+            generic: bool,
+        }
+
+        impl InitError {
+            fn new(msg: impl Into<String>) -> Self {
+                Self { msg: msg.into(), span: None, generic: false }
+            }
+
+            fn with_span(msg: impl Into<String>, span: Span) -> Self {
+                Self { msg: msg.into(), span: Some(span), generic: false }
+            }
+
+            fn generic() -> Self {
+                Self {
+                    msg: "type might not be allowed to be left uninitialized".to_string(),
+                    span: None,
+                    generic: true,
+                }
+            }
+        }
 
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
@@ -2657,18 +2679,18 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
             use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some(("references must be non-null".to_string(), None)),
-                Adt(..) if ty.is_box() => Some(("`Box` must be non-null".to_string(), None)),
-                FnPtr(..) => Some(("function pointers must be non-null".to_string(), None)),
-                Never => Some(("the `!` type has no valid value".to_string(), None)),
+                Ref(..) => Some(InitError::new("references must be non-null")),
+                Adt(..) if ty.is_box() => Some(InitError::new("`Box` must be non-null")),
+                FnPtr(..) => Some(InitError::new("function pointers must be non-null")),
+                Never => Some(InitError::new("the `!` type has no valid value")),
                 RawPtr(tm) if matches!(tm.ty.kind(), Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some(("the vtable of a wide raw pointer must be non-null".to_string(), None))
+                    Some(InitError::new("the vtable of a wide raw pointer must be non-null"))
                 }
                 // Primitive types with other constraints.
-                Bool => Some(("booleans must be either `true` or `false`".to_string(), None)),
-                Char => Some(("characters must be a valid Unicode codepoint".to_string(), None)),
+                Bool => Some(InitError::new("booleans must be either `true` or `false`")),
+                Char => Some(InitError::new("characters must be a valid Unicode codepoint")),
                 Adt(adt_def, _) if adt_def.is_union() => None,
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) => {
@@ -2679,29 +2701,25 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
                         (Bound::Included(lo), _) if lo > 0 => {
-                            return Some((format!("`{}` must be non-null", ty), None));
+                            return Some(InitError::new(format!("`{ty}` must be non-null")));
                         }
                         (Bound::Included(_), _) | (_, Bound::Included(_)) => {
-                            return Some((
-                                format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                ),
-                                None,
-                            ));
+                            return Some(InitError::new(format!(
+                                "`{ty}` must be initialized inside its custom valid range"
+                            )));
                         }
                         _ => {}
                     }
                     // Now, recurse.
                     match adt_def.variants().len() {
-                        0 => Some(("enums with no variants have no valid value".to_string(), None)),
+                        0 => Some(InitError::new("enums with no variants have no valid value")),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.
                             let variant = &adt_def.variant(VariantIdx::from_u32(0));
                             variant.fields.iter().find_map(|field| {
                                 ty_find_init_error(cx, field.ty(cx.tcx, substs)).map(
-                                    |(mut msg, span)| {
+                                    |InitError { mut msg, span, generic }| {
                                         if span.is_none() {
                                             // Point to this field, should be helpful for figuring
                                             // out where the source of the error is.
@@ -2712,10 +2730,11 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                                                 adt_def.descr()
                                             )
                                             .unwrap();
-                                            (msg, Some(span))
+
+                                            InitError { msg, span: Some(span), generic }
                                         } else {
                                             // Just forward.
-                                            (msg, span)
+                                            InitError { msg, span, generic }
                                         }
                                     },
                                 )
@@ -2729,9 +2748,9 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                             //
                             // That's probably fine though.
                             let span = cx.tcx.def_span(adt_def.did());
-                            Some((
-                                "enums have to be initialized to a variant".to_string(),
-                                Some(span),
+                            Some(InitError::with_span(
+                                "enums have to be initialized to a variant",
+                                span,
                             ))
                         }
                     }
@@ -2745,7 +2764,14 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                         // Array known to be zero sized, we can't warn.
                         Some(0) => None,
 
-                        Some(_) | None => ty_find_init_error(cx, *ty),
+                        // Array length known to be nonzero, warn.
+                        Some(1..) => ty_find_init_error(cx, *ty),
+
+                        // Array length unknown, use the "might not permit" wording.
+                        None => ty_find_init_error(cx, *ty).map(|mut e| {
+                            e.generic = true;
+                            e
+                        }),
                     }
                 }
                 Int(_) | Uint(_) | Float(_) | RawPtr(_) => {
@@ -2754,7 +2780,7 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                     None
                 }
                 // Pessimistic fallback.
-                _ => Some(("type might not be allowed to be left uninitialized".to_string(), None)),
+                _ => Some(InitError::generic()),
             }
         }
 
@@ -2763,13 +2789,18 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
-            if let Some((msg, span)) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty)) {
+            if let Some(init_error) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty)) {
+                let main_msg = with_no_trimmed_paths!(if init_error.generic {
+                    format!(
+                        "the type `{conjured_ty}` is generic, and might not permit being left uninitialized"
+                    )
+                } else {
+                    format!("the type `{conjured_ty}` does not permit being left uninitialized")
+                });
+
                 // FIXME(davidtwco): make translatable
                 cx.struct_span_lint(MEM_UNINITIALIZED, expr.span, |lint| {
-                    let mut err = with_no_trimmed_paths!(lint.build(&format!(
-                        "the type `{}` does not definitely permit being left uninitialized",
-                        conjured_ty,
-                    )));
+                    let mut err = lint.build(&main_msg);
 
                     err.span_label(expr.span, "this code causes undefined behavior when executed");
                     err.span_label(
@@ -2777,10 +2808,10 @@ impl<'tcx> LateLintPass<'tcx> for MemUninitialized {
                         "help: use `MaybeUninit<T>` instead, \
                             and only call `assume_init` after initialization is done",
                     );
-                    if let Some(span) = span {
-                        err.span_note(span, &msg);
+                    if let Some(span) = init_error.span {
+                        err.span_note(span, &init_error.msg);
                     } else {
-                        err.note(&msg);
+                        err.note(&init_error.msg);
                     }
                     err.emit();
                 });

@@ -1,4 +1,4 @@
-error: the type `T` does not definitely permit being left uninitialized
+error: the type `T` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:13:5
    |
 LL |     std::mem::uninitialized::<T>();
@@ -15,7 +15,7 @@ LL | #![deny(mem_uninitialized)]
    = note: for more information, see FIXME: fill this in
    = note: type might not be allowed to be left uninitialized
 
-error: the type `[T; N]` does not definitely permit being left uninitialized
+error: the type `[T; N]` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:16:5
    |
 LL |     std::mem::uninitialized::<[T; N]>();
@@ -27,7 +27,7 @@ LL |     std::mem::uninitialized::<[T; N]>();
    = note: for more information, see FIXME: fill this in
    = note: type might not be allowed to be left uninitialized
 
-error: the type `[char; N]` does not definitely permit being left uninitialized
+error: the type `[char; N]` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:19:5
    |
 LL |     std::mem::uninitialized::<[char; N]>();
@@ -39,8 +39,24 @@ LL |     std::mem::uninitialized::<[char; N]>();
    = note: for more information, see FIXME: fill this in
    = note: characters must be a valid Unicode codepoint
 
-error: the type `&u32` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:28:9
+error: the type `[UninitStruct; N]` is generic, and might not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:22:5
+   |
+LL |     std::mem::uninitialized::<[UninitStruct; N]>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this struct field)
+  --> $DIR/mem-uninitialized-future-compat.rs:9:5
+   |
+LL |     b: char,
+   |     ^^^^^^^
+
+error: the type `&u32` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:31:9
    |
 LL |         std::mem::uninitialized::<&'static u32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,8 +67,8 @@ LL |         std::mem::uninitialized::<&'static u32>();
    = note: for more information, see FIXME: fill this in
    = note: references must be non-null
 
-error: the type `std::boxed::Box<u32>` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:31:9
+error: the type `std::boxed::Box<u32>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:34:9
    |
 LL |         std::mem::uninitialized::<Box<u32>>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,8 +79,8 @@ LL |         std::mem::uninitialized::<Box<u32>>();
    = note: for more information, see FIXME: fill this in
    = note: `Box` must be non-null
 
-error: the type `fn()` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:34:9
+error: the type `fn()` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:37:9
    |
 LL |         std::mem::uninitialized::<fn()>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,8 +91,8 @@ LL |         std::mem::uninitialized::<fn()>();
    = note: for more information, see FIXME: fill this in
    = note: function pointers must be non-null
 
-error: the type `!` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:37:9
+error: the type `!` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:40:9
    |
 LL |         std::mem::uninitialized::<!>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,8 +103,8 @@ LL |         std::mem::uninitialized::<!>();
    = note: for more information, see FIXME: fill this in
    = note: the `!` type has no valid value
 
-error: the type `*mut dyn std::io::Write` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:40:9
+error: the type `*mut dyn std::io::Write` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:43:9
    |
 LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,8 +115,8 @@ LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    = note: for more information, see FIXME: fill this in
    = note: the vtable of a wide raw pointer must be non-null
 
-error: the type `bool` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:43:9
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:46:9
    |
 LL |         std::mem::uninitialized::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,8 +127,8 @@ LL |         std::mem::uninitialized::<bool>();
    = note: for more information, see FIXME: fill this in
    = note: booleans must be either `true` or `false`
 
-error: the type `char` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:46:9
+error: the type `char` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:49:9
    |
 LL |         std::mem::uninitialized::<char>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -123,8 +139,8 @@ LL |         std::mem::uninitialized::<char>();
    = note: for more information, see FIXME: fill this in
    = note: characters must be a valid Unicode codepoint
 
-error: the type `UninitStruct` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:49:9
+error: the type `UninitStruct` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:52:9
    |
 LL |         std::mem::uninitialized::<UninitStruct>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,8 +155,24 @@ note: characters must be a valid Unicode codepoint (in this struct field)
 LL |     b: char,
    |     ^^^^^^^
 
-error: the type `(u32, char)` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:52:9
+error: the type `[UninitStruct; 16]` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:55:9
+   |
+LL |         std::mem::uninitialized::<[UninitStruct; 16]>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this struct field)
+  --> $DIR/mem-uninitialized-future-compat.rs:9:5
+   |
+LL |     b: char,
+   |     ^^^^^^^
+
+error: the type `(u32, char)` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:58:9
    |
 LL |         std::mem::uninitialized::<(u32, char)>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -151,10 +183,10 @@ LL |         std::mem::uninitialized::<(u32, char)>();
    = note: for more information, see FIXME: fill this in
    = note: characters must be a valid Unicode codepoint
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-error: the type `T` does not definitely permit being left uninitialized
+error: the type `T` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:13:5
    |
 LL |     std::mem::uninitialized::<T>();
@@ -172,7 +204,7 @@ LL | #![deny(mem_uninitialized)]
    = note: type might not be allowed to be left uninitialized
 
 Future breakage diagnostic:
-error: the type `[T; N]` does not definitely permit being left uninitialized
+error: the type `[T; N]` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:16:5
    |
 LL |     std::mem::uninitialized::<[T; N]>();
@@ -190,7 +222,7 @@ LL | #![deny(mem_uninitialized)]
    = note: type might not be allowed to be left uninitialized
 
 Future breakage diagnostic:
-error: the type `[char; N]` does not definitely permit being left uninitialized
+error: the type `[char; N]` is generic, and might not permit being left uninitialized
   --> $DIR/mem-uninitialized-future-compat.rs:19:5
    |
 LL |     std::mem::uninitialized::<[char; N]>();
@@ -208,8 +240,30 @@ LL | #![deny(mem_uninitialized)]
    = note: characters must be a valid Unicode codepoint
 
 Future breakage diagnostic:
-error: the type `&u32` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:28:9
+error: the type `[UninitStruct; N]` is generic, and might not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:22:5
+   |
+LL |     std::mem::uninitialized::<[UninitStruct; N]>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this struct field)
+  --> $DIR/mem-uninitialized-future-compat.rs:9:5
+   |
+LL |     b: char,
+   |     ^^^^^^^
+
+Future breakage diagnostic:
+error: the type `&u32` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:31:9
    |
 LL |         std::mem::uninitialized::<&'static u32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -226,8 +280,8 @@ LL | #![deny(mem_uninitialized)]
    = note: references must be non-null
 
 Future breakage diagnostic:
-error: the type `std::boxed::Box<u32>` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:31:9
+error: the type `std::boxed::Box<u32>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:34:9
    |
 LL |         std::mem::uninitialized::<Box<u32>>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,8 +298,8 @@ LL | #![deny(mem_uninitialized)]
    = note: `Box` must be non-null
 
 Future breakage diagnostic:
-error: the type `fn()` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:34:9
+error: the type `fn()` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:37:9
    |
 LL |         std::mem::uninitialized::<fn()>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -262,8 +316,8 @@ LL | #![deny(mem_uninitialized)]
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
-error: the type `!` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:37:9
+error: the type `!` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:40:9
    |
 LL |         std::mem::uninitialized::<!>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -280,8 +334,8 @@ LL | #![deny(mem_uninitialized)]
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
-error: the type `*mut dyn std::io::Write` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:40:9
+error: the type `*mut dyn std::io::Write` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:43:9
    |
 LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -298,8 +352,8 @@ LL | #![deny(mem_uninitialized)]
    = note: the vtable of a wide raw pointer must be non-null
 
 Future breakage diagnostic:
-error: the type `bool` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:43:9
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:46:9
    |
 LL |         std::mem::uninitialized::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -316,8 +370,8 @@ LL | #![deny(mem_uninitialized)]
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
-error: the type `char` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:46:9
+error: the type `char` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:49:9
    |
 LL |         std::mem::uninitialized::<char>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -334,8 +388,8 @@ LL | #![deny(mem_uninitialized)]
    = note: characters must be a valid Unicode codepoint
 
 Future breakage diagnostic:
-error: the type `UninitStruct` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:49:9
+error: the type `UninitStruct` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:52:9
    |
 LL |         std::mem::uninitialized::<UninitStruct>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -356,8 +410,30 @@ LL |     b: char,
    |     ^^^^^^^
 
 Future breakage diagnostic:
-error: the type `(u32, char)` does not definitely permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:52:9
+error: the type `[UninitStruct; 16]` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:55:9
+   |
+LL |         std::mem::uninitialized::<[UninitStruct; 16]>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this struct field)
+  --> $DIR/mem-uninitialized-future-compat.rs:9:5
+   |
+LL |     b: char,
+   |     ^^^^^^^
+
+Future breakage diagnostic:
+error: the type `(u32, char)` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:58:9
    |
 LL |         std::mem::uninitialized::<(u32, char)>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

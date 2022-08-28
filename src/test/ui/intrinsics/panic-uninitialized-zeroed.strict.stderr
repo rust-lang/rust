@@ -1,5 +1,5 @@
 Future incompatibility report: Future breakage diagnostic:
-warning: the type `!` does not definitely permit being left uninitialized
+warning: the type `!` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:79:16
    |
 LL |             || mem::uninitialized::<!>(),
@@ -17,7 +17,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
-warning: the type `Foo` does not definitely permit being left uninitialized
+warning: the type `Foo` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:92:16
    |
 LL |             || mem::uninitialized::<Foo>(),
@@ -39,7 +39,7 @@ LL |     y: !,
    |     ^^^^
 
 Future breakage diagnostic:
-warning: the type `Bar` does not definitely permit being left uninitialized
+warning: the type `Bar` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:105:16
    |
 LL |             || mem::uninitialized::<Bar>(),
@@ -57,7 +57,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: enums with no variants have no valid value
 
 Future breakage diagnostic:
-warning: the type `[Foo; 2]` does not definitely permit being left uninitialized
+warning: the type `[Foo; 2]` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:118:16
    |
 LL |             || mem::uninitialized::<[Foo; 2]>(),
@@ -79,7 +79,7 @@ LL |     y: !,
    |     ^^^^
 
 Future breakage diagnostic:
-warning: the type `[Bar; 2]` does not definitely permit being left uninitialized
+warning: the type `[Bar; 2]` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:131:16
    |
 LL |             || mem::uninitialized::<[Bar; 2]>(),
@@ -97,7 +97,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: enums with no variants have no valid value
 
 Future breakage diagnostic:
-warning: the type `fn()` does not definitely permit being left uninitialized
+warning: the type `fn()` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:145:16
    |
 LL |             || mem::uninitialized::<fn()>(),
@@ -115,7 +115,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
-warning: the type `*const dyn std::marker::Send` does not definitely permit being left uninitialized
+warning: the type `*const dyn std::marker::Send` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:154:16
    |
 LL |             || mem::uninitialized::<*const dyn Send>(),
@@ -133,7 +133,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: the vtable of a wide raw pointer must be non-null
 
 Future breakage diagnostic:
-warning: the type `(std::ptr::NonNull<u32>, u32, u32)` does not definitely permit being left uninitialized
+warning: the type `(std::ptr::NonNull<u32>, u32, u32)` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:163:16
    |
 LL |             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
@@ -151,7 +151,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: `std::ptr::NonNull<u32>` must be non-null
 
 Future breakage diagnostic:
-warning: the type `OneVariant_NonZero` does not definitely permit being left uninitialized
+warning: the type `OneVariant_NonZero` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:175:16
    |
 LL |             || mem::uninitialized::<OneVariant_NonZero>(),
@@ -173,7 +173,7 @@ LL | enum OneVariant_NonZero {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `LR_NonZero` does not definitely permit being left uninitialized
+warning: the type `LR_NonZero` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:186:16
    |
 LL |             || mem::uninitialized::<LR_NonZero>(),
@@ -195,7 +195,7 @@ LL | enum LR_NonZero {
    | ^^^^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `std::mem::ManuallyDrop<LR_NonZero>` does not definitely permit being left uninitialized
+warning: the type `std::mem::ManuallyDrop<LR_NonZero>` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:191:16
    |
 LL |             || mem::uninitialized::<ManuallyDrop<LR_NonZero>>(),
@@ -217,7 +217,7 @@ LL | enum LR_NonZero {
    | ^^^^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `NoNullVariant` does not definitely permit being left uninitialized
+warning: the type `NoNullVariant` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:197:16
    |
 LL |             || mem::uninitialized::<NoNullVariant>(),
@@ -239,7 +239,7 @@ LL | enum NoNullVariant {
    | ^^^^^^^^^^^^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `bool` does not definitely permit being left uninitialized
+warning: the type `bool` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:210:16
    |
 LL |             || mem::uninitialized::<bool>(),
@@ -257,7 +257,7 @@ LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
-warning: the type `LR` does not definitely permit being left uninitialized
+warning: the type `LR` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:215:16
    |
 LL |             || mem::uninitialized::<LR>(),
@@ -279,7 +279,7 @@ LL | enum LR {
    | ^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `std::mem::ManuallyDrop<LR>` does not definitely permit being left uninitialized
+warning: the type `std::mem::ManuallyDrop<LR>` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:220:16
    |
 LL |             || mem::uninitialized::<ManuallyDrop<LR>>(),
@@ -301,7 +301,7 @@ LL | enum LR {
    | ^^^^^^^
 
 Future breakage diagnostic:
-warning: the type `[std::ptr::NonNull<()>; 1]` does not definitely permit being left uninitialized
+warning: the type `[std::ptr::NonNull<()>; 1]` does not permit being left uninitialized
   --> $DIR/panic-uninitialized-zeroed.rs:289:24
    |
 LL |             let _val = mem::uninitialized::<[NonNull<()>; 1]>();
