@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `N`
-  --> $DIR/issue-98629.rs:7:1
+  --> $DIR/issue-98629.rs:8:1
    |
 LL |     const N: usize;
    |     -------------- `N` from trait
