@@ -53,7 +53,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.pop_stack_frame(/* unwinding */ true)?;
             return Ok(true);
         };
-        let basic_block = &self.body().basic_blocks()[loc.block];
+        let basic_block = &self.body().basic_blocks[loc.block];
 
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             let old_frames = self.frame_idx();
