@@ -31,3 +31,10 @@ pub(crate) struct RLinkRustcVersionMismatch<'a> {
 #[derive(SessionDiagnostic)]
 #[diag(driver::rlink_no_a_file)]
 pub(crate) struct RlinkNotAFile;
+
+#[derive(SessionDiagnostic)]
+#[diag(driver::unpretty_dump_fail)]
+pub(crate) struct UnprettyDumpFail {
+    pub path: String,
+    pub err: String,
+}
