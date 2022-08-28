@@ -201,7 +201,7 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
                             return;
                         },
                     },
-                    Node::Block(_) => {},
+                    Node::Block(_) | Node::ExprField(_) => {},
                     _ => {
                         break;
                     },
