@@ -1,8 +1,7 @@
 #![feature(no_core)]
 #![no_core]
 
-// @is "$.index[*][?(@.name=='foo')].kind" \"module\"
-// @is "$.index[*][?(@.name=='foo')].inner.is_stripped" "true"
+// @!has "$.index[*][?(@.name=='foo')]"
 mod foo {
     // @has "$.index[*][?(@.name=='Foo')]"
     pub struct Foo;
