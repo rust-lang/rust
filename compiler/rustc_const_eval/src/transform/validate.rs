@@ -140,8 +140,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if bb == START_BLOCK {
             self.fail(location, "start block must not have predecessors")
         }
-        if let Some(bb) = self.body.basic_blocks().get(bb) {
-            let src = self.body.basic_blocks().get(location.block).unwrap();
+        if let Some(bb) = self.body.basic_blocks.get(bb) {
+            let src = self.body.basic_blocks.get(location.block).unwrap();
             match (src.is_cleanup, bb.is_cleanup, edge_kind) {
                 // Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
                 (false, false, EdgeKind::Normal)
@@ -881,13 +881,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 let bb = location.block;
-                if !self.body.basic_blocks()[bb].is_cleanup {
+                if !self.body.basic_blocks[bb].is_cleanup {
                     self.fail(location, "Cannot `Resume` or `Abort` from non-cleanup basic block")
                 }
             }
             TerminatorKind::Return => {
                 let bb = location.block;
-                if self.body.basic_blocks()[bb].is_cleanup {
+                if self.body.basic_blocks[bb].is_cleanup {
                     self.fail(location, "Cannot `Return` from cleanup basic block")
                 }
             }

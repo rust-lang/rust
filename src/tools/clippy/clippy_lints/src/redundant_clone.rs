@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             vis.into_map(cx, maybe_storage_live_result)
         };
 
-        for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
+        for (bb, bbdata) in mir.basic_blocks.iter_enumerated() {
             let terminator = bbdata.terminator();
 
             if terminator.source_info.span.from_expansion() {
@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
                 let loc = mir::Location {
                     block: bb,
-                    statement_index: mir.basic_blocks()[bb].statements.len(),
+                    statement_index: mir.basic_blocks[bb].statements.len(),
                 };
 
                 // This can be turned into `res = move local` if `arg` and `cloned` are not borrowed
@@ -310,7 +310,7 @@ fn find_stmt_assigns_to<'tcx>(
     by_ref: bool,
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
-    let rvalue = mir.basic_blocks()[bb].statements.iter().rev().find_map(|stmt| {
+    let rvalue = mir.basic_blocks[bb].statements.iter().rev().find_map(|stmt| {
         if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }

@@ -143,7 +143,7 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
-            visited: BitSet::new_empty(body.basic_blocks().len()),
+            visited: BitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,

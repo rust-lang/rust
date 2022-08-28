@@ -111,9 +111,9 @@ where
         // Otherwise, compute and store the cumulative transfer function for each block.
 
         let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
-        let mut trans_for_block = IndexVec::from_elem(identity, body.basic_blocks());
+        let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
 
-        for (block, block_data) in body.basic_blocks().iter_enumerated() {
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
             A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
@@ -147,7 +147,7 @@ where
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
         let bottom_value = analysis.bottom_value(body);
-        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), body.basic_blocks());
+        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
         if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
@@ -200,8 +200,7 @@ where
             ..
         } = self;
 
-        let mut dirty_queue: WorkQueue<BasicBlock> =
-            WorkQueue::with_none(body.basic_blocks().len());
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
         if A::Direction::IS_FORWARD {
             for (bb, _) in traversal::reverse_postorder(body) {
