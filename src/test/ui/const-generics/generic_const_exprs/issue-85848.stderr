@@ -54,8 +54,8 @@ error[E0308]: mismatched types
 LL |     writes_to_specific_path(&cap);
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `true`, found `{ contains::<T, U>() }`
    |
-   = note: expected type `true`
-              found type `{ contains::<T, U>() }`
+   = note: expected constant `true`
+              found constant `{ contains::<T, U>() }`
 
 error: aborting due to 3 previous errors
 
