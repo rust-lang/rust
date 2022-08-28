@@ -392,7 +392,8 @@ impl<'tcx> WfPredicates<'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        let obligations = self.nominal_obligations(data.item_def_id, data.substs);
+        // Projection types do not require const predicates.
+        let obligations = self.nominal_obligations_without_const(data.item_def_id, data.substs);
         self.out.extend(obligations);
 
         let tcx = self.tcx();
