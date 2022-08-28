@@ -1,7 +1,10 @@
 //! Errors emitted by codegen_ssa
 
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_macros::SessionDiagnostic;
+use std::borrow::Cow;
 use std::io::Error;
+use std::path::{Path, PathBuf};
 
 #[derive(SessionDiagnostic)]
 #[diag(codegen_ssa::missing_native_static_library)]
@@ -55,4 +58,49 @@ pub struct L4BenderExportingSymbolsUnimplemented;
 #[diag(codegen_ssa::no_natvis_directory)]
 pub struct NoNatvisDirectory {
     pub error: Error,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_ssa::copy_path_buf)]
+pub struct CopyPathBuf {
+    pub source_file: PathBuf,
+    pub output_path: PathBuf,
+    pub error: Error,
+}
+
+// Reports Paths using `Debug` implementation rather than Path's `Display` implementation.
+#[derive(SessionDiagnostic)]
+#[diag(codegen_ssa::copy_path)]
+pub struct CopyPath<'a> {
+    from: DebugArgPath<'a>,
+    to: DebugArgPath<'a>,
+    error: Error,
+}
+
+impl<'a> CopyPath<'a> {
+    pub fn new(from: &'a Path, to: &'a Path, error: Error) -> CopyPath<'a> {
+        CopyPath { from: DebugArgPath { path: from }, to: DebugArgPath { path: to }, error }
+    }
+}
+
+struct DebugArgPath<'a> {
+    pub path: &'a Path,
+}
+
+impl IntoDiagnosticArg for DebugArgPath<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self.path)))
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_ssa::ignoring_emit_path)]
+pub struct IgnoringEmitPath {
+    pub extension: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(codegen_ssa::ignoring_output)]
+pub struct IgnoringOutput {
+    pub extension: String,
 }

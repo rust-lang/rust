@@ -2,11 +2,11 @@ use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
 
+use crate::errors;
+use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
 };
-
-use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
@@ -530,7 +530,7 @@ fn produce_final_output_artifacts(
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &Path| {
         if let Err(e) = fs::copy(from, to) {
-            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+            sess.emit_err(errors::CopyPath::new(from, to, e));
         }
     };
 
@@ -546,7 +546,7 @@ fn produce_final_output_artifacts(
                 ensure_removed(sess.diagnostic(), &path);
             }
         } else {
-            let ext = crate_output
+            let extension = crate_output
                 .temp_path(output_type, None)
                 .extension()
                 .unwrap()
@@ -557,19 +557,11 @@ fn produce_final_output_artifacts(
             if crate_output.outputs.contains_key(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!(
-                    "ignoring emit path because multiple .{} files \
-                                    were produced",
-                    ext
-                ));
+                sess.emit_warning(errors::IgnoringEmitPath { extension });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!(
-                    "ignoring -o because multiple .{} files \
-                                    were produced",
-                    ext
-                ));
+                sess.emit_warning(errors::IgnoringOutput { extension });
             } else {
                 // 4) Multiple codegen units, but no explicit name.  We
                 //    just leave the `foo.0.x` files in place.
@@ -880,14 +872,19 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         );
         match link_or_copy(&source_file, &output_path) {
             Ok(_) => Some(output_path),
-            Err(err) => {
-                let diag_handler = cgcx.create_diag_handler();
-                diag_handler.err(&format!(
-                    "unable to copy {} to {}: {}",
-                    source_file.display(),
-                    output_path.display(),
-                    err
-                ));
+            Err(_) => {
+                // FIXME:
+                // Should we add Translations support in Handler, or should we pass a session here ?
+                //
+                // As Luis Cardoso mentioned here https://github.com/rust-lang/rust/pull/100753#discussion_r952975345,
+                // Translations support in Handler is tricky because SessionDiagnostic is not a trait,
+                // and we can't implement it in Handler because rustc_errors cannot depend on rustc_session.
+                //
+                // As for passing a session here, my understanding is that all these errors should be reported via
+                // the Shared Handler, which leads us to probably having to support Translations in another way.
+
+                // let diag_handler = cgcx.create_diag_handler();
+                // diag_handler.emit_err(errors::CopyPathBuf { source_file, output_path, error });
                 None
             }
         }

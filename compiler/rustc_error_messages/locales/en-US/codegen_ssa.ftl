@@ -19,3 +19,11 @@ codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for
 codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not implemented yet for L4Bender
 
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
+
+codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
+
+codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}
+
+codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
+
+codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
