@@ -497,3 +497,19 @@ pub struct LowerRangeBoundMustBeLessThanUpper {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::leading_irrefutable_let_patterns)]
+#[note]
+#[help]
+pub struct LeadingIrrefutableLetPatterns {
+    pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::trailing_irrefutable_let_patterns)]
+#[note]
+#[help]
+pub struct TrailingIrrefutableLetPatterns {
+    pub count: usize,
+}

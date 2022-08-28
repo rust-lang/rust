@@ -336,25 +336,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             );
             return true;
         }
-        let lint_affix = |affix: &[Option<(Span, bool)>], kind, suggestion| {
-            let span_start = affix[0].unwrap().0;
-            let span_end = affix.last().unwrap().unwrap().0;
-            let span = span_start.to(span_end);
-            let cnt = affix.len();
-            cx.tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, top, span, |lint| {
-                let s = pluralize!(cnt);
-                let mut diag = lint.build(&format!("{kind} irrefutable pattern{s} in let chain"));
-                diag.note(&format!(
-                    "{these} pattern{s} will always match",
-                    these = pluralize!("this", cnt),
-                ));
-                diag.help(&format!(
-                    "consider moving {} {suggestion}",
-                    if cnt > 1 { "them" } else { "it" }
-                ));
-                diag.emit()
-            });
-        };
         if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
             // The chain has a non-zero prefix of irrefutable `let` statements.
 
@@ -364,13 +345,21 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             if !matches!(let_source, LetSource::WhileLet) {
                 // Emit the lint
                 let prefix = &chain_refutabilities[..until];
-                lint_affix(prefix, "leading", "outside of the construct");
+                let span_start = prefix[0].unwrap().0;
+                let span_end = prefix.last().unwrap().unwrap().0;
+                let span = span_start.to(span_end);
+                let count = prefix.len();
+                cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, LeadingIrrefutableLetPatterns { count });
             }
         }
         if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
             // The chain has a non-empty suffix of irrefutable `let` statements
             let suffix = &chain_refutabilities[from + 1..];
-            lint_affix(suffix, "trailing", "into the body");
+            let span_start = suffix[0].unwrap().0;
+            let span_end = suffix.last().unwrap().unwrap().0;
+            let span = span_start.to(span_end);
+            let count = suffix.len();
+            cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, TrailingIrrefutableLetPatterns { count });
         }
         true
     }

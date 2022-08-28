@@ -207,3 +207,29 @@ mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
     .teach_note = When matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range.
 
 mir_build_lower_range_bound_must_be_less_than_upper = lower range bound must be less than upper
+
+mir_build_leading_irrefutable_let_patterns = leading irrefutable {$count ->
+        [one] pattern
+        *[other] patterns
+    } in let chain
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match
+    .help = consider moving {$count ->
+        [one] it
+        *[other] them
+    } outside of the construct
+
+mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
+        [one] pattern
+        *[other] patterns
+    } in let chain
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match
+    .help = consider moving {$count ->
+        [one] it
+        *[other] them
+    } into the body
