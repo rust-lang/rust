@@ -45,8 +45,6 @@ pub enum NonMacroAttrKind {
     /// Single-segment custom attribute registered by a derive macro
     /// but used before that derive macro was expanded (deprecated).
     DeriveHelperCompat,
-    /// Single-segment custom attribute registered with `#[register_attr]`.
-    Registered,
 }
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
@@ -564,15 +562,11 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::DeriveHelper | NonMacroAttrKind::DeriveHelperCompat => {
                 "derive helper attribute"
             }
-            NonMacroAttrKind::Registered => "explicitly registered attribute",
         }
     }
 
     pub fn article(self) -> &'static str {
-        match self {
-            NonMacroAttrKind::Registered => "an",
-            _ => "a",
-        }
+        "a"
     }
 
     /// Users of some attributes cannot mark them as used, so they are considered always used.
@@ -581,7 +575,7 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool
             | NonMacroAttrKind::DeriveHelper
             | NonMacroAttrKind::DeriveHelperCompat => true,
-            NonMacroAttrKind::Builtin(..) | NonMacroAttrKind::Registered => false,
+            NonMacroAttrKind::Builtin(..) => false,
         }
     }
 }
