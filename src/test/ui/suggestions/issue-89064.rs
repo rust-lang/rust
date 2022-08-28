@@ -24,9 +24,7 @@ fn main() {
     //~| HELP remove these generics
     //~| HELP consider moving these generic arguments
 
-    // bad suggestion
     let _ = A::<S>::foo::<S>();
     //~^ ERROR
     //~| HELP remove these generics
-    //~| HELP consider moving this generic argument
 }

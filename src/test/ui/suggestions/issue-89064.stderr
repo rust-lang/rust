@@ -43,26 +43,18 @@ LL +     let _ = B::<S, S>::bar();
    |
 
 error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/issue-89064.rs:28:21
+  --> $DIR/issue-89064.rs:27:21
    |
 LL |     let _ = A::<S>::foo::<S>();
-   |                     ^^^ expected 0 generic arguments
+   |                     ^^^----- help: remove these generics
+   |                     |
+   |                     expected 0 generic arguments
    |
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-89064.rs:4:8
    |
 LL |     fn foo() {}
    |        ^^^
-help: remove these generics
-   |
-LL -     let _ = A::<S>::foo::<S>();
-LL +     let _ = A::<S>::foo();
-   |
-help: consider moving this generic argument to the `A` trait, which takes up to 1 argument
-   |
-LL -     let _ = A::<S>::foo::<S>();
-LL +     let _ = A::<S>::<S>::foo();
-   |
 
 error: aborting due to 3 previous errors
 

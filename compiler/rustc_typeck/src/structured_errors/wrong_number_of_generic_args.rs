@@ -524,8 +524,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 if self.not_enough_args_provided() {
                     self.suggest_adding_args(err);
                 } else if self.too_many_args_provided() {
+                    self.suggest_moving_args_from_assoc_fn_to_trait(err);
                     self.suggest_removing_args_or_generics(err);
-                    self.suggest_moving_args(err);
                 } else {
                     unreachable!();
                 }
@@ -661,34 +661,62 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```compile_fail
     /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
     /// ```
-    fn suggest_moving_args(&self, err: &mut Diagnostic) {
-        if let Some(trait_) = self.tcx.trait_of_item(self.def_id) {
-            // HACK(hkmatsumoto): Ugly way to tell "<trait>::<assoc fn>()" from "x.<assoc fn>()";
-            // we don't care the latter (for now).
-            if self.path_segment.res == Some(hir::def::Res::Err) {
-                return;
+    fn suggest_moving_args_from_assoc_fn_to_trait(&self, err: &mut Diagnostic) {
+        let trait_ = match self.tcx.trait_of_item(self.def_id) {
+            Some(def_id) => def_id,
+            None => return,
+        };
+
+        // Skip suggestion when the associated function is itself generic, it is unclear
+        // how to split the provided parameters between those to suggest to the trait and
+        // those to remain on the associated type.
+        let num_assoc_fn_expected_args =
+            self.num_expected_type_or_const_args() + self.num_expected_lifetime_args();
+        if num_assoc_fn_expected_args > 0 {
+            return;
+        }
+
+        let num_assoc_fn_excess_args =
+            self.num_excess_type_or_const_args() + self.num_excess_lifetime_args();
+
+        let trait_generics = self.tcx.generics_of(trait_);
+        let num_trait_generics_except_self =
+            trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
+
+        if let Some(hir_id) = self.path_segment.hir_id
+        && let Some(parent_node) = self.tcx.hir().find_parent_node(hir_id)
+        && let Some(parent_node) = self.tcx.hir().find(parent_node)
+        && let hir::Node::Expr(expr) = parent_node {
+            match expr.kind {
+                hir::ExprKind::Path(ref qpath) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+                        err,
+                        trait_,
+                        qpath,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
+                // TODO(hkmatsumoto): Emit similar suggestion for "x.<assoc fn>()"
+                hir::ExprKind::MethodCall(..) => return,
+                _ => return,
             }
+        }
+    }
 
-            // Say, if the assoc fn takes `A`, `B` and `C` as generic arguments while expecting 1
-            // argument, and its trait expects 2 arguments. It is hard to "split" them right as
-            // there are too many cases to handle: `A` `B` | `C`, `A` `B` | `C`, `A` `C` | `B`, ...
-            let num_assoc_fn_expected_args =
-                self.num_expected_type_or_const_args() + self.num_expected_lifetime_args();
-            if num_assoc_fn_expected_args > 0 {
-                return;
-            }
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+        &self,
+        err: &mut Diagnostic,
+        trait_: DefId,
+        qpath: &'tcx hir::QPath<'tcx>,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        if let hir::QPath::Resolved(_, path) = qpath
+        && let Some(trait_path_segment) = path.segments.get(0) {
+            let num_generic_args_supplied_to_trait = trait_path_segment.args().num_generic_params();
 
-            let num_assoc_fn_excess_args =
-                self.num_excess_type_or_const_args() + self.num_excess_lifetime_args();
-
-            let trait_generics = self.tcx.generics_of(trait_);
-            let num_trait_generics_except_self =
-                trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
-
-            // FIXME(hkmatsumoto): RHS of this condition ideally should be
-            // `num_trait_generics_except_self` - "# of generic args already provided to trait"
-            // but unable to get that information with `self.def_id`.
-            if num_assoc_fn_excess_args == num_trait_generics_except_self {
+            if num_assoc_fn_excess_args == num_trait_generics_except_self - num_generic_args_supplied_to_trait {
                 if let Some(span) = self.gen_args.span_ext()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     let msg = format!(
