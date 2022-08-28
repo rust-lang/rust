@@ -41,8 +41,9 @@ impl<'a, 'tcx> DocFolder for CfgPropagator<'a, 'tcx> {
             if self.parent != Some(expected_parent) {
                 let mut attrs = Vec::new();
                 for (parent_hir_id, _) in hir.parent_iter(hir_id) {
-                    let def_id = hir.local_def_id(parent_hir_id).to_def_id();
-                    attrs.extend_from_slice(load_attrs(self.cx, def_id));
+                    if let Some(def_id) = hir.opt_local_def_id(parent_hir_id) {
+                        attrs.extend_from_slice(load_attrs(self.cx, def_id.to_def_id()));
+                    }
                 }
                 let (_, cfg) =
                     merge_attrs(self.cx, None, item.attrs.other_attrs.as_slice(), Some(&attrs));
