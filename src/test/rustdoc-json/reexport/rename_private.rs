@@ -3,8 +3,7 @@
 #![no_core]
 #![feature(no_core)]
 
-// @is "$.index[*][?(@.name=='inner')].kind" \"module\"
-// @is "$.index[*][?(@.name=='inner')].inner.is_stripped" "true"
+// @!has "$.index[*][?(@.kind=='inner')]"
 mod inner {
     // @has "$.index[*][?(@.name=='Public')]"
     pub struct Public;
