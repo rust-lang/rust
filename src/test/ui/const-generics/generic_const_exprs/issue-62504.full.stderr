@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         ArrayHolder([0; Self::SIZE])
    |                     ^^^^^^^^^^^^^^^ expected `X`, found `Self::SIZE`
    |
-   = note: expected type `X`
-              found type `Self::SIZE`
+   = note: expected constant `X`
+              found constant `Self::SIZE`
 
 error: unconstrained generic constant
   --> $DIR/issue-62504.rs:18:25
