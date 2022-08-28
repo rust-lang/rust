@@ -9,15 +9,15 @@ note: associated function defined here, with 0 generic parameters
    |
 LL |     fn foo() {}
    |        ^^^
-help: remove these generics
-   |
-LL -     let _ = A::foo::<S>();
-LL +     let _ = A::foo();
-   |
 help: consider moving this generic argument to the `A` trait, which takes up to 1 argument
    |
 LL -     let _ = A::foo::<S>();
 LL +     let _ = A::<S>::foo();
+   |
+help: remove these generics
+   |
+LL -     let _ = A::foo::<S>();
+LL +     let _ = A::foo();
    |
 
 error[E0107]: this associated function takes 0 generic arguments but 2 generic arguments were supplied
@@ -31,15 +31,15 @@ note: associated function defined here, with 0 generic parameters
    |
 LL |     fn bar() {}
    |        ^^^
-help: remove these generics
-   |
-LL -     let _ = B::bar::<S, S>();
-LL +     let _ = B::bar();
-   |
 help: consider moving these generic arguments to the `B` trait, which takes up to 2 arguments
    |
 LL -     let _ = B::bar::<S, S>();
 LL +     let _ = B::<S, S>::bar();
+   |
+help: remove these generics
+   |
+LL -     let _ = B::bar::<S, S>();
+LL +     let _ = B::bar();
    |
 
 error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
@@ -56,6 +56,27 @@ note: associated function defined here, with 0 generic parameters
 LL |     fn foo() {}
    |        ^^^
 
-error: aborting due to 3 previous errors
+error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-89064.rs:31:16
+   |
+LL |     let _ = 42.into::<Option<_>>();
+   |                ^^^^ expected 0 generic arguments
+   |
+note: associated function defined here, with 0 generic parameters
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn into(self) -> T;
+   |        ^^^^
+help: consider moving this generic argument to the `Into` trait, which takes up to 1 argument
+   |
+LL |     let _ = Into::<Option<_>>::into(42);
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: remove these generics
+   |
+LL -     let _ = 42.into::<Option<_>>();
+LL +     let _ = 42.into();
+   |
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

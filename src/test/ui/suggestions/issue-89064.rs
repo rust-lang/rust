@@ -27,4 +27,9 @@ fn main() {
     let _ = A::<S>::foo::<S>();
     //~^ ERROR
     //~| HELP remove these generics
+
+    let _ = 42.into::<Option<_>>();
+    //~^ ERROR
+    //~| HELP remove these generics
+    //~| HELP consider moving this generic argument
 }

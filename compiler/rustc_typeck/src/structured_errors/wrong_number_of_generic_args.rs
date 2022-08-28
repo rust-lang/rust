@@ -683,6 +683,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let num_trait_generics_except_self =
             trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
 
+        let msg = format!(
+            "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",
+            these = pluralize!("this", num_assoc_fn_excess_args),
+            s = pluralize!(num_assoc_fn_excess_args),
+            name = self.tcx.item_name(trait_),
+            num = num_trait_generics_except_self,
+        );
+
         if let Some(hir_id) = self.path_segment.hir_id
         && let Some(parent_node) = self.tcx.hir().find_parent_node(hir_id)
         && let Some(parent_node) = self.tcx.hir().find(parent_node)
@@ -691,14 +699,22 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 hir::ExprKind::Path(ref qpath) => {
                     self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
                         err,
-                        trait_,
                         qpath,
+                        msg,
                         num_assoc_fn_excess_args,
                         num_trait_generics_except_self
                     )
                 },
-                // FIXME(hkmatsumoto): Emit similar suggestion for "x.<assoc fn>()"
-                hir::ExprKind::MethodCall(..) => return,
+                hir::ExprKind::MethodCall(..) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+                        err,
+                        trait_,
+                        expr,
+                        msg,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
                 _ => return,
             }
         }
@@ -707,8 +723,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
         &self,
         err: &mut Diagnostic,
-        trait_: DefId,
         qpath: &'tcx hir::QPath<'tcx>,
+        msg: String,
         num_assoc_fn_excess_args: usize,
         num_trait_generics_except_self: usize,
     ) {
@@ -719,13 +735,6 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             if num_assoc_fn_excess_args == num_trait_generics_except_self - num_generic_args_supplied_to_trait {
                 if let Some(span) = self.gen_args.span_ext()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    let msg = format!(
-                        "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",
-                        these = pluralize!("this", num_assoc_fn_excess_args),
-                        s = pluralize!(num_assoc_fn_excess_args),
-                        name = self.tcx.item_name(trait_),
-                        num = num_trait_generics_except_self,
-                    );
                     let sugg = vec![
                         (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
                         (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
@@ -736,6 +745,28 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         sugg,
                         Applicability::MaybeIncorrect
                     );
+                }
+            }
+        }
+    }
+
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+        &self,
+        err: &mut Diagnostic,
+        trait_: DefId,
+        expr: &'tcx hir::Expr<'tcx>,
+        msg: String,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        if let hir::ExprKind::MethodCall(_, args, _) = expr.kind {
+            assert_eq!(args.len(), 1);
+            if num_assoc_fn_excess_args == num_trait_generics_except_self {
+                if let Some(gen_args) = self.gen_args.span_ext()
+                && let Ok(gen_args) = self.tcx.sess.source_map().span_to_snippet(gen_args)
+                && let Ok(args) = self.tcx.sess.source_map().span_to_snippet(args[0].span) {
+                    let sugg = format!("{}::{}::{}({})", self.tcx.item_name(trait_), gen_args, self.tcx.item_name(self.def_id), args);
+                    err.span_suggestion(expr.span, msg, sugg, Applicability::MaybeIncorrect);
                 }
             }
         }
