@@ -175,9 +175,6 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
     pub unsafe fn lock(&self) {
         loop {
             let mut guard = self.inner.lock();
