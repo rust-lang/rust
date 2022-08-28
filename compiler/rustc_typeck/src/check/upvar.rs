@@ -1217,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Combine all the reasons of why the root variable should be captured as a result of
                 // auto trait implementation issues
-                auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
+                auto_trait_migration_reasons.extend(capture_trait_reasons.iter().copied());
 
                 diagnostics_info.push(MigrationLintNote {
                     captures_info,

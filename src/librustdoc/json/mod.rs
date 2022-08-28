@@ -106,7 +106,9 @@ impl<'tcx> JsonRenderer<'tcx> {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
                     let trait_item = &trait_item.trait_;
-                    trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
+                    for item in &trait_item.items {
+                        self.item(item.clone()).unwrap();
+                    }
                     let item_id = from_item_id(id.into(), self.tcx);
                     Some((
                         item_id.clone(),
@@ -274,10 +276,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             paths: self
                 .cache
                 .paths
-                .clone()
-                .into_iter()
-                .chain(self.cache.external_paths.clone().into_iter())
-                .map(|(k, (path, kind))| {
+                .iter()
+                .chain(&self.cache.external_paths)
+                .map(|(&k, &(ref path, kind))| {
                     (
                         from_item_id(k.into(), self.tcx),
                         types::ItemSummary {

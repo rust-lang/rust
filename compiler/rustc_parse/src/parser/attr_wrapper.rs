@@ -117,7 +117,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
 
         if !self.replace_ranges.is_empty() {
             let mut tokens: Vec<_> = tokens.collect();
-            let mut replace_ranges = self.replace_ranges.clone();
+            let mut replace_ranges = self.replace_ranges.to_vec();
             replace_ranges.sort_by_key(|(range, _)| range.start);
 
             #[cfg(debug_assertions)]
@@ -147,7 +147,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
             // start position, we ensure that any replace range which encloses
             // another replace range will capture the *replaced* tokens for the inner
             // range, not the original tokens.
-            for (range, new_tokens) in replace_ranges.iter().rev() {
+            for (range, new_tokens) in replace_ranges.into_iter().rev() {
                 assert!(!range.is_empty(), "Cannot replace an empty range: {:?}", range);
                 // Replace ranges are only allowed to decrease the number of tokens.
                 assert!(
@@ -166,7 +166,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
 
                 tokens.splice(
                     (range.start as usize)..(range.end as usize),
-                    new_tokens.clone().into_iter().chain(filler),
+                    new_tokens.into_iter().chain(filler),
                 );
             }
             make_token_stream(tokens.into_iter(), self.break_last_token)
@@ -322,7 +322,7 @@ impl<'a> Parser<'a> {
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()
                 .cloned()
-                .chain(inner_attr_replace_ranges.clone().into_iter())
+                .chain(inner_attr_replace_ranges.iter().cloned())
                 .map(|(range, tokens)| {
                     ((range.start - start_calls)..(range.end - start_calls), tokens)
                 })

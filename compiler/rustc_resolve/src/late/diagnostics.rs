@@ -2350,7 +2350,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.multipart_suggestion_verbose(
                             message,
                             std::iter::once((span, intro_sugg))
-                                .chain(spans_suggs.clone())
+                                .chain(spans_suggs.iter().cloned())
                                 .collect(),
                             Applicability::MaybeIncorrect,
                         );

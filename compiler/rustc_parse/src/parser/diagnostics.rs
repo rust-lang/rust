@@ -759,7 +759,7 @@ impl<'a> Parser<'a> {
     /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
-        self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
+        self.unclosed_delims.extend(snapshot.unclosed_delims);
     }
 
     pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
