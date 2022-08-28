@@ -1,17 +1,6 @@
 #![doc = include_str!("../../core/src/error.md")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// A note about crates and the facade:
-//
-// Originally, the `Error` trait was defined in libcore, and the impls
-// were scattered about. However, coherence objected to this
-// arrangement, because to create the blanket impls for `Box` required
-// knowing that `&str: !Error`, and we have no means to deal with that
-// sort of conflict just now. Therefore, for the time being, we have
-// moved the `Error` trait into libstd. As we evolve a sol'n to the
-// coherence challenge (e.g., specialization, neg impls, etc) we can
-// reconsider what crate these items belong in.
-
 #[cfg(test)]
 mod tests;
 
@@ -69,12 +58,12 @@ pub use core::error::Error;
 /// assert_eq!(err.to_string(), "invalid digit found in string");
 /// ```
 ///
-/// Errors may provide cause chain information. [`Error::source()`] is generally
+/// Errors may provide cause information. [`Error::source()`] is generally
 /// used when errors cross "abstraction boundaries". If one module must report
 /// an error that is caused by an error from a lower-level module, it can allow
 /// accessing that error via [`Error::source()`]. This makes it possible for the
 /// high-level module to provide its own errors while also revealing some of the
-/// implementation for debugging via `source` chains.
+/// implementation for debugging.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 #[cfg(bootstrap)]
@@ -221,8 +210,8 @@ pub trait Error: Debug + Display {
     /// }
     ///
     /// impl std::error::Error for Error {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand
     ///             .provide_ref::<MyBacktrace>(&self.backtrace)
     ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
     ///     }
@@ -240,14 +229,14 @@ pub trait Error: Debug + Display {
     /// ```
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
     #[allow(unused_variables)]
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {}
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {}
 }
 
 #[cfg(bootstrap)]
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 impl<'b> Provider for dyn Error + 'b {
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        self.provide(req)
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        self.provide(demand)
     }
 }
 
@@ -659,8 +648,8 @@ impl<'a, T: Error + ?Sized> Error for &'a T {
         Error::source(&**self)
     }
 
-    fn provide<'b>(&'b self, req: &mut Demand<'b>) {
-        Error::provide(&**self, req);
+    fn provide<'b>(&'b self, demand: &mut Demand<'b>) {
+        Error::provide(&**self, demand);
     }
 }
 
@@ -681,8 +670,8 @@ impl<T: Error + ?Sized> Error for Arc<T> {
         Error::source(&**self)
     }
 
-    fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-        Error::provide(&**self, req);
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        Error::provide(&**self, demand);
     }
 }
 
@@ -976,7 +965,7 @@ impl dyn Error {
     /// // let err : Box<Error> = b.into(); // or
     /// let err = &b as &(dyn Error);
     ///
-    /// let mut iter = err.chain();
+    /// let mut iter = err.sources();
     ///
     /// assert_eq!("B".to_string(), iter.next().unwrap().to_string());
     /// assert_eq!("A".to_string(), iter.next().unwrap().to_string());
@@ -985,8 +974,19 @@ impl dyn Error {
     /// ```
     #[unstable(feature = "error_iter", issue = "58520")]
     #[inline]
-    pub fn chain(&self) -> Chain<'_> {
-        Chain { current: Some(self) }
+    pub fn sources(&self) -> Sources<'_> {
+        // You may think this method would be better in the Error trait, and you'd be right.
+        // Unfortunately that doesn't work, not because of the object safety rules but because we
+        // save a reference to self in Sources below as a trait object. If this method was
+        // declared in Error, then self would have the type &T where T is some concrete type which
+        // implements Error. We would need to coerce self to have type &dyn Error, but that requires
+        // that Self has a known size (i.e., Self: Sized). We can't put that bound on Error
+        // since that would forbid Error trait objects, and we can't put that bound on the method
+        // because that means the method can't be called on trait objects (we'd also need the
+        // 'static bound, but that isn't allowed because methods with bounds on Self other than
+        // Sized are not object-safe). Requiring an Unsize bound is not backwards compatible.
+
+        Sources { current: Some(self) }
     }
 }
 
@@ -997,13 +997,13 @@ impl dyn Error {
 #[unstable(feature = "error_iter", issue = "58520")]
 #[derive(Clone, Debug)]
 #[cfg(bootstrap)]
-pub struct Chain<'a> {
+pub struct Sources<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
 
 #[cfg(bootstrap)]
 #[unstable(feature = "error_iter", issue = "58520")]
-impl<'a> Iterator for Chain<'a> {
+impl<'a> Iterator for Sources<'a> {
     type Item = &'a (dyn Error + 'static);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1043,8 +1043,8 @@ impl dyn Error + Send + Sync {
 
 /// An error reporter that prints an error and its sources.
 ///
-/// Report also exposes configuration options for formatting the error chain, either entirely on a
-/// single line, or in multi-line format with each cause in the error chain on a new line.
+/// Report also exposes configuration options for formatting the error sources, either entirely on a
+/// single line, or in multi-line format with each source on a new line.
 ///
 /// `Report` only requires that the wrapped error implement `Error`. It doesn't require that the
 /// wrapped error be `Send`, `Sync`, or `'static`.
@@ -1389,7 +1389,7 @@ impl<E> Report<E> {
     ///
     /// **Note**: Report will search for the first `Backtrace` it can find starting from the
     /// outermost error. In this example it will display the backtrace from the second error in the
-    /// chain, `SuperErrorSideKick`.
+    /// sources, `SuperErrorSideKick`.
     ///
     /// ```rust
     /// #![feature(error_reporter)]
@@ -1427,9 +1427,8 @@ impl<E> Report<E> {
     /// }
     ///
     /// impl Error for SuperErrorSideKick {
-    ///     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
-    ///         req
-    ///             .provide_ref::<Backtrace>(&self.backtrace);
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref::<Backtrace>(&self.backtrace);
     ///     }
     /// }
     ///
@@ -1486,7 +1485,7 @@ where
         let backtrace = backtrace.or_else(|| {
             self.error
                 .source()
-                .map(|source| source.chain().find_map(|source| source.request_ref()))
+                .map(|source| source.sources().find_map(|source| source.request_ref()))
                 .flatten()
         });
         backtrace
@@ -1497,7 +1496,7 @@ where
     fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.error)?;
 
-        let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
+        let sources = self.error.source().into_iter().flat_map(<dyn Error>::sources);
 
         for cause in sources {
             write!(f, ": {cause}")?;
@@ -1518,7 +1517,7 @@ where
 
             let multiple = cause.source().is_some();
 
-            for (ind, error) in cause.chain().enumerate() {
+            for (ind, error) in cause.sources().enumerate() {
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {

@@ -5,7 +5,14 @@ LL |     map[&0] = 1;
    |     ^^^^^^^^^^^ cannot assign
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `BTreeMap<u32, u32>`
-   = help: to modify a `BTreeMap<u32, u32>`, use `.get_mut()`, `.insert()` or the entry API
+help: to modify a `BTreeMap<u32, u32>`, use `.get_mut()`, `.insert()` or the entry API
+   |
+LL |     map.insert(&0, 1);
+   |        ~~~~~~~~  ~  +
+LL |     map.get_mut(&0).map(|val| { *val = 1; });
+   |        ~~~~~~~~~  ~~~~~~~~~~~~~~~~~~    ++++
+LL |     let val = map.entry(&0).or_insert(1);
+   |     +++++++++    ~~~~~~~  ~~~~~~~~~~~~ +
 
 error: aborting due to previous error
 

@@ -293,7 +293,7 @@ fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
         // These are not visible outside crate; therefore
         // stability markers are irrelevant, if even present.
-        ty::Visibility::Restricted(..) | ty::Visibility::Invisible => true,
+        ty::Visibility::Restricted(..) => true,
     }
 }
 

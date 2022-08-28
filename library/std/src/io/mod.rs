@@ -278,7 +278,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::ReadBuf;
+pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -362,29 +362,30 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
             buf.reserve(32); // buf is full, need more space
         }
 
-        let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
+        let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
         // SAFETY: These bytes were initialized but not filled in the previous loop
         unsafe {
-            read_buf.assume_init(initialized);
+            read_buf.set_init(initialized);
         }
 
-        match r.read_buf(&mut read_buf) {
+        let mut cursor = read_buf.unfilled();
+        match r.read_buf(cursor.reborrow()) {
             Ok(()) => {}
             Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         }
 
-        if read_buf.filled_len() == 0 {
+        if cursor.written() == 0 {
             return Ok(buf.len() - start_len);
         }
 
         // store how much was initialized but not filled
-        initialized = read_buf.initialized_len() - read_buf.filled_len();
-        let new_len = read_buf.filled_len() + buf.len();
+        initialized = cursor.init_ref().len();
 
-        // SAFETY: ReadBuf's invariants mean this much memory is init
+        // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
+            let new_len = read_buf.filled().len() + buf.len();
             buf.set_len(new_len);
         }
 
@@ -461,12 +462,15 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
-pub(crate) fn default_read_buf<F>(read: F, buf: &mut ReadBuf<'_>) -> Result<()>
+pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_>) -> Result<()>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
-    let n = read(buf.initialize_unfilled())?;
-    buf.add_filled(n);
+    let n = read(cursor.ensure_init().init_mut())?;
+    unsafe {
+        // SAFETY: we initialised using `ensure_init` so there is no uninit data to advance to.
+        cursor.advance(n);
+    }
     Ok(())
 }
 
@@ -803,30 +807,30 @@ pub trait Read {
 
     /// Pull some bytes from this source into the specified buffer.
     ///
-    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to allow use
+    /// This is equivalent to the [`read`](Read::read) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to allow use
     /// with uninitialized buffers. The new data will be appended to any existing contents of `buf`.
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
     }
 
-    /// Read the exact number of bytes required to fill `buf`.
+    /// Read the exact number of bytes required to fill `cursor`.
     ///
-    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to
+    /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to
     /// allow use with uninitialized buffers.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
-        while buf.remaining() > 0 {
-            let prev_filled = buf.filled().len();
-            match self.read_buf(buf) {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> Result<()> {
+        while cursor.capacity() > 0 {
+            let prev_written = cursor.written();
+            match self.read_buf(cursor.reborrow()) {
                 Ok(()) => {}
                 Err(e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
             }
 
-            if buf.filled().len() == prev_filled {
+            if cursor.written() == prev_written {
                 return Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill buffer"));
             }
         }
@@ -883,6 +887,10 @@ pub trait Read {
     /// The yielded item is [`Ok`] if a byte was successfully read and [`Err`]
     /// otherwise. EOF is mapped to returning [`None`] from this iterator.
     ///
+    /// The default implementation calls `read` for each byte,
+    /// which can be very inefficient for data that's not in memory,
+    /// such as [`File`]. Consider using a [`BufReader`] in such cases.
+    ///
     /// # Examples
     ///
     /// [`File`]s implement `Read`:
@@ -895,10 +903,11 @@ pub trait Read {
     /// ```no_run
     /// use std::io;
     /// use std::io::prelude::*;
+    /// use std::io::BufReader;
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = BufReader::new(File::open("foo.txt")?);
     ///
     ///     for byte in f.bytes() {
     ///         println!("{}", byte.unwrap());
@@ -2582,50 +2591,48 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> Result<()> {
         // Don't call into inner reader at all at EOF because it may still block
         if self.limit == 0 {
             return Ok(());
         }
 
-        let prev_filled = buf.filled_len();
-
-        if self.limit <= buf.remaining() as u64 {
+        if self.limit <= buf.capacity() as u64 {
             // if we just use an as cast to convert, limit may wrap around on a 32 bit target
             let limit = cmp::min(self.limit, usize::MAX as u64) as usize;
 
-            let extra_init = cmp::min(limit as usize, buf.initialized_len() - buf.filled_len());
+            let extra_init = cmp::min(limit as usize, buf.init_ref().len());
 
             // SAFETY: no uninit data is written to ibuf
-            let ibuf = unsafe { &mut buf.unfilled_mut()[..limit] };
+            let ibuf = unsafe { &mut buf.as_mut()[..limit] };
 
-            let mut sliced_buf = ReadBuf::uninit(ibuf);
+            let mut sliced_buf: BorrowedBuf<'_> = ibuf.into();
 
             // SAFETY: extra_init bytes of ibuf are known to be initialized
             unsafe {
-                sliced_buf.assume_init(extra_init);
+                sliced_buf.set_init(extra_init);
             }
 
-            self.inner.read_buf(&mut sliced_buf)?;
+            let mut cursor = sliced_buf.unfilled();
+            self.inner.read_buf(cursor.reborrow())?;
 
-            let new_init = sliced_buf.initialized_len();
-            let filled = sliced_buf.filled_len();
+            let new_init = cursor.init_ref().len();
+            let filled = sliced_buf.len();
 
-            // sliced_buf / ibuf must drop here
+            // cursor / sliced_buf / ibuf must drop here
 
-            // SAFETY: new_init bytes of buf's unfilled buffer have been initialized
             unsafe {
-                buf.assume_init(new_init);
+                // SAFETY: filled bytes have been filled and therefore initialized
+                buf.advance(filled);
+                // SAFETY: new_init bytes of buf's unfilled buffer have been initialized
+                buf.set_init(new_init);
             }
-
-            buf.add_filled(filled);
 
             self.limit -= filled as u64;
         } else {
-            self.inner.read_buf(buf)?;
-
-            //inner may unfill
-            self.limit -= buf.filled_len().saturating_sub(prev_filled) as u64;
+            let written = buf.written();
+            self.inner.read_buf(buf.reborrow())?;
+            self.limit -= (buf.written() - written) as u64;
         }
 
         Ok(())

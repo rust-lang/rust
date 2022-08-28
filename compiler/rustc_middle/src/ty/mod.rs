@@ -268,8 +268,6 @@ pub enum Visibility {
     Public,
     /// Visible only in the given crate-local module.
     Restricted(DefId),
-    /// Not visible anywhere in the local crate. This is the visibility of private external items.
-    Invisible,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
@@ -366,8 +364,6 @@ impl Visibility {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
-            // Private items from other crates are visible nowhere.
-            Visibility::Invisible => return false,
             // Restricted items are visible in an arbitrary local module.
             Visibility::Restricted(other) if other.krate != module.krate => return false,
             Visibility::Restricted(module) => module,
@@ -380,7 +376,6 @@ impl Visibility {
     pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
-            Visibility::Invisible => return true,
             Visibility::Restricted(module) => module,
         };
 
@@ -392,7 +387,6 @@ impl Visibility {
         match self {
             Visibility::Public => true,
             Visibility::Restricted(def_id) => def_id.is_local(),
-            Visibility::Invisible => false,
         }
     }
 

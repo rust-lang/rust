@@ -762,16 +762,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         // If there is a single unbound associated type and a single excess generic param
         // suggest replacing the generic param with the associated type bound
         if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
-            let mut suggestions = vec![];
             let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-            for (potential, name) in iter::zip(unused_generics, &unbound_types) {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(potential.span()) {
-                    suggestions.push((potential.span(), format!("{} = {}", name, snippet)));
-                }
-            }
+            let suggestions = iter::zip(unused_generics, &unbound_types)
+                .map(|(potential, name)| (potential.span().shrink_to_lo(), format!("{name} = ")))
+                .collect::<Vec<_>>();
 
             if !suggestions.is_empty() {
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     &format!(
                         "replace the generic bound{s} with the associated type{s}",
                         s = pluralize!(unbound_types.len())

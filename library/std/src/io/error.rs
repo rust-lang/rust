@@ -573,6 +573,8 @@ impl Error {
     /// println!("last OS error: {os_error:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "GetLastError")]
+    #[doc(alias = "errno")]
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
