@@ -1,7 +1,13 @@
-use rustc_errors::{fluent, AddSubdiagnostic, DiagnosticMessage, DiagnosticStyledString};
-use rustc_hir::FnRetTy;
+use hir::GenericParamKind;
+use rustc_errors::{
+    fluent, AddSubdiagnostic, Applicability, DiagnosticMessage, DiagnosticStyledString,
+};
+use rustc_hir as hir;
+use rustc_hir::{FnRetTy, Ty};
 use rustc_macros::SessionDiagnostic;
-use rustc_span::{BytePos, Span};
+use rustc_middle::ty::{Region, TyCtxt};
+use rustc_span::symbol::kw;
+use rustc_span::{symbol::Ident, BytePos, Span};
 
 use crate::infer::error_reporting::{
     need_type_info::{GeneratorKindAsDiagArg, UnderspecifiedArgKind},
@@ -251,4 +257,165 @@ impl AddSubdiagnostic for RegionOriginNote<'_> {
             }
         };
     }
+}
+
+pub enum LifetimeMismatchLabels {
+    InRet {
+        param_span: Span,
+        ret_span: Span,
+        span: Span,
+        label_var1: Option<Ident>,
+    },
+    Normal {
+        hir_equal: bool,
+        ty_sup: Span,
+        ty_sub: Span,
+        span: Span,
+        label_var1: Option<Ident>,
+        label_var2: Option<Ident>,
+    },
+}
+
+impl AddSubdiagnostic for LifetimeMismatchLabels {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self {
+            LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
+                diag.span_label(param_span, fluent::infer::declared_different);
+                diag.span_label(ret_span, fluent::infer::nothing);
+                diag.span_label(span, fluent::infer::data_returned);
+                diag.set_arg("label_var1_exists", label_var1.is_some());
+                diag.set_arg("label_var1", label_var1.map(|x| x.to_string()).unwrap_or_default());
+            }
+            LifetimeMismatchLabels::Normal {
+                hir_equal,
+                ty_sup,
+                ty_sub,
+                span,
+                label_var1,
+                label_var2,
+            } => {
+                if hir_equal {
+                    diag.span_label(ty_sup, fluent::infer::declared_multiple);
+                    diag.span_label(ty_sub, fluent::infer::nothing);
+                    diag.span_label(span, fluent::infer::data_lifetime_flow);
+                } else {
+                    diag.span_label(ty_sup, fluent::infer::types_declared_different);
+                    diag.span_label(ty_sub, fluent::infer::nothing);
+                    diag.span_label(span, fluent::infer::data_flows);
+                    diag.set_arg("label_var1_exists", label_var1.is_some());
+                    diag.set_arg(
+                        "label_var1",
+                        label_var1.map(|x| x.to_string()).unwrap_or_default(),
+                    );
+                    diag.set_arg("label_var2_exists", label_var2.is_some());
+                    diag.set_arg(
+                        "label_var2",
+                        label_var2.map(|x| x.to_string()).unwrap_or_default(),
+                    );
+                }
+            }
+        }
+    }
+}
+
+pub struct AddLifetimeParamsSuggestion<'a> {
+    pub tcx: TyCtxt<'a>,
+    pub sub: Region<'a>,
+    pub ty_sup: &'a Ty<'a>,
+    pub ty_sub: &'a Ty<'a>,
+    pub add_note: bool,
+}
+
+impl AddSubdiagnostic for AddLifetimeParamsSuggestion<'_> {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        let mut mk_suggestion = || {
+            let (
+                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
+                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sup, _), .. },
+            ) = (self.ty_sub, self.ty_sup) else {
+                return false;
+            };
+
+            if !lifetime_sub.name.is_anonymous() || !lifetime_sup.name.is_anonymous() {
+                return false;
+            };
+
+            let Some(anon_reg) = self.tcx.is_suitable_region(self.sub) else {
+                return false;
+            };
+
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+
+            let node = self.tcx.hir().get(hir_id);
+            let is_impl = matches!(&node, hir::Node::ImplItem(_));
+            let generics = match node {
+                hir::Node::Item(&hir::Item {
+                    kind: hir::ItemKind::Fn(_, ref generics, ..),
+                    ..
+                })
+                | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
+                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
+                _ => return false,
+            };
+
+            let suggestion_param_name = generics
+                .params
+                .iter()
+                .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                .map(|p| p.name.ident().name)
+                .find(|i| *i != kw::UnderscoreLifetime);
+            let introduce_new = suggestion_param_name.is_none();
+            let suggestion_param_name =
+                suggestion_param_name.map(|n| n.to_string()).unwrap_or_else(|| "'a".to_owned());
+
+            debug!(?lifetime_sup.span);
+            debug!(?lifetime_sub.span);
+            let make_suggestion = |span: rustc_span::Span| {
+                if span.is_empty() {
+                    (span, format!("{}, ", suggestion_param_name))
+                } else if let Ok("&") = self.tcx.sess.source_map().span_to_snippet(span).as_deref()
+                {
+                    (span.shrink_to_hi(), format!("{} ", suggestion_param_name))
+                } else {
+                    (span, suggestion_param_name.clone())
+                }
+            };
+            let mut suggestions =
+                vec![make_suggestion(lifetime_sub.span), make_suggestion(lifetime_sup.span)];
+
+            if introduce_new {
+                let new_param_suggestion = if let Some(first) =
+                    generics.params.iter().find(|p| !p.name.ident().span.is_empty())
+                {
+                    (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name))
+                } else {
+                    (generics.span, format!("<{}>", suggestion_param_name))
+                };
+
+                suggestions.push(new_param_suggestion);
+            }
+
+            diag.multipart_suggestion(
+                fluent::infer::lifetime_param_suggestion,
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+            diag.set_arg("is_impl", is_impl);
+            true
+        };
+        if mk_suggestion() && self.add_note {
+            diag.note(fluent::infer::lifetime_param_suggestion_elided);
+        }
+    }
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::lifetime_mismatch, code = "E0623")]
+pub struct LifetimeMismatch<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub labels: LifetimeMismatchLabels,
+    #[subdiagnostic]
+    pub suggestion: AddLifetimeParamsSuggestion<'a>,
 }

@@ -104,9 +104,36 @@ infer_relate_object_bound = ...so that it can be closed over into an object
 infer_data_borrowed = ...so that the type `{$name}` is not borrowed for too long
 infer_reference_outlives_referent = ...so that the reference type `{$name}` does not outlive the data it points at
 infer_relate_param_bound = ...so that the type `{$name}` will meet its required lifetime bounds{$continues ->
-[true] ...
-*[false] {""}
+    [true] ...
+    *[false] {""}
 }
 infer_relate_param_bound_2 = ...that is required by this bound
 infer_relate_region_param_bound = ...so that the declared lifetime parameter bounds are satisfied
 infer_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
+
+infer_nothing = {""}
+
+infer_lifetime_mismatch = lifetime mismatch
+
+infer_declared_different = this parameter and the return type are declared with different lifetimes...
+infer_data_returned = ...but data{$label_var1_exists ->
+    [true] {" "}from `{$label_var1}`
+    *[false] {""}
+} is returned here
+
+infer_data_lifetime_flow = ...but data with one lifetime flows into the other here
+infer_declared_multiple = this type is declared with multiple lifetimes...
+infer_types_declared_different = these two types are declared with different lifetimes...
+infer_data_flows = ...but data{$label_var1_exists ->
+    [true] -> {" "}from `{$label_var1}`
+    *[false] -> {""}
+} flows{$label_var2_exists ->
+    [true] -> {" "}into `{$label_var2}`
+    *[false] -> {""}
+} here
+
+infer_lifetime_param_suggestion = consider introducing a named lifetime parameter{$is_impl ->
+    [true] {" "}and update trait if needed
+    *[false] {""}
+}
+infer_lifetime_param_suggestion_elided = each elided lifetime in input position becomes a distinct lifetime
