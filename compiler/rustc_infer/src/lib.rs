@@ -34,5 +34,6 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+mod errors;
 pub mod infer;
 pub mod traits;
