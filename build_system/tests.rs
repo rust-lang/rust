@@ -1,7 +1,7 @@
 use super::build_sysroot;
 use super::config;
 use super::rustc_info::get_wrapper_file_name;
-use super::utils::{cargo_command, spawn_and_wait, spawn_and_wait_with_input};
+use super::utils::{cargo_command, hyperfine_command, spawn_and_wait, spawn_and_wait_with_input};
 use build_system::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
@@ -231,28 +231,23 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     }),
     TestCase::new("bench.simple-raytracer", &|runner| {
         runner.in_dir(["simple-raytracer"], |runner| {
-            let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string());
+            let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string()).parse().unwrap();
 
             if runner.host_triple == runner.target_triple {
                 eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-                let mut bench_compile = Command::new("hyperfine");
-                bench_compile.arg("--runs");
-                bench_compile.arg(&run_runs);
-                bench_compile.arg("--warmup");
-                bench_compile.arg("1");
-                bench_compile.arg("--prepare");
-                bench_compile.arg(format!("{:?}", runner.cargo_command("clean", [])));
+                let prepare = runner.cargo_command("clean", []);
 
-                bench_compile.arg("cargo build");
+                let llvm_build_cmd = cargo_command("cargo", "build", None, Path::new("."));
 
                 let cargo_clif = runner
                     .root_dir
                     .clone()
                     .join("build")
                     .join(get_wrapper_file_name("cargo-clif", "bin"));
-                let mut clif_build_cmd = cargo_command(cargo_clif, "build", None, Path::new("."));
-                clif_build_cmd.env("RUSTFLAGS", &runner.rust_flags);
-                bench_compile.arg(format!("{:?}", clif_build_cmd));
+                let clif_build_cmd = cargo_command(cargo_clif, "build", None, Path::new("."));
+
+                let bench_compile =
+                    hyperfine_command(1, run_runs, Some(prepare), llvm_build_cmd, clif_build_cmd);
 
                 spawn_and_wait(bench_compile);
 
@@ -260,11 +255,13 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 fs::copy(PathBuf::from("./target/debug/main"), PathBuf::from("raytracer_cg_clif"))
                     .unwrap();
 
-                let mut bench_run = Command::new("hyperfine");
-                bench_run.arg("--runs");
-                bench_run.arg(&run_runs);
-                bench_run.arg(PathBuf::from("./raytracer_cg_llvm"));
-                bench_run.arg(PathBuf::from("./raytracer_cg_clif"));
+                let bench_run = hyperfine_command(
+                    0,
+                    run_runs,
+                    None,
+                    Command::new("./raytracer_cg_llvm"),
+                    Command::new("./raytracer_cg_clif"),
+                );
                 spawn_and_wait(bench_run);
             } else {
                 runner.run_cargo("clean", []);

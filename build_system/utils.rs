@@ -24,6 +24,32 @@ pub(crate) fn cargo_command(
     cmd
 }
 
+pub(crate) fn hyperfine_command(
+    warmup: u64,
+    runs: u64,
+    prepare: Option<Command>,
+    a: Command,
+    b: Command,
+) -> Command {
+    let mut bench = Command::new("hyperfine");
+
+    if warmup != 0 {
+        bench.arg("--warmup").arg(warmup.to_string());
+    }
+
+    if runs != 0 {
+        bench.arg("--runs").arg(runs.to_string());
+    }
+
+    if let Some(prepare) = prepare {
+        bench.arg("--prepare").arg(format!("{:?}", prepare));
+    }
+
+    bench.arg(format!("{:?}", a)).arg(format!("{:?}", b));
+
+    bench
+}
+
 #[track_caller]
 pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     let src = src.as_ref();
