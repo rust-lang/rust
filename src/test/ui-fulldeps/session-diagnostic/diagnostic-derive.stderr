@@ -21,7 +21,7 @@ error: `#[nonsense(...)]` is not a valid attribute
 LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: only `diag`, `help`, `note` and `warn_` are valid attributes
+   = help: only `diag`, `help`, `note` and `warning` are valid attributes
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:53:1
@@ -329,7 +329,7 @@ error: `#[error(...)]` is not a valid attribute
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `error`, `warning` and `lint` have been replaced by `diag`
+   = help: `error` and `lint` have been replaced by `diag`
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:558:1
@@ -343,23 +343,23 @@ LL | | struct ErrorAttribute {}
    |
    = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(typeck::example_error)]`
 
-error: `#[warning(...)]` is not a valid attribute
+error: `#[warn_(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:565:1
    |
-LL | #[warning(typeck::ambiguous_lifetime_bound, code = "E0123")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[warn_(typeck::ambiguous_lifetime_bound, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `error`, `warning` and `lint` have been replaced by `diag`
+   = help: `warn_` have been replaced by `warning`
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:565:1
    |
-LL | / #[warning(typeck::ambiguous_lifetime_bound, code = "E0123")]
+LL | / #[warn_(typeck::ambiguous_lifetime_bound, code = "E0123")]
 LL | |
 LL | |
 LL | |
-LL | | struct WarningAttribute {}
-   | |__________________________^
+LL | | struct WarnAttribute {}
+   | |_______________________^
    |
    = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(typeck::example_error)]`
 
@@ -369,7 +369,7 @@ error: `#[lint(...)]` is not a valid attribute
 LL | #[lint(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `error`, `warning` and `lint` have been replaced by `diag`
+   = help: `error` and `lint` have been replaced by `diag`
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:572:1
@@ -389,7 +389,7 @@ error: `#[lint(...)]` is not a valid attribute
 LL | #[lint(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `error`, `warning` and `lint` have been replaced by `diag`
+   = help: `error` and `lint` have been replaced by `diag`
 
 error: diagnostic slug not specified
   --> $DIR/diagnostic-derive.rs:579:1
@@ -421,11 +421,11 @@ error: cannot find attribute `error` in this scope
 LL | #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
    |   ^^^^^
 
-error: cannot find attribute `warning` in this scope
+error: cannot find attribute `warn_` in this scope
   --> $DIR/diagnostic-derive.rs:565:3
    |
-LL | #[warning(typeck::ambiguous_lifetime_bound, code = "E0123")]
-   |   ^^^^^^^
+LL | #[warn_(typeck::ambiguous_lifetime_bound, code = "E0123")]
+   |   ^^^^^ help: a built-in attribute with a similar name exists: `warn`
 
 error: cannot find attribute `lint` in this scope
   --> $DIR/diagnostic-derive.rs:572:3
