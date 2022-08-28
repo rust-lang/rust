@@ -147,4 +147,4 @@ pub mod solid;
 pub mod vxworks;
 
 #[cfg(any(unix, target_os = "wasi", doc))]
-mod fd;
+pub(crate) mod fd;
