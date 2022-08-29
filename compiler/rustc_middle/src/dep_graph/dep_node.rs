@@ -74,7 +74,7 @@ pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 /// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
-pub struct DepKindStruct {
+pub struct DepKindStruct<'tcx> {
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
@@ -124,10 +124,10 @@ pub struct DepKindStruct {
     /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
     /// is actually a `DefPathHash`, and can therefore just look up the corresponding
     /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    pub force_from_dep_node: Option<fn(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool>,
+    pub force_from_dep_node: Option<fn(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool>,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'_>, DepNode)>,
+    pub try_load_from_on_disk_cache: Option<fn(TyCtxt<'tcx>, DepNode)>,
 }
 
 impl DepKind {
