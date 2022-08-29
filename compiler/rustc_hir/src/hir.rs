@@ -280,7 +280,7 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn id(&self) -> HirId {
+    pub fn hir_id(&self) -> HirId {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
