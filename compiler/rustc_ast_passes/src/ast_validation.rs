@@ -121,30 +121,9 @@ impl<'a> AstValidator<'a> {
     fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
         let sess = &self.session;
         if sess.opts.unstable_features.is_nightly_build() {
-            let err = "`let` expressions are not supported here";
-            let mut diag = sess.struct_span_err(expr.span, err);
-            diag.note("only supported directly in conditions of `if` and `while` expressions");
-            match forbidden_let_reason {
-                ForbiddenLetReason::GenericForbidden => {}
-                ForbiddenLetReason::NotSupportedOr(span) => {
-                    diag.span_note(
-                        span,
-                        "`||` operators are not supported in let chain expressions",
-                    );
-                }
-                ForbiddenLetReason::NotSupportedParentheses(span) => {
-                    diag.span_note(
-                        span,
-                        "`let`s wrapped in parentheses are not supported in a context with let \
-                        chains",
-                    );
-                }
-            }
-            diag.emit();
+            sess.emit_err(ForbiddenLet { span: expr.span, reason: forbidden_let_reason });
         } else {
-            sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
-                .note("variable declaration using `let` is a statement")
-                .emit();
+            sess.emit_err(ForbiddenLetStable { span: expr.span });
         }
     }
 

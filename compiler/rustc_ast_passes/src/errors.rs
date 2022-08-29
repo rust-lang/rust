@@ -31,6 +31,14 @@ impl AddSubdiagnostic for ForbiddenLetReason {
 }
 
 #[derive(SessionDiagnostic)]
+#[diag(ast_passes::forbidden_let_stable)]
+#[note]
+pub struct ForbiddenLetStable {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
 #[diag(ast_passes::forbidden_assoc_constraint)]
 pub struct ForbiddenAssocConstraint {
     #[primary_span]
