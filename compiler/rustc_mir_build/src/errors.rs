@@ -522,3 +522,43 @@ pub struct BindingsWithVariantName {
     pub ty_path: String,
     pub ident: Ident,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::irrefutable_let_patterns_generic_let)]
+#[note]
+#[help]
+pub struct IrrefutableLetPatternsGenericLet {
+    pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::irrefutable_let_patterns_if_let)]
+#[note]
+#[help]
+pub struct IrrefutableLetPatternsIfLet {
+    pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::irrefutable_let_patterns_if_let_guard)]
+#[note]
+#[help]
+pub struct IrrefutableLetPatternsIfLetGuard {
+    pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::irrefutable_let_patterns_let_else)]
+#[note]
+#[help]
+pub struct IrrefutableLetPatternsLetElse {
+    pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::irrefutable_let_patterns_while_let)]
+#[note]
+#[help]
+pub struct IrrefutableLetPatternsWhileLet {
+    pub count: usize,
+}
