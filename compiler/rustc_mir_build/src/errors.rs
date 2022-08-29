@@ -3,7 +3,7 @@ use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{parse::ParseSess, SessionDiagnostic};
-use rustc_span::Span;
+use rustc_span::{symbol::Ident, Span};
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build::unconditional_recursion)]
@@ -512,4 +512,13 @@ pub struct LeadingIrrefutableLetPatterns {
 #[help]
 pub struct TrailingIrrefutableLetPatterns {
     pub count: usize,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build::bindings_with_variant_name, code = "E0170")]
+pub struct BindingsWithVariantName {
+    #[suggestion(code = "{ty_path}::{ident}", applicability = "machine-applicable")]
+    pub suggestion: Option<Span>,
+    pub ty_path: String,
+    pub ident: Ident,
 }
