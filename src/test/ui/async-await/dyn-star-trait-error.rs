@@ -1,4 +1,4 @@
-#![feature(async_fn_in_traits)]
+#![feature(dyn_star)]
 
 use std::fmt::Debug;
 

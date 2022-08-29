@@ -1,5 +1,5 @@
 // run-pass
-#![feature(async_fn_in_traits)]
+#![feature(dyn_star)]
 #![allow(unused)]
 
 use std::fmt::Debug;

@@ -1,6 +1,6 @@
 // run-pass
 // check-run-results
-#![feature(async_fn_in_traits)]
+#![feature(dyn_star)]
 
 use std::fmt::Debug;
 
