@@ -490,12 +490,12 @@ fn locals_live_across_suspend_points<'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
-    let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
+    let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
-    for (block, data) in body.basic_blocks().iter_enumerated() {
+    for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
 
@@ -704,7 +704,7 @@ impl<'mir, 'tcx> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx>
 impl StorageConflictVisitor<'_, '_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
+        if self.body.basic_blocks[loc.block].terminator().kind == TerminatorKind::Unreachable {
             return;
         }
 
@@ -886,7 +886,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
 
-    for (block, block_data) in body.basic_blocks().iter_enumerated() {
+    for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
             Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
                 if let Some(local) = place.as_local() {
@@ -991,7 +991,7 @@ fn insert_panic_block<'tcx>(
     body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
-    let assert_block = BasicBlock::new(body.basic_blocks().len());
+    let assert_block = BasicBlock::new(body.basic_blocks.len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(Constant {
             span: body.span,
@@ -1021,7 +1021,7 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEn
     }
 
     // If there's a return terminator the function may return.
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         if let TerminatorKind::Return = block.terminator().kind {
             return true;
         }
@@ -1038,7 +1038,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     }
 
     // Unwinds can only start at certain terminators.
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         match block.terminator().kind {
             // These never unwind.
             TerminatorKind::Goto { .. }
