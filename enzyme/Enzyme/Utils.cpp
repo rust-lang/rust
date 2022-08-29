@@ -130,7 +130,7 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
   if (ZeroMem) {
     auto PT = cast<PointerType>(malloccall->getType());
     Value *tozero = malloccall;
-    if (!PT->getElementType()->isIntegerTy(8))
+    if (!PT->getPointerElementType()->isIntegerTy(8))
       tozero = Builder.CreatePointerCast(
           tozero, PointerType::get(Type::getInt8Ty(PT->getContext()),
                                    PT->getAddressSpace()));

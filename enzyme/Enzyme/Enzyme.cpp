@@ -206,11 +206,10 @@ handleCustomDerivative(llvm::Module &M, llvm::GlobalVariable &g,
                   if (!byref.count(realidx))
                     args.push_back(arg.getType());
                   else
-                    args.push_back(
-                        cast<PointerType>(arg.getType())->getElementType());
+                    args.push_back(arg.getType()->getPointerElementType());
                   realidx++;
                 } else {
-                  sretTy = cast<PointerType>(arg.getType())->getElementType();
+                  sretTy = arg.getType()->getPointerElementType();
                 }
                 i++;
               }
@@ -680,7 +679,7 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
     } else if (CI->hasStructRetAttr()) {
       Value *sret = CI->getArgOperand(0);
       PointerType *stype = cast<PointerType>(sret->getType());
-      StructType *st = dyn_cast<StructType>(stype->getElementType());
+      StructType *st = dyn_cast<StructType>(stype->getPointerElementType());
 
       // Assign results to struct allocated at the call site.
       if (st && st->isLayoutIdentical(diffretsty)) {
@@ -1285,7 +1284,7 @@ public:
       }
 
       if (byRefSize) {
-        Type *subTy = cast<PointerType>(res->getType())->getElementType();
+        Type *subTy = res->getType()->getPointerElementType();
         auto &DL = fn->getParent()->getDataLayout();
         auto BitSize = DL.getTypeSizeInBits(subTy);
         if (BitSize / 8 != byRefSize) {

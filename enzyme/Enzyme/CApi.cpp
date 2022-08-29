@@ -632,6 +632,35 @@ const char *EnzymeGradientUtilsInvertedPointersToString(GradientUtils *gutils,
   return cstr;
 }
 
+LLVMValueRef EnzymeGradientUtilsCallWithInvertedBundles(
+    GradientUtils *gutils, LLVMValueRef func, LLVMValueRef *args_vr,
+    uint64_t args_size, LLVMValueRef orig_vr, CValueType *valTys,
+    uint64_t valTys_size, LLVMBuilderRef B, uint8_t lookup) {
+  auto orig = cast<CallInst>(unwrap(orig_vr));
+
+  ArrayRef<ValueType> ar((ValueType *)valTys, valTys_size);
+
+  IRBuilder<> &BR = *unwrap(B);
+
+  auto Defs = gutils->getInvertedBundles(orig, ar, BR, lookup != 0);
+
+  SmallVector<Value *, 1> args;
+  for (size_t i = 0; i < args_size; i++) {
+    args.push_back(unwrap(args_vr[i]));
+  }
+
+  auto callval = unwrap(func);
+
+#if LLVM_VERSION_MAJOR > 7
+  auto res = BR.CreateCall(
+      cast<FunctionType>(callval->getType()->getPointerElementType()), callval,
+      args, Defs);
+#else
+  auto res = BR.CreateCall(callval, args, Defs);
+#endif
+  return wrap(res);
+}
+
 void EnzymeStringFree(const char *cstr) { delete[] cstr; }
 
 void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2,

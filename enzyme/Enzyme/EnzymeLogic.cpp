@@ -1832,7 +1832,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
           if (!foundcalled->hasParamAttribute(i, Attribute::StructRet))
             args.push_back(arg.getType());
           else {
-            sretTy = cast<PointerType>(arg.getType())->getElementType();
+            sretTy = arg.getType()->getPointerElementType();
             //  sretTy = foundcalled->getParamStructRetType(i);
           }
           i++;
