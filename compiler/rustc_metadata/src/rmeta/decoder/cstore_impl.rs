@@ -199,6 +199,7 @@ provide! { tcx, def_id, other, cdata,
     codegen_fn_attrs => { table }
     impl_trait_ref => { table }
     const_param_default => { table }
+    object_lifetime_default => { table }
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }

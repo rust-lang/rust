@@ -1076,6 +1076,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
                 }
             }
+            if let DefKind::TyParam | DefKind::ConstParam = def_kind {
+                if let Some(default) = self.tcx.object_lifetime_default(def_id) {
+                    record!(self.tables.object_lifetime_default[def_id] <- default);
+                }
+            }
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
             }

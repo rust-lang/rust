@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -171,6 +172,9 @@ impl CheckAttrVisitor<'_> {
                 }
                 sym::no_implicit_prelude => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
+                }
+                sym::rustc_object_lifetime_default => {
+                    self.check_object_lifetime_default(hir_id, span)
                 }
                 _ => {}
             }
@@ -407,6 +411,30 @@ impl CheckAttrVisitor<'_> {
                 });
                 false
             }
+        }
+    }
+
+    /// Debugging aid for `object_lifetime_default` query.
+    fn check_object_lifetime_default(&self, hir_id: HirId, span: Span) {
+        let tcx = self.tcx;
+        if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
+            let object_lifetime_default_reprs: String = generics
+                .params
+                .iter()
+                .filter_map(|p| {
+                    let param_id = tcx.hir().local_def_id(p.hir_id);
+                    let default = tcx.object_lifetime_default(param_id)?;
+                    Some(match default {
+                        ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
+                        ObjectLifetimeDefault::Static => "'static".to_owned(),
+                        ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                        ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+                    })
+                })
+                .collect::<Vec<String>>()
+                .join(",");
+
+            tcx.sess.span_err(span, &object_lifetime_default_reprs);
         }
     }
 

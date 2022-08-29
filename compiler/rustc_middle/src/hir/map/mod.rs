@@ -486,7 +486,9 @@ impl<'hir> Map<'hir> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => def_id,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.local_parent(def_id),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.local_parent(def_id)
+            }
             _ => bug!("ty_param_owner: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
@@ -495,7 +497,9 @@ impl<'hir> Map<'hir> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => kw::SelfUpper,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.item_name(def_id.to_def_id()),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.item_name(def_id.to_def_id())
+            }
             _ => bug!("ty_param_name: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
