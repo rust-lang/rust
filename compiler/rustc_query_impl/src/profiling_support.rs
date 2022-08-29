@@ -307,7 +307,7 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
 
     macro_rules! alloc_once {
         (
-            $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
+            $($name:ident,)*
         ) => {
             $({
                 alloc_self_profile_query_strings_for_query_cache(
@@ -320,5 +320,5 @@ pub fn alloc_self_profile_query_strings(tcx: TyCtxt<'_>) {
         }
     }
 
-    rustc_query_append! { alloc_once! }
+    rustc_query_names! { alloc_once! }
 }

@@ -144,10 +144,7 @@ impl DepKind {
 
 macro_rules! define_dep_nodes {
     (
-    $(
-        [$($attrs:tt)*]
-        $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
-      ,)*
+        $( $variant:ident, )*
     ) => (
         #[macro_export]
         macro_rules! make_dep_kind_array {
@@ -179,21 +176,14 @@ macro_rules! define_dep_nodes {
     );
 }
 
-rustc_dep_node_append!(define_dep_nodes![
+rustc_query_names!(define_dep_nodes![
     // We use this for most things when incr. comp. is turned off.
-    [] Null,
-
+    Null,
     // We use this to create a forever-red node.
-    [] Red,
-
-    [anon] TraitSelect,
-
-    // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
-    [] CompileCodegenUnit(Symbol),
-
-    // WARNING: if `MonoItem` is changed, make sure you update `make_compile_mono_item` below.
-    // Only used by rustc_codegen_cranelift
-    [] CompileMonoItem(MonoItem),
+    Red,
+    TraitSelect,
+    CompileCodegenUnit,
+    CompileMonoItem,
 ]);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.

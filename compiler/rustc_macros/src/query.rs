@@ -328,7 +328,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
-    let mut dep_node_def_stream = quote! {};
+    let mut all_names = quote! {};
     let mut cached_queries = quote! {};
 
     for query in queries.0 {
@@ -344,6 +344,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 #name,
             });
         }
+        all_names.extend(quote! { #name, });
 
         let mut attributes = Vec::new();
 
@@ -400,35 +401,30 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             [#attribute_stream] fn #name(#arg) #result,
         });
 
-        // Create a dep node for the query
-        dep_node_def_stream.extend(quote! {
-            [#attribute_stream] #name(#arg),
-        });
-
         add_query_description_impl(&query, &mut query_description_stream);
     }
 
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ($macro:ident !) => {
+            ($macro:ident!) => {
                 $macro! {
                     #query_stream
                 }
             }
         }
-        macro_rules! rustc_dep_node_append {
-            ($macro:ident! [$($other:tt)*]) => {
+        #[macro_export]
+        macro_rules! rustc_query_names {
+            ($macro:ident! $( [$($other:tt)*] )?) => {
                 $macro!(
-                    $($other)*
-
-                    #dep_node_def_stream
+                    $( $($other)* )?
+                    #all_names
                 );
             }
         }
         #[macro_export]
         macro_rules! rustc_cached_queries {
-            ( $macro:ident! ) => {
+            ($macro:ident!) => {
                 $macro!(#cached_queries);
             }
         }
