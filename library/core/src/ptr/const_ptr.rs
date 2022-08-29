@@ -249,7 +249,7 @@ impl<T: ?Sized> *const T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
