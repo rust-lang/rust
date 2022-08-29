@@ -110,6 +110,24 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                         .obligations,
                 );
             }
+            (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
+                let a_types = infcx.tcx.anonymize_bound_vars(a_types);
+                let b_types = infcx.tcx.anonymize_bound_vars(b_types);
+                if a_types.bound_vars() == b_types.bound_vars() {
+                    let (a_types, b_types) = infcx.replace_bound_vars_with_placeholders(
+                        a_types.map_bound(|a_types| (a_types, b_types.skip_binder())),
+                    );
+                    for (a, b) in std::iter::zip(a_types, b_types) {
+                        self.relate(a, b)?;
+                    }
+                } else {
+                    self.fields.infcx.super_combine_tys(
+                        self,
+                        infcx.tcx.mk_generator_witness(a_types),
+                        infcx.tcx.mk_generator_witness(b_types),
+                    )?;
+                }
+            }
 
             _ => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
