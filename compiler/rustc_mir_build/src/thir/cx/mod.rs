@@ -66,11 +66,11 @@ struct Cx<'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: Thir<'tcx>,
 
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 
-    pub(crate) region_scope_tree: &'tcx region::ScopeTree,
-    pub(crate) typeck_results: &'tcx ty::TypeckResults<'tcx>,
-    pub(crate) rvalue_scopes: &'tcx RvalueScopes,
+    region_scope_tree: &'tcx region::ScopeTree,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
+    rvalue_scopes: &'tcx RvalueScopes,
 
     /// When applying adjustments to the expression
     /// with the given `HirId`, use the given `Span`,
@@ -100,7 +100,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
+    fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Pat<'tcx> {
         let p = match self.tcx.hir().get(p.hir_id) {
             Node::Pat(p) => p,
             node => bug!("pattern became {:?}", node),
