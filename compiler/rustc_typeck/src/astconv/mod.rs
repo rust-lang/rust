@@ -222,9 +222,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::EarlyBound(index, id)) => {
-                let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
+            Some(rl::Region::EarlyBound(def_id)) => {
+                let name = tcx.hir().ty_param_name(def_id.expect_local());
+                let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
+                let generics = tcx.generics_of(item_def_id);
+                let index = generics.param_def_id_to_index[&def_id];
+                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }))
             }
 
             Some(rl::Region::Free(scope, id)) => {
@@ -253,9 +256,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 })
             }
         };
-
         debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
-
         r
     }
 
@@ -2853,10 +2854,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
 
             if !infer_replacements.is_empty() {
-                diag.multipart_suggestion(&format!(
+                diag.multipart_suggestion(
+                    &format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
                     rustc_errors::pluralize!(infer_replacements.len()),
-                ), infer_replacements, Applicability::MachineApplicable);
+                ),
+                    infer_replacements,
+                    Applicability::MachineApplicable,
+                );
             }
 
             diag.emit();

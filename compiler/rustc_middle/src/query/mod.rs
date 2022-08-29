@@ -1597,8 +1597,9 @@ rustc_queries! {
     /// for each parameter if a trait object were to be passed for that parameter.
     /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
     /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
-    query object_lifetime_defaults(_: LocalDefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
-        desc { "looking up lifetime defaults for a region on an item" }
+    query object_lifetime_default(key: DefId) -> Option<ObjectLifetimeDefault> {
+        desc { "looking up lifetime defaults for generic parameter `{:?}`", key }
+        separate_provide_extern
     }
     query late_bound_vars_map(_: LocalDefId)
         -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
