@@ -12,7 +12,6 @@ use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::ty::TraitObjectRepresentation;
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 
@@ -279,12 +278,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Immediate(v) => v,
                             OperandValue::Pair(_, _) => todo!(),
                         };
-                        // FIXME: find the real vtable!
-                        let trait_ref = if let ty::Dynamic(data, _, TraitObjectRepresentation::Sized) = cast.ty.kind() {
-                            data.principal()
-                        } else {
-                            bug!("Only valid to do a DynStar cast into a DynStar type")
-                        };
+                        let trait_ref =
+                            if let ty::Dynamic(data, _, ty::TraitObjectRepresentation::Sized) = cast.ty.kind() {
+                                data.principal()
+                            } else {
+                                bug!("Only valid to do a DynStar cast into a DynStar type")
+                            };
                         let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
                         OperandValue::Pair(data, vtable)
                     }
