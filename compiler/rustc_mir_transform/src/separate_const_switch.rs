@@ -62,7 +62,7 @@ impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
 pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
     let mut new_blocks: SmallVec<[(BasicBlock, BasicBlock); 6]> = SmallVec::new();
     let predecessors = body.basic_blocks.predecessors();
-    'block_iter: for (block_id, block) in body.basic_blocks().iter_enumerated() {
+    'block_iter: for (block_id, block) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::SwitchInt {
             discr: Operand::Copy(switch_place) | Operand::Move(switch_place),
             ..
@@ -90,7 +90,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
 
                 let mut predecessors_left = predecessors[block_id].len();
                 'predec_iter: for predecessor_id in predecessors[block_id].iter().copied() {
-                    let predecessor = &body.basic_blocks()[predecessor_id];
+                    let predecessor = &body.basic_blocks[predecessor_id];
 
                     // First we make sure the predecessor jumps
                     // in a reasonable way

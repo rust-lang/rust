@@ -1,6 +1,10 @@
+use crate::errors::{
+    AmbigousImpl, AmbigousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
+    SourceKindMultiSuggestion, SourceKindSubdiag,
+};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -14,6 +18,7 @@ use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
+use rustc_session::SessionDiagnostic;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
@@ -60,38 +65,49 @@ pub struct InferenceDiagnosticsParentData {
     name: String,
 }
 
+#[derive(Clone)]
 pub enum UnderspecifiedArgKind {
     Type { prefix: Cow<'static, str> },
     Const { is_parameter: bool },
 }
 
 impl InferenceDiagnosticsData {
-    /// Generate a label for a generic argument which can't be inferred. When not
-    /// much is known about the argument, `use_diag` may be used to describe the
-    /// labeled value.
-    fn cannot_infer_msg(&self) -> String {
-        if self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }) {
-            return "cannot infer type".to_string();
-        }
-
-        let suffix = match &self.parent {
-            Some(parent) => parent.suffix_string(),
-            None => String::new(),
-        };
-
-        // For example: "cannot infer type for type parameter `T`"
-        format!("cannot infer {} `{}`{}", self.kind.prefix_string(), self.name, suffix)
+    fn can_add_more_info(&self) -> bool {
+        !(self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }))
     }
 
-    fn where_x_is_specified(&self, in_type: Ty<'_>) -> String {
+    fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
         if in_type.is_ty_infer() {
-            String::new()
+            "empty"
         } else if self.name == "_" {
             // FIXME: Consider specializing this message if there is a single `_`
             // in the type.
-            ", where the placeholders `_` are specified".to_string()
+            "underscore"
         } else {
-            format!(", where the {} `{}` is specified", self.kind.prefix_string(), self.name)
+            "has_name"
+        }
+    }
+
+    /// Generate a label for a generic argument which can't be inferred. When not
+    /// much is known about the argument, `use_diag` may be used to describe the
+    /// labeled value.
+    fn make_bad_error(&self, span: Span) -> InferenceBadError<'_> {
+        let has_parent = self.parent.is_some();
+        let bad_kind = if self.can_add_more_info() { "more_info" } else { "other" };
+        let (parent_prefix, parent_name) = self
+            .parent
+            .as_ref()
+            .map(|parent| (parent.prefix, parent.name.clone()))
+            .unwrap_or_default();
+        InferenceBadError {
+            span,
+            bad_kind,
+            prefix_kind: self.kind.clone(),
+            prefix: self.kind.try_get_prefix().unwrap_or_default(),
+            name: self.name.clone(),
+            has_parent,
+            parent_prefix,
+            parent_name,
         }
     }
 }
@@ -113,18 +129,24 @@ impl InferenceDiagnosticsParentData {
     fn for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<InferenceDiagnosticsParentData> {
         Self::for_parent_def_id(tcx, tcx.parent(def_id))
     }
+}
 
-    fn suffix_string(&self) -> String {
-        format!(" declared on the {} `{}`", self.prefix, self.name)
+impl IntoDiagnosticArg for UnderspecifiedArgKind {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self {
+            Self::Type { .. } => "type",
+            Self::Const { is_parameter: true } => "const_with_param",
+            Self::Const { is_parameter: false } => "const",
+        };
+        rustc_errors::DiagnosticArgValue::Str(kind.into())
     }
 }
 
 impl UnderspecifiedArgKind {
-    fn prefix_string(&self) -> Cow<'static, str> {
+    fn try_get_prefix(&self) -> Option<&str> {
         match self {
-            Self::Type { prefix } => format!("type for {}", prefix).into(),
-            Self::Const { is_parameter: true } => "the value of const parameter".into(),
-            Self::Const { is_parameter: false } => "the value of the constant".into(),
+            Self::Type { prefix } => Some(prefix.as_ref()),
+            Self::Const { .. } => None,
         }
     }
 }
@@ -303,11 +325,44 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let error_code = error_code.into();
-        let mut err =
-            self.tcx.sess.struct_span_err_with_code(span, "type annotations needed", error_code);
-        err.span_label(span, arg_data.cannot_infer_msg());
-        err
+        let source_kind = "other";
+        let source_name = "";
+        let failure_span = None;
+        let infer_subdiags = Vec::new();
+        let multi_suggestions = Vec::new();
+        let bad_label = Some(arg_data.make_bad_error(span));
+        match error_code {
+            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+                span,
+                source_kind,
+                source_name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+                span,
+                source_kind,
+                source_name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+            TypeAnnotationNeeded::E0284 => AmbigousReturn {
+                span,
+                source_kind,
+                source_name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+        }
     }
 
     pub fn emit_inference_failure_err(
@@ -340,48 +395,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code)
         };
 
-        let error_code = error_code.into();
-        let mut err = self.tcx.sess.struct_span_err_with_code(
-            span,
-            &format!("type annotations needed{}", kind.ty_msg(self)),
-            error_code,
-        );
+        let (source_kind, name) = kind.ty_localized_msg(self);
+        let failure_span = if should_label_span && !failure_span.overlaps(span) {
+            Some(failure_span)
+        } else {
+            None
+        };
 
-        if should_label_span && !failure_span.overlaps(span) {
-            err.span_label(failure_span, "type must be known at this point");
-        }
-
+        let mut infer_subdiags = Vec::new();
+        let mut multi_suggestions = Vec::new();
         match kind {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty } => {
-                let suggestion_msg = if let Some(name) = pattern_name {
-                    format!(
-                        "consider giving `{}` an explicit type{}",
-                        name,
-                        arg_data.where_x_is_specified(ty)
-                    )
-                } else {
-                    format!(
-                        "consider giving this pattern a type{}",
-                        arg_data.where_x_is_specified(ty)
-                    )
-                };
-                err.span_suggestion_verbose(
-                    insert_span,
-                    &suggestion_msg,
-                    format!(": {}", ty_to_string(self, ty)),
-                    Applicability::HasPlaceholders,
-                );
+                infer_subdiags.push(SourceKindSubdiag::LetLike {
+                    span: insert_span,
+                    name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
+                    x_kind: arg_data.where_x_is_kind(ty),
+                    prefix_kind: arg_data.kind.clone(),
+                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                    arg_name: arg_data.name,
+                    kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                    type_name: ty_to_string(self, ty),
+                });
             }
             InferSourceKind::ClosureArg { insert_span, ty } => {
-                err.span_suggestion_verbose(
-                    insert_span,
-                    &format!(
-                        "consider giving this closure parameter an explicit type{}",
-                        arg_data.where_x_is_specified(ty)
-                    ),
-                    format!(": {}", ty_to_string(self, ty)),
-                    Applicability::HasPlaceholders,
-                );
+                infer_subdiags.push(SourceKindSubdiag::LetLike {
+                    span: insert_span,
+                    name: String::new(),
+                    x_kind: arg_data.where_x_is_kind(ty),
+                    prefix_kind: arg_data.kind.clone(),
+                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                    arg_name: arg_data.name,
+                    kind: "closure",
+                    type_name: ty_to_string(self, ty),
+                });
             }
             InferSourceKind::GenericArg {
                 insert_span,
@@ -393,19 +439,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let generics = self.tcx.generics_of(generics_def_id);
                 let is_type = matches!(arg.unpack(), GenericArgKind::Type(_));
 
-                let cannot_infer_msg = format!(
-                    "cannot infer {} of the {} parameter `{}`{}",
-                    if is_type { "type" } else { "the value" },
-                    if is_type { "type" } else { "const" },
-                    generics.params[argument_index].name,
-                    // We use the `generics_def_id` here, as even when suggesting `None::<T>`,
-                    // the type parameter `T` was still declared on the enum, not on the
-                    // variant.
+                let (parent_exists, parent_prefix, parent_name) =
                     InferenceDiagnosticsParentData::for_parent_def_id(self.tcx, generics_def_id)
-                        .map_or(String::new(), |parent| parent.suffix_string()),
-                );
+                        .map_or((false, String::new(), String::new()), |parent| {
+                            (true, parent.prefix.to_string(), parent.name)
+                        });
 
-                err.span_label(span, cannot_infer_msg);
+                infer_subdiags.push(SourceKindSubdiag::GenericLabel {
+                    span,
+                    is_type,
+                    param_name: generics.params[argument_index].name.to_string(),
+                    parent_exists,
+                    parent_prefix,
+                    parent_name,
+                });
 
                 let args = fmt_printer(self, Namespace::TypeNS)
                     .comma_sep(generic_args.iter().copied().map(|arg| {
@@ -435,15 +482,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .unwrap()
                     .into_buffer();
 
-                err.span_suggestion_verbose(
-                    insert_span,
-                    &format!(
-                        "consider specifying the generic argument{}",
-                        pluralize!(generic_args.len()),
-                    ),
-                    format!("::<{}>", args),
-                    Applicability::HasPlaceholders,
-                );
+                infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                    span: insert_span,
+                    arg_count: generic_args.len(),
+                    args,
+                });
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, substs, def_id } => {
                 let printer = fmt_printer(self, Namespace::ValueNS);
@@ -468,37 +511,54 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     _ => "",
                 };
 
-                let suggestion = vec![
-                    (receiver.span.shrink_to_lo(), format!("{def_path}({adjustment}")),
-                    (receiver.span.shrink_to_hi().with_hi(successor.1), successor.0.to_string()),
-                ];
-                err.multipart_suggestion_verbose(
-                    "try using a fully qualified path to specify the expected types",
-                    suggestion,
-                    Applicability::HasPlaceholders,
-                );
+                multi_suggestions.push(SourceKindMultiSuggestion::FullyQualified {
+                    span: receiver.span,
+                    def_path,
+                    adjustment,
+                    successor,
+                });
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
-                let ret = ty_to_string(self, ty);
-                let (arrow, post) = match data {
-                    FnRetTy::DefaultReturn(_) => ("-> ", " "),
-                    _ => ("", ""),
-                };
-                let suggestion = match should_wrap_expr {
-                    Some(end_span) => vec![
-                        (data.span(), format!("{}{}{}{{ ", arrow, ret, post)),
-                        (end_span, " }".to_string()),
-                    ],
-                    None => vec![(data.span(), format!("{}{}{}", arrow, ret, post))],
-                };
-                err.multipart_suggestion_verbose(
-                    "try giving this closure an explicit return type",
-                    suggestion,
-                    Applicability::HasPlaceholders,
-                );
+                let ty_info = ty_to_string(self, ty);
+                multi_suggestions.push(SourceKindMultiSuggestion::ClosureReturn {
+                    ty_info,
+                    data,
+                    should_wrap_expr,
+                });
             }
         }
-        err
+        match error_code {
+            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+            TypeAnnotationNeeded::E0283 => AmbigousImpl {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+            TypeAnnotationNeeded::E0284 => AmbigousReturn {
+                span,
+                source_kind,
+                source_name: &name,
+                failure_span,
+                infer_subdiags,
+                multi_suggestions,
+                bad_label: None,
+            }
+            .into_diagnostic(&self.tcx.sess.parse_sess),
+        }
     }
 
     pub fn need_type_info_err_in_generator(
@@ -510,15 +570,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(ty);
         let data = self.extract_inference_diagnostics_data(ty.into(), None);
 
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        NeedTypeInfoInGenerator {
+            bad_label: data.make_bad_error(span),
             span,
-            E0698,
-            "type inside {} must be known in this context",
-            kind,
-        );
-        err.span_label(span, data.cannot_infer_msg());
-        err
+            generator_kind: GeneratorKindAsDiagArg(kind),
+        }
+        .into_diagnostic(&self.tcx.sess.parse_sess)
+    }
+}
+
+pub struct GeneratorKindAsDiagArg(pub hir::GeneratorKind);
+
+impl IntoDiagnosticArg for GeneratorKindAsDiagArg {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self.0 {
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "async_block",
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "async_closure",
+            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "async_fn",
+            hir::GeneratorKind::Gen => "generator",
+        };
+        rustc_errors::DiagnosticArgValue::Str(kind.into())
     }
 }
 
@@ -579,22 +650,22 @@ impl<'tcx> InferSource<'tcx> {
 }
 
 impl<'tcx> InferSourceKind<'tcx> {
-    fn ty_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> String {
+    fn ty_localized_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> (&'static str, String) {
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
             | InferSourceKind::ClosureReturn { ty, .. } => {
                 if ty.is_closure() {
-                    format!(" for the closure `{}`", closure_as_fn_str(infcx, ty))
+                    ("closure", closure_as_fn_str(infcx, ty))
                 } else if !ty.is_ty_infer() {
-                    format!(" for `{}`", ty_to_string(infcx, ty))
+                    ("normal", ty_to_string(infcx, ty))
                 } else {
-                    String::new()
+                    ("other", String::new())
                 }
             }
             // FIXME: We should be able to add some additional info here.
             InferSourceKind::GenericArg { .. }
-            | InferSourceKind::FullyQualifiedMethodCall { .. } => String::new(),
+            | InferSourceKind::FullyQualifiedMethodCall { .. } => ("other", String::new()),
         }
     }
 }

@@ -150,13 +150,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
+    if mir.basic_blocks.iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
     }
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     let cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>> = mir
-        .basic_blocks()
+        .basic_blocks
         .indices()
         .map(|bb| if bb == mir::START_BLOCK { Some(start_llbb) } else { None })
         .collect();
@@ -172,8 +172,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         unreachable_block: None,
         double_unwind_guard: None,
         cleanup_kinds,
-        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
-        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks().len()),
+        landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
+        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
         locals: IndexVec::new(),
         debug_context,
         per_local_var_debug_info: None,

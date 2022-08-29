@@ -58,7 +58,7 @@ use crate::traits::{
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -78,7 +78,7 @@ use std::{cmp, fmt, iter};
 
 mod note;
 
-mod need_type_info;
+pub(crate) mod need_type_info;
 pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
@@ -1588,9 +1588,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Mismatch::Variable(infer::ExpectedFound { expected, found }),
                         )
                     }
+                    ValuePairs::Terms(infer::ExpectedFound {
+                        expected: ty::Term::Const(_),
+                        found: ty::Term::Const(_),
+                    }) => (false, Mismatch::Fixed("constant")),
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
                     }
+                    ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                     _ => (false, Mismatch::Fixed("type")),
                 };
                 let vals = match self.values_str(values) {
@@ -2878,6 +2883,30 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
         }
+    }
+}
+
+/// Newtype to allow implementing IntoDiagnosticArg
+pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
+
+impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        use crate::traits::ObligationCauseCode::*;
+        let kind = match self.0.code() {
+            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
+            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => "type_compat",
+            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => "const_compat",
+            ExprAssignable => "expr_assignable",
+            IfExpression { .. } => "if_else_different",
+            IfExpressionWithNoElse => "no_else",
+            MainFunctionType => "fn_main_correct_type",
+            StartFunctionType => "fn_start_correct_type",
+            IntrinsicType => "intristic_correct_type",
+            MethodReceiver => "method_correct_type",
+            _ => "other",
+        }
+        .into();
+        rustc_errors::DiagnosticArgValue::Str(kind)
     }
 }
 

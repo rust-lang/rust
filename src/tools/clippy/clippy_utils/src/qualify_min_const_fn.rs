@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
-    for bb in body.basic_blocks() {
+    for bb in body.basic_blocks.iter() {
         check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
