@@ -341,6 +341,10 @@ pub enum ErrorKind {
     #[stable(feature = "unsupported_error", since = "1.53.0")]
     Unsupported,
 
+    /// The operation was partially sucessful and needs to be checked
+    /// later on due to not blocking
+    InProgress,
+
     // ErrorKinds which are primarily categorisations for OS error
     // codes should be added above.
     //
@@ -431,6 +435,7 @@ impl ErrorKind {
             Unsupported => "unsupported",
             WouldBlock => "operation would block",
             WriteZero => "write zero",
+            InProgress => "in progress"
         }
     }
 }
