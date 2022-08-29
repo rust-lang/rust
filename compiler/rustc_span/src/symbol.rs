@@ -157,6 +157,7 @@ symbols! {
         BTreeSet,
         BinaryHeap,
         Borrow,
+        BorrowMut,
         Break,
         C,
         CStr,
