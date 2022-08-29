@@ -570,7 +570,8 @@ declare_clippy_lint! {
     "borrowing just to cast to a raw pointer"
 }
 declare_clippy_lint! {
-    /// **What it does:** Checks for a raw slice being cast to a slice pointer
+    /// ### What it does
+    /// Checks for a raw slice being cast to a slice pointer
     ///
     /// ### Why is this bad?
     /// This can result in multiple `&mut` references to the same location when only a pointer is
