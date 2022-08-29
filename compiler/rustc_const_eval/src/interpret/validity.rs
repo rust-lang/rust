@@ -8,6 +8,7 @@ use std::convert::TryFrom;
 use std::fmt::Write;
 use std::num::NonZeroUsize;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpError;
@@ -423,34 +424,51 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {
-                // Special handling for pointers to statics (irrespective of their type).
+                // Let's see what kind of memory this points to.
                 let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id);
-                if let Some(GlobalAlloc::Static(did)) = alloc_kind {
-                    assert!(!self.ecx.tcx.is_thread_local_static(did));
-                    assert!(self.ecx.tcx.is_static(did));
-                    if matches!(
-                        self.ctfe_mode,
-                        Some(CtfeValidationMode::Const { allow_static_ptrs: false, .. })
-                    ) {
-                        // See const_eval::machine::MemoryExtra::can_access_statics for why
-                        // this check is so important.
-                        // This check is reachable when the const just referenced the static,
-                        // but never read it (so we never entered `before_access_global`).
-                        throw_validation_failure!(self.path,
-                            { "a {} pointing to a static variable", kind }
-                        );
+                match alloc_kind {
+                    Some(GlobalAlloc::Static(did)) => {
+                        // Special handling for pointers to statics (irrespective of their type).
+                        assert!(!self.ecx.tcx.is_thread_local_static(did));
+                        assert!(self.ecx.tcx.is_static(did));
+                        if matches!(
+                            self.ctfe_mode,
+                            Some(CtfeValidationMode::Const { allow_static_ptrs: false, .. })
+                        ) {
+                            // See const_eval::machine::MemoryExtra::can_access_statics for why
+                            // this check is so important.
+                            // This check is reachable when the const just referenced the static,
+                            // but never read it (so we never entered `before_access_global`).
+                            throw_validation_failure!(self.path,
+                                { "a {} pointing to a static variable in a constant", kind }
+                            );
+                        }
+                        // We skip recursively checking other statics. These statics must be sound by
+                        // themselves, and the only way to get broken statics here is by using
+                        // unsafe code.
+                        // The reasons we don't check other statics is twofold. For one, in all
+                        // sound cases, the static was already validated on its own, and second, we
+                        // trigger cycle errors if we try to compute the value of the other static
+                        // and that static refers back to us.
+                        // We might miss const-invalid data,
+                        // but things are still sound otherwise (in particular re: consts
+                        // referring to statics).
+                        return Ok(());
                     }
-                    // We skip checking other statics. These statics must be sound by
-                    // themselves, and the only way to get broken statics here is by using
-                    // unsafe code.
-                    // The reasons we don't check other statics is twofold. For one, in all
-                    // sound cases, the static was already validated on its own, and second, we
-                    // trigger cycle errors if we try to compute the value of the other static
-                    // and that static refers back to us.
-                    // We might miss const-invalid data,
-                    // but things are still sound otherwise (in particular re: consts
-                    // referring to statics).
-                    return Ok(());
+                    Some(GlobalAlloc::Memory(alloc)) => {
+                        if alloc.inner().mutability == Mutability::Mut
+                            && matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
+                        {
+                            // This should be unreachable, but if someone manages to copy a pointer
+                            // out of a `static`, then that pointer might point to mutable memory,
+                            // and we would catch that here.
+                            throw_validation_failure!(self.path,
+                                { "a {} pointing to mutable memory in a constant", kind }
+                            );
+                        }
+                    }
+                    // Nothing to check for these.
+                    None | Some(GlobalAlloc::Function(..) | GlobalAlloc::VTable(..)) => {}
                 }
             }
             let path = &self.path;
@@ -528,7 +546,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             }
             ty::Ref(_, ty, mutbl) => {
                 if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
-                    && *mutbl == hir::Mutability::Mut
+                    && *mutbl == Mutability::Mut
                 {
                     // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
