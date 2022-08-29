@@ -110,6 +110,9 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                         .obligations,
                 );
             }
+            // Optimization of GeneratorWitness relation since we know that all
+            // free regions are replaced with bound regions during construction.
+            // This greatly speeds up equating of GeneratorWitness.
             (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
                 let a_types = infcx.tcx.anonymize_bound_vars(a_types);
                 let b_types = infcx.tcx.anonymize_bound_vars(b_types);
@@ -121,11 +124,9 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                         self.relate(a, b)?;
                     }
                 } else {
-                    self.fields.infcx.super_combine_tys(
-                        self,
-                        infcx.tcx.mk_generator_witness(a_types),
-                        infcx.tcx.mk_generator_witness(b_types),
-                    )?;
+                    return Err(ty::error::TypeError::Sorts(ty::relate::expected_found(
+                        self, a, b,
+                    )));
                 }
             }
 
