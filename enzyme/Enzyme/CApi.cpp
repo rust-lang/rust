@@ -318,6 +318,27 @@ CDerivativeMode EnzymeGradientUtilsGetMode(GradientUtils *gutils) {
   return (CDerivativeMode)gutils->mode;
 }
 
+CDIFFE_TYPE
+EnzymeGradientUtilsGetDiffeType(GradientUtils *G, LLVMValueRef oval,
+                                uint8_t foreignFunction) {
+  return (CDIFFE_TYPE)(G->getDiffeType(unwrap(oval), foreignFunction != 0));
+}
+
+CDIFFE_TYPE
+EnzymeGradientUtilsGetReturnDiffeType(GradientUtils *G, LLVMValueRef oval,
+                                      uint8_t *needsPrimal,
+                                      uint8_t *needsShadow) {
+  bool needsPrimalB;
+  bool needsShadowB;
+  auto res = (CDIFFE_TYPE)(G->getReturnDiffeType(cast<CallInst>(unwrap(oval)),
+                                                 &needsPrimalB, &needsShadowB));
+  if (needsPrimal)
+    *needsPrimal = needsPrimalB;
+  if (needsShadow)
+    *needsShadow = needsShadowB;
+  return res;
+}
+
 void EnzymeGradientUtilsSetDebugLocFromOriginal(GradientUtils *gutils,
                                                 LLVMValueRef val,
                                                 LLVMValueRef orig) {
@@ -365,6 +386,31 @@ uint8_t EnzymeGradientUtilsIsConstantInstruction(GradientUtils *gutils,
 
 LLVMBasicBlockRef EnzymeGradientUtilsAllocationBlock(GradientUtils *gutils) {
   return wrap(gutils->inversionAllocs);
+}
+
+void EnzymeGradientUtilsGetUncacheableArgs(GradientUtils *gutils,
+                                           LLVMValueRef orig, uint8_t *data,
+                                           uint64_t size) {
+  if (gutils->mode == DerivativeMode::ForwardMode)
+    return;
+
+  CallInst *call = cast<CallInst>(unwrap(orig));
+
+  auto found = gutils->uncacheable_args_map_ptr->find(call);
+  assert(found != gutils->uncacheable_args_map_ptr->end());
+
+  const std::map<Argument *, bool> &uncacheable_args = found->second;
+
+  auto Fn = getFunctionFromCall(call);
+  assert(Fn);
+  size_t cur = 0;
+  for (auto &arg : Fn->args()) {
+    assert(cur < size);
+    auto found2 = uncacheable_args.find(&arg);
+    assert(found2 != uncacheable_args.end());
+    data[cur] = found2->second;
+    cur++;
+  }
 }
 
 CTypeTreeRef EnzymeGradientUtilsAllocAndGetTypeTree(GradientUtils *gutils,

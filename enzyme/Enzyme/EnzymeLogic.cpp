@@ -2071,7 +2071,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   gutils->forceActiveDetection();
-  gutils->forceAugmentedReturns(guaranteedUnreachable);
+  gutils->forceAugmentedReturns();
 
   // TODO actually populate unnecessaryInstructions with what can be
   // derived without activity info
@@ -2080,7 +2080,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  gutils->computeGuaranteedFrees(guaranteedUnreachable);
+  gutils->computeGuaranteedFrees();
 
   CacheAnalysis CA(gutils->allocationsWithGuaranteedFree,
                    gutils->rematerializableAllocations, gutils->TR,
@@ -2091,12 +2091,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                    DerivativeMode::ReverseModePrimal, omp);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
+  gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
 
   const std::map<Instruction *, bool> can_modref_map =
       CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
 
-  gutils->computeMinCache(guaranteedUnreachable);
+  gutils->computeMinCache();
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
@@ -2104,6 +2105,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                                   unnecessaryInstructions, returnUsed,
                                   DerivativeMode::ReverseModePrimal, gutils,
                                   TLI, constant_args, guaranteedUnreachable);
+  gutils->unnecessaryValuesP = &unnecessaryValues;
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -3644,9 +3646,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   gutils->forceActiveDetection();
-  gutils->forceAugmentedReturns(guaranteedUnreachable);
+  gutils->forceAugmentedReturns();
 
-  gutils->computeGuaranteedFrees(guaranteedUnreachable);
+  gutils->computeGuaranteedFrees();
 
   // TODO populate with actual unnecessaryInstructions once the dependency
   // cycle with activity analysis is removed
@@ -3666,6 +3668,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
                           : CA.compute_uncacheable_args_for_callsites();
+  gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
 
   const std::map<Instruction *, bool> can_modref_map =
       augmenteddata ? augmenteddata->can_modref_map
@@ -3680,7 +3683,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     return gutils->getIndex(std::make_pair(I, u), mapping);
   };
 
-  gutils->computeMinCache(guaranteedUnreachable);
+  gutils->computeMinCache();
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
@@ -3688,6 +3691,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                                   unnecessaryInstructions, key.returnUsed,
                                   key.mode, gutils, TLI, key.constant_args,
                                   guaranteedUnreachable);
+  gutils->unnecessaryValuesP = &unnecessaryValues;
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -4240,7 +4244,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       getGuaranteedUnreachable(gutils->oldFunc);
 
   gutils->forceActiveDetection();
-  gutils->forceAugmentedReturns(guaranteedUnreachable);
+  gutils->forceAugmentedReturns();
 
   // TODO populate with actual unnecessaryInstructions once the dependency
   // cycle with activity analysis is removed
@@ -4250,13 +4254,14 @@ Function *EnzymeLogic::CreateForwardDiff(
       unnecessaryInstructionsTmp.insert(&I);
   }
   if (mode == DerivativeMode::ForwardModeSplit)
-    gutils->computeGuaranteedFrees(guaranteedUnreachable);
+    gutils->computeGuaranteedFrees();
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(
       *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnUsed,
       mode, gutils, TLI, constant_args, guaranteedUnreachable);
+  gutils->unnecessaryValuesP = &unnecessaryValues;
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -4277,7 +4282,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       }
     }
 
-    gutils->computeGuaranteedFrees(guaranteedUnreachable);
+    gutils->computeGuaranteedFrees();
     CacheAnalysis CA(
         gutils->allocationsWithGuaranteedFree,
         gutils->rematerializableAllocations, gutils->TR, gutils->OrigAA,
@@ -4287,6 +4292,7 @@ Function *EnzymeLogic::CreateForwardDiff(
         _uncacheable_argsPP, mode, omp);
     const std::map<CallInst *, const std::map<Argument *, bool>>
         uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
+    gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
     can_modref_map = std::make_unique<const std::map<Instruction *, bool>>(
         CA.compute_uncacheable_load_map());
     gutils->can_modref_map = can_modref_map.get();
@@ -4296,7 +4302,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       return gutils->getIndex(std::make_pair(I, u), augmenteddata->tapeIndices);
     };
 
-    gutils->computeMinCache(guaranteedUnreachable);
+    gutils->computeMinCache();
 
     maker = new AdjointGenerator<const AugmentedReturn *>(
         mode, gutils, constant_args, retType, getIndex, uncacheable_args_map,

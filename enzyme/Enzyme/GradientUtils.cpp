@@ -3453,9 +3453,88 @@ GradientUtils *GradientUtils::CreateFromClone(
 
   auto res = new GradientUtils(
       Logic, newFunc, oldFunc, TLI, TA, TR, invertedPointers, constant_values,
-      nonconstant_values, retType, originalToNew,
+      nonconstant_values, retType, constant_args, originalToNew,
       DerivativeMode::ReverseModePrimal, /* width */ width, omp);
   return res;
+}
+
+DIFFE_TYPE GradientUtils::getReturnDiffeType(llvm::CallInst *orig,
+                                             bool *primalReturnUsedP,
+                                             bool *shadowReturnUsedP) {
+  bool shadowReturnUsed = false;
+
+  DIFFE_TYPE subretType;
+  if (isConstantValue(orig)) {
+    subretType = DIFFE_TYPE::CONSTANT;
+  } else {
+    if (mode == DerivativeMode::ForwardMode ||
+        mode == DerivativeMode::ForwardModeSplit) {
+      subretType = DIFFE_TYPE::DUP_ARG;
+      shadowReturnUsed = true;
+    } else {
+      if (!orig->getType()->isFPOrFPVectorTy() &&
+          TR.query(orig).Inner0().isPossiblePointer()) {
+        if (is_value_needed_in_reverse<ValueType::Shadow>(
+                this, orig, DerivativeMode::ReverseModePrimal,
+                notForAnalysis)) {
+          subretType = DIFFE_TYPE::DUP_ARG;
+          shadowReturnUsed = true;
+        } else
+          subretType = DIFFE_TYPE::CONSTANT;
+      } else {
+        subretType = DIFFE_TYPE::OUT_DIFF;
+      }
+    }
+  }
+
+  if (primalReturnUsedP) {
+    bool subretused =
+        unnecessaryValuesP->find(orig) == unnecessaryValuesP->end();
+    if (knownRecomputeHeuristic.find(orig) != knownRecomputeHeuristic.end()) {
+      if (!knownRecomputeHeuristic[orig]) {
+        subretused = true;
+      }
+    }
+    *primalReturnUsedP = subretused;
+  }
+
+  if (shadowReturnUsedP)
+    *shadowReturnUsedP = shadowReturnUsed;
+  return subretType;
+}
+
+DIFFE_TYPE GradientUtils::getDiffeType(Value *v, bool foreignFunction) {
+  if (isConstantValue(v) && !foreignFunction) {
+    return DIFFE_TYPE::CONSTANT;
+  }
+
+  auto argType = v->getType();
+
+  if (!argType->isFPOrFPVectorTy() &&
+      (TR.query(v).Inner0().isPossiblePointer() || foreignFunction)) {
+    if (argType->isPointerTy()) {
+#if LLVM_VERSION_MAJOR >= 12
+      auto at = getUnderlyingObject(v, 100);
+#else
+      auto at =
+          GetUnderlyingObject(v, oldFunc->getParent()->getDataLayout(), 100);
+#endif
+      if (auto arg = dyn_cast<Argument>(at)) {
+        if (ArgDiffeTypes[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+          return DIFFE_TYPE::DUP_NONEED;
+        }
+      }
+    }
+    return DIFFE_TYPE::DUP_ARG;
+  } else {
+    if (foreignFunction)
+      assert(!argType->isIntOrIntVectorTy());
+    if (mode == DerivativeMode::ForwardMode ||
+        mode == DerivativeMode::ForwardModeSplit)
+      return DIFFE_TYPE::DUP_ARG;
+    else
+      return DIFFE_TYPE::OUT_DIFF;
+  }
 }
 
 DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
@@ -3531,9 +3610,10 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   TypeResults TR = TA.analyzeFunction(typeInfo);
   assert(TR.getFunction() == oldFunc);
 
-  auto res = new DiffeGradientUtils(
-      Logic, newFunc, oldFunc, TLI, TA, TR, invertedPointers, constant_values,
-      nonconstant_values, retType, originalToNew, mode, width, omp);
+  auto res = new DiffeGradientUtils(Logic, newFunc, oldFunc, TLI, TA, TR,
+                                    invertedPointers, constant_values,
+                                    nonconstant_values, retType, constant_args,
+                                    originalToNew, mode, width, omp);
 
   return res;
 }
@@ -6430,8 +6510,7 @@ nofast:;
   return;
 }
 
-void GradientUtils::computeMinCache(
-    const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
+void GradientUtils::computeMinCache() {
   if (EnzymeMinCutCache) {
     SmallPtrSet<Value *, 4> Recomputes;
 
@@ -6443,7 +6522,7 @@ void GradientUtils::computeMinCache(
     std::map<Loop *, std::set<Instruction *>> LoopAvail;
 
     for (BasicBlock &BB : *oldFunc) {
-      if (guaranteedUnreachable.count(&BB))
+      if (notForAnalysis.count(&BB))
         continue;
       auto L = OrigLI.getLoopFor(&BB);
 
@@ -6549,7 +6628,7 @@ void GradientUtils::computeMinCache(
                           : mode;
 
     for (BasicBlock &BB : *oldFunc) {
-      if (guaranteedUnreachable.count(&BB))
+      if (notForAnalysis.count(&BB))
         continue;
       ValueToValueMapTy Available2;
       for (auto a : Available)
@@ -6564,10 +6643,10 @@ void GradientUtils::computeMinCache(
 
         if (!legalRecompute(&I, Available2, nullptr)) {
           if (is_value_needed_in_reverse<ValueType::Primal>(
-                  this, &I, minCutMode, FullSeen, guaranteedUnreachable)) {
+                  this, &I, minCutMode, FullSeen, notForAnalysis)) {
             bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
                                                       /*OneLevel*/ true>(
-                this, &I, minCutMode, OneLevelSeen, guaranteedUnreachable);
+                this, &I, minCutMode, OneLevelSeen, notForAnalysis);
             if (oneneed) {
               knownRecomputeHeuristic[&I] = false;
             } else
@@ -6590,7 +6669,7 @@ void GradientUtils::computeMinCache(
       if (Intermediates.count(V))
         continue;
       if (!is_value_needed_in_reverse<ValueType::Primal>(
-              this, V, minCutMode, FullSeen, guaranteedUnreachable)) {
+              this, V, minCutMode, FullSeen, notForAnalysis)) {
         continue;
       }
       if (!Recomputes.count(V)) {
@@ -6611,7 +6690,7 @@ void GradientUtils::computeMinCache(
       }
       Intermediates.insert(V);
       if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
-              this, V, minCutMode, OneLevelSeen, guaranteedUnreachable)) {
+              this, V, minCutMode, OneLevelSeen, notForAnalysis)) {
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
