@@ -504,7 +504,7 @@ pub enum FixupError<'tcx> {
 }
 
 /// See the `region_obligations` field for more information.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
@@ -2024,16 +2024,6 @@ impl RegionVariableOrigin {
             | UpvarRegion(_, a) => a,
             Nll(..) => bug!("NLL variable used with `span`"),
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "RegionObligation(sub_region={:?}, sup_type={:?})",
-            self.sub_region, self.sup_type
-        )
     }
 }
 

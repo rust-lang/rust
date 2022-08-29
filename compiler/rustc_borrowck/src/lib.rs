@@ -975,6 +975,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, flow_state))]
     fn check_access_for_conflict(
         &mut self,
         location: Location,
@@ -983,11 +984,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         rw: ReadOrWrite,
         flow_state: &Flows<'cx, 'tcx>,
     ) -> bool {
-        debug!(
-            "check_access_for_conflict(location={:?}, place_span={:?}, sd={:?}, rw={:?})",
-            location, place_span, sd, rw,
-        );
-
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
         let body = self.body;
@@ -1451,13 +1447,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Checks whether a borrow of this place is invalidated when the function
     /// exits
+    #[instrument(level = "debug", skip(self))]
     fn check_for_invalidation_at_exit(
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
         span: Span,
     ) {
-        debug!("check_for_invalidation_at_exit({:?})", borrow);
         let place = borrow.borrowed_place;
         let mut root_place = PlaceRef { local: place.local, projection: &[] };
 

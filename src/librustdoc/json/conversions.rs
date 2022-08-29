@@ -46,10 +46,14 @@ impl JsonRenderer<'_> {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
-                    // We document non-empty stripped modules as with `Module::is_stripped` set to
+                    // We document stripped modules as with `Module::is_stripped` set to
                     // `true`, to prevent contained items from being orphaned for downstream users,
                     // as JSON does no inlining.
-                    clean::ModuleItem(m) if !m.items.is_empty() => from_clean_item(item, self.tcx),
+                    clean::ModuleItem(_)
+                        if self.imported_items.contains(&item_id.expect_def_id()) =>
+                    {
+                        from_clean_item(item, self.tcx)
+                    }
                     _ => return None,
                 }
             }

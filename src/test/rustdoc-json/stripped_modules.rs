@@ -12,7 +12,7 @@ mod pub_inner_unreachable {
     pub fn pub_inner_1() {}
 }
 
-// @has "$.index[*][?(@.name=='pub_inner_reachable')]"
+// @!has "$.index[*][?(@.name=='pub_inner_reachable')]"
 mod pub_inner_reachable {
     // @has "$.index[*][?(@.name=='pub_inner_2')]"
     pub fn pub_inner_2() {}

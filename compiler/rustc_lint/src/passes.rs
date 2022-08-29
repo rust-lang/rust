@@ -243,6 +243,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
-pub type LateLintPassObject =
-    Box<dyn for<'tcx> LateLintPass<'tcx> + sync::Send + sync::Sync + 'static>;
+pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + 'static>;
+pub type LateLintPassObject = Box<dyn for<'tcx> LateLintPass<'tcx> + sync::Send + 'static>;
