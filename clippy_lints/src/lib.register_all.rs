@@ -171,6 +171,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::ITERATOR_STEP_BY_ZERO),
     LintId::of(methods::ITER_CLONED_COLLECT),
     LintId::of(methods::ITER_COUNT),
+    LintId::of(methods::ITER_KV_MAP),
     LintId::of(methods::ITER_NEXT_SLICE),
     LintId::of(methods::ITER_NTH),
     LintId::of(methods::ITER_NTH_ZERO),
