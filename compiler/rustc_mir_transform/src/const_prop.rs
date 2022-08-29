@@ -243,24 +243,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
-        local: Local,
-    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::Provenance>> {
-        let l = &frame.locals[local];
-
-        if matches!(
-            l.value,
-            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit))
-        ) {
-            // For us "uninit" means "we don't know its value, might be initiailized or not".
-            // So stop here.
-            throw_machine_stop_str!("tried to access alocal with unknown value ")
-        }
-
-        l.access()
-    }
-
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
@@ -431,7 +413,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         let op = match self.ecx.eval_place_to_op(place, None) {
-            Ok(op) => op,
+            Ok(op) => {
+                if matches!(*op, interpret::Operand::Immediate(Immediate::Uninit)) {
+                    // Make sure nobody accidentally uses this value.
+                    return None;
+                }
+                op
+            }
             Err(e) => {
                 trace!("get_const failed: {}", e);
                 return None;
@@ -643,6 +631,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.needs_subst() {
             return None;
         }
+        if !rvalue
+            .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
+            .is_sized(self.ecx.tcx, self.param_env)
+        {
+            // the interpreter doesn't support unsized locals (only unsized arguments),
+            // but rustc does (in a kinda broken way), so we have to skip them here
+            return None;
+        }
 
         if self.tcx.sess.mir_opt_level() >= 4 {
             self.eval_rvalue_with_identities(rvalue, place)
@@ -660,18 +656,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         self.use_ecx(|this| match rvalue {
             Rvalue::BinaryOp(op, box (left, right))
             | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
-                let l = this.ecx.eval_operand(left, None);
-                let r = this.ecx.eval_operand(right, None);
+                let l = this.ecx.eval_operand(left, None).and_then(|x| this.ecx.read_immediate(&x));
+                let r =
+                    this.ecx.eval_operand(right, None).and_then(|x| this.ecx.read_immediate(&x));
 
                 let const_arg = match (l, r) {
-                    (Ok(ref x), Err(_)) | (Err(_), Ok(ref x)) => this.ecx.read_immediate(x)?,
-                    (Err(e), Err(_)) => return Err(e),
-                    (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place),
+                    (Ok(x), Err(_)) | (Err(_), Ok(x)) => x, // exactly one side is known
+                    (Err(e), Err(_)) => return Err(e),      // neither side is known
+                    (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place), // both sides are known
                 };
 
                 if !matches!(const_arg.layout.abi, abi::Abi::Scalar(..)) {
                     // We cannot handle Scalar Pair stuff.
-                    return this.ecx.eval_rvalue_into_place(rvalue, place);
+                    // No point in calling `eval_rvalue_into_place`, since only one side is known
+                    throw_machine_stop_str!("cannot optimize this")
                 }
 
                 let arg_value = const_arg.to_scalar().to_bits(const_arg.layout.size)?;
@@ -696,7 +694,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             this.ecx.write_immediate(*const_arg, &dest)
                         }
                     }
-                    _ => this.ecx.eval_rvalue_into_place(rvalue, place),
+                    _ => throw_machine_stop_str!("cannot optimize this"),
                 }
             }
             _ => this.ecx.eval_rvalue_into_place(rvalue, place),
@@ -1073,7 +1071,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 if let Some(ref value) = self.eval_operand(&cond) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = Scalar::from_bool(*expected);
-                    let value_const = self.ecx.read_scalar(&value).unwrap();
+                    let Ok(value_const) = self.ecx.read_scalar(&value) else {
+                        // FIXME should be used use_ecx rather than a local match... but we have
+                        // quite a few of these read_scalar/read_immediate that need fixing.
+                        return
+                    };
                     if expected != value_const {
                         // Poison all places this operand references so that further code
                         // doesn't use the invalid value

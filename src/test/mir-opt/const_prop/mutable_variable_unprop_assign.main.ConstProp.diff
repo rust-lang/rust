@@ -41,7 +41,8 @@
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
           _4 = (_2.1: i32);                // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:13: +4:16
           StorageLive(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:9: +5:10
-          _5 = (_2.0: i32);                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
+-         _5 = (_2.0: i32);                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
++         _5 = const 1_i32;                // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+5:13: +5:16
           nop;                             // scope 0 at $DIR/mutable_variable_unprop_assign.rs:+0:11: +6:2
           StorageDead(_5);                 // scope 3 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+6:1: +6:2

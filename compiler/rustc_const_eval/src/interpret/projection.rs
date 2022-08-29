@@ -100,6 +100,8 @@ where
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
             // the field contains no information, can be left uninit
             _ if field_layout.is_zst() => Immediate::Uninit,
             // the field covers the entire type
@@ -124,6 +126,7 @@ where
                     b_val
                 })
             }
+            // everything else is a bug
             _ => span_bug!(
                 self.cur_span(),
                 "invalid field access on immediate {}, layout {:#?}",
