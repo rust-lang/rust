@@ -37,7 +37,7 @@ enum SubdiagnosticKind {
     Note,
     /// `#[help(...)]`
     Help,
-    /// `#[warn_(...)]`
+    /// `#[warning(...)]`
     Warn,
     /// `#[suggestion{,_short,_hidden,_verbose}]`
     Suggestion(SubdiagnosticSuggestionKind),
@@ -51,7 +51,7 @@ impl FromStr for SubdiagnosticKind {
             "label" => Ok(SubdiagnosticKind::Label),
             "note" => Ok(SubdiagnosticKind::Note),
             "help" => Ok(SubdiagnosticKind::Help),
-            "warn_" => Ok(SubdiagnosticKind::Warn),
+            "warning" => Ok(SubdiagnosticKind::Warn),
             "suggestion" => Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Normal)),
             "suggestion_short" => {
                 Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Short))
