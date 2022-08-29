@@ -35,7 +35,7 @@ The main entrypoint to the parser is via the various `parse_*` functions and oth
 the token stream, and then execute the parser to get a `Crate` (the root AST
 node).
 
-To minimise the amount of copying that is done,
+To minimize the amount of copying that is done,
 both [`StringReader`] and [`Parser`] have lifetimes which bind them to the parent `ParseSess`.
 This contains all the information needed while parsing,
 as well as the [`SourceMap`] itself.
@@ -65,7 +65,7 @@ Code for lexical analysis is split between two crates:
 [rustc_parse]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser_lib]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/index.html
-[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/parse/parser/struct.Parser.html
+[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/index.html
 [sourcefile]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.SourceFile.html
