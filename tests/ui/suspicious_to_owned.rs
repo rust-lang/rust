@@ -2,12 +2,12 @@
 #![warn(clippy::implicit_clone)]
 #![allow(clippy::redundant_clone)]
 use std::borrow::Cow;
-use std::ffi::CStr;
+use std::ffi::{c_char, CStr};
 
 fn main() {
     let moo = "Moooo";
     let c_moo = b"Moooo\0";
-    let c_moo_ptr = c_moo.as_ptr() as *const i8;
+    let c_moo_ptr = c_moo.as_ptr() as *const c_char;
     let moos = ['M', 'o', 'o'];
     let moos_vec = moos.to_vec();
 
