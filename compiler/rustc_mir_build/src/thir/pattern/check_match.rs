@@ -598,68 +598,24 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
+    let span = match source {
+        LetSource::LetElse(span) => span,
+        _ => span,
+    };
+
     macro_rules! emit_diag {
-        (
-            $lint:expr,
-            $source_name:expr,
-            $note_sufix:expr,
-            $help_sufix:expr
-        ) => {{
-            let s = pluralize!(count);
-            let these = pluralize!("this", count);
-            tcx.struct_span_lint_hir(
-                IRREFUTABLE_LET_PATTERNS,
-                id,
-                span,
-                format!("irrefutable {} pattern{s}", $source_name),
-                |lint| {
-                    lint.note(&format!(
-                        "{these} pattern{s} will always match, so the {}",
-                        $note_sufix
-                    ))
-                    .help(concat!("consider ", $help_sufix))
-                },
-            )
+        ($lint:tt) => {{
+            tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, id, span, $lint { count });
         }};
     }
 
     match source {
-        LetSource::GenericLet => {
-            emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
-        }
-        LetSource::IfLet => {
-            emit_diag!(
-                lint,
-                "`if let`",
-                "`if let` is useless",
-                "replacing the `if let` with a `let`"
-            );
-        }
-        LetSource::IfLetGuard => {
-            emit_diag!(
-                lint,
-                "`if let` guard",
-                "guard is useless",
-                "removing the guard and adding a `let` inside the match arm"
-            );
-        }
-        LetSource::LetElse => {
-            emit_diag!(
-                lint,
-                "`let...else`",
-                "`else` clause is useless",
-                "removing the `else` clause"
-            );
-        }
-        LetSource::WhileLet => {
-            emit_diag!(
-                lint,
-                "`while let`",
-                "loop will never exit",
-                "instead using a `loop { ... }` with a `let` inside it"
-            );
-        }
-    };
+        LetSource::GenericLet => emit_diag!(IrrefutableLetPatternsGenericLet),
+        LetSource::IfLet => emit_diag!(IrrefutableLetPatternsIfLet),
+        LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
+        LetSource::LetElse(..) => emit_diag!(IrrefutableLetPatternsLetElse),
+        LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
+    }
 }
 
 fn is_let_irrefutable<'p, 'tcx>(

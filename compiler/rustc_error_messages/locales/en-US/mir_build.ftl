@@ -237,3 +237,53 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
 mir_build_bindings_with_variant_name =
     pattern binding `{$ident}` is named the same as one of the variants of the type `{$ty_path}`
     .suggestion = to match on the variant, qualify the path
+
+mir_build_irrefutable_let_patterns_generic_let = irrefutable `let` {$count ->
+        [one] pattern
+        *[other] patterns
+    }
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match, so the `let` is useless
+    .help = consider removing `let`
+
+mir_build_irrefutable_let_patterns_if_let = irrefutable `if let` {$count ->
+        [one] pattern
+        *[other] patterns
+    }
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match, so the `if let` is useless
+    .help = consider replacing the `if let` with a `let`
+
+mir_build_irrefutable_let_patterns_if_let_guard = irrefutable `if let` guard {$count ->
+        [one] pattern
+        *[other] patterns
+    }
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match, so the guard is useless
+    .help = consider removing the guard and adding a `let` inside the match arm
+
+mir_build_irrefutable_let_patterns_let_else = irrefutable `let...else` {$count ->
+        [one] pattern
+        *[other] patterns
+    }
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match, so the `else` clause is useless
+    .help = consider removing the `else` clause
+
+mir_build_irrefutable_let_patterns_while_let = irrefutable `while let` {$count ->
+        [one] pattern
+        *[other] patterns
+    }
+    .note = {$count ->
+        [one] this pattern
+        *[other] these patterns
+    } will always match, so the loop will never exit
+    .help = consider instead using a `loop {"{"} ... {"}"}` with a `let` inside it
