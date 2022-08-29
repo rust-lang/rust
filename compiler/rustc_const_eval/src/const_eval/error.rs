@@ -15,7 +15,6 @@ use crate::interpret::{
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
-    NeedsRfc(String),
     ConstAccessesStatic,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
@@ -42,9 +41,6 @@ impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalErrKind::*;
         match *self {
-            NeedsRfc(ref msg) => {
-                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
-            }
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {
                 write!(f, "modifying a static's initial value from another static's initializer")
