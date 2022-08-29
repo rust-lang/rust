@@ -9,8 +9,8 @@ use crate::errors::*;
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan,
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -540,30 +540,20 @@ fn check_for_bindings_named_same_as_variants(
             })
         {
             let variant_count = edef.variants().len();
-            cx.tcx.struct_span_lint_hir(
+            let ty_path = cx.tcx.def_path_str(edef.did());
+            cx.tcx.emit_spanned_lint(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,
                 p.span,
-                |lint| {
-                    let ty_path = cx.tcx.def_path_str(edef.did());
-                    let mut err = lint.build(&format!(
-                        "pattern binding `{}` is named the same as one \
-                         of the variants of the type `{}`",
-                        ident, ty_path
-                    ));
-                    err.code(error_code!(E0170));
+                BindingsWithVariantName {
                     // If this is an irrefutable pattern, and there's > 1 variant,
                     // then we can't actually match on this. Applying the below
                     // suggestion would produce code that breaks on `check_irrefutable`.
-                    if rf == Refutable || variant_count == 1 {
-                        err.span_suggestion(
-                            p.span,
-                            "to match on the variant, qualify the path",
-                            format!("{}::{}", ty_path, ident),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                    err.emit();
+                    suggestion: if rf == Refutable || variant_count == 1 {
+                        Some(p.span)
+                    } else { None },
+                    ty_path,
+                    ident,
                 },
             )
         }
