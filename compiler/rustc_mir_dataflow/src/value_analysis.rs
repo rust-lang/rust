@@ -589,10 +589,10 @@ fn iter_fields<'tcx>(
         ty::Adt(def, substs) => {
             for (v_index, v_def) in def.variants().iter_enumerated() {
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
-                    let field_ty = tcx.normalize_erasing_regions(
-                        ty::ParamEnv::reveal_all(),
-                        f_def.ty(tcx, substs),
-                    );
+                    let field_ty = f_def.ty(tcx, substs);
+                    let field_ty = tcx
+                        .try_normalize_erasing_regions(ty::ParamEnv::reveal_all(), field_ty)
+                        .unwrap_or(field_ty);
                     f(Some(v_index), f_index.into(), field_ty);
                 }
             }
