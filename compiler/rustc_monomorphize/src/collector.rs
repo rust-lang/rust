@@ -189,8 +189,7 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, TraitObjectRepresentation, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable, VtblEntry,
+    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitable, VtblEntry,
 };
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
@@ -1115,9 +1114,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
 
         // T as dyn* Trait
-        (_, &ty::Dynamic(_, _, TraitObjectRepresentation::Sized)) => {
-            ptr_vtable(source_ty, target_ty)
-        }
+        (_, &ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
 
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);

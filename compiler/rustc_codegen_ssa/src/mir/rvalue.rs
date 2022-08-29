@@ -279,7 +279,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Pair(_, _) => todo!(),
                         };
                         let trait_ref =
-                            if let ty::Dynamic(data, _, ty::TraitObjectRepresentation::Sized) = cast.ty.kind() {
+                            if let ty::Dynamic(data, _, ty::DynStar) = cast.ty.kind() {
                                 data.principal()
                             } else {
                                 bug!("Only valid to do a DynStar cast into a DynStar type")

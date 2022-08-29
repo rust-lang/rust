@@ -41,9 +41,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{
-    self, Binder, TraitObjectRepresentation, Ty, TypeAndMut, TypeVisitable, VariantDef,
-};
+use rustc_middle::ty::{self, Binder, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -241,7 +239,7 @@ fn check_dyn_star_cast<'tcx>(
     //
     // this would return `existential_predicates = [?Self: Clone, ?Self: Debug]` and `region = 'static`.
     let (existential_predicates, region) = match cast_ty.kind() {
-        ty::Dynamic(predicates, region, TraitObjectRepresentation::Sized) => (predicates, region),
+        ty::Dynamic(predicates, region, ty::DynStar) => (predicates, region),
         _ => panic!("Invalid dyn* cast_ty"),
     };
 
@@ -289,7 +287,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
         match cast_ty.kind() {
-            ty::Dynamic(_, _, TraitObjectRepresentation::Unsized) | ty::Slice(..) => {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(..) => {
                 let reported = check.report_cast_to_unsized_type(fcx);
                 Err(reported)
             }

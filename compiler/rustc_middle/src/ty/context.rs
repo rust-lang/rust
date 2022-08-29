@@ -63,9 +63,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
-use rustc_type_ir::{
-    InternAs, InternIteratorElement, Interner, TraitObjectRepresentation, TypeFlags,
-};
+use rustc_type_ir::{DynKind, InternAs, InternIteratorElement, Interner, TypeFlags};
 
 use std::any::Any;
 use std::borrow::Borrow;
@@ -2547,7 +2545,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         obj: &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
         reg: ty::Region<'tcx>,
-        repr: TraitObjectRepresentation,
+        repr: DynKind,
     ) -> Ty<'tcx> {
         self.mk_ty(Dynamic(obj, reg, repr))
     }

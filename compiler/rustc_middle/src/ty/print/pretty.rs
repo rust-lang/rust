@@ -16,7 +16,6 @@ use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
-use rustc_type_ir::TraitObjectRepresentation;
 
 use std::cell::Cell;
 use std::char;
@@ -626,8 +625,8 @@ pub trait PrettyPrinter<'tcx>:
                     p!("(");
                 }
                 match repr {
-                    TraitObjectRepresentation::Unsized => p!("dyn "),
-                    TraitObjectRepresentation::Sized => p!("dyn* "),
+                    ty::Dyn => p!("dyn "),
+                    ty::DynStar => p!("dyn* "),
                 }
                 p!(print(data));
                 if print_r {

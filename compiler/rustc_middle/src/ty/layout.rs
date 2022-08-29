@@ -21,7 +21,6 @@ use rustc_target::abi::call::{
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
-use rustc_type_ir::TraitObjectRepresentation;
 
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -626,7 +625,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(self.scalar_pair(data_ptr, metadata))
             }
 
-            ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => {
+            ty::Dynamic(_, _, ty::DynStar) => {
                 let mut pointer = scalar_unit(Pointer);
                 pointer.valid_range_mut().start = 1;
                 let mut vtable = scalar_unit(Pointer);
@@ -688,7 +687,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Odd unit types.
             ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
-            ty::Dynamic(_, _, TraitObjectRepresentation::Unsized) | ty::Foreign(..) => {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
                 let mut unit = self.univariant_uninterned(
                     ty,
                     &[],
@@ -2444,7 +2443,7 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
-                | ty::Dynamic(_, _, TraitObjectRepresentation::Unsized) => {
+                | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
@@ -2546,9 +2545,7 @@ where
                 }
 
                 // dyn* (both fields are usize-sized)
-                ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => {
-                    TyMaybeWithLayout::Ty(tcx.types.usize)
-                }
+                ty::Dynamic(_, _, ty::DynStar) => TyMaybeWithLayout::Ty(tcx.types.usize),
 
                 ty::Projection(_)
                 | ty::Bound(..)

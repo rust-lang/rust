@@ -20,8 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, TraitObjectRepresentation, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -601,8 +600,7 @@ fn object_ty_for_trait<'tcx>(
     let existential_predicates = tcx
         .mk_poly_existential_predicates(iter::once(trait_predicate).chain(projection_predicates));
 
-    let object_ty =
-        tcx.mk_dynamic(existential_predicates, lifetime, TraitObjectRepresentation::Unsized);
+    let object_ty = tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn);
 
     debug!("object_ty_for_trait: object_ty=`{}`", object_ty);
 

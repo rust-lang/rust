@@ -27,8 +27,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::TraitObjectRepresentation;
 use rustc_middle::ty::{
     self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeVisitable,
 };
@@ -1253,7 +1253,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         borrowed: bool,
-        representation: TraitObjectRepresentation,
+        representation: DynKind,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -2623,10 +2623,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::TraitObject(bounds, ref lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
                 let repr = match repr {
-                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => {
-                        TraitObjectRepresentation::Unsized
-                    }
-                    TraitObjectSyntax::DynStar => TraitObjectRepresentation::Sized,
+                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
+                    TraitObjectSyntax::DynStar => ty::DynStar,
                 };
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
             }

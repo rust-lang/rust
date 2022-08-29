@@ -4,7 +4,6 @@
 use crate::ty::{self, Ty};
 
 use rustc_macros::HashStable;
-use rustc_type_ir::TraitObjectRepresentation;
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -71,7 +70,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
-            ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => Some(CastTy::DynStar),
+            ty::Dynamic(_, _, ty::DynStar) => Some(CastTy::DynStar),
             _ => None,
         }
     }

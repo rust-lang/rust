@@ -20,16 +20,16 @@ use rustc_serialize::{Decodable, Decoder, Encodable};
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
-pub enum TraitObjectRepresentation {
+pub enum DynKind {
     /// An unsized `dyn Trait` object
-    Unsized,
+    Dyn,
     /// A sized `dyn* Trait` object
-    Sized,
+    DynStar,
 }
 
 // Manually implemented because deriving HashStable requires rustc_query_system, which would
 // create a cyclic dependency.
-impl<CTX> HashStable<CTX> for TraitObjectRepresentation {
+impl<CTX> HashStable<CTX> for DynKind {
     fn hash_stable(
         &self,
         hcx: &mut CTX,
@@ -116,7 +116,7 @@ pub enum TyKind<I: Interner> {
     FnPtr(I::PolyFnSig),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::ListBinderExistentialPredicate, I::Region, TraitObjectRepresentation),
+    Dynamic(I::ListBinderExistentialPredicate, I::Region, DynKind),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
