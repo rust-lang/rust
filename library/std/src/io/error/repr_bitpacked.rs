@@ -336,6 +336,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
         InvalidFilename,
         ArgumentListTooLong,
         Interrupted,
+        InProgress,
         Other,
         UnexpectedEof,
         Unsupported,
