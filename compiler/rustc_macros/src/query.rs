@@ -344,7 +344,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 #name,
             });
         }
-        all_names.extend(quote! { #name, });
 
         let mut attributes = Vec::new();
 
@@ -394,11 +393,16 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         // be very useful.
         let span = name.span();
         let attribute_stream = quote_spanned! {span=> #(#attributes),*};
-        let doc_comments = query.doc_comments.iter();
+        let doc_comments = &query.doc_comments;
         // Add the query to the group
         query_stream.extend(quote! {
             #(#doc_comments)*
             [#attribute_stream] fn #name(#arg) #result,
+        });
+
+        all_names.extend(quote! {
+            #(#doc_comments)*
+            #name,
         });
 
         add_query_description_impl(&query, &mut query_description_stream);

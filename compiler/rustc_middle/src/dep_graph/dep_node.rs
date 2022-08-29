@@ -144,7 +144,7 @@ impl DepKind {
 
 macro_rules! define_dep_nodes {
     (
-        $( $variant:ident, )*
+        $( $( #[$attr:meta] )* $variant:ident, )+
     ) => (
         #[macro_export]
         macro_rules! make_dep_kind_array {
@@ -155,7 +155,7 @@ macro_rules! define_dep_nodes {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
-            $($variant),*
+            $( $( #[$attr] )* $variant),*
         }
 
         fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
@@ -177,9 +177,9 @@ macro_rules! define_dep_nodes {
 }
 
 rustc_query_names!(define_dep_nodes![
-    // We use this for most things when incr. comp. is turned off.
+    /// We use this for most things when incr. comp. is turned off.
     Null,
-    // We use this to create a forever-red node.
+    /// We use this to create a forever-red node.
     Red,
     TraitSelect,
     CompileCodegenUnit,
