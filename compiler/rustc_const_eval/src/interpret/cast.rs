@@ -110,7 +110,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             DynStar => {
-                unimplemented!()
+                if let ty::Dynamic(data, _, ty::TraitObjectRepresentation::Sized) = cast_ty.kind() {
+                    // Initial cast from sized to dyn trait
+                    let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
+                    let ptr = self.read_immediate(src)?.to_scalar();
+                    // FIXME(dyn-star): This should not use new_dyn_trait, but
+                    // it does exactly the same thing (makes a scalar pair)...
+                    // so maybe we should just duplicate/rename the function.
+                    let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
+                    self.write_immediate(val, dest)?;
+                } else {
+                    bug!()
+                }
             }
         }
         Ok(())

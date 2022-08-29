@@ -2545,15 +2545,9 @@ where
                     }
                 }
 
-                // dyn*
+                // dyn* (both fields are usize-sized)
                 ty::Dynamic(_, _, TraitObjectRepresentation::Sized) => {
-                    TyMaybeWithLayout::TyAndLayout(
-                        tcx.layout_of(
-                            ty::ParamEnv::reveal_all()
-                                .and(tcx.mk_tup([tcx.types.usize, tcx.types.usize].into_iter())),
-                        )
-                        .unwrap(),
-                    )
+                    TyMaybeWithLayout::Ty(tcx.types.usize)
                 }
 
                 ty::Projection(_)

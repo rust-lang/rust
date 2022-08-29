@@ -1,6 +1,6 @@
 // run-pass
-// ignore-test
 #![feature(async_fn_in_traits)]
+#![allow(unused)]
 
 use std::fmt::Debug;
 
