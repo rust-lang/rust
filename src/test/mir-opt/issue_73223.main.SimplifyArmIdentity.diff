@@ -1,6 +1,6 @@
 - // MIR for `main` before SimplifyArmIdentity
 + // MIR for `main` after SimplifyArmIdentity
-  
+
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/issue_73223.rs:+0:11: +0:11
       let _1: i32;                         // in scope 0 at $DIR/issue_73223.rs:+1:9: +1:14
@@ -47,7 +47,7 @@
       scope 2 {
           debug v => _4;                   // in scope 2 at $DIR/issue_73223.rs:+2:14: +2:15
       }
-  
+
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/issue_73223.rs:+1:9: +1:14
           StorageLive(_2);                 // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
@@ -57,18 +57,18 @@
           _3 = const 1_isize;              // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
           goto -> bb3;                     // scope 0 at $DIR/issue_73223.rs:+1:17: +1:30
       }
-  
+
       bb1: {
           nop;                             // scope 0 at $DIR/issue_73223.rs:+3:17: +3:23
           StorageDead(_2);                 // scope 0 at $DIR/issue_73223.rs:+4:6: +4:7
           StorageDead(_1);                 // scope 0 at $DIR/issue_73223.rs:+8:1: +8:2
           return;                          // scope 0 at $DIR/issue_73223.rs:+8:2: +8:2
       }
-  
+
       bb2: {
           unreachable;                     // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
       }
-  
+
       bb3: {
           StorageLive(_4);                 // scope 0 at $DIR/issue_73223.rs:+2:14: +2:15
           _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue_73223.rs:+2:14: +2:15
@@ -104,17 +104,21 @@
           StorageLive(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_16);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_17);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _17 = (*_13);                    // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-	      _17 = (*_13);                    // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++	      _17 = const 1_i32;               // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_18);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _18 = const 1_i32;               // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _16 = Eq(move _17, const 1_i32); // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-	      _16 = Eq(move _17, const 1_i32); // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++	      _16 = const true;                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_18);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_17);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _15 = Not(move _16);             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-	      _15 = Not(move _16);             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++	      _15 = const false;               // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_16);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          switchInt(move _15) -> [false: bb5, otherwise: bb4]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-	      switchInt(move _15) -> [false: bb5, otherwise: bb4]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++	      goto -> bb5;                     // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
-  
+
       bb4: {
           StorageLive(_20);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           Deinit(_20);                     // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -144,7 +148,7 @@
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
       }
-  
+
       bb5: {
           nop;                             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -158,4 +162,4 @@
           return;                          // scope 0 at $DIR/issue_73223.rs:+8:2: +8:2
       }
   }
-  
+
