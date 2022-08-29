@@ -301,10 +301,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_path(self, path)
     }
 
-    // `PathSegment` has one inline use (in `ast::ExprKind::MethodCall`) and
-    // one non-inline use (in `Path::segments`). The latter case is more common
-    // than the former case, so we implement this visitor and tolerate the
-    // double counting in the former case.
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_span, path_segment)
@@ -509,6 +505,10 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     // common, so we don't implement `visit_use_tree` and tolerate the missed
     // coverage in the latter case.
 
+    // `PathSegment` has one inline use (in `ast::ExprKind::MethodCall`) and
+    // one non-inline use (in `ast::Path::segments`). The latter case is more
+    // common than the former case, so we implement this visitor and tolerate
+    // the double counting in the former case.
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
         ast_visit::walk_path_segment(self, path_span, path_segment)
