@@ -497,8 +497,8 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit<T>` is initialized.
-    /// Writing to memory that this pointer (non-transitively) points to is undefined behavior
-    /// (except inside an `UnsafeCell<T>`).
+    /// Writing to memory that this pointer points to is undefined behavior, unless that
+    /// write goes through interior mutability of its own.
     ///
     /// # Examples
     ///
