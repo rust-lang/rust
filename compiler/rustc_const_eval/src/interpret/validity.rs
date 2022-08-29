@@ -5,7 +5,7 @@
 //! to be const-safe.
 
 use std::convert::TryFrom;
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 use std::num::NonZeroUsize;
 
 use rustc_ast::Mutability;
@@ -308,7 +308,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn read_immediate(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-        expected: &str,
+        expected: impl Display,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         Ok(try_validation!(
             self.ecx.read_immediate(op),
@@ -321,7 +321,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn read_scalar(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-        expected: &str,
+        expected: impl Display,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         Ok(self.read_immediate(op, expected)?.to_scalar())
     }
@@ -370,7 +370,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         kind: &str,
     ) -> InterpResult<'tcx> {
-        let place = self.ecx.ref_to_mplace(&self.read_immediate(value, &format!("a {kind}"))?)?;
+        let place =
+            self.ecx.ref_to_mplace(&self.read_immediate(value, format_args!("a {kind}"))?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         if place.layout.is_unsized() {
