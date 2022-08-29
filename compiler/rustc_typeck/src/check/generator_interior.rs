@@ -218,7 +218,8 @@ pub fn resolve_interior<'a, 'tcx>(
         .filter_map(|mut cause| {
             // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
             // can.
-            let erased = fcx.tcx.erase_regions(cause.ty);
+            let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
+            let erased = fcx.tcx.erase_regions(ty);
             if captured_tys.insert(erased) {
                 // Replace all regions inside the generator interior with late bound regions.
                 // Note that each region slot in the types gets a new fresh late bound region,
@@ -263,7 +264,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // Unify the type variable inside the generator with the new witness
     match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
         Ok(ok) => fcx.register_infer_ok_obligations(ok),
-        _ => bug!(),
+        _ => bug!("failed to relate {interior} and {witness}"),
     }
 }
 
