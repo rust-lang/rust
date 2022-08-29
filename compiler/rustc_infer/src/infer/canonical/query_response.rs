@@ -63,8 +63,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
+        debug!("query_response = {:#?}", query_response);
         let canonical_result = self.canonicalize_response(query_response);
-
         debug!("canonical_result = {:#?}", canonical_result);
 
         Ok(self.tcx.arena.alloc(canonical_result))
@@ -125,6 +125,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
+        debug!(?region_obligations);
         let region_constraints = self.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 tcx,
@@ -132,6 +133,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 region_constraints,
             )
         });
+        debug!(?region_constraints);
 
         let certainty =
             if ambig_errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
@@ -631,6 +633,8 @@ pub fn make_query_region_constraints<'tcx>(
 
     assert!(verifys.is_empty());
     assert!(givens.is_empty());
+
+    debug!(?constraints);
 
     let outlives: Vec<_> = constraints
         .iter()

@@ -24,7 +24,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// **Any `rustc_infer::infer` operations that might generate region
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
-    #[instrument(skip(self, category, op), level = "trace")]
+    #[instrument(skip(self, op), level = "trace")]
     pub(super) fn fully_perform_op<R, Op>(
         &mut self,
         locations: Locations,

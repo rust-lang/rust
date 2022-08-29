@@ -336,26 +336,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///   - second half is the place being accessed
     ///
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn explain_why_borrow_contains_point(
         &self,
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
     ) -> BorrowExplanation<'tcx> {
-        debug!(
-            "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",
-            location, borrow, kind_place
-        );
-
         let regioncx = &self.regioncx;
         let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;
 
         let borrow_region_vid = borrow.region;
-        debug!("explain_why_borrow_contains_point: borrow_region_vid={:?}", borrow_region_vid);
+        debug!(?borrow_region_vid);
 
         let region_sub = self.regioncx.find_sub_region_live_at(borrow_region_vid, location);
-        debug!("explain_why_borrow_contains_point: region_sub={:?}", region_sub);
+        debug!(?region_sub);
 
         match find_use::find(body, regioncx, tcx, region_sub, location) {
             Some(Cause::LiveVar(local, location)) => {
@@ -408,17 +404,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             opt_place_desc,
                         }
                     } else {
-                        debug!(
-                            "explain_why_borrow_contains_point: \
-                             Could not generate a region name"
-                        );
+                        debug!("Could not generate a region name");
                         BorrowExplanation::Unexplained
                     }
                 } else {
-                    debug!(
-                        "explain_why_borrow_contains_point: \
-                         Could not generate an error region vid"
-                    );
+                    debug!("Could not generate an error region vid");
                     BorrowExplanation::Unexplained
                 }
             }
