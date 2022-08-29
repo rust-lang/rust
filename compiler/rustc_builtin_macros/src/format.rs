@@ -541,7 +541,7 @@ impl<'a, 'b> Context<'a, 'b> {
     ) {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
-            parse::CountIsParam(i) => {
+            parse::CountIsParam(i) | parse::CountIsStar(i) => {
                 self.unused_names_lint.maybe_add_positional_named_arg(
                     self.args.get(i),
                     named_arg_type,
@@ -589,7 +589,7 @@ impl<'a, 'b> Context<'a, 'b> {
             + self
                 .arg_with_formatting
                 .iter()
-                .filter(|fmt| matches!(fmt.precision, parse::CountIsParam(_)))
+                .filter(|fmt| matches!(fmt.precision, parse::CountIsStar(_)))
                 .count();
         if self.names.is_empty() && !numbered_position_args && count != self.num_args() {
             e = self.ecx.struct_span_err(
@@ -639,7 +639,7 @@ impl<'a, 'b> Context<'a, 'b> {
             if let Some(span) = fmt.precision_span {
                 let span = self.fmtsp.from_inner(InnerSpan::new(span.start, span.end));
                 match fmt.precision {
-                    parse::CountIsParam(pos) if pos > self.num_args() => {
+                    parse::CountIsParam(pos) if pos >= self.num_args() => {
                         e.span_label(
                             span,
                             &format!(
@@ -651,12 +651,12 @@ impl<'a, 'b> Context<'a, 'b> {
                         );
                         zero_based_note = true;
                     }
-                    parse::CountIsParam(pos) => {
+                    parse::CountIsStar(pos) => {
                         let count = self.pieces.len()
                             + self
                                 .arg_with_formatting
                                 .iter()
-                                .filter(|fmt| matches!(fmt.precision, parse::CountIsParam(_)))
+                                .filter(|fmt| matches!(fmt.precision, parse::CountIsStar(_)))
                                 .count();
                         e.span_label(
                             span,
@@ -837,7 +837,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
         match c {
             parse::CountIs(i) => count(sym::Is, Some(self.ecx.expr_usize(sp, i))),
-            parse::CountIsParam(i) => {
+            parse::CountIsParam(i) | parse::CountIsStar(i) => {
                 // This needs mapping too, as `i` is referring to a macro
                 // argument. If `i` is not found in `count_positions` then
                 // the error had already been emitted elsewhere.
