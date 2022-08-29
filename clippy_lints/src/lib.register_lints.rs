@@ -77,6 +77,7 @@ store.register_lints(&[
     casts::CAST_REF_TO_MUT,
     casts::CAST_SIGN_LOSS,
     casts::CAST_SLICE_DIFFERENT_SIZES,
+    casts::CAST_SLICE_FROM_RAW_PARTS,
     casts::CHAR_LIT_AS_U8,
     casts::FN_TO_NUMERIC_CAST,
     casts::FN_TO_NUMERIC_CAST_ANY,

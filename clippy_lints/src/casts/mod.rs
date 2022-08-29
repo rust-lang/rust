@@ -10,6 +10,7 @@ mod cast_ptr_alignment;
 mod cast_ref_to_mut;
 mod cast_sign_loss;
 mod cast_slice_different_sizes;
+mod cast_slice_from_raw_parts;
 mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
@@ -568,6 +569,32 @@ declare_clippy_lint! {
     pedantic,
     "borrowing just to cast to a raw pointer"
 }
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a raw slice being cast to a slice pointer
+    ///
+    /// ### Why is this bad?
+    /// This can result in multiple `&mut` references to the same location when only a pointer is
+    /// required.
+    /// `ptr::slice_from_raw_parts` is a safe alternative that doesn't require
+    /// the same [safety requirements] to be upheld.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _: *const [u8] = std::slice::from_raw_parts(ptr, len) as *const _;
+    /// let _: *mut [u8] = std::slice::from_raw_parts_mut(ptr, len) as *mut _;
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _: *const [u8] = std::ptr::slice_from_raw_parts(ptr, len);
+    /// let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
+    /// ```
+    /// [safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+    #[clippy::version = "1.64.0"]
+    pub CAST_SLICE_FROM_RAW_PARTS,
+    suspicious,
+    "casting a slice created from a pointer and length to a slice pointer"
+}
 
 pub struct Casts {
     msrv: Option<RustcVersion>,
@@ -600,6 +627,7 @@ impl_lint_pass!(Casts => [
     CAST_ABS_TO_UNSIGNED,
     AS_UNDERSCORE,
     BORROW_AS_PTR,
+    CAST_SLICE_FROM_RAW_PARTS
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -624,7 +652,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
-
+            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
