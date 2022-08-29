@@ -500,13 +500,19 @@ impl<'tcx> Stack {
 impl<'tcx> Stacks {
     /// Creates a new stack with an initial tag. For diagnostic purposes, we also need to know
     /// the [`AllocId`] of the allocation this is associated with.
-    fn new(size: Size, perm: Permission, tag: SbTag, id: AllocId) -> Self {
+    fn new(
+        size: Size,
+        perm: Permission,
+        tag: SbTag,
+        id: AllocId,
+        current_span: &mut CurrentSpan<'_, '_, '_>,
+    ) -> Self {
         let item = Item::new(tag, perm, false);
         let stack = Stack::new(item);
 
         Stacks {
             stacks: RangeMap::new(size, stack),
-            history: AllocHistory::new(id),
+            history: AllocHistory::new(id, item, current_span),
             exposed_tags: FxHashSet::default(),
         }
     }
@@ -538,6 +544,7 @@ impl Stacks {
         size: Size,
         state: &GlobalState,
         kind: MemoryKind<MiriMemoryKind>,
+        mut current_span: CurrentSpan<'_, '_, '_>,
     ) -> Self {
         let mut extra = state.borrow_mut();
         let (base_tag, perm) = match kind {
@@ -550,7 +557,7 @@ impl Stacks {
             // Everything else is shared by default.
             _ => (extra.base_ptr_tag(id), Permission::SharedReadWrite),
         };
-        Stacks::new(size, perm, base_tag, id)
+        Stacks::new(size, perm, base_tag, id, &mut current_span)
     }
 
     #[inline(always)]

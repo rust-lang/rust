@@ -183,9 +183,8 @@ pub fn report_error<'tcx, 'mir>(
                         if let Some((msg, span)) = invalidated {
                             helps.push((Some(span), msg));
                         }
-                        if let Some([(protector_msg, protector_span), (protection_msg, protection_span)]) = protected {
+                        if let Some((protector_msg, protector_span)) = protected {
                             helps.push((Some(protector_span), protector_msg));
-                            helps.push((Some(protection_span), protection_msg));
                         }
                     }
                     helps
