@@ -235,6 +235,11 @@
                 "command": "rust-analyzer.moveItemDown",
                 "title": "Move item down",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.cancelFlycheck",
+                "title": "Cancel running flychecks",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -542,7 +547,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -753,6 +758,11 @@
                 },
                 "rust-analyzer.hover.documentation.enable": {
                     "markdownDescription": "Whether to show documentation on hover.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.hover.documentation.keywords.enable": {
+                    "markdownDescription": "Whether to show keyword hover popups. Only applies when\n`#rust-analyzer.hover.documentation.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },

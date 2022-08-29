@@ -8,7 +8,7 @@ use syntax::SmolStr;
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
     render::{
-        variant::{format_literal_label, visible_fields},
+        variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
     },
     CompletionItem, CompletionItemKind,
@@ -34,9 +34,10 @@ pub(crate) fn render_struct_pat(
     let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let kind = strukt.kind(ctx.db());
     let label = format_literal_label(name.as_str(), kind);
+    let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, pat, strukt))
+    Some(build_completion(ctx, label, lookup, pat, strukt))
 }
 
 pub(crate) fn render_variant_pat(
@@ -60,11 +61,14 @@ pub(crate) fn render_variant_pat(
         }
     };
 
-    let (label, pat) = match path_ctx {
-        Some(PathCompletionCtx { has_call_parens: true, .. }) => (name, escaped_name.to_string()),
+    let (label, lookup, pat) = match path_ctx {
+        Some(PathCompletionCtx { has_call_parens: true, .. }) => {
+            (name.clone(), name, escaped_name.to_string())
+        }
         _ => {
             let kind = variant.kind(ctx.db());
             let label = format_literal_label(name.as_str(), kind);
+            let lookup = format_literal_lookup(name.as_str(), kind);
             let pat = render_pat(
                 &ctx,
                 pattern_ctx,
@@ -73,16 +77,17 @@ pub(crate) fn render_variant_pat(
                 &visible_fields,
                 fields_omitted,
             )?;
-            (label, pat)
+            (label, lookup, pat)
         }
     };
 
-    Some(build_completion(ctx, label, pat, variant))
+    Some(build_completion(ctx, label, lookup, pat, variant))
 }
 
 fn build_completion(
     ctx: RenderContext<'_>,
     label: SmolStr,
+    lookup: SmolStr,
     pat: String,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
@@ -90,6 +95,7 @@ fn build_completion(
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat)
+        .lookup_by(lookup)
         .set_relevance(ctx.completion_relevance());
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),

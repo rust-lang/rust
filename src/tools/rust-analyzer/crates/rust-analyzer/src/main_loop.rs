@@ -288,7 +288,7 @@ impl GlobalState {
 
             if became_quiescent {
                 // Project has loaded properly, kick off initial flycheck
-                self.flycheck.iter().for_each(FlycheckHandle::update);
+                self.flycheck.iter().for_each(FlycheckHandle::restart);
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_string());
                 }
@@ -590,6 +590,7 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
+            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
@@ -779,7 +780,7 @@ impl GlobalState {
                             for (id, _) in workspace_ids.clone() {
                                 if id == flycheck.id() {
                                     updated = true;
-                                    flycheck.update();
+                                    flycheck.restart();
                                     continue;
                                 }
                             }
@@ -798,7 +799,7 @@ impl GlobalState {
                 // No specific flycheck was triggered, so let's trigger all of them.
                 if !updated {
                     for flycheck in &this.flycheck {
-                        flycheck.update();
+                        flycheck.restart();
                     }
                 }
                 Ok(())

@@ -321,7 +321,11 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                 ast::Item::cast(node.clone())?
                     .attrs()
                     .take(derive_attr_index as usize + 1)
-                    // FIXME
+                    // FIXME, this resolution should not be done syntactically
+                    // derive is a proper macro now, no longer builtin
+                    // But we do not have resolution at this stage, this means
+                    // we need to know about all macro calls for the given ast item here
+                    // so we require some kind of mapping...
                     .filter(|attr| attr.simple_name().as_deref() == Some("derive"))
                     .map(|it| it.syntax().clone())
                     .collect()

@@ -12,7 +12,7 @@
 use std::fs;
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf};
 use vfs::loader;
 use walkdir::WalkDir;
@@ -91,9 +91,12 @@ impl NotifyActor {
                         self.watcher = None;
                         if !config.watch.is_empty() {
                             let (watcher_sender, watcher_receiver) = unbounded();
-                            let watcher = log_notify_error(RecommendedWatcher::new(move |event| {
-                                watcher_sender.send(event).unwrap();
-                            }));
+                            let watcher = log_notify_error(RecommendedWatcher::new(
+                                move |event| {
+                                    watcher_sender.send(event).unwrap();
+                                },
+                                Config::default(),
+                            ));
                             self.watcher = watcher.map(|it| (it, watcher_receiver));
                         }
 

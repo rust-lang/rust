@@ -45,7 +45,8 @@ mod patch_old_style;
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
 
 // Defines the server-side configuration of the rust-analyzer. We generate
-// *parts* of VS Code's `package.json` config from this.
+// *parts* of VS Code's `package.json` config from this. Run `cargo test` to
+// re-generate that file.
 //
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
@@ -119,6 +120,10 @@ config_data! {
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
         /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+        ///
+        /// If there are multiple linked projects, this command is invoked for
+        /// each of them, with the working directory being the project root
+        /// (i.e., the folder containing the `Cargo.toml`).
         ///
         /// An example command would be:
         ///
@@ -243,7 +248,10 @@ config_data! {
         hover_actions_run_enable: bool             = "true",
 
         /// Whether to show documentation on hover.
-        hover_documentation_enable: bool       = "true",
+        hover_documentation_enable: bool           = "true",
+        /// Whether to show keyword hover popups. Only applies when
+        /// `#rust-analyzer.hover.documentation.enable#` is set.
+        hover_documentation_keywords_enable: bool  = "true",
         /// Use markdown syntax for links in hover.
         hover_links_enable: bool = "true",
 
@@ -1187,6 +1195,7 @@ impl Config {
                     HoverDocFormat::PlainText
                 }
             }),
+            keywords: self.data.hover_documentation_keywords_enable,
         }
     }
 

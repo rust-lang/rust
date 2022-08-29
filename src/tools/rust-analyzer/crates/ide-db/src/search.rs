@@ -402,7 +402,9 @@ impl<'a> FindUsages<'a> {
                             .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
                     })
                 };
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.to_smol_str())
+                // We need to unescape the name in case it is written without "r#" in earlier
+                // editions of Rust where it isn't a keyword.
+                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.unescaped().to_smol_str())
             }
         };
         let name = match &name {

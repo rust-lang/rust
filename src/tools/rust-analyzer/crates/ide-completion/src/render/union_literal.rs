@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     render::{
-        variant::{format_literal_label, visible_fields},
+        variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
     },
     CompletionItem, CompletionItemKind,
@@ -24,12 +24,15 @@ pub(crate) fn render_union_literal(
         Some(p) => (p.unescaped().to_string(), p.to_string()),
         None => (name.unescaped().to_string(), name.to_string()),
     };
-
+    let label = format_literal_label(&name.to_smol_str(), StructKind::Record);
+    let lookup = format_literal_lookup(&name.to_smol_str(), StructKind::Record);
     let mut item = CompletionItem::new(
         CompletionItemKind::SymbolKind(SymbolKind::Union),
         ctx.source_range(),
-        format_literal_label(&name.to_smol_str(), StructKind::Record),
+        label,
     );
+
+    item.lookup_by(lookup);
 
     let fields = un.fields(ctx.db());
     let (fields, fields_omitted) = visible_fields(ctx.completion, &fields, un)?;

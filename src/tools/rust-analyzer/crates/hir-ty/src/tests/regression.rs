@@ -1648,3 +1648,20 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn trailing_empty_macro() {
+    cov_mark::check!(empty_macro_in_trailing_position_is_removed);
+    check_no_mismatches(
+        r#"
+macro_rules! m2 {
+    ($($t:tt)*) => {$($t)*};
+}
+
+fn macrostmts() -> u8 {
+    m2! { 0 }
+    m2! {}
+}
+    "#,
+    );
+}

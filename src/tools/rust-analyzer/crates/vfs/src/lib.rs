@@ -64,7 +64,7 @@ pub struct FileId(pub u32);
 
 /// Storage for all files read by rust-analyzer.
 ///
-/// For more informations see the [crate-level](crate) documentation.
+/// For more information see the [crate-level](crate) documentation.
 #[derive(Default)]
 pub struct Vfs {
     interner: PathInterner,
