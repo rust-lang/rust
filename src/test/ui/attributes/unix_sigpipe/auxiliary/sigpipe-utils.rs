@@ -10,7 +10,12 @@ pub enum SignalHandler {
 /// Helper to assert that [`libc::SIGPIPE`] has the expected signal handler.
 pub fn assert_sigpipe_handler(expected_handler: SignalHandler) {
     #[cfg(unix)]
-    #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
+    #[cfg(not(any(
+        target_os = "emscripten",
+        target_os = "fuchsia",
+        target_os = "horizon",
+        target_os = "android",
+    )))]
     {
         let prev = unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN) };
 
