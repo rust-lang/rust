@@ -246,6 +246,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "unicode-width",
     "unicode-xid",
     "vcpkg",
+    "valuable",
     "version_check",
     "wasi",
     "winapi",
