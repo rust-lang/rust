@@ -1223,7 +1223,7 @@ mod prim_usize {}
 #[doc(alias = "&")]
 #[doc(alias = "&mut")]
 //
-/// References, both shared and mutable.
+/// References, `&T` and `&mut T`.
 ///
 /// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
 /// operators on a value, or by using a [`ref`](../std/keyword.ref.html) or
