@@ -92,6 +92,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
                 cause.span,
@@ -248,14 +249,13 @@ where
     /// - `origin`, the reason we need this constraint
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
+    #[instrument(level = "debug", skip(self))]
     pub fn type_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})", ty, region, origin);
-
         assert!(!ty.has_escaping_bound_vars());
 
         let mut components = smallvec![];

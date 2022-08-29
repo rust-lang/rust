@@ -120,6 +120,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         EarlyBinder(value).subst(self.tcx(), substs)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn relate_mir_and_user_ty(
         &mut self,
         mir_ty: Ty<'tcx>,
@@ -132,8 +133,8 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
 
         let ty = tcx.type_of(def_id);
         let ty = self.subst(ty, substs);
-        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
+        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
         self.relate(mir_ty, Variance::Invariant, ty)?;
 
@@ -144,7 +145,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         // outlives" error messages.
         let instantiated_predicates =
             self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
-        debug!(?instantiated_predicates.predicates);
+        debug!(?instantiated_predicates);
         for instantiated_predicate in instantiated_predicates.predicates {
             let instantiated_predicate = self.normalize(instantiated_predicate);
             self.prove_predicate(instantiated_predicate, span);

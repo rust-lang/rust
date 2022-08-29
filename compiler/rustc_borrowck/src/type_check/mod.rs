@@ -1043,6 +1043,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let inferred_ty = self.normalize(inferred_ty, Locations::All(span));
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
+            debug!(?annotation);
             match annotation {
                 UserType::Ty(mut ty) => {
                     ty = self.normalize(ty, Locations::All(span));
