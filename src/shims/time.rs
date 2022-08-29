@@ -11,14 +11,24 @@ use crate::*;
 const NANOSECOND_PER_BASIC_BLOCK: u64 = 10;
 
 #[derive(Debug)]
-pub enum Instant {
+pub struct Instant {
+    kind: InstantKind,
+}
+
+#[derive(Debug)]
+enum InstantKind {
     Host(StdInstant),
     Virtual { nanoseconds: u64 },
 }
 
 /// A monotone clock used for `Instant` simulation.
 #[derive(Debug)]
-pub enum Clock {
+pub struct Clock {
+    kind: ClockKind,
+}
+
+#[derive(Debug)]
+enum ClockKind {
     Host {
         /// The "time anchor" for this machine's monotone clock.
         time_anchor: StdInstant,
@@ -32,29 +42,32 @@ pub enum Clock {
 impl Clock {
     /// Create a new clock based on the availability of communication with the host.
     pub fn new(communicate: bool) -> Self {
-        if communicate {
-            Self::Host { time_anchor: StdInstant::now() }
+        let kind = if communicate {
+            ClockKind::Host { time_anchor: StdInstant::now() }
         } else {
-            Self::Virtual { nanoseconds: 0.into() }
-        }
+            ClockKind::Virtual { nanoseconds: 0.into() }
+        };
+
+        Self { kind }
     }
 
     /// Get the current time relative to this clock.
     pub fn get(&self) -> Duration {
-        match self {
-            Self::Host { time_anchor } => StdInstant::now().saturating_duration_since(*time_anchor),
-            Self::Virtual { nanoseconds } =>
+        match &self.kind {
+            ClockKind::Host { time_anchor } =>
+                StdInstant::now().saturating_duration_since(*time_anchor),
+            ClockKind::Virtual { nanoseconds } =>
                 Duration::from_nanos(nanoseconds.load(Ordering::Relaxed)),
         }
     }
 
     /// Let the time pass for a small interval.
     pub fn tick(&self) {
-        match self {
-            Self::Host { .. } => {
+        match &self.kind {
+            ClockKind::Host { .. } => {
                 // Time will pass without us doing anything.
             }
-            Self::Virtual { nanoseconds } => {
+            ClockKind::Virtual { nanoseconds } => {
                 nanoseconds.fetch_add(NANOSECOND_PER_BASIC_BLOCK, Ordering::Relaxed);
             }
         }
@@ -62,9 +75,9 @@ impl Clock {
 
     /// Sleep for the desired duration.
     pub fn sleep(&self, duration: Duration) {
-        match self {
-            Self::Host { .. } => std::thread::sleep(duration),
-            Self::Virtual { nanoseconds } => {
+        match &self.kind {
+            ClockKind::Host { .. } => std::thread::sleep(duration),
+            ClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
                 nanoseconds.fetch_add(duration.as_nanos().try_into().unwrap(), Ordering::Relaxed);
             }
@@ -73,30 +86,34 @@ impl Clock {
 
     /// Compute `now + duration` relative to this clock.
     pub fn get_time_relative(&self, duration: Duration) -> Option<Time> {
-        match self {
-            Self::Host { .. } =>
+        match &self.kind {
+            ClockKind::Host { .. } =>
                 StdInstant::now()
                     .checked_add(duration)
-                    .map(|instant| Time::Monotonic(Instant::Host(instant))),
-            Self::Virtual { nanoseconds } =>
+                    .map(|instant| Time::Monotonic(Instant { kind: InstantKind::Host(instant) })),
+            ClockKind::Virtual { nanoseconds } =>
                 nanoseconds
                     .load(Ordering::Relaxed)
                     .checked_add(duration.as_nanos().try_into().unwrap())
-                    .map(|nanoseconds| Time::Monotonic(Instant::Virtual { nanoseconds })),
+                    .map(|nanoseconds| {
+                        Time::Monotonic(Instant { kind: InstantKind::Virtual { nanoseconds } })
+                    }),
         }
     }
 
     /// Compute `start + duration` relative to this clock where `start` is the instant of time when
     /// this clock was created.
     pub fn get_time_absolute(&self, duration: Duration) -> Option<Time> {
-        match self {
-            Self::Host { time_anchor } =>
+        match &self.kind {
+            ClockKind::Host { time_anchor } =>
                 time_anchor
                     .checked_add(duration)
-                    .map(|instant| Time::Monotonic(Instant::Host(instant))),
-            Self::Virtual { .. } =>
-                Some(Time::Monotonic(Instant::Virtual {
-                    nanoseconds: duration.as_nanos().try_into().unwrap(),
+                    .map(|instant| Time::Monotonic(Instant { kind: InstantKind::Host(instant) })),
+            ClockKind::Virtual { .. } =>
+                Some(Time::Monotonic(Instant {
+                    kind: InstantKind::Virtual {
+                        nanoseconds: duration.as_nanos().try_into().unwrap(),
+                    },
                 })),
         }
     }
@@ -105,12 +122,12 @@ impl Clock {
     pub fn get_wait_time(&self, time: &Time) -> Duration {
         match time {
             Time::Monotonic(instant) =>
-                match (instant, self) {
-                    (Instant::Host(instant), Clock::Host { .. }) =>
+                match (&instant.kind, &self.kind) {
+                    (InstantKind::Host(instant), ClockKind::Host { .. }) =>
                         instant.saturating_duration_since(StdInstant::now()),
                     (
-                        Instant::Virtual { nanoseconds },
-                        Clock::Virtual { nanoseconds: current_ns },
+                        InstantKind::Virtual { nanoseconds },
+                        ClockKind::Virtual { nanoseconds: current_ns },
                     ) =>
                         Duration::from_nanos(
                             nanoseconds.saturating_sub(current_ns.load(Ordering::Relaxed)),
