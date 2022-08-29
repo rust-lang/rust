@@ -1364,22 +1364,17 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
         }
 
-        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
         let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
         let (v1, v2) =
             if vec_num_units < mask_num_units {
                 // NOTE: the mask needs to be the same length as the input vectors, so join the 2
                 // vectors and create a dummy second vector.
-                // TODO(antoyo): switch to using new_vector_access.
-                let array = self.context.new_bitcast(None, v1, array_type);
                 let mut elements = vec![];
                 for i in 0..vec_num_units {
-                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                    elements.push(self.context.new_vector_access(None, v1, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
                 }
-                // TODO(antoyo): switch to using new_vector_access.
-                let array = self.context.new_bitcast(None, v2, array_type);
                 for i in 0..(mask_num_units - vec_num_units) {
-                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                    elements.push(self.context.new_vector_access(None, v2, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
                 }
                 let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);
                 let zero = self.context.new_rvalue_zero(element_type);
@@ -1399,10 +1394,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // NOTE: if padding was added, only select the number of elements of the masks to
             // remove that padding in the result.
             let mut elements = vec![];
-            // TODO(antoyo): switch to using new_vector_access.
-            let array = self.context.new_bitcast(None, result, array_type);
             for i in 0..mask_num_units {
-                elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                elements.push(self.context.new_vector_access(None, result, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
             }
             self.context.new_rvalue_from_vector(None, result_type, &elements)
         }
