@@ -651,7 +651,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
                (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
             {
-                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
                     if let ExprKind::Lit(ref literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
@@ -677,7 +677,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
                 (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
             {
-                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
                     if let ExprKind::Lit(ref literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
