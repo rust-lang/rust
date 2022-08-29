@@ -59,7 +59,7 @@ use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::assume;
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
@@ -2678,7 +2678,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
             let begin = me.as_mut_ptr();
             let end = if mem::size_of::<T>() == 0 {
-                arith_offset(begin as *const i8, me.len() as isize) as *const T
+                begin.wrapping_byte_add(me.len())
             } else {
                 begin.add(me.len()) as *const T
             };

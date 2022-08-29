@@ -16,6 +16,7 @@ use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
@@ -358,6 +359,7 @@ define_tables! {
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
     impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,
+    object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,

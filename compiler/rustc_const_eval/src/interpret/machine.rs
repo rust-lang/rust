@@ -215,23 +215,12 @@ pub trait Machine<'mir, 'tcx>: Sized {
         right: &ImmTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)>;
 
-    /// Called to read the specified `local` from the `frame`.
-    /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
-    /// for ZST reads.
-    #[inline]
-    fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, &'a Operand<Self::Provenance>>
-    where
-        'tcx: 'mir,
-    {
-        frame.locals[local].access()
-    }
-
     /// Called to write the specified `local` from the `frame`.
     /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.
+    ///
+    /// Due to borrow checker trouble, we indicate the `frame` as an index rather than an `&mut
+    /// Frame`.
     #[inline]
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,

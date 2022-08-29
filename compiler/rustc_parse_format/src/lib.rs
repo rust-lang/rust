@@ -167,6 +167,8 @@ pub enum Count<'a> {
     CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
+    /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
+    CountIsStar(usize),
     /// The count is implied and cannot be explicitly specified.
     CountImplied,
 }
@@ -618,7 +620,7 @@ impl<'a> Parser<'a> {
                 // We can do this immediately as `position` is resolved later.
                 let i = self.curarg;
                 self.curarg += 1;
-                spec.precision = CountIsParam(i);
+                spec.precision = CountIsStar(i);
             } else {
                 spec.precision = self.count(start + 1);
             }
