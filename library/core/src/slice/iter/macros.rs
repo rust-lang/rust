@@ -64,7 +64,7 @@ macro_rules! iterator {
         // backwards by `n`. `n` must not exceed `self.len()`.
         macro_rules! zst_shrink {
             ($self: ident, $n: ident) => {
-                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+                $self.end = $self.end.wrapping_byte_offset(-$n);
             }
         }
 
