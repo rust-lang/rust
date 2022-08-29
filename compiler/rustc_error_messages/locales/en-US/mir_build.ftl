@@ -233,3 +233,7 @@ mir_build_trailing_irrefutable_let_patterns = trailing irrefutable {$count ->
         [one] it
         *[other] them
     } into the body
+
+mir_build_bindings_with_variant_name =
+    pattern binding `{$ident}` is named the same as one of the variants of the type `{$ty_path}`
+    .suggestion = to match on the variant, qualify the path
