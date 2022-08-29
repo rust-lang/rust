@@ -239,7 +239,7 @@ impl DiagnosticDeriveBuilder {
             }
         }
 
-        Ok(tokens.drain(..).collect())
+        Ok(tokens.into_iter().collect())
     }
 
     fn generate_field_attrs_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {

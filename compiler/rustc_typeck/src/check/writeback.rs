@@ -501,7 +501,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-            for mut diag in errors_buffer.drain(..) {
+            for mut diag in errors_buffer {
                 self.tcx().sess.diagnostic().emit_diagnostic(&mut diag);
             }
         }
