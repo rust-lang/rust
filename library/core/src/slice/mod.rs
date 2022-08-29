@@ -448,9 +448,9 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
-    /// The caller must also ensure that the memory the pointer (non-transitively) points to
-    /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
-    /// derived from it. If you need to mutate the contents of the slice, use [`as_mut_ptr`].
+    /// Writing to memory that this pointer points to is undefined behavior, unless that
+    /// write goes through interior mutability of its own. If you need to mutate the
+    /// contents of the slice, use [`as_mut_ptr`].
     ///
     /// Modifying the container referenced by this slice may cause its buffer
     /// to be reallocated, which would also make any pointers to it invalid.

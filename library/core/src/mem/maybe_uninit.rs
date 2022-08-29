@@ -498,7 +498,8 @@ impl<T> MaybeUninit<T> {
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit<T>` is initialized.
     /// Writing to memory that this pointer points to is undefined behavior, unless that
-    /// write goes through interior mutability of its own.
+    /// write goes through interior mutability of its own. If you need to mutate this
+    /// MaybeUninit, use [`as_mut_ptr`].
     ///
     /// # Examples
     ///
@@ -526,6 +527,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
     /// until they are, it is advisable to avoid them.)
+    ///
+    /// [`as_mut_ptr`]: MaybeUninit::as_mut_ptr
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_as_ptr", since = "1.59.0")]
     #[inline(always)]

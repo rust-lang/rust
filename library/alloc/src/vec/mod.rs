@@ -1145,9 +1145,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Modifying the vector may cause its buffer to be reallocated,
     /// which would also make any pointers to it invalid.
     ///
-    /// The caller must also ensure that the memory the pointer (non-transitively) points to
-    /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
-    /// derived from it. If you need to mutate the contents of the slice, use [`as_mut_ptr`].
+    /// Writing to memory that this pointer points to is undefined behavior, unless that
+    /// write goes through interior mutability of its own. If you need to mutate the
+    /// contents of the slice, use [`as_mut_ptr`].
     ///
     /// # Examples
     ///
