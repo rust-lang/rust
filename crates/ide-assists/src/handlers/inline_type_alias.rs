@@ -62,6 +62,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
         name.syntax().text_range(),
         |builder| {
             let usages = usages.all();
+            let mut definition_deleted = false;
 
             let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
                 builder.edit_file(file_id);
@@ -79,14 +80,19 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }) {
                     builder.replace(target, replacement);
                 }
+
+                if file_id == ctx.file_id() {
+                    builder.delete(ast_alias.syntax().text_range());
+                    definition_deleted = true;
+                }
             };
 
             for (file_id, refs) in usages.into_iter() {
                 inline_refs_for_file(file_id, refs);
             }
-
-            builder.edit_file(ctx.file_id());
-            builder.delete(ast_alias.syntax().text_range());
+            if !definition_deleted {
+                builder.delete(ast_alias.syntax().text_range());
+            }
         },
     )
 }
