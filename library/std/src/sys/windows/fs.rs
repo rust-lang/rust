@@ -11,7 +11,7 @@ use crate::slice;
 use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
-use crate::sys::{c, cvt};
+use crate::sys::{c, cvt, AlignedAs};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
@@ -46,6 +46,9 @@ pub struct ReadDir {
     root: Arc<PathBuf>,
     first: Option<c::WIN32_FIND_DATAW>,
 }
+
+type AlignedReparseBuf =
+    AlignedAs<c::REPARSE_DATA_BUFFER, [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]>;
 
 struct FindNextFileHandle(c::HANDLE);
 
@@ -326,9 +329,9 @@ impl File {
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                let mut b = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    reparse_tag = buf.ReparseTag;
+                    reparse_tag = (*buf).ReparseTag;
                 }
             }
             Ok(FileAttr {
@@ -389,7 +392,7 @@ impl File {
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.file_type().is_reparse_point() {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                let mut b = AlignedReparseBuf::new([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
                     attr.reparse_tag = buf.ReparseTag;
                 }
@@ -458,10 +461,13 @@ impl File {
         Ok(Self { handle: self.handle.try_clone()? })
     }
 
-    fn reparse_point<'a>(
+    // NB: returned pointer is derived from `space`, and has provenance to
+    // match. A raw pointer is returned rather than a reference in order to
+    // avoid narrowing provenance to the actual `REPARSE_DATA_BUFFER`.
+    fn reparse_point(
         &self,
-        space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE],
-    ) -> io::Result<(c::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
+        space: &mut AlignedReparseBuf,
+    ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
@@ -470,26 +476,27 @@ impl File {
                     c::FSCTL_GET_REPARSE_POINT,
                     ptr::null_mut(),
                     0,
-                    space.as_mut_ptr() as *mut _,
-                    space.len() as c::DWORD,
+                    space.value.as_mut_ptr() as *mut _,
+                    space.value.len() as c::DWORD,
                     &mut bytes,
                     ptr::null_mut(),
                 )
             })?;
-            Ok((bytes, &*(space.as_ptr() as *const c::REPARSE_DATA_BUFFER)))
+            Ok((bytes, space.value.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        let mut space = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
-            let (path_buffer, subst_off, subst_len, relative) = match buf.ReparseTag {
+            let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
                     let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        &buf.rest as *const _ as *const _;
+                        ptr::addr_of!((*buf).rest).cast();
+                    assert!(info.is_aligned());
                     (
-                        &(*info).PathBuffer as *const _ as *const u16,
+                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
@@ -497,9 +504,10 @@ impl File {
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
                     let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
-                        &buf.rest as *const _ as *const _;
+                        ptr::addr_of!((*buf).rest).cast();
+                    assert!(info.is_aligned());
                     (
-                        &(*info).PathBuffer as *const _ as *const u16,
+                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,

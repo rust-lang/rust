@@ -329,3 +329,26 @@ pub fn abort_internal() -> ! {
     }
     crate::intrinsics::abort();
 }
+
+/// Used for some win32 buffers which are stack allocated, for example:
+/// `AlignedAs<c::REPARSE_DATA_BUFFER, [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]>`
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct AlignedAs<Aligner, Alignee: ?Sized> {
+    /// Use `[Aligner; 0]` as a sort of `PhantomAlignNextField<Aligner>`. This
+    /// is a bit of a hack, and could break (in a way that's caught by tests) if
+    /// #81996 is fixed.
+    aligner: [Aligner; 0],
+    /// The aligned value. Public rather than exposed via accessors so that if
+    /// needed it can be used with `addr_of` and such (also, this is less code).
+    pub value: Alignee,
+}
+
+impl<Aligner, Alignee> AlignedAs<Aligner, Alignee> {
+    // This is frequently used with large stack buffers, so force-inline to
+    // try and avoid using 2x as much stack space in debug builds.
+    #[inline(always)]
+    pub const fn new(value: Alignee) -> Self {
+        Self { aligner: [], value }
+    }
+}
