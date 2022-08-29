@@ -907,7 +907,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         llargs.push(data_ptr);
                         continue;
                     }
-                    _ => span_bug!(span, "can't codegen a virtual call on {:#?}", op),
+                    Immediate(_) => {
+                        let ty::Ref(_, ty, _) = op.layout.ty.kind() else {
+                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                        };
+                        if !ty.is_dyn_star() {
+                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                        }
+                        // FIXME(dyn-star): Make sure this is done on a &dyn* receiver
+                        let place = op.deref(bx.cx());
+                        let data_ptr = place.project_field(&mut bx, 0);
+                        let meta_ptr = place.project_field(&mut bx, 1);
+                        let meta = bx.load_operand(meta_ptr);
+                        llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
+                            &mut bx,
+                            meta.immediate(),
+                            op.layout.ty,
+                            &fn_abi,
+                        ));
+                        llargs.push(data_ptr.llval);
+                        continue;
+                    }
+                    _ => {
+                        span_bug!(span, "can't codegen a virtual call on {:#?}", op);
+                    }
                 }
             }
 

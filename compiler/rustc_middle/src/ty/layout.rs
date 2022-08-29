@@ -626,7 +626,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             ty::Dynamic(_, _, ty::DynStar) => {
-                let mut pointer = scalar_unit(Pointer);
+                let mut pointer = scalar_unit(Int(dl.ptr_sized_integer(), false));
                 pointer.valid_range_mut().start = 1;
                 let mut vtable = scalar_unit(Pointer);
                 vtable.valid_range_mut().start = 1;
@@ -2544,8 +2544,21 @@ where
                     }
                 }
 
-                // dyn* (both fields are usize-sized)
-                ty::Dynamic(_, _, ty::DynStar) => TyMaybeWithLayout::Ty(tcx.types.usize),
+                ty::Dynamic(_, _, ty::DynStar) => {
+                    if i == 0 {
+                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                    } else if i == 1 {
+                        // FIXME(dyn-star) same FIXME as above applies here too
+                        TyMaybeWithLayout::Ty(
+                            tcx.mk_imm_ref(
+                                tcx.lifetimes.re_static,
+                                tcx.mk_array(tcx.types.usize, 3),
+                            ),
+                        )
+                    } else {
+                        bug!("no field {i} on dyn*")
+                    }
+                }
 
                 ty::Projection(_)
                 | ty::Bound(..)
