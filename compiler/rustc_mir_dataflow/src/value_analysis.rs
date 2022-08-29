@@ -41,7 +41,7 @@ pub trait ValueAnalysis<'tcx> {
                 self.handle_assign(*place, rvalue, state);
             }
             StatementKind::SetDiscriminant { .. } => {
-                // Could tread this as writing a constant to a pseudo-place.
+                // Could treat this as writing a constant to a pseudo-place.
             }
             StatementKind::CopyNonOverlapping(..) => {
                 // FIXME: What to do here?
