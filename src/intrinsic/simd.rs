@@ -492,6 +492,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         simd_and: Uint, Int => and;
         simd_or: Uint, Int => or; // FIXME(antoyo): calling `or` might not work on vectors.
         simd_xor: Uint, Int => xor;
+        simd_fmin: Float => vector_fmin;
+        simd_fmax: Float => vector_fmax;
     }
 
     macro_rules! arith_unary {

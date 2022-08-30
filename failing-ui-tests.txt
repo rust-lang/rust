@@ -32,7 +32,6 @@ src/test/ui/sepcomp/sepcomp-fns.rs
 src/test/ui/sepcomp/sepcomp-statics.rs
 src/test/ui/simd/generics.rs
 src/test/ui/simd/intrinsic/float-math-pass.rs
-src/test/ui/simd/intrinsic/float-minmax-pass.rs
 src/test/ui/simd/intrinsic/generic-arithmetic-pass.rs
 src/test/ui/simd/intrinsic/generic-as.rs
 src/test/ui/simd/intrinsic/generic-bitmask-pass.rs
