@@ -170,7 +170,7 @@ fn write(
 }
 
 fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usize> {
-    let mut utf16: [MaybeUninit<u16>; MAX_BUFFER_SIZE / 2] = MaybeUninit::uninit_array();
+    let mut utf16 = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
     let mut len_utf16 = 0;
     for (chr, dest) in utf8.encode_utf16().zip(utf16.iter_mut()) {
         *dest = MaybeUninit::new(chr);
@@ -252,7 +252,7 @@ impl io::Read for Stdin {
             return Ok(bytes_copied);
         } else if buf.len() - bytes_copied < 4 {
             // Not enough space to get a UTF-8 byte. We will use the incomplete UTF8.
-            let mut utf16_buf = [MaybeUninit::new(1); 1];
+            let mut utf16_buf = [MaybeUninit::new(0); 1];
             // Read one u16 character.
             let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
             // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
@@ -267,8 +267,8 @@ impl io::Read for Stdin {
             bytes_copied += self.incomplete_utf8.read(&mut buf[bytes_copied..]);
             Ok(bytes_copied)
         } else {
-            let mut utf16_buf: [MaybeUninit<u16>; MAX_BUFFER_SIZE / 2] =
-                MaybeUninit::uninit_array();
+            let mut utf16_buf = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
+
             // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
             // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
             // lost.
