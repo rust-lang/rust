@@ -1536,6 +1536,34 @@ pub trait PrettyPrinter<'tcx>:
         }
         Ok(self)
     }
+
+    fn pretty_closure_as_impl(
+        mut self,
+        closure: ty::ClosureSubsts<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        let sig = closure.sig();
+        let kind = closure.kind_ty().to_opt_closure_kind().unwrap_or(ty::ClosureKind::Fn);
+
+        write!(self, "impl ")?;
+        self.wrap_binder(&sig, |sig, mut cx| {
+            define_scoped_cx!(cx);
+
+            p!(print(kind), "(");
+            for (i, arg) in sig.inputs()[0].tuple_fields().iter().enumerate() {
+                if i > 0 {
+                    p!(", ");
+                }
+                p!(print(arg));
+            }
+            p!(")");
+
+            if !sig.output().is_unit() {
+                p!(" -> ", print(sig.output()));
+            }
+
+            Ok(cx)
+        })
+    }
 }
 
 // HACK(eddyb) boxed to avoid moving around a large struct by-value.
@@ -2450,6 +2478,11 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
     }
 }
 
+#[derive(Debug, Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+pub struct PrintClosureAsImpl<'tcx> {
+    pub closure: ty::ClosureSubsts<'tcx>,
+}
+
 forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
@@ -2540,6 +2573,10 @@ define_print_and_forward_display! {
         }
 
         p!(print(self.0.trait_ref.print_only_trait_path()));
+    }
+
+    PrintClosureAsImpl<'tcx> {
+        p!(pretty_closure_as_impl(self.closure))
     }
 
     ty::ParamTy {
