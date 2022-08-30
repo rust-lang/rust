@@ -11,7 +11,7 @@ use crate::slice;
 use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
-use crate::sys::{c, cvt, AlignedAs};
+use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
@@ -46,9 +46,6 @@ pub struct ReadDir {
     root: Arc<PathBuf>,
     first: Option<c::WIN32_FIND_DATAW>,
 }
-
-type AlignedReparseBuf =
-    AlignedAs<c::REPARSE_DATA_BUFFER, [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]>;
 
 struct FindNextFileHandle(c::HANDLE);
 
@@ -329,7 +326,7 @@ impl File {
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                let mut b = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+                let mut b = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
                     reparse_tag = (*buf).ReparseTag;
                 }
@@ -392,7 +389,7 @@ impl File {
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.file_type().is_reparse_point() {
-                let mut b = AlignedReparseBuf::new([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+                let mut b = Align8([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
                     attr.reparse_tag = (*buf).ReparseTag;
                 }
@@ -466,28 +463,32 @@ impl File {
     // avoid narrowing provenance to the actual `REPARSE_DATA_BUFFER`.
     fn reparse_point(
         &self,
-        space: &mut AlignedReparseBuf,
+        space: &mut Align8<[u8]>,
     ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
+                // Grab this in advance to avoid it invalidating the pointer
+                // we get from `space.0.as_mut_ptr()`.
+                let len = space.0.len();
                 c::DeviceIoControl(
                     self.handle.as_raw_handle(),
                     c::FSCTL_GET_REPARSE_POINT,
                     ptr::null_mut(),
                     0,
-                    space.value.as_mut_ptr() as *mut _,
-                    space.value.len() as c::DWORD,
+                    space.0.as_mut_ptr().cast(),
+                    len as c::DWORD,
                     &mut bytes,
                     ptr::null_mut(),
                 )
             })?;
-            Ok((bytes, space.value.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
+            const _: () = assert!(core::mem::align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
+            Ok((bytes, space.0.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let mut space = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
@@ -1345,8 +1346,8 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let h = f.as_inner().as_raw_handle();
 
     unsafe {
-        let mut data = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
-        let data_ptr = data.value.as_mut_ptr();
+        let mut data = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let data_ptr = data.0.as_mut_ptr();
         let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
         let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
         let mut i = 0;
