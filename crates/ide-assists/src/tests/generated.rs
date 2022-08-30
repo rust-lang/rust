@@ -2208,6 +2208,32 @@ fn arithmetics {
 }
 
 #[test]
+fn doctest_unmerge_match_arm() {
+    check_doc_test(
+        "unmerge_match_arm",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) $0| Action::Stop => foo(),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    match action {
+        Action::Move(..) => foo(),
+        Action::Stop => foo(),
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unmerge_use() {
     check_doc_test(
         "unmerge_use",

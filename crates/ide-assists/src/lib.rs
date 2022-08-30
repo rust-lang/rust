@@ -185,6 +185,7 @@ mod handlers {
     mod replace_string_with_char;
     mod replace_turbofish_with_explicit_type;
     mod split_import;
+    mod unmerge_match_arm;
     mod sort_items;
     mod toggle_ignore;
     mod unmerge_use;
@@ -278,6 +279,7 @@ mod handlers {
             sort_items::sort_items,
             split_import::split_import,
             toggle_ignore::toggle_ignore,
+            unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,
             unwrap_block::unwrap_block,
