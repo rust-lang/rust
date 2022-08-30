@@ -690,13 +690,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 real_trait_pred = parent_trait_pred;
             }
 
-            // Skipping binder here, remapping below
-            let real_ty = real_trait_pred.self_ty().skip_binder();
-            if self.can_eq(obligation.param_env, real_ty, arg_ty).is_err() {
+            let real_ty = real_trait_pred.self_ty();
+            // We `erase_late_bound_regions` here because `make_subregion` does not handle
+            // `ReLateBound`, and we don't particularly care about the regions.
+            if self
+                .can_eq(obligation.param_env, self.tcx.erase_late_bound_regions(real_ty), arg_ty)
+                .is_err()
+            {
                 continue;
             }
 
-            if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
+            if let ty::Ref(region, base_ty, mutbl) = *real_ty.skip_binder().kind() {
                 let mut autoderef = Autoderef::new(
                     self,
                     obligation.param_env,
