@@ -27,12 +27,12 @@ use tracing::debug;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
-    // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`,
-    // so `range` must be within the bounds of `alloc` and not contain or overlap a relocation.
+    // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`, so `range`
+    // must be within the bounds of `alloc` and not contain or overlap a pointer provenance.
     fn append_chunks_of_init_and_uninit_bytes<'ll, 'a, 'b>(
         llvals: &mut Vec<&'ll Value>,
         cx: &'a CodegenCx<'ll, 'b>,
@@ -79,12 +79,12 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.provenance().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // This `inspect` is okay since we have checked that there is no provenance, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
             // (we inspect the result after interpreter execution).
             append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, next_offset..offset);
@@ -93,7 +93,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
             dl.endian,
             // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
             // affect interpreter execution (we inspect the result after interpreter execution),
-            // and we properly interpret the relocation as a relocation pointer offset.
+            // and we properly interpret the provenance as a relocation pointer offset.
             alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
         )
         .expect("const_alloc_to_llvm: could not read relocation pointer")
@@ -121,7 +121,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
     if alloc.len() >= next_offset {
         let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all relocations, it is
+        // This `inspect` is okay since we have check that it is after all provenance, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
         // inspect the result after interpreter execution).
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
@@ -479,7 +479,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 //
                 // We could remove this hack whenever we decide to drop macOS 10.10 support.
                 if self.tcx.sess.target.is_like_osx {
-                    // The `inspect` method is okay here because we checked relocations, and
+                    // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state
                     // (not as part of the interpreter execution).
                     //
@@ -487,7 +487,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     // happens to be zero. Instead, we should only check the value of defined bytes
                     // and set all undefined bytes to zero if this allocation is headed for the
                     // BSS.
-                    let all_bytes_are_zero = alloc.relocations().is_empty()
+                    let all_bytes_are_zero = alloc.provenance().is_empty()
                         && alloc
                             .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
                             .iter()
@@ -511,9 +511,9 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                         section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
-                    assert!(alloc.relocations().is_empty());
+                    assert!(alloc.provenance().is_empty());
 
-                    // The `inspect` method is okay here because we checked relocations, and
+                    // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state (not
                     // as part of the interpreter execution).
                     let bytes =

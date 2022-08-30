@@ -13,15 +13,15 @@ const INVALID_BOOL: () = unsafe {
 
 const INVALID_PTR_IN_INT: () = unsafe {
     let _x: usize = transmute(&3u8);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
-    //[with_flag]~| invalid value
+    //[with_flag]~^ ERROR: any use of this value will cause an error
+    //[with_flag]~| previously accepted
 };
 
 const INVALID_SLICE_TO_USIZE_TRANSMUTE: () = unsafe {
     let x: &[u8] = &[0; 32];
     let _x: (usize, usize) = transmute(x);
-    //[with_flag]~^ ERROR: evaluation of constant value failed
-    //[with_flag]~| invalid value
+    //[with_flag]~^ ERROR: any use of this value will cause an error
+    //[with_flag]~| previously accepted
 };
 
 const UNALIGNED_PTR: () = unsafe {
