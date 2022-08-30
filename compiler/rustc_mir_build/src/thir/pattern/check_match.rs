@@ -962,24 +962,14 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 }
             });
             if !conflicts_ref.is_empty() {
-                let occurs_because = format!(
-                    "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
+                sess.emit_err(BorrowOfMovedValue {
+                    span: pat.span,
+                    binding_span,
+                    conflicts_ref,
                     name,
-                    typeck_results.node_type(pat.hir_id),
-                );
-                let mut err = sess.struct_span_err(pat.span, "borrow of moved value");
-                err.span_label(binding_span, format!("value moved into `{}` here", name))
-                    .span_label(binding_span, occurs_because)
-                    .span_labels(conflicts_ref, "value borrowed here after move");
-                if pat.span.contains(binding_span) {
-                    err.span_suggestion_verbose(
-                        binding_span.shrink_to_lo(),
-                        "borrow this binding in the pattern to avoid moving the value",
-                        "ref ".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                err.emit();
+                    ty: typeck_results.node_type(pat.hir_id),
+                    suggest_borrowing: pat.span.contains(binding_span).then(|| binding_span.shrink_to_lo()),
+                });
             }
             return;
         }
