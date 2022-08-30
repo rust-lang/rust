@@ -473,7 +473,7 @@ ${SDK_PATH}/tools/${ARCH}/pm publish \
     -lp -f <(echo "hello_fuchsia_package_manifest")
 ```
 
-Then we can add it to `ffx`'s package server as `hello-fuchsia` using:
+Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
