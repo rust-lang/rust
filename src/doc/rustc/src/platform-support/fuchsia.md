@@ -541,7 +541,7 @@ package to the emulator:
 ${SDK_PATH}/tools/${ARCH}/ffx repository server start
 ```
 
-Once the repository server is up and running, register our repository:
+Once the repository server is up and running, register it with the target Fuchsia system running in the emulator:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx target repository register \
