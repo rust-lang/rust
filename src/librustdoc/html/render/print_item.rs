@@ -530,7 +530,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
-                decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
