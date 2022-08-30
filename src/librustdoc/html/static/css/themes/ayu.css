@@ -83,12 +83,13 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .search-results a:hover {
-	background-color: #777;
+	color: #fff !important;
+	background-color: #3c3c3c;
 }
 
 .search-results a:focus {
-	color: #000 !important;
-	background-color: #c6afb3;
+	color: #fff !important;
+	background-color: #3c3c3c;
 }
 .search-results a {
 	color: #0096cf;
