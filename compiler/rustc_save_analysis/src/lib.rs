@@ -595,13 +595,14 @@ impl<'tcx> SaveContext<'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
-            Node::PathSegment(seg) => match seg.res {
-                Some(res) if res != Res::Err => res,
-                _ => {
+            Node::PathSegment(seg) => {
+                if seg.res != Res::Err {
+                    seg.res
+                } else {
                     let parent_node = self.tcx.hir().get_parent_node(hir_id);
                     self.get_path_res(parent_node)
                 }
-            },
+            }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
                 self.typeck_results().qpath_res(qpath, hir_id)

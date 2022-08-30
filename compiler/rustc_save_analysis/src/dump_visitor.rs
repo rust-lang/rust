@@ -914,7 +914,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     _,
                 )
                 | Res::SelfTy { .. } => {
-                    self.dump_path_segment_ref(id, &hir::PathSegment::from_ident(ident));
+                    self.dump_path_segment_ref(id, &hir::PathSegment::from_ident(ident, Res::Err));
                 }
                 def => {
                     error!("unexpected definition kind when processing collected idents: {:?}", def)

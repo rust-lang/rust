@@ -1123,7 +1123,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let item_segment = hir::PathSegment {
                 ident,
                 hir_id: Some(binding.hir_id),
-                res: None,
+                res: Res::Err,
                 args: Some(binding.gen_args),
                 infer_args: false,
             };
@@ -1854,7 +1854,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     [.., hir::PathSegment {
                                         ident,
                                         args,
-                                        res: Some(Res::Def(DefKind::Enum, _)),
+                                        res: Res::Def(DefKind::Enum, _),
                                         ..
                                     }, _] => (
                                         // We need to include the `::` in `Type::Variant::<Args>`
@@ -2136,24 +2136,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let types_and_spans: Vec<_> = segments
                 .clone()
                 .flat_map(|segment| {
-                    segment.res.and_then(|res| {
-                        if segment.args().args.is_empty() {
-                            None
-                        } else {
-                            Some((
-                            match res {
-                                Res::PrimTy(ty) => format!("{} `{}`", res.descr(), ty.name()),
+                    if segment.args().args.is_empty() {
+                        None
+                    } else {
+                        Some((
+                            match segment.res {
+                                Res::PrimTy(ty) => format!("{} `{}`", segment.res.descr(), ty.name()),
                                 Res::Def(_, def_id)
                                 if let Some(name) = self.tcx().opt_item_name(def_id) => {
-                                    format!("{} `{name}`", res.descr())
+                                    format!("{} `{name}`", segment.res.descr())
                                 }
                                 Res::Err => "this type".to_string(),
-                                _ => res.descr().to_string(),
+                                _ => segment.res.descr().to_string(),
                             },
                             segment.ident.span,
                         ))
-                        }
-                    })
+                    }
                 })
                 .collect();
             let this_type = match &types_and_spans[..] {
