@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, LldFlavor, SplitDebuginfo, TargetOptions};
+use crate::spec::{DebuginfoKind, LinkerFlavor, LldFlavor, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
@@ -20,6 +20,7 @@ pub fn opts() -> TargetOptions {
         // where `*.pdb` files show up next to the final artifact.
         split_debuginfo: SplitDebuginfo::Packed,
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Packed]),
+        debuginfo_kind: DebuginfoKind::Pdb,
 
         ..Default::default()
     }
