@@ -711,9 +711,14 @@ impl<'tcx> FormatSpec<'tcx> {
         })
     }
 
-    /// Returns true if this format spec would change the contents of a string when formatted
-    pub fn has_string_formatting(&self) -> bool {
-        self.r#trait != sym::Display || !self.width.is_implied() || !self.precision.is_implied()
+    /// Returns true if this format spec is unchanged from the default. e.g. returns true for `{}`,
+    /// `{foo}` and `{2}`, but false for `{:?}`, `{foo:5}` and `{3:.5}`
+    pub fn is_default(&self) -> bool {
+        self.r#trait == sym::Display
+            && self.width.is_implied()
+            && self.precision.is_implied()
+            && self.align == Alignment::AlignUnknown
+            && self.flags == 0
     }
 }
 

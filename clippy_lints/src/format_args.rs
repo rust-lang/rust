@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             if let ExpnKind::Macro(_, name) = outermost_expn_data.kind;
             then {
                 for arg in &format_args.args {
-                    if arg.format.has_string_formatting() {
+                    if !arg.format.is_default() {
                         continue;
                     }
                     if is_aliased(&format_args, arg.param.value.hir_id) {
