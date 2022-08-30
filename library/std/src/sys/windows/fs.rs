@@ -658,18 +658,18 @@ impl File {
 
 /// A buffer for holding directory entries.
 struct DirBuff {
-    buffer: Vec<u8>,
+    buffer: Box<Align8<[u8; Self::BUFFER_SIZE]>>,
 }
 impl DirBuff {
+    const BUFFER_SIZE: usize = 1024;
     fn new() -> Self {
-        const BUFFER_SIZE: usize = 1024;
-        Self { buffer: vec![0_u8; BUFFER_SIZE] }
+        Self { buffer: Box::new(Align8([0u8; Self::BUFFER_SIZE])) }
     }
     fn capacity(&self) -> usize {
-        self.buffer.len()
+        self.buffer.0.len()
     }
     fn as_mut_ptr(&mut self) -> *mut u8 {
-        self.buffer.as_mut_ptr().cast()
+        self.buffer.0.as_mut_ptr().cast()
     }
     /// Returns a `DirBuffIter`.
     fn iter(&self) -> DirBuffIter<'_> {
@@ -678,7 +678,7 @@ impl DirBuff {
 }
 impl AsRef<[u8]> for DirBuff {
     fn as_ref(&self) -> &[u8] {
-        &self.buffer
+        &self.buffer.0
     }
 }
 
@@ -706,9 +706,12 @@ impl<'a> Iterator for DirBuffIter<'a> {
         // used to get the file name slice.
         let (name, is_directory, next_entry) = unsafe {
             let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
+            // Guaranteed to be aligned in documentation for
+            // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
+            assert!(info.is_aligned());
             let next_entry = (*info).NextEntryOffset as usize;
             let name = crate::slice::from_raw_parts(
-                (*info).FileName.as_ptr().cast::<u16>(),
+                ptr::addr_of!((*info).FileName).cast::<u16>(),
                 (*info).FileNameLength as usize / size_of::<u16>(),
             );
             let is_directory = ((*info).FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
