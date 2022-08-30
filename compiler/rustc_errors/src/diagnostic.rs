@@ -100,7 +100,7 @@ into_diagnostic_arg_using_display!(
     MacroRulesNormalizedIdent,
     ParseIntError,
     StackProtector,
-    &TargetTriple,
+    TargetTriple,
     SplitDebuginfo
 );
 
