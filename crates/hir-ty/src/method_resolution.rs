@@ -914,9 +914,6 @@ fn iterate_trait_method_candidates(
     let db = table.db;
     let env = table.trait_env.clone();
     let self_is_array = matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..));
-    // if ty is `dyn Trait`, the trait doesn't need to be in scope
-    let inherent_trait =
-        self_ty.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
     let env_traits = matches!(self_ty.kind(Interner), TyKind::Placeholder(_))
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         .then(|| {
@@ -925,7 +922,7 @@ fn iterate_trait_method_candidates(
         })
         .into_iter()
         .flatten();
-    let traits = inherent_trait.chain(env_traits).chain(traits_in_scope.iter().copied());
+    let traits = env_traits.chain(traits_in_scope.iter().copied());
 
     let canonical_self_ty = table.canonicalize(self_ty.clone()).value;
 
@@ -989,6 +986,23 @@ fn iterate_inherent_methods(
         VisibleFromModule::IncludeBlock(block) => (None, Some(block)),
         VisibleFromModule::None => (None, None),
     };
+
+    // For trait object types, methods of the trait and its super traits are considered inherent
+    // methods. This matters because these trait methods have higher priority than the other
+    // traits' methods, which would be considered in `iterate_trait_method_candidates()` after this
+    // function.
+    let inherent_traits =
+        self_ty.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
+    for t in inherent_traits {
+        let data = db.trait_data(t);
+        for &(_, item) in data.items.iter() {
+            // We don't pass `visible_from_module` as all trait items should be visible from the
+            // trait object.
+            if is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
+                callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
+            }
+        }
+    }
 
     if let Some(block_id) = block {
         if let Some(impls) = db.inherent_impls_in_block(block_id) {
