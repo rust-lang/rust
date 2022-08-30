@@ -1264,7 +1264,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => self.tcx.sess.emit_fatal(InclusiveRangeWithNoEnd { span }),
+            (start, None, Closed) => {
+                self.tcx.sess.emit_err(InclusiveRangeWithNoEnd { span });
+                match start {
+                    Some(..) => hir::LangItem::RangeFrom,
+                    None => hir::LangItem::RangeFull,
+                }
+            }
         };
 
         let fields = self.arena.alloc_from_iter(
