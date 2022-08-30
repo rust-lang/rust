@@ -5,7 +5,6 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import { WorkspaceEdit } from "vscode";
 import { Workspace } from "./ctx";
-import { updateConfig } from "./config";
 import { substituteVariablesInEnv } from "./config";
 import { outputChannel, traceOutputChannel } from "./main";
 import { randomUUID } from "crypto";
@@ -86,11 +85,6 @@ export async function createClient(
 
     let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
 
-    // Update outdated user configs
-    await updateConfig(initializationOptions).catch((err) => {
-        void vscode.window.showErrorMessage(`Failed updating old config keys: ${err.message}`);
-    });
-
     if (workspace.kind === "Detached Files") {
         initializationOptions = {
             detachedFiles: workspace.files.map((file) => file.uri.fsPath),
@@ -105,22 +99,6 @@ export async function createClient(
         traceOutputChannel: traceOutputChannel(),
         outputChannel: outputChannel(),
         middleware: {
-            async handleDiagnostics(uri, diagnostics, next) {
-                // Workaround for https://github.com/microsoft/vscode/issues/155531
-                for (const diagnostic of diagnostics) {
-                    if (!diagnostic.message) {
-                        diagnostic.message = " ";
-                    }
-                    if (diagnostic.relatedInformation) {
-                        for (const relatedInformation of diagnostic.relatedInformation) {
-                            if (!relatedInformation.message) {
-                                relatedInformation.message = " ";
-                            }
-                        }
-                    }
-                }
-                next(uri, diagnostics);
-            },
             async provideHover(
                 document: vscode.TextDocument,
                 position: vscode.Position,

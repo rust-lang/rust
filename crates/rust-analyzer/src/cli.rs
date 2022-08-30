@@ -9,6 +9,7 @@ mod analysis_stats;
 mod diagnostics;
 mod ssr;
 mod lsif;
+mod scip;
 
 mod progress_report;
 
