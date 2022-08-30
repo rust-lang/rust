@@ -710,7 +710,7 @@ pre, .rustdoc.source .example-wrap {
 	top: inherit;
 }
 
-.content table:not(.table-display) {
+.content table {
 	border-spacing: 0 5px;
 }
 .content td { vertical-align: top; }
@@ -763,14 +763,8 @@ pre, .rustdoc.source .example-wrap {
 	margin-left: 20px;
 	margin-top: -34px;
 }
-.content .docblock >.impl-items .table-display {
-	margin: 0;
-}
 .content .docblock >.impl-items table td {
 	padding: 0;
-}
-.content .docblock > .impl-items .table-display {
-	border: none;
 }
 
 .item-info {
@@ -1563,33 +1557,6 @@ kbd {
 	width: 100%;
 }
 
-.table-display {
-	width: 100%;
-	border: 0;
-	border-collapse: collapse;
-	border-spacing: 0;
-	font-size: 1rem;
-}
-
-.table-display tr td:first-child {
-	padding-right: 0;
-}
-
-.table-display tr td:last-child {
-	float: right;
-}
-.table-display .out-of-band {
-	position: relative;
-	font-size: 1.125rem;
-	display: block;
-}
-
-.table-display td:hover .anchor {
-	display: block;
-	top: 2px;
-	left: -5px;
-}
-
 #main-content > ul {
 	padding-left: 10px;
 }
@@ -2081,7 +2048,7 @@ in storage.js plus the media query with (min-width: 701px)
 		height: 73px;
 	}
 
-	#main-content > table:not(.table-display) td {
+	#main-content > table td {
 		word-break: break-word;
 		width: 50%;
 	}
