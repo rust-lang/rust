@@ -1,8 +1,6 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
-use rustc_session::parse::feature_err;
-use rustc_span::sym;
 
 use smallvec::SmallVec;
 
@@ -91,15 +89,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let hir_id = self.lower_node_id(l.id);
         let pat = self.lower_pat(&l.pat);
         let els = if let LocalKind::InitElse(_, els) = &l.kind {
-            if !self.tcx.features().let_else {
-                feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::let_else,
-                    l.span,
-                    "`let...else` statements are unstable",
-                )
-                .emit();
-            }
             Some(self.lower_block(els, false))
         } else {
             None
