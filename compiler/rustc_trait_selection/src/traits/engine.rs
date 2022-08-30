@@ -17,6 +17,7 @@ use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
+    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self>;
 }
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
@@ -25,6 +26,14 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
             Box::new(ChalkFulfillmentContext::new())
         } else {
             Box::new(FulfillmentContext::new())
+        }
+    }
+
+    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
+        if tcx.sess.opts.unstable_opts.chalk {
+            Box::new(ChalkFulfillmentContext::new())
+        } else {
+            Box::new(FulfillmentContext::new_in_snapshot())
         }
     }
 }
@@ -39,6 +48,10 @@ pub struct ObligationCtxt<'a, 'tcx> {
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
+    }
+
+    pub fn new_in_snapshot(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {
