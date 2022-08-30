@@ -1113,7 +1113,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let ident = Ident::new(assoc_item.name, binding.item_name.span);
             let item_segment = hir::PathSegment {
                 ident,
-                hir_id: Some(binding.hir_id),
+                hir_id: binding.hir_id,
                 res: Res::Err,
                 args: Some(binding.gen_args),
                 infer_args: false,

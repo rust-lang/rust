@@ -203,7 +203,7 @@ pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
 
-    pub hir_id: Option<HirId>,
+    pub hir_id: HirId,
 
     pub res: Res,
 
@@ -223,12 +223,12 @@ pub struct PathSegment<'hir> {
 
 impl<'hir> PathSegment<'hir> {
     /// Converts an identifier to the corresponding segment.
-    pub fn from_ident(ident: Ident, res: Res) -> PathSegment<'hir> {
-        PathSegment { ident, hir_id: None, res, infer_args: true, args: None }
+    pub fn from_ident(ident: Ident, hir_id: HirId, res: Res) -> PathSegment<'hir> {
+        PathSegment { ident, hir_id, res, infer_args: true, args: None }
     }
 
     pub fn invalid() -> Self {
-        Self::from_ident(Ident::empty(), Res::Err)
+        Self::from_ident(Ident::empty(), HirId::INVALID, Res::Err)
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
