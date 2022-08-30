@@ -577,6 +577,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(res, base.layout()));
         }
 
+        sym::ptr_mask => {
+            intrinsic_args!(fx, args => (ptr, mask); intrinsic);
+            let ptr = ptr.load_scalar(fx);
+            let mask = mask.load_scalar(fx);
+            fx.bcx.ins().band(ptr, mask);
+        }
+
         sym::transmute => {
             intrinsic_args!(fx, args => (from); intrinsic);
 
