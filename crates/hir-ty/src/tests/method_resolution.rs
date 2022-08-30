@@ -1236,6 +1236,23 @@ fn foo(a: &dyn Trait) {
 }
 
 #[test]
+fn trait_method_priority_for_placeholder_type() {
+    check_types(
+        r#"
+//- minicore: from
+trait Trait {
+    fn into(&self) -> usize { 0 }
+}
+
+fn foo<T: Trait>(a: &T) {
+    let _ = a.into();
+      //^usize
+}
+        "#,
+    );
+}
+
+#[test]
 fn autoderef_visibility_field() {
     check(
         r#"

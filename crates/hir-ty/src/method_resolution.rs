@@ -914,19 +914,10 @@ fn iterate_trait_method_candidates(
     let db = table.db;
     let env = table.trait_env.clone();
     let self_is_array = matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..));
-    let env_traits = matches!(self_ty.kind(Interner), TyKind::Placeholder(_))
-        // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
-        .then(|| {
-            env.traits_in_scope_from_clauses(self_ty.clone())
-                .flat_map(|t| all_super_traits(db.upcast(), t))
-        })
-        .into_iter()
-        .flatten();
-    let traits = env_traits.chain(traits_in_scope.iter().copied());
 
     let canonical_self_ty = table.canonicalize(self_ty.clone()).value;
 
-    'traits: for t in traits {
+    'traits: for &t in traits_in_scope {
         let data = db.trait_data(t);
 
         // Traits annotated with `#[rustc_skip_array_during_method_dispatch]` are skipped during
@@ -976,6 +967,43 @@ fn iterate_inherent_methods(
 ) -> ControlFlow<()> {
     let db = table.db;
     let env = table.trait_env.clone();
+
+    // For trait object types and placeholder types with trait bounds, the methods of the trait and
+    // its super traits are considered inherent methods. This matters because these methods have
+    // higher priority than the other traits' methods, which would be considered in
+    // `iterate_trait_method_candidates()` only after this function.
+    match self_ty.kind(Interner) {
+        TyKind::Placeholder(_) => {
+            let env = table.trait_env.clone();
+            let traits = env
+                .traits_in_scope_from_clauses(self_ty.clone())
+                .flat_map(|t| all_super_traits(db.upcast(), t));
+            iterate_inherent_trait_methods(
+                self_ty,
+                table,
+                name,
+                receiver_ty,
+                receiver_adjustments.clone(),
+                callback,
+                traits,
+            )?;
+        }
+        TyKind::Dyn(_) => {
+            let principal_trait = self_ty.dyn_trait().unwrap();
+            let traits = all_super_traits(db.upcast(), principal_trait);
+            iterate_inherent_trait_methods(
+                self_ty,
+                table,
+                name,
+                receiver_ty,
+                receiver_adjustments.clone(),
+                callback,
+                traits.into_iter(),
+            )?;
+        }
+        _ => {}
+    }
+
     let def_crates = match def_crates(db, self_ty, env.krate) {
         Some(k) => k,
         None => return ControlFlow::Continue(()),
@@ -986,23 +1014,6 @@ fn iterate_inherent_methods(
         VisibleFromModule::IncludeBlock(block) => (None, Some(block)),
         VisibleFromModule::None => (None, None),
     };
-
-    // For trait object types, methods of the trait and its super traits are considered inherent
-    // methods. This matters because these trait methods have higher priority than the other
-    // traits' methods, which would be considered in `iterate_trait_method_candidates()` after this
-    // function.
-    let inherent_traits =
-        self_ty.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    for t in inherent_traits {
-        let data = db.trait_data(t);
-        for &(_, item) in data.items.iter() {
-            // We don't pass `visible_from_module` as all trait items should be visible from the
-            // trait object.
-            if is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
-                callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
-            }
-        }
-    }
 
     if let Some(block_id) = block {
         if let Some(impls) = db.inherent_impls_in_block(block_id) {
@@ -1033,6 +1044,28 @@ fn iterate_inherent_methods(
         )?;
     }
     return ControlFlow::Continue(());
+
+    fn iterate_inherent_trait_methods(
+        self_ty: &Ty,
+        table: &mut InferenceTable<'_>,
+        name: Option<&Name>,
+        receiver_ty: Option<&Ty>,
+        receiver_adjustments: Option<ReceiverAdjustments>,
+        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+        traits: impl Iterator<Item = TraitId>,
+    ) -> ControlFlow<()> {
+        let db = table.db;
+        for t in traits {
+            let data = db.trait_data(t);
+            for &(_, item) in data.items.iter() {
+                // We don't pass `visible_from_module` as all trait items should be visible.
+                if is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
+                    callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    }
 
     fn impls_for_self_ty(
         impls: &InherentImpls,
