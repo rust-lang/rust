@@ -7,8 +7,14 @@
 //! override some of the `handle_` methods. For an example, see `ConstAnalysis`.
 //!
 //! An implementation must also provide a [`Map`]. Before the anaylsis begins, all places that
-//! should be tracked during the analysis must be registered. The set of tracked places cannot be
-//! changed during the analysis.
+//! should be tracked during the analysis must be registered. Currently, the projections of these
+//! places may only contain derefs, fields and downcasts (otherwise registration fails). During the
+//! analysis, no new places can be registered.
+//!
+//! Note that if you want to track values behind references, you have to register the dereferenced
+//! place. For example: Assume `let x = (0, 0)` and that we want to propagate values from `x.0` and
+//! `x.1` also through the assignment `let y = &x`. In this case, we should register `x.0`, `x.1`,
+//! `(*y).0` and `(*y).1`.
 
 use std::fmt::{Debug, Formatter};
 
