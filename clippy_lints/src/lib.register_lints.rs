@@ -171,6 +171,7 @@ store.register_lints(&[
     functions::MUST_USE_CANDIDATE,
     functions::MUST_USE_UNIT,
     functions::NOT_UNSAFE_PTR_ARG_DEREF,
+    functions::RESULT_LARGE_ERR,
     functions::RESULT_UNIT_ERR,
     functions::TOO_MANY_ARGUMENTS,
     functions::TOO_MANY_LINES,
