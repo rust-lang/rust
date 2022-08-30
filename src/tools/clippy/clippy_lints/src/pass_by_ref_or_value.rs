@@ -221,7 +221,7 @@ impl<'tcx> PassByRefOrValue {
                     // if function has a body and parameter is annotated with mut, ignore
                     if let Some(param) = fn_body.and_then(|body| body.params.get(index)) {
                         match param.pat.kind {
-                            PatKind::Binding(BindingAnnotation::Unannotated, _, _, _) => {},
+                            PatKind::Binding(BindingAnnotation::NONE, _, _, _) => {},
                             _ => continue,
                         }
                     }

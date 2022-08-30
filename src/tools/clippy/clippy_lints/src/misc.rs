@@ -5,8 +5,8 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    self as hir, def, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind, Stmt,
-    StmtKind, TyKind,
+    self as hir, def, BinOpKind, BindingAnnotation, Body, ByRef, Expr, ExprKind, FnDecl, HirId, Mutability, PatKind,
+    Stmt, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            if let PatKind::Binding(BindingAnnotation::Ref | BindingAnnotation::RefMut, ..) = arg.pat.kind {
+            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..) = arg.pat.kind {
                 span_lint(
                     cx,
                     TOPLEVEL_REF_ARG,
@@ -162,9 +162,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, stmt.span);
             if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(an, .., name, None) = local.pat.kind;
+            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
-            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;
             then {
                 // use the macro callsite when the init span (but not the whole local span)
                 // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
@@ -173,7 +172,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 } else {
                     Sugg::hir(cx, init, "..")
                 };
-                let (mutopt, initref) = if an == BindingAnnotation::RefMut {
+                let (mutopt, initref) = if mutabl == Mutability::Mut {
                     ("mut ", sugg_init.mut_addr())
                 } else {
                     ("", sugg_init.addr())

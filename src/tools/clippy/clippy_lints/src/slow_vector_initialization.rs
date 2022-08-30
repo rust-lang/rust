@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
             if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(BindingAnnotation::Mutable, local_id, _, None) = local.pat.kind;
+            if let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind;
             if let Some(init) = local.init;
             if let Some(len_arg) = Self::is_vec_with_capacity(cx, init);
 
