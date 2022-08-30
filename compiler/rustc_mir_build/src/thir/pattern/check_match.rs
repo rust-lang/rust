@@ -991,19 +991,19 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     // Report errors if any.
     if !conflicts_mut_mut.is_empty() {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        let mut err = sess
-            .struct_span_err(pat.span, "cannot borrow value as mutable more than once at a time");
-        err.span_label(binding_span, format!("first mutable borrow, by `{}`, occurs here", name));
+        let mut occurences = vec![];
+
         for (span, name) in conflicts_mut_mut {
-            err.span_label(span, format!("another mutable borrow, by `{}`, occurs here", name));
+            occurences.push(MultipleMutBorrowOccurence::Mutable { span, name_mut: name });
         }
         for (span, name) in conflicts_mut_ref {
-            err.span_label(span, format!("also borrowed as immutable, by `{}`, here", name));
+            occurences.push(MultipleMutBorrowOccurence::Immutable { span, name_immut: name });
         }
         for (span, name) in conflicts_move {
-            err.span_label(span, format!("also moved into `{}` here", name));
+            occurences.push(MultipleMutBorrowOccurence::Moved { span, name_moved: name });
         }
-        err.emit();
+
+        sess.emit_err(MultipleMutBorrows { span: pat.span, binding_span, occurences, name });
     } else if !conflicts_mut_ref.is_empty() {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         let (primary, also) = match mut_outer {
