@@ -308,12 +308,15 @@ pub fn make_format_args(
                     .iter()
                     .position(|arg| arg.1.ident().is_some_and(|id| id.name == name))
                 {
+                    // Name found in `args`, so we resolve it to its index in that Vec.
                     let index = start_of_named_args + i;
                     if !matches!(args[index].1, FormatArgKind::Captured(_)) {
+                        // Mark it as used, if it was an explicit argument.
                         used[index] = true;
                     }
                     Ok(index)
                 } else {
+                    // Name not found in `args`, so we add it as an implicitly captured argument.
                     let span = span.unwrap_or(fmt_span);
                     let ident = Ident::new(name, span);
                     let arg = if is_literal {
