@@ -2210,12 +2210,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         && let [
                             ..,
                             trait_path_segment @ hir::PathSegment {
-                                res: Some(rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, trait_id)),
+                                res: rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, trait_id),
                                 ..
                             },
                             hir::PathSegment {
                                 ident: assoc_item_name,
-                                res: Some(rustc_hir::def::Res::Def(_, item_id)),
+                                res: rustc_hir::def::Res::Def(_, item_id),
                                 ..
                             }
                         ] = path.segments

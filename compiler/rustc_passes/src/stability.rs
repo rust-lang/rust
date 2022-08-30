@@ -832,7 +832,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 // added, such as `core::intrinsics::transmute`
                 let parents = path.segments.iter().rev().skip(1);
                 for path_segment in parents {
-                    if let Some(def_id) = path_segment.res.as_ref().and_then(Res::opt_def_id) {
+                    if let Some(def_id) = path_segment.res.opt_def_id() {
                         // use `None` for id to prevent deprecation check
                         self.tcx.check_stability_allow_unstable(
                             def_id,

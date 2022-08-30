@@ -1776,12 +1776,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binding: hir::HirId,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
+        let res = Res::Local(binding);
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
                 span: self.lower_span(span),
-                res: Res::Local(binding),
-                segments: arena_vec![self; hir::PathSegment::from_ident(ident)],
+                res,
+                segments: arena_vec![self; hir::PathSegment::from_ident(ident, res)],
             }),
         ));
 

@@ -610,12 +610,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
             match arg.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
-                    [
-                        PathSegment {
-                            res: Some(Res::SelfTy { trait_: _, alias_to: impl_ref }),
-                            ..
-                        },
-                    ] => {
+                    [PathSegment { res: Res::SelfTy { trait_: _, alias_to: impl_ref }, .. }] => {
                         let impl_ty_name =
                             impl_ref.map(|(def_id, _)| self.tcx.def_path_str(def_id));
                         self.selftys.push((path.span, impl_ty_name));

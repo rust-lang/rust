@@ -957,7 +957,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         path.segments
             .iter()
             .filter_map(move |segment| {
-                let res = segment.res?;
+                let res = segment.res;
                 let generics_def_id = tcx.res_generics_def_id(res)?;
                 let generics = tcx.generics_of(generics_def_id);
                 if generics.has_impl_trait() {

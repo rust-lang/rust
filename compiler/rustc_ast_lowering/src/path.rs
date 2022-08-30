@@ -259,7 +259,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::PathSegment {
             ident: self.lower_ident(segment.ident),
             hir_id: Some(id),
-            res: Some(self.lower_res(res)),
+            res: self.lower_res(res),
             infer_args,
             args: if generic_args.is_empty() && generic_args.span.is_empty() {
                 None
