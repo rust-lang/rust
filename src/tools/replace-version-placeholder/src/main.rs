@@ -14,7 +14,7 @@ fn main() {
             walk::filter_dirs(path)
                 // We exempt these as they require the placeholder
                 // for their operation
-                || path.ends_with("compiler/rustc_passes/src/lib_features.rs")
+                || path.ends_with("compiler/rustc_attr/src/builtin.rs")
                 || path.ends_with("src/tools/tidy/src/features/version.rs")
                 || path.ends_with("src/tools/replace-version-placeholder")
         },
