@@ -534,7 +534,6 @@ impl Build {
         let rust_submodules = [
             "src/tools/rust-installer",
             "src/tools/cargo",
-            "src/tools/rls",
             "src/tools/miri",
             "library/backtrace",
             "library/stdarch",
