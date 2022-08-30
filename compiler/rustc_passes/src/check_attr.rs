@@ -173,9 +173,7 @@ impl CheckAttrVisitor<'_> {
                 sym::no_implicit_prelude => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
                 }
-                sym::rustc_object_lifetime_default => {
-                    self.check_object_lifetime_default(hir_id, span)
-                }
+                sym::rustc_object_lifetime_default => self.check_object_lifetime_default(hir_id),
                 _ => {}
             }
 
@@ -415,26 +413,21 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Debugging aid for `object_lifetime_default` query.
-    fn check_object_lifetime_default(&self, hir_id: HirId, span: Span) {
+    fn check_object_lifetime_default(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
-            let object_lifetime_default_reprs: String = generics
-                .params
-                .iter()
-                .filter_map(|p| {
-                    let param_id = tcx.hir().local_def_id(p.hir_id);
-                    let default = tcx.object_lifetime_default(param_id)?;
-                    Some(match default {
-                        ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
-                        ObjectLifetimeDefault::Static => "'static".to_owned(),
-                        ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
-                        ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
-                    })
-                })
-                .collect::<Vec<String>>()
-                .join(",");
-
-            tcx.sess.span_err(span, &object_lifetime_default_reprs);
+            for p in generics.params {
+                let hir::GenericParamKind::Type { .. } = p.kind else { continue };
+                let param_id = tcx.hir().local_def_id(p.hir_id);
+                let default = tcx.object_lifetime_default(param_id);
+                let repr = match default {
+                    ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
+                    ObjectLifetimeDefault::Static => "'static".to_owned(),
+                    ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                    ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+                };
+                tcx.sess.span_err(p.span, &repr);
+            }
         }
     }
 

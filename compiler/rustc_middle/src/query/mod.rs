@@ -1593,12 +1593,13 @@ rustc_queries! {
     query is_late_bound_map(_: LocalDefId) -> Option<&'tcx FxIndexSet<LocalDefId>> {
         desc { "testing if a region is late bound" }
     }
-    /// For a given item (like a struct), gets the default lifetimes to be used
+    /// For a given item's generic parameter, gets the default lifetimes to be used
     /// for each parameter if a trait object were to be passed for that parameter.
-    /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
-    /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
-    query object_lifetime_default(key: DefId) -> Option<ObjectLifetimeDefault> {
-        desc { "looking up lifetime defaults for generic parameter `{:?}`", key }
+    /// For example, for `T` in `struct Foo<'a, T>`, this would be `'static`.
+    /// For `T` in `struct Foo<'a, T: 'a>`, this would instead be `'a`.
+    /// This query will panic if passed something that is not a type parameter.
+    query object_lifetime_default(key: DefId) -> ObjectLifetimeDefault {
+        desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
     query late_bound_vars_map(_: LocalDefId)
