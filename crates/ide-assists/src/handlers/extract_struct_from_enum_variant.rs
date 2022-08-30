@@ -105,7 +105,8 @@ pub(crate) fn extract_struct_from_enum_variant(
                 .generic_param_list()
                 .and_then(|known_generics| extract_generic_params(&known_generics, &field_list));
             let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
-            let def = create_struct_def(variant_name.clone(), &field_list, generics, &enum_ast);
+            let def =
+                create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
 
             let enum_ast = variant.parent_enum();
             let indent = enum_ast.indent_level();
@@ -228,6 +229,7 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
 
 fn create_struct_def(
     name: ast::Name,
+    variant: &ast::Variant,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     generics: Option<ast::GenericParamList>,
     enum_: &ast::Enum,
@@ -271,6 +273,12 @@ fn create_struct_def(
     field_list.reindent_to(IndentLevel::single());
 
     let strukt = make::struct_(enum_vis, name, generics, field_list).clone_for_update();
+
+    // take comments from variant
+    ted::insert_all(
+        ted::Position::first_child_of(strukt.syntax()),
+        take_all_comments(variant.syntax()),
+    );
 
     // copy attributes from enum
     ted::insert_all(
@@ -338,6 +346,31 @@ fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList
     }
 
     Some(())
+}
+
+// Note: this also detaches whitespace after comments,
+// since `SyntaxNode::splice_children` (and by extension `ted::insert_all_raw`)
+// detaches nodes. If we only took the comments, we'd leave behind the old whitespace.
+fn take_all_comments(node: &SyntaxNode) -> Vec<SyntaxElement> {
+    let mut remove_next_ws = false;
+    node.children_with_tokens()
+        .filter_map(move |child| match child.kind() {
+            COMMENT => {
+                remove_next_ws = true;
+                child.detach();
+                Some(child)
+            }
+            WHITESPACE if remove_next_ws => {
+                remove_next_ws = false;
+                child.detach();
+                Some(make::tokens::single_newline().into())
+            }
+            _ => {
+                remove_next_ws = false;
+                None
+            }
+        })
+        .collect()
 }
 
 fn apply_references(
@@ -602,7 +635,7 @@ enum A { One(One) }"#,
     }
 
     #[test]
-    fn test_extract_struct_keep_comments_and_attrs_on_variant_struct() {
+    fn test_extract_struct_move_struct_variant_comments() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"
@@ -616,14 +649,14 @@ enum A {
     }
 }"#,
             r#"
+/* comment */
+// other
+/// comment
 struct One{
     a: u32
 }
 
 enum A {
-    /* comment */
-    // other
-    /// comment
     #[attr]
     One(One)
 }"#,
@@ -631,7 +664,7 @@ enum A {
     }
 
     #[test]
-    fn test_extract_struct_keep_comments_and_attrs_on_variant_tuple() {
+    fn test_extract_struct_move_tuple_variant_comments() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"
@@ -643,12 +676,12 @@ enum A {
     $0One(u32, u32)
 }"#,
             r#"
+/* comment */
+// other
+/// comment
 struct One(u32, u32);
 
 enum A {
-    /* comment */
-    // other
-    /// comment
     #[attr]
     One(One)
 }"#,
