@@ -576,3 +576,37 @@ pub struct BorrowOfMovedValue<'tcx> {
     pub name: Ident,
     pub ty: Ty<'tcx>,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::multiple_mut_borrows)]
+pub struct MultipleMutBorrows {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub binding_span: Span,
+    #[subdiagnostic]
+    pub occurences: Vec<MultipleMutBorrowOccurence>,
+    pub name: Ident,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum MultipleMutBorrowOccurence {
+    #[label(mir_build::mutable_borrow)]
+    Mutable {
+        #[primary_span]
+        span: Span,
+        name_mut: Ident,
+    },
+    #[label(mir_build::immutable_borrow)]
+    Immutable {
+        #[primary_span]
+        span: Span,
+        name_immut: Ident,
+    },
+    #[label(mir_build::moved)]
+    Moved {
+        #[primary_span]
+        span: Span,
+        name_moved: Ident,
+    },
+}

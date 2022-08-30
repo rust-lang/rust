@@ -292,3 +292,9 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .label = value moved into `{$name}` here
     .occurs_because_label = move occurs because `{$name}` has type `{$ty}` which does not implement the `Copy` trait
     .value_borrowed_label = value borrowed here after move
+
+mir_build_multiple_mut_borrows = cannot borrow value as mutable more than once at a time
+    .label = first mutable borrow, by `{$name}`, occurs here
+    .mutable_borrow = another mutable borrow, by `{$name_mut}`, occurs here
+    .immutable_borrow = also borrowed as immutable, by `{$name_immut}`, here
+    .moved = also moved into `{$name_moved}` here
