@@ -33,11 +33,11 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "1", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE]], line: 18,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "2", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE]], line: 18,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "3", scope: [[VARIANT]],
