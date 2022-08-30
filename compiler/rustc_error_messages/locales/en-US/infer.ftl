@@ -137,3 +137,34 @@ infer_lifetime_param_suggestion = consider introducing a named lifetime paramete
     *[false] {""}
 }
 infer_lifetime_param_suggestion_elided = each elided lifetime in input position becomes a distinct lifetime
+
+infer_region_explanation = {$pref_kind ->
+    *[should_not_happen] [{$pref_kind}]
+    [empty] {""}
+}{$pref_kind ->
+    [empty] {""}
+    *[other] {" "}
+}{$desc_kind ->
+    *[should_not_happen] [{$desc_kind}]
+    [restatic] the static lifetime
+    [reempty] the empty lifetime
+    [reemptyuni] the empty lifetime in universe {$desc_arg}
+    [revar] lifetime {$desc_arg}
+
+    [as_defined] the lifetime `{$desc_arg}` as defined here
+    [as_defined_anon] the anonymous lifetime as defined here
+    [defined_here] the anonymous lifetime defined here
+    [anon_num_here] the anonymous lifetime #{$desc_num_arg} defined here
+    [defined_here_reg] the lifetime `{$desc_arg}` as defined here
+}{$suff_kind ->
+    *[should_not_happen] [{$suff_kind}]
+    [empty]{""}
+    [continues] ...
+}
+
+infer_mismatched_static_lifetime = incompatible lifetime on type
+infer_msl_impl_note = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
+infer_msl_introduces_static = introduces a `'static` lifetime requirement
+infer_msl_unmet_req = because this has an unmet lifetime requirement
+infer_msl_trait_note = this has an implicit `'static` lifetime requirement
+infer_msl_trait_sugg = consider relaxing the implicit `'static` requirement
