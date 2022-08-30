@@ -195,7 +195,7 @@ pub struct AddressOfTemporaryTaken {
 }
 
 #[derive(SessionSubdiagnostic)]
-pub enum AddReturnTypeSuggestion<'tcx> {
+pub enum AddReturnTypeSuggestion {
     #[suggestion(
         typeck::add_return_type_add,
         code = "-> {found} ",
@@ -204,7 +204,7 @@ pub enum AddReturnTypeSuggestion<'tcx> {
     Add {
         #[primary_span]
         span: Span,
-        found: Ty<'tcx>,
+        found: String,
     },
     #[suggestion(
         typeck::add_return_type_missing_here,
