@@ -4,7 +4,7 @@ use rustc_span::Span;
 #[derive(SessionDiagnostic)]
 #[diag(codegen_gcc::ranlib_failure)]
 pub(crate) struct RanlibFailure {
-    pub exit_code: Option<i32>
+    pub exit_code: String,
 }
 
 #[derive(SessionDiagnostic)]
