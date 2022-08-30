@@ -184,10 +184,10 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
+        Definition::SelfType(it) => it.resolve_doc_path(db, link, ns),
         Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
-        | Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_)
