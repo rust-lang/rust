@@ -394,7 +394,7 @@ impl File {
             if attr.file_type().is_reparse_point() {
                 let mut b = AlignedReparseBuf::new([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    attr.reparse_tag = buf.ReparseTag;
+                    attr.reparse_tag = (*buf).ReparseTag;
                 }
             }
             Ok(attr)
@@ -1345,9 +1345,10 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let h = f.as_inner().as_raw_handle();
 
     unsafe {
-        let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        let db = data.as_mut_ptr() as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-        let buf = &mut (*db).ReparseTarget as *mut c::WCHAR;
+        let mut data = AlignedReparseBuf::new([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let data_ptr = data.value.as_mut_ptr();
+        let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
+        let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
         let mut i = 0;
         // FIXME: this conversion is very hacky
         let v = br"\??\";
@@ -1367,7 +1368,7 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
         cvt(c::DeviceIoControl(
             h as *mut _,
             c::FSCTL_SET_REPARSE_POINT,
-            data.as_ptr() as *mut _,
+            data_ptr.cast(),
             (*db).ReparseDataLength + 8,
             ptr::null_mut(),
             0,
