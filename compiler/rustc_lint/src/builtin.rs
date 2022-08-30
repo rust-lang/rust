@@ -2469,6 +2469,15 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Char if init == InitKind::Uninit => {
                     Some(("characters must be a valid Unicode codepoint".to_string(), None))
                 }
+                Int(_) | Uint(_) if init == InitKind::Uninit => {
+                    Some(("integers must not be uninitialized".to_string(), None))
+                }
+                Float(_) if init == InitKind::Uninit => {
+                    Some(("floats must not be uninitialized".to_string(), None))
+                }
+                RawPtr(_) if init == InitKind::Uninit => {
+                    Some(("raw pointers must not be uninitialized".to_string(), None))
+                }
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     // First check if this ADT has a layout attribute (like `NonNull` and friends).
