@@ -21,7 +21,6 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 
 ; CHECK: define double @test_derivative(double %x)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = tail call fast double @expm1(double %x)
-; CHECK-NEXT:   %1 = fadd fast double %0, 1.000000e+00
-; CHECK-NEXT:   ret double %1
+; CHECK-NEXT:   %0 = tail call fast double @llvm.exp.f64(double %x)
+; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }

@@ -34,6 +34,19 @@ class Attribute<string name_> {
   string name = name_;
 }
 
+// So we can also extend it by not input related 
+// types, eg. for mem related Intrinsics
+class TypeInfo {
+}
+
+class TypeOf<string val> : TypeInfo {
+}
+
+class Intrinsic<string name_, list<dag> types_> {
+  string name = name_;
+  list<dag> types = types_;
+}
+
 def ReadNone : Attribute<"ReadNone">;
 def ReadOnly : Attribute<"ReadOnly">;
 def NoUnwind : Attribute<"NoUnwind">;
@@ -110,9 +123,22 @@ def : CallPattern<(Op $x),
 def : CallPattern<(Op $x),
                   ["tan", "tanf", "tanl"],
                   [(FMul (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), (FMul(Call<(SameFunc), [ReadNone,NoUnwind]> $x):$c, $c)))]>;
-
-// TODO replace with intrinsic call to exp
+def : CallPattern<(Op $x, $y),
+                  ["remainder"],
+                  [
+                    (DiffeRet<"">),
+                    (FMul (FNeg (DiffeRet<"">)), (Intrinsic<"round", [(TypeOf<""> $x)]> (FDiv $x, $y)))
+                  ]
+                  >;
+def : CallPattern<(Op $x),
+                  ["asin", "asinf", "asinl"],
+                  [(FDiv (DiffeRet<"">), (Intrinsic<"sqrt", [(TypeOf<""> $x)]> (FSub (ConstantFP<"1.0"> $x), (FMul $x, $x)))  )]                  
+                  >;
+def : CallPattern<(Op $x),
+                  ["log1p", "log1pf", "log1pl"],
+                  [(FDiv (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), $x))]
+                  >;
 def : CallPattern<(Op $x),
                   ["expm1"],
-                  [(FMul (FAdd (ConstantFP<"1.0"> $x), (Call<(SameFunc), [ReadNone,NoUnwind]> $x) ), (DiffeRet<"">))]
+                  [(FMul (Intrinsic<"exp", [(TypeOf<""> $x)]> $x), (DiffeRet<"">))]
                   >;

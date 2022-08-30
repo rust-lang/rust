@@ -62,8 +62,8 @@ void getFunction(raw_ostream &os, std::string callval, std::string FT,
       return;
     }
     if (opName == "SameTypesFunc" || Def->isSubClassOf("SameTypesFunc")) {
-      os << "  auto " << FT << " = orig->getFunctionType();\n";
-      os << "  auto " << callval
+      os << " auto " << FT << " = orig->getFunctionType();\n";
+      os << " auto " << callval
          << " = gutils->oldFunc->getParent()->getOrInsertFunction(";
       os << Def->getValueInit("name")->getAsString();
       os << ", " << FT << ", called->getAttributes())\n";
@@ -76,6 +76,27 @@ void getFunction(raw_ostream &os, std::string callval, std::string FT,
     }
   }
   assert(0 && "Unhandled function");
+}
+void getIntrinsic(raw_ostream &os, std::string callval, std::string FT,
+                  std::string cconv, StringRef intrName, ListInit *typeInit,
+                  StringMap<std::string> &nameToOrdinal) {
+  os << " Type *tys[] = {";
+  bool first = true;
+  for (auto intrType : *typeInit) {
+    auto arg = cast<DagInit>(intrType);
+    assert(arg->getNumArgs() == 1 && "Only one arg allowed");
+    auto name = arg->getArgNameStr(0);
+    auto num = nameToOrdinal.lookup(name);
+    os << ((first) ? "" : ", ") << num << "->getType()";
+    first = false;
+  }
+  os << "};\n"
+     << " Function *" << callval
+     << " = Intrinsic::getDeclaration(called->getParent(), "
+        "Intrinsic::"
+     << intrName << ", tys);\n";
+  os << "  auto " << FT << " = " << callval << "->getFunctionType();\n";
+  os << "  auto " << cconv << " = orig->getCallingConv();\n";
 }
 
 // Returns whether value generated is a vector value or not.
@@ -195,8 +216,16 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
         nameToOrdinal.erase(pair.getKey());
     }
 
-    if (opName == "Call" || Def->isSubClassOf("Call")) {
+    bool isCall = opName == "Call" || Def->isSubClassOf("Call");
+    bool isIntr = opName == "Intrinsic" || Def->isSubClassOf("Intrinsic");
+
+    if (isCall) {
       getFunction(os, "callval", "FT", "cconv", Def->getValueInit("func"));
+    } else if (isIntr) {
+      auto intrName = Def->getValueAsString("name");
+      auto intrTypes = Def->getValueAsListInit("types");
+      getIntrinsic(os, "callval", "FT", "cconv", intrName, intrTypes,
+                   nameToOrdinal);
     }
 
     os << " Value *res = nullptr;\n";
@@ -205,7 +234,7 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
       os << " if (gutils->getWidth() == 1) { \n";
     }
 
-    if (opName == "Call" || Def->isSubClassOf("Call")) {
+    if (isCall || isIntr) {
       os << " CallInst *cubcall = cast<CallInst>(" << builder
          << ".CreateCall(FT, callval, ArrayRef<Value*>({";
     } else {
@@ -216,13 +245,13 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
         os << ", ";
       os << "args[" << i << "]";
     }
-    if (opName == "Call" || Def->isSubClassOf("Call"))
+    if (isCall || isIntr)
       os << "})";
     os << ")";
-    if (opName == "Call" || Def->isSubClassOf("Call"))
+    if (isCall || isIntr)
       os << ")";
     os << ";\n";
-    if (opName == "Call" || Def->isSubClassOf("Call")) {
+    if (isCall) {
       os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->"
             "getDebugLoc()));\n";
       os << " cubcall->setCallingConv(cconv);\n";
@@ -239,12 +268,17 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
         os << "#endif\n";
       }
       os << " res = cubcall;\n";
+    } else if (isIntr) {
+      os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->"
+            "getDebugLoc()));\n";
+      os << " cubcall->setCallingConv(cconv);\n";
+      os << " res = cubcall;\n";
     }
     if (anyVector) {
       os << " } else {\n";
       os << " for(unsigned int idx=0, W=gutils->getWidth(); idx<W; idx++) {\n";
 
-      if (opName == "Call" || Def->isSubClassOf("Call")) {
+      if (isCall || isIntr) {
         os << " CallInst *V = cast<CallInst>(" << builder
            << ".CreateCall(FT, callval, ArrayRef<Value*>({";
       } else {
@@ -258,15 +292,15 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
         else
           os << "args[" << i << "]";
       }
-      if (opName == "Call" || Def->isSubClassOf("Call"))
+      if (isCall || isIntr)
         os << "})";
       os << ")";
-      if (opName == "Call" || Def->isSubClassOf("Call")) {
+      if (isCall || isIntr) {
         os << ")";
       }
       os << ";\n";
 
-      if (opName == "Call" || Def->isSubClassOf("Call")) {
+      if (isCall) {
         os << "   "
               "V->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));"
               "\n";
@@ -283,6 +317,12 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
              << attrDef->getValueInit("name")->getAsUnquotedString() << ");\n";
           os << "#endif \n";
         }
+      }
+      if (isIntr) {
+        os << "   "
+              "V->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));"
+              "\n";
+        os << "   V->setCallingConv(cconv);\n";
       }
       os << "   if (res == nullptr) res = "
             "UndefValue::get(ArrayType::get(V->getType(), "
