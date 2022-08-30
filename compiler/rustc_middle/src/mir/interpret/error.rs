@@ -401,14 +401,18 @@ impl fmt::Display for UndefinedBehaviorInfo {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// Encountered a pointer where we needed raw bytes.
-    ReadPointerAsBytes,
     /// Overwriting parts of a pointer; the resulting state cannot be represented in our
     /// `Allocation` data structure. See <https://github.com/rust-lang/miri/issues/2181>.
     PartialPointerOverwrite(Pointer<AllocId>),
+    /// Attempting to `copy` parts of a pointer to somewhere else; the resulting state cannot be
+    /// represented in our `Allocation` data structure. See
+    /// <https://github.com/rust-lang/miri/issues/2181>.
+    PartialPointerCopy(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
+    /// Encountered a pointer where we needed raw bytes.
+    ReadPointerAsBytes,
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
@@ -420,10 +424,13 @@ impl fmt::Display for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{msg}"),
-            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
             PartialPointerOverwrite(ptr) => {
                 write!(f, "unable to overwrite parts of a pointer in memory at {ptr:?}")
             }
+            PartialPointerCopy(ptr) => {
+                write!(f, "unable to copy parts of a pointer from memory at {ptr:?}")
+            }
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({did:?})"),
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({did:?})"),
         }

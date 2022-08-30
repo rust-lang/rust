@@ -55,9 +55,10 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:27:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) };
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 8, align: 4) {
                ╾─ALLOC_ID─╼ 04 00 00 00                         │ ╾──╼....
            }
@@ -170,9 +171,10 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/forbidden_slices.rs:57:1
    |
 LL | pub static R5: &[u8] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 8, align: 4) {
                ╾ALLOC_ID─╼ 04 00 00 00                         │ ╾──╼....
            }

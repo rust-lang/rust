@@ -4,12 +4,12 @@ error: any use of this value will cause an error
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         unable to turn pointer into raw bytes
+   |         unable to copy parts of a pointer from memory at ALLOC
    |         inside `std::ptr::read::<u8>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |         inside `ptr::const_ptr::<impl *const u8>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |         inside `C` at $DIR/issue-miri-1910.rs:7:5
+   |         inside `C` at $DIR/issue-miri-1910.rs:8:5
    |
-  ::: $DIR/issue-miri-1910.rs:4:1
+  ::: $DIR/issue-miri-1910.rs:5:1
    |
 LL | const C: () = unsafe {
    | -----------
@@ -17,6 +17,8 @@ LL | const C: () = unsafe {
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error: aborting due to previous error
 
@@ -27,12 +29,12 @@ error: any use of this value will cause an error
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
-   |         unable to turn pointer into raw bytes
+   |         unable to copy parts of a pointer from memory at ALLOC
    |         inside `std::ptr::read::<u8>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |         inside `ptr::const_ptr::<impl *const u8>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |         inside `C` at $DIR/issue-miri-1910.rs:7:5
+   |         inside `C` at $DIR/issue-miri-1910.rs:8:5
    |
-  ::: $DIR/issue-miri-1910.rs:4:1
+  ::: $DIR/issue-miri-1910.rs:5:1
    |
 LL | const C: () = unsafe {
    | -----------
@@ -40,4 +42,6 @@ LL | const C: () = unsafe {
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 

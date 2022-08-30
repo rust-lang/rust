@@ -214,7 +214,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.allocate_raw_ptr(alloc, kind).unwrap()
     }
 
-    /// This can fail only of `alloc` contains relocations.
+    /// This can fail only of `alloc` contains provenance.
     pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
@@ -794,10 +794,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             todo.extend(static_roots);
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
-                    // This is a new allocation, add its relocations to `todo`.
+                    // This is a new allocation, add the allocation it points to to `todo`.
                     if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
                         todo.extend(
-                            alloc.relocations().values().filter_map(|prov| prov.get_alloc_id()),
+                            alloc.provenance().values().filter_map(|prov| prov.get_alloc_id()),
                         );
                     }
                 }
@@ -833,7 +833,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Prov, Extra>,
         ) -> std::fmt::Result {
-            for alloc_id in alloc.relocations().values().filter_map(|prov| prov.get_alloc_id()) {
+            for alloc_id in alloc.provenance().values().filter_map(|prov| prov.get_alloc_id()) {
                 allocs_to_print.push_back(alloc_id);
             }
             write!(fmt, "{}", display_allocation(tcx, alloc))
@@ -953,24 +953,25 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn check_bytes(&self, range: AllocRange) -> InterpResult<'tcx> {
+    pub fn get_bytes_strip_provenance<'b>(&'b self) -> InterpResult<'tcx, &'a [u8]> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range))
+            .get_bytes_strip_provenance(&self.tcx, self.range)
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 
-    /// Returns whether the allocation has relocations for the entire range of the `AllocRef`.
-    pub(crate) fn has_relocations(&self) -> bool {
-        self.alloc.has_relocations(&self.tcx, self.range)
+    /// Returns whether the allocation has provenance anywhere in the range of the `AllocRef`.
+    pub(crate) fn has_provenance(&self) -> bool {
+        self.alloc.range_has_provenance(&self.tcx, self.range)
     }
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Reads the given number of bytes from memory. Returns them as a slice.
+    /// Reads the given number of bytes from memory, and strips their provenance if possible.
+    /// Returns them as a slice.
     ///
     /// Performs appropriate bounds checks.
-    pub fn read_bytes_ptr(
+    pub fn read_bytes_ptr_strip_provenance(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
@@ -983,7 +984,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (We are staying inside the bounds here so all is good.)
         Ok(alloc_ref
             .alloc
-            .get_bytes(&alloc_ref.tcx, alloc_ref.range)
+            .get_bytes_strip_provenance(&alloc_ref.tcx, alloc_ref.range)
             .map_err(|e| e.to_interp_error(alloc_ref.alloc_id))?)
     }
 
@@ -1078,17 +1079,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         };
 
-        // This checks relocation edges on the src, which needs to happen before
-        // `prepare_relocation_copy`.
-        let src_bytes = src_alloc
-            .get_bytes_with_uninit_and_ptr(&tcx, src_range)
-            .map_err(|e| e.to_interp_error(src_alloc_id))?
-            .as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
-        // first copy the relocations to a temporary buffer, because
-        // `get_bytes_mut` will clear the relocations, which is correct,
-        // since we don't want to keep any relocations at the target.
-        let relocations =
-            src_alloc.prepare_relocation_copy(self, src_range, dest_offset, num_copies);
+        // Checks provenance edges on the src, which needs to happen before
+        // `prepare_provenance_copy`.
+        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.start, Size::ZERO)) {
+            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.start)));
+        }
+        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.end(), Size::ZERO)) {
+            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.end())));
+        }
+        let src_bytes = src_alloc.get_bytes_unchecked(src_range).as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
+        // first copy the provenance to a temporary buffer, because
+        // `get_bytes_mut` will clear the provenance, which is correct,
+        // since we don't want to keep any provenance at the target.
+        let provenance =
+            src_alloc.prepare_provenance_copy(self, src_range, dest_offset, num_copies);
         // Prepare a copy of the initialization mask.
         let compressed = src_alloc.compress_uninit_range(src_range);
 
@@ -1117,7 +1121,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             dest_alloc
                 .write_uninit(&tcx, dest_range)
                 .map_err(|e| e.to_interp_error(dest_alloc_id))?;
-            // We can forget about the relocations, this is all not initialized anyway.
+            // We can forget about the provenance, this is all not initialized anyway.
             return Ok(());
         }
 
@@ -1161,8 +1165,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             alloc_range(dest_offset, size), // just a single copy (i.e., not full `dest_range`)
             num_copies,
         );
-        // copy the relocations to the destination
-        dest_alloc.mark_relocation_range(relocations);
+        // copy the provenance to the destination
+        dest_alloc.mark_provenance_range(provenance);
 
         Ok(())
     }
