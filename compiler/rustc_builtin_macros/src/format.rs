@@ -285,26 +285,21 @@ pub fn make_format_args(
      -> FormatArgPosition {
         let index = match arg {
             Index(index) => {
-                if let Some((_, arg_kind)) = args.get(index) {
-                    match arg_kind {
-                        FormatArgKind::Normal => {
-                            used[index] = true;
-                            Ok(index)
-                        }
-                        FormatArgKind::Named(_) => {
-                            used[index] = true;
-                            numeric_refences_to_named_arg.push((index, span, used_as));
-                            Ok(index)
-                        }
-                        FormatArgKind::Captured(_) => {
-                            // Doesn't exist as an explicit argument.
-                            invalid_refs.push((index, span, used_as, kind));
-                            Err(index)
-                        }
+                match args.get(index) {
+                    Some((_, FormatArgKind::Normal)) => {
+                        used[index] = true;
+                        Ok(index)
                     }
-                } else {
-                    invalid_refs.push((index, span, used_as, kind));
-                    Err(index)
+                    Some((_, FormatArgKind::Named(_))) => {
+                        used[index] = true;
+                        numeric_refences_to_named_arg.push((index, span, used_as));
+                        Ok(index)
+                    }
+                    Some((_, FormatArgKind::Captured(_))) | None => {
+                        // Doesn't exist as an explicit argument.
+                        invalid_refs.push((index, span, used_as, kind));
+                        Err(index)
+                    }
                 }
             }
             Name(name, span) => {
