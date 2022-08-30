@@ -267,16 +267,16 @@ pub fn make_format_args(
         })
     };
 
+    let num_explicit_args = args.len();
+    let mut used = vec![false; num_explicit_args];
+    let mut invalid_refs = Vec::new();
+    let mut numeric_refences_to_named_arg = Vec::new();
+
     enum ArgRef<'a> {
         Index(usize),
         Name(&'a str, Option<Span>),
     }
     use ArgRef::*;
-
-    let num_explicit_args = args.len();
-    let mut used = vec![false; num_explicit_args];
-    let mut invalid_refs = Vec::new();
-    let mut numeric_refences_to_named_arg = Vec::new();
 
     let mut lookup_arg = |arg: ArgRef<'_>,
                           span: Option<Span>,
