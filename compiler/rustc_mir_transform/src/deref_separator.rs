@@ -82,6 +82,5 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 impl<'tcx> MirPass<'tcx> for Derefer {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         deref_finder(tcx, body);
-        body.phase = MirPhase::Derefered;
     }
 }

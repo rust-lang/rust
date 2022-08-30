@@ -26,7 +26,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
+use rustc_middle::mir::{
+    traversal, AnalysisPhase, Body, ConstQualifs, MirPass, MirPhase, Promoted, RuntimePhase,
+};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 
@@ -200,6 +202,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 }
 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
+/// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
+/// We used to have this for pre-miri MIR based const eval.
 fn mir_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
@@ -235,7 +239,6 @@ fn mir_const<'tcx>(
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck, // Just a lint
-            &marker::PhaseChange(MirPhase::Const),
         ],
     );
     tcx.alloc_steal_mir(body)
@@ -341,7 +344,10 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
             pm::run_passes(
                 tcx,
                 &mut body,
-                &[&const_prop::ConstProp, &marker::PhaseChange(MirPhase::Optimized)],
+                &[
+                    &const_prop::ConstProp,
+                    &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
+                ],
             );
         }
     }
@@ -381,38 +387,61 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         body.tainted_by_errors = Some(error_reported);
     }
 
-    // IMPORTANT
-    pm::run_passes(tcx, &mut body, &[&remove_false_edges::RemoveFalseEdges]);
+    run_analysis_to_runtime_passes(tcx, &mut body);
+
+    tcx.alloc_steal_mir(body)
+}
+
+fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    assert!(body.phase == MirPhase::Analysis(AnalysisPhase::Initial));
+    let did = body.source.def_id();
+
+    debug!("analysis_mir_cleanup({:?})", did);
+    run_analysis_cleanup_passes(tcx, body);
+    assert!(body.phase == MirPhase::Analysis(AnalysisPhase::PostCleanup));
 
     // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
     if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
         pm::run_passes(
             tcx,
-            &mut body,
+            body,
             &[
-                &simplify::SimplifyCfg::new("remove-false-edges"),
                 &remove_uninit_drops::RemoveUninitDrops,
+                &simplify::SimplifyCfg::new("remove-false-edges"),
             ],
         );
         check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
     }
 
-    run_post_borrowck_cleanup_passes(tcx, &mut body);
-    assert!(body.phase == MirPhase::Deaggregated);
-    tcx.alloc_steal_mir(body)
+    debug!("runtime_mir_lowering({:?})", did);
+    run_runtime_lowering_passes(tcx, body);
+    assert!(body.phase == MirPhase::Runtime(RuntimePhase::Initial));
+
+    debug!("runtime_mir_cleanup({:?})", did);
+    run_runtime_cleanup_passes(tcx, body);
+    assert!(body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup));
 }
 
-/// After this series of passes, no lifetime analysis based on borrowing can be done.
-fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    debug!("post_borrowck_cleanup({:?})", body.source.def_id());
+// FIXME(JakobDegen): Can we make these lists of passes consts?
 
-    let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
-        // Remove all things only needed by analysis
+/// After this series of passes, no lifetime analysis based on borrowing can be done.
+fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let passes: &[&dyn MirPass<'tcx>] = &[
+        &remove_false_edges::RemoveFalseEdges,
         &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
         &deref_separator::Derefer,
+        &marker::PhaseChange(MirPhase::Analysis(AnalysisPhase::PostCleanup)),
+    ];
+
+    pm::run_passes(tcx, body, passes);
+}
+
+/// Returns the sequence of passes that lowers analysis to runtime MIR.
+fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let passes: &[&dyn MirPass<'tcx>] = &[
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
@@ -426,16 +455,27 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &elaborate_box_derefs::ElaborateBoxDerefs,
+        &generator::StateTransform,
         &add_retag::AddRetag,
-        &lower_intrinsics::LowerIntrinsics,
-        &simplify::SimplifyCfg::new("elaborate-drops"),
-        // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
-        // and it can help optimizations.
+        // Deaggregator is necessary for const prop. We may want to consider implementing
+        // CTFE support for aggregates.
         &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
+        &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Initial)),
+    ];
+    pm::run_passes_no_validate(tcx, body, passes);
+}
+
+/// Returns the sequence of passes that do the initial cleanup of runtime MIR.
+fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let passes: &[&dyn MirPass<'tcx>] = &[
+        &elaborate_box_derefs::ElaborateBoxDerefs,
+        &lower_intrinsics::LowerIntrinsics,
+        &simplify::SimplifyCfg::new("elaborate-drops"),
+        &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::PostCleanup)),
     ];
 
-    pm::run_passes(tcx, body, post_borrowck_cleanup);
+    pm::run_passes(tcx, body, passes);
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -443,9 +483,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         WithMinOptLevel(1, x)
     }
 
-    // Lowering generator control-flow and variables has to happen before we do anything else
-    // to them. We run some optimizations before that, because they may be harder to do on the state
-    // machine than on MIR with async primitives.
+    // The main optimizations that we do on MIR.
     pm::run_passes(
         tcx,
         body,
@@ -457,17 +495,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
             &inline::Inline,
-            &generator::StateTransform,
-        ],
-    );
-
-    assert!(body.phase == MirPhase::GeneratorsLowered);
-
-    // The main optimizations that we do on MIR.
-    pm::run_passes(
-        tcx,
-        body,
-        &[
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
             &const_goto::ConstGoto,
@@ -499,7 +526,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
-            &marker::PhaseChange(MirPhase::Optimized),
+            &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
             // Dump the end result for testing and debugging purposes.
             &dump_mir::Marker("PreCodegen"),
         ],
@@ -558,7 +585,7 @@ fn promoted_mir<'tcx>(
         if let Some(error_reported) = tainted_by_errors {
             body.tainted_by_errors = Some(error_reported);
         }
-        run_post_borrowck_cleanup_passes(tcx, body);
+        run_analysis_to_runtime_passes(tcx, body);
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");

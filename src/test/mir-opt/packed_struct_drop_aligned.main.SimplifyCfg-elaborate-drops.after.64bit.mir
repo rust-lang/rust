@@ -16,15 +16,20 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:9: +1:14
         StorageLive(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:24: +1:42
         StorageLive(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:32: +1:41
-        _3 = Droppy(const 0_usize);      // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:32: +1:41
-        _2 = Aligned(move _3);           // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:24: +1:42
+        Deinit(_3);                      // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:32: +1:41
+        (_3.0: usize) = const 0_usize;   // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:32: +1:41
+        Deinit(_2);                      // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:24: +1:42
+        (_2.0: Droppy) = move _3;        // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:24: +1:42
         StorageDead(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:41: +1:42
-        _1 = Packed(move _2);            // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:17: +1:43
+        Deinit(_1);                      // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:17: +1:43
+        (_1.0: Aligned) = move _2;       // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:17: +1:43
         StorageDead(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:+1:42: +1:43
         StorageLive(_4);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:11: +2:29
         StorageLive(_5);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:19: +2:28
-        _5 = Droppy(const 0_usize);      // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:19: +2:28
-        _4 = Aligned(move _5);           // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:11: +2:29
+        Deinit(_5);                      // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:19: +2:28
+        (_5.0: usize) = const 0_usize;   // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:19: +2:28
+        Deinit(_4);                      // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:11: +2:29
+        (_4.0: Droppy) = move _5;        // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:11: +2:29
         StorageDead(_5);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:28: +2:29
         StorageLive(_6);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:5: +2:8
         _6 = move (_1.0: Aligned);       // scope 1 at $DIR/packed-struct-drop-aligned.rs:+2:5: +2:8

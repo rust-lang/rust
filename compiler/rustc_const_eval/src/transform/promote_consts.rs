@@ -41,7 +41,7 @@ pub struct PromoteTemps<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::ConstsPromoted)
+        Some(MirPhase::Analysis(AnalysisPhase::Initial))
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -964,7 +964,7 @@ pub fn promote_candidates<'tcx>(
         let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;
 
-        let promoted = Body::new(
+        let mut promoted = Body::new(
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
@@ -976,6 +976,7 @@ pub fn promote_candidates<'tcx>(
             body.generator_kind(),
             body.tainted_by_errors,
         );
+        promoted.phase = MirPhase::Analysis(AnalysisPhase::Initial);
 
         let promoter = Promoter {
             promoted,
