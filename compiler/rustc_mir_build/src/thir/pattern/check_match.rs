@@ -955,16 +955,13 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 }
             });
             if !conflicts_ref.is_empty() {
-                let occurs_because = format!(
-                    "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
+                sess.emit_err(BorrowOfMovedValue {
+                    span: pat.span,
+                    binding_span,
+                    conflicts_ref,
                     name,
-                    typeck_results.node_type(pat.hir_id),
-                );
-                sess.struct_span_err(pat.span, "borrow of moved value")
-                    .span_label(binding_span, format!("value moved into `{}` here", name))
-                    .span_label(binding_span, occurs_because)
-                    .span_labels(conflicts_ref, "value borrowed here after move")
-                    .emit();
+                    ty: typeck_results.node_type(pat.hir_id),
+                });
             }
             return;
         }

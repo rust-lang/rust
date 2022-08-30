@@ -562,3 +562,17 @@ pub struct IrrefutableLetPatternsLetElse {
 pub struct IrrefutableLetPatternsWhileLet {
     pub count: usize,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(mir_build::borrow_of_moved_value)]
+pub struct BorrowOfMovedValue<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    #[label(mir_build::occurs_because_label)]
+    pub binding_span: Span,
+    #[label(mir_build::value_borrowed_label)]
+    pub conflicts_ref: Vec<Span>,
+    pub name: Ident,
+    pub ty: Ty<'tcx>,
+}

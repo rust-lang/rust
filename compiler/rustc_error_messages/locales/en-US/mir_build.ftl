@@ -287,3 +287,8 @@ mir_build_irrefutable_let_patterns_while_let = irrefutable `while let` {$count -
         *[other] these patterns
     } will always match, so the loop will never exit
     .help = consider instead using a `loop {"{"} ... {"}"}` with a `let` inside it
+
+mir_build_borrow_of_moved_value = borrow of moved value
+    .label = value moved into `{$name}` here
+    .occurs_because_label = move occurs because `{$name}` has type `{$ty}` which does not implement the `Copy` trait
+    .value_borrowed_label = value borrowed here after move
