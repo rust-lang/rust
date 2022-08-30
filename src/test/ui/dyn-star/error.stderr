@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `{integer}: Foo` is not satisfied
-  --> $DIR/dyn-star-trait-error.rs:9:27
+  --> $DIR/error.rs:9:27
    |
 LL |     let dyn_i: dyn* Foo = i as dyn* Foo;
    |                           ^ the trait `Foo` is not implemented for `{integer}`
