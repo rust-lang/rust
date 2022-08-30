@@ -579,9 +579,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `dyn`
 
         // parse dyn* types
-        let dyn_star = matches!(self.token.kind, TokenKind::BinOp(token::Star));
-        let syntax = if dyn_star {
-            self.bump(); // `*`
+        let syntax = if self.eat(&TokenKind::BinOp(token::Star)) {
             TraitObjectSyntax::DynStar
         } else {
             TraitObjectSyntax::Dyn

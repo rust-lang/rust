@@ -105,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(ref tty, ..) => Some(PointerKind::VTable(tty.principal_def_id())),
+            ty::Dynamic(ref tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(f) => {
@@ -142,6 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Generator(..)
             | ty::Adt(..)
             | ty::Never
+            | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 let reported = self
                     .tcx
@@ -246,7 +247,7 @@ fn check_dyn_star_cast<'tcx>(
     let cause = ObligationCause::new(
         expr.span,
         fcx.body_id,
-        // FIXME: Use a better obligation cause code
+        // FIXME(dyn-star): Use a better obligation cause code
         ObligationCauseCode::MiscObligation,
     );
 
@@ -927,10 +928,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
 
-            // FIXME: this needs more conditions...
+            // FIXME(dyn-star): this needs more conditions...
             (_, DynStar) => Ok(CastKind::DynStarCast),
 
-            // FIXME: do we want to allow dyn* upcasting or other casts?
+            // FIXME(dyn-star): do we want to allow dyn* upcasting or other casts?
             (DynStar, _) => Err(CastError::IllegalCast),
         }
     }

@@ -626,11 +626,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             ty::Dynamic(_, _, ty::DynStar) => {
-                let mut pointer = scalar_unit(Int(dl.ptr_sized_integer(), false));
-                pointer.valid_range_mut().start = 1;
+                let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
+                data.valid_range_mut().start = 0;
                 let mut vtable = scalar_unit(Pointer);
                 vtable.valid_range_mut().start = 1;
-                tcx.intern_layout(self.scalar_pair(pointer, vtable))
+                tcx.intern_layout(self.scalar_pair(data, vtable))
             }
 
             // Arrays and slices.
@@ -2474,8 +2474,7 @@ where
 
                     match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                         ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        // FIXME(eholk): Do the right thing with trait object representation
-                        ty::Dynamic(_, _, _repr) => {
+                        ty::Dynamic(_, _, ty::Dyn) => {
                             TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
                                 tcx.lifetimes.re_static,
                                 tcx.mk_array(tcx.types.usize, 3),
@@ -3379,7 +3378,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         Ok(self.tcx.arena.alloc(fn_abi))
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[tracing::instrument(level = "trace", skip(self))]
     fn fn_abi_adjust_for_abi(
         &self,
         fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,

@@ -1,5 +1,6 @@
 // run-pass
 #![feature(dyn_star)]
+#![allow(incomplete_features)]
 
 trait Foo {
     fn get(&self) -> usize;

@@ -381,7 +381,7 @@ declare_features! (
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
     /// Allows `dyn* Trait` objects.
-    (active, dyn_star, "1.65.0", Some(91611), None),
+    (incomplete, dyn_star, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.

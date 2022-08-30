@@ -14,9 +14,8 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind,
-    ProjectionTy, Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-    UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
+    Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -167,7 +166,9 @@ pub fn implements_trait_with_env<'tcx>(
     }
     let ty_params = tcx.mk_substs(ty_params.iter());
     tcx.infer_ctxt().enter(|infcx| {
-        infcx.type_implements_trait(trait_id, ty, ty_params, param_env).must_apply_modulo_regions()
+        infcx
+            .type_implements_trait(trait_id, ty, ty_params, param_env)
+            .must_apply_modulo_regions()
     })
 }
 
@@ -184,14 +185,11 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.has_attr(adt.did(), sym::must_use),
         ty::Foreign(did) => cx.tcx.has_attr(*did, sym::must_use),
-        ty::Slice(ty)
-        | ty::Array(ty, _)
-        | ty::RawPtr(ty::TypeAndMut { ty, .. })
-        | ty::Ref(_, ty, _) => {
+        ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
             // for the Array case we don't need to care for the len == 0 case
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
-        }
+        },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
@@ -202,7 +200,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
                 }
             }
             false
-        }
+        },
         ty::Dynamic(binder, _, _) => {
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
@@ -212,7 +210,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
                 }
             }
             false
-        }
+        },
         _ => false,
     }
 }
@@ -222,11 +220,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 // not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(
-    cx: &LateContext<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-) -> bool {
+pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
@@ -246,14 +240,15 @@ fn is_normalizable_helper<'tcx>(
         if infcx.at(&cause, param_env).normalize(ty).is_ok() {
             match ty.kind() {
                 ty::Adt(def, substs) => def.variants().iter().all(|variant| {
-                    variant.fields.iter().all(|field| {
-                        is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache)
-                    })
+                    variant
+                        .fields
+                        .iter()
+                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
                 }),
                 _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(inner_ty) if inner_ty != ty => {
                         is_normalizable_helper(cx, param_env, inner_ty, cache)
-                    }
+                    },
                     _ => true, // if inner_ty == ty, we've already checked it
                 }),
             }
@@ -278,9 +273,7 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match *ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
-        ty::Array(inner_type, _) | ty::Slice(inner_type) => {
-            is_recursively_primitive_type(inner_type)
-        }
+        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.iter().all(is_recursively_primitive_type),
         _ => false,
     }
@@ -320,9 +313,11 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => {
-            cx.tcx.lang_items().require(lang_item).map_or(false, |li| li == adt.did())
-        }
+        ty::Adt(adt, _) => cx
+            .tcx
+            .lang_items()
+            .require(lang_item)
+            .map_or(false, |li| li == adt.did()),
         _ => false,
     }
 }
@@ -347,11 +342,7 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 /// deallocate memory. For these types, and composites containing them, changing the drop order
 /// won't result in any observable side effects.
 pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    fn needs_ordered_drop_inner<'tcx>(
-        cx: &LateContext<'tcx>,
-        ty: Ty<'tcx>,
-        seen: &mut FxHashSet<Ty<'tcx>>,
-    ) -> bool {
+    fn needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
         if !seen.insert(ty) {
             return false;
         }
@@ -402,7 +393,11 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// removed.
 pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
-        if let ty::Ref(_, ty, _) = ty.kind() { peel(*ty, count + 1) } else { (ty, count) }
+        if let ty::Ref(_, ty, _) = ty.kind() {
+            peel(*ty, count + 1)
+        } else {
+            (ty, count)
+        }
     }
     peel(ty, 0)
 }
@@ -457,18 +452,17 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 return false;
             }
 
-            substs_a.iter().zip(substs_b.iter()).all(|(arg_a, arg_b)| {
-                match (arg_a.unpack(), arg_b.unpack()) {
-                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => {
-                        inner_a == inner_b
-                    }
+            substs_a
+                .iter()
+                .zip(substs_b.iter())
+                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
                     (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
                         same_type_and_consts(type_a, type_b)
-                    }
+                    },
                     _ => true,
-                }
-            })
-        }
+                })
+        },
         _ => a == b,
     }
 }
@@ -484,10 +478,7 @@ pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 }
 
 /// Gets an iterator over all predicates which apply to the given item.
-pub fn all_predicates_of(
-    tcx: TyCtxt<'_>,
-    id: DefId,
-) -> impl Iterator<Item = &(Predicate<'_>, Span)> {
+pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(Predicate<'_>, Span)> {
     let mut next_id = Some(id);
     iter::from_fn(move || {
         next_id.take().map(|id| {
@@ -517,7 +508,7 @@ impl<'tcx> ExprFnSig<'tcx> {
                 } else {
                     Some(sig.input(i))
                 }
-            }
+            },
             Self::Closure(_, sig) => Some(sig.input(0).map_bound(|ty| ty.tuple_fields()[i])),
             Self::Trait(inputs, _, _) => Some(inputs.map_bound(|ty| ty.tuple_fields()[i])),
         }
@@ -526,10 +517,7 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// Gets the argument type at the given offset. For closures this will also get the type as
     /// written. This will return `None` when the index is out of bounds only for variadic
     /// functions, otherwise this will panic.
-    pub fn input_with_hir(
-        self,
-        i: usize,
-    ) -> Option<(Option<&'tcx hir::Ty<'tcx>>, Binder<'tcx, Ty<'tcx>>)> {
+    pub fn input_with_hir(self, i: usize) -> Option<(Option<&'tcx hir::Ty<'tcx>>, Binder<'tcx, Ty<'tcx>>)> {
         match self {
             Self::Sig(sig, _) => {
                 if sig.c_variadic() {
@@ -540,7 +528,7 @@ impl<'tcx> ExprFnSig<'tcx> {
                 } else {
                     Some((None, sig.input(i)))
                 }
-            }
+            },
             Self::Closure(decl, sig) => Some((
                 decl.and_then(|decl| decl.inputs.get(i)),
                 sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
@@ -559,15 +547,17 @@ impl<'tcx> ExprFnSig<'tcx> {
     }
 
     pub fn predicates_id(&self) -> Option<DefId> {
-        if let ExprFnSig::Sig(_, id) | ExprFnSig::Trait(_, _, id) = *self { id } else { None }
+        if let ExprFnSig::Sig(_, id) | ExprFnSig::Trait(_, _, id) = *self {
+            id
+        } else {
+            None
+        }
     }
 }
 
 /// If the expression is function like, get the signature for it.
 pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
-    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) =
-        path_res(cx, expr)
-    {
+    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = path_res(cx, expr) {
         Some(ExprFnSig::Sig(cx.tcx.fn_sig(id), Some(id)))
     } else {
         ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
@@ -581,14 +571,12 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
     }
     match *ty.kind() {
         ty::Closure(id, subs) => {
-            let decl = id.as_local().and_then(|id| {
-                cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.hir().local_def_id_to_hir_id(id))
-            });
+            let decl = id
+                .as_local()
+                .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.hir().local_def_id_to_hir_id(id)));
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
-        }
-        ty::FnDef(id, subs) => {
-            Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id)))
-        }
+        },
+        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
         ty::Opaque(id, _) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(id), cx.tcx.opt_parent(id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
@@ -601,19 +589,16 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 {
                     let output = bounds
                         .projection_bounds()
-                        .find(|p| {
-                            lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id())
-                        })
+                        .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
                         .map(|p| p.map_bound(|p| p.term.ty().unwrap()));
                     Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output, None))
-                }
+                },
                 _ => None,
             }
-        }
+        },
         ty::Projection(proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
-            _ => sig_for_projection(cx, proj)
-                .or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
+            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
         },
         ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None),
         _ => None,
@@ -644,7 +629,7 @@ fn sig_from_bounds<'tcx>(
                     return None;
                 }
                 inputs = Some(i);
-            }
+            },
             PredicateKind::Projection(p)
                 if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
                     && p.projection_ty.self_ty() == ty =>
@@ -654,7 +639,7 @@ fn sig_from_bounds<'tcx>(
                     return None;
                 }
                 output = Some(pred.kind().rebind(p.term.ty().unwrap()));
-            }
+            },
             _ => (),
         }
     }
@@ -662,10 +647,7 @@ fn sig_from_bounds<'tcx>(
     inputs.map(|ty| ExprFnSig::Trait(ty, output, predicates_id))
 }
 
-fn sig_for_projection<'tcx>(
-    cx: &LateContext<'tcx>,
-    ty: ProjectionTy<'tcx>,
-) -> Option<ExprFnSig<'tcx>> {
+fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
@@ -691,10 +673,8 @@ fn sig_for_projection<'tcx>(
                     return None;
                 }
                 inputs = Some(i);
-            }
-            PredicateKind::Projection(p)
-                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() =>
-            {
+            },
+            PredicateKind::Projection(p) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -703,7 +683,7 @@ fn sig_for_projection<'tcx>(
                     pred.map_bound(|pred| pred.kind().rebind(p.term.ty().unwrap()))
                         .subst(cx.tcx, ty.substs),
                 );
-            }
+            },
             _ => (),
         }
     }
@@ -797,10 +777,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeVisitable<'tcx>>(
-            &mut self,
-            t: &Binder<'tcx, T>,
-        ) -> ControlFlow<Self::BreakTy> {
+        fn visit_binder<T: TypeVisitable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;
@@ -814,27 +791,19 @@ pub fn for_each_top_level_late_bound_region<B>(
 pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx VariantDef> {
     match res {
         Res::Def(DefKind::Struct, id) => Some(cx.tcx.adt_def(id).non_enum_variant()),
-        Res::Def(DefKind::Variant, id) => {
-            Some(cx.tcx.adt_def(cx.tcx.parent(id)).variant_with_id(id))
-        }
-        Res::Def(DefKind::Ctor(CtorOf::Struct, _), id) => {
-            Some(cx.tcx.adt_def(cx.tcx.parent(id)).non_enum_variant())
-        }
+        Res::Def(DefKind::Variant, id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).variant_with_id(id)),
+        Res::Def(DefKind::Ctor(CtorOf::Struct, _), id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).non_enum_variant()),
         Res::Def(DefKind::Ctor(CtorOf::Variant, _), id) => {
             let var_id = cx.tcx.parent(id);
             Some(cx.tcx.adt_def(cx.tcx.parent(var_id)).variant_with_id(var_id))
-        }
+        },
         Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
         _ => None,
     }
 }
 
 /// Checks if the type is a type parameter implementing `FnOnce`, but not `FnMut`.
-pub fn ty_is_fn_once_param<'tcx>(
-    tcx: TyCtxt<'_>,
-    ty: Ty<'tcx>,
-    predicates: &'tcx [Predicate<'_>],
-) -> bool {
+pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [Predicate<'_>]) -> bool {
     let ty::Param(ty) = *ty.kind() else {
         return false;
     };

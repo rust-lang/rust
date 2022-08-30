@@ -19,24 +19,31 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 
 /// Specifies how a trait object is represented.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Encodable,
+    Decodable,
+    HashStable_Generic
+)]
 pub enum DynKind {
     /// An unsized `dyn Trait` object
     Dyn,
     /// A sized `dyn* Trait` object
+    ///
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
+    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
+    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
+    /// or similar, but the drop function included in the vtable is responsible for freeing the
+    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
     DynStar,
-}
-
-// Manually implemented because deriving HashStable requires rustc_query_system, which would
-// create a cyclic dependency.
-impl<CTX> HashStable<CTX> for DynKind {
-    fn hash_stable(
-        &self,
-        hcx: &mut CTX,
-        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
-    }
 }
 
 /// Defines the kinds of types used by the type system.

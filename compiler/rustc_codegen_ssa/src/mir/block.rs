@@ -367,7 +367,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.ret(llval);
     }
 
-    #[tracing::instrument(level = "debug", skip(self, helper, bx))]
+    #[tracing::instrument(level = "trace", skip(self, helper, bx))]
     fn codegen_drop_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,

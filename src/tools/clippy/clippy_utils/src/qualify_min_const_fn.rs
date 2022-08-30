@@ -18,11 +18,7 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn<'a, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
-    msrv: Option<RustcVersion>,
-) -> McfResult {
+pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<RustcVersion>) -> McfResult {
     let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
@@ -37,18 +33,10 @@ pub fn is_min_const_fn<'a, 'tcx>(
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                ty::PredicateKind::ObjectSafe(_) => {
-                    panic!("object safe predicate on function: {:#?}", predicate)
-                }
-                ty::PredicateKind::ClosureKind(..) => {
-                    panic!("closure kind predicate on function: {:#?}", predicate)
-                }
-                ty::PredicateKind::Subtype(_) => {
-                    panic!("subtype predicate on function: {:#?}", predicate)
-                }
-                ty::PredicateKind::Coerce(_) => {
-                    panic!("coerce predicate on function: {:#?}", predicate)
-                }
+                ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
+                ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
+                ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
+                ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
             }
         }
         match predicates.parent {
@@ -89,23 +77,22 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
         match ty.kind() {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
-            }
+            },
             ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
-            }
+            },
             ty::Dynamic(preds, _, _) => {
                 for pred in preds.iter() {
                     match pred.skip_binder() {
-                        ty::ExistentialPredicate::AutoTrait(_)
-                        | ty::ExistentialPredicate::Projection(_) => {
+                        ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
                             return Err((
                                 span,
                                 "trait bounds other than `Sized` \
                                  on const fn parameters are unstable"
                                     .into(),
                             ));
-                        }
+                        },
                         ty::ExistentialPredicate::Trait(trait_ref) => {
                             if Some(trait_ref.def_id) != tcx.lang_items().sized_trait() {
                                 return Err((
@@ -115,11 +102,11 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
                                         .into(),
                                 ));
                             }
-                        }
+                        },
                     }
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
     Ok(())
@@ -133,13 +120,10 @@ fn check_rvalue<'tcx>(
     span: Span,
 ) -> McfResult {
     match rvalue {
-        Rvalue::ThreadLocalRef(_) => {
-            Err((span, "cannot access thread local storage in const fn".into()))
-        }
-        Rvalue::Len(place)
-        | Rvalue::Discriminant(place)
-        | Rvalue::Ref(_, _, place)
-        | Rvalue::AddressOf(_, place) => check_place(tcx, *place, span, body),
+        Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
+        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+            check_place(tcx, *place, span, body)
+        },
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
@@ -152,9 +136,7 @@ fn check_rvalue<'tcx>(
         ) => check_operand(tcx, operand, span, body),
         Rvalue::Cast(
             CastKind::Pointer(
-                PointerCast::UnsafeFnPointer
-                | PointerCast::ClosureFnPointer(_)
-                | PointerCast::ReifyFnPointer,
+                PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
             ),
             _,
             _,
@@ -164,10 +146,7 @@ fn check_rvalue<'tcx>(
                 deref_ty.ty
             } else {
                 // We cannot allow this for now.
-                return Err((
-                    span,
-                    "unsizing casts are only allowed for references right now".into(),
-                ));
+                return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
             let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
@@ -178,14 +157,14 @@ fn check_rvalue<'tcx>(
                 // We just can't allow trait objects until we have figured out trait method calls.
                 Err((span, "unsizing casts are not allowed in const fn".into()))
             }
-        }
+        },
         Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => {
             Err((span, "casting pointers to ints is unstable in const fn".into()))
-        }
+        },
         Rvalue::Cast(CastKind::DynStar, _, _) => {
             // FIXME(dyn-star)
             unimplemented!()
-        }
+        },
         // binops are fine on integers
         Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;
@@ -194,12 +173,13 @@ fn check_rvalue<'tcx>(
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
                 Ok(())
             } else {
-                Err((span, "only int, `bool` and `char` operations are stable in const fn".into()))
+                Err((
+                    span,
+                    "only int, `bool` and `char` operations are stable in const fn".into(),
+                ))
             }
-        }
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) | Rvalue::ShallowInitBox(_, _) => {
-            Ok(())
-        }
+        },
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
@@ -207,13 +187,13 @@ fn check_rvalue<'tcx>(
             } else {
                 Err((span, "only int and `bool` operations are stable in const fn".into()))
             }
-        }
+        },
         Rvalue::Aggregate(_, operands) => {
             for operand in operands {
                 check_operand(tcx, operand, span, body)?;
             }
             Ok(())
-        }
+        },
     }
 }
 
@@ -228,7 +208,7 @@ fn check_statement<'tcx>(
         StatementKind::Assign(box (place, rval)) => {
             check_place(tcx, *place, span, body)?;
             check_rvalue(tcx, body, def_id, rval, span)
-        }
+        },
 
         StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
@@ -238,15 +218,13 @@ fn check_statement<'tcx>(
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-            dst,
-            src,
-            count,
-        }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
-        }
+        },
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
@@ -257,12 +235,7 @@ fn check_statement<'tcx>(
     }
 }
 
-fn check_operand<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    operand: &Operand<'tcx>,
-    span: Span,
-    body: &Body<'tcx>,
-) -> McfResult {
+fn check_operand<'tcx>(tcx: TyCtxt<'tcx>, operand: &Operand<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => check_place(tcx, *place, span, body),
         Operand::Constant(c) => match c.check_static_ptr(tcx) {
@@ -272,12 +245,7 @@ fn check_operand<'tcx>(
     }
 }
 
-fn check_place<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    place: Place<'tcx>,
-    span: Span,
-    body: &Body<'tcx>,
-) -> McfResult {
+fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'tcx>) -> McfResult {
     let mut cursor = place.projection.as_ref();
     while let [ref proj_base @ .., elem] = *cursor {
         cursor = proj_base;
@@ -290,12 +258,12 @@ fn check_place<'tcx>(
                         return Err((span, "accessing union fields is unstable".into()));
                     }
                 }
-            }
+            },
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
-            | ProjectionElem::Index(_) => {}
+            | ProjectionElem::Index(_) => {},
         }
     }
 
@@ -321,16 +289,18 @@ fn check_terminator<'a, 'tcx>(
         TerminatorKind::DropAndReplace { place, value, .. } => {
             check_place(tcx, *place, span, body)?;
             check_operand(tcx, value, span, body)
-        }
+        },
 
-        TerminatorKind::SwitchInt { discr, switch_ty: _, targets: _ } => {
-            check_operand(tcx, discr, span, body)
-        }
+        TerminatorKind::SwitchInt {
+            discr,
+            switch_ty: _,
+            targets: _,
+        } => check_operand(tcx, discr, span, body),
 
         TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
-        }
+        },
 
         TerminatorKind::Call {
             func,
@@ -375,15 +345,17 @@ fn check_terminator<'a, 'tcx>(
             } else {
                 Err((span, "can only call other const fns within const fn".into()))
             }
-        }
+        },
 
-        TerminatorKind::Assert { cond, expected: _, msg: _, target: _, cleanup: _ } => {
-            check_operand(tcx, cond, span, body)
-        }
+        TerminatorKind::Assert {
+            cond,
+            expected: _,
+            msg: _,
+            target: _,
+            cleanup: _,
+        } => check_operand(tcx, cond, span, body),
 
-        TerminatorKind::InlineAsm { .. } => {
-            Err((span, "cannot use inline assembly in const fn".into()))
-        }
+        TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
     }
 }
 

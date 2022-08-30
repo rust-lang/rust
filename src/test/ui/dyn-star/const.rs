@@ -1,6 +1,6 @@
 // run-pass
 #![feature(dyn_star)]
-#![allow(unused)]
+#![allow(unused, incomplete_features)]
 
 use std::fmt::Debug;
 

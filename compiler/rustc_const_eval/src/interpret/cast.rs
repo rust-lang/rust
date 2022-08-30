@@ -113,11 +113,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
-                    let ptr = self.read_immediate(src)?.to_scalar();
-                    // FIXME(dyn-star): This should not use new_dyn_trait, but
-                    // it does exactly the same thing (makes a scalar pair)...
-                    // so maybe we should just duplicate/rename the function.
-                    let val = Immediate::new_dyn_trait(ptr, vtable, &*self.tcx);
+                    let vtable = Scalar::from_maybe_pointer(vtable, self);
+                    let data = self.read_immediate(src)?.to_scalar();
+                    let _assert_pointer_sized = data.to_pointer(self)?;
+                    let val = Immediate::ScalarPair(data, vtable);
                     self.write_immediate(val, dest)?;
                 } else {
                     bug!()
@@ -327,7 +326,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(ref data, _, _repr)) => {
+            (_, &ty::Dynamic(ref data, _, ty::Dyn)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
                 let ptr = self.read_scalar(src)?;
