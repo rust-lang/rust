@@ -613,7 +613,7 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
+pub(crate) fn render_impls(
     cx: &mut Context<'_>,
     w: &mut Buffer,
     impls: &[&&Impl],
@@ -1025,6 +1025,47 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
+fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
+    write!(
+        w,
+        "<h2 id=\"{id}\" class=\"small-section-header\">\
+            {title}\
+            <a href=\"#{id}\" class=\"anchor\"></a>\
+         </h2>"
+    );
+}
+
+pub(crate) fn render_all_impls(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    containing_item: &clean::Item,
+    concrete: &[&&Impl],
+    synthetic: &[&&Impl],
+    blanket_impl: &[&&Impl],
+) {
+    let mut impls = Buffer::empty_from(w);
+    render_impls(cx, &mut impls, concrete, containing_item, true);
+    let impls = impls.into_inner();
+    if !impls.is_empty() {
+        write_impl_section_heading(w, "Trait Implementations", "trait-implementations");
+        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls);
+    }
+
+    if !synthetic.is_empty() {
+        write_impl_section_heading(w, "Auto Trait Implementations", "synthetic-implementations");
+        w.write_str("<div id=\"synthetic-implementations-list\">");
+        render_impls(cx, w, synthetic, containing_item, false);
+        w.write_str("</div>");
+    }
+
+    if !blanket_impl.is_empty() {
+        write_impl_section_heading(w, "Blanket Implementations", "blanket-implementations");
+        w.write_str("<div id=\"blanket-implementations-list\">");
+        render_impls(cx, w, blanket_impl, containing_item, false);
+        w.write_str("</div>");
+    }
+}
+
 fn render_assoc_items(
     w: &mut Buffer,
     cx: &mut Context<'_>,
@@ -1054,12 +1095,7 @@ fn render_assoc_items_inner(
         let mut tmp_buf = Buffer::empty_from(w);
         let (render_mode, id) = match what {
             AssocItemRender::All => {
-                tmp_buf.write_str(
-                    "<h2 id=\"implementations\" class=\"small-section-header\">\
-                         Implementations\
-                         <a href=\"#implementations\" class=\"anchor\"></a>\
-                     </h2>",
-                );
+                write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
                 (RenderMode::Normal, "implementations-list".to_owned())
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
@@ -1068,15 +1104,14 @@ fn render_assoc_items_inner(
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id.clone());
                 }
-                write!(
-                    tmp_buf,
-                    "<h2 id=\"{id}\" class=\"small-section-header\">\
-                         <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
-                         <a href=\"#{id}\" class=\"anchor\"></a>\
-                     </h2>",
-                    id = id,
-                    trait_ = trait_.print(cx),
-                    type_ = type_.print(cx),
+                write_impl_section_heading(
+                    &mut tmp_buf,
+                    &format!(
+                        "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
+                        trait_ = trait_.print(cx),
+                        type_ = type_.print(cx),
+                    ),
+                    &id,
                 );
                 (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
@@ -1128,44 +1163,7 @@ fn render_assoc_items_inner(
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
             concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        let mut impls = Buffer::empty_from(w);
-        render_impls(cx, &mut impls, &concrete, containing_item, true);
-        let impls = impls.into_inner();
-        if !impls.is_empty() {
-            write!(
-                w,
-                "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
-                     Trait Implementations\
-                     <a href=\"#trait-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"trait-implementations-list\">{}</div>",
-                impls
-            );
-        }
-
-        if !synthetic.is_empty() {
-            w.write_str(
-                "<h2 id=\"synthetic-implementations\" class=\"small-section-header\">\
-                     Auto Trait Implementations\
-                     <a href=\"#synthetic-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"synthetic-implementations-list\">",
-            );
-            render_impls(cx, w, &synthetic, containing_item, false);
-            w.write_str("</div>");
-        }
-
-        if !blanket_impl.is_empty() {
-            w.write_str(
-                "<h2 id=\"blanket-implementations\" class=\"small-section-header\">\
-                     Blanket Implementations\
-                     <a href=\"#blanket-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"blanket-implementations-list\">",
-            );
-            render_impls(cx, w, &blanket_impl, containing_item, false);
-            w.write_str("</div>");
-        }
+        render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }
 }
 
