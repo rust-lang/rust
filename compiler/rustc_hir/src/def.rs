@@ -308,6 +308,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
+
     /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
     /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
     ///
@@ -355,7 +356,8 @@ pub enum Res<Id = hir::HirId> {
     /// const fn baz<T>() -> usize { 10 }
     /// ```
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint:
+    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat
+    /// lint:
     /// ```
     /// fn foo<T>() {
     ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
@@ -370,6 +372,7 @@ pub enum Res<Id = hir::HirId> {
         /// from mentioning generics (i.e. when used in an anonymous constant).
         alias_to: Option<(DefId, bool)>,
     },
+
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
     ///
     /// **Belongs to the type namespace.**
@@ -383,6 +386,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// *See also [`Res::SelfTy`].*
     SelfCtor(DefId),
+
     /// A local variable or function parameter.
     ///
     /// **Belongs to the value namespace.**
