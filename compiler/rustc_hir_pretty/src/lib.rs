@@ -1189,7 +1189,7 @@ impl<'a> State<'a> {
 
         let generic_args = segment.args();
         if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
-            self.print_generic_args(generic_args, segment.infer_args, true);
+            self.print_generic_args(generic_args, true);
         }
 
         self.print_call_post(base_args)
@@ -1592,7 +1592,7 @@ impl<'a> State<'a> {
             }
             if segment.ident.name != kw::PathRoot {
                 self.print_ident(segment.ident);
-                self.print_generic_args(segment.args(), segment.infer_args, colons_before_params);
+                self.print_generic_args(segment.args(), colons_before_params);
             }
         }
     }
@@ -1600,7 +1600,7 @@ impl<'a> State<'a> {
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment<'_>) {
         if segment.ident.name != kw::PathRoot {
             self.print_ident(segment.ident);
-            self.print_generic_args(segment.args(), segment.infer_args, false);
+            self.print_generic_args(segment.args(), false);
         }
     }
 
@@ -1619,11 +1619,7 @@ impl<'a> State<'a> {
                     }
                     if segment.ident.name != kw::PathRoot {
                         self.print_ident(segment.ident);
-                        self.print_generic_args(
-                            segment.args(),
-                            segment.infer_args,
-                            colons_before_params,
-                        );
+                        self.print_generic_args(segment.args(), colons_before_params);
                     }
                 }
 
@@ -1631,11 +1627,7 @@ impl<'a> State<'a> {
                 self.word("::");
                 let item_segment = path.segments.last().unwrap();
                 self.print_ident(item_segment.ident);
-                self.print_generic_args(
-                    item_segment.args(),
-                    item_segment.infer_args,
-                    colons_before_params,
-                )
+                self.print_generic_args(item_segment.args(), colons_before_params)
             }
             hir::QPath::TypeRelative(qself, item_segment) => {
                 // If we've got a compound-qualified-path, let's push an additional pair of angle
@@ -1651,11 +1643,7 @@ impl<'a> State<'a> {
 
                 self.word("::");
                 self.print_ident(item_segment.ident);
-                self.print_generic_args(
-                    item_segment.args(),
-                    item_segment.infer_args,
-                    colons_before_params,
-                )
+                self.print_generic_args(item_segment.args(), colons_before_params)
             }
             hir::QPath::LangItem(lang_item, span, _) => {
                 self.word("#[lang = \"");
@@ -1668,7 +1656,6 @@ impl<'a> State<'a> {
     fn print_generic_args(
         &mut self,
         generic_args: &hir::GenericArgs<'_>,
-        infer_args: bool,
         colons_before_params: bool,
     ) {
         if generic_args.parenthesized {
@@ -1715,13 +1702,6 @@ impl<'a> State<'a> {
                 );
             }
 
-            // FIXME(eddyb): this would leak into error messages (e.g.,
-            // "non-exhaustive patterns: `Some::<..>(_)` not covered").
-            if infer_args && false {
-                start_or_comma(self);
-                self.word("..");
-            }
-
             for binding in generic_args.bindings {
                 start_or_comma(self);
                 self.print_type_binding(binding);
@@ -1735,7 +1715,7 @@ impl<'a> State<'a> {
 
     pub fn print_type_binding(&mut self, binding: &hir::TypeBinding<'_>) {
         self.print_ident(binding.ident);
-        self.print_generic_args(binding.gen_args, false, false);
+        self.print_generic_args(binding.gen_args, false);
         self.space();
         match binding.kind {
             hir::TypeBindingKind::Equality { ref term } => {
