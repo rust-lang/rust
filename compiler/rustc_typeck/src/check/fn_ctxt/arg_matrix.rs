@@ -236,8 +236,8 @@ impl<'tcx> ArgMatrix<'tcx> {
                             if matches!(c, Compatibility::Compatible) { Some(i) } else { None }
                         })
                         .collect();
-                if compat.len() != 1 {
-                    // this could go into multiple slots, don't bother exploring both
+                if compat.len() < 1 {
+                    // try to find a cycle even when this could go into multiple slots, see #101097
                     is_cycle = false;
                     break;
                 }
