@@ -1262,7 +1262,11 @@ fn check_impl<'tcx>(
             }
             None => {
                 let self_ty = tcx.type_of(item.def_id);
-                let self_ty = wfcx.normalize(item.span, None, self_ty);
+                let self_ty = wfcx.normalize(
+                    item.span,
+                    Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
+                    self_ty,
+                );
                 wfcx.register_wf_obligation(
                     ast_self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
@@ -1307,7 +1311,11 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
                     if !ty.needs_subst() {
-                        wfcx.register_wf_obligation(tcx.def_span(param.def_id), None, ty.into());
+                        wfcx.register_wf_obligation(
+                            tcx.def_span(param.def_id),
+                            Some(WellFormedLoc::Ty(param.def_id.expect_local())),
+                            ty.into(),
+                        );
                     }
                 }
             }
@@ -1512,7 +1520,14 @@ fn check_fn_or_method<'tcx>(
         );
     }
 
-    wfcx.register_wf_obligation(hir_decl.output.span(), None, sig.output().into());
+    wfcx.register_wf_obligation(
+        hir_decl.output.span(),
+        Some(WellFormedLoc::Param {
+            function: def_id,
+            param_idx: sig.inputs().len().try_into().unwrap(),
+        }),
+        sig.output().into(),
+    );
 
     check_where_clauses(wfcx, span, def_id);
 }
