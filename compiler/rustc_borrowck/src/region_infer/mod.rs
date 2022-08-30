@@ -1801,35 +1801,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     pub(crate) fn retrieve_closure_constraint_info(
         &self,
-        constraint: &OutlivesConstraint<'tcx>,
-    ) -> BlameConstraint<'tcx> {
-        let loc = match constraint.locations {
-            Locations::All(span) => {
-                return BlameConstraint {
-                    category: constraint.category,
-                    from_closure: false,
-                    cause: ObligationCause::dummy_with_span(span),
-                    variance_info: constraint.variance_info,
-                };
+        constraint: OutlivesConstraint<'tcx>,
+    ) -> Option<(ConstraintCategory<'tcx>, Span)> {
+        match constraint.locations {
+            Locations::All(_) => None,
+            Locations::Single(loc) => {
+                self.closure_bounds_mapping[&loc].get(&(constraint.sup, constraint.sub)).copied()
             }
-            Locations::Single(loc) => loc,
-        };
-
-        let opt_span_category =
-            self.closure_bounds_mapping[&loc].get(&(constraint.sup, constraint.sub));
-        opt_span_category
-            .map(|&(category, span)| BlameConstraint {
-                category,
-                from_closure: true,
-                cause: ObligationCause::dummy_with_span(span),
-                variance_info: constraint.variance_info,
-            })
-            .unwrap_or(BlameConstraint {
-                category: constraint.category,
-                from_closure: false,
-                cause: ObligationCause::dummy_with_span(constraint.span),
-                variance_info: constraint.variance_info,
-            })
+        }
     }
 
     /// Finds a good `ObligationCause` to blame for the fact that `fr1` outlives `fr2`.
@@ -2072,19 +2051,28 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut categorized_path: Vec<BlameConstraint<'tcx>> = path
             .iter()
             .map(|constraint| {
-                if constraint.category == ConstraintCategory::ClosureBounds {
-                    self.retrieve_closure_constraint_info(&constraint)
-                } else {
-                    BlameConstraint {
-                        category: constraint.category,
-                        from_closure: false,
-                        cause: ObligationCause::new(
-                            constraint.span,
-                            CRATE_HIR_ID,
-                            cause_code.clone(),
-                        ),
-                        variance_info: constraint.variance_info,
-                    }
+                let (category, span, from_closure, cause_code) =
+                    if constraint.category == ConstraintCategory::ClosureBounds {
+                        if let Some((category, span)) =
+                            self.retrieve_closure_constraint_info(*constraint)
+                        {
+                            (category, span, true, ObligationCauseCode::MiscObligation)
+                        } else {
+                            (
+                                constraint.category,
+                                constraint.span,
+                                false,
+                                ObligationCauseCode::MiscObligation,
+                            )
+                        }
+                    } else {
+                        (constraint.category, constraint.span, false, cause_code.clone())
+                    };
+                BlameConstraint {
+                    category,
+                    from_closure,
+                    cause: ObligationCause::new(span, CRATE_HIR_ID, cause_code),
+                    variance_info: constraint.variance_info,
                 }
             })
             .collect();

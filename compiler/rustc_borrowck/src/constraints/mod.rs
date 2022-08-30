@@ -73,7 +73,7 @@ impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
