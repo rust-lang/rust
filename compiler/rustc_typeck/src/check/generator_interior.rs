@@ -387,6 +387,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
         };
 
+        let find_parent_expr = |mut hir_id| {
+            let hir = self.fcx.tcx.hir();
+            hir_id = hir.find_parent_node(hir_id)?;
+            loop {
+                if let hir::Node::Expr(_) = self.fcx.tcx.hir().find(hir_id)? {
+                    return Some(hir_id);
+                } else {
+                    hir_id = hir.find_parent_node(hir_id)?;
+                }
+            }
+        };
+
         // Typically, the value produced by an expression is consumed by its parent in some way,
         // so we only have to check if the parent contains a yield (note that the parent may, for
         // example, store the value into a local variable, but then we already consider local
@@ -409,8 +421,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
-            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
-            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+            let parent_expr = find_parent_expr(expr.hir_id);
+            debug!("parent_expr: {:?}", parent_expr);
+            match parent_expr {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
                 None => {
                     self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
