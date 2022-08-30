@@ -42,7 +42,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use std::ops::Range;
 use std::{cmp, mem, slice};
 
-use self::diagnostics::{MismatchedClosingDelimiter, NonStringAbiLiteral};
+use crate::errors::{MismatchedClosingDelimiter, NonStringAbiLiteral};
 
 bitflags::bitflags! {
     struct Restrictions: u8 {

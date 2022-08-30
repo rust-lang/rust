@@ -1,7 +1,5 @@
 use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
-use super::diagnostics::{
-    AttemptLocalParseRecovery, Error, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
-};
+use super::diagnostics::{AttemptLocalParseRecovery, Error};
 use super::expr::LhsExpr;
 use super::pat::RecoverComma;
 use super::path::PathStyle;
@@ -9,6 +7,7 @@ use super::TrailingToken;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
 };
+use crate::errors::{InvalidVariableDeclaration, InvalidVariableDeclarationSub};
 use crate::maybe_whole;
 
 use rustc_ast as ast;

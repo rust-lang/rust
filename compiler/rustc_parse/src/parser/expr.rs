@@ -1,34 +1,32 @@
-use super::diagnostics::{
-    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, BracesForStructLiteral,
-    CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
-    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
-    ExpectedElseBlock, ExpectedExpressionFoundLet, FieldExpressionWithGeneric,
-    FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt, IfExpressionMissingCondition,
-    IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, InvalidBlockMacroSegment,
-    InvalidComparisonOperator, InvalidComparisonOperatorSub, InvalidInterpolatedExpression,
-    InvalidLiteralSuffix, InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator,
-    InvalidLogicalOperatorSub, LabeledLoopInBreak, LeftArrowOperator, LifetimeInBorrowExpression,
-    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
-    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
-    NotAsNegationOperator, NotAsNegationOperatorSub, OuterAttributeNotAllowedOnIfElse,
-    ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
-    SnapshotParser, StructLiteralNotAllowedHere, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
-    UnexpectedTokenAfterLabelSugg,
-};
+use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
-use crate::maybe_recover_from_interpolated_ty_qpath;
-use crate::parser::diagnostics::{
-    BinaryFloatLiteralNotSupported, HexadecimalFloatLiteralNotSupported, IntLiteralTooLarge,
-    InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
-    InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix, LabeledLoopInBreakSub,
-    LeadingPlusNotSupported, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
-    OctalFloatLiteralNotSupported, StructLiteralNotAllowedHereSugg,
+use crate::errors::{
+    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, BinaryFloatLiteralNotSupported,
+    BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
+    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
+    ExpectedElseBlock, ExpectedExpressionFoundLet, FieldExpressionWithGeneric,
+    FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported,
+    IfExpressionMissingCondition, IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub,
+    IntLiteralTooLarge, InvalidBlockMacroSegment, InvalidComparisonOperator,
+    InvalidComparisonOperatorSub, InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth,
+    InvalidIntLiteralWidth, InvalidInterpolatedExpression, InvalidLiteralSuffix,
+    InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator, InvalidLogicalOperatorSub,
+    InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix, LabeledLoopInBreak,
+    LabeledLoopInBreakSub, LeadingPlusNotSupported, LeftArrowOperator, LifetimeInBorrowExpression,
+    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
+    MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm, MissingInInForLoop,
+    MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
+    NotAsNegationOperatorSub, OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse,
+    ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
+    StructLiteralNotAllowedHere, StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator,
+    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg,
 };
+use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use core::mem;
 use rustc_ast::ptr::P;

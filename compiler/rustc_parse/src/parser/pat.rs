@@ -1,5 +1,5 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
-use crate::parser::diagnostics::RemoveLet;
+use crate::errors::RemoveLet;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;

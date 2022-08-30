@@ -1,4 +1,6 @@
-use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error, UseEmptyBlockNotSemi};
+use crate::errors::UseEmptyBlockNotSemi;
+
+use super::diagnostics::{dummy_arg, ConsumeClosingDelim, Error};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 
