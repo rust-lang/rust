@@ -2725,7 +2725,10 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if (a.is_var() && b.is_free_or_static()) || (b.is_var() && a.is_free_or_static()) || a == b
+        if (a.is_var() && b.is_free_or_static())
+            || (b.is_var() && a.is_free_or_static())
+            || (a.is_var() && b.is_var())
+            || a == b
         {
             Ok(a)
         } else {
