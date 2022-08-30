@@ -724,7 +724,7 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(
     segment: &'v PathSegment<'v>,
 ) {
     visitor.visit_ident(segment.ident);
-    walk_list!(visitor, visit_id, segment.hir_id);
+    visitor.visit_id(segment.hir_id);
     if let Some(ref args) = segment.args {
         visitor.visit_generic_args(path_span, args);
     }

@@ -648,7 +648,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_path_segment_data(&self, path_seg: &hir::PathSegment<'_>) -> Option<Ref> {
-        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id?)
+        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id)
     }
 
     pub fn get_path_segment_data_with_id(

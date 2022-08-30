@@ -935,10 +935,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 _,
             ) = hir_map.body(fn_body_id).value.kind
             {
-                let opt_suggestions = path_segment
-                    .hir_id
-                    .map(|path_hir_id| self.infcx.tcx.typeck(path_hir_id.owner))
-                    .and_then(|typeck| typeck.type_dependent_def_id(*hir_id))
+                let opt_suggestions = self
+                    .infcx
+                    .tcx
+                    .typeck(path_segment.hir_id.owner)
+                    .type_dependent_def_id(*hir_id)
                     .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
                     .map(|def_id| self.infcx.tcx.associated_items(def_id))
                     .map(|assoc_items| {
