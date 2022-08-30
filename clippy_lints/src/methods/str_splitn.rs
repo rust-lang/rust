@@ -130,7 +130,7 @@ fn check_manual_split_once_indirect(
     let ctxt = expr.span.ctxt();
     let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
     if let (_, Node::Local(local)) = parents.next()?
-        && let PatKind::Binding(BindingAnnotation::Mutable, iter_binding_id, iter_ident, None) = local.pat.kind
+        && let PatKind::Binding(BindingAnnotation::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
 
@@ -212,11 +212,10 @@ fn indirect_usage<'tcx>(
     ctxt: SyntaxContext,
 ) -> Option<IndirectUsage<'tcx>> {
     if let StmtKind::Local(Local {
-        pat:
-            Pat {
-                kind: PatKind::Binding(BindingAnnotation::Unannotated, _, ident, None),
-                ..
-            },
+        pat: Pat {
+            kind: PatKind::Binding(BindingAnnotation::NONE, _, ident, None),
+            ..
+        },
         init: Some(init_expr),
         hir_id: local_hir_id,
         ..

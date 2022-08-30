@@ -9,7 +9,7 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, Node, PatKind, PathSegment, QPath};
+use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, Node, PatKind, PathSegment, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -123,7 +123,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else }) = higher::IfLet::hir(cx, expr);
         if !is_else_clause(cx.tcx, expr);
         if let PatKind::TupleStruct(ref path1, [field], None) = let_pat.kind;
-        if let PatKind::Binding(annot, bind_id, ident, None) = field.kind;
+        if let PatKind::Binding(BindingAnnotation(by_ref, _), bind_id, ident, None) = field.kind;
         let caller_ty = cx.typeck_results().expr_ty(let_expr);
         let if_block = IfBlockType::IfLet(path1, caller_ty, ident.name, let_expr, if_then, if_else);
         if (is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
@@ -132,12 +132,11 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         then {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-            let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
             let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Some(Node::Stmt(_)));
             let sugg = format!(
                 "{}{}?{}",
                 receiver_str,
-                if by_ref { ".as_ref()" } else { "" },
+                if by_ref == ByRef::Yes { ".as_ref()" } else { "" },
                 if requires_semi { ";" } else { "" }
             );
             span_lint_and_sugg(

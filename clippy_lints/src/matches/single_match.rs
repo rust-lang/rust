@@ -175,7 +175,7 @@ fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<
             let p_ty = cx.typeck_results().pat_ty(p);
             collect_pat_paths(acc, cx, p, p_ty);
         }),
-        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::Unannotated, .., None) | PatKind::Path(_) => {
+        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::NONE, .., None) | PatKind::Path(_) => {
             acc.push(ty);
         },
         _ => {},
