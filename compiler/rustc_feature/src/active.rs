@@ -422,6 +422,8 @@ declare_features! (
     (active, isa_attribute, "1.48.0", Some(74727), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
+    /// Allows `if/while p && let q = r && ...` chains.
+    (active, let_chains, "1.37.0", Some(53667), None),
     /// Allows `let...else` statements.
     (active, let_else, "1.56.0", Some(87335), None),
     /// Allows `#[link(..., cfg(..))]`.

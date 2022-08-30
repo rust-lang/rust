@@ -4,6 +4,10 @@ ast_passes_forbidden_let =
     .not_supported_or = `||` operators are not supported in let chain expressions
     .not_supported_parentheses = `let`s wrapped in parentheses are not supported in a context with let chains
 
+ast_passes_forbidden_let_stable =
+    expected expression, found statement (`let`)
+    .note = variable declaration using `let` is a statement
+
 ast_passes_deprecated_where_clause_location =
     where clause not allowed here
 

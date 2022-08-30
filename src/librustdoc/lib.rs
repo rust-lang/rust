@@ -8,6 +8,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(test)]
 #![feature(never_type)]

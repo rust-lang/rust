@@ -3,6 +3,7 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

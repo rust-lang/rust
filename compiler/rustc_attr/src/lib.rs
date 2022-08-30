@@ -4,6 +4,7 @@
 //! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
 //! to this crate.
 
+#![feature(let_chains)]
 #![feature(let_else)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

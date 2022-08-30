@@ -119,7 +119,12 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error banning the `let` expression provided in the given location.
     fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
-        self.session.emit_err(ForbiddenLet { span: expr.span, reason: forbidden_let_reason });
+        let sess = &self.session;
+        if sess.opts.unstable_features.is_nightly_build() {
+            sess.emit_err(ForbiddenLet { span: expr.span, reason: forbidden_let_reason });
+        } else {
+            sess.emit_err(ForbiddenLetStable { span: expr.span });
+        }
     }
 
     fn check_gat_where(
