@@ -15,6 +15,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{BytePos, Span};
+use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -255,7 +256,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                 then {
                     return Some(
                         rollup_traits(cx, bound_predicate.bounds, "these where clauses contain repeated elements")
-                        .into_keys().map(|trait_ref| (path.res, trait_ref)))
+                        .into_iter().map(|(trait_ref, _)| (path.res, trait_ref)))
                 }
             }
             None
@@ -295,8 +296,13 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 struct ComparableTraitRef(Res, Vec<Res>);
+impl Default for ComparableTraitRef {
+    fn default() -> Self {
+        Self(Res::Err, Vec::new())
+    }
+}
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
     if let GenericBound::Trait(t, tbm) = bound {
@@ -339,7 +345,7 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
     )
 }
 
-fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -> FxHashMap<ComparableTraitRef, Span> {
+fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -> Vec<(ComparableTraitRef, Span)> {
     let mut map = FxHashMap::default();
     let mut repeated_res = false;
 
@@ -351,11 +357,22 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -
         }
     };
 
+    let mut i = 0usize;
     for bound in bounds.iter().filter_map(only_comparable_trait_refs) {
         let (comparable_bound, span_direct) = bound;
-        if map.insert(comparable_bound, span_direct).is_some() {
-            repeated_res = true;
+        match map.entry(comparable_bound) {
+            Entry::Occupied(_) => repeated_res = true,
+            Entry::Vacant(e) => {
+                e.insert((span_direct, i));
+                i += 1;
+            },
         }
+    }
+
+    // Put bounds in source order
+    let mut comparable_bounds = vec![Default::default(); map.len()];
+    for (k, (v, i)) in map {
+        comparable_bounds[i] = (k, v);
     }
 
     if_chain! {
@@ -364,10 +381,9 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -
         then {
             let all_trait_span = first_trait.span().to(last_trait.span());
 
-            let mut traits = map.values()
-                .filter_map(|span| snippet_opt(cx, *span))
+            let traits = comparable_bounds.iter()
+                .filter_map(|&(_, span)| snippet_opt(cx, span))
                 .collect::<Vec<_>>();
-            traits.sort_unstable();
             let traits = traits.join(" + ");
 
             span_lint_and_sugg(
@@ -382,5 +398,5 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -
         }
     }
 
-    map
+    comparable_bounds
 }

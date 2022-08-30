@@ -97,7 +97,7 @@ fn good_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
     unimplemented!();
 }
 
-fn bad_generic<T: GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
+fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
     unimplemented!();
 }
 
@@ -105,7 +105,7 @@ mod foo {
     pub trait Clone {}
 }
 
-fn qualified_path<T: Clone + foo::Clone>(arg0: T) {
+fn qualified_path<T: std::clone::Clone + foo::Clone>(arg0: T) {
     unimplemented!();
 }
 
