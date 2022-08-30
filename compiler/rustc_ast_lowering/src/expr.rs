@@ -577,7 +577,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (pat, task_context_hid) = self.pat_ident_binding_mode(
             span,
             Ident::with_dummy_span(sym::_task_context),
-            hir::BindingAnnotation::Mutable,
+            hir::BindingAnnotation::MUT,
         );
         let param = hir::Param {
             hir_id: self.next_id(),
@@ -671,7 +671,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // this name to identify what is being awaited by a suspended async functions.
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
         let (awaitee_pat, awaitee_pat_hid) =
-            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::Mutable);
+            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::MUT);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
@@ -1433,7 +1433,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter`
         let iter = Ident::with_dummy_span(sym::iter);
         let (iter_pat, iter_pat_nid) =
-            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::Mutable);
+            self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::MUT);
 
         // `match Iterator::next(&mut iter) { ... }`
         let match_expr = {

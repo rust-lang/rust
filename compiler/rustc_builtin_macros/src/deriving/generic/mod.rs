@@ -164,7 +164,9 @@ pub use SubstructureFields::*;
 
 use crate::deriving;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, EnumDef, Expr, Generics, PatKind};
+use rustc_ast::{
+    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, Generics, Mutability, PatKind,
+};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -1063,9 +1065,9 @@ impl<'a> MethodDef<'a> {
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let use_ref_pat = is_packed && !always_copy;
+            let by_ref = ByRef::from(is_packed && !always_copy);
             let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, use_ref_pat);
+                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, by_ref);
 
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
@@ -1247,13 +1249,13 @@ impl<'a> MethodDef<'a> {
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
-                let use_ref_pat = false; // because enums can't be repr(packed)
+                let by_ref = ByRef::No; // because enums can't be repr(packed)
                 let mut subpats: Vec<_> = trait_.create_struct_patterns(
                     cx,
                     variant_path,
                     &variant.data,
                     &prefixes,
-                    use_ref_pat,
+                    by_ref,
                 );
 
                 // `(VariantK, VariantK, ...)` or just `VariantK`.
@@ -1414,7 +1416,7 @@ impl<'a> TraitDef<'a> {
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        use_ref_pat: bool,
+        by_ref: ByRef,
     ) -> Vec<P<ast::Pat>> {
         prefixes
             .iter()
@@ -1422,17 +1424,19 @@ impl<'a> TraitDef<'a> {
                 let pieces_iter =
                     struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
                         let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                        let binding_mode = if use_ref_pat {
-                            ast::BindingMode::ByRef(ast::Mutability::Not)
-                        } else {
-                            ast::BindingMode::ByValue(ast::Mutability::Not)
-                        };
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
                         (
                             sp,
                             struct_field.ident,
-                            cx.pat(path.span, PatKind::Ident(binding_mode, path, None)),
+                            cx.pat(
+                                path.span,
+                                PatKind::Ident(
+                                    BindingAnnotation(by_ref, Mutability::Not),
+                                    path,
+                                    None,
+                                ),
+                            ),
                         )
                     });
 

@@ -259,17 +259,8 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
-                            let binding = match binding_annot {
-                                hir::BindingAnnotation::Unannotated => None,
-                                hir::BindingAnnotation::Mutable => Some("mut"),
-                                hir::BindingAnnotation::Ref => Some("ref"),
-                                hir::BindingAnnotation::RefMut => Some("ref mut"),
-                            };
-                            let suggested_ident = if let Some(binding) = binding {
-                                format!("{} {}", binding, ident)
-                            } else {
-                                ident.to_string()
-                            };
+                            let suggested_ident =
+                                format!("{}{}", binding_annot.prefix_str(), ident);
                             lint.build(fluent::lint::builtin_non_shorthand_field_patterns)
                                 .set_arg("ident", ident.clone())
                                 .span_suggestion(
