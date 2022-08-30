@@ -687,10 +687,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
         assert!(!layout.is_unsized());
 
-        let lhs = self.read_pointer(lhs)?;
-        let rhs = self.read_pointer(rhs)?;
-        let lhs_bytes = self.read_bytes_ptr(lhs, layout.size)?;
-        let rhs_bytes = self.read_bytes_ptr(rhs, layout.size)?;
+        let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
+                         op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+                         size|
+         -> InterpResult<'tcx, &[u8]> {
+            let ptr = this.read_pointer(op)?;
+            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size, Align::ONE)? else {
+                // zero-sized access
+                return Ok(&[]);
+            };
+            if alloc_ref.has_provenance() {
+                throw_ub_format!("`raw_eq` on bytes with provenance");
+            }
+            alloc_ref.get_bytes_strip_provenance()
+        };
+
+        let lhs_bytes = get_bytes(self, lhs, layout.size)?;
+        let rhs_bytes = get_bytes(self, rhs, layout.size)?;
         Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

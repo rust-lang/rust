@@ -396,6 +396,32 @@ where
 
         generalizer.relate(value, value)
     }
+
+    fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+        let mut generalize = |ty, ty_is_expected| {
+            let var = self.infcx.next_ty_var_id_in_universe(
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: self.delegate.span(),
+                },
+                ty::UniverseIndex::ROOT,
+            );
+            if ty_is_expected {
+                self.relate_ty_var((ty, var))
+            } else {
+                self.relate_ty_var((var, ty))
+            }
+        };
+        let (a, b) = match (a.kind(), b.kind()) {
+            (&ty::Opaque(..), _) => (a, generalize(b, false)?),
+            (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
+            _ => unreachable!(),
+        };
+        self.delegate.register_opaque_type(a, b, true)?;
+        trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
+        Ok(a)
+    }
 }
 
 /// When we instantiate an inference variable with a value in
@@ -572,32 +598,16 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-                self.infcx.super_combine_tys(self, a, b)
+                infcx.commit_if_ok(|_| infcx.super_combine_tys(self, a, b)).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
+                    if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
+                })
             }
             (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..)) if did.is_local() => {
-                let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-                let mut generalize = |ty, ty_is_expected| {
-                    let var = infcx.next_ty_var_id_in_universe(
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::MiscVariable,
-                            span: self.delegate.span(),
-                        },
-                        ty::UniverseIndex::ROOT,
-                    );
-                    if ty_is_expected {
-                        self.relate_ty_var((ty, var))
-                    } else {
-                        self.relate_ty_var((var, ty))
-                    }
-                };
-                let (a, b) = match (a.kind(), b.kind()) {
-                    (&ty::Opaque(..), _) => (a, generalize(b, false)?),
-                    (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
-                    _ => unreachable!(),
-                };
-                self.delegate.register_opaque_type(a, b, true)?;
-                trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
-                Ok(a)
+                self.relate_opaques(a, b)
             }
 
             (&ty::Projection(projection_ty), _)

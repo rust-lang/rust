@@ -459,10 +459,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),
     gated!(ffi_const, Normal, template!(Word), WarnFollowing, experimental!(ffi_const)),
     gated!(
-        register_attr, CrateLevel, template!(List: "attr1, attr2, ..."), DuplicatesOk,
-        experimental!(register_attr),
-    ),
-    gated!(
         register_tool, CrateLevel, template!(List: "tool1, tool2, ..."), DuplicatesOk,
         experimental!(register_tool),
     ),

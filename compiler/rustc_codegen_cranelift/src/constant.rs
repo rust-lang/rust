@@ -430,7 +430,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, alloc_id) in alloc.relocations().iter() {
+        for &(offset, alloc_id) in alloc.provenance().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;

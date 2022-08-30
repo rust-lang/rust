@@ -840,6 +840,36 @@ fn test_drain_leak() {
 }
 
 #[test]
+fn test_drain_keep_rest() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain(1..6);
+    assert_eq!(drain.next(), Some(1));
+    assert_eq!(drain.next_back(), Some(5));
+    assert_eq!(drain.next(), Some(2));
+
+    drain.keep_rest();
+    assert_eq!(v, &[0, 3, 4, 6]);
+}
+
+#[test]
+fn test_drain_keep_rest_all() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    v.drain(1..6).keep_rest();
+    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_keep_rest_none() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain(1..6);
+
+    drain.by_ref().for_each(drop);
+
+    drain.keep_rest();
+    assert_eq!(v, &[0, 6]);
+}
+
+#[test]
 fn test_splice() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
@@ -1531,6 +1561,35 @@ fn drain_filter_unconsumed() {
     let drain = vec.drain_filter(|&mut x| x % 2 != 0);
     drop(drain);
     assert_eq!(vec, [2, 4]);
+}
+
+#[test]
+fn test_drain_filter_keep_rest() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain_filter(|&mut x| x % 2 == 0);
+    assert_eq!(drain.next(), Some(0));
+    assert_eq!(drain.next(), Some(2));
+
+    drain.keep_rest();
+    assert_eq!(v, &[1, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_filter_keep_rest_all() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    v.drain_filter(|_| true).keep_rest();
+    assert_eq!(v, &[0, 1, 2, 3, 4, 5, 6]);
+}
+
+#[test]
+fn test_drain_filter_keep_rest_none() {
+    let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    let mut drain = v.drain_filter(|_| true);
+
+    drain.by_ref().for_each(drop);
+
+    drain.keep_rest();
+    assert_eq!(v, &[]);
 }
 
 #[test]

@@ -113,7 +113,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
 }
 
 // `Relocations` with default type parameters is a sorted map.
-impl<'a, Prov> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Prov>
+impl<'a, Prov> HashStable<StableHashingContext<'a>> for mir::interpret::ProvenanceMap<Prov>
 where
     Prov: HashStable<StableHashingContext<'a>>,
 {

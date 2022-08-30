@@ -34,11 +34,11 @@ pub struct Allocation<Prov = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Box<[u8]>,
-    /// Maps from byte addresses to extra data for each pointer.
+    /// Maps from byte addresses to extra provenance data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    relocations: Relocations<Prov>,
+    provenance: ProvenanceMap<Prov>,
     /// Denotes which part of this allocation is initialized.
     init_mask: InitMask,
     /// The alignment of the allocation to detect unaligned reads.
@@ -84,7 +84,7 @@ impl hash::Hash for Allocation {
         }
 
         // Hash the other fields as usual.
-        self.relocations.hash(state);
+        self.provenance.hash(state);
         self.init_mask.hash(state);
         self.align.hash(state);
         self.mutability.hash(state);
@@ -130,6 +130,8 @@ pub enum AllocError {
     ReadPointerAsBytes,
     /// Partially overwriting a pointer.
     PartialPointerOverwrite(Size),
+    /// Partially copying a pointer.
+    PartialPointerCopy(Size),
     /// Using uninitialized data where it is not allowed.
     InvalidUninitBytes(Option<UninitBytesAccess>),
 }
@@ -151,6 +153,9 @@ impl AllocError {
             ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
             PartialPointerOverwrite(offset) => InterpError::Unsupported(
                 UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
+            ),
+            PartialPointerCopy(offset) => InterpError::Unsupported(
+                UnsupportedOpInfo::PartialPointerCopy(Pointer::new(alloc_id, offset)),
             ),
             InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
@@ -211,7 +216,7 @@ impl<Prov> Allocation<Prov> {
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
-            relocations: Relocations::new(),
+            provenance: ProvenanceMap::new(),
             init_mask: InitMask::new(size, true),
             align,
             mutability,
@@ -246,7 +251,7 @@ impl<Prov> Allocation<Prov> {
         let bytes = unsafe { bytes.assume_init() };
         Ok(Allocation {
             bytes,
-            relocations: Relocations::new(),
+            provenance: ProvenanceMap::new(),
             init_mask: InitMask::new(size, false),
             align,
             mutability: Mutability::Mut,
@@ -266,22 +271,22 @@ impl Allocation {
     ) -> Result<Allocation<Prov, Extra>, Err> {
         // Compute new pointer provenance, which also adjusts the bytes.
         let mut bytes = self.bytes;
-        let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
+        let mut new_provenance = Vec::with_capacity(self.provenance.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;
-        for &(offset, alloc_id) in self.relocations.iter() {
+        for &(offset, alloc_id) in self.provenance.iter() {
             let idx = offset.bytes_usize();
             let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
                 adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
-            new_relocations.push((offset, ptr_prov));
+            new_provenance.push((offset, ptr_prov));
         }
         // Create allocation.
         Ok(Allocation {
             bytes,
-            relocations: Relocations::from_presorted(new_relocations),
+            provenance: ProvenanceMap::from_presorted(new_provenance),
             init_mask: self.init_mask,
             align: self.align,
             mutability: self.mutability,
@@ -300,8 +305,8 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
         Size::from_bytes(self.len())
     }
 
-    /// Looks at a slice which may describe uninitialized bytes or describe a relocation. This differs
-    /// from `get_bytes_with_uninit_and_ptr` in that it does no relocation checks (even on the
+    /// Looks at a slice which may contain uninitialized bytes or provenance. This differs
+    /// from `get_bytes_with_uninit_and_ptr` in that it does no provenance checks (even on the
     /// edges) at all.
     /// This must not be used for reads affecting the interpreter execution.
     pub fn inspect_with_uninit_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
@@ -313,74 +318,47 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
         &self.init_mask
     }
 
-    /// Returns the relocation list.
-    pub fn relocations(&self) -> &Relocations<Prov> {
-        &self.relocations
+    /// Returns the provenance map.
+    pub fn provenance(&self) -> &ProvenanceMap<Prov> {
+        &self.provenance
     }
 }
 
 /// Byte accessors.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
-    /// caring about relocations. It just deduplicates some code between `read_scalar`
-    /// and `get_bytes_internal`.
-    fn get_bytes_even_more_internal(&self, range: AllocRange) -> &[u8] {
-        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
-    }
-
-    /// The last argument controls whether we error out when there are uninitialized or pointer
-    /// bytes. However, we *always* error when there are relocations overlapping the edges of the
-    /// range.
-    ///
-    /// You should never call this, call `get_bytes` or `get_bytes_with_uninit_and_ptr` instead,
+    /// caring about provenance or initialization.
     ///
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `mem_copy_repeatedly` relies
     /// on that.
-    ///
-    /// It is the caller's responsibility to check bounds and alignment beforehand.
-    fn get_bytes_internal(
-        &self,
-        cx: &impl HasDataLayout,
-        range: AllocRange,
-        check_init_and_ptr: bool,
-    ) -> AllocResult<&[u8]> {
-        if check_init_and_ptr {
-            self.check_init(range)?;
-            self.check_relocations(cx, range)?;
-        } else {
-            // We still don't want relocations on the *edges*.
-            self.check_relocation_edges(cx, range)?;
-        }
-
-        Ok(self.get_bytes_even_more_internal(range))
+    #[inline]
+    pub fn get_bytes_unchecked(&self, range: AllocRange) -> &[u8] {
+        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
     }
 
-    /// Checks that these bytes are initialized and not pointer bytes, and then return them
-    /// as a slice.
+    /// Checks that these bytes are initialized, and then strip provenance (if possible) and return
+    /// them.
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
     /// Most likely, you want to use the `PlaceTy` and `OperandTy`-based methods
     /// on `InterpCx` instead.
     #[inline]
-    pub fn get_bytes(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult<&[u8]> {
-        self.get_bytes_internal(cx, range, true)
-    }
-
-    /// It is the caller's responsibility to handle uninitialized and pointer bytes.
-    /// However, this still checks that there are no relocations on the *edges*.
-    ///
-    /// It is the caller's responsibility to check bounds and alignment beforehand.
-    #[inline]
-    pub fn get_bytes_with_uninit_and_ptr(
+    pub fn get_bytes_strip_provenance(
         &self,
         cx: &impl HasDataLayout,
         range: AllocRange,
     ) -> AllocResult<&[u8]> {
-        self.get_bytes_internal(cx, range, false)
+        self.check_init(range)?;
+        if !Prov::OFFSET_IS_ADDR {
+            if self.range_has_provenance(cx, range) {
+                return Err(AllocError::ReadPointerAsBytes);
+            }
+        }
+        Ok(self.get_bytes_unchecked(range))
     }
 
-    /// Just calling this already marks everything as defined and removes relocations,
+    /// Just calling this already marks everything as defined and removes provenance,
     /// so be sure to actually put data there!
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.
@@ -392,7 +370,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         range: AllocRange,
     ) -> AllocResult<&mut [u8]> {
         self.mark_init(range, true);
-        self.clear_relocations(cx, range)?;
+        self.clear_provenance(cx, range)?;
 
         Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
     }
@@ -404,7 +382,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         range: AllocRange,
     ) -> AllocResult<*mut [u8]> {
         self.mark_init(range, true);
-        self.clear_relocations(cx, range)?;
+        self.clear_provenance(cx, range)?;
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
         let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
@@ -415,13 +393,6 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 
 /// Reading and writing.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
-    /// Validates that this memory range is initiailized and contains no relocations.
-    pub fn check_bytes(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        // This implicitly does all the checking we are asking for.
-        self.get_bytes(cx, range)?;
-        Ok(())
-    }
-
     /// Reads a *non-ZST* scalar.
     ///
     /// If `read_provenance` is `true`, this will also read provenance; otherwise (if the machine
@@ -438,43 +409,53 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         range: AllocRange,
         read_provenance: bool,
     ) -> AllocResult<Scalar<Prov>> {
-        if read_provenance {
-            assert_eq!(range.size, cx.data_layout().pointer_size);
-        }
-
         // First and foremost, if anything is uninit, bail.
         if self.is_init(range).is_err() {
             return Err(AllocError::InvalidUninitBytes(None));
         }
 
-        // If we are doing a pointer read, and there is a relocation exactly where we
-        // are reading, then we can put data and relocation back together and return that.
-        if read_provenance && let Some(&prov) = self.relocations.get(&range.start) {
-            // We already checked init and relocations, so we can use this function.
-            let bytes = self.get_bytes_even_more_internal(range);
-            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-            let ptr = Pointer::new(prov, Size::from_bytes(bits));
-            return Ok(Scalar::from_pointer(ptr, cx));
-        }
-
-        // If we are *not* reading a pointer, and we can just ignore relocations,
-        // then do exactly that.
-        if !read_provenance && Prov::OFFSET_IS_ADDR {
-            // We just strip provenance.
-            let bytes = self.get_bytes_even_more_internal(range);
-            let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
-            return Ok(Scalar::from_uint(bits, range.size));
-        }
-
-        // It's complicated. Better make sure there is no provenance anywhere.
-        // FIXME: If !OFFSET_IS_ADDR, this is the best we can do. But if OFFSET_IS_ADDR, then
-        // `read_pointer` is true and we ideally would distinguish the following two cases:
-        // - The entire `range` is covered by 2 relocations for the same provenance.
-        //   Then we should return a pointer with that provenance.
-        // - The range has inhomogeneous provenance. Then we should return just the
-        //   underlying bits.
-        let bytes = self.get_bytes(cx, range)?;
+        // Get the integer part of the result. We HAVE TO check provenance before returning this!
+        let bytes = self.get_bytes_unchecked(range);
         let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
+
+        if read_provenance {
+            assert_eq!(range.size, cx.data_layout().pointer_size);
+
+            // When reading data with provenance, the easy case is finding provenance exactly where we
+            // are reading, then we can put data and provenance back together and return that.
+            if let Some(&prov) = self.provenance.get(&range.start) {
+                // Now we can return the bits, with their appropriate provenance.
+                let ptr = Pointer::new(prov, Size::from_bytes(bits));
+                return Ok(Scalar::from_pointer(ptr, cx));
+            }
+
+            // If we can work on pointers byte-wise, join the byte-wise provenances.
+            if Prov::OFFSET_IS_ADDR {
+                let mut prov = self.offset_get_provenance(cx, range.start);
+                for offset in 1..range.size.bytes() {
+                    let this_prov =
+                        self.offset_get_provenance(cx, range.start + Size::from_bytes(offset));
+                    prov = Prov::join(prov, this_prov);
+                }
+                // Now use this provenance.
+                let ptr = Pointer::new(prov, Size::from_bytes(bits));
+                return Ok(Scalar::from_maybe_pointer(ptr, cx));
+            }
+        } else {
+            // We are *not* reading a pointer.
+            // If we can just ignore provenance, do exactly that.
+            if Prov::OFFSET_IS_ADDR {
+                // We just strip provenance.
+                return Ok(Scalar::from_uint(bits, range.size));
+            }
+        }
+
+        // Fallback path for when we cannot treat provenance bytewise or ignore it.
+        assert!(!Prov::OFFSET_IS_ADDR);
+        if self.range_has_provenance(cx, range) {
+            return Err(AllocError::ReadPointerAsBytes);
+        }
+        // There is no provenance, we can just return the bits.
         Ok(Scalar::from_uint(bits, range.size))
     }
 
@@ -508,9 +489,9 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         let dst = self.get_bytes_mut(cx, range)?;
         write_target_uint(endian, dst, bytes).unwrap();
 
-        // See if we have to also write a relocation.
+        // See if we have to also store some provenance.
         if let Some(provenance) = provenance {
-            self.relocations.0.insert(range.start, provenance);
+            self.provenance.0.insert(range.start, provenance);
         }
 
         Ok(())
@@ -519,64 +500,65 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// Write "uninit" to the given memory range.
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.mark_init(range, false);
-        self.clear_relocations(cx, range)?;
+        self.clear_provenance(cx, range)?;
         return Ok(());
     }
 }
 
-/// Relocations.
+/// Provenance.
 impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
-    /// Returns all relocations overlapping with the given pointer-offset pair.
-    fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Prov)] {
+    /// Returns all provenance overlapping with the given pointer-offset pair.
+    fn range_get_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Prov)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = range.start.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
-        self.relocations.range(Size::from_bytes(start)..range.end())
+        self.provenance.range(Size::from_bytes(start)..range.end())
     }
 
-    /// Returns whether this allocation has relocations overlapping with the given range.
+    /// Get the provenance of a single byte.
+    fn offset_get_provenance(&self, cx: &impl HasDataLayout, offset: Size) -> Option<Prov> {
+        let prov = self.range_get_provenance(cx, alloc_range(offset, Size::from_bytes(1)));
+        assert!(prov.len() <= 1);
+        prov.first().map(|(_offset, prov)| *prov)
+    }
+
+    /// Returns whether this allocation has progrnance overlapping with the given range.
     ///
-    /// Note: this function exists to allow `get_relocations` to be private, in order to somewhat
-    /// limit access to relocations outside of the `Allocation` abstraction.
+    /// Note: this function exists to allow `range_get_provenance` to be private, in order to somewhat
+    /// limit access to provenance outside of the `Allocation` abstraction.
     ///
-    pub fn has_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
-        !self.get_relocations(cx, range).is_empty()
+    pub fn range_has_provenance(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
+        !self.range_get_provenance(cx, range).is_empty()
     }
 
-    /// Checks that there are no relocations overlapping with the given range.
-    #[inline(always)]
-    fn check_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        if self.has_relocations(cx, range) { Err(AllocError::ReadPointerAsBytes) } else { Ok(()) }
-    }
-
-    /// Removes all relocations inside the given range.
-    /// If there are relocations overlapping with the edges, they
+    /// Removes all provenance inside the given range.
+    /// If there is provenance overlapping with the edges, it
     /// are removed as well *and* the bytes they cover are marked as
     /// uninitialized. This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
-    fn clear_relocations(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult
+    fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult
     where
         Prov: Provenance,
     {
-        // Find the start and end of the given range and its outermost relocations.
+        // Find the start and end of the given range and its outermost provenance.
         let (first, last) = {
-            // Find all relocations overlapping the given range.
-            let relocations = self.get_relocations(cx, range);
-            if relocations.is_empty() {
+            // Find all provenance overlapping the given range.
+            let provenance = self.range_get_provenance(cx, range);
+            if provenance.is_empty() {
                 return Ok(());
             }
 
             (
-                relocations.first().unwrap().0,
-                relocations.last().unwrap().0 + cx.data_layout().pointer_size,
+                provenance.first().unwrap().0,
+                provenance.last().unwrap().0 + cx.data_layout().pointer_size,
             )
         };
         let start = range.start;
         let end = range.end();
 
-        // We need to handle clearing the relocations from parts of a pointer.
-        // FIXME: Miri should preserve partial relocations; see
+        // We need to handle clearing the provenance from parts of a pointer.
+        // FIXME: Miri should preserve partial provenance; see
         // https://github.com/rust-lang/miri/issues/2181.
         if first < start {
             if Prov::ERR_ON_PARTIAL_PTR_OVERWRITE {
@@ -599,41 +581,32 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
             self.init_mask.set_range(end, last, false);
         }
 
-        // Forget all the relocations.
-        // Since relocations do not overlap, we know that removing until `last` (exclusive) is fine,
-        // i.e., this will not remove any other relocations just after the ones we care about.
-        self.relocations.0.remove_range(first..last);
+        // Forget all the provenance.
+        // Since provenance do not overlap, we know that removing until `last` (exclusive) is fine,
+        // i.e., this will not remove any other provenance just after the ones we care about.
+        self.provenance.0.remove_range(first..last);
 
-        Ok(())
-    }
-
-    /// Errors if there are relocations overlapping with the edges of the
-    /// given memory range.
-    #[inline]
-    fn check_relocation_edges(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        self.check_relocations(cx, alloc_range(range.start, Size::ZERO))?;
-        self.check_relocations(cx, alloc_range(range.end(), Size::ZERO))?;
         Ok(())
     }
 }
 
-/// "Relocations" stores the provenance information of pointers stored in memory.
+/// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-pub struct Relocations<Prov = AllocId>(SortedMap<Size, Prov>);
+pub struct ProvenanceMap<Prov = AllocId>(SortedMap<Size, Prov>);
 
-impl<Prov> Relocations<Prov> {
+impl<Prov> ProvenanceMap<Prov> {
     pub fn new() -> Self {
-        Relocations(SortedMap::new())
+        ProvenanceMap(SortedMap::new())
     }
 
-    // The caller must guarantee that the given relocations are already sorted
+    // The caller must guarantee that the given provenance list is already sorted
     // by address and contain no duplicates.
     pub fn from_presorted(r: Vec<(Size, Prov)>) -> Self {
-        Relocations(SortedMap::from_presorted_elements(r))
+        ProvenanceMap(SortedMap::from_presorted_elements(r))
     }
 }
 
-impl<Prov> Deref for Relocations<Prov> {
+impl<Prov> Deref for ProvenanceMap<Prov> {
     type Target = SortedMap<Size, Prov>;
 
     fn deref(&self) -> &Self::Target {
@@ -641,36 +614,36 @@ impl<Prov> Deref for Relocations<Prov> {
     }
 }
 
-/// A partial, owned list of relocations to transfer into another allocation.
+/// A partial, owned list of provenance to transfer into another allocation.
 ///
 /// Offsets are already adjusted to the destination allocation.
-pub struct AllocationRelocations<Prov> {
-    dest_relocations: Vec<(Size, Prov)>,
+pub struct AllocationProvenance<Prov> {
+    dest_provenance: Vec<(Size, Prov)>,
 }
 
 impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
-    pub fn prepare_relocation_copy(
+    pub fn prepare_provenance_copy(
         &self,
         cx: &impl HasDataLayout,
         src: AllocRange,
         dest: Size,
         count: u64,
-    ) -> AllocationRelocations<Prov> {
-        let relocations = self.get_relocations(cx, src);
-        if relocations.is_empty() {
-            return AllocationRelocations { dest_relocations: Vec::new() };
+    ) -> AllocationProvenance<Prov> {
+        let provenance = self.range_get_provenance(cx, src);
+        if provenance.is_empty() {
+            return AllocationProvenance { dest_provenance: Vec::new() };
         }
 
         let size = src.size;
-        let mut new_relocations = Vec::with_capacity(relocations.len() * (count as usize));
+        let mut new_provenance = Vec::with_capacity(provenance.len() * (count as usize));
 
         // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
         // is mostly filled with redundant information since it's just N copies of the same `Prov`s
-        // at slightly adjusted offsets. The reason we do this is so that in `mark_relocation_range`
+        // at slightly adjusted offsets. The reason we do this is so that in `mark_provenance_range`
         // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
-        // the right sequence of relocations for all N copies.
+        // the right sequence of provenance for all N copies.
         for i in 0..count {
-            new_relocations.extend(relocations.iter().map(|&(offset, reloc)| {
+            new_provenance.extend(provenance.iter().map(|&(offset, reloc)| {
                 // compute offset for current repetition
                 let dest_offset = dest + size * i; // `Size` operations
                 (
@@ -681,17 +654,17 @@ impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
             }));
         }
 
-        AllocationRelocations { dest_relocations: new_relocations }
+        AllocationProvenance { dest_provenance: new_provenance }
     }
 
-    /// Applies a relocation copy.
-    /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
-    /// to be clear of relocations.
+    /// Applies a provenance copy.
+    /// The affected range, as defined in the parameters to `prepare_provenance_copy` is expected
+    /// to be clear of provenance.
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
-    pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Prov>) {
-        self.relocations.0.insert_presorted(relocations.dest_relocations);
+    pub fn mark_provenance_range(&mut self, provenance: AllocationProvenance<Prov>) {
+        self.provenance.0.insert_presorted(provenance.dest_provenance);
     }
 }
 

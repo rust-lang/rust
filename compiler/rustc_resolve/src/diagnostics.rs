@@ -1172,16 +1172,6 @@ impl<'a> Resolver<'a> {
                 Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
-                Scope::RegisteredAttrs => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
-                    if filter_fn(res) {
-                        suggestions.extend(
-                            this.registered_attrs
-                                .iter()
-                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
-                        );
-                    }
-                }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {

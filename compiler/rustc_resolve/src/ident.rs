@@ -127,7 +127,6 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::CrateRoot => true,
                 Scope::Module(..) => true,
-                Scope::RegisteredAttrs => use_prelude,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPrelude => use_prelude || is_absolute_path,
@@ -187,12 +186,11 @@ impl<'a> Resolver<'a> {
                             match ns {
                                 TypeNS => Scope::ExternPrelude,
                                 ValueNS => Scope::StdLibPrelude,
-                                MacroNS => Scope::RegisteredAttrs,
+                                MacroNS => Scope::MacroUsePrelude,
                             }
                         }
                     }
                 }
-                Scope::RegisteredAttrs => Scope::MacroUsePrelude,
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
                 Scope::BuiltinAttrs => break, // nowhere else to search
                 Scope::ExternPrelude if is_absolute_path => break,
@@ -556,14 +554,6 @@ impl<'a> Resolver<'a> {
                             Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                         }
                     }
-                    Scope::RegisteredAttrs => match this.registered_attrs.get(&ident).cloned() {
-                        Some(ident) => ok(
-                            Res::NonMacroAttr(NonMacroAttrKind::Registered),
-                            ident.span,
-                            this.arenas,
-                        ),
-                        None => Err(Determinacy::Determined),
-                    },
                     Scope::MacroUsePrelude => {
                         match this.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
