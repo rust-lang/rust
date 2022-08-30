@@ -86,6 +86,7 @@ cl::opt<bool>
 const char *KnownInactiveFunctionsStartingWith[] = {
     "f90io",
     "$ss5print",
+    "_ZTv0_n24_NSoD", //"1Ev, 0Ev
 #if LLVM_VERSION_MAJOR <= 8
     "_ZN4core3fmt",
     "_ZN3std2io5stdio6_print",
