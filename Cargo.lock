@@ -3334,6 +3334,7 @@ dependencies = [
  "libc",
  "libloading",
  "measureme",
+ "object 0.29.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
