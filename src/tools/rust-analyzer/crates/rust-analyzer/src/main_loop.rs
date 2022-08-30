@@ -328,8 +328,33 @@ impl GlobalState {
                 }
 
                 let uri = file_id_to_url(&self.vfs.read().0, file_id);
-                let diagnostics =
+                let mut diagnostics =
                     self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
+
+                // VSCode assumes diagnostic messages to be non-empty strings, so we need to patch
+                // empty diagnostics. Neither the docs of VSCode nor the LSP spec say whether
+                // diagnostic messages are actually allowed to be empty or not and patching this
+                // in the VSCode client does not work as the assertion happens in the protocol
+                // conversion. So this hack is here to stay, and will be considered a hack
+                // until the LSP decides to state that empty messages are allowed.
+
+                // See https://github.com/rust-lang/rust-analyzer/issues/11404
+                // See https://github.com/rust-lang/rust-analyzer/issues/13130
+                let patch_empty = |message: &mut String| {
+                    if message.is_empty() {
+                        *message = " ".to_string();
+                    }
+                };
+
+                for d in &mut diagnostics {
+                    patch_empty(&mut d.message);
+                    if let Some(dri) = &mut d.related_information {
+                        for dri in dri {
+                            patch_empty(&mut dri.message);
+                        }
+                    }
+                }
+
                 let version = from_proto::vfs_path(&uri)
                     .map(|path| self.mem_docs.get(&path).map(|it| it.version))
                     .unwrap_or_default();
@@ -529,6 +554,13 @@ impl GlobalState {
                     }
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
                     flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidFailToRestart(err) => {
+                        self.show_and_log_error(
+                            "cargo check failed".to_string(),
+                            Some(err.to_string()),
+                        );
+                        return;
+                    }
                     flycheck::Progress::DidFinish(result) => {
                         if let Err(err) = result {
                             self.show_and_log_error(

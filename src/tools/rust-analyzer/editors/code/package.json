@@ -1084,6 +1084,36 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.semanticHighlighting.doc.comment.inject.enable": {
+                    "markdownDescription": "Inject additional highlighting into doc comments.\n\nWhen enabled, rust-analyzer will highlight rust source in doc comments as well as intra\ndoc links.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.operator.enable": {
+                    "markdownDescription": "Use semantic tokens for operators.\n\nWhen disabled, rust-analyzer will emit semantic tokens only for operator tokens when\nthey are tagged with modifiers.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.operator.specialization.enable": {
+                    "markdownDescription": "Use specialized semantic tokens for operators.\n\nWhen enabled, rust-analyzer will emit special token types for operator tokens instead\nof the generic `operator` token type.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.enable": {
+                    "markdownDescription": "Use semantic tokens for punctuations.\n\nWhen disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when\nthey are tagged with modifiers or have a special role.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.separate.macro.bang": {
+                    "markdownDescription": "When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro\ncalls.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.specialization.enable": {
+                    "markdownDescription": "Use specialized semantic tokens for punctuations.\n\nWhen enabled, rust-analyzer will emit special token types for punctuation tokens instead\nof the generic `punctuation` token type.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.semanticHighlighting.strings.enable": {
                     "markdownDescription": "Use semantic tokens for strings.\n\nIn some editors (e.g. vscode) semantic tokens override other highlighting grammars.\nBy disabling semantic tokens for strings, other grammars can be used to highlight\ntheir contents.",
                     "default": true,
