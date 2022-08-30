@@ -236,10 +236,8 @@ pub fn make_format_args(
         if let Some(note) = err.note {
             e.note(&note);
         }
-        if let Some((label, span)) = err.secondary_label {
-            if is_literal {
-                e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
-            }
+        if let Some((label, span)) = err.secondary_label && is_literal {
+            e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
         }
         if err.should_be_replaced_with_positional_argument {
             let captured_arg_span =
