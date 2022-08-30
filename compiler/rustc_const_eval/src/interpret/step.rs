@@ -251,8 +251,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Len(place) => {
                 let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(&src)?;
-                let len = mplace.len(self)?;
+                let op = self.place_to_op(&src)?;
+                let len = op.len(self)?;
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
