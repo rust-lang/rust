@@ -1105,6 +1105,12 @@ fn test_into_iter_drop_allocator() {
 }
 
 #[test]
+fn test_into_iter_zst() {
+    for _ in vec![[0u64; 0]].into_iter() {}
+    for _ in vec![[0u64; 0]; 5].into_iter().rev() {}
+}
+
+#[test]
 fn test_from_iter_specialization() {
     let src: Vec<usize> = vec![0usize; 1];
     let srcptr = src.as_ptr();
