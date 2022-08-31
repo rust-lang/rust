@@ -1500,6 +1500,16 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 unreachable!()
             }
         }
+        TyKind::ImplTraitInTrait(item_id) => {
+            let item = cx.tcx.hir().item(item_id);
+            if let hir::ItemKind::ImplTraitPlaceholder(hir::ImplTraitPlaceholder { bounds }) =
+                item.kind
+            {
+                ImplTrait(bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
+            } else {
+                unreachable!()
+            }
+        }
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, ref lifetime, _) => {
             let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
