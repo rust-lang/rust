@@ -15,6 +15,34 @@
 //! place. For example: Assume `let x = (0, 0)` and that we want to propagate values from `x.0` and
 //! `x.1` also through the assignment `let y = &x`. In this case, we should register `x.0`, `x.1`,
 //! `(*y).0` and `(*y).1`.
+//!
+//!
+//! # Correctness
+//!
+//! Warning: This is a semi-formal attempt to argue for the correctness of this analysis. If you
+//! find any weak spots, let me know! Recommended reading: Abstract Interpretation.
+//!
+//! In the following, we will assume a constant propagation analysis. Our analysis is correct if
+//! every transfer function is correct. This is the case if for every pair (f, f#) and abstract
+//! state s, we have f(y(s)) <= y(f#(s)), where s is a mapping from tracked place to top, bottom or
+//! a constant. Since pointers (and mutable references) are not tracked, but can be used to change
+//! values in the concrete domain, f# must assume that all places that can be affected in this way
+//! for a given program point are marked with top (otherwise many assignments and function calls
+//! would have no choice but to mark all tracked places with top). This leads us to an invariant:
+//! For all possible program points where there could possibly exist a mutable reference or pointer
+//! to a tracked place (in the concrete domain), this place must be assigned to top (in the
+//! abstract domain). The concretization function y can be defined as expected for the constant
+//! propagation analysis, although the concrete state of course contains all kinds of non-tracked
+//! data. However, by the invariant above, no mutable references or pointers to tracked places that
+//! are not marked with top may be introduced.
+//!
+//! Note that we (at least currently) do not differentiate between "this place may assume different
+//! values" and "a pointer to this place escaped the analysis". However, we still want to handle
+//! assignments to constants as usual for f#. This adds an assumption: Whenever we have an
+//! assignment, all mutable access to the underlying place (which is not observed by the analysis)
+//! must be invalidated. This is (hopefully) covered by Stacked Borrows.
+//!
+//! To be continued...
 
 use std::fmt::{Debug, Formatter};
 
