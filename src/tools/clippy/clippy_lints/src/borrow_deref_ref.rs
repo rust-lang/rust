@@ -29,22 +29,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// fn foo(_x: &str) {}
-    ///
     /// let s = &String::new();
     ///
     /// let a: &String = &* s;
-    /// foo(&*s);
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # fn foo(_x: &str) {}
     /// # let s = &String::new();
     /// let a: &String = s;
-    /// foo(&**s);
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.63.0"]
     pub BORROW_DEREF_REF,
     complexity,
     "deref on an immutable reference returns the same type as itself"

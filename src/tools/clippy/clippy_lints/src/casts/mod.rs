@@ -1,3 +1,5 @@
+mod as_underscore;
+mod borrow_as_ptr;
 mod cast_abs_to_unsigned;
 mod cast_enum_constructor;
 mod cast_lossless;
@@ -8,6 +10,7 @@ mod cast_ptr_alignment;
 mod cast_ref_to_mut;
 mod cast_sign_loss;
 mod cast_slice_different_sizes;
+mod cast_slice_from_raw_parts;
 mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
@@ -16,7 +19,7 @@ mod ptr_as_ptr;
 mod unnecessary_cast;
 mod utils;
 
-use clippy_utils::is_hir_ty_cfg_dependant;
+use clippy_utils::{is_hir_ty_cfg_dependant, meets_msrv, msrvs};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -506,6 +509,93 @@ declare_clippy_lint! {
     "casting the result of `abs()` to an unsigned integer can panic"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check for the usage of `as _` conversion using inferred type.
+    ///
+    /// ### Why is this bad?
+    /// The conversion might include lossy conversion and dangerous cast that might go
+    /// undetected due to the type being inferred.
+    ///
+    /// The lint is allowed by default as using `_` is less wordy than always specifying the type.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn foo(n: usize) {}
+    /// let n: u16 = 256;
+    /// foo(n as _);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn foo(n: usize) {}
+    /// let n: u16 = 256;
+    /// foo(n as usize);
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub AS_UNDERSCORE,
+    restriction,
+    "detects `as _` conversion"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the usage of `&expr as *const T` or
+    /// `&mut expr as *mut T`, and suggest using `ptr::addr_of` or
+    /// `ptr::addr_of_mut` instead.
+    ///
+    /// ### Why is this bad?
+    /// This would improve readability and avoid creating a reference
+    /// that points to an uninitialized value or unaligned place.
+    /// Read the `ptr::addr_of` docs for more information.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let val = 1;
+    /// let p = &val as *const i32;
+    ///
+    /// let mut val_mut = 1;
+    /// let p_mut = &mut val_mut as *mut i32;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let val = 1;
+    /// let p = std::ptr::addr_of!(val);
+    ///
+    /// let mut val_mut = 1;
+    /// let p_mut = std::ptr::addr_of_mut!(val_mut);
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub BORROW_AS_PTR,
+    pedantic,
+    "borrowing just to cast to a raw pointer"
+}
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for a raw slice being cast to a slice pointer
+    ///
+    /// ### Why is this bad?
+    /// This can result in multiple `&mut` references to the same location when only a pointer is
+    /// required.
+    /// `ptr::slice_from_raw_parts` is a safe alternative that doesn't require
+    /// the same [safety requirements] to be upheld.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// let _: *const [u8] = std::slice::from_raw_parts(ptr, len) as *const _;
+    /// let _: *mut [u8] = std::slice::from_raw_parts_mut(ptr, len) as *mut _;
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// let _: *const [u8] = std::ptr::slice_from_raw_parts(ptr, len);
+    /// let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
+    /// ```
+    /// [safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
+    #[clippy::version = "1.64.0"]
+    pub CAST_SLICE_FROM_RAW_PARTS,
+    suspicious,
+    "casting a slice created from a pointer and length to a slice pointer"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -534,7 +624,10 @@ impl_lint_pass!(Casts => [
     PTR_AS_PTR,
     CAST_ENUM_TRUNCATION,
     CAST_ENUM_CONSTRUCTOR,
-    CAST_ABS_TO_UNSIGNED
+    CAST_ABS_TO_UNSIGNED,
+    AS_UNDERSCORE,
+    BORROW_AS_PTR,
+    CAST_SLICE_FROM_RAW_PARTS
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -547,8 +640,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             return;
         }
 
-        if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
-            if is_hir_ty_cfg_dependant(cx, cast_to) {
+        if let ExprKind::Cast(cast_expr, cast_to_hir) = expr.kind {
+            if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
                 return;
             }
             let (cast_from, cast_to) = (
@@ -559,7 +652,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
-
+            cast_slice_from_raw_parts::check(cx, expr, cast_expr, cast_to, self.msrv);
             fn_to_numeric_cast_any::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
@@ -574,6 +667,12 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 }
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
+            }
+
+            as_underscore::check(cx, expr, cast_to_hir);
+
+            if meets_msrv(self.msrv, msrvs::BORROW_AS_PTR) {
+                borrow_as_ptr::check(cx, expr, cast_expr, cast_to_hir);
             }
         }
 

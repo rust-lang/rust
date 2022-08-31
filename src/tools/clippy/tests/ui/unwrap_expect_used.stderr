@@ -1,5 +1,5 @@
 error: used `unwrap()` on `an Option` value
-  --> $DIR/unwrap_expect_used.rs:4:5
+  --> $DIR/unwrap_expect_used.rs:23:5
    |
 LL |     Some(3).unwrap();
    |     ^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     Some(3).unwrap();
    = help: if this value is `None`, it will panic
 
 error: used `expect()` on `an Option` value
-  --> $DIR/unwrap_expect_used.rs:5:5
+  --> $DIR/unwrap_expect_used.rs:24:5
    |
 LL |     Some(3).expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     Some(3).expect("Hello world!");
    = help: if this value is `None`, it will panic
 
 error: used `unwrap()` on `a Result` value
-  --> $DIR/unwrap_expect_used.rs:8:5
+  --> $DIR/unwrap_expect_used.rs:31:5
    |
 LL |     a.unwrap();
    |     ^^^^^^^^^^
@@ -25,12 +25,28 @@ LL |     a.unwrap();
    = help: if this value is an `Err`, it will panic
 
 error: used `expect()` on `a Result` value
-  --> $DIR/unwrap_expect_used.rs:9:5
+  --> $DIR/unwrap_expect_used.rs:32:5
    |
 LL |     a.expect("Hello world!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: if this value is an `Err`, it will panic
 
-error: aborting due to 4 previous errors
+error: used `unwrap_err()` on `a Result` value
+  --> $DIR/unwrap_expect_used.rs:33:5
+   |
+LL |     a.unwrap_err();
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: if this value is an `Ok`, it will panic
+
+error: used `expect_err()` on `a Result` value
+  --> $DIR/unwrap_expect_used.rs:34:5
+   |
+LL |     a.expect_err("Hello error!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this value is an `Ok`, it will panic
+
+error: aborting due to 6 previous errors
 

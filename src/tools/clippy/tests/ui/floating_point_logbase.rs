@@ -5,6 +5,7 @@ fn main() {
     let x = 3f32;
     let y = 5f32;
     let _ = x.ln() / y.ln();
+    let _ = (x as f32).ln() / y.ln();
     let _ = x.log2() / y.log2();
     let _ = x.log10() / y.log10();
     let _ = x.log(5f32) / y.log(5f32);

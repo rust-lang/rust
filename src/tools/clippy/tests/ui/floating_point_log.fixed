@@ -12,6 +12,7 @@ fn check_log_base() {
     let _ = x.ln();
     let _ = x.log2();
     let _ = x.ln();
+    let _ = (x as f32).log2();
 
     let x = 1f64;
     let _ = x.log2();

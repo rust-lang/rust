@@ -393,8 +393,8 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "search_is_some.rs",
     "single_component_path_imports_nested_first.rs",
     "string_add.rs",
+    "suspicious_to_owned.rs",
     "toplevel_ref_arg_non_rustfix.rs",
-    "trait_duplication_in_bounds.rs",
     "unit_arg.rs",
     "unnecessary_clone.rs",
     "unnecessary_lazy_eval_unfixable.rs",
@@ -404,16 +404,23 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
 ];
 
 fn check_rustfix_coverage() {
-    let missing_coverage_path = Path::new("target/debug/test/ui/rustfix_missing_coverage.txt");
+    let missing_coverage_path = Path::new("debug/test/ui/rustfix_missing_coverage.txt");
+    let missing_coverage_path = if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        PathBuf::from(target_dir).join(missing_coverage_path)
+    } else {
+        missing_coverage_path.to_path_buf()
+    };
 
     if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
         assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
 
-        for rs_path in missing_coverage_contents.lines() {
-            if Path::new(rs_path).starts_with("tests/ui/crashes") {
+        for rs_file in missing_coverage_contents.lines() {
+            let rs_path = Path::new(rs_file);
+            if rs_path.starts_with("tests/ui/crashes") {
                 continue;
             }
-            let filename = Path::new(rs_path).strip_prefix("tests/ui/").unwrap();
+            assert!(rs_path.starts_with("tests/ui/"), "{:?}", rs_file);
+            let filename = rs_path.strip_prefix("tests/ui/").unwrap();
             assert!(
                 RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS
                     .binary_search_by_key(&filename, Path::new)
@@ -421,7 +428,7 @@ fn check_rustfix_coverage() {
                 "`{}` runs `MachineApplicable` diagnostics but is missing a `run-rustfix` annotation. \
                 Please either add `// run-rustfix` at the top of the file or add the file to \
                 `RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` in `tests/compile-test.rs`.",
-                rs_path,
+                rs_file,
             );
         }
     }

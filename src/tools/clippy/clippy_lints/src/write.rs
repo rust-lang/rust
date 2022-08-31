@@ -3,8 +3,9 @@ use std::iter;
 use std::ops::{Deref, Range};
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
+use rustc_ast::ptr::P;
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -256,6 +257,28 @@ declare_clippy_lint! {
     "writing a literal with a format string"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// This lint warns when a named parameter in a format string is used as a positional one.
+    ///
+    /// ### Why is this bad?
+    /// It may be confused for an assignment and obfuscates which parameter is being used.
+    ///
+    /// ### Example
+    /// ```rust
+    /// println!("{}", x = 10);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// println!("{x}", x = 10);
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub POSITIONAL_NAMED_FORMAT_PARAMETERS,
+    suspicious,
+    "named parameter in a format string is used positionally"
+}
+
 #[derive(Default)]
 pub struct Write {
     in_debug_impl: bool,
@@ -270,7 +293,8 @@ impl_lint_pass!(Write => [
     PRINT_LITERAL,
     WRITE_WITH_NEWLINE,
     WRITELN_EMPTY_STRING,
-    WRITE_LITERAL
+    WRITE_LITERAL,
+    POSITIONAL_NAMED_FORMAT_PARAMETERS,
 ]);
 
 impl EarlyLintPass for Write {
@@ -408,6 +432,7 @@ fn newline_span(fmtstr: &StrLit) -> (Span, bool) {
 #[derive(Default)]
 struct SimpleFormatArgs {
     unnamed: Vec<Vec<Span>>,
+    complex_unnamed: Vec<Vec<Span>>,
     named: Vec<(Symbol, Vec<Span>)>,
 }
 impl SimpleFormatArgs {
@@ -417,6 +442,10 @@ impl SimpleFormatArgs {
             [DUMMY_SP] => &[],
             x => x,
         })
+    }
+
+    fn get_complex_unnamed(&self) -> impl Iterator<Item = &[Span]> {
+        self.complex_unnamed.iter().map(Vec::as_slice)
     }
 
     fn get_named(&self, n: &Path) -> &[Span] {
@@ -479,6 +508,61 @@ impl SimpleFormatArgs {
             },
         };
     }
+
+    fn push_to_complex(&mut self, span: Span, position: usize) {
+        if self.complex_unnamed.len() <= position {
+            self.complex_unnamed.resize_with(position, Vec::new);
+            self.complex_unnamed.push(vec![span]);
+        } else {
+            let args: &mut Vec<Span> = &mut self.complex_unnamed[position];
+            args.push(span);
+        }
+    }
+
+    fn push_complex(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        arg: rustc_parse_format::Argument<'_>,
+        str_lit_span: Span,
+        fmt_span: Span,
+    ) {
+        use rustc_parse_format::{ArgumentImplicitlyIs, ArgumentIs, CountIsParam, CountIsStar};
+
+        let snippet = snippet_opt(cx, fmt_span);
+
+        let end = snippet
+            .as_ref()
+            .and_then(|s| s.find(':'))
+            .or_else(|| fmt_span.hi().0.checked_sub(fmt_span.lo().0 + 1).map(|u| u as usize));
+
+        if let (ArgumentIs(n) | ArgumentImplicitlyIs(n), Some(end)) = (arg.position, end) {
+            let span = fmt_span.from_inner(InnerSpan::new(1, end));
+            self.push_to_complex(span, n);
+        };
+
+        if let (CountIsParam(n) | CountIsStar(n), Some(span)) = (arg.format.precision, arg.format.precision_span) {
+            // We need to do this hack as precision spans should be converted from .* to .foo$
+            let hack = if snippet.as_ref().and_then(|s| s.find('*')).is_some() {
+                0
+            } else {
+                1
+            };
+
+            let span = str_lit_span.from_inner(InnerSpan {
+                start: span.start + 1,
+                end: span.end - hack,
+            });
+            self.push_to_complex(span, n);
+        };
+
+        if let (CountIsParam(n), Some(span)) = (arg.format.width, arg.format.width_span) {
+            let span = str_lit_span.from_inner(InnerSpan {
+                start: span.start,
+                end: span.end - 1,
+            });
+            self.push_to_complex(span, n);
+        };
+    }
 }
 
 impl Write {
@@ -511,8 +595,8 @@ impl Write {
                 // FIXME: modify rustc's fmt string parser to give us the current span
                 span_lint(cx, USE_DEBUG, span, "use of `Debug`-based formatting");
             }
-
             args.push(arg, span);
+            args.push_complex(cx, arg, str_lit.span, span);
         }
 
         parser.errors.is_empty().then_some(args)
@@ -566,6 +650,7 @@ impl Write {
 
         let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
         let mut unnamed_args = args.get_unnamed();
+        let mut complex_unnamed_args = args.get_complex_unnamed();
         loop {
             if !parser.eat(&token::Comma) {
                 return (Some(fmtstr), expr);
@@ -577,11 +662,20 @@ impl Write {
             } else {
                 return (Some(fmtstr), None);
             };
+            let complex_unnamed_arg = complex_unnamed_args.next();
+
             let (fmt_spans, lit) = match &token_expr.kind {
                 ExprKind::Lit(lit) => (unnamed_args.next().unwrap_or(&[]), lit),
-                ExprKind::Assign(lhs, rhs, _) => match (&lhs.kind, &rhs.kind) {
-                    (ExprKind::Path(_, p), ExprKind::Lit(lit)) => (args.get_named(p), lit),
-                    _ => continue,
+                ExprKind::Assign(lhs, rhs, _) => {
+                    if let Some(span) = complex_unnamed_arg {
+                        for x in span {
+                            Self::report_positional_named_param(cx, *x, lhs, rhs);
+                        }
+                    }
+                    match (&lhs.kind, &rhs.kind) {
+                        (ExprKind::Path(_, p), ExprKind::Lit(lit)) => (args.get_named(p), lit),
+                        _ => continue,
+                    }
                 },
                 _ => {
                     unnamed_args.next();
@@ -635,6 +729,29 @@ impl Write {
                 );
             }
         }
+    }
+
+    fn report_positional_named_param(cx: &EarlyContext<'_>, span: Span, lhs: &P<Expr>, _rhs: &P<Expr>) {
+        if let ExprKind::Path(_, _p) = &lhs.kind {
+            let mut applicability = Applicability::MachineApplicable;
+            let name = snippet_with_applicability(cx, lhs.span, "name", &mut applicability);
+            // We need to do this hack as precision spans should be converted from .* to .foo$
+            let hack = snippet(cx, span, "").contains('*');
+
+            span_lint_and_sugg(
+                cx,
+                POSITIONAL_NAMED_FORMAT_PARAMETERS,
+                span,
+                &format!("named parameter {} is used as a positional parameter", name),
+                "replace it with",
+                if hack {
+                    format!("{}$", name)
+                } else {
+                    format!("{}", name)
+                },
+                applicability,
+            );
+        };
     }
 
     fn lint_println_empty_string(&self, cx: &EarlyContext<'_>, mac: &MacCall) {

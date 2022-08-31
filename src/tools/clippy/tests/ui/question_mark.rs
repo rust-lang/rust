@@ -243,4 +243,19 @@ fn option_map() -> Option<bool> {
     }
 }
 
+pub struct PatternedError {
+    flag: bool,
+}
+
+// No warning
+fn pattern() -> Result<(), PatternedError> {
+    let res = Ok(());
+
+    if let Err(err @ PatternedError { flag: true }) = res {
+        return Err(err);
+    }
+
+    res
+}
+
 fn main() {}

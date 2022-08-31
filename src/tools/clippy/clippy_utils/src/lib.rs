@@ -28,6 +28,7 @@ extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
+extern crate rustc_parse_format;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -87,6 +88,7 @@ use rustc_hir::{
     Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
     TraitRef, TyKind, UnOp,
 };
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
@@ -104,6 +106,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
+use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -372,15 +375,19 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
 ///
-/// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
+/// Please use `is_path_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
 }
 
-/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
-/// diagnostic item.
-pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    path_def_id(cx, expr).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
+/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
+/// it matches the given diagnostic item.
+pub fn is_path_diagnostic_item<'tcx>(
+    cx: &LateContext<'_>,
+    maybe_path: &impl MaybePath<'tcx>,
+    diag_item: Symbol,
+) -> bool {
+    path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -2272,6 +2279,18 @@ pub fn walk_to_expr_usage<'tcx, T>(
         }
     }
     None
+}
+
+/// Checks whether a given span has any comment token
+/// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
+pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
+    let Ok(snippet) = sm.span_to_snippet(span) else { return false };
+    return tokenize(&snippet).any(|token| {
+        matches!(
+            token.kind,
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+        )
+    });
 }
 
 macro_rules! op_utils {
