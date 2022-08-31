@@ -1438,7 +1438,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     res,
                     segments: self
                         .arena
-                        .alloc_from_iter([hir::PathSegment::from_ident(ident, hir_id, res)]),
+                        .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
                 });
                 let ty_id = self.next_id();
                 let bounded_ty =
