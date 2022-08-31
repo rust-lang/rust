@@ -1249,9 +1249,13 @@ impl HandlerInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags
-            .treat_err_as_bug
-            .map_or(false, |c| self.err_count() + self.lint_err_count >= c.get())
+        self.flags.treat_err_as_bug.map_or(false, |c| {
+            self.err_count()
+                + self.lint_err_count
+                + self.delayed_span_bugs.len()
+                + self.delayed_good_path_bugs.len()
+                >= c.get()
+        })
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -1407,7 +1411,14 @@ impl HandlerInner {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
-        if self.flags.treat_err_as_bug.map_or(false, |c| self.err_count() + 1 >= c.get()) {
+        if self.flags.treat_err_as_bug.map_or(false, |c| {
+            self.err_count()
+                + self.lint_err_count
+                + self.delayed_span_bugs.len()
+                + self.delayed_good_path_bugs.len()
+                + 1
+                >= c.get()
+        }) {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }

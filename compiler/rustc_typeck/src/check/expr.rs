@@ -21,7 +21,6 @@ use crate::errors::{
 };
 use crate::type_error_struct;
 
-use super::suggest_call_constructor;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -44,7 +43,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::TypeError::FieldMisMatch;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeVisitable};
+use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -2141,15 +2140,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
     ) -> Ty<'tcx> {
         debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
-        let expr_t = self.check_expr(base);
-        let expr_t = self.structurally_resolved_type(base.span, expr_t);
+        let base_ty = self.check_expr(base);
+        let base_ty = self.structurally_resolved_type(base.span, base_ty);
         let mut private_candidate = None;
-        let mut autoderef = self.autoderef(expr.span, expr_t);
-        while let Some((base_t, _)) = autoderef.next() {
-            debug!("base_t: {:?}", base_t);
-            match base_t.kind() {
+        let mut autoderef = self.autoderef(expr.span, base_ty);
+        while let Some((deref_base_ty, _)) = autoderef.next() {
+            debug!("deref_base_ty: {:?}", deref_base_ty);
+            match deref_base_ty.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
-                    debug!("struct named {:?}", base_t);
+                    debug!("struct named {:?}", deref_base_ty);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
@@ -2197,23 +2196,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
             // creating erroneous projection.
             self.apply_adjustments(base, adjustments);
-            self.ban_private_field_access(expr, expr_t, field, did);
+            self.ban_private_field_access(expr, base_ty, field, did);
             return field_ty;
         }
 
         if field.name == kw::Empty {
-        } else if self.method_exists(field, expr_t, expr.hir_id, true) {
-            self.ban_take_value_of_method(expr, expr_t, field);
-        } else if !expr_t.is_primitive_ty() {
-            self.ban_nonexisting_field(field, base, expr, expr_t);
+        } else if self.method_exists(field, base_ty, expr.hir_id, true) {
+            self.ban_take_value_of_method(expr, base_ty, field);
+        } else if !base_ty.is_primitive_ty() {
+            self.ban_nonexisting_field(field, base, expr, base_ty);
         } else {
             let field_name = field.to_string();
             let mut err = type_error_struct!(
                 self.tcx().sess,
                 field.span,
-                expr_t,
+                base_ty,
                 E0610,
-                "`{expr_t}` is a primitive type and therefore doesn't have fields",
+                "`{base_ty}` is a primitive type and therefore doesn't have fields",
             );
             let is_valid_suffix = |field: &str| {
                 if field == "f32" || field == "f64" {
@@ -2251,7 +2250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None
                 }
             };
-            if let ty::Infer(ty::IntVar(_)) = expr_t.kind()
+            if let ty::Infer(ty::IntVar(_)) = base_ty.kind()
                 && let ExprKind::Lit(Spanned {
                     node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed),
                     ..
@@ -2278,35 +2277,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.tcx().ty_error()
-    }
-
-    fn check_call_constructor(
-        &self,
-        err: &mut Diagnostic,
-        base: &'tcx hir::Expr<'tcx>,
-        def_id: DefId,
-    ) {
-        if let Some(local_id) = def_id.as_local() {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_id);
-            let node = self.tcx.hir().get(hir_id);
-
-            if let Some(fields) = node.tuple_fields() {
-                let kind = match self.tcx.opt_def_kind(local_id) {
-                    Some(DefKind::Ctor(of, _)) => of,
-                    _ => return,
-                };
-
-                suggest_call_constructor(base.span, kind, fields.len(), err);
-            }
-        } else {
-            // The logic here isn't smart but `associated_item_def_ids`
-            // doesn't work nicely on local.
-            if let DefKind::Ctor(of, _) = self.tcx.def_kind(def_id) {
-                let parent_def_id = self.tcx.parent(def_id);
-                let fields = self.tcx.associated_item_def_ids(parent_def_id);
-                suggest_call_constructor(base.span, of, fields.len(), err);
-            }
-        }
     }
 
     fn suggest_await_on_field_access(
@@ -2351,40 +2321,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn ban_nonexisting_field(
         &self,
-        field: Ident,
+        ident: Ident,
         base: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
-        expr_t: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
     ) {
         debug!(
-            "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, expr_ty={:?}",
-            field, base, expr, expr_t
+            "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
+            ident, base, expr, base_ty
         );
-        let mut err = self.no_such_field_err(field, expr_t, base.hir_id);
+        let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
 
-        match *expr_t.peel_refs().kind() {
+        match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
-                self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
+                self.maybe_suggest_array_indexing(&mut err, expr, base, ident, len);
             }
             ty::RawPtr(..) => {
-                self.suggest_first_deref_field(&mut err, expr, base, field);
+                self.suggest_first_deref_field(&mut err, expr, base, ident);
             }
             ty::Adt(def, _) if !def.is_enum() => {
-                self.suggest_fields_on_recordish(&mut err, def, field, expr.span);
+                self.suggest_fields_on_recordish(&mut err, def, ident, expr.span);
             }
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
             }
             ty::Opaque(_, _) => {
-                self.suggest_await_on_field_access(&mut err, field, base, expr_t.peel_refs());
-            }
-            ty::FnDef(def_id, _) => {
-                self.check_call_constructor(&mut err, base, def_id);
+                self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
             _ => {}
         }
 
-        if field.name == kw::Await {
+        self.suggest_fn_call(&mut err, base, base_ty, |output_ty| {
+            if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
+                def.non_enum_variant().fields.iter().any(|field| {
+                    field.ident(self.tcx) == ident
+                        && field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                })
+            } else if let ty::Tuple(tys) = output_ty.kind()
+                && let Ok(idx) = ident.as_str().parse::<usize>()
+            {
+                idx < tys.len()
+            } else {
+                false
+            }
+        });
+
+        if ident.name == kw::Await {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
