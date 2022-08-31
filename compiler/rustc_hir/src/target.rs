@@ -105,6 +105,7 @@ impl Target {
             DefKind::GlobalAsm => Target::GlobalAsm,
             DefKind::TyAlias => Target::TyAlias,
             DefKind::OpaqueTy => Target::OpaqueTy,
+            DefKind::ImplTraitPlaceholder => Target::ImplTraitPlaceholder,
             DefKind::Enum => Target::Enum,
             DefKind::Struct => Target::Struct,
             DefKind::Union => Target::Union,

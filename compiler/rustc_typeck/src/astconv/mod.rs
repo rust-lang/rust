@@ -2638,8 +2638,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
             }
-            hir::TyKind::ImplTraitInTrait(..) => {
-                span_bug!(ast_ty.span, "not yet implemented")
+            hir::TyKind::ImplTraitInTrait(item_id) => {
+                let def_id = item_id.def_id.to_def_id();
+                tcx.mk_projection(def_id, InternalSubsts::identity_for_item(tcx, def_id))
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
                 debug!(?qself, ?segment);

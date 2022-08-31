@@ -74,6 +74,29 @@ fn opaque_type_bounds<'tcx>(
     })
 }
 
+/// Opaque types don't inherit bounds from their parent: for return position
+/// impl trait it isn't possible to write a suitable predicate on the
+/// containing function and for type-alias impl trait we don't have a backwards
+/// compatibility issue.
+fn impl_trait_in_trait_item_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: DefId,
+    ast_bounds: &'tcx [hir::GenericBound<'tcx>],
+    span: Span,
+) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    ty::print::with_no_queries!({
+        // FIXME(RPITIT): DRY-er code please
+        let item_ty =
+            tcx.mk_projection(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
+
+        let icx = ItemCtxt::new(tcx, opaque_def_id);
+        let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
+        // RPITITs are implicitly sized unless a `?Sized` bound is found
+        <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
+        tcx.arena.alloc_from_iter(bounds.predicates(tcx, item_ty))
+    })
+}
+
 pub(super) fn explicit_item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -90,6 +113,11 @@ pub(super) fn explicit_item_bounds(
             span,
             ..
         }) => opaque_type_bounds(tcx, def_id, bounds, *span),
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::ImplTraitPlaceholder(hir::ImplTraitPlaceholder { bounds }),
+            span,
+            ..
+        }) => impl_trait_in_trait_item_bounds(tcx, def_id, bounds, *span),
         _ => bug!("item_bounds called on {:?}", def_id),
     }
 }
