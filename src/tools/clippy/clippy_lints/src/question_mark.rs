@@ -123,7 +123,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else }) = higher::IfLet::hir(cx, expr);
         if !is_else_clause(cx.tcx, expr);
         if let PatKind::TupleStruct(ref path1, [field], None) = let_pat.kind;
-        if let PatKind::Binding(annot, bind_id, ident, _) = field.kind;
+        if let PatKind::Binding(annot, bind_id, ident, None) = field.kind;
         let caller_ty = cx.typeck_results().expr_ty(let_expr);
         let if_block = IfBlockType::IfLet(path1, caller_ty, ident.name, let_expr, if_then, if_else);
         if (is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))

@@ -727,6 +727,7 @@ version = "0.1.65"
 dependencies = [
  "arrayvec",
  "if_chain",
+ "itertools",
  "rustc-semver",
 ]
 

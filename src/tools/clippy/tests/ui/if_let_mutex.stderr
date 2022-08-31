@@ -1,10 +1,14 @@
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
   --> $DIR/if_let_mutex.rs:10:5
    |
-LL | /     if let Err(locked) = m.lock() {
+LL |       if let Err(locked) = m.lock() {
+   |       ^                    - this Mutex will remain locked for the entire `if let`-block...
+   |  _____|
+   | |
 LL | |         do_stuff(locked);
 LL | |     } else {
 LL | |         let lock = m.lock().unwrap();
+   | |                    - ... and is tried to lock again here, which will always deadlock.
 LL | |         do_stuff(lock);
 LL | |     };
    | |_____^
@@ -15,15 +19,35 @@ LL | |     };
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
   --> $DIR/if_let_mutex.rs:22:5
    |
-LL | /     if let Some(locked) = m.lock().unwrap().deref() {
+LL |       if let Some(locked) = m.lock().unwrap().deref() {
+   |       ^                     - this Mutex will remain locked for the entire `if let`-block...
+   |  _____|
+   | |
 LL | |         do_stuff(locked);
 LL | |     } else {
 LL | |         let lock = m.lock().unwrap();
+   | |                    - ... and is tried to lock again here, which will always deadlock.
 LL | |         do_stuff(lock);
 LL | |     };
    | |_____^
    |
    = help: move the lock call outside of the `if let ...` expression
 
-error: aborting due to 2 previous errors
+error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
+  --> $DIR/if_let_mutex.rs:43:5
+   |
+LL |       if let Ok(i) = mutex.lock() {
+   |       ^              ----- this Mutex will remain locked for the entire `if let`-block...
+   |  _____|
+   | |
+LL | |         do_stuff(i);
+LL | |     } else {
+LL | |         let _x = mutex.lock();
+   | |                  ----- ... and is tried to lock again here, which will always deadlock.
+LL | |     };
+   | |_____^
+   |
+   = help: move the lock call outside of the `if let ...` expression
+
+error: aborting due to 3 previous errors
 
