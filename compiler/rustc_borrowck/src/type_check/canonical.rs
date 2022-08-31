@@ -104,6 +104,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn normalize_and_prove_instantiated_predicates(
         &mut self,
         // Keep this parameter for now, in case we start using
@@ -118,8 +119,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .zip(instantiated_predicates.spans.into_iter())
         {
             debug!(?predicate);
-            let predicate = self.normalize(predicate, locations);
-            self.prove_predicate(predicate, locations, ConstraintCategory::Predicate(span));
+            let category = ConstraintCategory::Predicate(span);
+            let predicate = self.normalize_with_category(predicate, locations, category);
+            self.prove_predicate(predicate, locations, category);
         }
     }
 
@@ -155,15 +157,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
+    where
+        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
+    {
+        self.normalize_with_category(value, location, ConstraintCategory::Boring)
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn normalize_with_category<T>(
+        &mut self,
+        value: T,
+        location: impl NormalizeLocation,
+        category: ConstraintCategory<'tcx>,
+    ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            ConstraintCategory::Boring,
+            category,
             param_env.and(type_op::normalize::Normalize::new(value)),
         )
         .unwrap_or_else(|NoSolution| {

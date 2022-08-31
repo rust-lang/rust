@@ -48,10 +48,11 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         debug!(
-            "normalize::<{}>(value={:?}, param_env={:?})",
+            "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
             std::any::type_name::<T>(),
             value,
             self.param_env,
+            self.cause,
         );
         if !needs_normalization(&value, self.param_env.reveal()) {
             return Ok(Normalized { value, obligations: vec![] });
