@@ -329,3 +329,11 @@ pub fn abort_internal() -> ! {
     }
     crate::intrinsics::abort();
 }
+
+/// Align the inner value to 8 bytes.
+///
+/// This is enough for almost all of the buffers we're likely to work with in
+/// the Windows APIs we use.
+#[repr(C, align(8))]
+#[derive(Copy, Clone)]
+pub(crate) struct Align8<T: ?Sized>(pub T);
