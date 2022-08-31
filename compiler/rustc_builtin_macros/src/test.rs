@@ -335,7 +335,7 @@ pub fn expand_test_or_bench(
     // extern crate test
     let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
 
-    tracing::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     if is_stmt {
         vec![

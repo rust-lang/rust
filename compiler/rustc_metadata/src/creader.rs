@@ -29,7 +29,6 @@ use proc_macro::bridge::client::ProcMacro;
 use std::ops::Fn;
 use std::path::Path;
 use std::{cmp, env};
-use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct CStore {
@@ -263,7 +262,7 @@ impl<'a> CrateLoader<'a> {
     fn existing_match(&self, name: Symbol, hash: Option<Svh>, kind: PathKind) -> Option<CrateNum> {
         for (cnum, data) in self.cstore.iter_crate_data() {
             if data.name() != name {
-                tracing::trace!("{} did not match {}", data.name(), name);
+                trace!("{} did not match {}", data.name(), name);
                 continue;
             }
 

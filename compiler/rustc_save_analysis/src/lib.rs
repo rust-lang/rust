@@ -7,6 +7,9 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
+#[macro_use]
+extern crate tracing;
+
 mod dump_visitor;
 mod dumper;
 #[macro_use]
@@ -48,8 +51,6 @@ use rls_data::{
     Analysis, Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
     RefKind, Relation, RelationKind, SpanData,
 };
-
-use tracing::{debug, error, info};
 
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,

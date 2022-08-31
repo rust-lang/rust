@@ -58,7 +58,6 @@ use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::{cmp, fmt, ptr};
-use tracing::debug;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};

@@ -10,7 +10,6 @@ use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::fmt::{self};
 use std::sync::{Arc, Mutex};
-use tracing::debug;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {

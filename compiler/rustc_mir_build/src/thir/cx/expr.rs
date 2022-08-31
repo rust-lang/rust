@@ -268,7 +268,7 @@ impl<'tcx> Cx<'tcx> {
                 // the overall method call for better diagnostics. args[0]
                 // is guaranteed to exist, since a method call always has a receiver.
                 let old_adjustment_span = self.adjustment_span.replace((args[0].hir_id, expr_span));
-                tracing::info!("Using method span: {:?}", expr.span);
+                info!("Using method span: {:?}", expr.span);
                 let args = self.mirror_exprs(args);
                 self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {

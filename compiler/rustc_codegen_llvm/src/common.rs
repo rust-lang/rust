@@ -21,7 +21,6 @@ use rustc_target::spec::Target;
 
 use libc::{c_char, c_uint};
 use std::fmt::Write;
-use tracing::debug;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".

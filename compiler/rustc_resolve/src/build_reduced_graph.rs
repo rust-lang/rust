@@ -36,7 +36,6 @@ use rustc_span::Span;
 
 use std::cell::Cell;
 use std::ptr;
-use tracing::debug;
 
 type Res = def::Res<NodeId>;
 

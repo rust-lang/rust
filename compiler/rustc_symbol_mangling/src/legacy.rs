@@ -6,8 +6,6 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::util::common::record_time;
 
-use tracing::debug;
-
 use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 

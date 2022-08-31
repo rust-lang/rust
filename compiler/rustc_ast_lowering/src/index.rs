@@ -11,8 +11,6 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
 
-use tracing::debug;
-
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map

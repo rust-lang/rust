@@ -29,7 +29,6 @@ use rustc_span::Span;
 use std::any::Any;
 use std::cell::Cell;
 use std::slice;
-use tracing::debug;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.

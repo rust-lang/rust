@@ -23,7 +23,6 @@ use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;

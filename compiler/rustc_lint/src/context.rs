@@ -45,7 +45,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi;
-use tracing::debug;
 
 use std::cell::Cell;
 use std::iter;
@@ -417,7 +416,7 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        tracing::debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
                         let tool_prefix = format!("{}::", tool_name);
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name)
@@ -510,7 +509,7 @@ impl LintStore {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
             Some(other) => {
-                tracing::debug!("got renamed lint {:?}", other);
+                debug!("got renamed lint {:?}", other);
                 CheckLintNameResult::NoLint(None)
             }
         }

@@ -158,11 +158,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         let name = tcx.crate_name(cnum);
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
-            tracing::info!("adding dylib: {}", name);
+            info!("adding dylib: {}", name);
             add_library(tcx, cnum, RequireDynamic, &mut formats);
             let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
-                tracing::info!("adding {:?}: {}", style, tcx.crate_name(depnum));
+                info!("adding {:?}: {}", style, tcx.crate_name(depnum));
                 add_library(tcx, depnum, style, &mut formats);
             }
         }
@@ -190,7 +190,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
             && tcx.dep_kind(cnum) == CrateDepKind::Explicit
         {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
-            tracing::info!("adding staticlib: {}", tcx.crate_name(cnum));
+            info!("adding staticlib: {}", tcx.crate_name(cnum));
             add_library(tcx, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }

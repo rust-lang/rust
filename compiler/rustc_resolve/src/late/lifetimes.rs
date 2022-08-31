@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             scope: &wrap_scope,
             trait_definition_only: self.trait_definition_only,
         };
-        let span = tracing::debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
+        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
         {
             let _enter = span.enter();
             f(&mut this);

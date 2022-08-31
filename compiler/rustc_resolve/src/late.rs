@@ -32,7 +32,6 @@ use smallvec::{smallvec, SmallVec};
 use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
-use tracing::debug;
 
 mod diagnostics;
 pub(crate) mod lifetimes;
@@ -3268,11 +3267,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         finalize: Finalize,
     ) -> PartialRes {
-        tracing::debug!(
+        debug!(
             "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself,
-            path,
-            finalize,
+            qself, path, finalize,
         );
         let ns = source.namespace();
 

@@ -12,7 +12,6 @@ use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
-use tracing::debug;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///

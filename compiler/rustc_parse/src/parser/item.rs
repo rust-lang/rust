@@ -22,7 +22,6 @@ use rustc_span::DUMMY_SP;
 
 use std::convert::TryFrom;
 use std::mem;
-use tracing::debug;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.

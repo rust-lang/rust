@@ -15,8 +15,6 @@ use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
-use tracing::debug;
-
 // FIXME(#86795): `BoundVarsCollector` here should **NOT** be used
 // outside of `resolve_associated_item`. It's just to address #64494,
 // #83765, and #85848 which are creating bound types/regions that lose

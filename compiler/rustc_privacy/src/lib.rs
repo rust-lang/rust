@@ -8,6 +8,9 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
+#[macro_use]
+extern crate tracing;
+
 mod errors;
 
 use rustc_ast::MacroDef;
@@ -1784,7 +1787,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn leaks_private_dep(&self, item_id: DefId) -> bool {
         let ret = self.required_visibility.is_public() && self.tcx.is_private_dep(item_id.krate);
 
-        tracing::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
+        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         ret
     }
 }

@@ -38,7 +38,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use tracing::{info, warn};
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -165,7 +164,7 @@ pub fn create_resolver(
     krate: &ast::Crate,
     crate_name: &str,
 ) -> BoxedResolver {
-    tracing::trace!("create_resolver");
+    trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
         Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
     })
@@ -279,7 +278,7 @@ pub fn configure_and_expand(
     crate_name: &str,
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
-    tracing::trace!("configure_and_expand");
+    trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 

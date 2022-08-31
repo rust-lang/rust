@@ -2014,7 +2014,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let predicate = self.resolve_vars_if_possible(obligation.predicate);
         let span = obligation.cause.span;
 
-        debug!(?predicate, obligation.cause.code = tracing::field::debug(&obligation.cause.code()));
+        debug!(?predicate, obligation.cause.code = ?obligation.cause.code());
 
         // Ambiguity errors are often caused as fallout from earlier errors.
         // We ignore them if this `infcx` is tainted in some cases below.

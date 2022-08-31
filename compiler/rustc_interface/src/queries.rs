@@ -166,7 +166,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn expansion(
         &self,
     ) -> Result<&Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>> {
-        tracing::trace!("expansion");
+        trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();

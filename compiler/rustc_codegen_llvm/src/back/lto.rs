@@ -18,7 +18,6 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, Lto};
-use tracing::{debug, info};
 
 use std::ffi::{CStr, CString};
 use std::fs::File;

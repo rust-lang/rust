@@ -33,8 +33,6 @@ use rustc_span::{BytePos, Span};
 use std::iter;
 use std::ops::Deref;
 
-use tracing::debug;
-
 type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.

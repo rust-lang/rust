@@ -19,7 +19,6 @@ use rustc_target::spec::abi::Abi as SpecAbi;
 use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
-use tracing::debug;
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by

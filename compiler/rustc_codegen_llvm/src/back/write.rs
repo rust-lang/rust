@@ -28,7 +28,6 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
-use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
