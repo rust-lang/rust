@@ -2040,7 +2040,9 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
                 //   Visibility on them should have no effect, but to avoid the visibility
                 //   query failing on some items, we provide it for opaque types as well.
                 | Node::Item(hir::Item {
-                    kind: hir::ItemKind::Use(_, hir::UseKind::ListStem) | hir::ItemKind::OpaqueTy(..),
+                    kind: hir::ItemKind::Use(_, hir::UseKind::ListStem)
+                        | hir::ItemKind::OpaqueTy(..)
+                        | hir::ItemKind::ImplTraitPlaceholder(..),
                     ..
                 }) => ty::Visibility::Restricted(tcx.parent_module(hir_id).to_def_id()),
                 // Visibilities of trait impl items are inherited from their traits
