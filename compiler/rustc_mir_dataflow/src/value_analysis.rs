@@ -339,7 +339,9 @@ impl<V: Clone + HasTop> State<V> {
     pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
         match result {
             ValueOrPlace::Value(value) => {
-                // FIXME: What if not all tracked projections are overwritten? Can this happen?
+                // First flood the target place in case we also track any projections (although
+                // this scenario is currently not well-supported with the ValueOrPlace interface).
+                self.flood_idx(target, map, V::top());
                 if let Some(value_index) = map.places[target].value_index {
                     self.0[value_index] = value;
                 }
