@@ -743,10 +743,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
 
         let alloc = alloc.into_owned();
-        let stacks =
-            ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
-                Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind)
-            });
+        let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
+            Stacks::new_allocation(
+                id,
+                alloc.size(),
+                stacked_borrows,
+                kind,
+                ecx.machine.current_span(*ecx.tcx),
+            )
+        });
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
             data_race::AllocExtra::new_allocation(
                 data_race,

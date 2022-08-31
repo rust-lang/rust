@@ -1,8 +1,8 @@
-error: Undefined Behavior: not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is protected because it is an argument of call ID
   --> $DIR/invalidate_against_protector1.rs:LL:CC
    |
 LL |     let _val = unsafe { *x };
-   |                         ^^ not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
+   |                         ^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is protected because it is an argument of call ID
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
@@ -11,21 +11,11 @@ help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
    |
 LL |     let xraw = &mut x as *mut _;
    |                ^^^^^^
-help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
+help: <TAG> is this argument
   --> $DIR/invalidate_against_protector1.rs:LL:CC
    |
-LL | / fn inner(x: *mut i32, _y: &mut i32) {
-LL | |     // If `x` and `y` alias, retagging is fine with this... but we really
-LL | |     // shouldn't be allowed to use `x` at all because `y` was assumed to be
-LL | |     // unique for the duration of this call.
-LL | |     let _val = unsafe { *x };
-LL | | }
-   | |_^
-help: <TAG> was derived from <TAG>, which in turn was created here
-  --> $DIR/invalidate_against_protector1.rs:LL:CC
-   |
-LL |     inner(xraw, xref);
-   |                 ^^^^
+LL | fn inner(x: *mut i32, _y: &mut i32) {
+   |                       ^^
    = note: backtrace:
    = note: inside `inner` at $DIR/invalidate_against_protector1.rs:LL:CC
 note: inside `main` at $DIR/invalidate_against_protector1.rs:LL:CC

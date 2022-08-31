@@ -1,8 +1,8 @@
-error: Undefined Behavior: not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is protected because it is an argument of call ID
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not granting access to tag <TAG> because incompatible item [Unique for <TAG>] is protected by call ID
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is protected because it is an argument of call ID
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
@@ -11,18 +11,11 @@ help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
    |
 LL |     let ptr = Box::into_raw(Box::new(0i32));
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: <TAG> cannot be used for memory access because that would remove protected tag <TAG>, protected by this function call
+help: <TAG> is this argument
   --> $DIR/newtype_retagging.rs:LL:CC
    |
-LL | / fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
-LL | |     dealloc();
-LL | | }
-   | |_^
-help: <TAG> was derived from <TAG>, which in turn was created here
-  --> $DIR/newtype_retagging.rs:LL:CC
-   |
-LL |             Newtype(&mut *ptr),
-   |             ^^^^^^^^^^^^^^^^^^
+LL | fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
+   |                          ^^
    = note: backtrace:
    = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
    = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC

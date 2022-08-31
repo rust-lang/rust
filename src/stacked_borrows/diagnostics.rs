@@ -2,7 +2,7 @@ use smallvec::SmallVec;
 use std::fmt;
 
 use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
-use rustc_span::{Span, SpanData, DUMMY_SP};
+use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::helpers::CurrentSpan;
@@ -14,6 +14,7 @@ use rustc_middle::mir::interpret::InterpError;
 #[derive(Clone, Debug)]
 pub struct AllocHistory {
     id: AllocId,
+    base: (Item, Span),
     creations: smallvec::SmallVec<[Creation; 1]>,
     invalidations: smallvec::SmallVec<[Invalidation; 1]>,
     protectors: smallvec::SmallVec<[Protection; 1]>,
@@ -91,8 +92,6 @@ impl fmt::Display for InvalidationCause {
 
 #[derive(Clone, Debug)]
 struct Protection {
-    /// The parent tag from which this protected tag was derived.
-    orig_tag: ProvenanceExtra,
     tag: SbTag,
     span: Span,
 }
@@ -101,7 +100,7 @@ struct Protection {
 pub struct TagHistory {
     pub created: (String, SpanData),
     pub invalidated: Option<(String, SpanData)>,
-    pub protected: Option<([(String, SpanData); 2])>,
+    pub protected: Option<(String, SpanData)>,
 }
 
 pub struct DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
@@ -228,9 +227,10 @@ struct DeallocOp {
 }
 
 impl AllocHistory {
-    pub fn new(id: AllocId) -> Self {
+    pub fn new(id: AllocId, item: Item, current_span: &mut CurrentSpan<'_, '_, '_>) -> Self {
         Self {
             id,
+            base: (item, current_span.get()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
@@ -290,11 +290,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let Operation::Retag(op) = &self.operation else {
             unreachable!("Protectors can only be created during a retag")
         };
-        self.history.protectors.push(Protection {
-            orig_tag: op.orig_tag,
-            tag: op.new_tag,
-            span: self.current_span.get(),
-        });
+        self.history.protectors.push(Protection { tag: op.new_tag, span: self.current_span.get() });
     }
 
     pub fn get_logs_relevant_to(
@@ -331,6 +327,17 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
                         None
                     }
                 })
+            }).or_else(|| {
+                // If we didn't find a retag that created this tag, it might be the base tag of
+                // this allocation.
+                if self.history.base.0.tag() == tag {
+                    Some((
+                        format!("{:?} was created here, as a base tag for {:?}", tag, self.history.id),
+                        self.history.base.1.data()
+                    ))
+                } else {
+                    None
+                }
             }) else {
                 // But if we don't have a creation event, this is related to a wildcard, and there
                 // is really nothing we can do to help.
@@ -343,40 +350,11 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
         let protected = protector_tag
             .and_then(|protector| {
-                self.history.protectors.iter().find(|protection| {
-                    protection.tag == protector
-                })
+                self.history.protectors.iter().find(|protection| protection.tag == protector)
             })
-            .and_then(|protection| {
-                self.history.creations.iter().rev().find_map(|event| {
-                    if ProvenanceExtra::Concrete(event.retag.new_tag) == protection.orig_tag {
-                        Some((protection, event))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .map(|(protection, protection_parent)| {
+            .map(|protection| {
                 let protected_tag = protection.tag;
-                [
-                    (
-                        format!(
-                            "{tag:?} cannot be used for memory access because that would remove protected tag {protected_tag:?}, protected by this function call",
-                        ),
-                        protection.span.data(),
-                    ),
-                    if protection_parent.retag.new_tag == tag {
-                        (format!("{protected_tag:?} was derived from {tag:?}, the tag used for this memory access"), DUMMY_SP.data())
-                    } else {
-                        (
-                            format!(
-                                "{protected_tag:?} was derived from {protected_parent_tag:?}, which in turn was created here",
-                                protected_parent_tag = protection_parent.retag.new_tag,
-                            ),
-                            protection_parent.span.data()
-                        )
-                    }
-                ]
+                (format!("{protected_tag:?} is this argument"), protection.span.data())
             });
 
         Some(TagHistory { created, invalidated, protected })
@@ -448,7 +426,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {:?} because incompatible item {:?} is protected by call {:?}",
+                        "not granting access to tag {:?} because that would remove {:?} which is protected because it is an argument of call {:?}",
                         tag, item, call_id
                     ),
                     None,

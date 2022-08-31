@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-retag-fields
-//@error-pattern: is protected by call
+//@error-pattern: which is protected
 struct Newtype<'a>(&'a mut i32);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
