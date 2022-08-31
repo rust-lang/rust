@@ -387,7 +387,9 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         .body_const_context(def.did)
         .expect("mir_for_ctfe should not be used for runtime functions");
 
-    let mut body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+    let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
 
     match context {
         // Do not const prop functions, either they get executed at runtime or exported to metadata,
@@ -416,7 +418,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
 
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 
-    remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const)
+    body
 }
 
 /// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
@@ -620,14 +622,15 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }
     debug!("about to call mir_drops_elaborated...");
-    let mut body =
+    let body =
         tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 
-    remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst)
+    body
 }
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
