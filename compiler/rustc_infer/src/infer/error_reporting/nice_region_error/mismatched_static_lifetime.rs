@@ -1,8 +1,8 @@
 //! Error Reporting for when the lifetime for a type doesn't match the `impl` selected for a predicate
 //! to hold.
 
-use crate::errors::mismatched_static_lifetime::{ImplNote, MismatchedStaticLifetime, TraitSubdiag};
-use crate::errors::{mismatched_static_lifetime::LabeledMultiSpan, note_and_explain};
+use crate::errors::{note_and_explain, IntroducesStaticBecauseUnmetLifetimeReq};
+use crate::errors::{ImplNote, MismatchedStaticLifetime, TraitSubdiag};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
@@ -43,7 +43,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // FIXME: we should point at the lifetime
         let multi_span: MultiSpan = vec![binding_span].into();
-        let multispan_subdiag = LabeledMultiSpan { multi_span, binding_span };
+        let multispan_subdiag = IntroducesStaticBecauseUnmetLifetimeReq {
+            unmet_requirements: multi_span,
+            binding_span,
+        };
 
         let expl = note_and_explain::RegionExplanation::new(
             self.tcx(),
@@ -100,7 +103,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         let err = MismatchedStaticLifetime {
             cause_span: cause.span,
-            multispan_subdiag,
+            unmet_lifetime_reqs: multispan_subdiag,
             expl,
             impl_note: ImplNote { impl_span },
             trait_subdiags,

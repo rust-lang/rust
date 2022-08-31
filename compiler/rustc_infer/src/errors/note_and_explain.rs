@@ -91,7 +91,7 @@ impl<'a> DescriptionCtx<'a> {
                                 me.kind = "as_defined_anon";
                             } else {
                                 me.kind = "as_defined";
-                    me.arg = name.to_string();
+                                me.arg = name.to_string();
                             };
                             me.span = Some(sp);
                         }

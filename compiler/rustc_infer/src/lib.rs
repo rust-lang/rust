@@ -36,9 +36,5 @@ extern crate tracing;
 extern crate rustc_middle;
 
 mod errors;
-pub mod public_errors {
-    // Probably would be useful in rustc_borrowck
-    pub use super::errors::AddLifetimeParamsSuggestion;
-}
 pub mod infer;
 pub mod traits;

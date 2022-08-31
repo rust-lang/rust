@@ -1,6 +1,6 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    fluent, AddSubdiagnostic, Applicability, DiagnosticMessage, DiagnosticStyledString,
+    fluent, AddSubdiagnostic, Applicability, DiagnosticMessage, DiagnosticStyledString, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::{FnRetTy, Ty};
@@ -273,8 +273,8 @@ pub enum LifetimeMismatchLabels {
         ty_sup: Span,
         ty_sub: Span,
         span: Span,
-        label_var1: Option<Ident>,
-        label_var2: Option<Ident>,
+        sup: Option<Ident>,
+        sub: Option<Ident>,
     },
 }
 
@@ -293,8 +293,8 @@ impl AddSubdiagnostic for LifetimeMismatchLabels {
                 ty_sup,
                 ty_sub,
                 span,
-                label_var1,
-                label_var2,
+                sup: label_var1,
+                sub: label_var2,
             } => {
                 if hir_equal {
                     diag.span_label(ty_sup, fluent::infer::declared_multiple);
@@ -422,68 +422,57 @@ pub struct LifetimeMismatch<'a> {
     pub suggestion: AddLifetimeParamsSuggestion<'a>,
 }
 
-pub mod mismatched_static_lifetime {
-    use rustc_errors::{self, fluent, AddSubdiagnostic, MultiSpan};
-    use rustc_span::Span;
+pub struct IntroducesStaticBecauseUnmetLifetimeReq {
+    pub unmet_requirements: MultiSpan,
+    pub binding_span: Span,
+}
 
-    use super::note_and_explain;
-
-    pub struct LabeledMultiSpan {
-        pub multi_span: MultiSpan,
-        pub binding_span: Span,
+impl AddSubdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
+    fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
+        self.unmet_requirements
+            .push_span_label(self.binding_span, fluent::infer::msl_introduces_static);
+        diag.span_note(self.unmet_requirements, fluent::infer::msl_unmet_req);
     }
+}
 
-    impl AddSubdiagnostic for LabeledMultiSpan {
-        fn add_to_diagnostic(mut self, diag: &mut rustc_errors::Diagnostic) {
-            self.multi_span
-                .push_span_label(self.binding_span, fluent::infer::msl_introduces_static);
-            diag.span_note(self.multi_span, fluent::infer::msl_unmet_req);
-        }
+pub struct ImplNote {
+    pub impl_span: Option<Span>,
+}
+
+impl AddSubdiagnostic for ImplNote {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self.impl_span {
+            Some(span) => diag.span_note(span, fluent::infer::msl_impl_note),
+            None => diag.note(fluent::infer::msl_impl_note),
+        };
     }
+}
 
-    pub struct ImplNote {
-        pub impl_span: Option<Span>,
-    }
-
-    impl AddSubdiagnostic for ImplNote {
-        fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
-            match self.impl_span {
-                Some(span) => diag.span_note(span, fluent::infer::msl_impl_note),
-                None => diag.note(fluent::infer::msl_impl_note),
-            };
-        }
-    }
-
-    #[derive(SessionSubdiagnostic)]
-    pub enum TraitSubdiag {
-        #[note(infer::msl_trait_note)]
-        Note {
-            #[primary_span]
-            span: Span,
-        },
-        #[suggestion_verbose(
-            infer::msl_trait_sugg,
-            code = " + '_",
-            applicability = "maybe-incorrect"
-        )]
-        Sugg {
-            #[primary_span]
-            span: Span,
-        },
-    }
-
-    #[derive(SessionDiagnostic)]
-    #[diag(infer::mismatched_static_lifetime)]
-    pub struct MismatchedStaticLifetime<'a> {
+#[derive(SessionSubdiagnostic)]
+pub enum TraitSubdiag {
+    #[note(infer::msl_trait_note)]
+    Note {
         #[primary_span]
-        pub cause_span: Span,
-        #[subdiagnostic]
-        pub multispan_subdiag: LabeledMultiSpan,
-        #[subdiagnostic]
-        pub expl: Option<note_and_explain::RegionExplanation<'a>>,
-        #[subdiagnostic]
-        pub impl_note: ImplNote,
-        #[subdiagnostic]
-        pub trait_subdiags: Vec<TraitSubdiag>,
-    }
+        span: Span,
+    },
+    #[suggestion_verbose(infer::msl_trait_sugg, code = " + '_", applicability = "maybe-incorrect")]
+    Sugg {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::mismatched_static_lifetime)]
+pub struct MismatchedStaticLifetime<'a> {
+    #[primary_span]
+    pub cause_span: Span,
+    #[subdiagnostic]
+    pub unmet_lifetime_reqs: IntroducesStaticBecauseUnmetLifetimeReq,
+    #[subdiagnostic]
+    pub expl: Option<note_and_explain::RegionExplanation<'a>>,
+    #[subdiagnostic]
+    pub impl_note: ImplNote,
+    #[subdiagnostic]
+    pub trait_subdiags: Vec<TraitSubdiag>,
 }

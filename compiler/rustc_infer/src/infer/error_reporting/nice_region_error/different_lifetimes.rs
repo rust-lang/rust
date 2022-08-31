@@ -122,8 +122,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ty_sup: ty_sup.span,
                 ty_sub: ty_sub.span,
                 span,
-                label_var1: anon_param_sup.pat.simple_ident(),
-                label_var2: anon_param_sub.pat.simple_ident(),
+                sup: anon_param_sup.pat.simple_ident(),
+                sub: anon_param_sub.pat.simple_ident(),
             },
         };
 
