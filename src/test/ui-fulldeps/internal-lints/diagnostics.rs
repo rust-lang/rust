@@ -1,6 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -70,4 +71,11 @@ pub fn make_diagnostics<'a>(sess: &'a ParseSess) {
     let _diag = sess.struct_err("untranslatable diagnostic");
     //~^ ERROR diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
     //~^^ ERROR diagnostics should be created using translatable messages
+}
+
+// Check that `rustc_lint_diagnostics`-annotated functions aren't themselves linted.
+
+#[rustc_lint_diagnostics]
+pub fn skipped_because_of_annotation<'a>(sess: &'a ParseSess) {
+    let _diag = sess.struct_err("untranslatable diagnostic"); // okay!
 }
