@@ -1,0 +1,418 @@
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:16:16
+   |
+LL |     println!("{} {1:?}", zero = 0, one = 1);
+   |                ^ help: replace it with: `zero`
+   |
+   = note: `-D clippy::positional-named-format-parameters` implied by `-D warnings`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:16:19
+   |
+LL |     println!("{} {1:?}", zero = 0, one = 1);
+   |                   ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:17:31
+   |
+LL |     println!("This is a test { } {000001:?}", zero = 0, one = 1);
+   |                               ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:17:35
+   |
+LL |     println!("This is a test { } {000001:?}", zero = 0, one = 1);
+   |                                   ^^^^^^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:18:32
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                                ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:18:22
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                      ^ help: replace it with: `one`
+
+error: named parameter two is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:18:29
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                             ^ help: replace it with: `two`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:19:24
+   |
+LL |     println!("Hello {1:0$}!", zero = 5, one = 1);
+   |                        ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:19:22
+   |
+LL |     println!("Hello {1:0$}!", zero = 5, one = 1);
+   |                      ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:20:22
+   |
+LL |     println!("Hello {0:1$}!", zero = 4, one = 1);
+   |                      ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:20:24
+   |
+LL |     println!("Hello {0:1$}!", zero = 4, one = 1);
+   |                        ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:21:22
+   |
+LL |     println!("Hello {0:01$}!", zero = 4, one = 1);
+   |                      ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:21:25
+   |
+LL |     println!("Hello {0:01$}!", zero = 4, one = 1);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:22:28
+   |
+LL |     println!("Hello is {1:.*}", zero = 5, one = 0.01);
+   |                            ^ help: replace it with: `zero$`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:22:25
+   |
+LL |     println!("Hello is {1:.*}", zero = 5, one = 0.01);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:23:29
+   |
+LL |     println!("Hello is {:<6.*}", zero = 5, one = 0.01);
+   |                             ^ help: replace it with: `zero$`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:23:25
+   |
+LL |     println!("Hello is {:<6.*}", zero = 5, one = 0.01);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:24:16
+   |
+LL |     println!("{}, `{two:>8.*}` has 3", zero = hello, one = 3, two = hello);
+   |                ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:24:28
+   |
+LL |     println!("{}, `{two:>8.*}` has 3", zero = hello, one = 3, two = hello);
+   |                            ^ help: replace it with: `one$`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:25:32
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                                ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:25:22
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                      ^ help: replace it with: `one`
+
+error: named parameter two is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:25:29
+   |
+LL |     println!("Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                             ^ help: replace it with: `two`
+
+error: named parameter world is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:26:30
+   |
+LL |     println!("Hello {world} {}!", world = 5);
+   |                              ^ help: replace it with: `world`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:28:19
+   |
+LL |     writeln!(v, "{} {1:?}", zero = 0, one = 1);
+   |                   ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:28:22
+   |
+LL |     writeln!(v, "{} {1:?}", zero = 0, one = 1);
+   |                      ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:29:34
+   |
+LL |     writeln!(v, "This is a test { } {000001:?}", zero = 0, one = 1);
+   |                                  ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:29:38
+   |
+LL |     writeln!(v, "This is a test { } {000001:?}", zero = 0, one = 1);
+   |                                      ^^^^^^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:30:35
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                                   ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:30:25
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter two is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:30:32
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 5, one = hello, two = 0.01);
+   |                                ^ help: replace it with: `two`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:31:27
+   |
+LL |     writeln!(v, "Hello {1:0$}!", zero = 4, one = 1);
+   |                           ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:31:25
+   |
+LL |     writeln!(v, "Hello {1:0$}!", zero = 4, one = 1);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:32:25
+   |
+LL |     writeln!(v, "Hello {0:1$}!", zero = 4, one = 1);
+   |                         ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:32:27
+   |
+LL |     writeln!(v, "Hello {0:1$}!", zero = 4, one = 1);
+   |                           ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:33:25
+   |
+LL |     writeln!(v, "Hello {0:01$}!", zero = 4, one = 1);
+   |                         ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:33:28
+   |
+LL |     writeln!(v, "Hello {0:01$}!", zero = 4, one = 1);
+   |                            ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:34:31
+   |
+LL |     writeln!(v, "Hello is {1:.*}", zero = 3, one = 0.01);
+   |                               ^ help: replace it with: `zero$`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:34:28
+   |
+LL |     writeln!(v, "Hello is {1:.*}", zero = 3, one = 0.01);
+   |                            ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:35:32
+   |
+LL |     writeln!(v, "Hello is {:<6.*}", zero = 2, one = 0.01);
+   |                                ^ help: replace it with: `zero$`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:35:28
+   |
+LL |     writeln!(v, "Hello is {:<6.*}", zero = 2, one = 0.01);
+   |                            ^ help: replace it with: `one`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:36:19
+   |
+LL |     writeln!(v, "{}, `{two:>8.*}` has 3", zero = hello, one = 3, two = hello);
+   |                   ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:36:31
+   |
+LL |     writeln!(v, "{}, `{two:>8.*}` has 3", zero = hello, one = 3, two = hello);
+   |                               ^ help: replace it with: `one$`
+
+error: named parameter zero is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:37:35
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 1, one = hello, two = 0.01);
+   |                                   ^ help: replace it with: `zero`
+
+error: named parameter one is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:37:25
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 1, one = hello, two = 0.01);
+   |                         ^ help: replace it with: `one`
+
+error: named parameter two is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:37:32
+   |
+LL |     writeln!(v, "Hello {1} is {2:.0$}", zero = 1, one = hello, two = 0.01);
+   |                                ^ help: replace it with: `two`
+
+error: named parameter world is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:38:33
+   |
+LL |     writeln!(v, "Hello {world} {}!", world = 0);
+   |                                 ^ help: replace it with: `world`
+
+error: named parameter w is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:41:16
+   |
+LL |     println!("{:w$}", w = 1);
+   |                ^ help: replace it with: `w`
+
+error: named parameter p is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:42:16
+   |
+LL |     println!("{:.p$}", p = 1);
+   |                ^ help: replace it with: `p`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:43:16
+   |
+LL |     println!("{}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:44:16
+   |
+LL |     println!("{:0$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:44:17
+   |
+LL |     println!("{:0$}", v = 1);
+   |                 ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:45:16
+   |
+LL |     println!("{0:0$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:45:18
+   |
+LL |     println!("{0:0$}", v = 1);
+   |                  ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:46:16
+   |
+LL |     println!("{:0$.0$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:46:20
+   |
+LL |     println!("{:0$.0$}", v = 1);
+   |                    ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:46:17
+   |
+LL |     println!("{:0$.0$}", v = 1);
+   |                 ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:47:16
+   |
+LL |     println!("{0:0$.0$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:47:21
+   |
+LL |     println!("{0:0$.0$}", v = 1);
+   |                     ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:47:18
+   |
+LL |     println!("{0:0$.0$}", v = 1);
+   |                  ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:48:16
+   |
+LL |     println!("{0:0$.v$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:48:18
+   |
+LL |     println!("{0:0$.v$}", v = 1);
+   |                  ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:49:16
+   |
+LL |     println!("{0:v$.0$}", v = 1);
+   |                ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:49:21
+   |
+LL |     println!("{0:v$.0$}", v = 1);
+   |                     ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:50:21
+   |
+LL |     println!("{v:0$.0$}", v = 1);
+   |                     ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:50:18
+   |
+LL |     println!("{v:0$.0$}", v = 1);
+   |                  ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:51:21
+   |
+LL |     println!("{v:v$.0$}", v = 1);
+   |                     ^ help: replace it with: `v`
+
+error: named parameter v is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:52:18
+   |
+LL |     println!("{v:0$.v$}", v = 1);
+   |                  ^ help: replace it with: `v`
+
+error: named parameter w is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:53:16
+   |
+LL |     println!("{:w$}", w = 1);
+   |                ^ help: replace it with: `w`
+
+error: named parameter p is used as a positional parameter
+  --> $DIR/positional_named_format_parameters.rs:54:16
+   |
+LL |     println!("{:.p$}", p = 1);
+   |                ^ help: replace it with: `p`
+
+error: aborting due to 69 previous errors
+

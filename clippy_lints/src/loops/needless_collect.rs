@@ -1,5 +1,6 @@
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::higher;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -184,10 +185,19 @@ struct IterFunctionVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
         for (expr, hir_id) in block.stmts.iter().filter_map(get_expr_and_hir_id_from_stmt) {
+            if check_loop_kind(expr).is_some() {
+                continue;
+            }
             self.visit_block_expr(expr, hir_id);
         }
         if let Some(expr) = block.expr {
-            self.visit_block_expr(expr, None);
+            if let Some(loop_kind) = check_loop_kind(expr) {
+                if let LoopKind::Conditional(block_expr) = loop_kind {
+                    self.visit_block_expr(block_expr, None);
+                }
+            } else {
+                self.visit_block_expr(expr, None);
+            }
         }
     }
 
@@ -262,6 +272,28 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
             walk_expr(self, expr);
         }
     }
+}
+
+enum LoopKind<'tcx> {
+    Conditional(&'tcx Expr<'tcx>),
+    Loop,
+}
+
+fn check_loop_kind<'tcx>(expr: &Expr<'tcx>) -> Option<LoopKind<'tcx>> {
+    if let Some(higher::WhileLet { let_expr, .. }) = higher::WhileLet::hir(expr) {
+        return Some(LoopKind::Conditional(let_expr));
+    }
+    if let Some(higher::While { condition, .. }) = higher::While::hir(expr) {
+        return Some(LoopKind::Conditional(condition));
+    }
+    if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr) {
+        return Some(LoopKind::Conditional(arg));
+    }
+    if let ExprKind::Loop { .. } = expr.kind {
+        return Some(LoopKind::Loop);
+    }
+
+    None
 }
 
 impl<'tcx> IterFunctionVisitor<'_, 'tcx> {

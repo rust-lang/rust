@@ -35,7 +35,7 @@ fn main() {
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
-    let arg: String = "".to_owned();
+    let arg = String::new();
     format!("{}", arg);
     format!("{:?}", arg); // Don't warn about debug.
     format!("{:8}", arg);

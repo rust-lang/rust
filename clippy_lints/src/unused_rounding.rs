@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 1f32;
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub UNUSED_ROUNDING,
     nursery,
     "Uselessly rounding a whole number floating-point literal"

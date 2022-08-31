@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                         (
                             ret_expr.span,
                             if inner_type.is_unit() {
-                                "".to_string()
+                                String::new()
                             } else {
                                 snippet(cx, arg.span.source_callsite(), "..").to_string()
                             }

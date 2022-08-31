@@ -27,21 +27,21 @@ LL | |     };
    |
    = help: consider using `bool::then` like: `matches!(true, true).then(|| { /* snippet */ matches!(true, false) })`
 
-error: this could be simplified with `bool::then`
+error: this could be simplified with `bool::then_some`
   --> $DIR/if_then_some_else_none.rs:23:28
    |
 LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using `bool::then` like: `(o < 32).then(|| o)`
+   = help: consider using `bool::then_some` like: `(o < 32).then_some(o)`
 
-error: this could be simplified with `bool::then`
+error: this could be simplified with `bool::then_some`
   --> $DIR/if_then_some_else_none.rs:27:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider using `bool::then` like: `(!x).then(|| 0)`
+   = help: consider using `bool::then_some` like: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
   --> $DIR/if_then_some_else_none.rs:82:13

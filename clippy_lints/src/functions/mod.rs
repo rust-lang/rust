@@ -1,6 +1,6 @@
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
-mod result_unit_err;
+mod result;
 mod too_many_arguments;
 mod too_many_lines;
 
@@ -217,17 +217,62 @@ declare_clippy_lint! {
     "public function returning `Result` with an `Err` type of `()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for functions that return `Result` with an unusually large
+    /// `Err`-variant.
+    ///
+    /// ### Why is this bad?
+    /// A `Result` is at least as large as the `Err`-variant. While we
+    /// expect that variant to be seldomly used, the compiler needs to reserve
+    /// and move that much memory every single time.
+    ///
+    /// ### Known problems
+    /// The size determined by Clippy is platform-dependent.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// pub enum ParseError {
+    ///     UnparsedBytes([u8; 512]),
+    ///     UnexpectedEof,
+    /// }
+    ///
+    /// // The `Result` has at least 512 bytes, even in the `Ok`-case
+    /// pub fn parse() -> Result<(), ParseError> {
+    ///     Ok(())
+    /// }
+    /// ```
+    /// should be
+    /// ```
+    /// pub enum ParseError {
+    ///     UnparsedBytes(Box<[u8; 512]>),
+    ///     UnexpectedEof,
+    /// }
+    ///
+    /// // The `Result` is slightly larger than a pointer
+    /// pub fn parse() -> Result<(), ParseError> {
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub RESULT_LARGE_ERR,
+    perf,
+    "function returning `Result` with large `Err` type"
+}
+
 #[derive(Copy, Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
+    large_error_threshold: u64,
 }
 
 impl Functions {
-    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64) -> Self {
+    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64, large_error_threshold: u64) -> Self {
         Self {
             too_many_arguments_threshold,
             too_many_lines_threshold,
+            large_error_threshold,
         }
     }
 }
@@ -240,6 +285,7 @@ impl_lint_pass!(Functions => [
     DOUBLE_MUST_USE,
     MUST_USE_CANDIDATE,
     RESULT_UNIT_ERR,
+    RESULT_LARGE_ERR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -259,18 +305,18 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         must_use::check_item(cx, item);
-        result_unit_err::check_item(cx, item);
+        result::check_item(cx, item, self.large_error_threshold);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
-        result_unit_err::check_impl_item(cx, item);
+        result::check_impl_item(cx, item, self.large_error_threshold);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
-        result_unit_err::check_trait_item(cx, item);
+        result::check_trait_item(cx, item, self.large_error_threshold);
     }
 }
