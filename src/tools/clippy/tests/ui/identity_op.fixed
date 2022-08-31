@@ -68,7 +68,7 @@ fn main() {
     &x;
     x;
 
-    let mut a = A("".into());
+    let mut a = A(String::new());
     let b = a << 0; // no error: non-integer
 
     1 * Meter; // no error: non-integer

@@ -8,6 +8,7 @@ fn main() {
     let y = 4f32;
     let _ = x.powi(2) + y;
     let _ = x + y.powi(2);
+    let _ = x + (y as f32).powi(2);
     let _ = (x.powi(2) + y).sqrt();
     let _ = (x + y.powi(2)).sqrt();
     // Cases where the lint shouldn't be applied

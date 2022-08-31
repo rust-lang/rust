@@ -8,10 +8,10 @@ LL |     filename.ends_with(".rs")
    = help: consider using a case-insensitive comparison instead
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:17:30
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:17:27
    |
-LL |     let _ = String::from("").ends_with(".ext12");
-   |                              ^^^^^^^^^^^^^^^^^^^
+LL |     let _ = String::new().ends_with(".ext12");
+   |                           ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using a case-insensitive comparison instead
 
@@ -24,10 +24,10 @@ LL |     let _ = "str".ends_with(".ext12");
    = help: consider using a case-insensitive comparison instead
 
 error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:24:30
+  --> $DIR/case_sensitive_file_extension_comparisons.rs:24:27
    |
-LL |     let _ = String::from("").ends_with(".EXT12");
-   |                              ^^^^^^^^^^^^^^^^^^^
+LL |     let _ = String::new().ends_with(".EXT12");
+   |                           ^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using a case-insensitive comparison instead
 

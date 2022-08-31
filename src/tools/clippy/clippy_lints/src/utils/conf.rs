@@ -350,7 +350,7 @@ define_Conf! {
     /// Lint: DISALLOWED_SCRIPT_IDENTS.
     ///
     /// The list of unicode scripts allowed to be used in the scope.
-    (allowed_scripts: Vec<String> = ["Latin"].iter().map(ToString::to_string).collect()),
+    (allowed_scripts: Vec<String> = vec!["Latin".to_string()]),
     /// Lint: NON_SEND_FIELDS_IN_SEND_TY.
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
@@ -379,6 +379,10 @@ define_Conf! {
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR
+    ///
+    /// The maximum size of the `Err`-variant in a `Result` returned from a function
+    (large_error_threshold: u64 = 128),
 }
 
 /// Search for the configuration file.

@@ -11,6 +11,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(casts::CAST_ABS_TO_UNSIGNED),
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),
+    LintId::of(casts::CAST_SLICE_FROM_RAW_PARTS),
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(drop_forget_ref::DROP_NON_DROP),
     LintId::of(drop_forget_ref::FORGET_NON_DROP),
@@ -24,6 +25,8 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(loops::MUT_RANGE_BOUND),
     LintId::of(methods::NO_EFFECT_REPLACE),
     LintId::of(methods::SUSPICIOUS_MAP),
+    LintId::of(methods::SUSPICIOUS_TO_OWNED),
+    LintId::of(multi_assignments::MULTI_ASSIGNMENTS),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
     LintId::of(operators::FLOAT_EQUALITY_WITHOUT_ABS),
@@ -32,4 +35,6 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
     LintId::of(swap_ptr_to_ref::SWAP_PTR_TO_REF),
+    LintId::of(unused_peekable::UNUSED_PEEKABLE),
+    LintId::of(write::POSITIONAL_NAMED_FORMAT_PARAMETERS),
 ])
