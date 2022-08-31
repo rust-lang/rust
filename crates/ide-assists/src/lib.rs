@@ -180,6 +180,7 @@ mod handlers {
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
+    mod replace_or_with_or_else;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
@@ -276,6 +277,8 @@ mod handlers {
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
             replace_let_with_if_let::replace_let_with_if_let,
+            replace_or_with_or_else::replace_or_else_with_or,
+            replace_or_with_or_else::replace_or_with_or_else,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             sort_items::sort_items,
