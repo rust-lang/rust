@@ -143,3 +143,30 @@ pub struct LongItemInfo2;
 /// Some docs.
 #[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
 impl SimpleTrait for LongItemInfo2 {}
+
+pub struct WhereWhitespace<T>;
+
+impl<T> WhereWhitespace<T> {
+    pub fn new<F>(f: F) -> Self
+    where
+        F: FnMut() -> i32,
+    {}
+}
+
+impl<K, T> Whitespace<&K> for WhereWhitespace<T>
+where
+    K: std::fmt::Debug,
+{
+    type Output = WhereWhitespace<T>;
+    fn index(&self, _key: &K) -> &Self::Output {
+        self
+    }
+}
+
+pub trait Whitespace<Idx>
+where
+    Idx: ?Sized,
+{
+    type Output;
+    fn index(&self, index: Idx) -> &Self::Output;
+}
