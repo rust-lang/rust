@@ -120,7 +120,7 @@ fn run_tests(
             "cargo-miri/Cargo.toml".into(),
             "--".into(),
             "miri".into(),
-            "run".into(),
+            "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ];
     }
     ui_test::run_tests(config)
