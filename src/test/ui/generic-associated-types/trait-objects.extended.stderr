@@ -11,6 +11,8 @@ LL |     x.size_hint().0
    |     |
    |     `x` escapes the function body here
    |     argument requires that `'1` must outlive `'static`
+   |
+   = note: due to current limitations in the borrow checker, this implies a `'static` lifetime
 
 error: aborting due to previous error
 
