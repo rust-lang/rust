@@ -1,7 +1,7 @@
 use colored::*;
 use regex::Regex;
 use std::path::{Path, PathBuf};
-use std::{env, ffi::OsString, process::Command};
+use std::{env, process::Command};
 use ui_test::{color_eyre::Result, Config, DependencyBuilder, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
@@ -43,30 +43,40 @@ fn run_tests(
     target: Option<String>,
     with_dependencies: bool,
 ) -> Result<()> {
+    let mut config = Config {
+        target,
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        root_dir: PathBuf::from(path),
+        mode,
+        program: miri_path(),
+        quiet: false,
+        ..Config::default()
+    };
+
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
     // Add some flags we always want.
-    let mut flags: Vec<OsString> = Vec::new();
-    flags.push("--edition".into());
-    flags.push("2018".into());
+    config.args.push("--edition".into());
+    config.args.push("2018".into());
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        flags.push("-Astable-features".into());
-        flags.push("-Aunused".into());
+        config.args.push("-Astable-features".into());
+        config.args.push("-Aunused".into());
     } else {
-        flags.push("-Dwarnings".into());
-        flags.push("-Dunused".into());
+        config.args.push("-Dwarnings".into());
+        config.args.push("-Dunused".into());
     }
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
-            flags.push(flag.into());
+            config.args.push(flag.into());
         }
     }
-    flags.push("-Zui-testing".into());
-    if let Some(target) = &target {
-        flags.push("--target".into());
-        flags.push(target.into());
+    config.args.push("-Zui-testing".into());
+    if let Some(target) = &config.target {
+        config.args.push("--target".into());
+        config.args.push(target.into());
     }
 
     // If we're on linux, and we're testing the extern-so functionality,
@@ -76,45 +86,35 @@ fn run_tests(
         let so_file_path = build_so_for_c_ffi_tests();
         let mut flag = std::ffi::OsString::from("-Zmiri-extern-so-file=");
         flag.push(so_file_path.into_os_string());
-        flags.push(flag);
+        config.args.push(flag);
     }
 
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
+    config.output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
         (false, false) => OutputConflictHandling::Error,
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
         (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
     };
 
-    // Pass on all unknown arguments as filters.
-    let mut quiet = false;
-    let path_filter = std::env::args().skip(1).filter(|arg| {
+    // Handle command-line arguments.
+    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
         match &**arg {
             "--quiet" => {
-                quiet = true;
+                config.quiet = true;
                 false
             }
             _ => true,
         }
-    });
+    }));
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
 
-    let config = Config {
-        args: flags,
-        target,
-        stderr_filters: STDERR.clone(),
-        stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
-        mode,
-        path_filter: path_filter.collect(),
-        program: miri_path(),
-        output_conflict_handling,
-        dependencies_crate_manifest_path: (with_dependencies && use_std)
-            .then(|| Path::new("test_dependencies").join("Cargo.toml")),
-        dependency_builder: Some(DependencyBuilder {
+    if with_dependencies && use_std {
+        config.dependencies_crate_manifest_path =
+            Some(Path::new("test_dependencies").join("Cargo.toml"));
+        config.dependency_builder = Some(DependencyBuilder {
             program: std::env::var_os("CARGO").unwrap().into(),
             args: vec![
                 "run".into(),
@@ -124,9 +124,8 @@ fn run_tests(
                 "miri".into(),
             ],
             envs: vec![],
-        }),
-        quiet,
-    };
+        });
+    }
     ui_test::run_tests(config)
 }
 
@@ -214,10 +213,10 @@ fn main() -> Result<()> {
     ui(Mode::Pass, "tests/pass", WithoutDependencies)?;
     ui(Mode::Pass, "tests/pass-dep", WithDependencies)?;
     ui(Mode::Panic, "tests/panic", WithDependencies)?;
-    ui(Mode::Fail, "tests/fail", WithDependencies)?;
+    ui(Mode::Fail { require_patterns: true }, "tests/fail", WithDependencies)?;
     if cfg!(target_os = "linux") {
         ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
-        ui(Mode::Fail, "tests/extern-so/fail", WithDependencies)?;
+        ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithDependencies)?;
     }
 
     Ok(())
