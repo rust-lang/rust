@@ -8459,13 +8459,7 @@ public:
 
     Function *called = getFunctionFromCall(orig);
 
-    StringRef funcName = "";
-    if (called) {
-      if (called->hasFnAttribute("enzyme_math"))
-        funcName = called->getFnAttribute("enzyme_math").getValueAsString();
-      else
-        funcName = called->getName();
-    }
+    StringRef funcName = getFuncNameFromCall(orig);
 
     bool subretused = false;
     bool shadowReturnUsed = false;
@@ -10106,7 +10100,7 @@ public:
       }
     }
 
-    if (called && isAllocationFunction(*called, gutils->TLI)) {
+    if (isAllocationFunction(funcName, gutils->TLI)) {
 
       bool constval = gutils->isConstantValue(orig);
 
@@ -10171,8 +10165,7 @@ public:
               }
             }
             placeholder->setName("");
-            if (shadowHandlers.find(called->getName().str()) !=
-                shadowHandlers.end()) {
+            if (shadowHandlers.find(funcName.str()) != shadowHandlers.end()) {
               bb.SetInsertPoint(placeholder);
 
               if (Mode == DerivativeMode::ReverseModeCombined ||
@@ -10181,8 +10174,7 @@ public:
                   (Mode == DerivativeMode::ReverseModeGradient &&
                    backwardsShadow)) {
                 anti = applyChainRule(call.getType(), bb, [&]() {
-                  return shadowHandlers[called->getName().str()](bb, orig,
-                                                                 args);
+                  return shadowHandlers[funcName.str()](bb, orig, args);
                 });
                 if (anti->getType() != placeholder->getType()) {
                   llvm::errs() << "orig: " << *orig << "\n";
@@ -10240,7 +10232,7 @@ public:
                           derefBytes);
                       cal->addDereferenceableRetAttr(derefBytes);
 #if !defined(FLANG) && !defined(ROCM)
-                      AttrBuilder B(called->getContext());
+                      AttrBuilder B(ci->getContext());
 #else
                       AttrBuilder B;
 #endif
@@ -10337,7 +10329,7 @@ public:
                   applyChainRule(
                       bb,
                       [&](Value *anti) {
-                        zeroKnownAllocation(bb, anti, args, *called,
+                        zeroKnownAllocation(bb, anti, args, funcName,
                                             gutils->TLI);
                       },
                       anti);
@@ -10367,7 +10359,7 @@ public:
             assert(tofree);
             assert(tofree->getType());
             auto rule = [&](Value *tofree) {
-              auto CI = freeKnownAllocation(Builder2, tofree, *called, dbgLoc,
+              auto CI = freeKnownAllocation(Builder2, tofree, funcName, dbgLoc,
                                             gutils->TLI);
               if (CI)
 #if LLVM_VERSION_MAJOR >= 14
@@ -10518,7 +10510,7 @@ public:
               IRBuilder<> Builder2(call.getParent());
               getReverseBuilder(Builder2);
               auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
-              freeKnownAllocation(Builder2, lookup(newCall, Builder2), *called,
+              freeKnownAllocation(Builder2, lookup(newCall, Builder2), funcName,
                                   dbgLoc, gutils->TLI);
               return;
             }
@@ -10646,7 +10638,7 @@ public:
           IRBuilder<> Builder2(call.getParent());
           getReverseBuilder(Builder2);
           auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
-          freeKnownAllocation(Builder2, lookup(nop, Builder2), *called, dbgLoc,
+          freeKnownAllocation(Builder2, lookup(nop, Builder2), funcName, dbgLoc,
                               gutils->TLI);
         }
       } else if (Mode == DerivativeMode::ReverseModeGradient ||
@@ -10835,7 +10827,7 @@ public:
 
     // Remove free's in forward pass so the memory can be used in the reverse
     // pass
-    if (called && isDeallocationFunction(*called, gutils->TLI)) {
+    if (isDeallocationFunction(funcName, gutils->TLI)) {
       assert(gutils->invertedPointers.find(orig) ==
              gutils->invertedPointers.end());
 

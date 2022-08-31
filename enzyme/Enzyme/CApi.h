@@ -173,8 +173,7 @@ LLVMTypeRef EnzymeExtractTapeTypeFromAugmentation(EnzymeAugmentedReturnPtr ret);
 
 typedef LLVMValueRef (*CustomShadowAlloc)(LLVMBuilderRef, LLVMValueRef,
                                           size_t /*numArgs*/, LLVMValueRef *);
-typedef LLVMValueRef (*CustomShadowFree)(LLVMBuilderRef, LLVMValueRef,
-                                         LLVMValueRef);
+typedef LLVMValueRef (*CustomShadowFree)(LLVMBuilderRef, LLVMValueRef);
 
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle);

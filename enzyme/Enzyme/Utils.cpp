@@ -39,6 +39,8 @@
 
 #include "llvm-c/Core.h"
 
+#include "LibraryFuncs.h"
+
 using namespace llvm;
 
 extern "C" {
@@ -1360,13 +1362,14 @@ bool overwritesToMemoryReadByLoop(
   return true;
 }
 
-bool overwritesToMemoryReadBy(llvm::AAResults &AA, ScalarEvolution &SE,
-                              llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+bool overwritesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                              ScalarEvolution &SE, llvm::LoopInfo &LI,
+                              llvm::DominatorTree &DT,
                               llvm::Instruction *maybeReader,
                               llvm::Instruction *maybeWriter,
                               llvm::Loop *scope) {
   using namespace llvm;
-  if (!writesToMemoryReadBy(AA, maybeReader, maybeWriter))
+  if (!writesToMemoryReadBy(AA, TLI, maybeReader, maybeWriter))
     return false;
   const SCEV *LoadBegin = SE.getCouldNotCompute();
   const SCEV *LoadEnd = SE.getCouldNotCompute();
@@ -1438,64 +1441,62 @@ bool overwritesToMemoryReadBy(llvm::AAResults &AA, ScalarEvolution &SE,
 }
 
 /// Return whether maybeReader can read from memory written to by maybeWriter
-bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                          llvm::Instruction *maybeReader,
                           llvm::Instruction *maybeWriter) {
   assert(maybeReader->getParent()->getParent() ==
          maybeWriter->getParent()->getParent());
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainPrintMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isCertainPrint(funcName) || isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
-    if (called && (called->getName() == "jl_array_copy" ||
-                   called->getName() == "ijl_array_copy"))
+    if (funcName == "jl_array_copy" || funcName == "ijl_array_copy")
       return false;
 
     // Isend only writes to inaccessible mem only
-    if (called &&
-        (called->getName() == "MPI_Send" || called->getName() == "PMPI_Send")) {
+    if (funcName == "MPI_Send" || funcName == "PMPI_Send") {
       return false;
     }
-    if (called) {
-      // Wait only overwrites memory in the status and request.
-      if (called->getName() == "MPI_Wait" || called->getName() == "PMPI_Wait" ||
-          called->getName() == "MPI_Waitall" ||
-          called->getName() == "PMPI_Waitall") {
+    // Wait only overwrites memory in the status and request.
+    if (funcName == "MPI_Wait" || funcName == "PMPI_Wait" ||
+        funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
 #if LLVM_VERSION_MAJOR > 11
-        auto loc = LocationSize::afterPointer();
+      auto loc = LocationSize::afterPointer();
 #else
-        auto loc = MemoryLocation::UnknownSize;
+      auto loc = MemoryLocation::UnknownSize;
 #endif
-        size_t off = (called->getName() == "MPI_Wait" ||
-                      called->getName() == "PMPI_Wait")
-                         ? 0
-                         : 1;
-        // No alias with status
+      size_t off = (funcName == "MPI_Wait" || funcName == "PMPI_Wait") ? 0 : 1;
+      // No alias with status
+      if (!isRefSet(AA.getModRefInfo(maybeReader, call->getArgOperand(off + 1),
+                                     loc))) {
+        // No alias with request
         if (!isRefSet(AA.getModRefInfo(maybeReader,
-                                       call->getArgOperand(off + 1), loc))) {
-          // No alias with request
-          if (!isRefSet(AA.getModRefInfo(maybeReader,
-                                         call->getArgOperand(off + 0), loc)))
-            return false;
-          auto R = parseTBAA(*maybeReader, maybeReader->getParent()
-                                               ->getParent()
-                                               ->getParent()
-                                               ->getDataLayout())[{-1}];
-          // Could still conflict with the mpi_request unless a non pointer
-          // type.
-          if (R != BaseType::Unknown && R != BaseType::Anything &&
-              R != BaseType::Pointer)
-            return false;
-        }
+                                       call->getArgOperand(off + 0), loc)))
+          return false;
+        auto R = parseTBAA(*maybeReader, maybeReader->getParent()
+                                             ->getParent()
+                                             ->getParent()
+                                             ->getDataLayout())[{-1}];
+        // Could still conflict with the mpi_request unless a non pointer
+        // type.
+        if (R != BaseType::Unknown && R != BaseType::Anything &&
+            R != BaseType::Pointer)
+          return false;
       }
     }
     // Isend only writes to inaccessible mem and request.
-    if (called && (called->getName() == "MPI_Isend" ||
-                   called->getName() == "PMPI_Isend")) {
+    if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
       auto R = parseTBAA(*maybeReader, maybeReader->getParent()
                                            ->getParent()
                                            ->getParent()
@@ -1516,10 +1517,8 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
 #endif
       return false;
     }
-    if (called &&
-        (called->getName() == "MPI_Irecv" ||
-         called->getName() == "PMPI_Irecv" || called->getName() == "MPI_Recv" ||
-         called->getName() == "PMPI_Recv")) {
+    if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv" ||
+        funcName == "MPI_Recv" || funcName == "PMPI_Recv") {
       ConcreteType type(BaseType::Unknown);
       if (Constant *C = dyn_cast<Constant>(call->getArgOperand(2))) {
         while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
@@ -1527,9 +1526,9 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
         }
         if (auto GV = dyn_cast<GlobalVariable>(C)) {
           if (GV->getName() == "ompi_mpi_double") {
-            type = ConcreteType(Type::getDoubleTy(called->getContext()));
+            type = ConcreteType(Type::getDoubleTy(C->getContext()));
           } else if (GV->getName() == "ompi_mpi_float") {
-            type = ConcreteType(Type::getFloatTy(called->getContext()));
+            type = ConcreteType(Type::getFloatTy(C->getContext()));
           }
         }
       }
@@ -1541,8 +1540,7 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
         if (R.isKnown() && type != R) {
           // Could still conflict with the mpi_request, unless either
           // synchronous, or a non pointer type.
-          if (called->getName() == "MPI_Recv" ||
-              called->getName() == "PMPI_Recv" ||
+          if (funcName == "MPI_Recv" || funcName == "PMPI_Recv" ||
               (R != BaseType::Anything && R != BaseType::Pointer))
             return false;
 #if LLVM_VERSION_MAJOR > 11
@@ -1581,13 +1579,20 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
+
     if (auto II = dyn_cast<IntrinsicInst>(call)) {
       if (II->getIntrinsicID() == Intrinsic::stacksave)
         return false;
@@ -1602,15 +1607,20 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
-    if (called && (called->getName() == "jl_array_copy" ||
-                   called->getName() == "ijl_array_copy"))
+    if (funcName == "jl_array_copy" || funcName == "ijl_array_copy")
       return false;
 
 #if LLVM_VERSION_MAJOR >= 11
@@ -1624,11 +1634,17 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
+    StringRef funcName = getFuncNameFromCall(call);
+
+    if (isDebugFunction(call->getCalledFunction()))
+      return false;
+
+    if (isAllocationFunction(funcName, TLI) ||
+        isDeallocationFunction(funcName, TLI)) {
       return false;
     }
-    if (called && isMemFreeLibMFunction(called->getName())) {
+
+    if (isMemFreeLibMFunction(funcName)) {
       return false;
     }
   }

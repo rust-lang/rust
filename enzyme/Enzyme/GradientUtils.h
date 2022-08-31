@@ -716,12 +716,12 @@ public:
           break;
         }
       } else if (auto CI = dyn_cast<CallInst>(cur)) {
-        Function *called = getFunctionFromCall(CI);
-        if (called && isDeallocationFunction(*called, TLI)) {
+        StringRef funcName = getFuncNameFromCall(CI);
+        if (isDeallocationFunction(funcName, TLI)) {
           frees.insert(CI);
           continue;
         }
-        if (called && called->getName() == "julia.write_barrier") {
+        if (funcName == "julia.write_barrier") {
           stores.insert(CI);
           continue;
         }
@@ -739,7 +739,7 @@ public:
             continue;
           }
 #if LLVM_VERSION_MAJOR <= 7
-          auto F = CI->getCalledFunction();
+          auto F = getFunctionFromCall(CI);
 #endif
           auto TT = TR.query(prev)[{-1, -1}];
           // If it either could capture, or could have a int/pointer written to
@@ -881,7 +881,7 @@ public:
       SmallVector<Instruction *, 2> results;
       mayExecuteAfter(results, LI, stores, outer);
       for (auto res : results) {
-        if (overwritesToMemoryReadBy(OrigAA, SE, OrigLI, OrigDT, LI, res,
+        if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT, LI, res,
                                      outer)) {
           EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
                       LI->getParent(), " Could not promote allocation ", *V,
@@ -898,8 +898,8 @@ public:
       SmallVector<Instruction *, 2> results;
       mayExecuteAfter(results, LI.loadCall, stores, outer);
       for (auto res : results) {
-        if (overwritesToMemoryReadBy(OrigAA, SE, OrigLI, OrigDT, LI.loadCall,
-                                     res, outer)) {
+        if (overwritesToMemoryReadBy(OrigAA, TLI, SE, OrigLI, OrigDT,
+                                     LI.loadCall, res, outer)) {
           EmitWarning("NotPromotable", LI.loadCall->getDebugLoc(), oldFunc,
                       LI.loadCall->getParent(),
                       " Could not promote allocation ", *V,
@@ -926,18 +926,17 @@ public:
         if (!CI)
           continue;
 
-        Function *called = getFunctionFromCall(CI);
-        if (!called)
-          continue;
-        if (isDeallocationFunction(*called, TLI)) {
+        StringRef funcName = getFuncNameFromCall(CI);
+
+        if (isDeallocationFunction(funcName, TLI)) {
 
           llvm::Value *val = CI->getArgOperand(0);
           while (auto cast = dyn_cast<CastInst>(val))
             val = cast->getOperand(0);
 
           if (auto dc = dyn_cast<CallInst>(val)) {
-            if (dc->getCalledFunction() &&
-                isAllocationFunction(*dc->getCalledFunction(), TLI)) {
+            StringRef sfuncName = getFuncNameFromCall(dc);
+            if (isAllocationFunction(sfuncName, TLI)) {
 
               bool hasPDFree = false;
               if (dc->getParent() == CI->getParent() ||
@@ -951,12 +950,11 @@ public:
             }
           }
         }
-        if (isAllocationFunction(*called, TLI)) {
+        if (isAllocationFunction(funcName, TLI)) {
           allocsToPromote.insert(CI);
           if (hasMetadata(CI, "enzyme_fromstack")) {
             allocationsWithGuaranteedFree[CI].insert(CI);
           }
-          auto funcName = called->getName();
           if (funcName == "jl_alloc_array_1d" ||
               funcName == "jl_alloc_array_2d" ||
               funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
@@ -1549,10 +1547,6 @@ public:
         CallInst *op = cast<CallInst>(inst);
         Function *called = op->getCalledFunction();
 
-        if (called && isCertainPrintOrFree(called)) {
-          continue;
-        }
-
         IRBuilder<> BuilderZ(inst);
         getForwardBuilder(BuilderZ);
         Type *antiTy = getShadowType(inst->getType());
@@ -1562,7 +1556,7 @@ public:
         invertedPointers.insert(
             std::make_pair((const Value *)inst, InvertedPointerVH(this, anti)));
 
-        if (called && isAllocationFunction(*called, TLI)) {
+        if (called && isAllocationFunction(called->getName(), TLI)) {
           anti->setName(op->getName() + "'mi");
         }
       }

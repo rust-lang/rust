@@ -1266,20 +1266,17 @@ Function *PreProcessCache::preprocessForClone(Function *F,
             continue;
           for (int i = 0; i < 2; i++) {
             if (isa<ConstantPointerNull>(IC->getOperand(1 - i)))
-              if (auto CI = dyn_cast<CallInst>(IC->getOperand(i))) {
-                if (CI->getCalledFunction() &&
-                    isAllocationFunction(*CI->getCalledFunction(), TLI)) {
-                  for (auto U : IC->users()) {
-                    if (auto BI = dyn_cast<BranchInst>(U))
-                      BranchesToErase.push_back(BI->getParent());
-                  }
-                  IC->replaceAllUsesWith(
-                      IC->getPredicate() == ICmpInst::ICMP_NE
-                          ? ConstantInt::getTrue(I.getContext())
-                          : ConstantInt::getFalse(I.getContext()));
-                  CmpsToErase.push_back(&I);
-                  break;
+              if (isAllocationCall(IC->getOperand(i), TLI)) {
+                for (auto U : IC->users()) {
+                  if (auto BI = dyn_cast<BranchInst>(U))
+                    BranchesToErase.push_back(BI->getParent());
                 }
+                IC->replaceAllUsesWith(
+                    IC->getPredicate() == ICmpInst::ICMP_NE
+                        ? ConstantInt::getTrue(I.getContext())
+                        : ConstantInt::getFalse(I.getContext()));
+                CmpsToErase.push_back(&I);
+                break;
               }
           }
         }

@@ -33,29 +33,28 @@ extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
                                  llvm::ArrayRef<llvm::Value *>)>>
     shadowHandlers;
-extern std::map<std::string,
-                std::function<llvm::CallInst *(
-                    llvm::IRBuilder<> &, llvm::Value *, llvm::Function *)>>
+extern std::map<std::string, std::function<llvm::CallInst *(llvm::IRBuilder<> &,
+                                                            llvm::Value *)>>
     shadowErasers;
 
 /// Return whether a given function is a known C/C++ memory allocation function
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
-static inline bool isAllocationFunction(const llvm::Function &F,
+static inline bool isAllocationFunction(const llvm::StringRef name,
                                         const llvm::TargetLibraryInfo &TLI) {
-  if (F.getName() == "calloc" || F.getName() == "malloc")
+  if (name == "calloc" || name == "malloc")
     return true;
-  if (F.getName() == "swift_allocObject")
+  if (name == "swift_allocObject")
     return true;
-  if (F.getName() == "__rust_alloc" || F.getName() == "__rust_alloc_zeroed")
+  if (name == "__rust_alloc" || name == "__rust_alloc_zeroed")
     return true;
-  if (F.getName() == "julia.gc_alloc_obj")
+  if (name == "julia.gc_alloc_obj")
     return true;
-  if (shadowHandlers.find(F.getName().str()) != shadowHandlers.end())
+  if (shadowHandlers.find(name.str()) != shadowHandlers.end())
     return true;
 
   using namespace llvm;
   llvm::LibFunc libfunc;
-  if (!TLI.getLibFunc(F, libfunc))
+  if (!TLI.getLibFunc(name, libfunc))
     return false;
 
   switch (libfunc) {
@@ -118,16 +117,16 @@ static inline bool isAllocationFunction(const llvm::Function &F,
 /// Return whether a given function is a known C/C++ memory deallocation
 /// function For updating below one should read MemoryBuiltins.cpp,
 /// TargetLibraryInfo.cpp
-static inline bool isDeallocationFunction(const llvm::Function &F,
+static inline bool isDeallocationFunction(const llvm::StringRef name,
                                           const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
   llvm::LibFunc libfunc;
-  if (!TLI.getLibFunc(F, libfunc)) {
-    if (F.getName() == "free")
+  if (!TLI.getLibFunc(name, libfunc)) {
+    if (name == "free")
       return true;
-    if (F.getName() == "__rust_dealloc")
+    if (name == "__rust_dealloc")
       return true;
-    if (F.getName() == "swift_release")
+    if (name == "swift_release")
       return true;
     return false;
   }
@@ -199,11 +198,11 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
 static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
                                        llvm::Value *toZero,
                                        llvm::ArrayRef<llvm::Value *> argValues,
-                                       llvm::Function &allocatefn,
+                                       const llvm::StringRef funcName,
                                        const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
-  assert(isAllocationFunction(allocatefn, TLI));
-  StringRef funcName = allocatefn.getName();
+  assert(isAllocationFunction(funcName, TLI));
+
   // Don't re-zero an already-zero buffer
   if (funcName == "calloc" || funcName == "__rust_alloc_zeroed")
     return;
@@ -214,7 +213,8 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
     FunctionType *FT =
         FunctionType::get(Type::getVoidTy(toZero->getContext()), tys, true);
     bb.CreateCall(
-        allocatefn.getParent()->getOrInsertFunction("julia.write_barrier", FT),
+        bb.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
+            "julia.write_barrier", FT),
         toZero);
     allocSize = argValues[1];
   }
@@ -244,7 +244,8 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
   Type *tys[] = {dst_arg->getType(), len_arg->getType()};
 
   auto memset = cast<CallInst>(bb.CreateCall(
-      Intrinsic::getDeclaration(allocatefn.getParent(), Intrinsic::memset, tys),
+      Intrinsic::getDeclaration(bb.GetInsertBlock()->getParent()->getParent(),
+                                Intrinsic::memset, tys),
       nargs));
   memset->addParamAttr(0, Attribute::NonNull);
   if (auto CI = dyn_cast<ConstantInt>(allocSize)) {
@@ -268,31 +269,33 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline llvm::CallInst *
 freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
-                    llvm::Function &allocationfn,
+                    const llvm::StringRef allocationfn,
                     const llvm::DebugLoc &debuglocation,
                     const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
   assert(isAllocationFunction(allocationfn, TLI));
 
-  if (allocationfn.getName() == "__rust_alloc" ||
-      allocationfn.getName() == "__rust_alloc_zeroed") {
+  if (allocationfn == "__rust_alloc" || allocationfn == "__rust_alloc_zeroed") {
     llvm_unreachable("todo - hook in rust allocation fns");
   }
-  if (allocationfn.getName() == "julia.gc_alloc_obj")
+  if (allocationfn == "julia.gc_alloc_obj")
     return nullptr;
 
-  if (allocationfn.getName() == "swift_allocObject") {
+  if (allocationfn == "swift_allocObject") {
     Type *VoidTy = Type::getVoidTy(tofree->getContext());
     Type *IntPtrTy = Type::getInt8PtrTy(tofree->getContext());
 
     auto FT = FunctionType::get(VoidTy, ArrayRef<Type *>(IntPtrTy), false);
 #if LLVM_VERSION_MAJOR >= 9
-    Value *freevalue = allocationfn.getParent()
+    Value *freevalue = builder.GetInsertBlock()
+                           ->getParent()
+                           ->getParent()
                            ->getOrInsertFunction("swift_release", FT)
                            .getCallee();
 #else
     Value *freevalue =
-        allocationfn.getParent()->getOrInsertFunction("swift_release", FT);
+        builder.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
+            "swift_release", FT);
 #endif
     CallInst *freecall = cast<CallInst>(
 #if LLVM_VERSION_MAJOR >= 8
@@ -330,9 +333,8 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
     return freecall;
   }
 
-  if (shadowErasers.find(allocationfn.getName().str()) != shadowErasers.end()) {
-    return shadowErasers[allocationfn.getName().str()](builder, tofree,
-                                                       &allocationfn);
+  if (shadowErasers.find(allocationfn.str()) != shadowErasers.end()) {
+    return shadowErasers[allocationfn.str()](builder, tofree);
   }
 
   if (tofree->getType()->isIntegerTy())
@@ -340,8 +342,7 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
                                     Type::getInt8PtrTy(tofree->getContext()));
 
   llvm::LibFunc libfunc;
-  if (allocationfn.getName() == "calloc" ||
-      allocationfn.getName() == "malloc") {
+  if (allocationfn == "calloc" || allocationfn == "malloc") {
     libfunc = LibFunc_malloc;
   } else {
     bool res = TLI.getLibFunc(allocationfn, libfunc);
@@ -419,11 +420,15 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
 
   auto FT = FunctionType::get(VoidTy, {IntPtrTy}, false);
 #if LLVM_VERSION_MAJOR >= 9
-  Value *freevalue =
-      allocationfn.getParent()->getOrInsertFunction(freename, FT).getCallee();
+  Value *freevalue = builder.GetInsertBlock()
+                         ->getParent()
+                         ->getParent()
+                         ->getOrInsertFunction(freename, FT)
+                         .getCallee();
 #else
   Value *freevalue =
-      allocationfn.getParent()->getOrInsertFunction(freename, FT);
+      builder.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
+          freename, FT);
 #endif
   CallInst *freecall = cast<CallInst>(
 #if LLVM_VERSION_MAJOR >= 8
@@ -456,6 +461,28 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   if (freecall->getParent() == nullptr)
     builder.Insert(freecall);
   return freecall;
+}
+
+static inline bool isAllocationCall(llvm::Value *TmpOrig,
+                                    llvm::TargetLibraryInfo &TLI) {
+  if (auto *CI = llvm::dyn_cast<llvm::CallInst>(TmpOrig)) {
+    return isAllocationFunction(getFuncNameFromCall(CI), TLI);
+  }
+  if (auto *CI = llvm::dyn_cast<llvm::InvokeInst>(TmpOrig)) {
+    return isAllocationFunction(getFuncNameFromCall(CI), TLI);
+  }
+  return false;
+}
+
+static inline bool isDeallocationCall(llvm::Value *TmpOrig,
+                                      llvm::TargetLibraryInfo &TLI) {
+  if (auto *CI = llvm::dyn_cast<llvm::CallInst>(TmpOrig)) {
+    return isDeallocationFunction(getFuncNameFromCall(CI), TLI);
+  }
+  if (auto *CI = llvm::dyn_cast<llvm::InvokeInst>(TmpOrig)) {
+    return isDeallocationFunction(getFuncNameFromCall(CI), TLI);
+  }
+  return false;
 }
 
 #endif

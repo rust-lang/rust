@@ -199,6 +199,7 @@ const std::set<std::string> KnownInactiveFunctionInsts = {
 const std::set<std::string> KnownInactiveFunctions = {
     "abort",
     "time",
+    "memcmp",
     "gettimeofday",
     "stat",
     "mkdir",
@@ -338,7 +339,7 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
 
   // Allocations, deallocations, and c++ guards don't impact the activity
   // of arguments
-  if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI))
+  if (isAllocationFunction(Name, TLI) || isDeallocationFunction(Name, TLI))
     return true;
   if (Name == "posix_memalign")
     return true;
@@ -497,7 +498,7 @@ static inline void propagateArgumentInformation(
     }
 
     // Allocations, deallocations, and c++ guards are fully inactive
-    if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI) ||
+    if (isAllocationFunction(Name, TLI) || isDeallocationFunction(Name, TLI) ||
         Name == "__cxa_guard_acquire" || Name == "__cxa_guard_release" ||
         Name == "__cxa_guard_abort")
       return;
@@ -1355,89 +1356,114 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
         }
         Function *called = getFunctionFromCall(op);
 
-        if (called) {
-          if (called->hasFnAttribute("enzyme_inactive")) {
-            InsertConstantValue(TR, Val);
-            insertConstantsFrom(TR, *UpHypothesis);
-            return true;
-          }
-          if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
-              called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
-            InsertConstantValue(TR, Val);
-            insertConstantsFrom(TR, *UpHypothesis);
-            return true;
-          }
+        StringRef funcName = getFuncNameFromCall(op);
+
+        if (called && called->hasFnAttribute("enzyme_inactive")) {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
+        if (funcName == "free" || funcName == "_ZdlPv" ||
+            funcName == "_ZdlPvm" || funcName == "munmap") {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
 
 #if LLVM_VERSION_MAJOR >= 9
-          auto dName = demangle(called->getName().str());
-          for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
-            if (StringRef(dName).startswith(FuncName)) {
-              InsertConstantValue(TR, Val);
-              insertConstantsFrom(TR, *UpHypothesis);
-              return true;
-            }
+        auto dName = demangle(funcName.str());
+        for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
+          if (StringRef(dName).startswith(FuncName)) {
+            InsertConstantValue(TR, Val);
+            insertConstantsFrom(TR, *UpHypothesis);
+            return true;
           }
+        }
 #endif
 
-          for (auto FuncName : KnownInactiveFunctionsStartingWith) {
-            if (called->getName().startswith(FuncName)) {
-              InsertConstantValue(TR, Val);
-              insertConstantsFrom(TR, *UpHypothesis);
-              return true;
+        for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+          if (funcName.startswith(FuncName)) {
+            InsertConstantValue(TR, Val);
+            insertConstantsFrom(TR, *UpHypothesis);
+            return true;
+          }
+        }
+
+        for (auto FuncName : KnownInactiveFunctionsContains) {
+          if (funcName.contains(FuncName)) {
+            InsertConstantValue(TR, Val);
+            insertConstantsFrom(TR, *UpHypothesis);
+            return true;
+          }
+        }
+
+        if (KnownInactiveFunctions.count(funcName.str()) ||
+            MPIInactiveCommAllocators.find(funcName.str()) !=
+                MPIInactiveCommAllocators.end()) {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
+
+        if (called && called->getIntrinsicID() == Intrinsic::trap) {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
+
+        // If requesting empty unknown functions to be considered inactive,
+        // abide by those rules
+        if (called && EnzymeEmptyFnInactive && called->empty() &&
+            !hasMetadata(called, "enzyme_gradient") &&
+            !hasMetadata(called, "enzyme_derivative") &&
+            !isAllocationFunction(funcName, TLI) &&
+            !isDeallocationFunction(funcName, TLI) && !isa<IntrinsicInst>(op)) {
+          InsertConstantValue(TR, Val);
+          insertConstantsFrom(TR, *UpHypothesis);
+          return true;
+        }
+        if (isAllocationFunction(funcName, TLI)) {
+          // This pointer is inactive if it is either not actively stored to
+          // and not actively loaded from.
+          if (directions == DOWN) {
+            for (auto UA :
+                 {UseActivity::OnlyLoads, UseActivity::OnlyNonPointerStores,
+                  UseActivity::AllStores, UseActivity::None}) {
+              Instruction *LoadReval = nullptr;
+              if (isValueInactiveFromUsers(TR, TmpOrig, UA, &LoadReval)) {
+                InsertConstantValue(TR, Val);
+                return true;
+              }
+              if (LoadReval && UA != UseActivity::AllStores) {
+                ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
+              }
             }
-          }
-
-          for (auto FuncName : KnownInactiveFunctionsContains) {
-            if (called->getName().contains(FuncName)) {
-              InsertConstantValue(TR, Val);
-              insertConstantsFrom(TR, *UpHypothesis);
-              return true;
-            }
-          }
-
-          if (KnownInactiveFunctions.count(called->getName().str()) ||
-              MPIInactiveCommAllocators.find(called->getName().str()) !=
-                  MPIInactiveCommAllocators.end()) {
-            InsertConstantValue(TR, Val);
-            insertConstantsFrom(TR, *UpHypothesis);
-            return true;
-          }
-
-          if (called->getIntrinsicID() == Intrinsic::trap) {
-            InsertConstantValue(TR, Val);
-            insertConstantsFrom(TR, *UpHypothesis);
-            return true;
-          }
-
-          // If requesting empty unknown functions to be considered inactive,
-          // abide by those rules
-          if (EnzymeEmptyFnInactive && called->empty() &&
-              !hasMetadata(called, "enzyme_gradient") &&
-              !hasMetadata(called, "enzyme_derivative") &&
-              !isAllocationFunction(*called, TLI) &&
-              !isDeallocationFunction(*called, TLI) &&
-              !isa<IntrinsicInst>(op)) {
-            InsertConstantValue(TR, Val);
-            insertConstantsFrom(TR, *UpHypothesis);
-            return true;
-          }
-          if (isAllocationFunction(*called, TLI)) {
-            // This pointer is inactive if it is either not actively stored to
-            // and not actively loaded from.
-            if (directions == DOWN) {
-              for (auto UA :
-                   {UseActivity::OnlyLoads, UseActivity::OnlyNonPointerStores,
-                    UseActivity::AllStores, UseActivity::None}) {
-                Instruction *LoadReval = nullptr;
-                if (isValueInactiveFromUsers(TR, TmpOrig, UA, &LoadReval)) {
-                  InsertConstantValue(TR, Val);
-                  return true;
-                }
+          } else if (directions & DOWN) {
+            auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
+                new ActivityAnalyzer(*this, DOWN));
+            DownHypothesis->ConstantValues.insert(TmpOrig);
+            for (auto UA :
+                 {UseActivity::OnlyLoads, UseActivity::OnlyNonPointerStores,
+                  UseActivity::AllStores, UseActivity::None}) {
+              Instruction *LoadReval = nullptr;
+              if (DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UA,
+                                                           &LoadReval)) {
+                insertConstantsFrom(TR, *DownHypothesis);
+                InsertConstantValue(TR, Val);
+                return true;
+              } else {
                 if (LoadReval && UA != UseActivity::AllStores) {
                   ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
                 }
               }
-            } else if (directions & DOWN) {
+            }
+          }
+        }
+        if (funcName == "jl_array_copy" || funcName == "ijl_array_copy") {
+          // This pointer is inactive if it is either not actively stored to
+          // and not actively loaded from.
+          if (directions & DOWN && directions & UP) {
+            if (UpHypothesis->isConstantValue(TR, op->getOperand(0))) {
               auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
                   new ActivityAnalyzer(*this, DOWN));
               DownHypothesis->ConstantValues.insert(TmpOrig);
@@ -1453,33 +1479,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
                 } else {
                   if (LoadReval && UA != UseActivity::AllStores) {
                     ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
-                  }
-                }
-              }
-            }
-          }
-          if (called->getName() == "jl_array_copy" ||
-              called->getName() == "ijl_array_copy") {
-            // This pointer is inactive if it is either not actively stored to
-            // and not actively loaded from.
-            if (directions & DOWN && directions & UP) {
-              if (UpHypothesis->isConstantValue(TR, op->getOperand(0))) {
-                auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
-                    new ActivityAnalyzer(*this, DOWN));
-                DownHypothesis->ConstantValues.insert(TmpOrig);
-                for (auto UA :
-                     {UseActivity::OnlyLoads, UseActivity::OnlyNonPointerStores,
-                      UseActivity::AllStores, UseActivity::None}) {
-                  Instruction *LoadReval = nullptr;
-                  if (DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UA,
-                                                               &LoadReval)) {
-                    insertConstantsFrom(TR, *DownHypothesis);
-                    InsertConstantValue(TR, Val);
-                    return true;
-                  } else {
-                    if (LoadReval && UA != UseActivity::AllStores) {
-                      ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
-                    }
                   }
                 }
               }
@@ -1623,54 +1622,52 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
         }
 
         Function *F = getFunctionFromCall(CI);
+        StringRef funcName = getFuncNameFromCall(CI);
+
+        if (F && F->hasFnAttribute("enzyme_inactive")) {
+          return false;
+        }
+        if (isAllocationFunction(funcName, TLI) ||
+            isDeallocationFunction(funcName, TLI)) {
+          return false;
+        }
+        if (KnownInactiveFunctions.count(funcName.str()) ||
+            MPIInactiveCommAllocators.find(funcName.str()) !=
+                MPIInactiveCommAllocators.end()) {
+          return false;
+        }
+        if (KnownInactiveFunctionInsts.count(funcName.str())) {
+          return false;
+        }
+        if (isMemFreeLibMFunction(funcName) || funcName == "__fd_sincos_1") {
+          return false;
+        }
+#if LLVM_VERSION_MAJOR >= 9
+        auto dName = demangle(funcName.str());
+        for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
+          if (StringRef(dName).startswith(FuncName)) {
+            return false;
+          }
+        }
+#endif
+        for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+          if (funcName.startswith(FuncName)) {
+            return false;
+          }
+        }
+        for (auto FuncName : KnownInactiveFunctionsContains) {
+          if (funcName.contains(FuncName)) {
+            return false;
+          }
+        }
+
+        if (funcName == "__cxa_guard_acquire" ||
+            funcName == "__cxa_guard_release" ||
+            funcName == "__cxa_guard_abort" || funcName == "posix_memalign") {
+          return false;
+        }
 
         if (F) {
-          if (F->hasFnAttribute("enzyme_inactive")) {
-            return false;
-          }
-          if (isAllocationFunction(*F, TLI) ||
-              isDeallocationFunction(*F, TLI)) {
-            return false;
-          }
-          if (KnownInactiveFunctions.count(F->getName().str()) ||
-              MPIInactiveCommAllocators.find(F->getName().str()) !=
-                  MPIInactiveCommAllocators.end()) {
-            return false;
-          }
-          if (KnownInactiveFunctionInsts.count(F->getName().str())) {
-            return false;
-          }
-          if (isMemFreeLibMFunction(F->getName()) ||
-              F->getName() == "__fd_sincos_1") {
-            return false;
-          }
-#if LLVM_VERSION_MAJOR >= 9
-          auto dName = demangle(F->getName().str());
-          for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
-            if (StringRef(dName).startswith(FuncName)) {
-              return false;
-            }
-          }
-#endif
-          for (auto FuncName : KnownInactiveFunctionsStartingWith) {
-            if (F->getName().startswith(FuncName)) {
-              return false;
-            }
-          }
-          for (auto FuncName : KnownInactiveFunctionsContains) {
-            if (F->getName().contains(FuncName)) {
-              return false;
-            }
-          }
-
-          if (F->getName() == "__cxa_guard_acquire" ||
-              F->getName() == "__cxa_guard_release" ||
-              F->getName() == "__cxa_guard_abort" ||
-              F->getName() == "posix_memalign") {
-            return false;
-          }
-
-          bool noUse = false;
           switch (F->getIntrinsicID()) {
           case Intrinsic::nvvm_barrier0:
           case Intrinsic::nvvm_barrier0_popc:
@@ -1702,13 +1699,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
 #if LLVM_VERSION_MAJOR >= 8
           case Intrinsic::is_constant:
 #endif
-            noUse = true;
-            break;
+            return false;
           default:
             break;
           }
-          if (noUse)
-            return false;
         }
       }
 
@@ -1984,9 +1978,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       if (!ActiveDown && TmpOrig != Val) {
 
         if (isa<Argument>(TmpOrig) || isa<GlobalVariable>(TmpOrig) ||
-            isa<AllocaInst>(TmpOrig) ||
-            (isCalledFunction(TmpOrig) &&
-             isAllocationFunction(*isCalledFunction(TmpOrig), TLI))) {
+            isa<AllocaInst>(TmpOrig) || isAllocationCall(TmpOrig, TLI)) {
           std::shared_ptr<ActivityAnalyzer> DownHypothesis2 =
               std::shared_ptr<ActivityAnalyzer>(
                   new ActivityAnalyzer(*DownHypothesis, DOWN));
@@ -2213,61 +2205,63 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
 #else
     callVal = op->getCalledValue();
 #endif
-    if (Function *called = getFunctionFromCall(op)) {
-      if (called->hasFnAttribute("enzyme_inactive")) {
-        return true;
-      }
-      if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
-          called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
-        return true;
-      }
+    StringRef funcName = getFuncNameFromCall(op);
+    Function *called = getFunctionFromCall(op);
+
+    if (called && called->hasFnAttribute("enzyme_inactive")) {
+      return true;
+    }
+    if (funcName == "free" || funcName == "_ZdlPv" || funcName == "_ZdlPvm" ||
+        funcName == "munmap") {
+      return true;
+    }
 
 #if LLVM_VERSION_MAJOR >= 9
-      auto dName = demangle(called->getName().str());
-      for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
-        if (StringRef(dName).startswith(FuncName)) {
-          return true;
-        }
+    auto dName = demangle(funcName.str());
+    for (auto FuncName : DemangledKnownInactiveFunctionsStartingWith) {
+      if (StringRef(dName).startswith(FuncName)) {
+        return true;
       }
+    }
 #endif
 
-      for (auto FuncName : KnownInactiveFunctionsStartingWith) {
-        if (called->getName().startswith(FuncName)) {
-          return true;
-        }
-      }
-
-      for (auto FuncName : KnownInactiveFunctionsContains) {
-        if (called->getName().contains(FuncName)) {
-          return true;
-        }
-      }
-
-      if (KnownInactiveFunctions.count(called->getName().str()) ||
-          MPIInactiveCommAllocators.find(called->getName().str()) !=
-              MPIInactiveCommAllocators.end()) {
-        if (EnzymePrintActivity)
-          llvm::errs() << "constant(" << (int)directions
-                       << ") up-knowninactivecall " << *inst << "\n";
+    for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+      if (funcName.startswith(FuncName)) {
         return true;
       }
+    }
 
-      if (called->getIntrinsicID() == Intrinsic::trap)
-        return true;
-
-      // If requesting empty unknown functions to be considered inactive, abide
-      // by those rules
-      if (EnzymeEmptyFnInactive && called->empty() &&
-          !hasMetadata(called, "enzyme_gradient") &&
-          !hasMetadata(called, "enzyme_derivative") &&
-          !isAllocationFunction(*called, TLI) &&
-          !isDeallocationFunction(*called, TLI) && !isa<IntrinsicInst>(op)) {
-        if (EnzymePrintActivity)
-          llvm::errs() << "constant(" << (int)directions << ") up-emptyconst "
-                       << *inst << "\n";
+    for (auto FuncName : KnownInactiveFunctionsContains) {
+      if (funcName.contains(FuncName)) {
         return true;
       }
-    } else if (!isa<Constant>(callVal) && isConstantValue(TR, callVal)) {
+    }
+
+    if (KnownInactiveFunctions.count(funcName.str()) ||
+        MPIInactiveCommAllocators.find(funcName.str()) !=
+            MPIInactiveCommAllocators.end()) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "constant(" << (int)directions
+                     << ") up-knowninactivecall " << *inst << "\n";
+      return true;
+    }
+
+    if (called && called->getIntrinsicID() == Intrinsic::trap)
+      return true;
+
+    // If requesting empty unknown functions to be considered inactive, abide
+    // by those rules
+    if (called && EnzymeEmptyFnInactive && called->empty() &&
+        !hasMetadata(called, "enzyme_gradient") &&
+        !hasMetadata(called, "enzyme_derivative") &&
+        !isAllocationFunction(funcName, TLI) &&
+        !isDeallocationFunction(funcName, TLI) && !isa<IntrinsicInst>(op)) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "constant(" << (int)directions << ") up-emptyconst "
+                     << *inst << "\n";
+      return true;
+    }
+    if (!isa<Constant>(callVal) && isConstantValue(TR, callVal)) {
       if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-constfn "
                      << *inst << " - " << *callVal << "\n";
@@ -2340,10 +2334,20 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults const &TR,
     });
     if (EnzymeGlobalActivity) {
       if (!ci->onlyAccessesArgMemory() && !ci->doesNotAccessMemory()) {
+        bool legalUse = false;
 
-        Function *called = getFunctionFromCall(ci);
-        if (!called || (!isCertainPrintMallocOrFree(called) &&
-                        !isMemFreeLibMFunction(called->getName()))) {
+        StringRef funcName = getFuncNameFromCall(ci);
+
+        if (funcName == "") {
+        } else if (isMemFreeLibMFunction(funcName) ||
+                   isDebugFunction(ci->getCalledFunction()) ||
+                   isCertainPrint(funcName) ||
+                   isAllocationFunction(funcName, TLI) ||
+                   isDeallocationFunction(funcName, TLI)) {
+          legalUse = true;
+        }
+
+        if (!legalUse) {
           if (EnzymePrintActivity)
             llvm::errs() << "nonconstant(" << (int)directions << ")  up-global "
                          << *inst << "\n";
@@ -2430,8 +2434,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
   if (isa<AllocaInst>(val))
     AllocaSet.insert(val);
 
-  if (PUA == UseActivity::None && isCalledFunction(val) &&
-      isAllocationFunction(*isCalledFunction(val), TLI))
+  if (PUA == UseActivity::None && isAllocationCall(val, TLI))
     AllocaSet.insert(val);
 
   while (todo.size()) {
@@ -2489,11 +2492,9 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
               newAllocaSet.insert(TmpOrig);
               continue;
             }
-            if (auto CF = isCalledFunction(TmpOrig)) {
-              if (isAllocationFunction(*CF, TLI)) {
-                newAllocaSet.insert(TmpOrig);
-                continue;
-              }
+            if (isAllocationCall(TmpOrig, TLI)) {
+              newAllocaSet.insert(TmpOrig);
+              continue;
             }
             if (isa<UndefValue>(TmpOrig) || isa<ConstantInt>(TmpOrig) ||
                 isa<ConstantPointerNull>(TmpOrig) || isa<ConstantFP>(TmpOrig)) {
@@ -2587,17 +2588,15 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
               TmpOrig = LI->getPointerOperand();
               continue;
             }
-            if (auto CF = isCalledFunction(TmpOrig)) {
-              if (isAllocationFunction(*CF, TLI)) {
-                done.insert(
-                    std::make_tuple((User *)SI, SI->getPointerOperand(), UA));
-                for (const auto a : TmpOrig->users()) {
-                  todo.push_back(std::make_tuple(a, TmpOrig, UA));
-                }
-                AllocaSet.insert(TmpOrig);
-                shouldContinue = true;
-                break;
+            if (isAllocationCall(TmpOrig, TLI)) {
+              done.insert(
+                  std::make_tuple((User *)SI, SI->getPointerOperand(), UA));
+              for (const auto a : TmpOrig->users()) {
+                todo.push_back(std::make_tuple(a, TmpOrig, UA));
               }
+              AllocaSet.insert(TmpOrig);
+              shouldContinue = true;
+              break;
             }
           }
           auto TmpOrig_2 =
@@ -2774,17 +2773,15 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
                       TmpOrig = LI->getPointerOperand();
                       continue;
                     }
-                    if (auto CF = isCalledFunction(TmpOrig)) {
-                      if (isAllocationFunction(*CF, TLI)) {
-                        done.insert(std::make_tuple(
-                            (User *)call, call->getArgOperand(arg), UA));
-                        for (const auto a : TmpOrig->users()) {
-                          todo.push_back(std::make_tuple(a, TmpOrig, UA));
-                        }
-                        AllocaSet.insert(TmpOrig);
-                        shouldContinue = true;
-                        break;
+                    if (isAllocationCall(TmpOrig, TLI)) {
+                      done.insert(std::make_tuple(
+                          (User *)call, call->getArgOperand(arg), UA));
+                      for (const auto a : TmpOrig->users()) {
+                        todo.push_back(std::make_tuple(a, TmpOrig, UA));
                       }
+                      AllocaSet.insert(TmpOrig);
+                      shouldContinue = true;
+                      break;
                     }
                   }
                   auto TmpOrig_2 =
@@ -2859,16 +2856,14 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
               }
 
               if (PUA == UseActivity::None) {
-                if (auto CF = isCalledFunction(TmpOrig2)) {
-                  if (isAllocationFunction(*CF, TLI)) {
-                    done.insert(std::make_tuple((User *)call, a, UA));
-                    for (const auto a : TmpOrig2->users()) {
-                      todo.push_back(std::make_tuple(a, TmpOrig2, UA));
-                    }
-                    AllocaSet.insert(TmpOrig2);
-                    subValue = true;
-                    break;
+                if (isAllocationCall(TmpOrig2, TLI)) {
+                  done.insert(std::make_tuple((User *)call, a, UA));
+                  for (const auto a : TmpOrig2->users()) {
+                    todo.push_back(std::make_tuple(a, TmpOrig2, UA));
                   }
+                  AllocaSet.insert(TmpOrig2);
+                  subValue = true;
+                  break;
                 }
                 if (auto L = dyn_cast<LoadInst>(TmpOrig2)) {
                   ptr = L->getPointerOperand();
@@ -3069,23 +3064,21 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults const &TR,
       }
     }
 
-    if (auto F = isCalledFunction(a)) {
-      if (isAllocationFunction(*F, TLI)) {
-        // if not written to memory and returning a known constant, this
-        // cannot be actively returned/stored
-        if (isConstantValue(TR, a)) {
-          continue;
-        }
-        // if not written to memory and returning a value itself
-        // not actively stored or returned, this is not actively
-        // stored or returned
-        if (!isValueActivelyStoredOrReturned(TR, a, outside)) {
-          continue;
-        }
-      } else if (isDeallocationFunction(*F, TLI)) {
-        // freeing memory never counts
+    if (isAllocationCall(a, TLI)) {
+      // if not written to memory and returning a known constant, this
+      // cannot be actively returned/stored
+      if (isConstantValue(TR, a)) {
         continue;
       }
+      // if not written to memory and returning a value itself
+      // not actively stored or returned, this is not actively
+      // stored or returned
+      if (!isValueActivelyStoredOrReturned(TR, a, outside)) {
+        continue;
+      }
+    } else if (isDeallocationCall(a, TLI)) {
+      // freeing memory never counts
+      continue;
     }
     // fallback and conservatively assume that if the value is written to
     // it is written to active memory

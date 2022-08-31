@@ -694,12 +694,12 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
         }
       } else {
         auto &DL = fn->getParent()->getDataLayout();
-        if (DL.getTypeSizeInBits(stype->getElementType()) !=
+        if (DL.getTypeSizeInBits(stype->getPointerElementType()) !=
             DL.getTypeSizeInBits(diffret->getType())) {
           EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
                       "Cannot cast return type of gradient ",
                       *diffret->getType(), *diffret, ", to desired type ",
-                      *stype->getElementType());
+                      *stype->getPointerElementType());
           return false;
         }
         Builder.CreateStore(

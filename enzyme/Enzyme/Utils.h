@@ -524,59 +524,9 @@ static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   return nullptr;
 }
 
-// TODO replace/rename
-/// Determine whether this function is a certain malloc free
-/// debug or lifetime
-static inline bool isCertainMallocOrFree(llvm::Function *called) {
-  if (called == nullptr)
+static inline bool isDebugFunction(llvm::Function *called) {
+  if (!called)
     return false;
-  if (called->getName() == "printf" || called->getName() == "puts" ||
-      called->getName() == "malloc" || called->getName() == "_Znwm" ||
-      called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-      called->getName() == "free" || called->getName() == "swift_allocObject" ||
-      called->getName() == "swift_release" ||
-      shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
-    return true;
-  switch (called->getIntrinsicID()) {
-  case llvm::Intrinsic::dbg_declare:
-  case llvm::Intrinsic::dbg_value:
-#if LLVM_VERSION_MAJOR > 6
-  case llvm::Intrinsic::dbg_label:
-#endif
-  case llvm::Intrinsic::dbg_addr:
-  case llvm::Intrinsic::lifetime_start:
-  case llvm::Intrinsic::lifetime_end:
-    return true;
-  default:
-    break;
-  }
-
-  return false;
-}
-
-// TODO replace/rename
-/// Determine whether this function is a certain print free
-/// debug or lifetime
-static inline bool isCertainPrintOrFree(llvm::Function *called) {
-  if (called == nullptr)
-    return false;
-
-  if (called->getName() == "printf" || called->getName() == "puts" ||
-      called->getName() == "fprintf" || called->getName() == "putchar" ||
-      called->getName().startswith(
-          "_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_") ||
-      called->getName().startswith("_ZNSolsE") ||
-      called->getName().startswith("_ZNSo9_M_insert") ||
-      called->getName().startswith("_ZSt16__ostream_insert") ||
-      called->getName().startswith("_ZNSo3put") ||
-      called->getName().startswith("_ZSt4endl") ||
-      called->getName().startswith("_ZN3std2io5stdio6_print") ||
-      called->getName().startswith("_ZNSo5flushEv") ||
-      called->getName().startswith("_ZN4core3fmt") ||
-      called->getName() == "vprintf" || called->getName() == "_ZdlPv" ||
-      called->getName() == "_ZdlPvm" || called->getName() == "free" ||
-      called->getName() == "swift_release")
-    return true;
   switch (called->getIntrinsicID()) {
   case llvm::Intrinsic::dbg_declare:
   case llvm::Intrinsic::dbg_value:
@@ -593,19 +543,17 @@ static inline bool isCertainPrintOrFree(llvm::Function *called) {
   return false;
 }
 
-// TODO replace/rename
-/// Determine whether this function is a certain print malloc free
-/// debug or lifetime
-static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
-  if (called == nullptr)
-    return false;
-
-  if (isCertainPrintOrFree(called))
+static inline bool isCertainPrint(const llvm::StringRef name) {
+  if (name == "printf" || name == "puts" || name == "fprintf" ||
+      name == "putchar" ||
+      name.startswith("_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_") ||
+      name.startswith("_ZNSolsE") || name.startswith("_ZNSo9_M_insert") ||
+      name.startswith("_ZSt16__ostream_insert") ||
+      name.startswith("_ZNSo3put") || name.startswith("_ZSt4endl") ||
+      name.startswith("_ZN3std2io5stdio6_print") ||
+      name.startswith("_ZNSo5flushEv") || name.startswith("_ZN4core3fmt") ||
+      name == "vprintf")
     return true;
-
-  if (isCertainMallocOrFree(called))
-    return true;
-
   return false;
 }
 
@@ -862,7 +810,8 @@ void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,
                      const llvm::Loop *region);
 
 /// Return whether maybeReader can read from memory written to by maybeWriter
-bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                          llvm::Instruction *maybeReader,
                           llvm::Instruction *maybeWriter);
 
 // A more advanced version of writesToMemoryReadBy, where the writing
@@ -876,8 +825,9 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
 //      load A[i-1]
 //      store A[i] = ...
 //   }
-bool overwritesToMemoryReadBy(llvm::AAResults &AA, llvm::ScalarEvolution &SE,
-                              llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+bool overwritesToMemoryReadBy(llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI,
+                              llvm::ScalarEvolution &SE, llvm::LoopInfo &LI,
+                              llvm::DominatorTree &DT,
                               llvm::Instruction *maybeReader,
                               llvm::Instruction *maybeWriter,
                               llvm::Loop *scope = nullptr);
@@ -1037,6 +987,21 @@ template <typename T> static inline llvm::Function *getFunctionFromCall(T *op) {
     break;
   }
   return called;
+}
+
+template <typename T> static inline llvm::StringRef getFuncNameFromCall(T *op) {
+  auto AttrList =
+      op->getAttributes().getAttributes(llvm::AttributeList::FunctionIndex);
+  if (AttrList.hasAttribute("enzyme_math"))
+    return AttrList.getAttribute("enzyme_math").getValueAsString();
+
+  if (auto called = getFunctionFromCall(op)) {
+    if (called->hasFnAttribute("enzyme_math"))
+      return called->getFnAttribute("enzyme_math").getValueAsString();
+    else
+      return called->getName();
+  }
+  return "";
 }
 
 llvm::Function *

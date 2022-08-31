@@ -1057,28 +1057,9 @@ void TypeAnalyzer::run() {
       auto todo = *workList.begin();
       workList.erase(workList.begin());
       if (auto call = dyn_cast<CallInst>(todo)) {
-
-        Function *ci = call->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-        {
-          if (castinst->isCast())
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              ci = fn;
-            }
-        }
+        StringRef funcName = getFuncNameFromCall(call);
+        auto ci = getFunctionFromCall(call);
         if (ci && !ci->empty()) {
-
-          StringRef funcName = "";
-          if (ci->hasFnAttribute("enzyme_math"))
-            funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
-          else
-            funcName = ci->getName();
-
           if (interprocedural.CustomRules.find(funcName.str()) ==
               interprocedural.CustomRules.end()) {
             pendingCalls.push_back(call);
@@ -1087,27 +1068,9 @@ void TypeAnalyzer::run() {
         }
       }
       if (auto call = dyn_cast<InvokeInst>(todo)) {
-        Function *ci = call->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
-#else
-        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
-#endif
-        {
-          if (castinst->isCast())
-            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              ci = fn;
-            }
-        }
+        StringRef funcName = getFuncNameFromCall(call);
+        auto ci = getFunctionFromCall(call);
         if (ci && !ci->empty()) {
-
-          StringRef funcName = "";
-          if (ci->hasFnAttribute("enzyme_math"))
-            funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
-          else
-            funcName = ci->getName();
-
           if (interprocedural.CustomRules.find(funcName.str()) ==
               interprocedural.CustomRules.end()) {
             pendingCalls.push_back(call);
@@ -3520,29 +3483,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
   }
 
-  Function *ci = call.getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-  if (auto castinst = dyn_cast<ConstantExpr>(call.getCalledOperand()))
-#else
-  if (auto castinst = dyn_cast<ConstantExpr>(call.getCalledValue()))
-#endif
-  {
-    if (castinst->isCast())
-      if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-        ci = fn;
-      }
-  }
+  Function *ci = getFunctionFromCall(&call);
 
   if (ci) {
-
-    StringRef funcName = "";
-    if (ci) {
-      if (ci->hasFnAttribute("enzyme_math"))
-        funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
-      else
-        funcName = ci->getName();
-    }
+    StringRef funcName = getFuncNameFromCall(&call);
 
 #define CONSIDER(fn)                                                           \
   if (funcName == #fn) {                                                       \
@@ -4007,7 +3951,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (isAllocationFunction(*ci, TLI)) {
+    if (isAllocationFunction(funcName, TLI)) {
       size_t Idx = 0;
       for (auto &Arg : ci->args()) {
         if (Arg.getType()->isIntegerTy()) {
@@ -4101,7 +4045,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (isDeallocationFunction(*ci, TLI)) {
+    if (isDeallocationFunction(funcName, TLI)) {
       size_t Idx = 0;
       for (auto &Arg : ci->args()) {
         if (Arg.getType()->isIntegerTy()) {
