@@ -352,7 +352,7 @@ fn report_msg<'mir, 'tcx>(
     }
     if notes.len() + helps.len() > 0 {
         // Add visual separator before backtrace.
-        err.note("backtrace:");
+        err.note("BACKTRACE:");
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
