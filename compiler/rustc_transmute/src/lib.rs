@@ -123,7 +123,7 @@ mod rustc {
             param_env: ParamEnv<'tcx>,
             c: Const<'tcx>,
         ) -> Self {
-            use rustc_middle::ty::DestructuredConst;
+            use rustc_middle::ty::ScalarInt;
             use rustc_middle::ty::TypeVisitable;
             use rustc_span::symbol::sym;
 
@@ -142,9 +142,8 @@ mod rustc {
                 LangItem::TransmuteOpts.name(),
             );
 
-            let DestructuredConst { variant, fields } = tcx.destructure_const(c);
-            let variant_idx = variant.expect("The given `Const` must be an ADT.");
-            let variant = adt_def.variant(variant_idx);
+            let variant = adt_def.non_enum_variant();
+            let fields = c.to_valtree().unwrap_branch();
 
             let get_field = |name| {
                 let (field_idx, _) = variant
@@ -153,9 +152,7 @@ mod rustc {
                     .enumerate()
                     .find(|(_, field_def)| name == field_def.name)
                     .expect(&format!("There were no fields named `{name}`."));
-                fields[field_idx].try_eval_bool(tcx, param_env).expect(&format!(
-                    "The field named `{name}` lang item could not be evaluated to a bool."
-                ))
+                fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
             };
 
             Self {
