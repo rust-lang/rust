@@ -1,14 +1,8 @@
 note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:32:47
    |
-LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |  _______________________________________________^
-LL | |
-LL | |
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |     });
-   | |_____^
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
@@ -23,14 +17,8 @@ LL | |     });
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:31:1
    |
-LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |
-LL | |
-...  |
-LL | |     });
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 
