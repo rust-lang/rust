@@ -990,6 +990,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);
             },
+            TyKind::ImplTraitInTrait(_) => {
+                // Do nothing
+            }
             TyKind::TraitObject(_, lifetime, _) => {
                 self.hash_lifetime(*lifetime);
             },
