@@ -327,8 +327,8 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
-    /// Denotes a call to an intrinsic that does not require an unwind path. This avoids
-    /// adding a new block and a terminator for simple intrinsics.
+    /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
+    /// This avoids adding a new block and a terminator for simple intrinsics.
     Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
