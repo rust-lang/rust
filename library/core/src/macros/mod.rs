@@ -350,10 +350,12 @@ macro_rules! matches {
 
 /// Unwraps a result or propagates its error.
 ///
-/// The `?` operator was added to replace `try!` and should be used instead.
-/// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
-/// it, you will need to use the [raw-identifier syntax][ris]: `r#try`.
+/// The [`?` operator][propagating-errors] was added to replace `try!`
+/// and should be used instead. Furthermore, `try` is a reserved word
+/// in Rust 2018, so if you must use it, you will need to use the
+/// [raw-identifier syntax][ris]: `r#try`.
 ///
+/// [propagating-errors]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
 /// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
