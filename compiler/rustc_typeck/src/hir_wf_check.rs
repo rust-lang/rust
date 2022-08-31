@@ -140,6 +140,10 @@ fn diagnostic_hir_wf_check<'tcx>(
             hir::Node::ForeignItem(ForeignItem {
                 kind: ForeignItemKind::Static(ty, _), ..
             }) => Some(*ty),
+            hir::Node::GenericParam(hir::GenericParam {
+                kind: hir::GenericParamKind::Type { default: Some(ty), .. },
+                ..
+            }) => Some(*ty),
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
