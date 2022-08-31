@@ -555,7 +555,7 @@ impl TokenStreamBuilder {
 
                 // Get the first stream, which will become the result stream.
                 // If it's `None`, create an empty stream.
-                let mut iter = streams.drain(..);
+                let mut iter = streams.into_iter();
                 let mut res_stream_lrc = iter.next().unwrap().0;
 
                 // Append the subsequent elements to the result stream, after
