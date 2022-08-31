@@ -914,7 +914,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 | Res::SelfTy { .. } => {
                     self.dump_path_segment_ref(
                         id,
-                        &hir::PathSegment::from_ident(ident, hir::HirId::INVALID, Res::Err),
+                        &hir::PathSegment::new(ident, hir::HirId::INVALID, Res::Err),
                     );
                 }
                 def => {

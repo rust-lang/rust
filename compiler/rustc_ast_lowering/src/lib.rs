@@ -1267,7 +1267,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     None,
                     self.arena.alloc(hir::Path {
                         res,
-                        segments: arena_vec![self; hir::PathSegment::from_ident(
+                        segments: arena_vec![self; hir::PathSegment::new(
                             Ident::with_dummy_span(kw::SelfUpper),
                             hir_id,
                             res
@@ -2203,7 +2203,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.arena.alloc(hir::Path {
                 span: self.lower_span(span),
                 res,
-                segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident), hir_id, res)],
+                segments:
+                    arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
             }),
         ));
 
