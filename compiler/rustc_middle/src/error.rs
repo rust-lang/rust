@@ -12,3 +12,29 @@ pub struct DropCheckOverflow<'tcx> {
     pub ty: Ty<'tcx>,
     pub note: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(middle::opaque_hidden_type_mismatch)]
+pub struct OpaqueHiddenTypeMismatch<'tcx> {
+    pub self_ty: Ty<'tcx>,
+    pub other_ty: Ty<'tcx>,
+    #[primary_span]
+    #[label]
+    pub other_span: Span,
+    #[subdiagnostic]
+    pub sub: TypeMismatchReason,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum TypeMismatchReason {
+    #[label(middle::conflict_types)]
+    ConflictType {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(middle::previous_use_here)]
+    PreviousUse {
+        #[primary_span]
+        span: Span,
+    },
+}
