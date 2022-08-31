@@ -511,8 +511,8 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         | Res::Err => return res.def_id(),
         Res::Def(
             TyParam | ConstParam | Ctor(..) | ExternCrate | Use | ForeignMod | AnonConst
-            | InlineConst | OpaqueTy | Field | LifetimeParam | GlobalAsm | Impl | Closure
-            | Generator,
+            | InlineConst | OpaqueTy | ImplTraitPlaceholder | Field | LifetimeParam | GlobalAsm
+            | Impl | Closure | Generator,
             id,
         ) => return id,
     };

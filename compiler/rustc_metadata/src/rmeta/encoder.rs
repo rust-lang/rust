@@ -847,6 +847,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field => true,
         DefKind::TyParam
@@ -879,6 +880,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
         | DefKind::Impl
@@ -967,6 +969,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -1003,6 +1006,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field
         | DefKind::TyParam
@@ -1491,6 +1495,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::OpaqueTy(..) => {
                 self.encode_explicit_item_bounds(def_id);
+                EntryKind::OpaqueTy
             }
             hir::ItemKind::Enum(..) => {
                 let adt_def = self.tcx.adt_def(def_id);

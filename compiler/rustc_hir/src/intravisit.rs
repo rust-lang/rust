@@ -562,6 +562,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
         }
+        ItemKind::ImplTraitPlaceholder(ImplTraitPlaceholder { bounds }) => {
+            visitor.visit_id(item.hir_id());
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
@@ -673,6 +677,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         TyKind::OpaqueDef(item_id, lifetimes) => {
             visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_generic_arg, lifetimes);
+        }
+        TyKind::ImplTraitInTrait(item_id) => {
+            visitor.visit_nested_item(item_id);
         }
         TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);

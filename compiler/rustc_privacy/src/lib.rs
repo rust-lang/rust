@@ -600,6 +600,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::ForeignTy
             | DefKind::Fn
             | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
             | DefKind::AssocFn
             | DefKind::Trait
             | DefKind::TyParam
@@ -689,6 +690,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
 
             hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::ImplTraitPlaceholder(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -723,6 +725,9 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
                     self.reach(item.def_id, exist_level).generics().predicates().ty();
                 }
+            }
+            hir::ItemKind::ImplTraitPlaceholder(..) => {
+                // FIXME(RPITIT): Do we need to do anything here?
             }
             // Visit everything.
             hir::ItemKind::Const(..)

@@ -815,6 +815,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().explicit_item_bounds(def_id);
         }
+        hir::ItemKind::ImplTraitPlaceholder(..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+            tcx.ensure().explicit_item_bounds(def_id);
+        }
         hir::ItemKind::TyAlias(..)
         | hir::ItemKind::Static(..)
         | hir::ItemKind::Const(..)

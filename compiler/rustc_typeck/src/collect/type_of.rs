@@ -336,6 +336,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
                     find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
+                ItemKind::ImplTraitPlaceholder(..) => {
+                    span_bug!(item.span, "not yet implemented")
+                }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)
                 | ItemKind::Macro(..)
