@@ -1,12 +1,8 @@
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:21:15
    |
-LL |       foo(cell, |cell_a, cell_x| {
-   |  _______________^
-LL | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-LL | |
-LL | |     })
-   | |_____^
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case1::{closure#0} with closure substs [
                i32,
@@ -27,25 +23,16 @@ LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
    |
-LL | / fn case1() {
-LL | |     let a = 0;
-LL | |     let cell = Cell::new(&a);
-LL | |     foo(cell, |cell_a, cell_x| {
-...  |
-LL | |     })
-LL | | }
-   | |_^
+LL | fn case1() {
+   | ^^^^^^^^^^
    |
    = note: defining type: case1
 
 note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15
    |
-LL |       foo(cell, |cell_a, cell_x| {
-   |  _______________^
-LL | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
-LL | |     })
-   | |_____^
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case2::{closure#0} with closure substs [
                i32,
@@ -58,14 +45,8 @@ LL | |     })
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
    |
-LL | / fn case2() {
-LL | |     let a = 0;
-LL | |     let cell = Cell::new(&a);
-LL | |
-...  |
-LL | |     })
-LL | | }
-   | |_^
+LL | fn case2() {
+   | ^^^^^^^^^^
    |
    = note: defining type: case2
 
