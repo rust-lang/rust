@@ -2518,6 +2518,12 @@ pub enum OpaqueTyOrigin {
     TyAlias,
 }
 
+/// Placeholder representation of an `impl Trait` in a trait. Since this never gets lowered into a `ty::Opaque` of its own, we just keep this as
+#[derive(Debug, HashStable_Generic)]
+pub struct ImplTraitPlaceholder<'hir> {
+    pub bounds: GenericBounds<'hir>,
+}
+
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, HashStable_Generic)]
 pub enum TyKind<'hir> {
@@ -2545,6 +2551,8 @@ pub enum TyKind<'hir> {
     /// The generic argument list contains the lifetimes (and in the future
     /// possibly parameters) that are actually bound on the `impl Trait`.
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
+    /// The placeholder
+    ImplTraitInTrait(ItemId),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
@@ -3000,6 +3008,8 @@ pub enum ItemKind<'hir> {
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy<'hir>),
+    /// An `impl Trait` in a trait
+    ImplTraitPlaceholder(ImplTraitPlaceholder<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
     Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
@@ -3068,6 +3078,7 @@ impl ItemKind<'_> {
             ItemKind::Trait(..) => "trait",
             ItemKind::TraitAlias(..) => "trait alias",
             ItemKind::Impl(..) => "implementation",
+            ItemKind::ImplTraitPlaceholder(..) => "opaque type in trait",
         }
     }
 }

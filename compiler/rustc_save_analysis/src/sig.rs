@@ -320,6 +320,10 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let item = scx.tcx.hir().item(item_id);
                 item.make(offset, Some(item_id.hir_id()), scx)
             }
+            hir::TyKind::ImplTraitInTrait(item_id) => {
+                let item = scx.tcx.hir().item(item_id);
+                item.make(offset, Some(item_id.hir_id()), scx)
+            }
             hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),
         }
     }
@@ -562,6 +566,7 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::GlobalAsm(_) => Err("global asm"),
             hir::ItemKind::ExternCrate(_) => Err("extern crate"),
             hir::ItemKind::OpaqueTy(..) => Err("opaque type"),
+            hir::ItemKind::ImplTraitPlaceholder(..) => Err("opaque type in trait"),
             // FIXME should implement this (e.g., pub use).
             hir::ItemKind::Use(..) => Err("import"),
         }
