@@ -2,7 +2,7 @@ note: external requirements
   --> $DIR/escape-upvar-nested.rs:21:32
    |
 LL |             let mut closure1 = || p = &y;
-   |                                ^^^^^^^^^
+   |                                ^^
    |
    = note: defining type: test::{closure#0}::{closure#0} with closure substs [
                i16,
@@ -15,12 +15,8 @@ LL |             let mut closure1 = || p = &y;
 note: external requirements
   --> $DIR/escape-upvar-nested.rs:20:27
    |
-LL |           let mut closure = || {
-   |  ___________________________^
-LL | |             let mut closure1 = || p = &y;
-LL | |             closure1();
-LL | |         };
-   | |_________^
+LL |         let mut closure = || {
+   |                           ^^
    |
    = note: defining type: test::{closure#0} with closure substs [
                i16,
@@ -33,14 +29,8 @@ LL | |         };
 note: no external requirements
   --> $DIR/escape-upvar-nested.rs:13:1
    |
-LL | / fn test() {
-LL | |     let x = 44;
-LL | |     let mut p = &x;
-LL | |
-...  |
-LL | |     deref(p);
-LL | | }
-   | |_^
+LL | fn test() {
+   | ^^^^^^^^^
    |
    = note: defining type: test
 
