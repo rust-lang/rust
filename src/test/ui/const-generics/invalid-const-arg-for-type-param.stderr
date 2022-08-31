@@ -2,15 +2,22 @@ error[E0107]: this associated function takes 0 generic arguments but 1 generic a
   --> $DIR/invalid-const-arg-for-type-param.rs:6:23
    |
 LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
-   |                       ^^^^^^^^------ help: remove these generics
-   |                       |
-   |                       expected 0 generic arguments
+   |                       ^^^^^^^^ expected 0 generic arguments
    |
 note: associated function defined here, with 0 generic parameters
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
 LL |     fn try_into(self) -> Result<T, Self::Error>;
    |        ^^^^^^^^
+help: consider moving this generic argument to the `TryInto` trait, which takes up to 1 argument
+   |
+LL |     let _: u32 = TryInto::<32>::try_into(5i32).unwrap();
+   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: remove these generics
+   |
+LL -     let _: u32 = 5i32.try_into::<32>().unwrap();
+LL +     let _: u32 = 5i32.try_into().unwrap();
+   |
 
 error[E0599]: no method named `f` found for struct `S` in the current scope
   --> $DIR/invalid-const-arg-for-type-param.rs:9:7
