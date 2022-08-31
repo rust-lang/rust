@@ -285,11 +285,8 @@ where
 impl<A, B> ExactSizeIterator for Chain<A, B>
 where
     A: ExactSizeIterator,
-    B: ExactSizeIterator,
+    B: ExactSizeIterator<Item = A::Item>,
 {
-    fn len(&self) -> usize {
-        maybe!(self.a.len()).unwrap_or(0) + maybe!(self.b.len()).unwrap_or(0)
-    }
 }
 
 #[inline]
