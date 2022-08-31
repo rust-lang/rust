@@ -1405,7 +1405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, code, span, def_id, substs))]
+    #[instrument(level = "debug", skip(self, code, span, def_id, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,

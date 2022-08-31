@@ -16,6 +16,8 @@
 
 #[macro_use]
 extern crate rustc_macros;
+#[macro_use]
+extern crate tracing;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 

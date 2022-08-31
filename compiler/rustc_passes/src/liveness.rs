@@ -1573,7 +1573,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    #[tracing::instrument(skip(self), level = "INFO")]
+    #[instrument(skip(self), level = "INFO")]
     fn report_unused(
         &self,
         hir_ids_and_spans: Vec<(HirId, Span, Span)>,

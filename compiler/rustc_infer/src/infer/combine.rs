@@ -856,7 +856,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug_assert_eq!(t, _t);
         debug!("ConstInferUnifier: t={:?}", t);
@@ -932,7 +932,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn consts(
         &mut self,
         c: ty::Const<'tcx>,

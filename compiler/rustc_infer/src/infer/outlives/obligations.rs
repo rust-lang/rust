@@ -313,7 +313,7 @@ where
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn projection_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,

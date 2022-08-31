@@ -1308,7 +1308,7 @@ fn compare_type_predicate_entailment<'tcx>(
 /// For default associated types the normalization is not possible (the value
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
-#[tracing::instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx))]
 pub fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
