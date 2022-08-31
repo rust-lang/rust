@@ -159,12 +159,7 @@ impl ExprValidator {
         }
 
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx {
-            module: self.owner.module(db.upcast()),
-            body: self.owner,
-            db,
-            pattern_arena: &pattern_arena,
-        };
+        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db, &pattern_arena);
 
         let mut m_arms = Vec::with_capacity(arms.len());
         let mut has_lowering_errors = false;
