@@ -70,7 +70,9 @@ pub enum NonHaltingDiagnostic {
     CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),
     RejectedIsolatedOp(String),
-    ProgressReport,
+    ProgressReport {
+        block_count: u64, // how many basic blocks have been run so far
+    },
     Int2Ptr {
         details: bool,
     },
@@ -261,6 +263,7 @@ pub fn report_error<'tcx, 'mir>(
         DiagLevel::Error,
         &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
         msg,
+        vec![],
         helps,
         &stacktrace,
     );
@@ -307,6 +310,7 @@ fn report_msg<'mir, 'tcx>(
     diag_level: DiagLevel,
     title: &str,
     span_msg: Vec<String>,
+    notes: Vec<(Option<SpanData>, String)>,
     helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
 ) {
@@ -331,15 +335,22 @@ fn report_msg<'mir, 'tcx>(
         err.note("(no span available)");
     }
 
-    // Show help messages.
-    if !helps.is_empty() {
-        for (span_data, help) in helps {
-            if let Some(span_data) = span_data {
-                err.span_help(span_data.span(), &help);
-            } else {
-                err.help(&help);
-            }
+    // Show note and help messages.
+    for (span_data, note) in &notes {
+        if let Some(span_data) = span_data {
+            err.span_note(span_data.span(), note);
+        } else {
+            err.note(note);
         }
+    }
+    for (span_data, help) in &helps {
+        if let Some(span_data) = span_data {
+            err.span_help(span_data.span(), help);
+        } else {
+            err.help(help);
+        }
+    }
+    if notes.len() + helps.len() > 0 {
         // Add visual separator before backtrace.
         err.note("backtrace:");
     }
@@ -436,6 +447,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Show diagnostics.
             for e in diagnostics.drain(..) {
                 use NonHaltingDiagnostic::*;
+
+                let (title, diag_level) = match e {
+                    RejectedIsolatedOp(_) =>
+                        ("operation rejected by isolation", DiagLevel::Warning),
+                    Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
+                    CreatedPointerTag(..)
+                    | PoppedPointerTag(..)
+                    | CreatedCallId(..)
+                    | CreatedAlloc(..)
+                    | FreedAlloc(..)
+                    | ProgressReport { .. }
+                    | WeakMemoryOutdatedLoad =>
+                        ("tracking was triggered", DiagLevel::Note),
+                };
+
                 let msg = match e {
                     CreatedPointerTag(tag, None) =>
                         format!("created tag {tag:?}"),
@@ -465,7 +491,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("freed allocation with id {id}"),
                     RejectedIsolatedOp(ref op) =>
                         format!("{op} was made to return an error due to isolation"),
-                    ProgressReport =>
+                    ProgressReport { .. } =>
                         format!("progress report: current operation being executed is here"),
                     Int2Ptr { .. } =>
                         format!("integer-to-pointer cast"),
@@ -473,18 +499,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("weak memory emulation: outdated value returned from load"),
                 };
 
-                let (title, diag_level) = match e {
-                    RejectedIsolatedOp(_) =>
-                        ("operation rejected by isolation", DiagLevel::Warning),
-                    Int2Ptr { .. } => ("integer-to-pointer cast", DiagLevel::Warning),
-                    CreatedPointerTag(..)
-                    | PoppedPointerTag(..)
-                    | CreatedCallId(..)
-                    | CreatedAlloc(..)
-                    | FreedAlloc(..)
-                    | ProgressReport
-                    | WeakMemoryOutdatedLoad =>
-                        ("tracking was triggered", DiagLevel::Note),
+                let notes = match e {
+                    ProgressReport { block_count } => {
+                        // It is important that each progress report is slightly different, since
+                        // identical diagnostics are being deduplicated.
+                        vec![
+                            (None, format!("so far, {block_count} basic blocks have been executed")),
+                        ]
+                    }
+                    _ => vec![],
                 };
 
                 let helps = match e {
@@ -500,7 +523,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     _ => vec![],
                 };
 
-                report_msg(this, diag_level, title, vec![msg], helps, &stacktrace);
+                report_msg(this, diag_level, title, vec![msg], notes, helps, &stacktrace);
             }
         });
     }
@@ -517,6 +540,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this,
             DiagLevel::Note,
             "the place in the program where the ICE was triggered",
+            vec![],
             vec![],
             vec![],
             &stacktrace,

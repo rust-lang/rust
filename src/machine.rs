@@ -374,8 +374,8 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// If `Some`, we will report the current stack every N basic blocks.
     pub(crate) report_progress: Option<u32>,
-    /// The number of blocks that passed since the last progress report.
-    pub(crate) since_progress_report: u32,
+    // The total number of blocks that have been executed.
+    pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for external functions.
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
@@ -433,7 +433,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             weak_memory: config.weak_memory_emulation,
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
-            since_progress_report: 0,
+            basic_block_count: 0,
             external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
                 // Check if host target == the session target.
                 if env!("TARGET") != target_triple {
@@ -992,14 +992,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
         // Possibly report our progress.
         if let Some(report_progress) = ecx.machine.report_progress {
-            if ecx.machine.since_progress_report >= report_progress {
-                register_diagnostic(NonHaltingDiagnostic::ProgressReport);
-                ecx.machine.since_progress_report = 0;
+            if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
+                register_diagnostic(NonHaltingDiagnostic::ProgressReport {
+                    block_count: ecx.machine.basic_block_count,
+                });
             }
-            // Cannot overflow, since it is strictly less than `report_progress`.
-            ecx.machine.since_progress_report += 1;
         }
         // These are our preemption points.
         ecx.maybe_preempt_active_thread();
