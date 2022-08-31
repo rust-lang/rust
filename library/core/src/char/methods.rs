@@ -277,8 +277,8 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// assert!('1'.is_digit(10));
-    /// assert!('f'.is_digit(16));
+    /// assert!( '1'.is_digit(10));
+    /// assert!( 'f'.is_digit(16));
     /// assert!(!'f'.is_digit(10));
     /// ```
     ///
@@ -737,8 +737,8 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// assert!('a'.is_lowercase());
-    /// assert!('δ'.is_lowercase());
+    /// assert!( 'a'.is_lowercase());
+    /// assert!( 'δ'.is_lowercase());
     /// assert!(!'A'.is_lowercase());
     /// assert!(!'Δ'.is_lowercase());
     ///
@@ -772,8 +772,8 @@ impl char {
     /// ```
     /// assert!(!'a'.is_uppercase());
     /// assert!(!'δ'.is_uppercase());
-    /// assert!('A'.is_uppercase());
-    /// assert!('Δ'.is_uppercase());
+    /// assert!( 'A'.is_uppercase());
+    /// assert!( 'Δ'.is_uppercase());
     ///
     /// // The various Chinese scripts and punctuation do not have case, and so:
     /// assert!(!'中'.is_uppercase());
@@ -863,7 +863,7 @@ impl char {
     ///
     /// ```
     /// // U+009C, STRING TERMINATOR
-    /// assert!(''.is_control());
+    /// assert!( ''.is_control());
     /// assert!(!'q'.is_control());
     /// ```
     #[must_use]
@@ -911,11 +911,11 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// assert!('٣'.is_numeric());
-    /// assert!('7'.is_numeric());
-    /// assert!('৬'.is_numeric());
-    /// assert!('¾'.is_numeric());
-    /// assert!('①'.is_numeric());
+    /// assert!( '٣'.is_numeric());
+    /// assert!( '7'.is_numeric());
+    /// assert!( '৬'.is_numeric());
+    /// assert!( '¾'.is_numeric());
+    /// assert!( '①'.is_numeric());
     /// assert!(!'K'.is_numeric());
     /// assert!(!'و'.is_numeric());
     /// assert!(!'藏'.is_numeric());
@@ -1098,7 +1098,7 @@ impl char {
     /// let ascii = 'a';
     /// let non_ascii = '❤';
     ///
-    /// assert!(ascii.is_ascii());
+    /// assert!( ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[must_use]
@@ -1188,8 +1188,8 @@ impl char {
     /// let lower_a = 'a';
     /// let lower_z = 'z';
     ///
-    /// assert!(upper_a.eq_ignore_ascii_case(&lower_a));
-    /// assert!(upper_a.eq_ignore_ascii_case(&upper_a));
+    /// assert!( upper_a.eq_ignore_ascii_case(&lower_a));
+    /// assert!( upper_a.eq_ignore_ascii_case(&upper_a));
     /// assert!(!upper_a.eq_ignore_ascii_case(&lower_z));
     /// ```
     ///
@@ -1269,10 +1269,10 @@ impl char {
     /// let lf = '\n';
     /// let esc = '\x1b';
     ///
-    /// assert!(uppercase_a.is_ascii_alphabetic());
-    /// assert!(uppercase_g.is_ascii_alphabetic());
-    /// assert!(a.is_ascii_alphabetic());
-    /// assert!(g.is_ascii_alphabetic());
+    /// assert!( uppercase_a.is_ascii_alphabetic());
+    /// assert!( uppercase_g.is_ascii_alphabetic());
+    /// assert!( a.is_ascii_alphabetic());
+    /// assert!( g.is_ascii_alphabetic());
     /// assert!(!zero.is_ascii_alphabetic());
     /// assert!(!percent.is_ascii_alphabetic());
     /// assert!(!space.is_ascii_alphabetic());
@@ -1303,8 +1303,8 @@ impl char {
     /// let lf = '\n';
     /// let esc = '\x1b';
     ///
-    /// assert!(uppercase_a.is_ascii_uppercase());
-    /// assert!(uppercase_g.is_ascii_uppercase());
+    /// assert!( uppercase_a.is_ascii_uppercase());
+    /// assert!( uppercase_g.is_ascii_uppercase());
     /// assert!(!a.is_ascii_uppercase());
     /// assert!(!g.is_ascii_uppercase());
     /// assert!(!zero.is_ascii_uppercase());
@@ -1339,8 +1339,8 @@ impl char {
     ///
     /// assert!(!uppercase_a.is_ascii_lowercase());
     /// assert!(!uppercase_g.is_ascii_lowercase());
-    /// assert!(a.is_ascii_lowercase());
-    /// assert!(g.is_ascii_lowercase());
+    /// assert!( a.is_ascii_lowercase());
+    /// assert!( g.is_ascii_lowercase());
     /// assert!(!zero.is_ascii_lowercase());
     /// assert!(!percent.is_ascii_lowercase());
     /// assert!(!space.is_ascii_lowercase());
@@ -1374,11 +1374,11 @@ impl char {
     /// let lf = '\n';
     /// let esc = '\x1b';
     ///
-    /// assert!(uppercase_a.is_ascii_alphanumeric());
-    /// assert!(uppercase_g.is_ascii_alphanumeric());
-    /// assert!(a.is_ascii_alphanumeric());
-    /// assert!(g.is_ascii_alphanumeric());
-    /// assert!(zero.is_ascii_alphanumeric());
+    /// assert!( uppercase_a.is_ascii_alphanumeric());
+    /// assert!( uppercase_g.is_ascii_alphanumeric());
+    /// assert!( a.is_ascii_alphanumeric());
+    /// assert!( g.is_ascii_alphanumeric());
+    /// assert!( zero.is_ascii_alphanumeric());
     /// assert!(!percent.is_ascii_alphanumeric());
     /// assert!(!space.is_ascii_alphanumeric());
     /// assert!(!lf.is_ascii_alphanumeric());
@@ -1412,7 +1412,7 @@ impl char {
     /// assert!(!uppercase_g.is_ascii_digit());
     /// assert!(!a.is_ascii_digit());
     /// assert!(!g.is_ascii_digit());
-    /// assert!(zero.is_ascii_digit());
+    /// assert!( zero.is_ascii_digit());
     /// assert!(!percent.is_ascii_digit());
     /// assert!(!space.is_ascii_digit());
     /// assert!(!lf.is_ascii_digit());
@@ -1445,11 +1445,11 @@ impl char {
     /// let lf = '\n';
     /// let esc = '\x1b';
     ///
-    /// assert!(uppercase_a.is_ascii_hexdigit());
+    /// assert!( uppercase_a.is_ascii_hexdigit());
     /// assert!(!uppercase_g.is_ascii_hexdigit());
-    /// assert!(a.is_ascii_hexdigit());
+    /// assert!( a.is_ascii_hexdigit());
     /// assert!(!g.is_ascii_hexdigit());
-    /// assert!(zero.is_ascii_hexdigit());
+    /// assert!( zero.is_ascii_hexdigit());
     /// assert!(!percent.is_ascii_hexdigit());
     /// assert!(!space.is_ascii_hexdigit());
     /// assert!(!lf.is_ascii_hexdigit());
@@ -1488,7 +1488,7 @@ impl char {
     /// assert!(!a.is_ascii_punctuation());
     /// assert!(!g.is_ascii_punctuation());
     /// assert!(!zero.is_ascii_punctuation());
-    /// assert!(percent.is_ascii_punctuation());
+    /// assert!( percent.is_ascii_punctuation());
     /// assert!(!space.is_ascii_punctuation());
     /// assert!(!lf.is_ascii_punctuation());
     /// assert!(!esc.is_ascii_punctuation());
@@ -1517,12 +1517,12 @@ impl char {
     /// let lf = '\n';
     /// let esc = '\x1b';
     ///
-    /// assert!(uppercase_a.is_ascii_graphic());
-    /// assert!(uppercase_g.is_ascii_graphic());
-    /// assert!(a.is_ascii_graphic());
-    /// assert!(g.is_ascii_graphic());
-    /// assert!(zero.is_ascii_graphic());
-    /// assert!(percent.is_ascii_graphic());
+    /// assert!( uppercase_a.is_ascii_graphic());
+    /// assert!( uppercase_g.is_ascii_graphic());
+    /// assert!( a.is_ascii_graphic());
+    /// assert!( g.is_ascii_graphic());
+    /// assert!( zero.is_ascii_graphic());
+    /// assert!( percent.is_ascii_graphic());
     /// assert!(!space.is_ascii_graphic());
     /// assert!(!lf.is_ascii_graphic());
     /// assert!(!esc.is_ascii_graphic());
@@ -1574,8 +1574,8 @@ impl char {
     /// assert!(!g.is_ascii_whitespace());
     /// assert!(!zero.is_ascii_whitespace());
     /// assert!(!percent.is_ascii_whitespace());
-    /// assert!(space.is_ascii_whitespace());
-    /// assert!(lf.is_ascii_whitespace());
+    /// assert!( space.is_ascii_whitespace());
+    /// assert!( lf.is_ascii_whitespace());
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
     #[must_use]
@@ -1611,8 +1611,8 @@ impl char {
     /// assert!(!zero.is_ascii_control());
     /// assert!(!percent.is_ascii_control());
     /// assert!(!space.is_ascii_control());
-    /// assert!(lf.is_ascii_control());
-    /// assert!(esc.is_ascii_control());
+    /// assert!( lf.is_ascii_control());
+    /// assert!( esc.is_ascii_control());
     /// ```
     #[must_use]
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
