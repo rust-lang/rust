@@ -1,5 +1,6 @@
 //! The various pretty-printing routines.
 
+use crate::session_diagnostics::UnprettyDumpFail;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
@@ -357,12 +358,15 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_or_print(out: &str, ofile: Option<&Path>) {
+fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
     match ofile {
         None => print!("{}", out),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
-                panic!("print-print failed to write {} due to {}", p.display(), e);
+                sess.emit_fatal(UnprettyDumpFail {
+                    path: p.display().to_string(),
+                    err: e.to_string(),
+                });
             }
         }
     }
@@ -402,7 +406,7 @@ pub fn print_after_parsing(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile);
+    write_or_print(&out, ofile, sess);
 }
 
 pub fn print_after_hir_lowering<'tcx>(
@@ -468,7 +472,7 @@ pub fn print_after_hir_lowering<'tcx>(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile);
+    write_or_print(&out, ofile, tcx.sess);
 }
 
 // In an ideal world, this would be a public function called by the driver after
@@ -512,7 +516,7 @@ fn print_with_analysis(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile);
+    write_or_print(&out, ofile, tcx.sess);
 
     Ok(())
 }
