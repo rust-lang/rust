@@ -1505,6 +1505,34 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         })
     }
 
+    fn vector_extremum(&mut self, a: RValue<'gcc>, b: RValue<'gcc>, direction: ExtremumOperation) -> RValue<'gcc> {
+        let vector_type = a.get_type();
+
+        // mask out the NaNs in b and replace them with the corresponding lane in a, so when a and
+        // b get compared & spliced together, we get the numeric values instead of NaNs.
+        let b_nan_mask = self.context.new_comparison(None, ComparisonOp::NotEquals, b, b);
+        let mask_type = b_nan_mask.get_type();
+        let b_nan_mask_inverted = self.context.new_unary_op(None, UnaryOp::BitwiseNegate, mask_type, b_nan_mask);
+        let a_cast = self.context.new_bitcast(None, a, mask_type);
+        let b_cast = self.context.new_bitcast(None, b, mask_type);
+        let res = (b_nan_mask & a_cast) | (b_nan_mask_inverted & b_cast);
+        let b = self.context.new_bitcast(None, res, vector_type);
+
+        // now do the actual comparison
+        let comparison_op = match direction {
+            ExtremumOperation::Min => ComparisonOp::LessThan,
+            ExtremumOperation::Max => ComparisonOp::GreaterThan,
+        };
+        let cmp = self.context.new_comparison(None, comparison_op, a, b);
+        let cmp_inverted = self.context.new_unary_op(None, UnaryOp::BitwiseNegate, cmp.get_type(), cmp);
+        let res = (cmp & a_cast) | (cmp_inverted & res);
+        self.context.new_bitcast(None, res, vector_type)
+    }
+
+    pub fn vector_fmin(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_extremum(a, b, ExtremumOperation::Min)
+    }
+
     #[cfg(feature="master")]
     pub fn vector_reduce_fmin(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
         let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
@@ -1523,6 +1551,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     #[cfg(not(feature="master"))]
     pub fn vector_reduce_fmin(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
+    }
+
+    pub fn vector_fmax(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.vector_extremum(a, b, ExtremumOperation::Max)
     }
 
     #[cfg(feature="master")]

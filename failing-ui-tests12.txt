@@ -8,6 +8,7 @@ src/test/ui/packed/packed-struct-size.rs
 src/test/ui/packed/packed-struct-vec.rs
 src/test/ui/packed/packed-tuple-struct-layout.rs
 src/test/ui/simd/array-type.rs
+src/test/ui/simd/intrinsic/float-minmax-pass.rs
 src/test/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs
 src/test/ui/simd/intrinsic/generic-cast-pass.rs
 src/test/ui/simd/intrinsic/generic-cast-pointer-width.rs
