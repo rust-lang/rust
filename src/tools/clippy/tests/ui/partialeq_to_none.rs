@@ -26,6 +26,18 @@ fn optref() -> &'static &'static Option<()> {
     &&None
 }
 
+pub fn macro_expansion() {
+    macro_rules! foo {
+        () => {
+            None::<()>
+        };
+    }
+
+    let _ = foobar() == foo!();
+    let _ = foo!() == foobar();
+    let _ = foo!() == foo!();
+}
+
 fn main() {
     let x = Some(0);
 

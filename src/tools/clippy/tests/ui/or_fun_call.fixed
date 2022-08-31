@@ -90,8 +90,8 @@ fn or_fun_call() {
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
     btree_vec.entry(42).or_insert(vec![]);
 
-    let stringy = Some(String::from(""));
-    let _ = stringy.unwrap_or_else(|| "".to_owned());
+    let stringy = Some(String::new());
+    let _ = stringy.unwrap_or_default();
 
     let opt = Some(1);
     let hello = "Hello";

@@ -8,6 +8,7 @@ fn main() {
     let y = 4f32;
     let _ = x.mul_add(x, y);
     let _ = y.mul_add(y, x);
+    let _ = (y as f32).mul_add(y as f32, x);
     let _ = x.mul_add(x, y).sqrt();
     let _ = y.mul_add(y, x).sqrt();
     // Cases where the lint shouldn't be applied

@@ -6,8 +6,9 @@ fn expect_option() {
 }
 
 fn expect_result() {
-    let res: Result<u8, ()> = Ok(0);
+    let res: Result<u8, u8> = Ok(0);
     let _ = res.expect("");
+    let _ = res.expect_err("");
 }
 
 fn main() {

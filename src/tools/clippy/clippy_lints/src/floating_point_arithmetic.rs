@@ -172,7 +172,7 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", Sugg::hir(cx, &args[0], ".."), method),
+            format!("{}.{}()", Sugg::hir(cx, &args[0], "..").maybe_par(), method),
             Applicability::MachineApplicable,
         );
     }
@@ -263,13 +263,13 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             (
                 SUBOPTIMAL_FLOPS,
                 "square-root of a number can be computed more efficiently and accurately",
-                format!("{}.sqrt()", Sugg::hir(cx, &args[0], "..")),
+                format!("{}.sqrt()", Sugg::hir(cx, &args[0], "..").maybe_par()),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
                 IMPRECISE_FLOPS,
                 "cube-root of a number can be computed more accurately",
-                format!("{}.cbrt()", Sugg::hir(cx, &args[0], "..")),
+                format!("{}.cbrt()", Sugg::hir(cx, &args[0], "..").maybe_par()),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
@@ -277,7 +277,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                 "exponentiation with integer powers can be computed more efficiently",
                 format!(
                     "{}.powi({})",
-                    Sugg::hir(cx, &args[0], ".."),
+                    Sugg::hir(cx, &args[0], "..").maybe_par(),
                     numeric_literal::format(&exponent.to_string(), None, false)
                 ),
             )
@@ -327,7 +327,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                         "consider using",
                         format!(
                             "{}.mul_add({}, {})",
-                            Sugg::hir(cx, &args[0], ".."),
+                            Sugg::hir(cx, &args[0], "..").maybe_par(),
                             Sugg::hir(cx, &args[0], ".."),
                             Sugg::hir(cx, other_addend, ".."),
                         ),
@@ -418,7 +418,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 "consider using",
                 format!(
                     "{}.exp_m1()",
-                    Sugg::hir(cx, self_arg, "..")
+                    Sugg::hir(cx, self_arg, "..").maybe_par()
                 ),
                 Applicability::MachineApplicable,
             );
@@ -550,11 +550,11 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
         then {
             let positive_abs_sugg = (
                 "manual implementation of `abs` method",
-                format!("{}.abs()", Sugg::hir(cx, body, "..")),
+                format!("{}.abs()", Sugg::hir(cx, body, "..").maybe_par()),
             );
             let negative_abs_sugg = (
                 "manual implementation of negation of `abs` method",
-                format!("-{}.abs()", Sugg::hir(cx, body, "..")),
+                format!("-{}.abs()", Sugg::hir(cx, body, "..").maybe_par()),
             );
             let sugg = if is_testing_positive(cx, cond, body) {
                 if if_expr_positive {
@@ -621,7 +621,7 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 expr.span,
                 "log base can be expressed more clearly",
                 "consider using",
-                format!("{}.log({})", Sugg::hir(cx, largs_self, ".."), Sugg::hir(cx, rargs_self, ".."),),
+                format!("{}.log({})", Sugg::hir(cx, largs_self, "..").maybe_par(), Sugg::hir(cx, rargs_self, ".."),),
                 Applicability::MachineApplicable,
             );
         }
@@ -651,7 +651,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
                (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
             {
-                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
                     if let ExprKind::Lit(ref literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
@@ -677,7 +677,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
                 (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
             {
-                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
                 if_chain! {
                     if let ExprKind::Lit(ref literal) = mul_lhs.kind;
                     if let ast::LitKind::Float(ref value, float_type) = literal.node;
