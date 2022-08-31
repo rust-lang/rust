@@ -49,6 +49,8 @@ pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+// The extra parameter `sigpipe` allows rustc to generate code that instructs std whether
+// or not to ignore `SIGPIPE`.
 pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
