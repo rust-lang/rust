@@ -125,6 +125,6 @@ pub trait QueryContext: HasDepContext {
     ) -> R;
 
     fn depth_limit_error(&self) {
-        self.dep_context().sess().fatal("queries overflow the depth limit!");
+        self.dep_context().sess().emit_fatal(crate::error::QueryOverflow);
     }
 }
