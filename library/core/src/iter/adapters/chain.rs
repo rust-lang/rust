@@ -1,4 +1,4 @@
-use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
 use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
@@ -280,6 +280,16 @@ where
     A: TrustedLen,
     B: TrustedLen<Item = A::Item>,
 {
+}
+
+impl<A, B> ExactSizeIterator for Chain<A, B>
+where
+    A: ExactSizeIterator,
+    B: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        maybe!(self.a.len()).unwrap_or(0) + maybe!(self.b.len()).unwrap_or(0)
+    }
 }
 
 #[inline]
