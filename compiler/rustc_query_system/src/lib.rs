@@ -5,6 +5,8 @@
 #![feature(min_specialization)]
 #![feature(extern_types)]
 #![allow(rustc::potential_query_instability)]
+// #![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -15,5 +17,6 @@ extern crate rustc_macros;
 
 pub mod cache;
 pub mod dep_graph;
+mod error;
 pub mod ich;
 pub mod query;

@@ -1,0 +1,58 @@
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:15:13
+   |
+LL |     let _ = "".to_string();
+   |             ^^^^^^^^^^^^^^ help: consider using: `String::new()`
+   |
+   = note: `-D clippy::manual-string-new` implied by `-D warnings`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:18:13
+   |
+LL |     let _ = "".to_owned();
+   |             ^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:21:21
+   |
+LL |     let _: String = "".into();
+   |                     ^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:28:13
+   |
+LL |     let _ = String::from("");
+   |             ^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:29:13
+   |
+LL |     let _ = <String>::from("");
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:34:13
+   |
+LL |     let _ = String::try_from("").unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:40:21
+   |
+LL |     let _: String = From::from("");
+   |                     ^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:45:21
+   |
+LL |     let _: String = TryFrom::try_from("").unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> $DIR/manual_string_new.rs:48:21
+   |
+LL |     let _: String = TryFrom::try_from("").expect("this should warn");
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: aborting due to 9 previous errors
+

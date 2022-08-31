@@ -1,16 +1,21 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
+use crate::is_path_diagnostic_item;
+use crate::source::snippet_opt;
 use crate::visitors::expr_visitor_no_bodies;
 
 use arrayvec::ArrayVec;
-use if_chain::if_chain;
+use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
+use rustc_lexer::unescape::unescape_literal;
+use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use rustc_lint::LateContext;
+use rustc_parse_format::{self as rpf, Alignment};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
-use rustc_span::{sym, ExpnData, ExpnId, ExpnKind, Span, Symbol};
+use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
 use std::ops::ControlFlow;
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
@@ -332,121 +337,495 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
     }
 }
 
-/// A parsed `format_args!` expansion
+/// The format string doesn't exist in the HIR, so we reassemble it from source code
 #[derive(Debug)]
-pub struct FormatArgsExpn<'tcx> {
-    /// Span of the first argument, the format string
-    pub format_string_span: Span,
-    /// The format string split by formatted args like `{..}`
-    pub format_string_parts: Vec<Symbol>,
-    /// Values passed after the format string
-    pub value_args: Vec<&'tcx Expr<'tcx>>,
-    /// Each element is a `value_args` index and a formatting trait (e.g. `sym::Debug`)
-    pub formatters: Vec<(usize, Symbol)>,
-    /// List of `fmt::v1::Argument { .. }` expressions. If this is empty,
-    /// then `formatters` represents the format args (`{..}`).
-    /// If this is non-empty, it represents the format args, and the `position`
-    /// parameters within the struct expressions are indexes of `formatters`.
-    pub specs: Vec<&'tcx Expr<'tcx>>,
+pub struct FormatString {
+    /// Span of the whole format string literal, including `[r#]"`.
+    pub span: Span,
+    /// Snippet of the whole format string literal, including `[r#]"`.
+    pub snippet: String,
+    /// If the string is raw `r"..."`/`r#""#`, how many `#`s does it have on each side.
+    pub style: Option<usize>,
+    /// The unescaped value of the format string, e.g. `"val – {}"` for the literal
+    /// `"val \u{2013} {}"`.
+    pub unescaped: String,
+    /// The format string split by format args like `{..}`.
+    pub parts: Vec<Symbol>,
 }
 
-impl<'tcx> FormatArgsExpn<'tcx> {
-    /// Parses an expanded `format_args!` or `format_args_nl!` invocation
-    pub fn parse(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Self> {
-        macro_backtrace(expr.span).find(|macro_call| {
-            matches!(
-                cx.tcx.item_name(macro_call.def_id),
-                sym::const_format_args | sym::format_args | sym::format_args_nl
-            )
-        })?;
-        let mut format_string_span: Option<Span> = None;
-        let mut format_string_parts: Vec<Symbol> = Vec::new();
-        let mut value_args: Vec<&Expr<'_>> = Vec::new();
-        let mut formatters: Vec<(usize, Symbol)> = Vec::new();
-        let mut specs: Vec<&Expr<'_>> = Vec::new();
-        expr_visitor_no_bodies(|e| {
-            // if we're still inside of the macro definition...
-            if e.span.ctxt() == expr.span.ctxt() {
-                // ArgumentV1::new_<format_trait>(<value>)
-                if_chain! {
-                    if let ExprKind::Call(callee, [val]) = e.kind;
-                    if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind;
-                    if let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
-                    if path.segments.last().unwrap().ident.name == sym::ArgumentV1;
-                    if seg.ident.name.as_str().starts_with("new_");
-                    then {
-                        let val_idx = if_chain! {
-                            if val.span.ctxt() == expr.span.ctxt();
-                            if let ExprKind::Field(_, field) = val.kind;
-                            if let Ok(idx) = field.name.as_str().parse();
-                            then {
-                                // tuple index
-                                idx
-                            } else {
-                                // assume the value expression is passed directly
-                                formatters.len()
-                            }
-                        };
-                        let fmt_trait = match seg.ident.name.as_str() {
-                            "new_display" => "Display",
-                            "new_debug" => "Debug",
-                            "new_lower_exp" => "LowerExp",
-                            "new_upper_exp" => "UpperExp",
-                            "new_octal" => "Octal",
-                            "new_pointer" => "Pointer",
-                            "new_binary" => "Binary",
-                            "new_lower_hex" => "LowerHex",
-                            "new_upper_hex" => "UpperHex",
-                            _ => unreachable!(),
-                        };
-                        formatters.push((val_idx, Symbol::intern(fmt_trait)));
-                    }
+impl FormatString {
+    fn new(cx: &LateContext<'_>, pieces: &Expr<'_>) -> Option<Self> {
+        // format_args!(r"a {} b \", 1);
+        //
+        // expands to
+        //
+        // ::core::fmt::Arguments::new_v1(&["a ", " b \\"],
+        //      &[::core::fmt::ArgumentV1::new_display(&1)]);
+        //
+        // where `pieces` is the expression `&["a ", " b \\"]`. It has the span of `r"a {} b \"`
+        let span = pieces.span;
+        let snippet = snippet_opt(cx, span)?;
+
+        let (inner, style) = match tokenize(&snippet).next()?.kind {
+            TokenKind::Literal { kind, .. } => {
+                let style = match kind {
+                    LiteralKind::Str { .. } => None,
+                    LiteralKind::RawStr { n_hashes: Some(n), .. } => Some(n.into()),
+                    _ => return None,
+                };
+
+                let start = style.map_or(1, |n| 2 + n);
+                let end = snippet.len() - style.map_or(1, |n| 1 + n);
+
+                (&snippet[start..end], style)
+            },
+            _ => return None,
+        };
+
+        let mode = if style.is_some() {
+            unescape::Mode::RawStr
+        } else {
+            unescape::Mode::Str
+        };
+
+        let mut unescaped = String::with_capacity(inner.len());
+        unescape_literal(inner, mode, &mut |_, ch| {
+            unescaped.push(ch.unwrap());
+        });
+
+        let mut parts = Vec::new();
+        expr_visitor_no_bodies(|expr| {
+            if let ExprKind::Lit(lit) = &expr.kind {
+                if let LitKind::Str(symbol, _) = lit.node {
+                    parts.push(symbol);
                 }
-                if let ExprKind::Struct(QPath::Resolved(_, path), ..) = e.kind {
-                    if path.segments.last().unwrap().ident.name == sym::Argument {
-                        specs.push(e);
-                    }
-                }
-                // walk through the macro expansion
-                return true;
             }
-            // assume that the first expr with a differing context represents
-            // (and has the span of) the format string
-            if format_string_span.is_none() {
-                format_string_span = Some(e.span);
-                let span = e.span;
-                // walk the expr and collect string literals which are format string parts
-                expr_visitor_no_bodies(|e| {
-                    if e.span.ctxt() != span.ctxt() {
-                        // defensive check, probably doesn't happen
-                        return false;
-                    }
-                    if let ExprKind::Lit(lit) = &e.kind {
-                        if let LitKind::Str(symbol, _s) = lit.node {
-                            format_string_parts.push(symbol);
-                        }
-                    }
-                    true
-                })
-                .visit_expr(e);
-            } else {
-                // assume that any further exprs with a differing context are value args
-                value_args.push(e);
-            }
-            // don't walk anything not from the macro expansion (e.a. inputs)
-            false
+
+            true
         })
-        .visit_expr(expr);
-        Some(FormatArgsExpn {
-            format_string_span: format_string_span?,
-            format_string_parts,
+        .visit_expr(pieces);
+
+        Some(Self {
+            span,
+            snippet,
+            style,
+            unescaped,
+            parts,
+        })
+    }
+}
+
+struct FormatArgsValues<'tcx> {
+    /// See `FormatArgsExpn::value_args`
+    value_args: Vec<&'tcx Expr<'tcx>>,
+    /// Maps an `rt::v1::Argument::position` or an `rt::v1::Count::Param` to its index in
+    /// `value_args`
+    pos_to_value_index: Vec<usize>,
+    /// Used to check if a value is declared inline & to resolve `InnerSpan`s.
+    format_string_span: SpanData,
+}
+
+impl<'tcx> FormatArgsValues<'tcx> {
+    fn new(args: &'tcx Expr<'tcx>, format_string_span: SpanData) -> Self {
+        let mut pos_to_value_index = Vec::new();
+        let mut value_args = Vec::new();
+        expr_visitor_no_bodies(|expr| {
+            if expr.span.ctxt() == args.span.ctxt() {
+                // ArgumentV1::new_<format_trait>(<val>)
+                // ArgumentV1::from_usize(<val>)
+                if let ExprKind::Call(callee, [val]) = expr.kind
+                    && let ExprKind::Path(QPath::TypeRelative(ty, _)) = callee.kind
+                    && let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+                    && path.segments.last().unwrap().ident.name == sym::ArgumentV1
+                {
+                    let val_idx = if val.span.ctxt() == expr.span.ctxt()
+                        && let ExprKind::Field(_, field) = val.kind
+                        && let Ok(idx) = field.name.as_str().parse()
+                    {
+                        // tuple index
+                        idx
+                    } else {
+                        // assume the value expression is passed directly
+                        pos_to_value_index.len()
+                    };
+
+                    pos_to_value_index.push(val_idx);
+                }
+
+                true
+            } else {
+                // assume that any expr with a differing span is a value
+                value_args.push(expr);
+
+                false
+            }
+        })
+        .visit_expr(args);
+
+        Self {
             value_args,
-            formatters,
-            specs,
+            pos_to_value_index,
+            format_string_span,
+        }
+    }
+}
+
+/// The positions of a format argument's value, precision and width
+///
+/// A position is an index into the second argument of `Arguments::new_v1[_formatted]`
+#[derive(Debug, Default, Copy, Clone)]
+struct ParamPosition {
+    /// The position stored in `rt::v1::Argument::position`.
+    value: usize,
+    /// The position stored in `rt::v1::FormatSpec::width` if it is a `Count::Param`.
+    width: Option<usize>,
+    /// The position stored in `rt::v1::FormatSpec::precision` if it is a `Count::Param`.
+    precision: Option<usize>,
+}
+
+/// Parses the `fmt` arg of `Arguments::new_v1_formatted(pieces, args, fmt, _)`
+fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = ParamPosition> + 'tcx> {
+    fn parse_count(expr: &Expr<'_>) -> Option<usize> {
+        // ::core::fmt::rt::v1::Count::Param(1usize),
+        if let ExprKind::Call(ctor, [val]) = expr.kind
+            && let ExprKind::Path(QPath::Resolved(_, path)) = ctor.kind
+            && path.segments.last()?.ident.name == sym::Param
+            && let ExprKind::Lit(lit) = &val.kind
+            && let LitKind::Int(pos, _) = lit.node
+        {
+            Some(pos as usize)
+        } else {
+            None
+        }
+    }
+
+    if let ExprKind::AddrOf(.., array) = fmt_arg.kind
+        && let ExprKind::Array(specs) = array.kind
+    {
+        Some(specs.iter().map(|spec| {
+            let mut position = ParamPosition::default();
+
+            // ::core::fmt::rt::v1::Argument {
+            //     position: 0usize,
+            //     format: ::core::fmt::rt::v1::FormatSpec {
+            //         ..
+            //         precision: ::core::fmt::rt::v1::Count::Implied,
+            //         width: ::core::fmt::rt::v1::Count::Implied,
+            //     },
+            // }
+
+            // TODO: this can be made much nicer next sync with `Visitor::visit_expr_field`
+            if let ExprKind::Struct(_, fields, _) = spec.kind {
+                for field in fields {
+                    match (field.ident.name, &field.expr.kind) {
+                        (sym::position, ExprKind::Lit(lit)) => {
+                            if let LitKind::Int(pos, _) = lit.node {
+                                position.value = pos as usize;
+                            }
+                        },
+                        (sym::format, &ExprKind::Struct(_, spec_fields, _)) => {
+                            for spec_field in spec_fields {
+                                match spec_field.ident.name {
+                                    sym::precision => {
+                                        position.precision = parse_count(spec_field.expr);
+                                    },
+                                    sym::width => {
+                                        position.width = parse_count(spec_field.expr);
+                                    },
+                                    _ => {},
+                                }
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+            }
+
+            position
+        }))
+    } else {
+        None
+    }
+}
+
+/// `Span::from_inner`, but for `rustc_parse_format`'s `InnerSpan`
+fn span_from_inner(base: SpanData, inner: rpf::InnerSpan) -> Span {
+    Span::new(
+        base.lo + BytePos::from_usize(inner.start),
+        base.lo + BytePos::from_usize(inner.end),
+        base.ctxt,
+        base.parent,
+    )
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum FormatParamKind {
+    /// An implicit parameter , such as `{}` or `{:?}`.
+    Implicit,
+    /// A parameter with an explicit number, or an asterisk precision. e.g. `{1}`, `{0:?}`,
+    /// `{:.0$}` or `{:.*}`.
+    Numbered,
+    /// A named parameter with a named `value_arg`, such as the `x` in `format!("{x}", x = 1)`.
+    Named(Symbol),
+    /// An implicit named parameter, such as the `y` in `format!("{y}")`.
+    NamedInline(Symbol),
+}
+
+/// A `FormatParam` is any place in a `FormatArgument` that refers to a supplied value, e.g.
+///
+/// ```
+/// let precision = 2;
+/// format!("{:.precision$}", 0.1234);
+/// ```
+///
+/// has two `FormatParam`s, a [`FormatParamKind::Implicit`] `.kind` with a `.value` of `0.1234`
+/// and a [`FormatParamKind::NamedInline("precision")`] `.kind` with a `.value` of `2`
+#[derive(Debug, Copy, Clone)]
+pub struct FormatParam<'tcx> {
+    /// The expression this parameter refers to.
+    pub value: &'tcx Expr<'tcx>,
+    /// How this parameter refers to its `value`.
+    pub kind: FormatParamKind,
+    /// Span of the parameter, may be zero width. Includes the whitespace of implicit parameters.
+    ///
+    /// ```text
+    /// format!("{}, {  }, {0}, {name}", ...);
+    ///          ^    ~~    ~    ~~~~
+    /// ```
+    pub span: Span,
+}
+
+impl<'tcx> FormatParam<'tcx> {
+    fn new(
+        mut kind: FormatParamKind,
+        position: usize,
+        inner: rpf::InnerSpan,
+        values: &FormatArgsValues<'tcx>,
+    ) -> Option<Self> {
+        let value_index = *values.pos_to_value_index.get(position)?;
+        let value = *values.value_args.get(value_index)?;
+        let span = span_from_inner(values.format_string_span, inner);
+
+        // if a param is declared inline, e.g. `format!("{x}")`, the generated expr's span points
+        // into the format string
+        if let FormatParamKind::Named(name) = kind && values.format_string_span.contains(value.span.data()) {
+            kind = FormatParamKind::NamedInline(name);
+        }
+
+        Some(Self { value, kind, span })
+    }
+}
+
+/// Used by [width](https://doc.rust-lang.org/std/fmt/#width) and
+/// [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
+#[derive(Debug, Copy, Clone)]
+pub enum Count<'tcx> {
+    /// Specified with a literal number, stores the value.
+    Is(usize, Span),
+    /// Specified using `$` and `*` syntaxes. The `*` format is still considered to be
+    /// `FormatParamKind::Numbered`.
+    Param(FormatParam<'tcx>),
+    /// Not specified.
+    Implied,
+}
+
+impl<'tcx> Count<'tcx> {
+    fn new(
+        count: rpf::Count<'_>,
+        position: Option<usize>,
+        inner: Option<rpf::InnerSpan>,
+        values: &FormatArgsValues<'tcx>,
+    ) -> Option<Self> {
+        Some(match count {
+            rpf::Count::CountIs(val) => Self::Is(val, span_from_inner(values.format_string_span, inner?)),
+            rpf::Count::CountIsName(name, span) => Self::Param(FormatParam::new(
+                FormatParamKind::Named(Symbol::intern(name)),
+                position?,
+                span,
+                values,
+            )?),
+            rpf::Count::CountIsParam(_) | rpf::Count::CountIsStar(_) => {
+                Self::Param(FormatParam::new(FormatParamKind::Numbered, position?, inner?, values)?)
+            },
+            rpf::Count::CountImplied => Self::Implied,
         })
     }
 
-    /// Finds a nested call to `format_args!` within a `format!`-like macro call
+    pub fn is_implied(self) -> bool {
+        matches!(self, Count::Implied)
+    }
+
+    pub fn param(self) -> Option<FormatParam<'tcx>> {
+        match self {
+            Count::Param(param) => Some(param),
+            _ => None,
+        }
+    }
+}
+
+/// Specification for the formatting of an argument in the format string. See
+/// <https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters> for the precise meanings.
+#[derive(Debug)]
+pub struct FormatSpec<'tcx> {
+    /// Optionally specified character to fill alignment with.
+    pub fill: Option<char>,
+    /// Optionally specified alignment.
+    pub align: Alignment,
+    /// Packed version of various flags provided, see [`rustc_parse_format::Flag`].
+    pub flags: u32,
+    /// Represents either the maximum width or the integer precision.
+    pub precision: Count<'tcx>,
+    /// The minimum width, will be padded according to `width`/`align`
+    pub width: Count<'tcx>,
+    /// The formatting trait used by the argument, e.g. `sym::Display` for `{}`, `sym::Debug` for
+    /// `{:?}`.
+    pub r#trait: Symbol,
+    pub trait_span: Option<Span>,
+}
+
+impl<'tcx> FormatSpec<'tcx> {
+    fn new(spec: rpf::FormatSpec<'_>, positions: ParamPosition, values: &FormatArgsValues<'tcx>) -> Option<Self> {
+        Some(Self {
+            fill: spec.fill,
+            align: spec.align,
+            flags: spec.flags,
+            precision: Count::new(spec.precision, positions.precision, spec.precision_span, values)?,
+            width: Count::new(spec.width, positions.width, spec.width_span, values)?,
+            r#trait: match spec.ty {
+                "" => sym::Display,
+                "?" => sym::Debug,
+                "o" => sym!(Octal),
+                "x" => sym!(LowerHex),
+                "X" => sym!(UpperHex),
+                "p" => sym::Pointer,
+                "b" => sym!(Binary),
+                "e" => sym!(LowerExp),
+                "E" => sym!(UpperExp),
+                _ => return None,
+            },
+            trait_span: spec
+                .ty_span
+                .map(|span| span_from_inner(values.format_string_span, span)),
+        })
+    }
+
+    /// Returns true if this format spec would change the contents of a string when formatted
+    pub fn has_string_formatting(&self) -> bool {
+        self.r#trait != sym::Display || !self.width.is_implied() || !self.precision.is_implied()
+    }
+}
+
+/// A format argument, such as `{}`, `{foo:?}`.
+#[derive(Debug)]
+pub struct FormatArg<'tcx> {
+    /// The parameter the argument refers to.
+    pub param: FormatParam<'tcx>,
+    /// How to format `param`.
+    pub format: FormatSpec<'tcx>,
+    /// span of the whole argument, `{..}`.
+    pub span: Span,
+}
+
+/// A parsed `format_args!` expansion.
+#[derive(Debug)]
+pub struct FormatArgsExpn<'tcx> {
+    /// The format string literal.
+    pub format_string: FormatString,
+    // The format arguments, such as `{:?}`.
+    pub args: Vec<FormatArg<'tcx>>,
+    /// Has an added newline due to `println!()`/`writeln!()`/etc. The last format string part will
+    /// include this added newline.
+    pub newline: bool,
+    /// Values passed after the format string and implicit captures. `[1, z + 2, x]` for
+    /// `format!("{x} {} {y}", 1, z + 2)`.
+    value_args: Vec<&'tcx Expr<'tcx>>,
+}
+
+impl<'tcx> FormatArgsExpn<'tcx> {
+    pub fn parse(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Self> {
+        let macro_name = macro_backtrace(expr.span)
+            .map(|macro_call| cx.tcx.item_name(macro_call.def_id))
+            .find(|&name| matches!(name, sym::const_format_args | sym::format_args | sym::format_args_nl))?;
+        let newline = macro_name == sym::format_args_nl;
+
+        // ::core::fmt::Arguments::new_v1(pieces, args)
+        // ::core::fmt::Arguments::new_v1_formatted(pieces, args, fmt, _unsafe_arg)
+        if let ExprKind::Call(callee, [pieces, args, rest @ ..]) = expr.kind
+            && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind
+            && is_path_diagnostic_item(cx, ty, sym::Arguments)
+            && matches!(seg.ident.as_str(), "new_v1" | "new_v1_formatted")
+        {
+            let format_string = FormatString::new(cx, pieces)?;
+
+            let mut parser = rpf::Parser::new(
+                &format_string.unescaped,
+                format_string.style,
+                Some(format_string.snippet.clone()),
+                // `format_string.unescaped` does not contain the appended newline
+                false,
+                rpf::ParseMode::Format,
+            );
+
+            let parsed_args = parser
+                .by_ref()
+                .filter_map(|piece| match piece {
+                    rpf::Piece::NextArgument(a) => Some(a),
+                    rpf::Piece::String(_) => None,
+                })
+                .collect_vec();
+            if !parser.errors.is_empty() {
+                return None;
+            }
+
+            let positions = if let Some(fmt_arg) = rest.first() {
+                // If the argument contains format specs, `new_v1_formatted(_, _, fmt, _)`, parse
+                // them.
+
+                Either::Left(parse_rt_fmt(fmt_arg)?)
+            } else {
+                // If no format specs are given, the positions are in the given order and there are
+                // no `precision`/`width`s to consider.
+
+                Either::Right((0..).map(|n| ParamPosition {
+                    value: n,
+                    width: None,
+                    precision: None,
+                }))
+            };
+
+            let values = FormatArgsValues::new(args, format_string.span.data());
+
+            let args = izip!(positions, parsed_args, parser.arg_places)
+                .map(|(position, parsed_arg, arg_span)| {
+                    Some(FormatArg {
+                        param: FormatParam::new(
+                            match parsed_arg.position {
+                                rpf::Position::ArgumentImplicitlyIs(_) => FormatParamKind::Implicit,
+                                rpf::Position::ArgumentIs(_) => FormatParamKind::Numbered,
+                                // NamedInline is handled by `FormatParam::new()`
+                                rpf::Position::ArgumentNamed(name) => FormatParamKind::Named(Symbol::intern(name)),
+                            },
+                            position.value,
+                            parsed_arg.position_span,
+                            &values,
+                        )?,
+                        format: FormatSpec::new(parsed_arg.format, position, &values)?,
+                        span: span_from_inner(values.format_string_span, arg_span),
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?;
+
+            Some(Self {
+                format_string,
+                args,
+                value_args: values.value_args,
+                newline,
+            })
+        } else {
+            None
+        }
+    }
+
     pub fn find_nested(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expn_id: ExpnId) -> Option<Self> {
         let mut format_args = None;
         expr_visitor_no_bodies(|e| {
@@ -466,88 +845,23 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         format_args
     }
 
-    /// Returns a vector of `FormatArgsArg`.
-    pub fn args(&self) -> Option<Vec<FormatArgsArg<'tcx>>> {
-        if self.specs.is_empty() {
-            let args = std::iter::zip(&self.value_args, &self.formatters)
-                .map(|(value, &(_, format_trait))| FormatArgsArg {
-                    value,
-                    format_trait,
-                    spec: None,
-                })
-                .collect();
-            return Some(args);
-        }
-        self.specs
-            .iter()
-            .map(|spec| {
-                if_chain! {
-                    // struct `core::fmt::rt::v1::Argument`
-                    if let ExprKind::Struct(_, fields, _) = spec.kind;
-                    if let Some(position_field) = fields.iter().find(|f| f.ident.name == sym::position);
-                    if let ExprKind::Lit(lit) = &position_field.expr.kind;
-                    if let LitKind::Int(position, _) = lit.node;
-                    if let Ok(i) = usize::try_from(position);
-                    if let Some(&(j, format_trait)) = self.formatters.get(i);
-                    then {
-                        Some(FormatArgsArg {
-                            value: self.value_args[j],
-                            format_trait,
-                            spec: Some(spec),
-                        })
-                    } else {
-                        None
-                    }
-                }
-            })
-            .collect()
-    }
-
     /// Source callsite span of all inputs
     pub fn inputs_span(&self) -> Span {
         match *self.value_args {
-            [] => self.format_string_span,
+            [] => self.format_string.span,
             [.., last] => self
-                .format_string_span
-                .to(hygiene::walk_chain(last.span, self.format_string_span.ctxt())),
+                .format_string
+                .span
+                .to(hygiene::walk_chain(last.span, self.format_string.span.ctxt())),
         }
     }
-}
 
-/// Type representing a `FormatArgsExpn`'s format arguments
-pub struct FormatArgsArg<'tcx> {
-    /// An element of `value_args` according to `position`
-    pub value: &'tcx Expr<'tcx>,
-    /// An element of `args` according to `position`
-    pub format_trait: Symbol,
-    /// An element of `specs`
-    pub spec: Option<&'tcx Expr<'tcx>>,
-}
-
-impl<'tcx> FormatArgsArg<'tcx> {
-    /// Returns true if any formatting parameters are used that would have an effect on strings,
-    /// like `{:+2}` instead of just `{}`.
-    pub fn has_string_formatting(&self) -> bool {
-        self.spec.map_or(false, |spec| {
-            // `!` because these conditions check that `self` is unformatted.
-            !if_chain! {
-                // struct `core::fmt::rt::v1::Argument`
-                if let ExprKind::Struct(_, fields, _) = spec.kind;
-                if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym::format);
-                // struct `core::fmt::rt::v1::FormatSpec`
-                if let ExprKind::Struct(_, subfields, _) = format_field.expr.kind;
-                if subfields.iter().all(|field| match field.ident.name {
-                    sym::precision | sym::width => match field.expr.kind {
-                        ExprKind::Path(QPath::Resolved(_, path)) => {
-                            path.segments.last().unwrap().ident.name == sym::Implied
-                        }
-                        _ => false,
-                    }
-                    _ => true,
-                });
-                then { true } else { false }
-            }
-        })
+    /// Iterator of all format params, both values and those referenced by `width`/`precision`s.
+    pub fn params(&'tcx self) -> impl Iterator<Item = FormatParam<'tcx>> {
+        self.args
+            .iter()
+            .flat_map(|arg| [Some(arg.param), arg.format.precision.param(), arg.format.width.param()])
+            .flatten()
     }
 }
 

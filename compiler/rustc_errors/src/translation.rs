@@ -21,7 +21,7 @@ pub trait Translate {
     /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
     /// passed around as a reference thereafter.
     fn to_fluent_args<'arg>(&self, args: &[DiagnosticArg<'arg>]) -> FluentArgs<'arg> {
-        FromIterator::from_iter(args.to_vec().drain(..))
+        FromIterator::from_iter(args.iter().cloned())
     }
 
     /// Convert `DiagnosticMessage`s to a string, performing translation if necessary.

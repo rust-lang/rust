@@ -593,8 +593,8 @@ fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Opt
     attrs.iter().find_map(|attr| {
         if_chain! {
             // Identify attribute
-            if let ast::AttrKind::Normal(ref attr_kind, _) = &attr.kind;
-            if let [tool_name, attr_name] = &attr_kind.path.segments[..];
+            if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind;
+            if let [tool_name, attr_name] = &attr_kind.item.path.segments[..];
             if tool_name.ident.name == sym::clippy;
             if attr_name.ident.name == sym::version;
             if let Some(version) = attr.value_str();

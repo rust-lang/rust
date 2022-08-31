@@ -88,4 +88,13 @@ mod fixable {
     }
 
     type I32Alias = i32;
+
+    fn issue_9380() {
+        let _: i32 = -(1) as i32;
+        let _: f32 = -(1) as f32;
+        let _: i64 = -(1) as i64;
+        let _: i64 = -(1.0) as i64;
+
+        let _ = -(1 + 1) as i64;
+    }
 }

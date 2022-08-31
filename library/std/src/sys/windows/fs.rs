@@ -3,7 +3,7 @@ use crate::os::windows::prelude::*;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem;
+use crate::mem::{self, MaybeUninit};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -326,7 +326,8 @@ impl File {
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                let mut b = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+                let mut b =
+                    Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
                     reparse_tag = (*buf).ReparseTag;
                 }
@@ -389,7 +390,8 @@ impl File {
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.file_type().is_reparse_point() {
-                let mut b = Align8([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+                let mut b =
+                    Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
                     attr.reparse_tag = (*buf).ReparseTag;
                 }
@@ -463,7 +465,7 @@ impl File {
     // avoid narrowing provenance to the actual `REPARSE_DATA_BUFFER`.
     fn reparse_point(
         &self,
-        space: &mut Align8<[u8]>,
+        space: &mut Align8<[MaybeUninit<u8>]>,
     ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
@@ -488,7 +490,7 @@ impl File {
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let mut space = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
@@ -658,12 +660,16 @@ impl File {
 
 /// A buffer for holding directory entries.
 struct DirBuff {
-    buffer: Box<Align8<[u8; Self::BUFFER_SIZE]>>,
+    buffer: Box<Align8<[MaybeUninit<u8>; Self::BUFFER_SIZE]>>,
 }
 impl DirBuff {
     const BUFFER_SIZE: usize = 1024;
     fn new() -> Self {
-        Self { buffer: Box::new(Align8([0u8; Self::BUFFER_SIZE])) }
+        Self {
+            // Safety: `Align8<[MaybeUninit<u8>; N]>` does not need
+            // initialization.
+            buffer: unsafe { Box::new_uninit().assume_init() },
+        }
     }
     fn capacity(&self) -> usize {
         self.buffer.0.len()
@@ -676,8 +682,8 @@ impl DirBuff {
         DirBuffIter::new(self)
     }
 }
-impl AsRef<[u8]> for DirBuff {
-    fn as_ref(&self) -> &[u8] {
+impl AsRef<[MaybeUninit<u8>]> for DirBuff {
+    fn as_ref(&self) -> &[MaybeUninit<u8>] {
         &self.buffer.0
     }
 }
@@ -686,7 +692,7 @@ impl AsRef<[u8]> for DirBuff {
 ///
 /// Currently only returns file names (UTF-16 encoded).
 struct DirBuffIter<'a> {
-    buffer: Option<&'a [u8]>,
+    buffer: Option<&'a [MaybeUninit<u8>]>,
     cursor: usize,
 }
 impl<'a> DirBuffIter<'a> {
@@ -701,9 +707,13 @@ impl<'a> Iterator for DirBuffIter<'a> {
         let buffer = &self.buffer?[self.cursor..];
 
         // Get the name and next entry from the buffer.
-        // SAFETY: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the
-        // last field (the file name) is unsized. So an offset has to be
-        // used to get the file name slice.
+        // SAFETY:
+        // - The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the last
+        //   field (the file name) is unsized. So an offset has to be used to
+        //   get the file name slice.
+        // - The OS has guaranteed initialization of the fields of
+        //   `FILE_ID_BOTH_DIR_INFO` and the trailing filename (for at least
+        //   `FileNameLength` bytes)
         let (name, is_directory, next_entry) = unsafe {
             let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
             // Guaranteed to be aligned in documentation for
@@ -1349,7 +1359,7 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let h = f.as_inner().as_raw_handle();
 
     unsafe {
-        let mut data = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let mut data = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let data_ptr = data.0.as_mut_ptr();
         let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
         let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();

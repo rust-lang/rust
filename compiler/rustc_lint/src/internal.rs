@@ -393,8 +393,14 @@ impl LateLintPass<'_> for Diagnostics {
             return;
         }
 
+        let mut found_parent_with_attr = false;
         let mut found_impl = false;
-        for (_, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+        for (hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+            if let Some(owner_did) = hir_id.as_owner() {
+                found_parent_with_attr = found_parent_with_attr
+                    || cx.tcx.has_attr(owner_did.to_def_id(), sym::rustc_lint_diagnostics);
+            }
+
             debug!(?parent);
             if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent &&
                 let Impl { of_trait: Some(of_trait), .. } = impl_ &&
@@ -407,7 +413,7 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_impl);
-        if !found_impl {
+        if !found_parent_with_attr && !found_impl {
             cx.struct_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, |lint| {
                 lint.build(fluent::lint::diag_out_of_impl).emit();
             })
@@ -425,7 +431,7 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_diagnostic_message);
-        if !found_diagnostic_message {
+        if !found_parent_with_attr && !found_diagnostic_message {
             cx.struct_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, |lint| {
                 lint.build(fluent::lint::untranslatable_diag).emit();
             })

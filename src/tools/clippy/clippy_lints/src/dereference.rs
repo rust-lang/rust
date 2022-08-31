@@ -1,24 +1,34 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, ty_sig, variant_of_res};
-use clippy_utils::{get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, path_to_local, walk_to_expr_usage};
+use clippy_utils::ty::{expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
+use clippy_utils::{
+    fn_def_id, get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, meets_msrv, msrvs, path_to_local,
+    walk_to_expr_usage,
+};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId,
-    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
-    TraitItemKind, TyKind, UnOp,
+    self as hir, def_id::DefId, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy,
+    GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind,
+    Path, QPath, TraitItem, TraitItemKind, TyKind, UnOp,
 };
+use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Binder, BoundVariableKind, List, Ty, TyCtxt, TypeVisitable, TypeckResults};
+use rustc_middle::ty::{
+    self, subst::Subst, Binder, BoundVariableKind, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
+    ProjectionPredicate, Ty, TyCtxt, TypeVisitable, TypeckResults,
+};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
-use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use std::collections::VecDeque;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -151,6 +161,7 @@ pub struct Dereferencing {
     /// been finished. Note we can't lint at the end of every body as they can be nested within each
     /// other.
     current_body: Option<BodyId>,
+
     /// The list of locals currently being checked by the lint.
     /// If the value is `None`, then the binding has been seen as a ref pattern, but is not linted.
     /// This is needed for or patterns where one of the branches can be linted, but another can not
@@ -158,6 +169,19 @@ pub struct Dereferencing {
     ///
     /// e.g. `m!(x) | Foo::Bar(ref x)`
     ref_locals: FxIndexMap<HirId, Option<RefPat>>,
+
+    // `IntoIterator` for arrays requires Rust 1.53.
+    msrv: Option<RustcVersion>,
+}
+
+impl Dereferencing {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self {
+            msrv,
+            ..Dereferencing::default()
+        }
+    }
 }
 
 struct StateData {
@@ -170,6 +194,7 @@ struct StateData {
 struct DerefedBorrow {
     count: usize,
     msg: &'static str,
+    snip_expr: Option<HirId>,
 }
 
 enum State {
@@ -250,7 +275,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let (position, adjustments) = walk_parents(cx, expr);
+                let (position, adjustments) = walk_parents(cx, expr, self.msrv);
 
                 match kind {
                     RefOp::Deref => {
@@ -331,20 +356,23 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         let deref_msg =
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
+                        let impl_msg = "the borrowed expression implements the required traits";
 
-                        let (required_refs, msg) = if position.can_auto_borrow() {
-                            (1, if deref_count == 1 { borrow_msg } else { deref_msg })
+                        let (required_refs, msg, snip_expr) = if position.can_auto_borrow() {
+                            (1, if deref_count == 1 { borrow_msg } else { deref_msg }, None)
+                        } else if let Position::ImplArg(hir_id) = position {
+                            (0, impl_msg, Some(hir_id))
                         } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
                             next_adjust.map(|a| &a.kind)
                         {
                             if matches!(mutability, AutoBorrowMutability::Mut { .. }) && !position.is_reborrow_stable()
                             {
-                                (3, deref_msg)
+                                (3, deref_msg, None)
                             } else {
-                                (2, deref_msg)
+                                (2, deref_msg, None)
                             }
                         } else {
-                            (2, deref_msg)
+                            (2, deref_msg, None)
                         };
 
                         if deref_count >= required_refs {
@@ -354,6 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     // can't be removed without breaking the code. See earlier comment.
                                     count: deref_count - required_refs,
                                     msg,
+                                    snip_expr,
                                 }),
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
@@ -510,7 +539,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             spans: vec![pat.span],
                             app,
                             replacements: vec![(pat.span, snip.into())],
-                            hir_id: pat.hir_id
+                            hir_id: pat.hir_id,
                         }),
                     );
                 }
@@ -542,6 +571,8 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             self.current_body = None;
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn try_parse_ref_op<'tcx>(
@@ -594,6 +625,7 @@ enum Position {
     /// The method is defined on a reference type. e.g. `impl Foo for &T`
     MethodReceiverRefImpl,
     Callee,
+    ImplArg(HirId),
     FieldAccess(Symbol),
     Postfix,
     Deref,
@@ -630,7 +662,7 @@ impl Position {
             | Self::Callee
             | Self::FieldAccess(_)
             | Self::Postfix => PREC_POSTFIX,
-            Self::Deref => PREC_PREFIX,
+            Self::ImplArg(_) | Self::Deref => PREC_PREFIX,
             Self::DerefStable(p, _) | Self::ReborrowStable(p) | Self::Other(p) => p,
         }
     }
@@ -639,8 +671,12 @@ impl Position {
 /// Walks up the parent expressions attempting to determine both how stable the auto-deref result
 /// is, and which adjustments will be applied to it. Note this will not consider auto-borrow
 /// locations as those follow different rules.
-#[allow(clippy::too_many_lines)]
-fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &'tcx [Adjustment<'tcx>]) {
+#[expect(clippy::too_many_lines)]
+fn walk_parents<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    msrv: Option<RustcVersion>,
+) -> (Position, &'tcx [Adjustment<'tcx>]) {
     let mut adjustments = [].as_slice();
     let mut precedence = 0i8;
     let ctxt = e.span.ctxt();
@@ -745,13 +781,20 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     .iter()
                     .position(|arg| arg.hir_id == child_id)
                     .zip(expr_sig(cx, func))
-                    .and_then(|(i, sig)| sig.input_with_hir(i))
-                    .map(|(hir_ty, ty)| match hir_ty {
-                        // Type inference for closures can depend on how they're called. Only go by the explicit
-                        // types here.
-                        Some(hir_ty) => binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars()),
-                        None => ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
-                            .position_for_arg(),
+                    .and_then(|(i, sig)| {
+                        sig.input_with_hir(i).map(|(hir_ty, ty)| match hir_ty {
+                            // Type inference for closures can depend on how they're called. Only go by the explicit
+                            // types here.
+                            Some(hir_ty) => binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars()),
+                            None => {
+                                if let ty::Param(param_ty) = ty.skip_binder().kind() {
+                                    needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
+                                } else {
+                                    ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
+                                        .position_for_arg()
+                                }
+                            },
+                        })
                     }),
                 ExprKind::MethodCall(_, args, _) => {
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
@@ -773,7 +816,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                                     .and_then(|subs| subs.get(1..))
                                 {
                                     Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
-                                    None => cx.tcx.mk_substs([].iter()),
+                                    None => cx.tcx.mk_substs(std::iter::empty::<ty::subst::GenericArg<'_>>()),
                                 } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
                                     // Trait methods taking `&self`
                                     sub_ty
@@ -792,12 +835,17 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                                 Position::MethodReceiver
                             }
                         } else {
-                            ty_auto_deref_stability(
-                                cx,
-                                cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
-                                precedence,
-                            )
-                            .position_for_arg()
+                            let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
+                            if let ty::Param(param_ty) = ty.kind() {
+                                needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
+                            } else {
+                                ty_auto_deref_stability(
+                                    cx,
+                                    cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
+                                    precedence,
+                                )
+                                .position_for_arg()
+                            }
                         }
                     })
                 },
@@ -948,6 +996,205 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
     v.0
 }
 
+// Checks whether:
+// * child is an expression of the form `&e` in an argument position requiring an `impl Trait`
+// * `e`'s type implements `Trait` and is copyable
+// If the conditions are met, returns `Some(Position::ImplArg(..))`; otherwise, returns `None`.
+//   The "is copyable" condition is to avoid the case where removing the `&` means `e` would have to
+// be moved, but it cannot be.
+fn needless_borrow_impl_arg_position<'tcx>(
+    cx: &LateContext<'tcx>,
+    parent: &Expr<'tcx>,
+    arg_index: usize,
+    param_ty: ParamTy,
+    mut expr: &Expr<'tcx>,
+    precedence: i8,
+    msrv: Option<RustcVersion>,
+) -> Position {
+    let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
+    let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
+
+    let Some(callee_def_id) = fn_def_id(cx, parent) else { return Position::Other(precedence) };
+    let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
+    let substs_with_expr_ty = cx
+        .typeck_results()
+        .node_substs(if let ExprKind::Call(callee, _) = parent.kind {
+            callee.hir_id
+        } else {
+            parent.hir_id
+        });
+
+    let predicates = cx.tcx.param_env(callee_def_id).caller_bounds();
+    let projection_predicates = predicates
+        .iter()
+        .filter_map(|predicate| {
+            if let PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+                Some(projection_predicate)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut trait_with_ref_mut_self_method = false;
+
+    // If no traits were found, or only the `Destruct`, `Sized`, or `Any` traits were found, return.
+    if predicates
+        .iter()
+        .filter_map(|predicate| {
+            if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
+            {
+                Some(trait_predicate.trait_ref.def_id)
+            } else {
+                None
+            }
+        })
+        .inspect(|trait_def_id| {
+            trait_with_ref_mut_self_method |= has_ref_mut_self_method(cx, *trait_def_id);
+        })
+        .all(|trait_def_id| {
+            Some(trait_def_id) == destruct_trait_def_id
+                || Some(trait_def_id) == sized_trait_def_id
+                || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
+        })
+    {
+        return Position::Other(precedence);
+    }
+
+    // `substs_with_referent_ty` can be constructed outside of `check_referent` because the same
+    // elements are modified each time `check_referent` is called.
+    let mut substs_with_referent_ty = substs_with_expr_ty.to_vec();
+
+    let mut check_referent = |referent| {
+        let referent_ty = cx.typeck_results().expr_ty(referent);
+
+        if !is_copy(cx, referent_ty) {
+            return false;
+        }
+
+        // https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
+        if trait_with_ref_mut_self_method && !matches!(referent_ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
+            return false;
+        }
+
+        if !replace_types(
+            cx,
+            param_ty,
+            referent_ty,
+            fn_sig,
+            arg_index,
+            &projection_predicates,
+            &mut substs_with_referent_ty,
+        ) {
+            return false;
+        }
+
+        predicates.iter().all(|predicate| {
+            if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
+                && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
+                && let GenericArgKind::Type(ty) = substs_with_referent_ty[param_ty.index as usize].unpack()
+                && ty.is_array()
+                && !meets_msrv(msrv, msrvs::ARRAY_INTO_ITERATOR)
+            {
+                return false;
+            }
+
+            let predicate = EarlyBinder(predicate).subst(cx.tcx, &substs_with_referent_ty);
+            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+            cx.tcx
+                .infer_ctxt()
+                .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+        })
+    };
+
+    let mut needless_borrow = false;
+    while let ExprKind::AddrOf(_, _, referent) = expr.kind {
+        if !check_referent(referent) {
+            break;
+        }
+        expr = referent;
+        needless_borrow = true;
+    }
+
+    if needless_borrow {
+        Position::ImplArg(expr.hir_id)
+    } else {
+        Position::Other(precedence)
+    }
+}
+
+fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
+    cx.tcx
+        .associated_items(trait_def_id)
+        .in_definition_order()
+        .any(|assoc_item| {
+            if assoc_item.fn_has_self_parameter {
+                let self_ty = cx.tcx.fn_sig(assoc_item.def_id).skip_binder().inputs()[0];
+                matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
+            } else {
+                false
+            }
+        })
+}
+
+// Iteratively replaces `param_ty` with `new_ty` in `substs`, and similarly for each resulting
+// projected type that is a type parameter. Returns `false` if replacing the types would have an
+// effect on the function signature beyond substituting `new_ty` for `param_ty`.
+// See: https://github.com/rust-lang/rust-clippy/pull/9136#discussion_r927212757
+fn replace_types<'tcx>(
+    cx: &LateContext<'tcx>,
+    param_ty: ParamTy,
+    new_ty: Ty<'tcx>,
+    fn_sig: FnSig<'tcx>,
+    arg_index: usize,
+    projection_predicates: &[ProjectionPredicate<'tcx>],
+    substs: &mut [ty::GenericArg<'tcx>],
+) -> bool {
+    let mut replaced = BitSet::new_empty(substs.len());
+
+    let mut deque = VecDeque::with_capacity(substs.len());
+    deque.push_back((param_ty, new_ty));
+
+    while let Some((param_ty, new_ty)) = deque.pop_front() {
+        // If `replaced.is_empty()`, then `param_ty` and `new_ty` are those initially passed in.
+        if !fn_sig
+            .inputs_and_output
+            .iter()
+            .enumerate()
+            .all(|(i, ty)| (replaced.is_empty() && i == arg_index) || !ty.contains(param_ty.to_ty(cx.tcx)))
+        {
+            return false;
+        }
+
+        substs[param_ty.index as usize] = ty::GenericArg::from(new_ty);
+
+        // The `replaced.insert(...)` check provides some protection against infinite loops.
+        if replaced.insert(param_ty.index) {
+            for projection_predicate in projection_predicates {
+                if projection_predicate.projection_ty.self_ty() == param_ty.to_ty(cx.tcx)
+                    && let ty::Term::Ty(term_ty) = projection_predicate.term
+                    && let ty::Param(term_param_ty) = term_ty.kind()
+                {
+                    let item_def_id = projection_predicate.projection_ty.item_def_id;
+                    let assoc_item = cx.tcx.associated_item(item_def_id);
+                    let projection = cx.tcx
+                        .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, &[]));
+
+                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
+                        && substs[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)
+                    {
+                        deque.push_back((*term_param_ty, projected_ty));
+                    }
+                }
+            }
+        }
+    }
+
+    true
+}
+
 struct TyPosition<'tcx> {
     position: Position,
     ty: Option<Ty<'tcx>>,
@@ -1086,7 +1333,8 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
         },
         State::DerefedBorrow(state) => {
             let mut app = Applicability::MachineApplicable;
-            let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
+            let snip_expr = state.snip_expr.map_or(expr, |hir_id| cx.tcx.hir().expect_expr(hir_id));
+            let (snip, snip_is_macro) = snippet_with_context(cx, snip_expr.span, data.span.ctxt(), "..", &mut app);
             span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, state.msg, |diag| {
                 let calls_field = matches!(expr.kind, ExprKind::Field(..)) && matches!(data.position, Position::Callee);
                 let sugg = if !snip_is_macro

@@ -1792,7 +1792,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
             };
 
-            let mut suggestable_variants = variants
+            let suggestable_variants = variants
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -1802,8 +1802,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     CtorKind::Fictive => format!("({} {{}})", variant),
                 })
                 .collect::<Vec<_>>();
+            let no_suggestable_variant = suggestable_variants.is_empty();
 
-            if !suggestable_variants.is_empty() {
+            if !no_suggestable_variant {
                 let msg = if suggestable_variants.len() == 1 {
                     "you might have meant to use the following enum variant"
                 } else {
@@ -1813,7 +1814,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants.drain(..),
+                    suggestable_variants.into_iter(),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1830,15 +1831,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .collect::<Vec<_>>();
 
             if !suggestable_variants_with_placeholders.is_empty() {
-                let msg = match (
-                    suggestable_variants.is_empty(),
-                    suggestable_variants_with_placeholders.len(),
-                ) {
-                    (true, 1) => "the following enum variant is available",
-                    (true, _) => "the following enum variants are available",
-                    (false, 1) => "alternatively, the following enum variant is available",
-                    (false, _) => "alternatively, the following enum variants are also available",
-                };
+                let msg =
+                    match (no_suggestable_variant, suggestable_variants_with_placeholders.len()) {
+                        (true, 1) => "the following enum variant is available",
+                        (true, _) => "the following enum variants are available",
+                        (false, 1) => "alternatively, the following enum variant is available",
+                        (false, _) => {
+                            "alternatively, the following enum variants are also available"
+                        }
+                    };
 
                 err.span_suggestions(
                     span,

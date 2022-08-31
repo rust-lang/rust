@@ -5,6 +5,7 @@ fn main() {
     let x = 3f32;
     let y = 5f32;
     let _ = x.log(y);
+    let _ = (x as f32).log(y);
     let _ = x.log(y);
     let _ = x.log(y);
     let _ = x.log(y);

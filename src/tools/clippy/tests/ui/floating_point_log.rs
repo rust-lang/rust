@@ -12,6 +12,7 @@ fn check_log_base() {
     let _ = x.log(std::f32::consts::E);
     let _ = x.log(TWO);
     let _ = x.log(E);
+    let _ = (x as f32).log(2f32);
 
     let x = 1f64;
     let _ = x.log(2f64);

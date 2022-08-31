@@ -37,7 +37,7 @@ fn update_reference_file(test_output_entry: &DirEntry, ignore_timestamp: bool) {
         return;
     }
 
-    let test_output_file = fs::read(&test_output_path).expect("Unable to read test output file");
+    let test_output_file = fs::read(test_output_path).expect("Unable to read test output file");
     let reference_file = fs::read(&reference_file_path).unwrap_or_default();
 
     if test_output_file != reference_file {

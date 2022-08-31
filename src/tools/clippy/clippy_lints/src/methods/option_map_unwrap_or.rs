@@ -78,7 +78,7 @@ pub(super) fn check<'tcx>(
                     map_span,
                     String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
                 ),
-                (expr.span.with_lo(unwrap_recv.span.hi()), String::from("")),
+                (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
             ];
 
             if !unwrap_snippet_none {

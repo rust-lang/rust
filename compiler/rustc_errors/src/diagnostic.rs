@@ -974,12 +974,12 @@ impl Diagnostic {
     fn sub_with_highlights<M: Into<SubdiagnosticMessage>>(
         &mut self,
         level: Level,
-        mut message: Vec<(M, Style)>,
+        message: Vec<(M, Style)>,
         span: MultiSpan,
         render_span: Option<MultiSpan>,
     ) {
         let message = message
-            .drain(..)
+            .into_iter()
             .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.0), m.1))
             .collect();
         let sub = SubDiagnostic { level, message, span, render_span };
