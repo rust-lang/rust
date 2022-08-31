@@ -794,9 +794,6 @@ impl<'a> InferenceContext<'a> {
                     None => self.table.new_float_var(),
                 },
             },
-            Expr::MacroStmts { tail, statements } => {
-                self.infer_block(tgt_expr, statements, *tail, expected)
-            }
             Expr::Underscore => {
                 // Underscore expressions may only appear in assignee expressions,
                 // which are handled by `infer_assignee_expr()`, so any underscore

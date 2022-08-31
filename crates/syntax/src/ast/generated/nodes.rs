@@ -1526,7 +1526,6 @@ pub enum Expr {
     Literal(Literal),
     LoopExpr(LoopExpr),
     MacroExpr(MacroExpr),
-    MacroStmts(MacroStmts),
     MatchExpr(MatchExpr),
     MethodCallExpr(MethodCallExpr),
     ParenExpr(ParenExpr),
@@ -3342,9 +3341,6 @@ impl From<LoopExpr> for Expr {
 impl From<MacroExpr> for Expr {
     fn from(node: MacroExpr) -> Expr { Expr::MacroExpr(node) }
 }
-impl From<MacroStmts> for Expr {
-    fn from(node: MacroStmts) -> Expr { Expr::MacroStmts(node) }
-}
 impl From<MatchExpr> for Expr {
     fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
 }
@@ -3411,7 +3407,6 @@ impl AstNode for Expr {
                 | LITERAL
                 | LOOP_EXPR
                 | MACRO_EXPR
-                | MACRO_STMTS
                 | MATCH_EXPR
                 | METHOD_CALL_EXPR
                 | PAREN_EXPR
@@ -3448,7 +3443,6 @@ impl AstNode for Expr {
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
             MACRO_EXPR => Expr::MacroExpr(MacroExpr { syntax }),
-            MACRO_STMTS => Expr::MacroStmts(MacroStmts { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
             PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
@@ -3487,7 +3481,6 @@ impl AstNode for Expr {
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
             Expr::MacroExpr(it) => &it.syntax,
-            Expr::MacroStmts(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
             Expr::ParenExpr(it) => &it.syntax,
