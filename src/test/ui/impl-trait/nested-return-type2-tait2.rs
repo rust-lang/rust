@@ -24,8 +24,8 @@ type Traitable = impl Trait<Assoc = Sendable>;
 // var to make it uphold the `: Duh` bound on `Trait::Assoc`. The opaque
 // type does not implement `Duh`, even if its hidden type does. So we error out.
 fn foo() -> Traitable {
-    //~^ ERROR `Sendable: Duh` is not satisfied
     || 42
+    //~^ ERROR `Sendable: Duh` is not satisfied
 }
 
 fn main() {
