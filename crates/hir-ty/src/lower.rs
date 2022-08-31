@@ -332,7 +332,10 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::Macro(macro_call) => {
                 let (mut expander, recursion_start) = {
                     match RefMut::filter_map(self.expander.borrow_mut(), Option::as_mut) {
+                        // There already is an expander here, this means we are already recursing
                         Ok(expander) => (expander, false),
+                        // No expander was created yet, so we are at the start of the expansion recursion
+                        // and therefore have to create an expander.
                         Err(expander) => (
                             RefMut::map(expander, |it| {
                                 it.insert(Expander::new(
@@ -362,9 +365,14 @@ impl<'a> TyLoweringContext<'a> {
                                 .exit(self.db.upcast(), mark);
                             Some(ty)
                         }
-                        _ => None,
+                        _ => {
+                            drop(expander);
+                            None
+                        }
                     }
                 };
+
+                // drop the expander, resetting it to pre-recursion state
                 if recursion_start {
                     *self.expander.borrow_mut() = None;
                 }
