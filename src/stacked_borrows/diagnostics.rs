@@ -332,7 +332,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
                 // this allocation.
                 if self.history.base.0.tag() == tag {
                     Some((
-                        format!("{:?} was created here, as a base tag for {:?}", tag, self.history.id),
+                        format!("{:?} was created here, as the base tag for {:?}", tag, self.history.id),
                         self.history.base.1.data()
                     ))
                 } else {
