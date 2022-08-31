@@ -96,7 +96,6 @@ use check::{check_abi, check_fn, check_mod_item_types};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
-use hir::def::CtorOf;
 pub use inherited::{Inherited, InheritedBuilder};
 
 use crate::astconv::AstConv;
@@ -959,32 +958,4 @@ fn has_expected_num_generic_args<'tcx>(
         let generics = tcx.generics_of(trait_did);
         generics.count() == expected + if generics.has_self { 1 } else { 0 }
     })
-}
-
-/// Suggests calling the constructor of a tuple struct or enum variant
-///
-/// * `snippet` - The snippet of code that references the constructor
-/// * `span` - The span of the snippet
-/// * `params` - The number of parameters the constructor accepts
-/// * `err` - A mutable diagnostic builder to add the suggestion to
-fn suggest_call_constructor(span: Span, kind: CtorOf, params: usize, err: &mut Diagnostic) {
-    // Note: tuple-structs don't have named fields, so just use placeholders
-    let args = vec!["_"; params].join(", ");
-    let applicable = if params > 0 {
-        Applicability::HasPlaceholders
-    } else {
-        // When n = 0, it's an empty-tuple struct/enum variant
-        // so we trivially know how to construct it
-        Applicability::MachineApplicable
-    };
-    let kind = match kind {
-        CtorOf::Struct => "a struct",
-        CtorOf::Variant => "an enum variant",
-    };
-    err.span_label(span, &format!("this is the constructor of {kind}"));
-    err.multipart_suggestion(
-        "call the constructor",
-        vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), format!(")({args})"))],
-        applicable,
-    );
 }

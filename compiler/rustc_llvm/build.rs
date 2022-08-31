@@ -342,10 +342,10 @@ fn main() {
     };
 
     // RISC-V GCC erroneously requires libatomic for sub-word
-    // atomic operations. FreeBSD uses Clang as its system
+    // atomic operations. Some BSD uses Clang as its system
     // compiler and provides no libatomic in its base system so
     // does not want this.
-    if !target.contains("freebsd") && target.starts_with("riscv") {
+    if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd") {
         println!("cargo:rustc-link-lib=atomic");
     }
 

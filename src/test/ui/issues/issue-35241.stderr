@@ -13,8 +13,8 @@ LL | fn test() -> Foo { Foo }
              found fn item `fn(u32) -> Foo {Foo}`
 help: use parentheses to instantiate this tuple struct
    |
-LL | fn test() -> Foo { Foo(_) }
-   |                       +++
+LL | fn test() -> Foo { Foo(/* u32 */) }
+   |                       +++++++++++
 
 error: aborting due to previous error
 

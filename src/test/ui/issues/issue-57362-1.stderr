@@ -2,9 +2,7 @@ error[E0599]: no method named `f` found for fn pointer `fn(&u8)` in the current 
   --> $DIR/issue-57362-1.rs:20:7
    |
 LL |     a.f();
-   |     - ^ method not found in `fn(&u8)`
-   |     |
-   |     this is a function, perhaps you wish to call it
+   |       ^ method not found in `fn(&u8)`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Trait` defines an item `f`, perhaps you need to implement it

@@ -1,8 +1,8 @@
 use super::errors::{
     AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
     BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
-    GeneratorTooManyParameters, NotSupportedForLifetimeBinderAsyncClosure, RustcBoxAttributeError,
-    UnderscoreExprLhsAssign,
+    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
+    RustcBoxAttributeError, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -1264,7 +1264,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => self.diagnostic().span_fatal(span, "inclusive range with no end"),
+            (start, None, Closed) => {
+                self.tcx.sess.emit_err(InclusiveRangeWithNoEnd { span });
+                match start {
+                    Some(..) => hir::LangItem::RangeFrom,
+                    None => hir::LangItem::RangeFull,
+                }
+            }
         };
 
         let fields = self.arena.alloc_from_iter(

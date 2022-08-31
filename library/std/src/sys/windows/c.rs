@@ -228,8 +228,6 @@ pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
 pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 pub const MSG_PEEK: c_int = 0x2;
 
-pub const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = 0x800;
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct linger {
@@ -503,6 +501,8 @@ pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: LARGE_INTEGER,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `rest` field!
 #[repr(C)]
 pub struct REPARSE_DATA_BUFFER {
     pub ReparseTag: c_uint,
@@ -511,6 +511,8 @@ pub struct REPARSE_DATA_BUFFER {
     pub rest: (),
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -521,6 +523,8 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
+/// NB: Use carefully! In general using this as a reference is likely to get the
+/// provenance wrong for the `PathBuffer` field!
 #[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
@@ -1032,7 +1036,6 @@ extern "system" {
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
-    pub fn LoadLibraryExA(lplibfilename: *const i8, hfile: HANDLE, dwflags: u32) -> HINSTANCE;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
     pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);

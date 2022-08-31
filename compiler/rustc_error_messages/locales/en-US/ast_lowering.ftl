@@ -129,3 +129,5 @@ ast_lowering_not_supported_for_lifetime_binder_async_closure =
 
 ast_lowering_arbitrary_expression_in_pattern =
     arbitrary expressions aren't allowed in patterns
+
+ast_lowering_inclusive_range_with_no_end = inclusive range with no end

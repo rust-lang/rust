@@ -11,7 +11,7 @@ use crate::slice;
 use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
-use crate::sys::{c, cvt};
+use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
 
@@ -326,9 +326,9 @@ impl File {
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                let mut b = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    reparse_tag = buf.ReparseTag;
+                    reparse_tag = (*buf).ReparseTag;
                 }
             }
             Ok(FileAttr {
@@ -389,9 +389,9 @@ impl File {
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.file_type().is_reparse_point() {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+                let mut b = Align8([0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
                 if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    attr.reparse_tag = buf.ReparseTag;
+                    attr.reparse_tag = (*buf).ReparseTag;
                 }
             }
             Ok(attr)
@@ -458,38 +458,46 @@ impl File {
         Ok(Self { handle: self.handle.try_clone()? })
     }
 
-    fn reparse_point<'a>(
+    // NB: returned pointer is derived from `space`, and has provenance to
+    // match. A raw pointer is returned rather than a reference in order to
+    // avoid narrowing provenance to the actual `REPARSE_DATA_BUFFER`.
+    fn reparse_point(
         &self,
-        space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE],
-    ) -> io::Result<(c::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
+        space: &mut Align8<[u8]>,
+    ) -> io::Result<(c::DWORD, *const c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
             cvt({
+                // Grab this in advance to avoid it invalidating the pointer
+                // we get from `space.0.as_mut_ptr()`.
+                let len = space.0.len();
                 c::DeviceIoControl(
                     self.handle.as_raw_handle(),
                     c::FSCTL_GET_REPARSE_POINT,
                     ptr::null_mut(),
                     0,
-                    space.as_mut_ptr() as *mut _,
-                    space.len() as c::DWORD,
+                    space.0.as_mut_ptr().cast(),
+                    len as c::DWORD,
                     &mut bytes,
                     ptr::null_mut(),
                 )
             })?;
-            Ok((bytes, &*(space.as_ptr() as *const c::REPARSE_DATA_BUFFER)))
+            const _: () = assert!(core::mem::align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
+            Ok((bytes, space.0.as_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
-        let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        let mut space = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
-            let (path_buffer, subst_off, subst_len, relative) = match buf.ReparseTag {
+            let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
                     let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                        &buf.rest as *const _ as *const _;
+                        ptr::addr_of!((*buf).rest).cast();
+                    assert!(info.is_aligned());
                     (
-                        &(*info).PathBuffer as *const _ as *const u16,
+                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0,
@@ -497,9 +505,10 @@ impl File {
                 }
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
                     let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
-                        &buf.rest as *const _ as *const _;
+                        ptr::addr_of!((*buf).rest).cast();
+                    assert!(info.is_aligned());
                     (
-                        &(*info).PathBuffer as *const _ as *const u16,
+                        ptr::addr_of!((*info).PathBuffer).cast::<u16>(),
                         (*info).SubstituteNameOffset / 2,
                         (*info).SubstituteNameLength / 2,
                         false,
@@ -649,18 +658,18 @@ impl File {
 
 /// A buffer for holding directory entries.
 struct DirBuff {
-    buffer: Vec<u8>,
+    buffer: Box<Align8<[u8; Self::BUFFER_SIZE]>>,
 }
 impl DirBuff {
+    const BUFFER_SIZE: usize = 1024;
     fn new() -> Self {
-        const BUFFER_SIZE: usize = 1024;
-        Self { buffer: vec![0_u8; BUFFER_SIZE] }
+        Self { buffer: Box::new(Align8([0u8; Self::BUFFER_SIZE])) }
     }
     fn capacity(&self) -> usize {
-        self.buffer.len()
+        self.buffer.0.len()
     }
     fn as_mut_ptr(&mut self) -> *mut u8 {
-        self.buffer.as_mut_ptr().cast()
+        self.buffer.0.as_mut_ptr().cast()
     }
     /// Returns a `DirBuffIter`.
     fn iter(&self) -> DirBuffIter<'_> {
@@ -669,7 +678,7 @@ impl DirBuff {
 }
 impl AsRef<[u8]> for DirBuff {
     fn as_ref(&self) -> &[u8] {
-        &self.buffer
+        &self.buffer.0
     }
 }
 
@@ -697,9 +706,12 @@ impl<'a> Iterator for DirBuffIter<'a> {
         // used to get the file name slice.
         let (name, is_directory, next_entry) = unsafe {
             let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
+            // Guaranteed to be aligned in documentation for
+            // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
+            assert!(info.is_aligned());
             let next_entry = (*info).NextEntryOffset as usize;
             let name = crate::slice::from_raw_parts(
-                (*info).FileName.as_ptr().cast::<u16>(),
+                ptr::addr_of!((*info).FileName).cast::<u16>(),
                 (*info).FileNameLength as usize / size_of::<u16>(),
             );
             let is_directory = ((*info).FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
@@ -1337,9 +1349,10 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let h = f.as_inner().as_raw_handle();
 
     unsafe {
-        let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        let db = data.as_mut_ptr() as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-        let buf = &mut (*db).ReparseTarget as *mut c::WCHAR;
+        let mut data = Align8([0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
+        let data_ptr = data.0.as_mut_ptr();
+        let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
+        let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
         let mut i = 0;
         // FIXME: this conversion is very hacky
         let v = br"\??\";
@@ -1359,7 +1372,7 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
         cvt(c::DeviceIoControl(
             h as *mut _,
             c::FSCTL_SET_REPARSE_POINT,
-            data.as_ptr() as *mut _,
+            data_ptr.cast(),
             (*db).ReparseDataLength + 8,
             ptr::null_mut(),
             0,

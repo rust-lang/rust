@@ -327,3 +327,10 @@ pub struct ArbitraryExpressionInPattern {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[diag(ast_lowering::inclusive_range_with_no_end)]
+pub struct InclusiveRangeWithNoEnd {
+    #[primary_span]
+    pub span: Span,
+}

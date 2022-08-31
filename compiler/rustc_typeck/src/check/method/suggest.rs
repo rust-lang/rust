@@ -31,7 +31,7 @@ use std::cmp::Ordering;
 use std::iter;
 
 use super::probe::{Mode, ProbeScope};
-use super::{super::suggest_call_constructor, CandidateSource, MethodError, NoMatchData};
+use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -363,44 +363,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                if self.is_fn_ty(rcvr_ty, span) {
-                    if let SelfSource::MethodCall(expr) = source {
-                        let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() {
-                            if let Some(local_id) = def_id.as_local() {
-                                let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
-                                let node = tcx.hir().get(hir_id);
-                                let fields = node.tuple_fields();
-                                if let Some(fields) = fields
-                                    && let Some(DefKind::Ctor(of, _)) = self.tcx.opt_def_kind(local_id) {
-                                        Some((fields.len(), of))
-                                } else {
-                                    None
-                                }
-                            } else {
-                                // The logic here isn't smart but `associated_item_def_ids`
-                                // doesn't work nicely on local.
-                                if let DefKind::Ctor(of, _) = tcx.def_kind(def_id) {
-                                    let parent_def_id = tcx.parent(*def_id);
-                                    Some((tcx.associated_item_def_ids(parent_def_id).len(), of))
-                                } else {
-                                    None
-                                }
-                            }
-                        } else {
-                            None
-                        };
-
-                        // If the function is a tuple constructor, we recommend that they call it
-                        if let Some((fields, kind)) = suggest {
-                            suggest_call_constructor(expr.span, kind, fields, &mut err);
-                        } else {
-                            // General case
-                            err.span_label(
-                                expr.span,
-                                "this is a function, perhaps you wish to call it",
-                            );
-                        }
-                    }
+                if let SelfSource::MethodCall(rcvr_expr) = source {
+                    self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
+                        let call_expr = self
+                            .tcx
+                            .hir()
+                            .expect_expr(self.tcx.hir().get_parent_node(rcvr_expr.hir_id));
+                        let probe = self.lookup_probe(
+                            span,
+                            item_name,
+                            output_ty,
+                            call_expr,
+                            ProbeScope::AllTraits,
+                        );
+                        probe.is_ok()
+                    });
                 }
 
                 let mut custom_span_label = false;
