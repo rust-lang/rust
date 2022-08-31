@@ -3,8 +3,6 @@ import * as vscode from "vscode";
 import { Env } from "./client";
 import { log } from "./util";
 
-export type UpdatesChannel = "stable" | "nightly";
-
 export type RunnableEnvCfg =
     | undefined
     | Record<string, string>
@@ -172,100 +170,6 @@ export class Config {
             debug: this.get<boolean>("hover.actions.debug.enable"),
             gotoTypeDef: this.get<boolean>("hover.actions.gotoTypeDef.enable"),
         };
-    }
-}
-
-export async function updateConfig(config: vscode.WorkspaceConfiguration) {
-    const renames = [
-        ["assist.allowMergingIntoGlobImports", "imports.merge.glob"],
-        ["assist.exprFillDefault", "assist.expressionFillDefault"],
-        ["assist.importEnforceGranularity", "imports.granularity.enforce"],
-        ["assist.importGranularity", "imports.granularity.group"],
-        ["assist.importMergeBehavior", "imports.granularity.group"],
-        ["assist.importMergeBehaviour", "imports.granularity.group"],
-        ["assist.importGroup", "imports.group.enable"],
-        ["assist.importPrefix", "imports.prefix"],
-        ["primeCaches.enable", "cachePriming.enable"],
-        ["cache.warmup", "cachePriming.enable"],
-        ["cargo.loadOutDirsFromCheck", "cargo.buildScripts.enable"],
-        ["cargo.runBuildScripts", "cargo.buildScripts.enable"],
-        ["cargo.runBuildScriptsCommand", "cargo.buildScripts.overrideCommand"],
-        ["cargo.useRustcWrapperForBuildScripts", "cargo.buildScripts.useRustcWrapper"],
-        ["completion.snippets", "completion.snippets.custom"],
-        ["diagnostics.enableExperimental", "diagnostics.experimental.enable"],
-        ["experimental.procAttrMacros", "procMacro.attributes.enable"],
-        ["highlighting.strings", "semanticHighlighting.strings.enable"],
-        ["highlightRelated.breakPoints", "highlightRelated.breakPoints.enable"],
-        ["highlightRelated.exitPoints", "highlightRelated.exitPoints.enable"],
-        ["highlightRelated.yieldPoints", "highlightRelated.yieldPoints.enable"],
-        ["highlightRelated.references", "highlightRelated.references.enable"],
-        ["hover.documentation", "hover.documentation.enable"],
-        ["hover.linksInHover", "hover.links.enable"],
-        ["hoverActions.linksInHover", "hover.links.enable"],
-        ["hoverActions.debug", "hover.actions.debug.enable"],
-        ["hoverActions.enable", "hover.actions.enable.enable"],
-        ["hoverActions.gotoTypeDef", "hover.actions.gotoTypeDef.enable"],
-        ["hoverActions.implementations", "hover.actions.implementations.enable"],
-        ["hoverActions.references", "hover.actions.references.enable"],
-        ["hoverActions.run", "hover.actions.run.enable"],
-        ["inlayHints.chainingHints", "inlayHints.chainingHints.enable"],
-        ["inlayHints.closureReturnTypeHints", "inlayHints.closureReturnTypeHints.enable"],
-        ["inlayHints.hideNamedConstructorHints", "inlayHints.typeHints.hideNamedConstructor"],
-        ["inlayHints.parameterHints", "inlayHints.parameterHints.enable"],
-        ["inlayHints.reborrowHints", "inlayHints.reborrowHints.enable"],
-        ["inlayHints.typeHints", "inlayHints.typeHints.enable"],
-        ["lruCapacity", "lru.capacity"],
-        ["runnables.cargoExtraArgs", "runnables.extraArgs"],
-        ["runnables.overrideCargo", "runnables.command"],
-        ["rustcSource", "rustc.source"],
-        ["rustfmt.enableRangeFormatting", "rustfmt.rangeFormatting.enable"],
-    ];
-
-    for (const [oldKey, newKey] of renames) {
-        const inspect = config.inspect(oldKey);
-        if (inspect !== undefined) {
-            const valMatrix = [
-                {
-                    val: inspect.globalValue,
-                    langVal: inspect.globalLanguageValue,
-                    target: vscode.ConfigurationTarget.Global,
-                },
-                {
-                    val: inspect.workspaceFolderValue,
-                    langVal: inspect.workspaceFolderLanguageValue,
-                    target: vscode.ConfigurationTarget.WorkspaceFolder,
-                },
-                {
-                    val: inspect.workspaceValue,
-                    langVal: inspect.workspaceLanguageValue,
-                    target: vscode.ConfigurationTarget.Workspace,
-                },
-            ];
-            for (const { val, langVal, target } of valMatrix) {
-                const patch = (val: unknown) => {
-                    // some of the updates we do only append "enable" or "custom"
-                    // that means on the next run we would find these again, but as objects with
-                    // these properties causing us to destroy the config
-                    // so filter those already updated ones out
-                    return (
-                        val !== undefined &&
-                        !(
-                            typeof val === "object" &&
-                            val !== null &&
-                            (oldKey === "completion.snippets" || !val.hasOwnProperty("custom"))
-                        )
-                    );
-                };
-                if (patch(val)) {
-                    await config.update(newKey, val, target, false);
-                    await config.update(oldKey, undefined, target, false);
-                }
-                if (patch(langVal)) {
-                    await config.update(newKey, langVal, target, true);
-                    await config.update(oldKey, undefined, target, true);
-                }
-            }
-        }
     }
 }
 

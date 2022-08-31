@@ -2055,22 +2055,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (exp_found.expected.kind(), exp_found.found.kind())
         {
             if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
-                let path_str = format!("{:?}", exp_def);
                 if exp_def == &found_def {
-                    let opt_msg = "you can convert from `&Option<T>` to `Option<&T>` using \
-                                       `.as_ref()`";
-                    let result_msg = "you can convert from `&Result<T, E>` to \
-                                          `Result<&T, &E>` using `.as_ref()`";
                     let have_as_ref = &[
-                        ("std::option::Option", opt_msg),
-                        ("core::option::Option", opt_msg),
-                        ("std::result::Result", result_msg),
-                        ("core::result::Result", result_msg),
+                        (
+                            sym::Option,
+                            "you can convert from `&Option<T>` to `Option<&T>` using \
+                        `.as_ref()`",
+                        ),
+                        (
+                            sym::Result,
+                            "you can convert from `&Result<T, E>` to \
+                        `Result<&T, &E>` using `.as_ref()`",
+                        ),
                     ];
-                    if let Some(msg) = have_as_ref
-                        .iter()
-                        .find_map(|(path, msg)| (&path_str == path).then_some(msg))
-                    {
+                    if let Some(msg) = have_as_ref.iter().find_map(|(name, msg)| {
+                        self.tcx.is_diagnostic_item(*name, exp_def.did()).then_some(msg)
+                    }) {
                         let mut show_suggestion = true;
                         for (exp_ty, found_ty) in
                             iter::zip(exp_substs.types(), found_substs.types())

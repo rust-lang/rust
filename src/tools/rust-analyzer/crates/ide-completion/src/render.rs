@@ -323,9 +323,7 @@ fn render_resolution_path(
             ..CompletionRelevance::default()
         });
 
-        if let Some(ref_match) = compute_ref_match(completion, &ty) {
-            item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
-        }
+        path_ref_match(completion, path_ctx, &ty, &mut item);
     };
     item
 }
@@ -451,6 +449,29 @@ fn compute_ref_match(
         };
     }
     None
+}
+
+fn path_ref_match(
+    completion: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx,
+    ty: &hir::Type,
+    item: &mut Builder,
+) {
+    if let Some(original_path) = &path_ctx.original_path {
+        // At least one char was typed by the user already, in that case look for the original path
+        if let Some(original_path) = completion.sema.original_ast_node(original_path.clone()) {
+            if let Some(ref_match) = compute_ref_match(completion, ty) {
+                item.ref_match(ref_match, original_path.syntax().text_range().start());
+            }
+        }
+    } else {
+        // completion requested on an empty identifier, there is no path here yet.
+        // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
+        // as long as nothing was typed yet
+        if let Some(ref_match) = compute_ref_match(completion, ty) {
+            item.ref_match(ref_match, completion.position.offset);
+        }
+    }
 }
 
 #[cfg(test)]
