@@ -1,8 +1,8 @@
 error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:23
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:15
    |
 LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |                       ^^^^^^^
+   |               ^^^^^
    |
 note: the lint level is defined here
   --> $DIR/trait_duplication_in_bounds_unfixable.rs:1:9
@@ -12,10 +12,10 @@ LL | #![deny(clippy::trait_duplication_in_bounds)]
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:15
+  --> $DIR/trait_duplication_in_bounds_unfixable.rs:6:23
    |
 LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |               ^^^^^
+   |                       ^^^^^^^
    |
    = help: consider removing this trait bound
 

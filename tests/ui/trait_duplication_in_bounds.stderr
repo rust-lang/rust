@@ -44,13 +44,13 @@ error: these bounds contain repeated elements
   --> $DIR/trait_duplication_in_bounds.rs:100:19
    |
 LL | fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `GenericTrait<u32> + GenericTrait<u64>`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `GenericTrait<u64> + GenericTrait<u32>`
 
 error: these bounds contain repeated elements
   --> $DIR/trait_duplication_in_bounds.rs:108:22
    |
 LL | fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + foo::Clone`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::clone::Clone + foo::Clone`
 
 error: aborting due to 8 previous errors
 
