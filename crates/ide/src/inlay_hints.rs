@@ -129,6 +129,11 @@ impl fmt::Debug for InlayHintLabel {
 
 pub struct InlayHintLabelPart {
     pub text: String,
+    /// Source location represented by this label part. The client will use this to fetch the part's
+    /// hover tooltip, and Ctrl+Clicking the label part will navigate to the definition the location
+    /// refers to (not necessarily the location itself).
+    /// When setting this, no tooltip must be set on the containing hint, or VS Code will display
+    /// them both.
     pub linked_location: Option<FileRange>,
 }
 
@@ -266,10 +271,10 @@ fn closing_brace_hints(
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
-    let name = |it: ast::Name| it.syntax().text_range().start();
+    let name = |it: ast::Name| it.syntax().text_range();
 
     let mut closing_token;
-    let (label, name_offset) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
+    let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
 
         let parent = item_list.syntax().parent()?;
@@ -279,11 +284,11 @@ fn closing_brace_hints(
                     let imp = sema.to_def(&imp)?;
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
-
-                    (match trait_ {
+                    let hint_text = match trait_ {
                         Some(tr) => format!("impl {} for {}", tr.name(sema.db), ty.display_truncated(sema.db, config.max_length)),
                         None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
-                    }, None)
+                    };
+                    (hint_text, None)
                 },
                 ast::Trait(tr) => {
                     (format!("trait {}", tr.name()?), tr.name().map(name))
@@ -327,7 +332,7 @@ fn closing_brace_hints(
 
         (
             format!("{}!", mac.path()?),
-            mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range().start()),
+            mac.path().and_then(|it| it.segment()).map(|it| it.syntax().text_range()),
         )
     } else {
         return None;
@@ -352,11 +357,12 @@ fn closing_brace_hints(
         return None;
     }
 
+    let linked_location = name_range.map(|range| FileRange { file_id, range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label: label.into(),
-        tooltip: name_offset.map(|it| InlayTooltip::HoverOffset(file_id, it)),
+        label: InlayHintLabel { parts: vec![InlayHintLabelPart { text: label, linked_location }] },
+        tooltip: None, // provided by label part location
     });
 
     None
