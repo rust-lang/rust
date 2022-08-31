@@ -2,8 +2,8 @@
 //!
 //! The main entry point is the `step` method.
 
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::LayoutOf;
 
 use super::{InterpCx, Machine};
@@ -114,23 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::retag(self, *kind, &dest)?;
             }
 
-            Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
-                let op = self.eval_operand(op, None)?;
-                let cond = self.read_scalar(&op)?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` called with `false`");
-                }
-            }
-            Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
-                ref count,
-                ref src,
-                ref dst,
-            })) => {
-                let src = self.eval_operand(src, None)?;
-                let dst = self.eval_operand(dst, None)?;
-                let count = self.eval_operand(count, None)?;
-                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)?;
-            }
+            Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
             // Statements we do not track.
             AscribeUserType(..) => {}
