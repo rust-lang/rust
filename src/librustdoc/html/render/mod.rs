@@ -821,7 +821,7 @@ fn assoc_method(
         href = href,
         name = name,
         generics = g.print(cx),
-        decl = d.full_print(header_len, indent, header.asyncness, cx),
+        decl = d.full_print(header_len, indent, cx),
         notable_traits = notable_traits_decl(d, cx),
         where_clause = print_where_clause(g, cx, indent, end_newline),
     )
