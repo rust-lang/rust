@@ -62,7 +62,7 @@ pub(crate) fn replace_or_with_or_else(acc: &mut Assists, ctx: &AssistContext<'_>
 
     acc.add(
         AssistId("replace_or_with_or_else", AssistKind::RefactorRewrite),
-        "Replace unwrap_or or ok_or with lazy version",
+        format!("Replace {} with {}", name.text(), replace),
         call.syntax().text_range(),
         |builder| {
             builder.replace(name.syntax().text_range(), replace);
@@ -138,7 +138,7 @@ pub(crate) fn replace_or_else_with_or(acc: &mut Assists, ctx: &AssistContext<'_>
 
     acc.add(
         AssistId("replace_or_else_with_or", AssistKind::RefactorRewrite),
-        "Replace unwrap_or_else or ok_or_else with eager version",
+        format!("Replace {} with {}", name.text(), replace),
         call.syntax().text_range(),
         |builder| {
             builder.replace(name.syntax().text_range(), replace);
