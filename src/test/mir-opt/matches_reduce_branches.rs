@@ -1,6 +1,7 @@
+// unit-test: MatchBranchSimplification
+
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR matches_reduce_branches.foo.MatchBranchSimplification.diff
-// EMIT_MIR matches_reduce_branches.foo.PreCodegen.before.mir
 // EMIT_MIR matches_reduce_branches.bar.MatchBranchSimplification.diff
 // EMIT_MIR matches_reduce_branches.match_nested_if.MatchBranchSimplification.diff
 
