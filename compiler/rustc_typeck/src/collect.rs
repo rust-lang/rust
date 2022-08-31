@@ -1600,6 +1600,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // inherit the generics of the item.
                 Some(parent_id.to_def_id())
             }
+            ItemKind::ImplTraitPlaceholder(_) => {
+                let parent_id = tcx.hir().get_parent_item(hir_id).to_def_id();
+                assert_eq!(tcx.def_kind(parent_id), DefKind::AssocFn);
+                Some(parent_id)
+            }
             _ => None,
         },
         _ => None,

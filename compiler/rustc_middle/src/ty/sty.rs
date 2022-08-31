@@ -11,6 +11,7 @@ use crate::ty::{
     TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
+use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
@@ -1196,7 +1197,9 @@ pub struct ProjectionTy<'tcx> {
 
 impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        tcx.parent(self.item_def_id)
+        let parent = tcx.parent(self.item_def_id);
+        assert_eq!(tcx.def_kind(parent), DefKind::Trait);
+        parent
     }
 
     /// Extracts the underlying trait reference and own substs from this projection.

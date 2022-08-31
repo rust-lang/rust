@@ -255,6 +255,8 @@ enum ImplTraitContext {
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy,
+    /// Return-position `impl Trait` in trait definition
+    InTrait,
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
 }
@@ -323,9 +325,17 @@ enum FnDeclKind {
 }
 
 impl FnDeclKind {
-    fn impl_trait_return_allowed(&self) -> bool {
+    fn impl_trait_return_allowed(&self, tcx: TyCtxt<'_>) -> bool {
         match self {
             FnDeclKind::Fn | FnDeclKind::Inherent => true,
+            FnDeclKind::Impl if tcx.features().return_position_impl_trait_in_trait => true,
+            _ => false,
+        }
+    }
+
+    fn impl_trait_in_trait_allowed(&self, tcx: TyCtxt<'_>) -> bool {
+        match self {
+            FnDeclKind::Trait if tcx.features().return_position_impl_trait_in_trait => true,
             _ => false,
         }
     }
@@ -1346,6 +1356,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             &mut nested_itctx,
                         )
                     }
+                    ImplTraitContext::InTrait => {
+                        // FIXME(RPITIT): Should we use def_node_id here?
+                        self.lower_impl_trait_in_trait(span, def_node_id, bounds)
+                    }
                     ImplTraitContext::Universal => {
                         let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
@@ -1532,6 +1546,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn lower_impl_trait_in_trait(
+        &mut self,
+        span: Span,
+        opaque_ty_node_id: NodeId,
+        bounds: &GenericBounds,
+    ) -> hir::TyKind<'hir> {
+        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
+        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
+            // FIXME(RPITIT): This should be a more descriptive ImplTraitPosition, i.e. nested RPITIT
+            // FIXME(RPITIT): We _also_ should support this eventually
+            let hir_bounds = lctx
+                .lower_param_bounds(bounds, ImplTraitContext::Disallowed(ImplTraitPosition::Trait));
+            let rpitit_placeholder = hir::ImplTraitPlaceholder { bounds: hir_bounds };
+            let rpitit_item = hir::Item {
+                def_id: opaque_ty_def_id,
+                ident: Ident::empty(),
+                kind: hir::ItemKind::ImplTraitPlaceholder(rpitit_placeholder),
+                span: lctx.lower_span(span),
+                vis_span: lctx.lower_span(span.shrink_to_lo()),
+            };
+            hir::OwnerNode::Item(lctx.arena.alloc(rpitit_item))
+        });
+        hir::TyKind::ImplTraitInTrait(hir::ItemId { def_id: opaque_ty_def_id })
+    }
+
     /// Registers a new opaque type with the proper `NodeId`s and
     /// returns the lowered node-ID for the opaque type.
     fn generate_opaque_type(
@@ -1690,11 +1730,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             match decl.output {
                 FnRetTy::Ty(ref ty) => {
                     let mut context = match fn_node_id {
-                        Some(fn_node_id) if kind.impl_trait_return_allowed() => {
+                        Some(fn_node_id) if kind.impl_trait_return_allowed(self.tcx) => {
                             let fn_def_id = self.local_def_id(fn_node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                             }
+                        }
+                        Some(_) if kind.impl_trait_in_trait_allowed(self.tcx) => {
+                            ImplTraitContext::InTrait
                         }
                         _ => ImplTraitContext::Disallowed(match kind {
                             FnDeclKind::Fn | FnDeclKind::Inherent => {

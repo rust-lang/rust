@@ -597,7 +597,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 }
             }
             hir::ItemKind::ImplTraitPlaceholder(..) => {
-                // FIXME(RPITIT): We don't need to do anything here, right?
+                // FIXME(RPITIT): We don't need to do anything special here, right?
+                intravisit::walk_item(self, item);
             }
             hir::ItemKind::TyAlias(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
