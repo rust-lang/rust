@@ -277,6 +277,7 @@ target | std | host | notes
 `powerpc64-unknown-linux-musl` | ? |  |
 `powerpc64-wrs-vxworks` | ? |  |
 `powerpc64le-unknown-linux-musl` | ? |  |
+[`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
 `riscv32im-unknown-none-elf` | * |  | Bare RISC-V (RV32IM ISA)
@@ -284,6 +285,7 @@ target | std | host | notes
 `riscv32imc-esp-espidf` | ✓ |  | RISC-V ESP-IDF
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
+[`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 `s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 3.2, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
