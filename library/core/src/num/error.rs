@@ -1,6 +1,8 @@
 //! Error types for conversion to integral types.
 
 use crate::convert::Infallible;
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt;
 
 /// The error type returned when a checked integral type conversion fails.
@@ -142,5 +144,23 @@ impl ParseIntError {
 impl fmt::Display for ParseIntError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(f)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseIntError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for TryFromIntError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
     }
 }

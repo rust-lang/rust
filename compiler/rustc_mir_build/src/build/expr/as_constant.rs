@@ -41,11 +41,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 Constant { span, user_ty: None, literal }
             }
-            ExprKind::NonHirLiteral { lit, user_ty } => {
-                let user_ty = user_ty.map(|user_ty| {
+            ExprKind::NonHirLiteral { lit, ref user_ty } => {
+                let user_ty = user_ty.as_ref().map(|box user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span,
-                        user_ty,
+                        user_ty: *user_ty,
                         inferred_ty: ty,
                     })
                 });
@@ -53,11 +53,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 Constant { span, user_ty: user_ty, literal }
             }
-            ExprKind::ZstLiteral { user_ty } => {
-                let user_ty = user_ty.map(|user_ty| {
+            ExprKind::ZstLiteral { ref user_ty } => {
+                let user_ty = user_ty.as_ref().map(|box user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span,
-                        user_ty,
+                        user_ty: *user_ty,
                         inferred_ty: ty,
                     })
                 });
@@ -65,11 +65,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 Constant { span, user_ty: user_ty, literal }
             }
-            ExprKind::NamedConst { def_id, substs, user_ty } => {
-                let user_ty = user_ty.map(|user_ty| {
+            ExprKind::NamedConst { def_id, substs, ref user_ty } => {
+                let user_ty = user_ty.as_ref().map(|box user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span,
-                        user_ty,
+                        user_ty: *user_ty,
                         inferred_ty: ty,
                     })
                 });
@@ -144,7 +144,7 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
-        (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
+        (ast::LitKind::Err, _) => return Err(LitToConstError::Reported),
         _ => return Err(LitToConstError::TypeError),
     };
 

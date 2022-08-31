@@ -1546,7 +1546,7 @@ impl InvalidAtomicOrdering {
 
         if matches!(fail_ordering, sym::Release | sym::AcqRel) {
             #[derive(LintDiagnostic)]
-            #[lint(lint::atomic_ordering_invalid)]
+            #[diag(lint::atomic_ordering_invalid)]
             #[help]
             struct InvalidAtomicOrderingDiag {
                 method: Symbol,

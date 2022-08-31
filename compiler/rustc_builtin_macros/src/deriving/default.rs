@@ -2,9 +2,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 
 use rustc_ast as ast;
-use rustc_ast::walk_list;
-use rustc_ast::EnumDef;
-use rustc_ast::VariantData;
+use rustc_ast::{walk_list, EnumDef, VariantData};
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
@@ -22,7 +20,7 @@ pub fn expand_deriving_default(
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = vec![cx.attribute(inline)].into();
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),

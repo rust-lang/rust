@@ -1,0 +1,243 @@
+// This test ensures that the elements in ".search-form" have the expected display.
+goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true
+
+// Ayu theme
+local-storage: {
+    "rustdoc-theme": "ayu",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(92, 103, 115)",
+        "background-color": "rgb(20, 25, 32)",
+        "color": "rgb(255, 255, 255)",
+    },
+)
+focus: ".search-input"
+// Nothing should change.
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(92, 103, 115)",
+        "background-color": "rgb(20, 25, 32)",
+        "color": "rgb(255, 255, 255)",
+    },
+)
+
+assert-css: (
+    "#help-button",
+    {"border-color": "rgb(197, 197, 197)"},
+)
+assert-css: (
+    "#help-button > button",
+    {
+        "color": "rgb(255, 255, 255)",
+        "border-color": "rgb(92, 103, 115)",
+        "background-color": "rgb(20, 25, 32)",
+    },
+)
+move-cursor-to: "#help-button"
+assert-css: (
+    "#help-button:hover",
+    {"border-color": "rgb(197, 197, 197)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#help-button:hover > button",
+    {
+        "color": "rgb(255, 255, 255)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(20, 25, 32)",
+    },
+)
+
+assert-css: (
+    "#settings-menu",
+    {"border-color": "rgb(197, 197, 197)"},
+)
+assert-css: (
+    "#settings-menu > a",
+    {
+        "color": "rgb(255, 255, 255)",
+        "border-color": "rgb(92, 103, 115)",
+        "background-color": "rgb(20, 25, 32)",
+    },
+)
+move-cursor-to: "#settings-menu"
+assert-css: (
+    "#settings-menu:hover",
+    {"border-color": "rgb(197, 197, 197)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#settings-menu:hover > a",
+    {
+        "color": "rgb(255, 255, 255)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(20, 25, 32)",
+    },
+)
+
+// Dark theme
+local-storage: {
+    "rustdoc-theme": "dark",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(240, 240, 240)",
+        "background-color": "rgb(240, 240, 240)",
+        "color": "rgb(17, 17, 17)",
+    },
+)
+focus: ".search-input"
+// Only "border-color" should change.
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(0, 141, 253)",
+        "background-color": "rgb(240, 240, 240)",
+        "color": "rgb(17, 17, 17)",
+    },
+)
+
+assert-css: (
+    "#help-button",
+    {"border-color": "rgb(221, 221, 221)"},
+)
+assert-css: (
+    "#help-button > button",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(240, 240, 240)",
+    },
+)
+move-cursor-to: "#help-button"
+assert-css: (
+    "#help-button:hover",
+    {"border-color": "rgb(221, 221, 221)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#help-button:hover > button",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(255, 185, 0)",
+        "background-color": "rgb(240, 240, 240)",
+    },
+)
+
+assert-css: (
+    "#settings-menu",
+    {"border-color": "rgb(221, 221, 221)"},
+)
+assert-css: (
+    "#settings-menu > a",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(240, 240, 240)",
+    },
+)
+move-cursor-to: "#settings-menu"
+assert-css: (
+    "#settings-menu:hover",
+    {"border-color": "rgb(221, 221, 221)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#settings-menu:hover > a",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(255, 185, 0)",
+        "background-color": "rgb(240, 240, 240)",
+    },
+)
+
+// Light theme
+local-storage: {
+    "rustdoc-theme": "light",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(255, 255, 255)",
+        "color": "rgb(0, 0, 0)",
+    },
+)
+focus: ".search-input"
+// Nothing should change.
+assert-css: (
+    ".search-input",
+    {
+        "border-color": "rgb(102, 175, 233)",
+        "background-color": "rgb(255, 255, 255)",
+        "color": "rgb(0, 0, 0)",
+    },
+)
+
+assert-css: (
+    "#help-button",
+    {"border-color": "rgb(0, 0, 0)"},
+)
+assert-css: (
+    "#help-button > button",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(255, 255, 255)",
+    },
+)
+move-cursor-to: "#help-button"
+assert-css: (
+    "#help-button:hover",
+    {"border-color": "rgb(0, 0, 0)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#help-button:hover > button",
+    {
+        "color": "rgb(0, 0, 0)",
+        "border-color": "rgb(113, 113, 113)",
+        "background-color": "rgb(255, 255, 255)",
+    },
+)
+
+assert-css: (
+    "#settings-menu",
+    {"border-color": "rgb(0, 0, 0)"},
+)
+assert-css: (
+    "#settings-menu > a",
+    {
+        "color": "rgb(56, 115, 173)",
+        "border-color": "rgb(224, 224, 224)",
+        "background-color": "rgb(255, 255, 255)",
+    },
+)
+move-cursor-to: "#settings-menu"
+assert-css: (
+    "#settings-menu:hover",
+    {"border-color": "rgb(0, 0, 0)"},
+)
+// Only "border-color" should change.
+assert-css: (
+    "#settings-menu:hover > a",
+    {
+        "color": "rgb(56, 115, 173)",
+        "border-color": "rgb(113, 113, 113)",
+        "background-color": "rgb(255, 255, 255)",
+    },
+)

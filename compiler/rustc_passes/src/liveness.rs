@@ -89,11 +89,10 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
-use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
@@ -139,12 +138,54 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-fn check_mod_liveness(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut IrMaps::new(tcx));
+fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
+    let local_def_id = match def_id.as_local() {
+        None => return,
+        Some(def_id) => def_id,
+    };
+
+    // Don't run unused pass for #[derive()]
+    let parent = tcx.local_parent(local_def_id);
+    if let DefKind::Impl = tcx.def_kind(parent)
+        && tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
+    {
+        return;
+    }
+
+    // Don't run unused pass for #[naked]
+    if tcx.has_attr(def_id, sym::naked) {
+        return;
+    }
+
+    let mut maps = IrMaps::new(tcx);
+    let body_id = tcx.hir().body_owned_by(local_def_id);
+    let hir_id = tcx.hir().body_owner(body_id);
+    let body = tcx.hir().body(body_id);
+
+    if let Some(upvars) = tcx.upvars_mentioned(def_id) {
+        for &var_hir_id in upvars.keys() {
+            let var_name = tcx.hir().name(var_hir_id);
+            maps.add_variable(Upvar(var_hir_id, var_name));
+        }
+    }
+
+    // gather up the various local variables, significant expressions,
+    // and so forth:
+    maps.visit_body(body);
+
+    // compute liveness
+    let mut lsets = Liveness::new(&mut maps, local_def_id);
+    let entry_ln = lsets.compute(&body, hir_id);
+    lsets.log_liveness(entry_ln, body_id.hir_id);
+
+    // check for various error conditions
+    lsets.visit_body(body);
+    lsets.warn_about_unused_upvars(entry_ln);
+    lsets.warn_about_unused_args(body, entry_ln);
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_liveness, ..*providers };
+    *providers = Providers { check_liveness, ..*providers };
 }
 
 // ______________________________________________________________________
@@ -186,6 +227,19 @@ enum VarKind {
     Param(HirId, Symbol),
     Local(LocalInfo),
     Upvar(HirId, Symbol),
+}
+
+struct CollectLitsVisitor<'tcx> {
+    lit_exprs: Vec<&'tcx hir::Expr<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for CollectLitsVisitor<'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if let hir::ExprKind::Lit(_) = expr.kind {
+            self.lit_exprs.push(expr);
+        }
+        intravisit::walk_expr(self, expr);
+    }
 }
 
 struct IrMaps<'tcx> {
@@ -316,56 +370,6 @@ impl<'tcx> IrMaps<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    type NestedFilter = nested_filter::OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
-        debug!("visit_body {:?}", body.id());
-
-        // swap in a new set of IR maps for this body
-        let mut maps = IrMaps::new(self.tcx);
-        let hir_id = maps.tcx.hir().body_owner(body.id());
-        let local_def_id = maps.tcx.hir().local_def_id(hir_id);
-        let def_id = local_def_id.to_def_id();
-
-        // Don't run unused pass for #[derive()]
-        let parent = self.tcx.local_parent(local_def_id);
-        if let DefKind::Impl = self.tcx.def_kind(parent)
-            && self.tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
-        {
-            return;
-        }
-
-        // Don't run unused pass for #[naked]
-        if self.tcx.has_attr(def_id, sym::naked) {
-            return;
-        }
-
-        if let Some(upvars) = maps.tcx.upvars_mentioned(def_id) {
-            for &var_hir_id in upvars.keys() {
-                let var_name = maps.tcx.hir().name(var_hir_id);
-                maps.add_variable(Upvar(var_hir_id, var_name));
-            }
-        }
-
-        // gather up the various local variables, significant expressions,
-        // and so forth:
-        intravisit::walk_body(&mut maps, body);
-
-        // compute liveness
-        let mut lsets = Liveness::new(&mut maps, local_def_id);
-        let entry_ln = lsets.compute(&body, hir_id);
-        lsets.log_liveness(entry_ln, body.id().hir_id);
-
-        // check for various error conditions
-        lsets.visit_body(body);
-        lsets.warn_about_unused_upvars(entry_ln);
-        lsets.warn_about_unused_args(body, entry_ln);
-    }
-
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.add_from_pat(&local.pat);
         if local.els.is_some() {
@@ -1342,7 +1346,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        self.check_unused_vars_in_pat(&local.pat, None, |spans, hir_id, ln, var| {
+        self.check_unused_vars_in_pat(&local.pat, None, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);
             }
@@ -1357,7 +1361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.check_unused_vars_in_pat(&arm.pat, None, |_, _, _, _| {});
+        self.check_unused_vars_in_pat(&arm.pat, None, None, |_, _, _, _| {});
         intravisit::walk_arm(self, arm);
     }
 }
@@ -1396,7 +1400,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         }
 
         hir::ExprKind::Let(let_expr) => {
-            this.check_unused_vars_in_pat(let_expr.pat, None, |_, _, _, _| {});
+            this.check_unused_vars_in_pat(let_expr.pat, None, None, |_, _, _, _| {});
         }
 
         // no correctness conditions related to liveness
@@ -1517,13 +1521,18 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
         for p in body.params {
-            self.check_unused_vars_in_pat(&p.pat, Some(entry_ln), |spans, hir_id, ln, var| {
-                if !self.live_on_entry(ln, var) {
-                    self.report_unused_assign(hir_id, spans, var, |name| {
-                        format!("value passed to `{}` is never read", name)
-                    });
-                }
-            });
+            self.check_unused_vars_in_pat(
+                &p.pat,
+                Some(entry_ln),
+                Some(body),
+                |spans, hir_id, ln, var| {
+                    if !self.live_on_entry(ln, var) {
+                        self.report_unused_assign(hir_id, spans, var, |name| {
+                            format!("value passed to `{}` is never read", name)
+                        });
+                    }
+                },
+            );
         }
     }
 
@@ -1531,6 +1540,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         &self,
         pat: &hir::Pat<'_>,
         entry_ln: Option<LiveNode>,
+        opt_body: Option<&hir::Body<'_>>,
         on_used_on_entry: impl Fn(Vec<Span>, HirId, LiveNode, Variable),
     ) {
         // In an or-pattern, only consider the variable; any later patterns must have the same
@@ -1558,7 +1568,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     hir_ids_and_spans.into_iter().map(|(_, _, ident_span)| ident_span).collect();
                 on_used_on_entry(spans, id, ln, var);
             } else {
-                self.report_unused(hir_ids_and_spans, ln, var, can_remove);
+                self.report_unused(hir_ids_and_spans, ln, var, can_remove, pat, opt_body);
             }
         }
     }
@@ -1570,6 +1580,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         ln: LiveNode,
         var: Variable,
         can_remove: bool,
+        pat: &hir::Pat<'_>,
+        opt_body: Option<&hir::Body<'_>>,
     ) {
         let first_hir_id = hir_ids_and_spans[0].0;
 
@@ -1673,6 +1685,9 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .collect::<Vec<_>>(),
                         |lint| {
                             let mut err = lint.build(&format!("unused variable: `{}`", name));
+                            if self.has_added_lit_match_name_span(&name, opt_body, &mut err) {
+                                err.span_label(pat.span, "unused variable");
+                            }
                             err.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
                                 non_shorthands,
@@ -1684,6 +1699,42 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 }
             }
         }
+    }
+
+    fn has_added_lit_match_name_span(
+        &self,
+        name: &str,
+        opt_body: Option<&hir::Body<'_>>,
+        err: &mut rustc_errors::DiagnosticBuilder<'_, ()>,
+    ) -> bool {
+        let mut has_litstring = false;
+        let Some(opt_body) = opt_body else {return false;};
+        let mut visitor = CollectLitsVisitor { lit_exprs: vec![] };
+        intravisit::walk_body(&mut visitor, opt_body);
+        for lit_expr in visitor.lit_exprs {
+            let hir::ExprKind::Lit(litx) = &lit_expr.kind else { continue };
+            let rustc_ast::LitKind::Str(syb, _) = litx.node else{ continue; };
+            let name_str: &str = syb.as_str();
+            let mut name_pa = String::from("{");
+            name_pa.push_str(&name);
+            name_pa.push('}');
+            if name_str.contains(&name_pa) {
+                err.span_label(
+                    lit_expr.span,
+                    "you might have meant to use string interpolation in this string literal",
+                );
+                err.multipart_suggestion(
+                    "string interpolation only works in `format!` invocations",
+                    vec![
+                        (lit_expr.span.shrink_to_lo(), "format!(".to_string()),
+                        (lit_expr.span.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+                has_litstring = true;
+            }
+        }
+        has_litstring
     }
 
     fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {

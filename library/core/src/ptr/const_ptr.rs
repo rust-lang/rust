@@ -95,8 +95,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
-    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }
@@ -249,7 +249,7 @@ impl<T: ?Sized> *const T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -559,6 +559,21 @@ impl<T: ?Sized> *const T {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *const T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
+        from_raw_parts::<T>(this, metadata(self))
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
@@ -641,7 +656,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize

@@ -276,7 +276,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         match lit.value.node {
             LitKind::Bool(val) => kind!("Bool({val:?})"),
             LitKind::Char(c) => kind!("Char({c:?})"),
-            LitKind::Err(val) => kind!("Err({val})"),
+            LitKind::Err => kind!("Err"),
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {

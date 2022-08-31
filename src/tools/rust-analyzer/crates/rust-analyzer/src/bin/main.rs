@@ -93,6 +93,7 @@ fn try_main() -> Result<()> {
         flags::RustAnalyzerCmd::Ssr(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Lsif(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::Scip(cmd) => cmd.run()?,
     }
     Ok(())
 }

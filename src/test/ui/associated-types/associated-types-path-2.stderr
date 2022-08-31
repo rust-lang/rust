@@ -17,10 +17,12 @@ LL |     f1(2i32, 4u32);
    |               ~~~
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
-  --> $DIR/associated-types-path-2.rs:29:5
+  --> $DIR/associated-types-path-2.rs:29:8
    |
 LL |     f1(2u32, 4u32);
-   |     ^^ the trait `Foo` is not implemented for `u32`
+   |     -- ^^^^ the trait `Foo` is not implemented for `u32`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Foo` is implemented for `i32`
 note: required by a bound in `f1`
@@ -33,9 +35,7 @@ error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/associated-types-path-2.rs:29:14
    |
 LL |     f1(2u32, 4u32);
-   |     --       ^^^^ the trait `Foo` is not implemented for `u32`
-   |     |
-   |     required by a bound introduced by this call
+   |              ^^^^ the trait `Foo` is not implemented for `u32`
    |
    = help: the trait `Foo` is implemented for `i32`
 

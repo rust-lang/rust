@@ -11,6 +11,8 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -25,6 +27,7 @@ pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
 pub mod diagnostic_items;
+pub mod errors;
 pub use rustc_span::def_id;
 mod hir;
 pub mod hir_id;

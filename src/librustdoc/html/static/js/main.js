@@ -528,9 +528,9 @@ function loadCss(cssFileName) {
         // We don't want to include impls from this JS file, when the HTML already has them.
         // The current crate should always be ignored. Other crates that should also be
         // ignored are included in the attribute `data-ignore-extern-crates`.
-        const ignoreExternCrates = document
-            .querySelector("script[data-ignore-extern-crates]")
-            .getAttribute("data-ignore-extern-crates");
+        const script = document
+            .querySelector("script[data-ignore-extern-crates]");
+        const ignoreExternCrates = script ? script.getAttribute("data-ignore-extern-crates") : "";
         for (const lib of libs) {
             if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
                 continue;

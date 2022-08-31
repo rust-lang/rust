@@ -1,8 +1,15 @@
 error[E0277]: `Cell<i32>` cannot be shared between threads safely
-  --> $DIR/not-send-sync.rs:16:5
+  --> $DIR/not-send-sync.rs:16:17
    |
-LL |     assert_send(|| {
-   |     ^^^^^^^^^^^ `Cell<i32>` cannot be shared between threads safely
+LL |       assert_send(|| {
+   |  _____-----------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         drop(&a);
+LL | |         yield;
+LL | |     });
+   | |_____^ `Cell<i32>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Cell<i32>`
    = note: required for `&Cell<i32>` to implement `Send`
@@ -18,10 +25,15 @@ LL |     fn assert_send<T: Send>(_: T) {}
    |                       ^^^^ required by this bound in `assert_send`
 
 error: generator cannot be shared between threads safely
-  --> $DIR/not-send-sync.rs:9:5
+  --> $DIR/not-send-sync.rs:9:17
    |
-LL |     assert_sync(|| {
-   |     ^^^^^^^^^^^ generator is not `Sync`
+LL |       assert_sync(|| {
+   |  _________________^
+LL | |
+LL | |         let a = Cell::new(2);
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Sync`
    |
    = help: within `[generator@$DIR/not-send-sync.rs:9:17: 9:19]`, the trait `Sync` is not implemented for `Cell<i32>`
 note: generator is not `Sync` as this value is used across a yield

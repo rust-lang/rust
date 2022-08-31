@@ -217,7 +217,7 @@ pub struct MethodDef<'a> {
     /// Returns type
     pub ret_ty: Ty,
 
-    pub attributes: Vec<ast::Attribute>,
+    pub attributes: ast::AttrVec,
 
     /// Can we combine fieldless variants for enums into a single match arm?
     /// If true, indicates that the trait operation uses the enum tag in some
@@ -383,8 +383,7 @@ fn find_type_parameters(
         // Place bound generic params on a stack, to extract them when a type is encountered.
         fn visit_poly_trait_ref(&mut self, trait_ref: &'a ast::PolyTraitRef) {
             let stack_len = self.bound_generic_params_stack.len();
-            self.bound_generic_params_stack
-                .extend(trait_ref.bound_generic_params.clone().into_iter());
+            self.bound_generic_params_stack.extend(trait_ref.bound_generic_params.iter().cloned());
 
             visit::walk_poly_trait_ref(self, trait_ref);
 
@@ -562,7 +561,7 @@ impl<'a> TraitDef<'a> {
                     kind: ast::VisibilityKind::Inherited,
                     tokens: None,
                 },
-                attrs: Vec::new(),
+                attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
@@ -716,7 +715,7 @@ impl<'a> TraitDef<'a> {
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
-        let attrs = vec![attr];
+        let attrs = vec![attr].into();
         let opt_trait_ref = Some(trait_ref);
 
         cx.item(

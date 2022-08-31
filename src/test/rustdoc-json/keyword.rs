@@ -6,16 +6,15 @@
 #![feature(rustdoc_internals)]
 #![no_std]
 
-// @has keyword.json
-// @!has - "$.index[*][?(@.name=='match')]"
-// @has - "$.index[*][?(@.name=='foo')]"
+// @!has "$.index[*][?(@.name=='match')]"
+// @has "$.index[*][?(@.name=='foo')]"
 
 #[doc(keyword = "match")]
 /// this is a test!
 pub mod foo {}
 
-// @!has - "$.index[*][?(@.name=='hello')]"
-// @!has - "$.index[*][?(@.name=='bar')]"
+// @!has "$.index[*][?(@.name=='hello')]"
+// @!has "$.index[*][?(@.name=='bar')]"
 #[doc(keyword = "hello")]
 /// hello
 mod bar {}

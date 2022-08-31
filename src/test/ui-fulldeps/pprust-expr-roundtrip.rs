@@ -30,7 +30,6 @@ use rustc_ast::mut_visit::{self, visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
@@ -47,7 +46,7 @@ fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
 
 // Helper functions for building exprs
 fn expr(kind: ExprKind) -> P<Expr> {
-    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: ThinVec::new(), tokens: None })
+    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: AttrVec::new(), tokens: None })
 }
 
 fn make_x() -> P<Expr> {
@@ -196,7 +195,7 @@ impl MutVisitor for AddParens {
                 id: DUMMY_NODE_ID,
                 kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
                 tokens: None,
             })
         });

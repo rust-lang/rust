@@ -1,20 +1,15 @@
 error: `crate_type` within an `#![cfg_attr] attribute is deprecated`
-  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:5:18
+  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:4:18
    |
 LL | #![cfg_attr(foo, crate_type="bin")]
    |                  ^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:4:9
-   |
-LL | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: `#[deny(deprecated_cfg_attr_crate_type_name)]` implied by `#[deny(warnings)]`
+   = note: `#[deny(deprecated_cfg_attr_crate_type_name)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
 
 error: `crate_name` within an `#![cfg_attr] attribute is deprecated`
-  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:10:18
+  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:9:18
    |
 LL | #![cfg_attr(foo, crate_name="bar")]
    |                  ^^^^^^^^^^^^^^^^
@@ -23,7 +18,7 @@ LL | #![cfg_attr(foo, crate_name="bar")]
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
 
 error: `crate_type` within an `#![cfg_attr] attribute is deprecated`
-  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:5:18
+  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:4:18
    |
 LL | #![cfg_attr(foo, crate_type="bin")]
    |                  ^^^^^^^^^^^^^^^^
@@ -32,7 +27,7 @@ LL | #![cfg_attr(foo, crate_type="bin")]
    = note: for more information, see issue #91632 <https://github.com/rust-lang/rust/issues/91632>
 
 error: `crate_name` within an `#![cfg_attr] attribute is deprecated`
-  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:10:18
+  --> $DIR/future-compat-crate-attributes-using-cfg_attr.rs:9:18
    |
 LL | #![cfg_attr(foo, crate_name="bar")]
    |                  ^^^^^^^^^^^^^^^^

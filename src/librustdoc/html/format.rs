@@ -1079,7 +1079,12 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
+        clean::QPath(box clean::QPathData {
+            ref assoc,
+            ref self_type,
+            ref trait_,
+            should_show_cast,
+        }) => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
@@ -1305,22 +1310,19 @@ impl clean::FnDecl {
     ///   <br>Used to determine line-wrapping.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
-    /// * `asyncness`: Whether the function is async or not.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| self.inner_full_print(header_len, indent, asyncness, f, cx))
+        display_fn(move |f| self.inner_full_print(header_len, indent, f, cx))
     }
 
     fn inner_full_print(
         &self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
@@ -1385,15 +1387,9 @@ impl clean::FnDecl {
             args_plain.push_str(", ...");
         }
 
-        let arrow_plain;
-        let arrow = if let hir::IsAsync::Async = asyncness {
-            let output = self.sugared_async_return_type();
-            arrow_plain = format!("{:#}", output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", output.print(cx)) }
-        } else {
-            arrow_plain = format!("{:#}", self.output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) }
-        };
+        let arrow_plain = format!("{:#}", self.output.print(cx));
+        let arrow =
+            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) };
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {

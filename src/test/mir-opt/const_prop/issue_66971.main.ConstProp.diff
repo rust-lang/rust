@@ -19,7 +19,7 @@
           StorageDead(_3);                 // scope 0 at $DIR/issue-66971.rs:+1:21: +1:22
           _1 = encode(move _2) -> bb1;     // scope 0 at $DIR/issue-66971.rs:+1:5: +1:23
                                            // mir::Constant
-                                           // + span: $DIR/issue-66971.rs:16:5: 16:11
+                                           // + span: $DIR/issue-66971.rs:17:5: 17:11
                                            // + literal: Const { ty: fn(((), u8, u8)) {encode}, val: Value(<ZST>) }
       }
   

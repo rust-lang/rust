@@ -364,8 +364,8 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Clone)]
-struct PatStack<'p, 'tcx> {
-    pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+pub(crate) struct PatStack<'p, 'tcx> {
+    pub(crate) pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
@@ -403,6 +403,21 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         })
     }
 
+    // Recursively expand all patterns into their subpatterns and push each `PatStack` to matrix.
+    fn expand_and_extend<'a>(&'a self, matrix: &mut Matrix<'p, 'tcx>) {
+        if !self.is_empty() && self.head().is_or_pat() {
+            for pat in self.head().iter_fields() {
+                let mut new_patstack = PatStack::from_pattern(pat);
+                new_patstack.pats.extend_from_slice(&self.pats[1..]);
+                if !new_patstack.is_empty() && new_patstack.head().is_or_pat() {
+                    new_patstack.expand_and_extend(matrix);
+                } else if !new_patstack.is_empty() {
+                    matrix.push(new_patstack);
+                }
+            }
+        }
+    }
+
     /// This computes `S(self.head().ctor(), self)`. See top of the file for explanations.
     ///
     /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
@@ -436,7 +451,7 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 /// A 2D matrix.
 #[derive(Clone)]
 pub(super) struct Matrix<'p, 'tcx> {
-    patterns: Vec<PatStack<'p, 'tcx>>,
+    pub patterns: Vec<PatStack<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -453,7 +468,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
-            self.patterns.extend(row.expand_or_pat());
+            row.expand_and_extend(self);
         } else {
             self.patterns.push(row);
         }

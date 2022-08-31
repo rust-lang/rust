@@ -13,7 +13,7 @@ note: ...which requires const-evaluating + checking `IMPL_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:7:1
    |
 LL | const IMPL_REF_BAR: u32 = GlobalImplRef::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-impl.rs:11:1: 11:19>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-impl.rs:12:5
    |

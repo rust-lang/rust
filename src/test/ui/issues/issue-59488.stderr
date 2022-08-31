@@ -6,7 +6,7 @@ LL |     foo > 12;
    |     |
    |     fn() -> i32 {foo}
    |
-help: you might have forgotten to call this function
+help: use parentheses to call this function
    |
 LL |     foo() > 12;
    |        ++
@@ -28,10 +28,10 @@ LL |     bar > 13;
    |     |
    |     fn(i64) -> i64 {bar}
    |
-help: you might have forgotten to call this function
+help: use parentheses to call this function
    |
-LL |     bar( /* arguments */ ) > 13;
-   |        +++++++++++++++++++
+LL |     bar(/* i64 */) > 13;
+   |        +++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-59488.rs:18:11
@@ -50,14 +50,10 @@ LL |     foo > foo;
    |     |
    |     fn() -> i32 {foo}
    |
-help: you might have forgotten to call this function
+help: use parentheses to call these
    |
-LL |     foo() > foo;
-   |        ++
-help: you might have forgotten to call this function
-   |
-LL |     foo > foo();
-   |              ++
+LL |     foo() > foo();
+   |        ++      ++
 
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
   --> $DIR/issue-59488.rs:25:9
@@ -106,7 +102,26 @@ LL |     assert_eq!(Foo::Bar, i);
            and 68 others
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 9 previous errors
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
+  --> $DIR/issue-59488.rs:30:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = help: the following other types implement trait `Debug`:
+             extern "C" fn() -> Ret
+             extern "C" fn(A, B) -> Ret
+             extern "C" fn(A, B, ...) -> Ret
+             extern "C" fn(A, B, C) -> Ret
+             extern "C" fn(A, B, C, ...) -> Ret
+             extern "C" fn(A, B, C, D) -> Ret
+             extern "C" fn(A, B, C, D, ...) -> Ret
+             extern "C" fn(A, B, C, D, E) -> Ret
+           and 68 others
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0369.
 For more information about an error, try `rustc --explain E0277`.

@@ -1,8 +1,10 @@
 error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:8:5
+  --> $DIR/send-sync.rs:8:10
    |
 LL |     send(format_args!("{:?}", c));
-   |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `[ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
    = note: required because it appears within the type `&core::fmt::Opaque`
@@ -17,10 +19,12 @@ LL | fn send<T: Send>(_: T) {}
    |            ^^^^ required by this bound in `send`
 
 error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:9:5
+  --> $DIR/send-sync.rs:9:10
    |
 LL |     sync(format_args!("{:?}", c));
-   |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     ---- ^^^^^^^^^^^^^^^^^^^^^^^ `core::fmt::Opaque` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::Opaque`
    = note: required because it appears within the type `&core::fmt::Opaque`

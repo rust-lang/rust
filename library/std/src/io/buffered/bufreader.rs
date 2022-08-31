@@ -2,7 +2,7 @@ mod buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
 };
 use buffer::Buffer;
 
@@ -266,21 +266,21 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
-        if self.buf.pos() == self.buf.filled() && buf.remaining() >= self.capacity() {
+        if self.buf.pos() == self.buf.filled() && cursor.capacity() >= self.capacity() {
             self.discard_buffer();
-            return self.inner.read_buf(buf);
+            return self.inner.read_buf(cursor);
         }
 
-        let prev = buf.filled_len();
+        let prev = cursor.written();
 
         let mut rem = self.fill_buf()?;
-        rem.read_buf(buf)?;
+        rem.read_buf(cursor.reborrow())?;
 
-        self.consume(buf.filled_len() - prev); //slice impl of read_buf known to never unfill buf
+        self.consume(cursor.written() - prev); //slice impl of read_buf known to never unfill buf
 
         Ok(())
     }

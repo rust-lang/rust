@@ -7,8 +7,6 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
-use std::hash::Hash;
-
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -22,7 +20,7 @@ use super::{
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Prov: Provenance + Eq + Hash + 'static,
+    Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     //# Field access
@@ -100,6 +98,8 @@ where
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
             // the field contains no information, can be left uninit
             _ if field_layout.is_zst() => Immediate::Uninit,
             // the field covers the entire type
@@ -124,6 +124,7 @@ where
                     b_val
                 })
             }
+            // everything else is a bug
             _ => span_bug!(
                 self.cur_span(),
                 "invalid field access on immediate {}, layout {:#?}",

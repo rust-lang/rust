@@ -504,7 +504,7 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub items: Vec<P<Item>>,
     pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
@@ -770,7 +770,7 @@ pub enum PatKind {
     Paren(P<Pat>),
 
     /// A macro pattern; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
@@ -980,7 +980,7 @@ pub enum StmtKind {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCallStmt {
-    pub mac: MacCall,
+    pub mac: P<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
     pub tokens: Option<LazyTokenStream>,
@@ -1268,7 +1268,7 @@ impl Expr {
                 id: DUMMY_NODE_ID,
                 kind: ExprKind::Err,
                 span: DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
                 tokens: None,
             },
         )
@@ -1437,7 +1437,7 @@ pub enum ExprKind {
     InlineAsm(P<InlineAsm>),
 
     /// A macro invocation; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A struct literal expression.
     ///
@@ -1751,7 +1751,8 @@ pub enum LitFloatType {
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 #[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
 pub enum LitKind {
-    /// A string literal (`"foo"`).
+    /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
+    /// from the original token's symbol.
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
     ByteStr(Lrc<[u8]>),
@@ -1761,12 +1762,13 @@ pub enum LitKind {
     Char(char),
     /// An integer literal (`1`).
     Int(u128, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`).
+    /// A float literal (`1f64` or `1E10f64`). Stored as a symbol rather than
+    /// `f64` so that `LitKind` can impl `Eq` and `Hash`.
     Float(Symbol, LitFloatType),
     /// A boolean literal.
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err(Symbol),
+    Err,
 }
 
 impl LitKind {
@@ -1805,7 +1807,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err(..) => false,
+            | LitKind::Err => false,
         }
     }
 }
@@ -2040,7 +2042,7 @@ pub enum TyKind {
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
     /// A macro in the type position.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
     /// Placeholder for a kind that has failed to be defined.
     Err,
     /// Placeholder for a `va_list`.
@@ -2669,7 +2671,7 @@ impl VariantData {
 /// An item definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Item<K = ItemKind> {
-    pub attrs: Vec<Attribute>,
+    pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -2877,7 +2879,7 @@ pub enum ItemKind {
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A macro definition.
     MacroDef(MacroDef),
@@ -2951,7 +2953,7 @@ pub enum AssocItemKind {
     /// An associated type.
     TyAlias(Box<TyAlias>),
     /// A macro expanding to associated items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 impl AssocItemKind {
@@ -3000,7 +3002,7 @@ pub enum ForeignItemKind {
     /// An foreign type.
     TyAlias(Box<TyAlias>),
     /// A macro expanding to foreign items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 impl From<ForeignItemKind> for ItemKind {
@@ -3036,19 +3038,19 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AssocItem, 160);
-    static_assert_size!(AssocItemKind, 72);
+    static_assert_size!(AssocItem, 104);
+    static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 160);
-    static_assert_size!(ForeignItemKind, 72);
+    static_assert_size!(ForeignItem, 96);
+    static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 200);
+    static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);

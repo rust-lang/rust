@@ -187,3 +187,9 @@ while work_list:
             check_generic_bound(bound)
         if item["inner"]["default"]:
             check_type(item["inner"]["default"])
+    elif item["kind"] == "import":
+        if item["inner"]["id"]:
+            inner_id = item["inner"]["id"]
+            assert valid_id(inner_id)
+            if inner_id in crate["index"] and inner_id not in visited:
+                work_list.add(inner_id)

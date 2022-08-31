@@ -56,7 +56,7 @@ reload:
 click: "#help-button"
 assert-css: (
     "#help-button .popover",
-    {"display": "block", "border-color": "rgb(210, 210, 210)"},
+    {"display": "block", "border-color": "rgb(224, 224, 224)"},
 )
 compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-color"])
 compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])

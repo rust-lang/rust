@@ -20,8 +20,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
-    ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    EmissionGuarantee, ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -31,7 +31,7 @@ use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
-    SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+    DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
 use std::cell::{self, RefCell};
@@ -467,6 +467,9 @@ impl Session {
         feature: Symbol,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.parse_sess.create_err(err);
+        if err.code.is_none() {
+            err.code = std::option::Option::Some(error_code!(E0658));
+        }
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }
@@ -481,6 +484,15 @@ impl Session {
     }
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
+    }
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl SessionDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        self.parse_sess.create_fatal(fatal)
+    }
+    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+        self.parse_sess.emit_fatal(fatal)
     }
     #[inline]
     pub fn err_count(&self) -> usize {
@@ -661,8 +673,9 @@ impl Session {
             )
     }
 
+    /// Returns `true` if the target can use the current split debuginfo configuration.
     pub fn target_can_use_split_dwarf(&self) -> bool {
-        !self.target.is_like_windows && !self.target.is_like_osx
+        self.target.debuginfo_kind == DebuginfoKind::Dwarf
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
@@ -1542,6 +1555,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if dwarf_version > 5 {
             sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
         }
+    }
+
+    if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
+        && !sess.opts.unstable_opts.unstable_options
+    {
+        sess.err(&format!(
+            "`-Csplit-debuginfo={}` is unstable on this platform",
+            sess.split_debuginfo()
+        ));
     }
 }
 

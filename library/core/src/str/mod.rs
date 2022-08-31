@@ -22,9 +22,9 @@ use crate::slice::{self, SliceIndex};
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "none")]
-#[allow(missing_docs)]
-pub mod lossy;
+mod lossy;
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use converts::{from_utf8, from_utf8_unchecked};
@@ -2638,3 +2638,7 @@ impl_fn_for_zst! {
         unsafe { from_utf8_unchecked(bytes) }
     };
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+impl !crate::error::Error for &str {}

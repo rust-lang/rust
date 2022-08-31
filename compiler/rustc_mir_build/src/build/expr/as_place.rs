@@ -513,7 +513,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder)
             }
 
-            ExprKind::PlaceTypeAscription { source, user_ty } => {
+            ExprKind::PlaceTypeAscription { source, ref user_ty } => {
                 let place_builder = unpack!(
                     block = this.expr_as_place(
                         block,
@@ -522,11 +522,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         fake_borrow_temps,
                     )
                 );
-                if let Some(user_ty) = user_ty {
+                if let Some(box user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty,
+                            user_ty: *user_ty,
                             inferred_ty: expr.ty,
                         });
 
@@ -547,15 +547,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
                 block.and(place_builder)
             }
-            ExprKind::ValueTypeAscription { source, user_ty } => {
+            ExprKind::ValueTypeAscription { source, ref user_ty } => {
                 let source = &this.thir[source];
                 let temp =
                     unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
-                if let Some(user_ty) = user_ty {
+                if let Some(box user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty,
+                            user_ty: *user_ty,
                             inferred_ty: expr.ty,
                         });
                     this.cfg.push(

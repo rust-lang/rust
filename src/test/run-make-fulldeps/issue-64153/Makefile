@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # `llvm-objdump`'s output looks different on windows than on other platforms.
 # It should be enough to check on Unix platforms, so:

@@ -1,15 +1,16 @@
 use crate::back::write::{
     self, save_temp_bitcode, to_llvm_opt_settings, with_llvm_pmb, DiagnosticHandlers,
 };
-use crate::llvm::archive_ro::ArchiveRO;
 use crate::llvm::{self, build_string, False, True};
 use crate::{llvm_util, LlvmCodegenBackend, ModuleLlvm};
+use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, TargetMachineFactoryConfig};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
 use rustc_errors::{FatalError, Handler};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
@@ -107,14 +108,24 @@ fn prepare_lto(
                     .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
             }
 
-            let archive = ArchiveRO::open(path).expect("wanted an rlib");
+            let archive_data = unsafe {
+                Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
+                    .expect("couldn't map rlib")
+            };
+            let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
             let obj_files = archive
-                .iter()
-                .filter_map(|child| child.ok().and_then(|c| c.name().map(|name| (name, c))))
+                .members()
+                .filter_map(|child| {
+                    child.ok().and_then(|c| {
+                        std::str::from_utf8(c.name()).ok().map(|name| (name.trim(), c))
+                    })
+                })
                 .filter(|&(name, _)| looks_like_rust_object_file(name));
             for (name, child) in obj_files {
                 info!("adding bitcode from {}", name);
-                match get_bitcode_slice_from_object_data(child.data()) {
+                match get_bitcode_slice_from_object_data(
+                    child.data(&*archive_data).expect("corrupt rlib"),
+                ) {
                     Ok(data) => {
                         let module = SerializedModule::FromRlib(data.to_vec());
                         upstream_modules.push((module, CString::new(name).unwrap()));

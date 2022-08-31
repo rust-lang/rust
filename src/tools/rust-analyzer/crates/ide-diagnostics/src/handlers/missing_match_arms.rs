@@ -750,7 +750,7 @@ fn main() {
 enum Foo { A }
 fn main() {
     // FIXME: this should not bail out but current behavior is such as the old algorithm.
-    // ExprValidator::validate_match(..) checks types of top level patterns incorrecly.
+    // ExprValidator::validate_match(..) checks types of top level patterns incorrectly.
     match Foo::A {
         ref _x => {}
         Foo::A => {}

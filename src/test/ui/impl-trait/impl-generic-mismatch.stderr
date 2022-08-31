@@ -27,8 +27,22 @@ help: try changing the `impl Trait` argument to a generic parameter
 LL |     fn bar<U: Debug>(&self, _: &U) { }
    |           ++++++++++            ~
 
+error[E0643]: method `baz` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:26:33
+   |
+LL |     fn baz<U: Debug, T: Debug>(&self, _: &U, _: &T);
+   |                      - declaration in trait here
+...
+LL |     fn baz<T: Debug>(&self, _: &impl Debug, _: &T) { }
+   |                                 ^^^^^^^^^^ expected generic parameter, found `impl Trait`
+   |
+help: try changing the `impl Trait` argument to a generic parameter
+   |
+LL |     fn baz<U: Debug, T: Debug>(&self, _: &T, _: &T) { }
+   |           ~~~~~~~~~~~~~~~~~~~~            ~
+
 error[E0643]: method `hash` has incompatible signature for trait
-  --> $DIR/impl-generic-mismatch.rs:28:33
+  --> $DIR/impl-generic-mismatch.rs:37:33
    |
 LL |     fn hash(&self, hasher: &mut impl Hasher) {}
    |                                 ^^^^^^^^^^^ expected generic parameter, found `impl Trait`
@@ -38,6 +52,6 @@ LL |     fn hash(&self, hasher: &mut impl Hasher) {}
 LL |     fn hash<H: Hasher>(&self, state: &mut H);
    |             - declaration in trait here
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0643`.

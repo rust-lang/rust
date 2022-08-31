@@ -89,7 +89,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
-use rustc_ast::{ExprKind, MetaItem, Mutability};
+use rustc_ast::{AttrVec, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -131,7 +131,7 @@ pub fn expand_deriving_rustc_encodable(
                 ],
                 PathKind::Std,
             )),
-            attributes: Vec::new(),
+            attributes: AttrVec::new(),
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 encodable_substructure(a, b, c, krate)

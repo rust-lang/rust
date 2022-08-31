@@ -24,28 +24,23 @@
           StorageLive(_3);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
 -         _4 = SizeOf(i32);                // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 -         _5 = AlignOf(i32);               // scope 2 at $DIR/boxes.rs:+1:14: +1:22
--         _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 +         _4 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
 +         _5 = const 4_usize;              // scope 2 at $DIR/boxes.rs:+1:14: +1:22
-+         _6 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
+          _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> bb1; // scope 2 at $DIR/boxes.rs:+1:14: +1:22
                                            // mir::Constant
-                                           // + span: $DIR/boxes.rs:12:14: 12:22
+                                           // + span: $DIR/boxes.rs:13:14: 13:22
                                            // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(<ZST>) }
       }
   
       bb1: {
           StorageLive(_7);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           _7 = ShallowInitBox(move _6, i32); // scope 0 at $DIR/boxes.rs:+1:14: +1:22
-          StorageLive(_8);                 // scope 0 at $DIR/boxes.rs:+1:19: +1:21
           _8 = (((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>).0: *const i32); // scope 0 at $DIR/boxes.rs:+1:19: +1:21
           (*_8) = const 42_i32;            // scope 0 at $DIR/boxes.rs:+1:19: +1:21
-          StorageDead(_8);                 // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           _3 = move _7;                    // scope 0 at $DIR/boxes.rs:+1:14: +1:22
           StorageDead(_7);                 // scope 0 at $DIR/boxes.rs:+1:21: +1:22
-          StorageLive(_9);                 // scope 0 at $DIR/boxes.rs:+1:13: +1:22
           _9 = (((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>).0: *const i32); // scope 0 at $DIR/boxes.rs:+1:13: +1:22
           _2 = (*_9);                      // scope 0 at $DIR/boxes.rs:+1:13: +1:22
-          StorageDead(_9);                 // scope 0 at $DIR/boxes.rs:+1:13: +1:26
           _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/boxes.rs:+1:13: +1:26
           StorageDead(_2);                 // scope 0 at $DIR/boxes.rs:+1:25: +1:26
           drop(_3) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/boxes.rs:+1:26: +1:27
@@ -53,7 +48,7 @@
   
       bb2: {
           StorageDead(_3);                 // scope 0 at $DIR/boxes.rs:+1:26: +1:27
-          nop;                             // scope 0 at $DIR/boxes.rs:+0:11: +2:2
+          _0 = const ();                   // scope 0 at $DIR/boxes.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/boxes.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/boxes.rs:+2:2: +2:2
       }

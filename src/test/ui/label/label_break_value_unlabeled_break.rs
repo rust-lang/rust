@@ -1,4 +1,3 @@
-#![feature(label_break_value)]
 #![allow(unused_labels)]
 
 // Simple unlabeled break should yield in an error

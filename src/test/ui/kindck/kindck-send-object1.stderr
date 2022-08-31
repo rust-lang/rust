@@ -1,8 +1,8 @@
 error[E0277]: `(dyn Dummy + 'a)` cannot be shared between threads safely
-  --> $DIR/kindck-send-object1.rs:10:5
+  --> $DIR/kindck-send-object1.rs:10:19
    |
 LL |     assert_send::<&'a dyn Dummy>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
+   |                   ^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `(dyn Dummy + 'a)`
    = note: required for `&'a (dyn Dummy + 'a)` to implement `Send`
@@ -13,10 +13,10 @@ LL | fn assert_send<T:Send+'static>() { }
    |                  ^^^^ required by this bound in `assert_send`
 
 error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
-  --> $DIR/kindck-send-object1.rs:28:5
+  --> $DIR/kindck-send-object1.rs:28:19
    |
 LL |     assert_send::<Box<dyn Dummy + 'a>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+   |                   ^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `(dyn Dummy + 'a)`
    = note: required for `Unique<(dyn Dummy + 'a)>` to implement `Send`

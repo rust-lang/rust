@@ -127,7 +127,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
             if self.tcx.sess.target.options.is_like_osx {
-                // The `inspect` method is okay here because we checked relocations, and
+                // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state
                 // (not as part of the interpreter execution).
                 //
@@ -296,17 +296,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
 pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAllocation<'tcx>) -> RValue<'gcc> {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.provenance().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // This `inspect` is okay since we have checked that it is not within a pointer with provenance, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
             // (we inspect the result after interpreter execution). Any undef byte is replaced with
             // some arbitrary byte value.
@@ -319,7 +319,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
             read_target_uint( dl.endian,
                 // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
                 // affect interpreter execution (we inspect the result after interpreter execution),
-                // and we properly interpret the relocation as a relocation pointer offset.
+                // and we properly interpret the provenance as a relocation pointer offset.
                 alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
             )
             .expect("const_alloc_to_llvm: could not read relocation pointer")
@@ -336,7 +336,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
     }
     if alloc.len() >= next_offset {
         let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all relocations, it is
+        // This `inspect` is okay since we have check that it is after all provenance, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
         // inspect the result after interpreter execution). Any undef byte is replaced with some
         // arbitrary byte value.

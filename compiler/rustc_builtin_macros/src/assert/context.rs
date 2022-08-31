@@ -119,7 +119,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 vec![self.cx.attribute(attr::mk_list_item(
                     Ident::new(sym::allow, self.span),
                     vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
-                ))],
+                ))]
+                .into(),
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
                     kind: UseTreeKind::Nested(vec![
@@ -177,7 +178,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         });
         self.cx.expr(
             self.span,
-            ExprKind::MacCall(MacCall {
+            ExprKind::MacCall(P(MacCall {
                 path: panic_path,
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(self.span),
@@ -185,7 +186,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     initial.into_iter().chain(captures).collect::<TokenStream>(),
                 )),
                 prior_type_ascription: None,
-            }),
+            })),
         )
     }
 

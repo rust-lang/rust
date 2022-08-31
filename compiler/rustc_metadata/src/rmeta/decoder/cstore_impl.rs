@@ -76,9 +76,9 @@ impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
 }
 
 macro_rules! provide_one {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 $cdata
                     .root
                     .tables
@@ -89,9 +89,9 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 // We don't decode `table_direct`, since it's not a Lazy, but an actual value
                 $cdata
                     .root
@@ -102,11 +102,11 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
-        fn $name<$lt>(
-            $tcx: TyCtxt<$lt>,
-            def_id_arg: ty::query::query_keys::$name<$lt>,
-        ) -> ty::query::query_values::$name<$lt> {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
+        fn $name<'tcx>(
+            $tcx: TyCtxt<'tcx>,
+            def_id_arg: ty::query::query_keys::$name<'tcx>,
+        ) -> ty::query::query_values::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -130,11 +130,11 @@ macro_rules! provide_one {
 }
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => { $($compute:tt)* })*) => {
         pub fn provide_extern(providers: &mut ExternProviders) {
             $(provide_one! {
-                <$lt> $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
+                $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
             })*
 
             *providers = ExternProviders {
@@ -187,7 +187,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
     }
 }
 
-provide! { <'tcx> tcx, def_id, other, cdata,
+provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table }
     explicit_predicates_of => { table }
     generics_of => { table }
@@ -199,6 +199,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     codegen_fn_attrs => { table }
     impl_trait_ref => { table }
     const_param_default => { table }
+    object_lifetime_default => { table }
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
@@ -341,7 +342,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| {
+        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
+        native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
@@ -355,7 +357,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .foreign_items
                         .contains(&id)
                 })
-                .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -676,6 +677,9 @@ impl CrateStore for CStore {
     }
 
     fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
-        self.get_crate_data(cnum).imported_source_files(sess);
+        let cdata = self.get_crate_data(cnum);
+        for file_index in 0..cdata.root.source_map.size() {
+            cdata.imported_source_file(file_index as u32, sess);
+        }
     }
 }

@@ -1,8 +1,8 @@
 error[E0277]: `Rc<()>` cannot be sent between threads safely
-  --> $DIR/issue-21763.rs:9:5
+  --> $DIR/issue-21763.rs:9:11
    |
 LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Rc<()>` cannot be sent between threads safely
+   |           ^^^^^^^^^^^^^^^^^^^^^^^ `Rc<()>` cannot be sent between threads safely
    |
    = help: within `(Rc<()>, Rc<()>)`, the trait `Send` is not implemented for `Rc<()>`
    = note: required because it appears within the type `(Rc<()>, Rc<()>)`

@@ -2,37 +2,23 @@
 
 use std::collections::BTreeSet;
 use std::env;
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs::{self, write};
 use std::path::Path;
 use tidy::features::{collect_lang_features, collect_lib_features, Features};
+use tidy::t;
 use tidy::unstable_book::{
     collect_unstable_book_section_file_names, collect_unstable_feature_names, LANG_FEATURES_DIR,
     LIB_FEATURES_DIR, PATH_STR,
 };
 
-/// A helper macro to `unwrap` a result except also print out details like:
-///
-/// * The file/line of the panic
-/// * The expression that failed
-/// * The error itself
-macro_rules! t {
-    ($e:expr) => {
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with {}", stringify!($e), e),
-        }
-    };
-}
-
 fn generate_stub_issue(path: &Path, name: &str, issue: u32) {
-    let mut file = t!(File::create(path));
-    t!(write!(file, include_str!("stub-issue.md"), name = name, issue = issue));
+    let content = format!(include_str!("stub-issue.md"), name = name, issue = issue);
+    t!(write(path, content), path);
 }
 
 fn generate_stub_no_issue(path: &Path, name: &str) {
-    let mut file = t!(File::create(path));
-    t!(write!(file, include_str!("stub-no-issue.md"), name = name));
+    let content = format!(include_str!("stub-no-issue.md"), name = name);
+    t!(write(path, content), path);
 }
 
 fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {
@@ -52,13 +38,14 @@ fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Featur
     let lang_features_str = set_to_summary_str(&unstable_lang_features, "language-features");
     let lib_features_str = set_to_summary_str(&unstable_lib_features, "library-features");
 
-    let mut file = t!(File::create(&path.join("src/SUMMARY.md")));
-    t!(file.write_fmt(format_args!(
+    let summary_path = path.join("src/SUMMARY.md");
+    let content = format!(
         include_str!("SUMMARY.md"),
         compiler_flags = compiler_flags_str,
         language_features = lang_features_str,
         library_features = lib_features_str
-    )));
+    );
+    t!(write(&summary_path, content), summary_path);
 }
 
 fn generate_unstable_book_files(src: &Path, out: &Path, features: &Features) {

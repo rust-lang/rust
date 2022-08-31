@@ -13,7 +13,7 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -377,6 +377,35 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
     }
 
+    /// Creates a new file in read-write mode; error if the file exists.
+    ///
+    /// This function will create a file if it does not exist, or return an error if it does. This
+    /// way, if the call succeeds, the file returned is guaranteed to be new.
+    ///
+    /// This option is useful because it is atomic. Otherwise between checking whether a file
+    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// race condition / attack).
+    ///
+    /// This can also be written using
+    /// `File::options().read(true).write(true).create_new(true).open(...)`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_create_new)]
+    ///
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_new("foo.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_create_new", issue = "none")]
+    pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
+        OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
+    }
+
     /// Returns a new OpenOptions object.
     ///
     /// This function returns a new OpenOptions object that you can use to
@@ -703,8 +732,8 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.inner.read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
     }
 
     #[inline]
@@ -755,8 +784,8 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.inner.read_buf(buf)
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {

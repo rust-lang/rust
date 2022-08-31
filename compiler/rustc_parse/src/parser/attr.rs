@@ -34,7 +34,7 @@ enum OuterAttributeType {
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
-        let mut outer_attrs: Vec<ast::Attribute> = Vec::new();
+        let mut outer_attrs = ast::AttrVec::new();
         let mut just_parsed_doc_comment = false;
         let start_pos = self.token_cursor.num_next_calls;
         loop {
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        Ok(AttrWrapper::new(outer_attrs.into(), start_pos))
+        Ok(AttrWrapper::new(outer_attrs, start_pos))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -283,8 +283,8 @@ impl<'a> Parser<'a> {
     /// terminated by a semicolon.
     ///
     /// Matches `inner_attrs*`.
-    pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
-        let mut attrs: Vec<ast::Attribute> = vec![];
+    pub(crate) fn parse_inner_attributes(&mut self) -> PResult<'a, ast::AttrVec> {
+        let mut attrs = ast::AttrVec::new();
         loop {
             let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
             // Only try to parse if it is an inner attribute (has `!`).

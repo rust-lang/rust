@@ -4,7 +4,6 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_middle::hir::map::fn_sig;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::DefId;
@@ -368,7 +367,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
-        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(fn_sig);
+        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.map_or(false, |fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
@@ -763,16 +762,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         // If there is a single unbound associated type and a single excess generic param
         // suggest replacing the generic param with the associated type bound
         if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
-            let mut suggestions = vec![];
             let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-            for (potential, name) in iter::zip(unused_generics, &unbound_types) {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(potential.span()) {
-                    suggestions.push((potential.span(), format!("{} = {}", name, snippet)));
-                }
-            }
+            let suggestions = iter::zip(unused_generics, &unbound_types)
+                .map(|(potential, name)| (potential.span().shrink_to_lo(), format!("{name} = ")))
+                .collect::<Vec<_>>();
 
             if !suggestions.is_empty() {
-                err.multipart_suggestion(
+                err.multipart_suggestion_verbose(
                     &format!(
                         "replace the generic bound{s} with the associated type{s}",
                         s = pluralize!(unbound_types.len())

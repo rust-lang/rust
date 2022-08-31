@@ -17,28 +17,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
-    match node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(&sig.decl),
-        Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
-        | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, ..), .. }) => {
-            Some(fn_decl)
-        }
-        _ => None,
-    }
-}
-
-pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
-    match &node {
-        Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
-        | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })
-        | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, _), .. }) => Some(sig),
-        _ => None,
-    }
-}
-
 #[inline]
 pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
@@ -146,10 +124,12 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Map<'hir> {
+    #[inline]
     pub fn krate(self) -> &'hir Crate<'hir> {
         self.tcx.hir_crate(())
     }
 
+    #[inline]
     pub fn root_module(self) -> &'hir Mod<'hir> {
         match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
             Some(OwnerNode::Crate(item)) => item,
@@ -157,14 +137,17 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[inline]
     pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
+    #[inline]
     pub fn module_items(self, module: LocalDefId) -> impl Iterator<Item = ItemId> + 'hir {
         self.tcx.hir_module_items(module).items()
     }
 
+    #[inline]
     pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
@@ -384,7 +367,7 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_decl(node)
+            node.fn_decl()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }
@@ -392,7 +375,7 @@ impl<'hir> Map<'hir> {
 
     pub fn fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
         if let Some(node) = self.find(hir_id) {
-            fn_sig(node)
+            node.fn_sig()
         } else {
             bug!("no node for hir_id `{}`", hir_id)
         }
@@ -489,11 +472,13 @@ impl<'hir> Map<'hir> {
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
+    #[inline]
     pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
         self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
-    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
+    #[inline]
+    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
@@ -501,7 +486,9 @@ impl<'hir> Map<'hir> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => def_id,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.local_parent(def_id),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.local_parent(def_id)
+            }
             _ => bug!("ty_param_owner: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
@@ -510,7 +497,9 @@ impl<'hir> Map<'hir> {
         let def_kind = self.tcx.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => kw::SelfUpper,
-            DefKind::TyParam | DefKind::ConstParam => self.tcx.item_name(def_id.to_def_id()),
+            DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
+                self.tcx.item_name(def_id.to_def_id())
+            }
             _ => bug!("ty_param_name: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
@@ -626,35 +615,22 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId)) {
-        self.for_each_module(f)
-    }
-
-    #[cfg(parallel_compiler)]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
-
-        fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
-        where
-            F: Fn(LocalDefId) + Sync,
-        {
-            (*f)(module);
-            let items = tcx.hir_module_items(module);
-            par_iter(&items.submodules[..]).for_each(|&sm| par_iter_submodules(tcx, sm, f));
-        }
+    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+        let crate_items = self.tcx.hir_crate_items(());
+        par_for_each_in(&crate_items.submodules[..], |module| f(*module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
     pub fn parent_iter(self, current_id: HirId) -> ParentHirIterator<'hir> {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
     }

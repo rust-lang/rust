@@ -53,7 +53,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.pop_stack_frame(/* unwinding */ true)?;
             return Ok(true);
         };
-        let basic_block = &self.body().basic_blocks()[loc.block];
+        let basic_block = &self.body().basic_blocks[loc.block];
 
         if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             let old_frames = self.frame_idx();
@@ -251,8 +251,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Len(place) => {
                 let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(&src)?;
-                let len = mplace.len(self)?;
+                let op = self.place_to_op(&src)?;
+                let len = op.len(self)?;
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 

@@ -11,8 +11,6 @@ fn process_never(_1: *const !) -> () {
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:+1:8: +1:14
-        StorageDead(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:+2:1: +2:2
         unreachable;                     // scope 0 at $DIR/uninhabited-enum.rs:+0:39: +2:2
     }
 }

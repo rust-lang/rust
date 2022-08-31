@@ -292,12 +292,17 @@ fn check_os_error(err: Result) -> i32 {
     }
 }
 
-trait FromSgxResult {
+/// Translate the raw result of an SGX usercall.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub trait FromSgxResult {
+    /// Return type
     type Return;
 
+    /// Translate the raw result of an SGX usercall.
     fn from_sgx_result(self) -> IoResult<Self::Return>;
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T> FromSgxResult for (Result, T) {
     type Return = T;
 
@@ -310,6 +315,7 @@ impl<T> FromSgxResult for (Result, T) {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl FromSgxResult for Result {
     type Return = ();
 

@@ -300,57 +300,6 @@ impl Step for Cargo {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Rls {
-    stage: u32,
-    host: TargetSelection,
-}
-
-impl Step for Rls {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rls")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rls { stage: run.builder.top_stage, host: run.target });
-    }
-
-    /// Runs `cargo test` for the rls.
-    fn run(self, builder: &Builder<'_>) {
-        let stage = self.stage;
-        let host = self.host;
-        let compiler = builder.compiler(stage, host);
-
-        let build_result =
-            builder.ensure(tool::Rls { compiler, target: self.host, extra_features: Vec::new() });
-        if build_result.is_none() {
-            eprintln!("failed to test rls: could not build");
-            return;
-        }
-
-        let mut cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            Mode::ToolRustc,
-            host,
-            "test",
-            "src/tools/rls",
-            SourceType::Submodule,
-            &[],
-        );
-
-        cargo.add_rustc_lib_path(builder, compiler);
-        cargo.arg("--").args(builder.config.cmd.test_args());
-
-        if try_run(builder, &mut cargo.into()) {
-            builder.save_toolstate("rls", ToolState::TestPass);
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
     stage: u32,
     host: TargetSelection,
@@ -1514,7 +1463,15 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         test_args.append(&mut builder.config.cmd.test_args());
 
-        cmd.args(&test_args);
+        // On Windows, replace forward slashes in test-args by backslashes
+        // so the correct filters are passed to libtest
+        if cfg!(windows) {
+            let test_args_win: Vec<String> =
+                test_args.iter().map(|s| s.replace("/", "\\")).collect();
+            cmd.args(&test_args_win);
+        } else {
+            cmd.args(&test_args);
+        }
 
         if builder.is_verbose() {
             cmd.arg("--verbose");
@@ -2516,6 +2473,43 @@ impl Step for TierCheck {
 
         builder.info("platform support check");
         try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ReplacePlaceholderTest;
+
+impl Step for ReplacePlaceholderTest {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    /// Ensure the version placeholder replacement tool builds
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("build check for version replacement placeholder");
+
+        // Test the version placeholder replacement tool itself.
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/replace-version-placeholder",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/replace-version-placeholder")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
     }
 }
 

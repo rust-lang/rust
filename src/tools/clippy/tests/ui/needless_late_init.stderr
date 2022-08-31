@@ -1,5 +1,5 @@
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:22:5
+  --> $DIR/needless_late_init.rs:23:5
    |
 LL |     let a;
    |     ^^^^^^ created here
@@ -13,7 +13,7 @@ LL |     let a = "zero";
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:25:5
+  --> $DIR/needless_late_init.rs:26:5
    |
 LL |     let b;
    |     ^^^^^^ created here
@@ -27,7 +27,7 @@ LL |     let b = 1;
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:26:5
+  --> $DIR/needless_late_init.rs:27:5
    |
 LL |     let c;
    |     ^^^^^^ created here
@@ -41,7 +41,7 @@ LL |     let c = 2;
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:30:5
+  --> $DIR/needless_late_init.rs:31:5
    |
 LL |     let d: usize;
    |     ^^^^^^^^^^^^^ created here
@@ -54,7 +54,7 @@ LL |     let d: usize = 1;
    |     ~~~~~~~~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:33:5
+  --> $DIR/needless_late_init.rs:34:5
    |
 LL |     let e;
    |     ^^^^^^ created here
@@ -67,7 +67,7 @@ LL |     let e = format!("{}", d);
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:38:5
+  --> $DIR/needless_late_init.rs:39:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -88,7 +88,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:47:5
+  --> $DIR/needless_late_init.rs:48:5
    |
 LL |     let b;
    |     ^^^^^^
@@ -109,7 +109,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:54:5
+  --> $DIR/needless_late_init.rs:55:5
    |
 LL |     let d;
    |     ^^^^^^
@@ -130,7 +130,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:62:5
+  --> $DIR/needless_late_init.rs:63:5
    |
 LL |     let e;
    |     ^^^^^^
@@ -151,7 +151,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:69:5
+  --> $DIR/needless_late_init.rs:70:5
    |
 LL |     let f;
    |     ^^^^^^
@@ -167,7 +167,7 @@ LL +         1 => "three",
    |
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:75:5
+  --> $DIR/needless_late_init.rs:76:5
    |
 LL |     let g: usize;
    |     ^^^^^^^^^^^^^
@@ -187,7 +187,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:83:5
+  --> $DIR/needless_late_init.rs:84:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -201,7 +201,7 @@ LL |     let x = 1;
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:87:5
+  --> $DIR/needless_late_init.rs:88:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -215,7 +215,7 @@ LL |     let x = SignificantDrop;
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:91:5
+  --> $DIR/needless_late_init.rs:92:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -229,7 +229,7 @@ LL |     let x = SignificantDrop;
    |     ~~~~~
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:110:5
+  --> $DIR/needless_late_init.rs:111:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -250,7 +250,7 @@ LL |     };
    |      +
 
 error: unneeded late initialization
-  --> $DIR/needless_late_init.rs:127:5
+  --> $DIR/needless_late_init.rs:128:5
    |
 LL |     let a;
    |     ^^^^^^

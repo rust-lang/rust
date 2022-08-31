@@ -20,7 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
@@ -671,11 +671,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It only make sense when suggesting dereferences for arguments
-        let ObligationCauseCode::FunctionArgumentObligation { .. } = obligation.cause.code() else {
-            return false;
-        };
-        let param_env = obligation.param_env;
-        let body_id = obligation.cause.body_id;
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code()
+            else { return false; };
+        let Some(typeck_results) = self.in_progress_typeck_results
+            else { return false; };
+        let typeck_results = typeck_results.borrow();
+        let hir::Node::Expr(expr) = self.tcx.hir().get(*arg_hir_id)
+            else { return false; };
+        let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
+            else { return false; };
+
         let span = obligation.cause.span;
         let mut real_trait_pred = trait_pred;
         let mut code = obligation.cause.code();
@@ -685,11 +690,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 real_trait_pred = parent_trait_pred;
             }
 
-            // Skipping binder here, remapping below
-            let real_ty = real_trait_pred.self_ty().skip_binder();
+            let real_ty = real_trait_pred.self_ty();
+            // We `erase_late_bound_regions` here because `make_subregion` does not handle
+            // `ReLateBound`, and we don't particularly care about the regions.
+            if self
+                .can_eq(obligation.param_env, self.tcx.erase_late_bound_regions(real_ty), arg_ty)
+                .is_err()
+            {
+                continue;
+            }
 
-            if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
-                let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
+            if let ty::Ref(region, base_ty, mutbl) = *real_ty.skip_binder().kind() {
+                let mut autoderef = Autoderef::new(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    span,
+                    base_ty,
+                    span,
+                );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
                     let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
@@ -697,24 +716,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Remapping bound vars here
                     let real_trait_pred_and_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                    let obligation = self
-                        .mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred_and_ty);
+                    let obligation = self.mk_trait_obligation_with_new_self_ty(
+                        obligation.param_env,
+                        real_trait_pred_and_ty,
+                    );
                     Some(steps).filter(|_| self.predicate_may_hold(&obligation))
                 }) {
                     if steps > 0 {
-                        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            // Don't care about `&mut` because `DerefMut` is used less
-                            // often and user will not expect autoderef happens.
-                            if src.starts_with('&') && !src.starts_with("&mut ") {
-                                let derefs = "*".repeat(steps);
-                                err.span_suggestion(
-                                    span,
-                                    "consider dereferencing here",
-                                    format!("&{}{}", derefs, &src[1..]),
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
+                        // Don't care about `&mut` because `DerefMut` is used less
+                        // often and user will not expect autoderef happens.
+                        if let Some(hir::Node::Expr(hir::Expr {
+                            kind:
+                                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr),
+                            ..
+                        })) = self.tcx.hir().find(*arg_hir_id)
+                        {
+                            let derefs = "*".repeat(steps);
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_lo(),
+                                "consider dereferencing here",
+                                derefs,
+                                Applicability::MachineApplicable,
+                            );
+                            return true;
                         }
                     }
                 } else if real_trait_pred != trait_pred {
@@ -724,7 +748,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let real_trait_pred_and_base_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, base_ty));
                     let obligation = self.mk_trait_obligation_with_new_self_ty(
-                        param_env,
+                        obligation.param_env,
                         real_trait_pred_and_base_ty,
                     );
                     if self.predicate_may_hold(&obligation) {
@@ -852,6 +876,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => return false,
         };
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
+            && obligation.cause.span.can_be_used_for_suggestions()
         {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
@@ -882,6 +907,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             obligation.cause.code()
         {
             &parent_code
+        } else if let ObligationCauseCode::ItemObligation(_)
+        | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
+        {
+            obligation.cause.code()
         } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
         {
@@ -906,102 +935,121 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let param_env = obligation.param_env;
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing =
-            |old_pred: ty::PolyTraitPredicate<'tcx>, blacklist: &[DefId]| -> bool {
-                if blacklist.contains(&old_pred.def_id()) {
-                    return false;
-                }
-                // We map bounds to `&T` and `&mut T`
-                let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
-                    (
-                        trait_pred,
-                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                    )
-                });
-                let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
-                    (
-                        trait_pred,
-                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
-                    )
-                });
-
-                let mk_result = |trait_pred_and_new_ty| {
-                    let obligation =
-                        self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
-                    self.predicate_must_hold_modulo_regions(&obligation)
-                };
-                let imm_result = mk_result(trait_pred_and_imm_ref);
-                let mut_result = mk_result(trait_pred_and_mut_ref);
-
-                if imm_result || mut_result {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                        // We have a very specific type of error, where just borrowing this argument
-                        // might solve the problem. In cases like this, the important part is the
-                        // original type obligation, not the last one that failed, which is arbitrary.
-                        // Because of this, we modify the error to refer to the original obligation and
-                        // return early in the caller.
-
-                        let msg = format!("the trait bound `{}` is not satisfied", old_pred);
-                        if has_custom_message {
-                            err.note(&msg);
-                        } else {
-                            err.message =
-                                vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
-                        }
-                        if snippet.starts_with('&') {
-                            // This is already a literal borrow and the obligation is failing
-                            // somewhere else in the obligation chain. Do not suggest non-sense.
-                            return false;
-                        }
-                        err.span_label(
-                            span,
-                            &format!(
-                                "expected an implementor of trait `{}`",
-                                old_pred.print_modifiers_and_trait_path(),
-                            ),
-                        );
-
-                        // This if is to prevent a special edge-case
-                        if matches!(
-                            span.ctxt().outer_expn_data().kind,
-                            ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
-                        ) {
-                            // We don't want a borrowing suggestion on the fields in structs,
-                            // ```
-                            // struct Foo {
-                            //  the_foos: Vec<Foo>
-                            // }
-                            // ```
-
-                            if imm_result && mut_result {
-                                err.span_suggestions(
-                                    span.shrink_to_lo(),
-                                    "consider borrowing here",
-                                    ["&".to_string(), "&mut ".to_string()].into_iter(),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_suggestion_verbose(
-                                    span.shrink_to_lo(),
-                                    &format!(
-                                        "consider{} borrowing here",
-                                        if mut_result { " mutably" } else { "" }
-                                    ),
-                                    format!("&{}", if mut_result { "mut " } else { "" }),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-                        }
-                        return true;
-                    }
-                }
+        let mut try_borrowing = |old_pred: ty::PolyTraitPredicate<'tcx>,
+                                 blacklist: &[DefId]|
+         -> bool {
+            if blacklist.contains(&old_pred.def_id()) {
                 return false;
+            }
+            // We map bounds to `&T` and `&mut T`
+            let trait_pred_and_imm_ref = old_pred.map_bound(|trait_pred| {
+                (
+                    trait_pred,
+                    self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                )
+            });
+            let trait_pred_and_mut_ref = old_pred.map_bound(|trait_pred| {
+                (
+                    trait_pred,
+                    self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, trait_pred.self_ty()),
+                )
+            });
+
+            let mk_result = |trait_pred_and_new_ty| {
+                let obligation =
+                    self.mk_trait_obligation_with_new_self_ty(param_env, trait_pred_and_new_ty);
+                self.predicate_must_hold_modulo_regions(&obligation)
             };
+            let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
+            let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
+
+            let (ref_inner_ty_satisfies_pred, ref_inner_ty_mut) =
+                if let ObligationCauseCode::ItemObligation(_) | ObligationCauseCode::ExprItemObligation(..) = obligation.cause.code()
+                    && let ty::Ref(_, ty, mutability) = old_pred.self_ty().skip_binder().kind()
+                {
+                    (
+                        mk_result(old_pred.map_bound(|trait_pred| (trait_pred, *ty))),
+                        matches!(mutability, hir::Mutability::Mut),
+                    )
+                } else {
+                    (false, false)
+                };
+
+            if imm_ref_self_ty_satisfies_pred
+                || mut_ref_self_ty_satisfies_pred
+                || ref_inner_ty_satisfies_pred
+            {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    // We don't want a borrowing suggestion on the fields in structs,
+                    // ```
+                    // struct Foo {
+                    //  the_foos: Vec<Foo>
+                    // }
+                    // ```
+                    if !matches!(
+                        span.ctxt().outer_expn_data().kind,
+                        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
+                    ) {
+                        return false;
+                    }
+                    if snippet.starts_with('&') {
+                        // This is already a literal borrow and the obligation is failing
+                        // somewhere else in the obligation chain. Do not suggest non-sense.
+                        return false;
+                    }
+                    // We have a very specific type of error, where just borrowing this argument
+                    // might solve the problem. In cases like this, the important part is the
+                    // original type obligation, not the last one that failed, which is arbitrary.
+                    // Because of this, we modify the error to refer to the original obligation and
+                    // return early in the caller.
+
+                    let msg = format!("the trait bound `{}` is not satisfied", old_pred);
+                    if has_custom_message {
+                        err.note(&msg);
+                    } else {
+                        err.message =
+                            vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
+                    }
+                    err.span_label(
+                        span,
+                        format!(
+                            "the trait `{}` is not implemented for `{}`",
+                            old_pred.print_modifiers_and_trait_path(),
+                            old_pred.self_ty().skip_binder(),
+                        ),
+                    );
+
+                    if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
+                        err.span_suggestions(
+                            span.shrink_to_lo(),
+                            "consider borrowing here",
+                            ["&".to_string(), "&mut ".to_string()].into_iter(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            &format!(
+                                "consider{} borrowing here",
+                                if is_mut { " mutably" } else { "" }
+                            ),
+                            format!("&{}", if is_mut { "mut " } else { "" }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    return true;
+                }
+            }
+            return false;
+        };
 
         if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(_) = code
+        | ObligationCauseCode::ItemObligation(_)
+        | ObligationCauseCode::ExprItemObligation(..)
+        | ObligationCauseCode::ExprBindingObligation(..) = code
         {
             try_borrowing(poly_trait_pred, &never_suggest_borrow)
         } else {
@@ -1541,32 +1589,38 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         expected: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
-            tcx: TyCtxt<'tcx>,
+            infcx: &InferCtxt<'_, 'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs)
-                    if tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
+                    if infcx.tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
                 {
-                    tcx.mk_fn_sig(
+                    infcx.tcx.mk_fn_sig(
                         inputs.iter(),
-                        tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
+                        infcx.next_ty_var(TypeVariableOrigin {
+                            span: DUMMY_SP,
+                            kind: TypeVariableOriginKind::MiscVariable,
+                        }),
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,
                     )
                 }
-                _ => tcx.mk_fn_sig(
+                _ => infcx.tcx.mk_fn_sig(
                     std::iter::once(inputs),
-                    tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
+                    infcx.next_ty_var(TypeVariableOrigin {
+                        span: DUMMY_SP,
+                        kind: TypeVariableOriginKind::MiscVariable,
+                    }),
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
                 ),
             };
 
-            tcx.mk_fn_ptr(trait_ref.rebind(sig))
+            infcx.tcx.mk_fn_ptr(trait_ref.rebind(sig))
         }
 
         let argument_kind = match expected.skip_binder().self_ty().kind() {
@@ -1586,11 +1640,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let found_span = found_span.unwrap_or(span);
         err.span_label(found_span, "found signature defined here");
 
-        let expected = build_fn_sig_ty(self.tcx, expected);
-        let found = build_fn_sig_ty(self.tcx, found);
+        let expected = build_fn_sig_ty(self, expected);
+        let found = build_fn_sig_ty(self, found);
 
-        let (expected_str, found_str) =
-            self.tcx.infer_ctxt().enter(|infcx| infcx.cmp(expected, found));
+        let (expected_str, found_str) = self.cmp(expected, found);
 
         let signature_kind = format!("{argument_kind} signature");
         err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
@@ -2223,11 +2276,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     region, object_ty,
                 ));
             }
-            ObligationCauseCode::ItemObligation(_item_def_id) => {
+            ObligationCauseCode::ItemObligation(_)
+            | ObligationCauseCode::ExprItemObligation(..) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
-            ObligationCauseCode::BindingObligation(item_def_id, span) => {
+            ObligationCauseCode::BindingObligation(item_def_id, span)
+            | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let mut multispan = MultiSpan::from(span);
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {

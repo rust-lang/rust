@@ -24,8 +24,6 @@ use crate::clean::{
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
-type Attrs<'hir> = &'hir [ast::Attribute];
-
 /// Attempt to inline a definition into this AST.
 ///
 /// This function will fetch the definition specified, and if it is
@@ -46,7 +44,7 @@ pub(crate) fn try_inline(
     import_def_id: Option<DefId>,
     res: Res,
     name: Symbol,
-    attrs: Option<Attrs<'_>>,
+    attrs: Option<&[ast::Attribute]>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -62,7 +60,7 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
             build_impls(cx, Some(parent_module), did, attrs, &mut ret);
-            clean::TraitItem(build_external_trait(cx, did))
+            clean::TraitItem(Box::new(build_external_trait(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);
@@ -172,7 +170,7 @@ pub(crate) fn try_inline_glob(
     }
 }
 
-pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
+pub(crate) fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> &'hir [ast::Attribute] {
     cx.tcx.get_attrs_unchecked(did)
 }
 
@@ -287,7 +285,7 @@ pub(crate) fn build_impls(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     did: DefId,
-    attrs: Option<Attrs<'_>>,
+    attrs: Option<&[ast::Attribute]>,
     ret: &mut Vec<clean::Item>,
 ) {
     let _prof_timer = cx.tcx.sess.prof.generic_activity("build_inherent_impls");
@@ -300,11 +298,11 @@ pub(crate) fn build_impls(
 }
 
 /// `parent_module` refers to the parent of the re-export, not the original item
-fn merge_attrs(
+pub(crate) fn merge_attrs(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
-    old_attrs: Attrs<'_>,
-    new_attrs: Option<Attrs<'_>>,
+    old_attrs: &[ast::Attribute],
+    new_attrs: Option<&[ast::Attribute]>,
 ) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -331,7 +329,7 @@ pub(crate) fn build_impl(
     cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     did: DefId,
-    attrs: Option<Attrs<'_>>,
+    attrs: Option<&[ast::Attribute]>,
     ret: &mut Vec<clean::Item>,
 ) {
     if !cx.inlined.insert(did.into()) {
@@ -672,7 +670,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
 
     g.where_predicates.retain(|pred| match pred {
         clean::WherePredicate::BoundPredicate {
-            ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, .. },
+            ty: clean::QPath(box clean::QPathData { self_type: clean::Generic(ref s), trait_, .. }),
             bounds,
             ..
         } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.def_id() == trait_did),

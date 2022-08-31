@@ -61,7 +61,7 @@ error[E0277]: `dummy2::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:48:13
    |
 LL |     is_send(Box::new(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^^^ expected an implementor of trait `Send`
+   |     ------- ^^^^^^^^^^^^^^^^^^ the trait `Send` is not implemented for `Unique<dummy2::TestType>`
    |     |
    |     required by a bound introduced by this call
    |

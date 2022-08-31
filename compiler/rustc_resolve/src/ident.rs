@@ -13,7 +13,9 @@ use rustc_span::{Span, DUMMY_SP};
 
 use std::ptr;
 
-use crate::late::{ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind};
+use crate::late::{
+    ConstantHasGenerics, ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind,
+};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
 use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
@@ -125,7 +127,6 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::CrateRoot => true,
                 Scope::Module(..) => true,
-                Scope::RegisteredAttrs => use_prelude,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPrelude => use_prelude || is_absolute_path,
@@ -185,12 +186,11 @@ impl<'a> Resolver<'a> {
                             match ns {
                                 TypeNS => Scope::ExternPrelude,
                                 ValueNS => Scope::StdLibPrelude,
-                                MacroNS => Scope::RegisteredAttrs,
+                                MacroNS => Scope::MacroUsePrelude,
                             }
                         }
                     }
                 }
-                Scope::RegisteredAttrs => Scope::MacroUsePrelude,
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
                 Scope::BuiltinAttrs => break, // nowhere else to search
                 Scope::ExternPrelude if is_absolute_path => break,
@@ -554,14 +554,6 @@ impl<'a> Resolver<'a> {
                             Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                         }
                     }
-                    Scope::RegisteredAttrs => match this.registered_attrs.get(&ident).cloned() {
-                        Some(ident) => ok(
-                            Res::NonMacroAttr(NonMacroAttrKind::Registered),
-                            ident.span,
-                            this.arenas,
-                        ),
-                        None => Err(Determinacy::Determined),
-                    },
                     Scope::MacroUsePrelude => {
                         match this.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
@@ -951,7 +943,10 @@ impl<'a> Resolver<'a> {
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
-            if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
+            let Some(import_vis) = single_import.vis.get() else {
+                continue;
+            };
+            if !self.is_accessible_from(import_vis, parent_scope.module) {
                 continue;
             }
             let Some(module) = single_import.imported_module.get() else {
@@ -1016,7 +1011,10 @@ impl<'a> Resolver<'a> {
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         for glob_import in module.globs.borrow().iter() {
-            if !self.is_accessible_from(glob_import.vis.get(), parent_scope.module) {
+            let Some(import_vis) = glob_import.vis.get() else {
+                continue;
+            };
+            if !self.is_accessible_from(import_vis, parent_scope.module) {
                 continue;
             }
             let module = match glob_import.imported_module.get() {
@@ -1103,7 +1101,7 @@ impl<'a> Resolver<'a> {
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
-                        ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
+                        ItemRibKind(_) | AssocItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -1168,10 +1166,10 @@ impl<'a> Resolver<'a> {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
@@ -1180,7 +1178,9 @@ impl<'a> Resolver<'a> {
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
                                 // this and then enforce the self type to be concrete later on.
@@ -1207,7 +1207,6 @@ impl<'a> Resolver<'a> {
 
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(
@@ -1232,28 +1231,22 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::ConstParam, _) => {
-                let mut ribs = ribs.iter().peekable();
-                if let Some(Rib { kind: FnItemRibKind, .. }) = ribs.peek() {
-                    // When declaring const parameters inside function signatures, the first rib
-                    // is always a `FnItemRibKind`. In this case, we can skip it, to avoid it
-                    // (spuriously) conflicting with the const param.
-                    ribs.next();
-                }
-
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
-                        | AssocItemRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
                         | InlineAsmSymRibKind
+                        | AssocItemRibKind
                         | ForwardGenericParamBanRibKind => continue,
 
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !(trivial == HasGenericParams::Yes || features.generic_const_exprs) {
+                            if !(trivial == ConstantHasGenerics::Yes
+                                || features.generic_const_exprs)
+                            {
                                 if let Some(span) = finalize {
                                     self.report_error(
                                         span,
@@ -1272,7 +1265,6 @@ impl<'a> Resolver<'a> {
                         }
 
                         ItemRibKind(has_generic_params) => has_generic_params,
-                        FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if let Some(span) = finalize {
                                 self.report_error(

@@ -25,10 +25,11 @@ use std::time::Instant;
 
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
+    let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = args.windows(2).find(|w| &*w[0] == "--target").and_then(|w| w[1].to_str());
+    let target = arg("--target");
     let version = args.iter().find(|w| &**w == "-vV");
 
     let verbose = match env::var("RUSTC_VERBOSE") {
@@ -59,8 +60,7 @@ fn main() {
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
-    let crate_name =
-        args.windows(2).find(|args| args[0] == "--crate-name").and_then(|args| args[1].to_str());
+    let crate_name = arg("--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
@@ -105,6 +105,15 @@ fn main() {
             || crate_name == Some("compiler_builtins") && stage != "0"
         {
             cmd.arg("-C").arg("panic=abort");
+        }
+
+        // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
+        // issue https://github.com/rust-lang/rust/issues/100530
+        if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
+            && arg("--crate-type") != Some("proc-macro")
+            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+        {
+            cmd.arg("-Ztls-model=initial-exec");
         }
     } else {
         // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars

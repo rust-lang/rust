@@ -535,7 +535,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, _alloc: ()) {
     libc::free(ptr.pointer.0 as *mut u8);
 }
 
@@ -575,11 +575,19 @@ pub mod intrinsics {
 }
 
 pub mod libc {
+    // With the new Universal CRT, msvc has switched to all the printf functions being inline wrapper
+    // functions. legacy_stdio_definitions.lib which provides the printf wrapper functions as normal
+    // symbols to link against.
+    #[cfg_attr(unix, link(name = "c"))]
+    #[cfg_attr(target_env="msvc", link(name="legacy_stdio_definitions"))]
+    extern "C" {
+        pub fn printf(format: *const i8, ...) -> i32;
+    }
+
     #[cfg_attr(unix, link(name = "c"))]
     #[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
     extern "C" {
         pub fn puts(s: *const i8) -> i32;
-        pub fn printf(format: *const i8, ...) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
         pub fn free(ptr: *mut u8);
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);

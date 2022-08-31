@@ -142,7 +142,7 @@ LL | pub trait T {
 help: replace the generic bounds with the associated types
    |
 LL | fn trait_bound_generic<I: T<A = u8, B = u16>>(_i: I) {
-   |                             ~~~~~~  ~~~~~~~
+   |                             +++     +++
 
 error: aborting due to 10 previous errors
 

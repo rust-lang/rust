@@ -11,8 +11,6 @@ use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
 
-use std::iter;
-
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
 ///////////////////////////////////////////////////////////////////////////
@@ -210,34 +208,13 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
     let impl_obligations =
-        predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
+        super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
 
     let impl_obligations = impl_obligations
         .chain(normalization_obligations1.into_iter())
         .chain(normalization_obligations2.into_iter());
 
     (subject, impl_obligations)
-}
-
-pub fn predicates_for_generics<'tcx>(
-    cause: ObligationCause<'tcx>,
-    recursion_depth: usize,
-    param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: ty::InstantiatedPredicates<'tcx>,
-) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
-
-    iter::zip(generic_bounds.predicates, generic_bounds.spans).map(move |(predicate, span)| {
-        let cause = match *cause.code() {
-            traits::ItemObligation(def_id) if !span.is_dummy() => traits::ObligationCause::new(
-                cause.span,
-                cause.body_id,
-                traits::BindingObligation(def_id, span),
-            ),
-            _ => cause.clone(),
-        };
-        Obligation { cause, recursion_depth, param_env, predicate }
-    })
 }
 
 pub fn predicate_for_trait_ref<'tcx>(

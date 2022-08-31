@@ -6,6 +6,7 @@
 
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
+use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
@@ -79,12 +80,17 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             llfn
         }
     } else {
-        let llfn = cx.declare_fn(sym, fn_abi);
+        let instance_def_id = instance.def_id();
+        let llfn = if tcx.sess.target.arch == "x86" &&
+            let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+        {
+            cx.declare_fn(&common::i686_decorated_name(&dllimport, common::is_mingw_gnu_toolchain(&tcx.sess.target), true), fn_abi)
+        } else {
+            cx.declare_fn(sym, fn_abi)
+        };
         debug!("get_fn: not casting pointer!");
 
         attributes::from_fn_attrs(cx, llfn, instance);
-
-        let instance_def_id = instance.def_id();
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.

@@ -364,11 +364,6 @@ li {
 	margin-left: 0px;
 }
 
-nav.sub {
-	position: relative;
-	font-size: 1rem;
-}
-
 .sub-container {
 	display: flex;
 	flex-direction: row;
@@ -638,9 +633,6 @@ h2.location a {
 }
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short p {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin: 0;
@@ -693,8 +685,13 @@ h2.location a {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
 	overflow-wrap: break-word;
+	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+	   more aggressively when we want them to. */
 	overflow-wrap: anywhere;
+	background-color: var(--main-background-color);
 }
 
 .in-band > code, .in-band > .code-header {
@@ -713,7 +710,7 @@ pre, .rustdoc.source .example-wrap {
 	top: inherit;
 }
 
-.content table:not(.table-display) {
+.content table {
 	border-spacing: 0 5px;
 }
 .content td { vertical-align: top; }
@@ -731,33 +728,19 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td {
 	padding: .5em;
-	border: 1px dashed;
+	border: 1px dashed var(--border-color);
 }
 
 .docblock table th {
 	padding: .5em;
 	text-align: left;
-	border: 1px solid;
-}
-
-.fields + table {
-	margin-bottom: 1em;
+	border: 1px solid var(--border-color);
 }
 
 .content .item-list {
 	list-style-type: none;
 	padding: 0;
 }
-
-.content .multi-column {
-	-moz-column-count: 5;
-	-moz-column-gap: 2.5em;
-	-webkit-column-count: 5;
-	-webkit-column-gap: 2.5em;
-	column-count: 5;
-	column-gap: 2.5em;
-}
-.content .multi-column li { width: 100%; display: inline-block; }
 
 .content > .methods > .method {
 	font-size: 1rem;
@@ -780,14 +763,8 @@ pre, .rustdoc.source .example-wrap {
 	margin-left: 20px;
 	margin-top: -34px;
 }
-.content .docblock >.impl-items .table-display {
-	margin: 0;
-}
 .content .docblock >.impl-items table td {
 	padding: 0;
-}
-.content .docblock > .impl-items .table-display, .impl-items table td {
-	border: none;
 }
 
 .item-info {
@@ -829,25 +806,13 @@ pre, .rustdoc.source .example-wrap {
 }
 
 nav.sub {
+	position: relative;
+	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }
 .source nav.sub {
 	margin-left: 32px;
-}
-nav.main {
-	padding: 20px 0;
-	text-align: center;
-}
-nav.main .current {
-	border-top: 1px solid;
-	border-bottom: 1px solid;
-}
-nav.main .separator {
-	border: 1px solid;
-	display: inline-block;
-	height: 23px;
-	margin: 0 20px;
 }
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
@@ -942,6 +907,7 @@ table,
 	position: relative;
 	display: flex;
 	height: 34px;
+	margin-top: 4px;
 }
 .search-container > * {
 	height: 100%;
@@ -974,7 +940,7 @@ table,
 	max-width: 100%;
 	/* contents can overflow because of max-width limit, then show ellipsis */
 	text-overflow: ellipsis;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 4px;
 	outline: none;
 	cursor: pointer;
@@ -1013,9 +979,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 #crate-search > option {
 	font-size: 1rem;
 }
-.search-container {
-	margin-top: 4px;
-}
 .search-input {
 	/* Override Normalize.css: it has a rule that sets
 	   -webkit-appearance: textfield for search inputs. That
@@ -1027,11 +990,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	-moz-box-sizing: border-box !important;
 	box-sizing: border-box !important;
 	outline: none;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
 	width: 100%;
+	background-color: var(--button-background-color);
 }
 
 .search-results {
@@ -1087,7 +1051,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: block;
 	margin-top: 7px;
 	border-radius: 3px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	font-size: 1rem;
 }
 
@@ -1096,7 +1060,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	content: '';
 	position: absolute;
 	right: 11px;
-	border: solid;
+	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
 	display: inline-block;
 	padding: 4px;
@@ -1132,13 +1096,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	text-align: center;
 	display: block;
 	margin: 10px 0;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
 #help-button span.bottom {
 	clear: both;
-	border-top: 1px solid;
+	border-top: 1px solid var(--border-color);
 }
 .side-by-side {
 	text-align: initial;
@@ -1172,6 +1136,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .stab .emoji {
 	font-size: 1.25rem;
+	margin-right: 0.3rem;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1209,24 +1174,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
+	float: right;
 }
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
-}
-
-.rightside {
-	float: right;
-}
-
-.variants_table {
-	width: 100%;
-}
-
-.variants_table tbody tr td:first-child {
-	width: 1%; /* make the variant name as small as possible */
 }
 
 td.summary-column {
@@ -1255,7 +1209,7 @@ a.test-arrow {
 .example-wrap:hover .test-arrow {
 	visibility: visible;
 }
-a.test-arrow:hover{
+a.test-arrow:hover {
 	text-decoration: none;
 }
 
@@ -1331,6 +1285,7 @@ h3.variant {
 	border-radius: 6px;
 	margin-left: 5px;
 	font-size: 1rem;
+	border: 1px solid var(--border-color);
 }
 
 .tooltip.ignore::after {
@@ -1496,7 +1451,7 @@ pre.rust {
 #source-sidebar > .title {
 	font-size: 1.5rem;
 	text-align: center;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
 #sidebar-toggle > button {
@@ -1522,13 +1477,10 @@ pre.rust {
 	outline: none;
 }
 
-#copy-path {
-	height: 34px;
-}
 #settings-menu > a, #help-button > button, #copy-path {
 	padding: 5px;
 	width: 33px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	cursor: pointer;
 }
@@ -1539,6 +1491,7 @@ pre.rust {
 	padding: 5px;
 	height: 100%;
 	display: block;
+	background-color: var(--button-background-color);
 }
 
 @keyframes rotating {
@@ -1581,35 +1534,12 @@ input:checked + .slider {
 }
 
 #copy-path {
-	background: initial;
+	height: 34px;
+	background-color: var(--main-background-color);
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
-}
-
-#theme-choices {
-	display: none;
-	position: absolute;
-	left: 0;
-	top: 28px;
-	border: 1px solid;
-	border-radius: 3px;
-	z-index: 1;
-	cursor: pointer;
-}
-
-#theme-choices > button {
-	border: none;
-	width: 100%;
-	padding: 4px 8px;
-	text-align: center;
-	background: rgba(0,0,0,0);
-	overflow-wrap: normal;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top: 1px solid;
 }
 
 kbd {
@@ -1618,46 +1548,13 @@ kbd {
 	font: 15px monospace;
 	line-height: 10px;
 	vertical-align: middle;
-	border: solid 1px;
+	border: solid 1px var(--border-color);
 	border-radius: 3px;
 	cursor: default;
 }
 
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
-}
-
 #implementations-list > h3 > span.in-band {
 	width: 100%;
-}
-
-.table-display {
-	width: 100%;
-	border: 0;
-	border-collapse: collapse;
-	border-spacing: 0;
-	font-size: 1rem;
-}
-
-.table-display tr td:first-child {
-	padding-right: 0;
-}
-
-.table-display tr td:last-child {
-	float: right;
-}
-.table-display .out-of-band {
-	position: relative;
-	font-size: 1.125rem;
-	display: block;
-}
-
-.table-display td:hover .anchor {
-	display: block;
-	top: 2px;
-	left: -5px;
 }
 
 #main-content > ul {
@@ -1891,10 +1788,6 @@ in storage.js plus the media query with (min-width: 701px)
 		display: none;
 	}
 
-	.sidebar-elems {
-		margin-top: 1em;
-	}
-
 	.sidebar {
 		position: fixed;
 		top: 45px;
@@ -1988,6 +1881,7 @@ in storage.js plus the media query with (min-width: 701px)
 	}
 
 	.sidebar-elems {
+		margin-top: 1em;
 		background-color: var(--sidebar-background-color);
 	}
 
@@ -2154,7 +2048,7 @@ in storage.js plus the media query with (min-width: 701px)
 		height: 73px;
 	}
 
-	#main-content > table:not(.table-display) td {
+	#main-content > table td {
 		word-break: break-word;
 		width: 50%;
 	}

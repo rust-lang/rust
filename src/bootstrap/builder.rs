@@ -647,9 +647,9 @@ impl<'a> Builder<'a> {
                 test::CrateRustdocJsonTypes,
                 test::Linkcheck,
                 test::TierCheck,
+                test::ReplacePlaceholderTest,
                 test::Cargotest,
                 test::Cargo,
-                test::Rls,
                 test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
@@ -736,7 +736,6 @@ impl<'a> Builder<'a> {
                 install::Docs,
                 install::Std,
                 install::Cargo,
-                install::Rls,
                 install::RustAnalyzer,
                 install::Rustfmt,
                 install::RustDemangler,
@@ -746,7 +745,12 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            Kind::Run => describe!(
+                run::ExpandYamlAnchors,
+                run::BuildManifest,
+                run::BumpStage0,
+                run::ReplaceVersionPlaceholder,
+            ),
             // These commands either don't use paths, or they're special-cased in Build::build()
             Kind::Clean | Kind::Format | Kind::Setup => vec![],
         }
@@ -1759,23 +1763,21 @@ impl<'a> Builder<'a> {
             },
         );
 
-        if !target.contains("windows") {
-            let needs_unstable_opts = target.contains("linux")
-                || target.contains("solaris")
-                || target.contains("windows")
-                || target.contains("bsd")
-                || target.contains("dragonfly")
-                || target.contains("illumos");
+        let split_debuginfo_is_stable = target.contains("linux")
+            || target.contains("apple")
+            || (target.contains("msvc")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.contains("windows")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
-            if needs_unstable_opts {
-                rustflags.arg("-Zunstable-options");
-            }
-            match self.config.rust_split_debuginfo {
-                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
-                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
-                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
-            };
+        if !split_debuginfo_is_stable {
+            rustflags.arg("-Zunstable-options");
         }
+        match self.config.rust_split_debuginfo {
+            SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+            SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+            SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+        };
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
@@ -1850,7 +1852,7 @@ impl<'a> Builder<'a> {
         // so we can't use it by default in general, but we can use it for tools
         // and our own internal libraries.
         if !mode.must_support_dlopen() && !target.triple.starts_with("powerpc-") {
-            rustflags.arg("-Ztls-model=initial-exec");
+            cargo.env("RUSTC_TLS_MODEL_INITIAL_EXEC", "1");
         }
 
         if self.config.incremental {

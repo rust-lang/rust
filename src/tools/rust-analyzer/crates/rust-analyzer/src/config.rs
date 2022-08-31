@@ -12,8 +12,8 @@ use std::{ffi::OsString, fmt, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
-    Snippet, SnippetScope,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig,
+    JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -45,7 +45,8 @@ mod patch_old_style;
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
 
 // Defines the server-side configuration of the rust-analyzer. We generate
-// *parts* of VS Code's `package.json` config from this.
+// *parts* of VS Code's `package.json` config from this. Run `cargo test` to
+// re-generate that file.
 //
 // However, editor specific config, which the server doesn't know about, should
 // be specified directly in `package.json`.
@@ -119,6 +120,10 @@ config_data! {
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
         /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+        ///
+        /// If there are multiple linked projects, this command is invoked for
+        /// each of them, with the working directory being the project root
+        /// (i.e., the folder containing the `Cargo.toml`).
         ///
         /// An example command would be:
         ///
@@ -243,7 +248,10 @@ config_data! {
         hover_actions_run_enable: bool             = "true",
 
         /// Whether to show documentation on hover.
-        hover_documentation_enable: bool       = "true",
+        hover_documentation_enable: bool           = "true",
+        /// Whether to show keyword hover popups. Only applies when
+        /// `#rust-analyzer.hover.documentation.enable#` is set.
+        hover_documentation_keywords_enable: bool  = "true",
         /// Use markdown syntax for links in hover.
         hover_links_enable: bool = "true",
 
@@ -377,6 +385,34 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = "false",
 
+        /// Inject additional highlighting into doc comments.
+        ///
+        /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
+        /// doc links.
+        semanticHighlighting_doc_comment_inject_enable: bool = "true",
+        /// Use semantic tokens for operators.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
+        /// they are tagged with modifiers.
+        semanticHighlighting_operator_enable: bool = "true",
+        /// Use specialized semantic tokens for operators.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for operator tokens instead
+        /// of the generic `operator` token type.
+        semanticHighlighting_operator_specialization_enable: bool = "false",
+        /// Use semantic tokens for punctuations.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
+        /// they are tagged with modifiers or have a special role.
+        semanticHighlighting_punctuation_enable: bool = "false",
+        /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
+        /// calls.
+        semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
+        /// Use specialized semantic tokens for punctuations.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
+        /// of the generic `punctuation` token type.
+        semanticHighlighting_punctuation_specialization_enable: bool = "false",
         /// Use semantic tokens for strings.
         ///
         /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
@@ -1163,8 +1199,19 @@ impl Config {
         }
     }
 
-    pub fn highlighting_strings(&self) -> bool {
-        self.data.semanticHighlighting_strings_enable
+    pub fn highlighting_config(&self) -> HighlightConfig {
+        HighlightConfig {
+            strings: self.data.semanticHighlighting_strings_enable,
+            punctuation: self.data.semanticHighlighting_punctuation_enable,
+            specialize_punctuation: self
+                .data
+                .semanticHighlighting_punctuation_specialization_enable,
+            macro_bang: self.data.semanticHighlighting_punctuation_separate_macro_bang,
+            operator: self.data.semanticHighlighting_operator_enable,
+            specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
+            inject_doc_comment: self.data.semanticHighlighting_doc_comment_inject_enable,
+            syntactic_name_ref_highlighting: false,
+        }
     }
 
     pub fn hover(&self) -> HoverConfig {
@@ -1187,6 +1234,7 @@ impl Config {
                     HoverDocFormat::PlainText
                 }
             }),
+            keywords: self.data.hover_documentation_keywords_enable,
         }
     }
 

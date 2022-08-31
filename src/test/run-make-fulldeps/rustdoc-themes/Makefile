@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that rustdoc will properly load in a theme file and display it in the theme selector.
 

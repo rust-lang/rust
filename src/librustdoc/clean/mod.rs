@@ -192,7 +192,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
 fn clean_lifetime<'tcx>(lifetime: hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
     let def = cx.tcx.named_region(lifetime.hir_id);
     if let Some(
-        rl::Region::EarlyBound(_, node_id)
+        rl::Region::EarlyBound(node_id)
         | rl::Region::LateBound(_, _, node_id)
         | rl::Region::Free(_, node_id),
     ) = def
@@ -410,12 +410,12 @@ fn clean_projection<'tcx>(
         self_type.def_id(&cx.cache)
     };
     let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
-    Type::QPath {
-        assoc: Box::new(projection_to_path_segment(ty, cx)),
+    Type::QPath(Box::new(QPathData {
+        assoc: projection_to_path_segment(ty, cx),
         should_show_cast,
-        self_type: Box::new(self_type),
+        self_type,
         trait_,
-    }
+    }))
 }
 
 fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
@@ -886,7 +886,10 @@ fn clean_function<'tcx>(
         // NOTE: generics must be cleaned before args
         let generics = clean_generics(generics, cx);
         let args = clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id);
-        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        let mut decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        if sig.header.is_async() {
+            decl.output = decl.sugared_async_return_type();
+        }
         (generics, decl)
     });
     Box::new(Function { decl, generics })
@@ -1182,7 +1185,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     .where_predicates
                     .drain_filter(|pred| match *pred {
                         WherePredicate::BoundPredicate {
-                            ty: QPath { ref assoc, ref self_type, ref trait_, .. },
+                            ty: QPath(box QPathData { ref assoc, ref self_type, ref trait_, .. }),
                             ..
                         } => {
                             if assoc.name != my_name {
@@ -1191,7 +1194,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                             if trait_.def_id() != assoc_item.container_id(tcx) {
                                 return false;
                             }
-                            match **self_type {
+                            match *self_type {
                                 Generic(ref s) if *s == kw::SelfUpper => {}
                                 _ => return false,
                             }
@@ -1324,15 +1327,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
-            Type::QPath {
-                assoc: Box::new(clean_path_segment(
-                    p.segments.last().expect("segments were empty"),
-                    cx,
-                )),
+            Type::QPath(Box::new(QPathData {
+                assoc: clean_path_segment(p.segments.last().expect("segments were empty"), cx),
                 should_show_cast,
-                self_type: Box::new(self_type),
+                self_type,
                 trait_,
-            }
+            }))
         }
         hir::QPath::TypeRelative(qself, segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
@@ -1347,12 +1347,12 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_def_id = res.opt_def_id();
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
-            Type::QPath {
-                assoc: Box::new(clean_path_segment(segment, cx)),
+            Type::QPath(Box::new(QPathData {
+                assoc: clean_path_segment(segment, cx),
                 should_show_cast,
-                self_type: Box::new(self_type),
+                self_type,
                 trait_,
-            }
+            }))
         }
         hir::QPath::LangItem(..) => bug!("clean: requiring documentation of lang item"),
     }
@@ -1779,11 +1779,6 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
     match vis {
         ty::Visibility::Public => Visibility::Public,
-        // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
-        // while rustdoc really does mean inherited. That means that for enum variants, such as
-        // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
-        // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
-        ty::Visibility::Invisible => Visibility::Inherited,
         ty::Visibility::Restricted(module) => Visibility::Restricted(module),
     }
 }
@@ -1954,12 +1949,12 @@ fn clean_maybe_renamed_item<'tcx>(
                     .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
                     .collect();
 
-                TraitItem(Trait {
+                TraitItem(Box::new(Trait {
                     def_id,
                     items,
                     generics: clean_generics(generics, cx),
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                })
+                }))
             }
             ItemKind::ExternCrate(orig_name) => {
                 return clean_extern_crate(item, name, orig_name, cx);

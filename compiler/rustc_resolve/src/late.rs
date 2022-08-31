@@ -91,13 +91,20 @@ enum PatBoundCtx {
 }
 
 /// Does this the item (from the item rib scope) allow generic parameters?
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
+    Yes(Span),
+    No,
+}
+
+/// May this constant have generics?
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(crate) enum ConstantHasGenerics {
     Yes,
     No,
 }
 
-impl HasGenericParams {
+impl ConstantHasGenerics {
     fn force_yes_if(self, b: bool) -> Self {
         if b { Self::Yes } else { self }
     }
@@ -125,10 +132,6 @@ pub(crate) enum RibKind<'a> {
     /// We passed through a closure. Disallow labels.
     ClosureOrAsyncRibKind,
 
-    /// We passed through a function definition. Disallow upvars.
-    /// Permit only those const parameters that are specified in the function's generics.
-    FnItemRibKind,
-
     /// We passed through an item scope. Disallow upvars.
     ItemRibKind(HasGenericParams),
 
@@ -136,7 +139,7 @@ pub(crate) enum RibKind<'a> {
     ///
     /// The item may reference generic parameters in trivial constant expressions.
     /// All other constants aren't allowed to use generic params at all.
-    ConstantItemRibKind(HasGenericParams, Option<(Ident, ConstantItemKind)>),
+    ConstantItemRibKind(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module.
     ModuleRibKind(Module<'a>),
@@ -165,7 +168,6 @@ impl RibKind<'_> {
         match self {
             NormalRibKind
             | ClosureOrAsyncRibKind
-            | FnItemRibKind
             | ConstantItemRibKind(..)
             | ModuleRibKind(_)
             | MacroDefinition(_)
@@ -182,7 +184,6 @@ impl RibKind<'_> {
 
             AssocItemRibKind
             | ClosureOrAsyncRibKind
-            | FnItemRibKind
             | ItemRibKind(..)
             | ConstantItemRibKind(..)
             | ModuleRibKind(..)
@@ -751,7 +752,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
                     this.with_generic_param_rib(
                         &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
+                        ItemRibKind(HasGenericParams::Yes(generics.span)),
                         LifetimeRibKind::Generics {
                             binder: foreign_item.id,
                             kind: LifetimeBinderKind::Item,
@@ -765,7 +766,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 self.with_lifetime_rib(LifetimeRibKind::Item, |this| {
                     this.with_generic_param_rib(
                         &generics.params,
-                        ItemRibKind(HasGenericParams::Yes),
+                        ItemRibKind(HasGenericParams::Yes(generics.span)),
                         LifetimeRibKind::Generics {
                             binder: foreign_item.id,
                             kind: LifetimeBinderKind::Function,
@@ -786,7 +787,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
-        let rib_kind = match fn_kind {
+        let previous_value = self.diagnostic_metadata.current_function;
+        match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
             // a body, or if there's no body for some other reason.
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, generics, _)
@@ -809,20 +811,18 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 );
                 return;
             }
-            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
-            FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
-            FnKind::Closure(..) => ClosureOrAsyncRibKind,
+            FnKind::Fn(..) => {
+                self.diagnostic_metadata.current_function = Some((fn_kind, sp));
+            }
+            // Do not update `current_function` for closures: it suggests `self` parameters.
+            FnKind::Closure(..) => {}
         };
-        let previous_value = self.diagnostic_metadata.current_function;
-        if matches!(fn_kind, FnKind::Fn(..)) {
-            self.diagnostic_metadata.current_function = Some((fn_kind, sp));
-        }
         debug!("(resolving function) entering function");
 
         // Create a value rib for the function.
-        self.with_rib(ValueNS, rib_kind, |this| {
+        self.with_rib(ValueNS, ClosureOrAsyncRibKind, |this| {
             // Create a label rib for the function.
-            this.with_label_rib(FnItemRibKind, |this| {
+            this.with_label_rib(ClosureOrAsyncRibKind, |this| {
                 match fn_kind {
                     FnKind::Fn(_, _, sig, _, generics, body) => {
                         this.visit_generics(generics);
@@ -995,7 +995,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // non-trivial constants this is doesn't matter.
                             self.with_constant_rib(
                                 IsRepeatExpr::No,
-                                HasGenericParams::Yes,
+                                ConstantHasGenerics::Yes,
                                 None,
                                 |this| {
                                     this.smart_resolve_path(
@@ -2071,7 +2071,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(
                 &generics.params,
-                ItemRibKind(HasGenericParams::Yes),
+                ItemRibKind(HasGenericParams::Yes(generics.span)),
                 LifetimeRibKind::Generics {
                     binder: item.id,
                     kind: LifetimeBinderKind::Item,
@@ -2141,7 +2141,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2154,7 +2154,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Fn(box Fn { ref generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Function,
@@ -2186,7 +2186,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2210,7 +2210,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
-                    ItemRibKind(HasGenericParams::Yes),
+                    ItemRibKind(HasGenericParams::Yes(generics.span)),
                     LifetimeRibKind::Generics {
                         binder: item.id,
                         kind: LifetimeBinderKind::Item,
@@ -2251,7 +2251,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             // so it doesn't matter whether this is a trivial constant.
                             this.with_constant_rib(
                                 IsRepeatExpr::No,
-                                HasGenericParams::Yes,
+                                ConstantHasGenerics::Yes,
                                 Some((item.ident, constant_item_kind)),
                                 |this| this.visit_expr(expr),
                             );
@@ -2450,7 +2450,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn with_constant_rib(
         &mut self,
         is_repeat: IsRepeatExpr,
-        may_use_generics: HasGenericParams,
+        may_use_generics: ConstantHasGenerics,
         item: Option<(Ident, ConstantItemKind)>,
         f: impl FnOnce(&mut Self),
     ) {
@@ -2517,7 +2517,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
-                                    HasGenericParams::Yes,
+                                    ConstantHasGenerics::Yes,
                                     None,
                                     |this| this.visit_expr(expr),
                                 )
@@ -2598,7 +2598,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(
             &generics.params,
-            ItemRibKind(HasGenericParams::Yes),
+            ItemRibKind(HasGenericParams::Yes(generics.span)),
             LifetimeRibKind::Generics {
                 span: generics.span,
                 binder: item_id,
@@ -2689,7 +2689,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
                         this.with_constant_rib(
                             IsRepeatExpr::No,
-                            HasGenericParams::Yes,
+                            ConstantHasGenerics::Yes,
                             None,
                             |this| this.visit_expr(expr),
                         )
@@ -3696,9 +3696,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_constant_rib(
             is_repeat,
             if constant.value.is_potential_trivial_const_param() {
-                HasGenericParams::Yes
+                ConstantHasGenerics::Yes
             } else {
-                HasGenericParams::No
+                ConstantHasGenerics::No
             },
             None,
             |this| visit::walk_anon_const(this, constant),
@@ -3707,8 +3707,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn resolve_inline_const(&mut self, constant: &'ast AnonConst) {
         debug!("resolve_anon_const {constant:?}");
-        self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
-            visit::walk_anon_const(this, constant);
+        self.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, None, |this| {
+            visit::walk_anon_const(this, constant)
         });
     }
 
@@ -3814,9 +3814,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         self.with_constant_rib(
                             IsRepeatExpr::No,
                             if argument.is_potential_trivial_const_param() {
-                                HasGenericParams::Yes
+                                ConstantHasGenerics::Yes
                             } else {
-                                HasGenericParams::No
+                                ConstantHasGenerics::No
                             },
                             None,
                             |this| {

@@ -427,6 +427,31 @@ impl UnixStream {
         self.0.passcred()
     }
 
+    /// Set the id of the socket for network filtering purpose
+    ///
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")),
+        doc = "```ignore"
+    )]
+    /// #![feature(unix_set_mark)]
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixStream::connect("/tmp/sock")?;
+    ///     sock.set_mark(32)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
+    #[unstable(feature = "unix_set_mark", issue = "96467")]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        self.0.set_mark(mark)
+    }
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples

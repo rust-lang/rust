@@ -75,7 +75,6 @@
 #![feature(const_pin)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(result_into_ok_or_err)]
 #![feature(pointer_byte_offsets)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
@@ -99,6 +98,7 @@
 #![feature(waker_getters)]
 #![feature(slice_flatten)]
 #![feature(provide_any)]
+#![feature(utf8_chunks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

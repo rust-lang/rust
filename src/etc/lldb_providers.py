@@ -739,3 +739,11 @@ class StdRefSyntheticProvider:
     def has_children(self):
         # type: () -> bool
         return True
+
+
+def StdNonZeroNumberSummaryProvider(valobj, _dict):
+    # type: (SBValue, dict) -> str
+    objtype = valobj.GetType()
+    field = objtype.GetFieldAtIndex(0)
+    element = valobj.GetChildMemberWithName(field.name)
+    return element.GetValue()

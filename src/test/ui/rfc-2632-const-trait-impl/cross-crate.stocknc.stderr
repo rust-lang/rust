@@ -1,14 +1,16 @@
 error[E0277]: the trait bound `cross_crate::NonConst: cross_crate::MyTrait` is not satisfied
-  --> $DIR/cross-crate.rs:17:14
+  --> $DIR/cross-crate.rs:17:5
    |
 LL |     NonConst.func();
-   |              ^^^^ the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
+   |     ^^^^^^^^ ---- required by a bound introduced by this call
+   |     |
+   |     the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
    |
 note: the trait `cross_crate::MyTrait` is implemented for `cross_crate::NonConst`, but that implementation is not `const`
-  --> $DIR/cross-crate.rs:17:14
+  --> $DIR/cross-crate.rs:17:5
    |
 LL |     NonConst.func();
-   |              ^^^^
+   |     ^^^^^^^^
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | const fn const_context() where cross_crate::NonConst: ~const cross_crate::MyTrait {

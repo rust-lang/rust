@@ -9,13 +9,13 @@ use rustc_index::vec::Idx;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'tcx> Cx<'tcx> {
-    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block {
+    pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> BlockId {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
         let opt_destruction_scope =
             self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
-        Block {
+        let block = Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
                 id: block.hir_id.local_id,
@@ -34,7 +34,9 @@ impl<'tcx> Cx<'tcx> {
                     BlockSafety::ExplicitUnsafe(block.hir_id)
                 }
             },
-        }
+        };
+
+        self.thir.blocks.push(block)
     }
 
     fn mirror_stmts(

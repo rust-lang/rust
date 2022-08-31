@@ -1,8 +1,8 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-68112.rs:34:5
+  --> $DIR/issue-68112.rs:34:18
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |                  ^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
 note: future is not `Send` as it awaits another future which is not `Send`
@@ -17,10 +17,10 @@ LL | fn require_send(_: impl Send) {}
    |                         ^^^^ required by this bound in `require_send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/issue-68112.rs:43:5
+  --> $DIR/issue-68112.rs:43:18
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ future created by async block is not `Send`
+   |                  ^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
 note: future is not `Send` as it awaits another future which is not `Send`
@@ -35,10 +35,12 @@ LL | fn require_send(_: impl Send) {}
    |                         ^^^^ required by this bound in `require_send`
 
 error[E0277]: `RefCell<i32>` cannot be shared between threads safely
-  --> $DIR/issue-68112.rs:60:5
+  --> $DIR/issue-68112.rs:60:18
    |
 LL |     require_send(send_fut);
-   |     ^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |     ------------ ^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required for `Arc<RefCell<i32>>` to implement `Send`

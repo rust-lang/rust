@@ -1554,8 +1554,8 @@ impl<T> AtomicPtr<T> {
     /// Offsets the pointer's address by adding `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_add`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_add(val)`.
     ///
     /// `fetch_byte_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -1565,8 +1565,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_add`]: pointer::wrapping_add
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_add`]: pointer::wrapping_byte_add
     ///
     /// # Examples
     ///
@@ -1591,8 +1590,8 @@ impl<T> AtomicPtr<T> {
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_sub`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_sub(val)`.
     ///
     /// `fetch_byte_sub` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -1602,8 +1601,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_sub`]: pointer::wrapping_sub
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_sub`]: pointer::wrapping_byte_sub
     ///
     /// # Examples
     ///

@@ -1,11 +1,11 @@
 use crate::ImplTraitPosition;
 
+use super::errors::{GenericTypeWithParentheses, UseAngleBrackets};
 use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::{self as ast, *};
-use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
@@ -185,7 +185,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -193,10 +192,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Err => {
-                        let mut err = struct_span_err!(self.tcx.sess, data.span, E0214, "{}", msg);
-                        err.span_label(data.span, "only `Fn` traits may use parentheses");
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
-                        if !data.inputs.is_empty() {
+                        let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
                             let open_param = data.inputs_span.shrink_to_lo().to(data
                                 .inputs
@@ -212,16 +209,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 .span
                                 .shrink_to_hi()
                                 .to(data.inputs_span.shrink_to_hi());
-                            err.multipart_suggestion(
-                                &format!("use angle brackets instead",),
-                                vec![
-                                    (open_param, String::from("<")),
-                                    (close_param, String::from(">")),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+
+                            Some(UseAngleBrackets { open_param, close_param })
+                        } else {
+                            None
+                        };
+                        self.tcx.sess.emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),

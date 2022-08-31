@@ -665,14 +665,14 @@ pub unsafe fn zeroed<T>() -> T {
 /// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
 /// As the [`assume_init` documentation][assume_init] explains,
 /// [the Rust compiler assumes][inv] that values are properly initialized.
-/// As a consequence, calling e.g. `mem::uninitialized::<bool>()` causes immediate
-/// undefined behavior for returning a `bool` that is not definitely either `true`
-/// or `false`. Worse, truly uninitialized memory like what gets returned here
+///
+/// Truly uninitialized memory like what gets returned here
 /// is special in that the compiler knows that it does not have a fixed value.
 /// This makes it undefined behavior to have uninitialized data in a variable even
 /// if that variable has an integer type.
-/// (Notice that the rules around uninitialized integers are not finalized yet, but
-/// until they are, it is advisable to avoid them.)
+///
+/// Therefore, it is immediate undefined behavior to call this function on nearly all types,
+/// including integer types and arrays of integer types, and even if the result is unused.
 ///
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init

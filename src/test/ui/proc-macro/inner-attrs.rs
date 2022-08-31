@@ -1,3 +1,4 @@
+// gate-test-custom_inner_attributes
 // compile-flags: -Z span-debug --error-format human
 // aux-build:test-macros.rs
 // edition:2018

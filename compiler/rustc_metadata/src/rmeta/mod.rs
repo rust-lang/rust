@@ -16,6 +16,7 @@ use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
@@ -249,7 +250,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyArray<rustc_span::SourceFile>,
+    source_map: LazyTable<u32, LazyValue<rustc_span::SourceFile>>,
 
     compiler_builtins: bool,
     needs_allocator: bool,
@@ -358,6 +359,7 @@ define_tables! {
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
     impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,
+    object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
@@ -448,6 +450,7 @@ const TAG_PARTIAL_SPAN: u8 = 2;
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
+const SYMBOL_PREINTERNED: u8 = 2;
 
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);

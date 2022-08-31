@@ -393,3 +393,37 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
+
+lint_overruled_attribute = {$lint_level}({$lint_source}) incompatible with previous forbid
+    .label = overruled by previous forbid
+
+lint_default_source = `forbid` lint level is the default for {$id}
+
+lint_node_source = `forbid` level set here
+    .note = {$reason}
+
+lint_command_line_source = `forbid` lint level was set on command line
+
+lint_malformed_attribute = malformed lint attribute input
+
+lint_bad_attribute_argument = bad attribute argument
+
+lint_reason_must_be_string_literal = reason must be a string literal
+
+lint_reason_must_come_last = reason in lint attribute must come last
+
+lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
+    .help = add `#![register_tool({$tool_name})]` to the crate root
+
+lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
+
+lint_requested_level = requested on the command line with `{$level} {$lint_name}`
+
+lint_check_name_unknown = unknown lint: `{$lint_name}`
+    .help = did you mean: `{$suggestion}`
+
+lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
+
+lint_check_name_warning = {$msg}
+
+lint_check_name_deprecated = lint name `{$lint_name}` is deprecated and does not have an effect anymore. Use: {$new_name}

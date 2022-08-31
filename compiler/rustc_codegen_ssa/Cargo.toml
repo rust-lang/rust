@@ -26,7 +26,6 @@ rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_data_structures = { path = "../rustc_data_structures" }

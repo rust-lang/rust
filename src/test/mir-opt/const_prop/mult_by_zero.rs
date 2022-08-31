@@ -1,3 +1,4 @@
+// unit-test
 // compile-flags: -O -Zmir-opt-level=4
 
 // EMIT_MIR mult_by_zero.test.ConstProp.diff

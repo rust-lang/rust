@@ -8,107 +8,130 @@ use lsp_types::{
 };
 
 macro_rules! define_semantic_token_types {
-    ($(($ident:ident, $string:literal)),*$(,)?) => {
-        $(pub(crate) const $ident: SemanticTokenType = SemanticTokenType::new($string);)*
+    (
+        standard {
+            $($standard:ident),*$(,)?
+        }
+        custom {
+            $(($custom:ident, $string:literal)),*$(,)?
+        }
+
+    ) => {
+        $(pub(crate) const $standard: SemanticTokenType = SemanticTokenType::$standard;)*
+        $(pub(crate) const $custom: SemanticTokenType = SemanticTokenType::new($string);)*
 
         pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-            SemanticTokenType::COMMENT,
-            SemanticTokenType::KEYWORD,
-            SemanticTokenType::STRING,
-            SemanticTokenType::NUMBER,
-            SemanticTokenType::REGEXP,
-            SemanticTokenType::OPERATOR,
-            SemanticTokenType::NAMESPACE,
-            SemanticTokenType::TYPE,
-            SemanticTokenType::STRUCT,
-            SemanticTokenType::CLASS,
-            SemanticTokenType::INTERFACE,
-            SemanticTokenType::ENUM,
-            SemanticTokenType::ENUM_MEMBER,
-            SemanticTokenType::TYPE_PARAMETER,
-            SemanticTokenType::FUNCTION,
-            SemanticTokenType::METHOD,
-            SemanticTokenType::PROPERTY,
-            SemanticTokenType::MACRO,
-            SemanticTokenType::VARIABLE,
-            SemanticTokenType::PARAMETER,
-            $($ident),*
+            $(SemanticTokenType::$standard,)*
+            $($custom),*
         ];
     };
 }
 
 define_semantic_token_types![
-    (ANGLE, "angle"),
-    (ARITHMETIC, "arithmetic"),
-    (ATTRIBUTE, "attribute"),
-    (ATTRIBUTE_BRACKET, "attributeBracket"),
-    (BITWISE, "bitwise"),
-    (BOOLEAN, "boolean"),
-    (BRACE, "brace"),
-    (BRACKET, "bracket"),
-    (BUILTIN_ATTRIBUTE, "builtinAttribute"),
-    (BUILTIN_TYPE, "builtinType"),
-    (CHAR, "character"),
-    (COLON, "colon"),
-    (COMMA, "comma"),
-    (COMPARISON, "comparison"),
-    (CONST_PARAMETER, "constParameter"),
-    (DERIVE, "derive"),
-    (DERIVE_HELPER, "deriveHelper"),
-    (DOT, "dot"),
-    (ESCAPE_SEQUENCE, "escapeSequence"),
-    (FORMAT_SPECIFIER, "formatSpecifier"),
-    (GENERIC, "generic"),
-    (LABEL, "label"),
-    (LIFETIME, "lifetime"),
-    (LOGICAL, "logical"),
-    (MACRO_BANG, "macroBang"),
-    (OPERATOR, "operator"),
-    (PARENTHESIS, "parenthesis"),
-    (PUNCTUATION, "punctuation"),
-    (SELF_KEYWORD, "selfKeyword"),
-    (SELF_TYPE_KEYWORD, "selfTypeKeyword"),
-    (SEMICOLON, "semicolon"),
-    (TYPE_ALIAS, "typeAlias"),
-    (TOOL_MODULE, "toolModule"),
-    (UNION, "union"),
-    (UNRESOLVED_REFERENCE, "unresolvedReference"),
+    standard {
+        COMMENT,
+        DECORATOR,
+        ENUM_MEMBER,
+        ENUM,
+        FUNCTION,
+        INTERFACE,
+        KEYWORD,
+        MACRO,
+        METHOD,
+        NAMESPACE,
+        NUMBER,
+        OPERATOR,
+        PARAMETER,
+        PROPERTY,
+        STRING,
+        STRUCT,
+        TYPE_PARAMETER,
+        VARIABLE,
+    }
+
+    custom {
+        (ANGLE, "angle"),
+        (ARITHMETIC, "arithmetic"),
+        (ATTRIBUTE, "attribute"),
+        (ATTRIBUTE_BRACKET, "attributeBracket"),
+        (BITWISE, "bitwise"),
+        (BOOLEAN, "boolean"),
+        (BRACE, "brace"),
+        (BRACKET, "bracket"),
+        (BUILTIN_ATTRIBUTE, "builtinAttribute"),
+        (BUILTIN_TYPE, "builtinType"),
+        (CHAR, "character"),
+        (COLON, "colon"),
+        (COMMA, "comma"),
+        (COMPARISON, "comparison"),
+        (CONST_PARAMETER, "constParameter"),
+        (DERIVE, "derive"),
+        (DERIVE_HELPER, "deriveHelper"),
+        (DOT, "dot"),
+        (ESCAPE_SEQUENCE, "escapeSequence"),
+        (FORMAT_SPECIFIER, "formatSpecifier"),
+        (GENERIC, "generic"),
+        (LABEL, "label"),
+        (LIFETIME, "lifetime"),
+        (LOGICAL, "logical"),
+        (MACRO_BANG, "macroBang"),
+        (PARENTHESIS, "parenthesis"),
+        (PUNCTUATION, "punctuation"),
+        (SELF_KEYWORD, "selfKeyword"),
+        (SELF_TYPE_KEYWORD, "selfTypeKeyword"),
+        (SEMICOLON, "semicolon"),
+        (TYPE_ALIAS, "typeAlias"),
+        (TOOL_MODULE, "toolModule"),
+        (UNION, "union"),
+        (UNRESOLVED_REFERENCE, "unresolvedReference"),
+    }
 ];
 
 macro_rules! define_semantic_token_modifiers {
-    ($(($ident:ident, $string:literal)),*$(,)?) => {
-        $(pub(crate) const $ident: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
+    (
+        standard {
+            $($standard:ident),*$(,)?
+        }
+        custom {
+            $(($custom:ident, $string:literal)),*$(,)?
+        }
+
+    ) => {
+
+        $(pub(crate) const $standard: SemanticTokenModifier = SemanticTokenModifier::$standard;)*
+        $(pub(crate) const $custom: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
 
         pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
-            SemanticTokenModifier::DOCUMENTATION,
-            SemanticTokenModifier::DECLARATION,
-            SemanticTokenModifier::DEFINITION,
-            SemanticTokenModifier::STATIC,
-            SemanticTokenModifier::ABSTRACT,
-            SemanticTokenModifier::DEPRECATED,
-            SemanticTokenModifier::READONLY,
-            SemanticTokenModifier::DEFAULT_LIBRARY,
-            $($ident),*
+            $(SemanticTokenModifier::$standard,)*
+            $($custom),*
         ];
     };
 }
 
 define_semantic_token_modifiers![
-    (ASYNC, "async"),
-    (ATTRIBUTE_MODIFIER, "attribute"),
-    (CALLABLE, "callable"),
-    (CONSTANT, "constant"),
-    (CONSUMING, "consuming"),
-    (CONTROL_FLOW, "controlFlow"),
-    (CRATE_ROOT, "crateRoot"),
-    (INJECTED, "injected"),
-    (INTRA_DOC_LINK, "intraDocLink"),
-    (LIBRARY, "library"),
-    (MUTABLE, "mutable"),
-    (PUBLIC, "public"),
-    (REFERENCE, "reference"),
-    (TRAIT_MODIFIER, "trait"),
-    (UNSAFE, "unsafe"),
+    standard {
+        DOCUMENTATION,
+        DECLARATION,
+        STATIC,
+        DEFAULT_LIBRARY,
+    }
+    custom {
+        (ASYNC, "async"),
+        (ATTRIBUTE_MODIFIER, "attribute"),
+        (CALLABLE, "callable"),
+        (CONSTANT, "constant"),
+        (CONSUMING, "consuming"),
+        (CONTROL_FLOW, "controlFlow"),
+        (CRATE_ROOT, "crateRoot"),
+        (INJECTED, "injected"),
+        (INTRA_DOC_LINK, "intraDocLink"),
+        (LIBRARY, "library"),
+        (MUTABLE, "mutable"),
+        (PUBLIC, "public"),
+        (REFERENCE, "reference"),
+        (TRAIT_MODIFIER, "trait"),
+        (UNSAFE, "unsafe"),
+    }
 ];
 
 #[derive(Default)]

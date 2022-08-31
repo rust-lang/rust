@@ -471,6 +471,21 @@ pub mod future {
         #[lang = "poll"]
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
     }
+
+    pub trait IntoFuture {
+        type Output;
+        type IntoFuture: Future<Output = Self::Output>;
+        #[lang = "into_future"]
+        fn into_future(self) -> Self::IntoFuture;
+    }
+
+    impl<F: Future> IntoFuture for F {
+        type Output = F::Output;
+        type IntoFuture = F;
+        fn into_future(self) -> F {
+            self
+        }
+    }
 }
 pub mod task {
     pub enum Poll<T> {

@@ -13,6 +13,8 @@ pub(super) const PATTERN_FIRST: TokenSet =
         T![.],
     ]));
 
+const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
+
 pub(crate) fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
 }
@@ -228,6 +230,7 @@ fn path_or_macro_pat(p: &mut Parser<'_>) -> CompletedMarker {
 //     let S(_) = ();
 //     let S(_,) = ();
 //     let S(_, .. , x) = ();
+//     let S(| a) = ();
 // }
 fn tuple_pat_fields(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
@@ -363,6 +366,7 @@ fn ref_pat(p: &mut Parser<'_>) -> CompletedMarker {
 //     let (a,) = ();
 //     let (..) = ();
 //     let () = ();
+//     let (| a | a, | b) = ((),());
 // }
 fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T!['(']));
@@ -373,13 +377,13 @@ fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
     let mut has_rest = false;
     while !p.at(EOF) && !p.at(T![')']) {
         has_pat = true;
-        if !p.at_ts(PATTERN_FIRST) {
+        if !p.at_ts(PAT_TOP_FIRST) {
             p.error("expected a pattern");
             break;
         }
         has_rest |= p.at(T![..]);
 
-        pattern(p);
+        pattern_top(p);
         if !p.at(T![')']) {
             has_comma = true;
             p.expect(T![,]);
@@ -393,6 +397,7 @@ fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
 // test slice_pat
 // fn main() {
 //     let [a, b, ..] = [];
+//     let [| a, ..] = [];
 // }
 fn slice_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T!['[']));
@@ -405,12 +410,12 @@ fn slice_pat(p: &mut Parser<'_>) -> CompletedMarker {
 
 fn pat_list(p: &mut Parser<'_>, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
-        if !p.at_ts(PATTERN_FIRST) {
+        if !p.at_ts(PAT_TOP_FIRST) {
             p.error("expected a pattern");
             break;
         }
 
-        pattern(p);
+        pattern_top(p);
         if !p.at(ket) {
             p.expect(T![,]);
         }

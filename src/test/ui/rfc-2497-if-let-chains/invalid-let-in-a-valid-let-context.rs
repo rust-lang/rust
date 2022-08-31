@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 fn main() {
     let _opt = Some(1i32);
 

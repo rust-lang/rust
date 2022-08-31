@@ -1,8 +1,10 @@
 error[E0277]: cannot add `u32` to `i32`
-  --> $DIR/ufcs-qpath-self-mismatch.rs:4:5
+  --> $DIR/ufcs-qpath-self-mismatch.rs:4:31
    |
 LL |     <i32 as Add<u32>>::add(1, 2);
-   |     ^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u32`
+   |     ----------------------    ^ no implementation for `i32 + u32`
+   |     |
+   |     required by a bound introduced by this call
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:

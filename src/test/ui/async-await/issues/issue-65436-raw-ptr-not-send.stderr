@@ -1,8 +1,12 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:12:5
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:12:17
    |
-LL |     assert_send(async {
-   |     ^^^^^^^^^^^ future created by async block is not `Send`
+LL |       assert_send(async {
+   |  _________________^
+LL | |
+LL | |         bar(Foo(std::ptr::null())).await;
+LL | |     })
+   | |_____^ future created by async block is not `Send`
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*const u8`
 note: future is not `Send` as this value is used across an await

@@ -1958,7 +1958,6 @@ fn linker_with_args<'a>(
     // Upstream rust libraries are not supposed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
-    // (The current implementation still doesn't prevent it though, see the FIXME below.)
     //
     // Note that upstream rust libraries may contain native dependencies as
     // well, but they also can't depend on what we just started to add to the
@@ -1979,15 +1978,16 @@ fn linker_with_args<'a>(
     // and move this option back to the top.
     cmd.add_as_needed();
 
-    // FIXME: Move this below to other native libraries
-    // (or alternatively link all native libraries after their respective crates).
-    // This change is somewhat breaking in practice due to local static libraries being linked
-    // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
+    // Local native libraries of all kinds.
+    //
+    // If `-Zlink-native-libraries=false` is set, then the assumption is that an
+    // external build system already has the native dependencies defined, and it
+    // will provide them to the linker itself.
     if sess.opts.unstable_opts.link_native_libraries {
         add_local_native_libraries(cmd, sess, codegen_results);
     }
 
-    // Upstream rust libraries and their non-bundled static libraries
+    // Upstream rust libraries and their (possibly bundled) static native libraries.
     add_upstream_rust_crates(
         cmd,
         sess,
@@ -1997,11 +1997,11 @@ fn linker_with_args<'a>(
         tmpdir,
     );
 
-    // Upstream dynamic native libraries linked with `#[link]` attributes at and `-l`
-    // command line options.
-    // If -Zlink-native-libraries=false is set, then the assumption is that an
-    // external build system already has the native dependencies defined, and it
-    // will provide them to the linker itself.
+    // Dynamic native libraries from upstream crates.
+    //
+    // FIXME: Merge this to `add_upstream_rust_crates` so that all native libraries are linked
+    // together with their respective upstream crates, and in their originally specified order.
+    // This may be slightly breaking due to our use of `--as-needed` and needs a crater run.
     if sess.opts.unstable_opts.link_native_libraries {
         add_upstream_native_libraries(cmd, sess, codegen_results);
     }
@@ -2415,7 +2415,7 @@ fn add_upstream_rust_crates<'a>(
                 // or is an rlib already included via some other dylib crate, the symbols from
                 // native libs will have already been included in that dylib.
                 //
-                // If -Zlink-native-libraries=false is set, then the assumption is that an
+                // If `-Zlink-native-libraries=false` is set, then the assumption is that an
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
                 if sess.opts.unstable_opts.link_native_libraries {

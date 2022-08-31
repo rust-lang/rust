@@ -886,6 +886,9 @@ impl<'ll> CodegenCx<'ll, '_> {
             ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata) -> void);
             ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
+
+        ifn!("llvm.ptrmask", fn(i8p, t_isize) -> i8p);
+
         None
     }
 

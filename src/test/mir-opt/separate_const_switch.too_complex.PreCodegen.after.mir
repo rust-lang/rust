@@ -27,7 +27,7 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+5:11: +10:6
         _3 = discriminant(_1);           // scope 0 at $DIR/separate_const_switch.rs:+6:15: +6:16
-        switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/separate_const_switch.rs:+6:9: +6:16
+        switchInt(move _3) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+6:9: +6:16
     }
 
     bb1: {
@@ -37,10 +37,14 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
         Deinit(_0);                      // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
         discriminant(_0) = 0;            // scope 4 at $DIR/separate_const_switch.rs:+12:34: +12:38
         StorageDead(_9);                 // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
-        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
+        goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+12:37: +12:38
     }
 
     bb2: {
+        unreachable;                     // scope 0 at $DIR/separate_const_switch.rs:+6:15: +6:16
+    }
+
+    bb3: {
         StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+7:16: +7:17
         _4 = ((_1 as Ok).0: i32);        // scope 0 at $DIR/separate_const_switch.rs:+7:16: +7:17
         StorageLive(_5);                 // scope 1 at $DIR/separate_const_switch.rs:+7:44: +7:45
@@ -59,10 +63,10 @@ fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
         discriminant(_0) = 1;            // scope 3 at $DIR/separate_const_switch.rs:+11:37: +11:44
         StorageDead(_8);                 // scope 3 at $DIR/separate_const_switch.rs:+11:43: +11:44
         StorageDead(_7);                 // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
-        goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
+        goto -> bb4;                     // scope 0 at $DIR/separate_const_switch.rs:+11:43: +11:44
     }
 
-    bb3: {
+    bb4: {
         StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+14:1: +14:2
         return;                          // scope 0 at $DIR/separate_const_switch.rs:+14:2: +14:2
     }

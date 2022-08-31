@@ -146,7 +146,7 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into())
             }
-            token::Err => LitKind::Err(symbol),
+            token::Err => LitKind::Err,
         })
     }
 
@@ -199,7 +199,9 @@ impl LitKind {
                 let symbol = if value { kw::True } else { kw::False };
                 (token::Bool, symbol, None)
             }
-            LitKind::Err(symbol) => (token::Err, symbol, None),
+            // This only shows up in places like `-Zunpretty=hir` output, so we
+            // don't bother to produce something useful.
+            LitKind::Err => (token::Err, Symbol::intern("<bad-literal>"), None),
         };
 
         token::Lit::new(kind, symbol, suffix)

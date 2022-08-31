@@ -276,10 +276,23 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
-            ty::RawPtr(_) => "*-ptr".into(),
+            ty::RawPtr(tymut) => {
+                let tymut_string = match tymut.mutbl {
+                    hir::Mutability::Mut => tymut.to_string(),
+                    hir::Mutability::Not => format!("const {}", tymut.ty),
+                };
+
+                if tymut_string != "_" && (tymut.ty.is_simple_text() || tymut_string.len() < "const raw pointer".len()) {
+                    format!("`*{}`", tymut_string).into()
+                } else {
+                    // Unknown type name, it's long or has type arguments
+                    "raw pointer".into()
+                }
+            },
             ty::Ref(_, ty, mutbl) => {
                 let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
+
                 if tymut_string != "_"
                     && (ty.is_simple_text() || tymut_string.len() < "mutable reference".len())
                 {

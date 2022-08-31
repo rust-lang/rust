@@ -116,14 +116,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
                 let adjusted_span = (|| {
-                    if let ExprKind::Block { body } = &expr.kind && let Some(tail_ex) = body.expr {
+                    if let ExprKind::Block { block } = expr.kind
+                        && let Some(tail_ex) = this.thir[block].expr
+                    {
                         let mut expr = &this.thir[tail_ex];
-                        while let ExprKind::Block {
-                            body: Block { expr: Some(nested_expr), .. },
-                        }
-                        | ExprKind::Scope { value: nested_expr, .. } = expr.kind
-                        {
-                            expr = &this.thir[nested_expr];
+                        loop {
+                            match expr.kind {
+                                ExprKind::Block { block }
+                                    if let Some(nested_expr) = this.thir[block].expr =>
+                                {
+                                    expr = &this.thir[nested_expr];
+                                }
+                                ExprKind::Scope { value: nested_expr, .. } => {
+                                    expr = &this.thir[nested_expr];
+                                }
+                                _ => break,
+                            }
                         }
                         this.block_context.push(BlockFrame::TailExpr {
                             tail_result_is_ignored: true,

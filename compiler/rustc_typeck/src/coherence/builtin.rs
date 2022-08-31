@@ -47,9 +47,11 @@ impl<'tcx> Checker<'tcx> {
 }
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
-    // Destructors only work on nominal types.
-    if let ty::Adt(..) | ty::Error(_) = tcx.type_of(impl_did).kind() {
-        return;
+    // Destructors only work on local ADT types.
+    match tcx.type_of(impl_did).kind() {
+        ty::Adt(def, _) if def.did().is_local() => return,
+        ty::Error(_) => return,
+        _ => {}
     }
 
     let sp = match tcx.hir().expect_item(impl_did).kind {
@@ -357,7 +359,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
 
     let unsize_trait = tcx.lang_items().require(LangItem::Unsize).unwrap_or_else(|err| {
-        tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+        tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err.to_string()));
     });
 
     let source = tcx.type_of(impl_did);

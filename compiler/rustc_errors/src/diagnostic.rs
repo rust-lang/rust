@@ -13,6 +13,7 @@ use rustc_span::{edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `Diagnostic`.
@@ -83,6 +84,7 @@ into_diagnostic_arg_using_display!(
     u64,
     i128,
     u128,
+    std::io::Error,
     std::num::NonZeroU32,
     hir::Target,
     Edition,
@@ -121,6 +123,18 @@ impl<'a> IntoDiagnosticArg for &'a str {
 impl IntoDiagnosticArg for String {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl<'a> IntoDiagnosticArg for &'a Path {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for PathBuf {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))
     }
 }
 
@@ -672,19 +686,12 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
-        assert!(!suggestion.is_empty());
-        self.push_suggestion(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: suggestion
-                    .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                    .collect(),
-            }],
-            msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::CompletelyHidden,
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
             applicability,
-        });
-        self
+            SuggestionStyle::CompletelyHidden,
+        )
     }
 
     /// Prints out a message with a suggested edit of the code.

@@ -12,7 +12,7 @@ impl Foo {
 }
 
 // Testing spans, so all tests below code
-// @is auto.json "$.index[*][?(@.kind=='impl' && @.inner.synthetic==true)].span" null
-// @is - "$.index[*][?(@.docs=='has span')].span.begin" "[10, 0]"
-// @is - "$.index[*][?(@.docs=='has span')].span.end" "[12, 1]"
+// @is "$.index[*][?(@.kind=='impl' && @.inner.synthetic==true)].span" null
+// @is "$.index[*][?(@.docs=='has span')].span.begin" "[10, 0]"
+// @is "$.index[*][?(@.docs=='has span')].span.end" "[12, 1]"
 pub struct Foo;

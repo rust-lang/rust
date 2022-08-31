@@ -250,13 +250,30 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), None)
             };
+
+            let (fallback_label, suggestion) = if path_str == "async"
+                && expected.starts_with("struct")
+            {
+                ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
+            } else {
+                // check if we are in situation of typo like `True` instead of `true`.
+                let override_suggestion =
+                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
+                        let item_typo = item_str.to_string().to_lowercase();
+                        Some((
+                            item_span,
+                            "you may want to use a bool value instead",
+                            format!("{}", item_typo),
+                        ))
+                    } else {
+                        suggestion
+                    };
+                (format!("not found in {mod_str}"), override_suggestion)
+            };
+
             BaseError {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
-                fallback_label: if path_str == "async" && expected.starts_with("struct") {
-                    "`async` blocks are only allowed in Rust 2018 or later".to_string()
-                } else {
-                    format!("not found in {mod_str}")
-                },
+                fallback_label,
                 span: item_span,
                 span_label: None,
                 could_be_expr: false,
@@ -2180,7 +2197,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         err.emit()
     }
 
-    pub(crate) fn add_missing_lifetime_specifiers_label(
+    fn add_missing_lifetime_specifiers_label(
         &mut self,
         err: &mut Diagnostic,
         lifetime_refs: Vec<MissingLifetime>,
@@ -2333,7 +2350,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         err.multipart_suggestion_verbose(
                             message,
                             std::iter::once((span, intro_sugg))
-                                .chain(spans_suggs.clone())
+                                .chain(spans_suggs.iter().cloned())
                                 .collect(),
                             Applicability::MaybeIncorrect,
                         );

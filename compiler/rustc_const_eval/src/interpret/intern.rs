@@ -134,7 +134,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
-    leftover_allocations.extend(alloc.relocations().iter().map(|&(_, alloc_id)| alloc_id));
+    leftover_allocations.extend(alloc.provenance().iter().map(|&(_, alloc_id)| alloc_id));
     let alloc = tcx.intern_const_alloc(alloc);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
@@ -191,10 +191,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
                     return Ok(true);
                 };
 
-                // If there are no relocations in this allocation, it does not contain references
+                // If there is no provenance in this allocation, it does not contain references
                 // that point to another allocation, and we can avoid the interning walk.
                 if let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, align)? {
-                    if !alloc.has_relocations() {
+                    if !alloc.has_provenance() {
                         return Ok(false);
                     }
                 } else {
@@ -233,8 +233,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
     }
 
     fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        // Handle Reference types, as these are the only relocations supported by const eval.
-        // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
+        // Handle Reference types, as these are the only types with provenance supported by const eval.
+        // Raw pointers (and boxes) are handled by the `leftover_allocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
@@ -410,7 +410,7 @@ pub fn intern_const_alloc_recursive<
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
             match intern_kind {
-                // Statics may contain mutable allocations even behind relocations.
+                // Statics may point to mutable allocations.
                 // Even for immutable statics it would be ok to have mutable allocations behind
                 // raw pointers, e.g. for `static FOO: *const AtomicUsize = &AtomicUsize::new(42)`.
                 InternKind::Static(_) => {}
@@ -441,7 +441,7 @@ pub fn intern_const_alloc_recursive<
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, alloc_id) in alloc.inner().relocations().iter() {
+            for &(_, alloc_id) in alloc.inner().provenance().iter() {
                 if leftover_allocations.insert(alloc_id) {
                     todo.push(alloc_id);
                 }

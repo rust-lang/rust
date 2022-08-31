@@ -1010,7 +1010,8 @@ impl<T> BinaryHeap<T> {
     /// current length. The allocator may reserve more space to speculatively
     /// avoid frequent allocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///

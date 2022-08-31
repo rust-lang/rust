@@ -111,53 +111,6 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>) {
     write!(out, "<code>");
 }
 
-/// Write all the pending elements sharing a same (or at mergeable) `Class`.
-///
-/// If there is a "parent" (if a `EnterSpan` event was encountered) and the parent can be merged
-/// with the elements' class, then we simply write the elements since the `ExitSpan` event will
-/// close the tag.
-///
-/// Otherwise, if there is only one pending element, we let the `string` function handle both
-/// opening and closing the tag, otherwise we do it into this function.
-fn write_pending_elems(
-    out: &mut Buffer,
-    href_context: &Option<HrefContext<'_, '_, '_>>,
-    pending_elems: &mut Vec<(&str, Option<Class>)>,
-    current_class: &mut Option<Class>,
-    closing_tags: &[(&str, Class)],
-) {
-    if pending_elems.is_empty() {
-        return;
-    }
-    let mut done = false;
-    if let Some((_, parent_class)) = closing_tags.last() {
-        if can_merge(*current_class, Some(*parent_class), "") {
-            for (text, class) in pending_elems.iter() {
-                string(out, Escape(text), *class, &href_context, false);
-            }
-            done = true;
-        }
-    }
-    if !done {
-        // We only want to "open" the tag ourselves if we have more than one pending and if the current
-        // parent tag is not the same as our pending content.
-        let open_tag_ourselves = pending_elems.len() > 1;
-        let close_tag = if open_tag_ourselves {
-            enter_span(out, current_class.unwrap(), &href_context)
-        } else {
-            ""
-        };
-        for (text, class) in pending_elems.iter() {
-            string(out, Escape(text), *class, &href_context, !open_tag_ourselves);
-        }
-        if open_tag_ourselves {
-            exit_span(out, close_tag);
-        }
-    }
-    pending_elems.clear();
-    *current_class = None;
-}
-
 /// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
 /// basically (since it's `Option<Class>`). The following rules apply:
 ///
@@ -171,7 +124,88 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
         (Some(Class::Ident(_)), None) | (None, Some(Class::Ident(_))) => true,
         (Some(_), None) | (None, Some(_)) => text.trim().is_empty(),
-        _ => false,
+        (None, None) => true,
+    }
+}
+
+/// This type is used as a conveniency to prevent having to pass all its fields as arguments into
+/// the various functions (which became its methods).
+struct TokenHandler<'a, 'b, 'c, 'd, 'e> {
+    out: &'a mut Buffer,
+    /// It contains the closing tag and the associated `Class`.
+    closing_tags: Vec<(&'static str, Class)>,
+    /// This is used because we don't automatically generate the closing tag on `ExitSpan` in
+    /// case an `EnterSpan` event with the same class follows.
+    pending_exit_span: Option<Class>,
+    /// `current_class` and `pending_elems` are used to group HTML elements with same `class`
+    /// attributes to reduce the DOM size.
+    current_class: Option<Class>,
+    /// We need to keep the `Class` for each element because it could contain a `Span` which is
+    /// used to generate links.
+    pending_elems: Vec<(&'b str, Option<Class>)>,
+    href_context: Option<HrefContext<'c, 'd, 'e>>,
+}
+
+impl<'a, 'b, 'c, 'd, 'e> TokenHandler<'a, 'b, 'c, 'd, 'e> {
+    fn handle_exit_span(&mut self) {
+        // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
+        // being used in `write_pending_elems`.
+        let class = self.closing_tags.last().expect("ExitSpan without EnterSpan").1;
+        // We flush everything just in case...
+        self.write_pending_elems(Some(class));
+
+        exit_span(self.out, self.closing_tags.pop().expect("ExitSpan without EnterSpan").0);
+        self.pending_exit_span = None;
+    }
+
+    /// Write all the pending elements sharing a same (or at mergeable) `Class`.
+    ///
+    /// If there is a "parent" (if a `EnterSpan` event was encountered) and the parent can be merged
+    /// with the elements' class, then we simply write the elements since the `ExitSpan` event will
+    /// close the tag.
+    ///
+    /// Otherwise, if there is only one pending element, we let the `string` function handle both
+    /// opening and closing the tag, otherwise we do it into this function.
+    ///
+    /// It returns `true` if `current_class` must be set to `None` afterwards.
+    fn write_pending_elems(&mut self, current_class: Option<Class>) -> bool {
+        if self.pending_elems.is_empty() {
+            return false;
+        }
+        if let Some((_, parent_class)) = self.closing_tags.last() &&
+            can_merge(current_class, Some(*parent_class), "")
+        {
+            for (text, class) in self.pending_elems.iter() {
+                string(self.out, Escape(text), *class, &self.href_context, false);
+            }
+        } else {
+            // We only want to "open" the tag ourselves if we have more than one pending and if the
+            // current parent tag is not the same as our pending content.
+            let close_tag = if self.pending_elems.len() > 1 && current_class.is_some() {
+                Some(enter_span(self.out, current_class.unwrap(), &self.href_context))
+            } else {
+                None
+            };
+            for (text, class) in self.pending_elems.iter() {
+                string(self.out, Escape(text), *class, &self.href_context, close_tag.is_none());
+            }
+            if let Some(close_tag) = close_tag {
+                exit_span(self.out, close_tag);
+            }
+        }
+        self.pending_elems.clear();
+        true
+    }
+}
+
+impl<'a, 'b, 'c, 'd, 'e> Drop for TokenHandler<'a, 'b, 'c, 'd, 'e> {
+    /// When leaving, we need to flush all pending data to not have missing content.
+    fn drop(&mut self) {
+        if self.pending_exit_span.is_some() {
+            self.handle_exit_span();
+        } else {
+            self.write_pending_elems(self.current_class);
+        }
     }
 }
 
@@ -194,64 +228,72 @@ fn write_code(
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    // It contains the closing tag and the associated `Class`.
-    let mut closing_tags: Vec<(&'static str, Class)> = Vec::new();
-    // The following two variables are used to group HTML elements with same `class` attributes
-    // to reduce the DOM size.
-    let mut current_class: Option<Class> = None;
-    // We need to keep the `Class` for each element because it could contain a `Span` which is
-    // used to generate links.
-    let mut pending_elems: Vec<(&str, Option<Class>)> = Vec::new();
+    let mut token_handler = TokenHandler {
+        out,
+        closing_tags: Vec::new(),
+        pending_exit_span: None,
+        current_class: None,
+        pending_elems: Vec::new(),
+        href_context,
+    };
 
     Classifier::new(
         &src,
-        href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        token_handler.href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
     .highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => {
+                // If we received a `ExitSpan` event and then have a non-compatible `Class`, we
+                // need to close the `<span>`.
+                let need_current_class_update = if let Some(pending) = token_handler.pending_exit_span &&
+                    !can_merge(Some(pending), class, text) {
+                        token_handler.handle_exit_span();
+                        true
                 // If the two `Class` are different, time to flush the current content and start
                 // a new one.
-                if !can_merge(current_class, class, text) {
-                    write_pending_elems(
-                        out,
-                        &href_context,
-                        &mut pending_elems,
-                        &mut current_class,
-                        &closing_tags,
-                    );
-                    current_class = class.map(Class::dummy);
-                } else if current_class.is_none() {
-                    current_class = class.map(Class::dummy);
+                } else if !can_merge(token_handler.current_class, class, text) {
+                    token_handler.write_pending_elems(token_handler.current_class);
+                    true
+                } else {
+                    token_handler.current_class.is_none()
+                };
+
+                if need_current_class_update {
+                    token_handler.current_class = class.map(Class::dummy);
                 }
-                pending_elems.push((text, class));
+                token_handler.pending_elems.push((text, class));
             }
             Highlight::EnterSpan { class } => {
-                // We flush everything just in case...
-                write_pending_elems(
-                    out,
-                    &href_context,
-                    &mut pending_elems,
-                    &mut current_class,
-                    &closing_tags,
-                );
-                closing_tags.push((enter_span(out, class, &href_context), class))
+                let mut should_add = true;
+                if let Some(pending_exit_span) = token_handler.pending_exit_span {
+                    if class.is_equal_to(pending_exit_span) {
+                        should_add = false;
+                    } else {
+                        token_handler.handle_exit_span();
+                    }
+                } else {
+                    // We flush everything just in case...
+                    if token_handler.write_pending_elems(token_handler.current_class) {
+                        token_handler.current_class = None;
+                    }
+                }
+                if should_add {
+                    let closing_tag = enter_span(token_handler.out, class, &token_handler.href_context);
+                    token_handler.closing_tags.push((closing_tag, class));
+                }
+
+                token_handler.current_class = None;
+                token_handler.pending_exit_span = None;
             }
             Highlight::ExitSpan => {
-                // We flush everything just in case...
-                write_pending_elems(
-                    out,
-                    &href_context,
-                    &mut pending_elems,
-                    &mut current_class,
-                    &closing_tags,
-                );
-                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan").0)
+                token_handler.current_class = None;
+                token_handler.pending_exit_span =
+                    Some(token_handler.closing_tags.last().as_ref().expect("ExitSpan without EnterSpan").1);
             }
         };
     });
-    write_pending_elems(out, &href_context, &mut pending_elems, &mut current_class, &closing_tags);
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
@@ -291,8 +333,8 @@ impl Class {
         match (self, other) {
             (Self::Self_(_), Self::Self_(_))
             | (Self::Macro(_), Self::Macro(_))
-            | (Self::Ident(_), Self::Ident(_))
-            | (Self::Decoration(_), Self::Decoration(_)) => true,
+            | (Self::Ident(_), Self::Ident(_)) => true,
+            (Self::Decoration(c1), Self::Decoration(c2)) => c1 == c2,
             (x, y) => x == y,
         }
     }
@@ -761,7 +803,7 @@ impl<'a> Classifier<'a> {
             TokenKind::CloseBracket => {
                 if self.in_attribute {
                     self.in_attribute = false;
-                    sink(Highlight::Token { text: "]", class: Some(Class::Attribute) });
+                    sink(Highlight::Token { text: "]", class: None });
                     sink(Highlight::ExitSpan);
                     return;
                 }

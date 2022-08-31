@@ -107,10 +107,10 @@ LL |         V = [Vec::new; { [0].len() ].len() as isize,
    |             closing delimiter possibly meant for this
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:29
+  --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:15:26
    |
 LL |         V = [Vec::new; { [].len()  ].len() as isize,
-   |                             ^^^ cannot infer type for type parameter `T`
+   |                          ^^ cannot infer type for type parameter `T`
 
 error[E0282]: type annotations needed
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:14

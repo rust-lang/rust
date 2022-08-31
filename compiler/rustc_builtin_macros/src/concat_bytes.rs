@@ -42,7 +42,7 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
         ast::LitKind::Bool(_) => {
             cx.span_err(expr.span, "cannot concatenate boolean literals");
         }
-        ast::LitKind::Err(_) => {}
+        ast::LitKind::Err => {}
         ast::LitKind::Int(_, _) if !is_nested => {
             let mut err = cx.struct_span_err(expr.span, "cannot concatenate numeric literals");
             if let Ok(snippet) = cx.sess.source_map().span_to_snippet(expr.span) {

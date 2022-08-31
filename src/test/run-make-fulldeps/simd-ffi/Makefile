@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 TARGETS =
 ifeq ($(filter arm,$(LLVM_COMPONENTS)),arm)

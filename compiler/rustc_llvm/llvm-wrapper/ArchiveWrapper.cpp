@@ -154,19 +154,6 @@ LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
   return Name.data();
 }
 
-extern "C" const char *LLVMRustArchiveChildData(LLVMRustArchiveChildRef Child,
-                                                size_t *Size) {
-  StringRef Buf;
-  Expected<StringRef> BufOrErr = Child->getBuffer();
-  if (!BufOrErr) {
-    LLVMRustSetLastError(toString(BufOrErr.takeError()).c_str());
-    return nullptr;
-  }
-  Buf = BufOrErr.get();
-  *Size = Buf.size();
-  return Buf.data();
-}
-
 extern "C" LLVMRustArchiveMemberRef
 LLVMRustArchiveMemberNew(char *Filename, char *Name,
                          LLVMRustArchiveChildRef Child) {

@@ -23,6 +23,7 @@ pub struct QueryVTable<CTX: QueryContext, K, V> {
     pub anon: bool,
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
+    pub depth_limit: bool,
     pub cache_on_disk: bool,
 
     pub compute: fn(CTX::DepContext, K) -> V,

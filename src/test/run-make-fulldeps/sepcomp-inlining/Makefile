@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that #[inline] functions still get inlined across compilation unit
 # boundaries. Compilation should produce three IR files, but only the two

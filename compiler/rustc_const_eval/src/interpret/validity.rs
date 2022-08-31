@@ -8,6 +8,7 @@ use std::convert::TryFrom;
 use std::fmt::Write;
 use std::num::NonZeroUsize;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpError;
@@ -19,9 +20,11 @@ use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, Wr
 
 use std::hash::Hash;
 
+// for the validation errors
+use super::UndefinedBehaviorInfo::*;
 use super::{
-    alloc_range, CheckInAllocMsg, GlobalAlloc, Immediate, InterpCx, InterpResult, MPlaceTy,
-    Machine, MemPlaceMeta, OpTy, Scalar, ScalarMaybeUninit, ValueVisitor,
+    CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy, Machine,
+    MemPlaceMeta, OpTy, Scalar, ValueVisitor,
 };
 
 macro_rules! throw_validation_failure {
@@ -59,6 +62,7 @@ macro_rules! throw_validation_failure {
 /// });
 /// ```
 ///
+/// The patterns must be of type `UndefinedBehaviorInfo`.
 /// An additional expected parameter can also be added to the failure message:
 ///
 /// ```
@@ -86,7 +90,7 @@ macro_rules! try_validation {
             // allocation here as this can only slow down builds that fail anyway.
             Err(e) => match e.kind() {
                 $(
-                    $($p)|+ =>
+                    InterpError::UndefinedBehavior($($p)|+) =>
                        throw_validation_failure!(
                             $where,
                             { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
@@ -304,6 +308,26 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(r)
     }
 
+    fn read_immediate(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        expected: &str,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        Ok(try_validation!(
+            self.ecx.read_immediate(op),
+            self.path,
+            InvalidUninitBytes(None) => { "uninitialized memory" } expected { "{expected}" }
+        ))
+    }
+
+    fn read_scalar(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        expected: &str,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        Ok(self.read_immediate(op, expected)?.to_scalar())
+    }
+
     fn check_wide_ptr_meta(
         &mut self,
         meta: MemPlaceMeta<M::Provenance>,
@@ -317,18 +341,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let (_ty, _trait) = try_validation!(
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
-                    err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(InvalidVTablePointer(..)) =>
+                    DanglingIntPointer(..) |
+                    InvalidVTablePointer(..) =>
                         { "{vtable}" } expected { "a vtable pointer" },
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
             ty::Slice(..) | ty::Str => {
-                let _len = try_validation!(
-                    meta.unwrap_meta().to_machine_usize(self.ecx),
-                    self.path,
-                    err_unsup!(ReadPointerAsBytes) => { "non-integer slice length in wide pointer" },
-                );
+                let _len = meta.unwrap_meta().to_machine_usize(self.ecx)?;
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
                 // "dereferenceable" check performed by Stacked Borrows.
@@ -348,18 +368,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         kind: &str,
     ) -> InterpResult<'tcx> {
-        let value = try_validation!(
-            self.ecx.read_immediate(value),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
-        );
+        let place = self.ecx.ref_to_mplace(&self.read_immediate(value, &format!("a {kind}"))?)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
-        let place = try_validation!(
-            self.ecx.ref_to_mplace(&value),
-            self.path,
-            err_ub!(InvalidUninitBytes(None)) => { "uninitialized {}", kind },
-        );
         if place.layout.is_unsized() {
             self.check_wide_ptr_meta(place.meta, place.layout)?;
         }
@@ -367,7 +378,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size_and_align = try_validation!(
             self.ecx.size_and_align_of_mplace(&place),
             self.path,
-            err_ub!(InvalidMeta(msg)) => { "invalid {} metadata: {}", kind, msg },
+            InvalidMeta(msg) => { "invalid {} metadata: {}", kind, msg },
         );
         let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
@@ -383,21 +394,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
-            err_ub!(AlignmentCheckFailed { required, has }) =>
+            AlignmentCheckFailed { required, has } =>
                 {
                     "an unaligned {kind} (required {} byte alignment but found {})",
                     required.bytes(),
                     has.bytes()
                 },
-            err_ub!(DanglingIntPointer(0, _)) =>
+            DanglingIntPointer(0, _) =>
                 { "a null {kind}" },
-            err_ub!(DanglingIntPointer(i, _)) =>
+            DanglingIntPointer(i, _) =>
                 { "a dangling {kind} (address {i:#x} is unallocated)" },
-            err_ub!(PointerOutOfBounds { .. }) =>
+            PointerOutOfBounds { .. } =>
                 { "a dangling {kind} (going beyond the bounds of its allocation)" },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
-            err_ub!(PointerUseAfterFree(..)) =>
+            PointerUseAfterFree(..) =>
                 { "a dangling {kind} (use-after-free)" },
         );
         // Do not allow pointers to uninhabited types.
@@ -411,34 +422,51 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {
-                // Special handling for pointers to statics (irrespective of their type).
+                // Let's see what kind of memory this points to.
                 let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id);
-                if let Some(GlobalAlloc::Static(did)) = alloc_kind {
-                    assert!(!self.ecx.tcx.is_thread_local_static(did));
-                    assert!(self.ecx.tcx.is_static(did));
-                    if matches!(
-                        self.ctfe_mode,
-                        Some(CtfeValidationMode::Const { allow_static_ptrs: false, .. })
-                    ) {
-                        // See const_eval::machine::MemoryExtra::can_access_statics for why
-                        // this check is so important.
-                        // This check is reachable when the const just referenced the static,
-                        // but never read it (so we never entered `before_access_global`).
-                        throw_validation_failure!(self.path,
-                            { "a {} pointing to a static variable", kind }
-                        );
+                match alloc_kind {
+                    Some(GlobalAlloc::Static(did)) => {
+                        // Special handling for pointers to statics (irrespective of their type).
+                        assert!(!self.ecx.tcx.is_thread_local_static(did));
+                        assert!(self.ecx.tcx.is_static(did));
+                        if matches!(
+                            self.ctfe_mode,
+                            Some(CtfeValidationMode::Const { allow_static_ptrs: false, .. })
+                        ) {
+                            // See const_eval::machine::MemoryExtra::can_access_statics for why
+                            // this check is so important.
+                            // This check is reachable when the const just referenced the static,
+                            // but never read it (so we never entered `before_access_global`).
+                            throw_validation_failure!(self.path,
+                                { "a {} pointing to a static variable in a constant", kind }
+                            );
+                        }
+                        // We skip recursively checking other statics. These statics must be sound by
+                        // themselves, and the only way to get broken statics here is by using
+                        // unsafe code.
+                        // The reasons we don't check other statics is twofold. For one, in all
+                        // sound cases, the static was already validated on its own, and second, we
+                        // trigger cycle errors if we try to compute the value of the other static
+                        // and that static refers back to us.
+                        // We might miss const-invalid data,
+                        // but things are still sound otherwise (in particular re: consts
+                        // referring to statics).
+                        return Ok(());
                     }
-                    // We skip checking other statics. These statics must be sound by
-                    // themselves, and the only way to get broken statics here is by using
-                    // unsafe code.
-                    // The reasons we don't check other statics is twofold. For one, in all
-                    // sound cases, the static was already validated on its own, and second, we
-                    // trigger cycle errors if we try to compute the value of the other static
-                    // and that static refers back to us.
-                    // We might miss const-invalid data,
-                    // but things are still sound otherwise (in particular re: consts
-                    // referring to statics).
-                    return Ok(());
+                    Some(GlobalAlloc::Memory(alloc)) => {
+                        if alloc.inner().mutability == Mutability::Mut
+                            && matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
+                        {
+                            // This should be unreachable, but if someone manages to copy a pointer
+                            // out of a `static`, then that pointer might point to mutable memory,
+                            // and we would catch that here.
+                            throw_validation_failure!(self.path,
+                                { "a {} pointing to mutable memory in a constant", kind }
+                            );
+                        }
+                    }
+                    // Nothing to check for these.
+                    None | Some(GlobalAlloc::Function(..) | GlobalAlloc::VTable(..)) => {}
                 }
             }
             let path = &self.path;
@@ -454,28 +482,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(())
     }
 
-    fn read_scalar(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<M::Provenance>> {
-        Ok(try_validation!(
-            self.ecx.read_scalar(op),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
-        ))
-    }
-
-    fn read_immediate_forced(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
-        Ok(*try_validation!(
-            self.ecx.read_immediate_raw(op, /*force*/ true),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
-        ).unwrap())
-    }
-
     /// Check if this is a value of primitive type, and if yes check the validity of the value
     /// at that type.  Return `true` if the type is indeed primitive.
     fn try_visit_primitive(
@@ -486,41 +492,39 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let ty = value.layout.ty;
         match ty.kind() {
             ty::Bool => {
-                let value = self.read_scalar(value)?;
+                let value = self.read_scalar(value, "a boolean")?;
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    err_ub!(InvalidBool(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                    InvalidBool(..) =>
                         { "{:x}", value } expected { "a boolean" },
                 );
                 Ok(true)
             }
             ty::Char => {
-                let value = self.read_scalar(value)?;
+                let value = self.read_scalar(value, "a unicode scalar value")?;
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    err_ub!(InvalidChar(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                    InvalidChar(..) =>
                         { "{:x}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
                 );
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
-                let value = self.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                if M::enforce_number_init(self.ecx) {
-                    try_validation!(
-                        value.check_init(),
-                        self.path,
-                        err_ub!(InvalidUninitBytes(..)) =>
-                            { "{:x}", value } expected { "initialized bytes" }
-                    );
-                }
+                let value = self.read_scalar(
+                    value,
+                    if matches!(ty.kind(), ty::Float(..)) {
+                        "a floating point number"
+                    } else {
+                        "an integer"
+                    },
+                )?;
                 // As a special exception we *do* match on a `Scalar` here, since we truly want
                 // to know its underlying representation (and *not* cast it to an integer).
-                let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
-                if is_ptr {
+                if matches!(value, Scalar::Ptr(..)) {
                     throw_validation_failure!(self.path,
                         { "{:x}", value } expected { "plain (non-pointer) bytes" }
                     )
@@ -531,12 +535,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with uninit for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation!(
-                    self.ecx.read_immediate(value).and_then(|ref i| self.ecx.ref_to_mplace(i)),
-                    self.path,
-                    err_ub!(InvalidUninitBytes(None)) => { "uninitialized raw pointer" },
-                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
-                );
+                let place =
+                    self.ecx.ref_to_mplace(&self.read_immediate(value, "a raw pointer")?)?;
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
@@ -544,7 +544,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             }
             ty::Ref(_, ty, mutbl) => {
                 if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
-                    && *mutbl == hir::Mutability::Mut
+                    && *mutbl == Mutability::Mut
                 {
                     // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
@@ -557,12 +557,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
-                let value = try_validation!(
-                    self.ecx.read_scalar(value).and_then(|v| v.check_init()),
-                    self.path,
-                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
-                    err_ub!(InvalidUninitBytes(None)) => { "uninitialized bytes" } expected { "a proper pointer or integer value" },
-                );
+                let value = self.read_scalar(value, "a function pointer")?;
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
@@ -570,8 +565,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
-                        err_ub!(DanglingIntPointer(..)) |
-                        err_ub!(InvalidFunctionPointer(..)) =>
+                        DanglingIntPointer(..) |
+                        InvalidFunctionPointer(..) =>
                             { "{ptr}" } expected { "a function pointer" },
                     );
                     // FIXME: Check if the signature matches
@@ -613,40 +608,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
     fn visit_scalar(
         &mut self,
-        scalar: ScalarMaybeUninit<M::Provenance>,
+        scalar: Scalar<M::Provenance>,
         scalar_layout: ScalarAbi,
     ) -> InterpResult<'tcx> {
-        // We check `is_full_range` in a slightly complicated way because *if* we are checking
-        // number validity, then we want to ensure that `Scalar::Initialized` is indeed initialized,
-        // i.e. that we go over the `check_init` below.
         let size = scalar_layout.size(self.ecx);
-        let is_full_range = match scalar_layout {
-            ScalarAbi::Initialized { .. } => {
-                if M::enforce_number_init(self.ecx) {
-                    false // not "full" since uninit is not accepted
-                } else {
-                    scalar_layout.is_always_valid(self.ecx)
-                }
-            }
-            ScalarAbi::Union { .. } => true,
-        };
-        if is_full_range {
-            // Nothing to check. Cruciall we don't even `read_scalar` until here, since that would
-            // fail for `Union` scalars!
-            return Ok(());
-        }
-        // We have something to check: it must at least be initialized.
         let valid_range = scalar_layout.valid_range(self.ecx);
         let WrappingRange { start, end } = valid_range;
         let max_value = size.unsigned_int_max();
         assert!(end <= max_value);
-        let value = try_validation!(
-            scalar.check_init(),
-            self.path,
-            err_ub!(InvalidUninitBytes(None)) => { "{:x}", scalar }
-                expected { "something {}", wrapping_range_format(valid_range, max_value) },
-        );
-        let bits = match value.try_to_int() {
+        let bits = match scalar.try_to_int() {
             Ok(int) => int.assert_bits(size),
             Err(_) => {
                 // So this is a pointer then, and casting to an int failed.
@@ -654,7 +624,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We support 2 kinds of ranges here: full range, and excluding zero.
                 if start == 1 && end == max_value {
                     // Only null is the niche.  So make sure the ptr is NOT null.
-                    if self.ecx.scalar_may_be_null(value)? {
+                    if self.ecx.scalar_may_be_null(scalar)? {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
                             expected {
@@ -711,12 +681,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(try_validation!(
                 this.ecx.read_discriminant(op),
                 this.path,
-                err_ub!(InvalidTag(val)) =>
+                InvalidTag(val) =>
                     { "{:x}", val } expected { "a valid enum tag" },
-                err_ub!(InvalidUninitBytes(None)) =>
+                InvalidUninitBytes(None) =>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
-                err_unsup!(ReadPointerAsBytes) =>
-                    { "a pointer" } expected { "a valid enum tag" },
             )
             .1)
         })
@@ -808,10 +776,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
             }
             Abi::Scalar(scalar_layout) => {
-                // We use a 'forced' read because we always need a `Immediate` here
-                // and treating "partially uninit" as "fully uninit" is fine for us.
-                let scalar = self.read_immediate_forced(op)?.to_scalar_or_uninit();
-                self.visit_scalar(scalar, scalar_layout)?;
+                if !scalar_layout.is_uninit_valid() {
+                    // There is something to check here.
+                    let scalar = self.read_scalar(op, "initiailized scalar value")?;
+                    self.visit_scalar(scalar, scalar_layout)?;
+                }
             }
             Abi::ScalarPair(a_layout, b_layout) => {
                 // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
@@ -819,10 +788,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // but that can miss bugs in layout computation. Layout computation
                 // is subtle due to enums having ScalarPair layout, where one field
                 // is the discriminant.
-                if cfg!(debug_assertions) {
-                    // We use a 'forced' read because we always need a `Immediate` here
-                    // and treating "partially uninit" as "fully uninit" is fine for us.
-                    let (a, b) = self.read_immediate_forced(op)?.to_scalar_or_uninit_pair();
+                if cfg!(debug_assertions)
+                    && !a_layout.is_uninit_valid()
+                    && !b_layout.is_uninit_valid()
+                {
+                    // We can only proceed if *both* scalars need to be initialized.
+                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                    // the other must be init.
+                    let (a, b) =
+                        self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
                 }
@@ -850,10 +824,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
                 let len = mplace.len(self.ecx)?;
                 try_validation!(
-                    self.ecx.read_bytes_ptr(mplace.ptr, Size::from_bytes(len)),
+                    self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
                     self.path,
-                    err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
-                    err_unsup!(ReadPointerAsBytes) => { "a pointer in `str`" },
+                    InvalidUninitBytes(..) => { "uninitialized data in `str`" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
@@ -901,13 +874,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // We also accept uninit, for consistency with the slow path.
                 let alloc = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)?.expect("we already excluded size 0");
 
-                match alloc.check_bytes(
-                    alloc_range(Size::ZERO, size),
-                    /*allow_uninit*/ !M::enforce_number_init(self.ecx),
-                    /*allow_ptr*/ false,
-                ) {
+                match alloc.get_bytes_strip_provenance() {
                     // In the happy case, we needn't check anything else.
-                    Ok(()) => {}
+                    Ok(_) => {}
                     // Some error happened, try to provide a more detailed description.
                     Err(err) => {
                         // For some errors we might be able to provide extra information.
@@ -924,9 +893,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!(self.path, { "uninitialized bytes" })
-                            }
-                            err_unsup!(ReadPointerAsBytes) => {
-                                throw_validation_failure!(self.path, { "a pointer" } expected { "plain (non-pointer) bytes" })
                             }
 
                             // Propagate upwards (that will also check for unexpected errors).
@@ -968,14 +934,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(()) => Ok(()),
             // Pass through validation failures.
             Err(err) if matches!(err.kind(), err_ub!(ValidationFailure { .. })) => Err(err),
-            // Also pass through InvalidProgram, those just indicate that we could not
-            // validate and each caller will know best what to do with them.
-            Err(err) if matches!(err.kind(), InterpError::InvalidProgram(_)) => Err(err),
-            // Avoid other errors as those do not show *where* in the value the issue lies.
-            Err(err) => {
+            // Complain about any other kind of UB error -- those are bad because we'd like to
+            // report them in a way that shows *where* in the value the issue lies.
+            Err(err) if matches!(err.kind(), InterpError::UndefinedBehavior(_)) => {
                 err.print_backtrace();
-                bug!("Unexpected error during validation: {}", err);
+                bug!("Unexpected Undefined Behavior error during validation: {}", err);
             }
+            // Pass through everything else.
+            Err(err) => Err(err),
         }
     }
 

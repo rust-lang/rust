@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryConfig, QueryDescription, QueryVTable};
 
-use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::{DepContext, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -119,7 +119,12 @@ pub trait QueryContext: HasDepContext {
     fn start_query<R>(
         &self,
         token: QueryJobId,
+        depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
+
+    fn depth_limit_error(&self) {
+        self.dep_context().sess().fatal("queries overflow the depth limit!");
+    }
 }

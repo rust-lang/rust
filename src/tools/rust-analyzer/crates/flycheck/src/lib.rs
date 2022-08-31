@@ -77,8 +77,13 @@ impl FlycheckHandle {
     }
 
     /// Schedule a re-start of the cargo check worker.
-    pub fn update(&self) {
-        self.sender.send(Restart).unwrap();
+    pub fn restart(&self) {
+        self.sender.send(Restart::Yes).unwrap();
+    }
+
+    /// Stop this cargo check worker.
+    pub fn cancel(&self) {
+        self.sender.send(Restart::No).unwrap();
     }
 
     pub fn id(&self) -> usize {
@@ -120,9 +125,13 @@ pub enum Progress {
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
     DidCancel,
+    DidFailToRestart(String),
 }
 
-struct Restart;
+enum Restart {
+    Yes,
+    No,
+}
 
 struct FlycheckActor {
     id: usize,
@@ -149,6 +158,7 @@ impl FlycheckActor {
         config: FlycheckConfig,
         workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
+        tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor { id, sender, config, workspace_root, cargo_handle: None }
     }
     fn progress(&self, progress: Progress) {
@@ -164,10 +174,13 @@ impl FlycheckActor {
     fn run(mut self, inbox: Receiver<Restart>) {
         while let Some(event) = self.next_event(&inbox) {
             match event {
-                Event::Restart(Restart) => {
+                Event::Restart(Restart::No) => {
+                    self.cancel_check_process();
+                }
+                Event::Restart(Restart::Yes) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
-                    while let Ok(Restart) = inbox.recv_timeout(Duration::from_millis(50)) {}
+                    while let Ok(_) = inbox.recv_timeout(Duration::from_millis(50)) {}
 
                     let command = self.check_command();
                     tracing::debug!(?command, "will restart flycheck");
@@ -181,10 +194,11 @@ impl FlycheckActor {
                             self.progress(Progress::DidStart);
                         }
                         Err(error) => {
-                            tracing::error!(
-                                command = ?self.check_command(),
-                                %error, "failed to restart flycheck"
-                            );
+                            self.progress(Progress::DidFailToRestart(format!(
+                                "Failed to run the following command: {:?} error={}",
+                                self.check_command(),
+                                error
+                            )));
                         }
                     }
                 }
@@ -223,6 +237,10 @@ impl FlycheckActor {
 
     fn cancel_check_process(&mut self) {
         if let Some(cargo_handle) = self.cargo_handle.take() {
+            tracing::debug!(
+                command = ?self.check_command(),
+                "did  cancel flycheck"
+            );
             cargo_handle.cancel();
             self.progress(Progress::DidCancel);
         }
@@ -345,7 +363,7 @@ impl CargoActor {
         //
         // Because cargo only outputs one JSON object per line, we can
         // simply skip a line if it doesn't parse, which just ignores any
-        // erroneus output.
+        // erroneous output.
 
         let mut error = String::new();
         let mut read_at_least_one_message = false;

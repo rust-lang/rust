@@ -32,7 +32,7 @@ pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::fmt;
@@ -316,12 +316,12 @@ pub struct InferCtxt<'a, 'tcx> {
     ///
     /// Don't read this flag directly, call `is_tainted_by_errors()`
     /// and `set_tainted_by_errors()`.
-    tainted_by_errors_flag: Cell<bool>,
+    tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
     /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
-    // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
+    // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
 
     /// This flag is true while there is an active snapshot.
@@ -337,6 +337,9 @@ pub struct InferCtxt<'a, 'tcx> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<ty::UniverseIndex>,
+
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -504,7 +507,7 @@ pub enum FixupError<'tcx> {
 }
 
 /// See the `region_obligations` field for more information.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
@@ -540,6 +543,8 @@ pub struct InferCtxtBuilder<'tcx> {
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -553,6 +558,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             fresh_typeck_results: None,
+            normalize_fn_sig_for_diagnostic: None,
         }
     }
 }
@@ -579,6 +585,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn ignoring_regions(mut self) -> Self {
         self.considering_regions = false;
+        self
+    }
+
+    pub fn with_normalize_fn_sig_for_diagnostic(
+        mut self,
+        fun: Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>,
+    ) -> Self {
+        self.normalize_fn_sig_for_diagnostic = Some(fun);
         self
     }
 
@@ -611,6 +625,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             defining_use_anchor,
             considering_regions,
             ref fresh_typeck_results,
+            ref normalize_fn_sig_for_diagnostic,
         } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
@@ -624,11 +639,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
             reported_closure_mismatch: Default::default(),
-            tainted_by_errors_flag: Cell::new(false),
+            tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         })
     }
 }
@@ -1227,23 +1245,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn is_tainted_by_errors(&self) -> bool {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
-             tainted_by_errors_flag={})",
+             tainted_by_errors={})",
             self.tcx.sess.err_count(),
             self.err_count_on_creation,
-            self.tainted_by_errors_flag.get()
+            self.tainted_by_errors.get().is_some()
         );
 
         if self.tcx.sess.err_count() > self.err_count_on_creation {
             return true; // errors reported since this infcx was made
         }
-        self.tainted_by_errors_flag.get()
+        self.tainted_by_errors.get().is_some()
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
     /// observe an error from a prior pass.
     pub fn set_tainted_by_errors(&self) {
         debug!("set_tainted_by_errors()");
-        self.tainted_by_errors_flag.set(true)
+        self.tainted_by_errors.set(Some(
+            self.tcx.sess.delay_span_bug(DUMMY_SP, "`InferCtxt` incorrectly tainted by errors"),
+        ));
     }
 
     pub fn skip_region_resolution(&self) {
@@ -2022,16 +2042,6 @@ impl RegionVariableOrigin {
             | UpvarRegion(_, a) => a,
             Nll(..) => bug!("NLL variable used with `span`"),
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "RegionObligation(sub_region={:?}, sup_type={:?})",
-            self.sub_region, self.sup_type
-        )
     }
 }
 

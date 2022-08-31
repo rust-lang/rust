@@ -44,6 +44,8 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+#[cfg(not(bootstrap))]
+use core::error::Error;
 use core::fmt;
 use core::hash;
 use core::iter::FusedIterator;
@@ -58,9 +60,9 @@ use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::slice;
-#[cfg(not(no_global_oom_handling))]
-use core::str::lossy;
 use core::str::pattern::Pattern;
+#[cfg(not(no_global_oom_handling))]
+use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
@@ -628,11 +630,11 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
+        let mut iter = Utf8Chunks::new(v);
 
         let first_valid = if let Some(chunk) = iter.next() {
-            let lossy::Utf8LossyChunk { valid, broken } = chunk;
-            if broken.is_empty() {
+            let valid = chunk.valid();
+            if chunk.invalid().is_empty() {
                 debug_assert_eq!(valid.len(), v.len());
                 return Cow::Borrowed(valid);
             }
@@ -647,9 +649,9 @@ impl String {
         res.push_str(first_valid);
         res.push_str(REPLACEMENT);
 
-        for lossy::Utf8LossyChunk { valid, broken } in iter {
-            res.push_str(valid);
-            if !broken.is_empty() {
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
                 res.push_str(REPLACEMENT);
             }
         }
@@ -1080,7 +1082,8 @@ impl String {
     /// current length. The allocator may reserve more space to speculatively
     /// avoid frequent allocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns
-    /// `Ok(())`. Does nothing if capacity is already sufficient.
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -1935,6 +1938,24 @@ impl fmt::Display for FromUtf8Error {
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-16"
     }
 }
 

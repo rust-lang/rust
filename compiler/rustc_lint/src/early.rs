@@ -45,7 +45,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
                 lint_id.lint,
                 Some(span),
                 |lint| {
-                    lint.build(&msg).emit();
+                    lint.build(msg).emit();
                 },
                 diagnostic,
             );

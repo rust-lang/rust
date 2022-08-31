@@ -2,7 +2,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static2.rs:11:1
    |
 LL | const REF_INTERIOR_MUT: &usize = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a static variable
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a static variable in a constant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
@@ -13,7 +13,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static2.rs:18:1
    |
 LL | const READ_IMMUT: &usize = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a static variable
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a static variable in a constant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {

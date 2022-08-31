@@ -1383,7 +1383,7 @@ impl<'a> Parser<'a> {
         match self.parse_str_lit() {
             Ok(str_lit) => Some(str_lit),
             Err(Some(lit)) => match lit.kind {
-                ast::LitKind::Err(_) => None,
+                ast::LitKind::Err => None,
                 _ => {
                     self.struct_span_err(lit.span, "non-string ABI literal")
                         .span_suggestion(

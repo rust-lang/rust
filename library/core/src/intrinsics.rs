@@ -737,28 +737,7 @@ extern "rust-intrinsic" {
     /// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
     /// as the `order`.
     pub fn atomic_singlethreadfence_acqrel();
-}
 
-// These have been renamed.
-//
-// These are the aliases for the old names.
-// To be removed when stdarch and panic_unwind have been updated.
-mod atomics {
-    pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
-    pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
-    pub use super::atomic_cxchg_acquire_acquire as atomic_cxchg_acq;
-    pub use super::atomic_cxchg_acquire_relaxed as atomic_cxchg_acq_failrelaxed;
-    pub use super::atomic_cxchg_relaxed_relaxed as atomic_cxchg_relaxed;
-    pub use super::atomic_cxchg_release_relaxed as atomic_cxchg_rel;
-    pub use super::atomic_cxchg_seqcst_acquire as atomic_cxchg_failacq;
-    pub use super::atomic_cxchg_seqcst_relaxed as atomic_cxchg_failrelaxed;
-    pub use super::atomic_cxchg_seqcst_seqcst as atomic_cxchg;
-    pub use super::atomic_store_seqcst as atomic_store;
-}
-
-pub use atomics::*;
-
-extern "rust-intrinsic" {
     /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
     /// if supported; otherwise, it is a no-op.
     /// Prefetches have no effect on the behavior of the program but can change its performance
@@ -1307,6 +1286,17 @@ extern "rust-intrinsic" {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
+
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// Note that, unlike most intrinsics, this is safe to call;
+    /// it does not require an `unsafe` block.
+    /// Therefore, implementations must not require the user to uphold
+    /// any safety invariants.
+    ///
+    /// Consider using [`pointer::mask`] instead.
+    #[cfg(not(bootstrap))]
+    pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
@@ -2013,11 +2003,11 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// See documentation of `<*const T>::sub_ptr` for details.
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
@@ -2139,7 +2129,7 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.addr() % mem::align_of::<T>() == 0
+    !ptr.is_null() && ptr.is_aligned()
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
@@ -2209,9 +2199,9 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 ///     dst.reserve(src_len);
 ///
 ///     unsafe {
-///         // The call to offset is always safe because `Vec` will never
+///         // The call to add is always safe because `Vec` will never
 ///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().offset(dst_len as isize);
+///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
 ///         let src_ptr = src.as_ptr();
 ///
 ///         // Truncate `src` without dropping its contents. We do this first,

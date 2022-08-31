@@ -121,12 +121,8 @@ impl RawEmitter {
         for chunk in compressed_words.chunks(chunk_length) {
             chunks.insert(chunk);
         }
-        let chunk_map = chunks
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(idx, chunk)| (chunk, idx))
-            .collect::<HashMap<_, _>>();
+        let chunk_map =
+            chunks.iter().enumerate().map(|(idx, &chunk)| (chunk, idx)).collect::<HashMap<_, _>>();
         let mut chunk_indices = Vec::new();
         for chunk in compressed_words.chunks(chunk_length) {
             chunk_indices.push(chunk_map[chunk]);
@@ -168,6 +164,15 @@ pub fn emit_codepoints(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
         *emitter = skiplist;
         emitter.desc = String::from("skiplist");
     }
+}
+
+pub fn emit_whitespace(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
+    emitter.blank_line();
+
+    let mut cascading = emitter.clone();
+    cascading.emit_cascading_map(&ranges);
+    *emitter = cascading;
+    emitter.desc = String::from("cascading");
 }
 
 struct Canonicalized {

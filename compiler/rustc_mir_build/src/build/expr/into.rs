@@ -46,7 +46,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 })
             }
-            ExprKind::Block { body: ref ast_block } => {
+            ExprKind::Block { block: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
             }
             ExprKind::Match { scrutinee, ref arms } => {
@@ -314,11 +314,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index,
                 substs,
-                user_ty,
+                ref user_ty,
                 ref fields,
                 ref base,
             }) => {
@@ -378,10 +378,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 let inferred_ty = expr.ty;
-                let user_ty = user_ty.map(|ty| {
+                let user_ty = user_ty.as_ref().map(|box user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span: source_info.span,
-                        user_ty: ty,
+                        user_ty: *user_ty,
                         inferred_ty,
                     })
                 });
@@ -400,7 +400,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm { template, ref operands, options, line_spans } => {
+            ExprKind::InlineAsm(box InlineAsmExpr {
+                template,
+                ref operands,
+                options,
+                line_spans,
+            }) => {
                 use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()

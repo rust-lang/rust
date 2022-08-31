@@ -16,7 +16,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline-cycle-generic.rs:+1:5: +1:24
 -         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline-cycle-generic.rs:+1:5: +1:24
-+         _1 = <C as Call>::call() -> bb1; // scope 4 at $DIR/inline-cycle-generic.rs:+23:9: +23:28
++         _1 = <C as Call>::call() -> bb1; // scope 4 at $DIR/inline-cycle-generic.rs:31:9: 31:28
                                            // mir::Constant
 -                                          // + span: $DIR/inline-cycle-generic.rs:9:5: 9:22
 +                                          // + span: $DIR/inline-cycle-generic.rs:31:9: 31:26

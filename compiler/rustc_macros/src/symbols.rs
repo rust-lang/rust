@@ -195,10 +195,10 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             #n,
         });
     }
-    let _ = counter; // for future use
 
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #digits_base;
+        const PREINTERNED_SYMBOLS_COUNT: u32 = #counter;
 
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]

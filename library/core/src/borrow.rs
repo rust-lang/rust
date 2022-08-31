@@ -1,4 +1,4 @@
-//! A module for working with borrowed data.
+//! Utilities for working with borrowed data.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

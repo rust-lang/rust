@@ -27,6 +27,51 @@ impl<T> ThinVec<T> {
             ThinVec(None) => *self = vec![item].into(),
         }
     }
+
+    /// Note: if `set_len(0)` is called on a non-empty `ThinVec`, it will
+    /// remain in the `Some` form. This is required for some code sequences
+    /// (such as the one in `flat_map_in_place`) that call `set_len(0)` before
+    /// an operation that might panic, and then call `set_len(n)` again
+    /// afterwards.
+    pub unsafe fn set_len(&mut self, new_len: usize) {
+        match *self {
+            ThinVec(None) => {
+                // A prerequisite of `Vec::set_len` is that `new_len` must be
+                // less than or equal to capacity(). The same applies here.
+                if new_len != 0 {
+                    panic!("unsafe ThinVec::set_len({})", new_len);
+                }
+            }
+            ThinVec(Some(ref mut vec)) => vec.set_len(new_len),
+        }
+    }
+
+    pub fn insert(&mut self, index: usize, value: T) {
+        match *self {
+            ThinVec(None) => {
+                if index == 0 {
+                    *self = vec![value].into();
+                } else {
+                    panic!("invalid ThinVec::insert");
+                }
+            }
+            ThinVec(Some(ref mut vec)) => vec.insert(index, value),
+        }
+    }
+
+    pub fn remove(&mut self, index: usize) -> T {
+        match self {
+            ThinVec(None) => panic!("invalid ThinVec::remove"),
+            ThinVec(Some(vec)) => vec.remove(index),
+        }
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        match self {
+            ThinVec(None) => &[],
+            ThinVec(Some(vec)) => vec.as_slice(),
+        }
+    }
 }
 
 impl<T> From<Vec<T>> for ThinVec<T> {

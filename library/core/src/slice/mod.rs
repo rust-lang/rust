@@ -674,8 +674,9 @@ impl<T> [T] {
     /// assert!(v == [3, 2, 1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_reverse", issue = "100784")]
     #[inline]
-    pub fn reverse(&mut self) {
+    pub const fn reverse(&mut self) {
         let half_len = self.len() / 2;
         let Range { start, end } = self.as_mut_ptr_range();
 
@@ -698,9 +699,9 @@ impl<T> [T] {
         revswap(front_half, back_half, half_len);
 
         #[inline]
-        fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
-            debug_assert_eq!(a.len(), n);
-            debug_assert_eq!(b.len(), n);
+        const fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
+            debug_assert!(a.len() == n);
+            debug_assert!(b.len() == n);
 
             // Because this function is first compiled in isolation,
             // this check tells LLVM that the indexing below is
@@ -708,8 +709,10 @@ impl<T> [T] {
             // lengths of the slices are known -- it's removed.
             let (a, b) = (&mut a[..n], &mut b[..n]);
 
-            for i in 0..n {
+            let mut i = 0;
+            while i < n {
                 mem::swap(&mut a[i], &mut b[n - 1 - i]);
+                i += 1;
             }
         }
     }
@@ -1538,13 +1541,14 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_split_at_not_mut", issue = "101158")]
     #[inline]
     #[track_caller]
     #[must_use]
-    pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
+    pub const fn split_at(&self, mid: usize) -> (&[T], &[T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
+        // fulfills the requirements of `split_at_unchecked`.
         unsafe { self.split_at_unchecked(mid) }
     }
 
@@ -1623,11 +1627,19 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
+    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
     #[inline]
     #[must_use]
-    pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+    pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
+        // HACK: the const function `from_raw_parts` is used to make this
+        // function const; previously the implementation used
+        // `(self.get_unchecked(..mid), self.get_unchecked(mid..))`
+
+        let len = self.len();
+        let ptr = self.as_ptr();
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe { (self.get_unchecked(..mid), self.get_unchecked(mid..)) }
+        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -2921,7 +2933,7 @@ impl<T> [T] {
                 let prev_ptr_write = ptr.add(next_write - 1);
                 if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
                     if next_read != next_write {
-                        let ptr_write = prev_ptr_write.offset(1);
+                        let ptr_write = prev_ptr_write.add(1);
                         mem::swap(&mut *ptr_read, &mut *ptr_write);
                     }
                     next_write += 1;

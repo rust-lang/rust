@@ -156,7 +156,7 @@ mod platform {
     struct Header(*mut u8);
     const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
     unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
-        &mut *(ptr as *mut Header).offset(-1)
+        &mut *(ptr as *mut Header).sub(1)
     }
     unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
         let aligned = ptr.add(align - (ptr as usize & (align - 1)));

@@ -12,10 +12,10 @@ LL | fn is_sync<T: Sync>() {}
    |               ^^^^ required by this bound in `is_sync`
 
 error[E0277]: `UnsafeCell<u8>` cannot be shared between threads safely
-  --> $DIR/typeck-default-trait-impl-negation-sync.rs:36:5
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:36:15
    |
 LL |     is_sync::<MyTypeWUnsafe>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `UnsafeCell<u8>` cannot be shared between threads safely
+   |               ^^^^^^^^^^^^^ `UnsafeCell<u8>` cannot be shared between threads safely
    |
    = help: within `MyTypeWUnsafe`, the trait `Sync` is not implemented for `UnsafeCell<u8>`
 note: required because it appears within the type `MyTypeWUnsafe`
@@ -30,10 +30,10 @@ LL | fn is_sync<T: Sync>() {}
    |               ^^^^ required by this bound in `is_sync`
 
 error[E0277]: `Managed` cannot be shared between threads safely
-  --> $DIR/typeck-default-trait-impl-negation-sync.rs:39:5
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:39:15
    |
 LL |     is_sync::<MyTypeManaged>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
+   |               ^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
    |
    = help: within `MyTypeManaged`, the trait `Sync` is not implemented for `Managed`
 note: required because it appears within the type `MyTypeManaged`

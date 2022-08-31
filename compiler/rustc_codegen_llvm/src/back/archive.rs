@@ -8,10 +8,11 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
+use crate::common;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
-use rustc_session::cstore::{DllCallingConvention, DllImport};
+use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
@@ -111,21 +112,18 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         };
 
         let target = &sess.target;
-        let mingw_gnu_toolchain = target.vendor == "pc"
-            && target.os == "windows"
-            && target.env == "gnu"
-            && target.abi.is_empty();
+        let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
 
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
                 if sess.target.arch == "x86" {
                     (
-                        LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain),
-                        import.ordinal,
+                        common::i686_decorated_name(import, mingw_gnu_toolchain, false),
+                        import.ordinal(),
                     )
                 } else {
-                    (import.name.to_string(), import.ordinal)
+                    (import.name.to_string(), import.ordinal())
                 }
             })
             .collect();
@@ -159,6 +157,9 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                 }
             };
 
+            // --no-leading-underscore: For the `import_name_type` feature to work, we need to be
+            // able to control the *exact* spelling of each of the symbols that are being imported:
+            // hence we don't want `dlltool` adding leading underscores automatically.
             let dlltool = find_binutils_dlltool(sess);
             let result = std::process::Command::new(dlltool)
                 .args([
@@ -168,6 +169,7 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
                     lib_name,
                     "-l",
                     output_path.to_str().unwrap(),
+                    "--no-leading-underscore",
                 ])
                 .output();
 
@@ -320,22 +322,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 llvm::LLVMRustArchiveMemberFree(member);
             }
             ret
-        }
-    }
-
-    fn i686_decorated_name(import: &DllImport, mingw: bool) -> String {
-        let name = import.name;
-        let prefix = if mingw { "" } else { "_" };
-
-        match import.calling_convention {
-            DllCallingConvention::C => format!("{}{}", prefix, name),
-            DllCallingConvention::Stdcall(arg_list_size) => {
-                format!("{}{}@{}", prefix, name, arg_list_size)
-            }
-            DllCallingConvention::Fastcall(arg_list_size) => format!("@{}@{}", name, arg_list_size),
-            DllCallingConvention::Vectorcall(arg_list_size) => {
-                format!("{}@@{}", name, arg_list_size)
-            }
         }
     }
 }

@@ -16,6 +16,8 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};

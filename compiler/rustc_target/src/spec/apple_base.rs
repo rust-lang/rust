@@ -1,6 +1,6 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{cvs, FramePointer, SplitDebuginfo, TargetOptions};
+use crate::spec::{cvs, DebuginfoKind, FramePointer, SplitDebuginfo, TargetOptions};
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor};
 
 fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
@@ -76,9 +76,15 @@ pub fn opts(os: &'static str, arch: &'static str, abi: &'static str) -> TargetOp
         eh_frame_header: false,
         lld_flavor: LldFlavor::Ld64,
 
+        debuginfo_kind: DebuginfoKind::DwarfDsym,
         // The historical default for macOS targets is to run `dsymutil` which
         // generates a packed version of debuginfo split from the main file.
         split_debuginfo: SplitDebuginfo::Packed,
+        supported_split_debuginfo: Cow::Borrowed(&[
+            SplitDebuginfo::Packed,
+            SplitDebuginfo::Unpacked,
+            SplitDebuginfo::Off,
+        ]),
 
         // This environment variable is pretty magical but is intended for
         // producing deterministic builds. This was first discovered to be used

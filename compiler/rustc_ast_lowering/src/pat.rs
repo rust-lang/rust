@@ -1,3 +1,6 @@
+use super::errors::{
+    ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
+};
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 use crate::ImplTraitPosition;
@@ -5,7 +8,6 @@ use crate::ImplTraitPosition;
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_span::symbol::Ident;
@@ -134,20 +136,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // This is not allowed as a sub-tuple pattern
                 PatKind::Ident(ref _bm, ident, Some(ref sub)) if sub.is_rest() => {
                     let sp = pat.span;
-                    self.diagnostic()
-                        .struct_span_err(
-                            sp,
-                            &format!("`{} @` is not allowed in a {}", ident.name, ctx),
-                        )
-                        .span_label(sp, "this is only allowed in slice patterns")
-                        .help("remove this and bind each tuple field independently")
-                        .span_suggestion_verbose(
-                            sp,
-                            &format!("if you don't need to use the contents of {}, discard the tuple's remaining fields", ident),
-                            "..",
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                    self.tcx.sess.emit_err(SubTupleBinding {
+                        span: sp,
+                        ident_name: ident.name,
+                        ident,
+                        ctx,
+                    });
                 }
                 _ => {}
             }
@@ -296,19 +290,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
     pub(crate) fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
-        self.diagnostic()
-            .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
-            .span_label(sp, &format!("can only be used once per {} pattern", ctx))
-            .span_label(prev_sp, "previously used here")
-            .emit();
+        self.tcx.sess.emit_err(ExtraDoubleDot { span: sp, prev_span: prev_sp, ctx });
     }
 
     /// Used to ban the `..` pattern in places it shouldn't be semantically.
     fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind<'hir> {
-        self.diagnostic()
-            .struct_span_err(sp, "`..` patterns are not allowed here")
-            .note("only allowed in tuple, tuple struct, and slice patterns")
-            .emit();
+        self.tcx.sess.emit_err(MisplacedDoubleDot { span: sp });
 
         // We're not in a list context so `..` can be reasonably treated
         // as `_` because it should always be valid and roughly matches the
@@ -345,8 +332,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
-                self.diagnostic()
-                    .span_err(expr.span, "arbitrary expressions aren't allowed in patterns");
+                self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
                 return self.arena.alloc(self.expr_err(expr.span));
             }
         }

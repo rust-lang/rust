@@ -3,7 +3,7 @@ use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
-#[error(privacy::field_is_private, code = "E0451")]
+#[diag(privacy::field_is_private, code = "E0451")]
 pub struct FieldIsPrivate {
     #[primary_span]
     pub span: Span,
@@ -30,7 +30,7 @@ pub enum FieldIsPrivateLabel {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(privacy::item_is_private)]
+#[diag(privacy::item_is_private)]
 pub struct ItemIsPrivate<'a> {
     #[primary_span]
     #[label]
@@ -40,7 +40,7 @@ pub struct ItemIsPrivate<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(privacy::unnamed_item_is_private)]
+#[diag(privacy::unnamed_item_is_private)]
 pub struct UnnamedItemIsPrivate {
     #[primary_span]
     pub span: Span,
@@ -49,7 +49,7 @@ pub struct UnnamedItemIsPrivate {
 
 // Duplicate of `InPublicInterface` but with a different error code, shares the same slug.
 #[derive(SessionDiagnostic)]
-#[error(privacy::in_public_interface, code = "E0445")]
+#[diag(privacy::in_public_interface, code = "E0445")]
 pub struct InPublicInterfaceTraits<'a> {
     #[primary_span]
     #[label]
@@ -63,7 +63,7 @@ pub struct InPublicInterfaceTraits<'a> {
 
 // Duplicate of `InPublicInterfaceTraits` but with a different error code, shares the same slug.
 #[derive(SessionDiagnostic)]
-#[error(privacy::in_public_interface, code = "E0446")]
+#[diag(privacy::in_public_interface, code = "E0446")]
 pub struct InPublicInterface<'a> {
     #[primary_span]
     #[label]
@@ -76,7 +76,7 @@ pub struct InPublicInterface<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(privacy::from_private_dep_in_public_interface)]
+#[diag(privacy::from_private_dep_in_public_interface)]
 pub struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
     pub descr: DiagnosticArgFromDisplay<'a>,
@@ -84,7 +84,7 @@ pub struct FromPrivateDependencyInPublicInterface<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[lint(privacy::private_in_public_lint)]
+#[diag(privacy::private_in_public_lint)]
 pub struct PrivateInPublicLint<'a> {
     pub vis_descr: &'static str,
     pub kind: &'a str,

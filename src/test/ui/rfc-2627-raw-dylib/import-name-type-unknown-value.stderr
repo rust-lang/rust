@@ -1,0 +1,17 @@
+warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/import-name-type-unknown-value.rs:3:12
+   |
+LL | #![feature(raw_dylib)]
+   |            ^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
+
+error: unknown import name type `unknown`, expected one of: decorated, noprefix, undecorated
+  --> $DIR/import-name-type-unknown-value.rs:6:42
+   |
+LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "unknown")]
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+

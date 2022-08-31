@@ -3,6 +3,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
@@ -56,6 +58,16 @@ pub use wrapping::Wrapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
+
+#[cfg(not(bootstrap))]
+#[cfg(not(no_fp_fmt_parse))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
@@ -623,7 +635,7 @@ impl u8 {
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
-    /// - U+005B ..= U+0060 ``[ \ ] ^ _ ` ``, or
+    /// - U+005B ..= U+0060 `` [ \ ] ^ _ ` ``, or
     /// - U+007B ..= U+007E `{ | } ~`
     ///
     /// # Examples

@@ -10,12 +10,12 @@
       scope 1 {
           debug c => _2;                   // in scope 1 at $DIR/dyn-trait.rs:+1:9: +1:10
 +         scope 2 (inlined try_execute_query::<<Q as Query>::C>) { // at $DIR/dyn-trait.rs:34:5: 34:25
-+             debug c => _4;               // in scope 2 at $DIR/dyn-trait.rs:+0:36: +0:37
-+             let mut _5: &dyn Cache<V = <Q as Query>::V>; // in scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+             let mut _6: &<Q as Query>::C; // in scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
++             debug c => _4;               // in scope 2 at $DIR/dyn-trait.rs:26:36: 26:37
++             let mut _5: &dyn Cache<V = <Q as Query>::V>; // in scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++             let mut _6: &<Q as Query>::C; // in scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
 +             scope 3 (inlined mk_cycle::<<Q as Query>::V>) { // at $DIR/dyn-trait.rs:27:5: 27:16
-+                 debug c => _5;           // in scope 3 at $DIR/dyn-trait.rs:+0:27: +0:28
-+                 let mut _7: &dyn Cache<V = <Q as Query>::V>; // in scope 3 at $DIR/dyn-trait.rs:+0:5: +0:22
++                 debug c => _5;           // in scope 3 at $DIR/dyn-trait.rs:20:27: 20:28
++                 let mut _7: &dyn Cache<V = <Q as Query>::V>; // in scope 3 at $DIR/dyn-trait.rs:21:5: 21:22
 +             }
 +         }
       }
@@ -36,14 +36,14 @@
           StorageLive(_4);                 // scope 1 at $DIR/dyn-trait.rs:+2:23: +2:24
           _4 = &(*_2);                     // scope 1 at $DIR/dyn-trait.rs:+2:23: +2:24
 -         _0 = try_execute_query::<<Q as Query>::C>(move _4) -> bb2; // scope 1 at $DIR/dyn-trait.rs:+2:5: +2:25
-+         StorageLive(_5);                 // scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+         StorageLive(_6);                 // scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+         _6 = _4;                         // scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+         _5 = move _6 as &dyn Cache<V = <Q as Query>::V> (Pointer(Unsize)); // scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+         StorageDead(_6);                 // scope 2 at $DIR/dyn-trait.rs:+0:14: +0:15
-+         StorageLive(_7);                 // scope 3 at $DIR/dyn-trait.rs:+0:5: +0:22
-+         _7 = _5;                         // scope 3 at $DIR/dyn-trait.rs:+0:5: +0:22
-+         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(move _7) -> bb2; // scope 3 at $DIR/dyn-trait.rs:+0:5: +0:22
++         StorageLive(_5);                 // scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++         StorageLive(_6);                 // scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++         _6 = _4;                         // scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++         _5 = move _6 as &dyn Cache<V = <Q as Query>::V> (Pointer(Unsize)); // scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++         StorageDead(_6);                 // scope 2 at $DIR/dyn-trait.rs:27:14: 27:15
++         StorageLive(_7);                 // scope 3 at $DIR/dyn-trait.rs:21:5: 21:22
++         _7 = _5;                         // scope 3 at $DIR/dyn-trait.rs:21:5: 21:22
++         _0 = <dyn Cache<V = <Q as Query>::V> as Cache>::store_nocache(move _7) -> bb2; // scope 3 at $DIR/dyn-trait.rs:21:5: 21:22
                                            // mir::Constant
 -                                          // + span: $DIR/dyn-trait.rs:34:5: 34:22
 -                                          // + literal: Const { ty: for<'r> fn(&'r <Q as Query>::C) {try_execute_query::<<Q as Query>::C>}, val: Value(<ZST>) }
@@ -52,8 +52,8 @@
       }
   
       bb2: {
-+         StorageDead(_7);                 // scope 3 at $DIR/dyn-trait.rs:+0:21: +0:22
-+         StorageDead(_5);                 // scope 2 at $DIR/dyn-trait.rs:+0:15: +0:16
++         StorageDead(_7);                 // scope 3 at $DIR/dyn-trait.rs:21:21: 21:22
++         StorageDead(_5);                 // scope 2 at $DIR/dyn-trait.rs:27:15: 27:16
           StorageDead(_4);                 // scope 1 at $DIR/dyn-trait.rs:+2:24: +2:25
           StorageDead(_2);                 // scope 0 at $DIR/dyn-trait.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/dyn-trait.rs:+3:2: +3:2

@@ -3,7 +3,7 @@ use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, ImmTy, Immediate, InternKind, MemPlaceMeta,
-    MemoryKind, PlaceTy, Scalar, ScalarMaybeUninit,
+    MemoryKind, PlaceTy, Scalar,
 };
 use crate::interpret::{MPlaceTy, Value};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
@@ -90,7 +90,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             let Ok(val) = ecx.read_immediate(&place.into()) else {
                 return Err(ValTreeCreationError::Other);
             };
-            let val = val.to_scalar().unwrap();
+            let val = val.to_scalar();
             *num_nodes += 1;
 
             Ok(ty::ValTree::Leaf(val.assert_int()))
@@ -349,11 +349,7 @@ fn valtree_into_mplace<'tcx>(
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let scalar_int = valtree.unwrap_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
-            ecx.write_immediate(
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar_int.into())),
-                &place.into(),
-            )
-            .unwrap();
+            ecx.write_immediate(Immediate::Scalar(scalar_int.into()), &place.into()).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
             let mut pointee_place = create_pointee_place(ecx, *inner_ty, valtree);
@@ -366,11 +362,10 @@ fn valtree_into_mplace<'tcx>(
             let imm = match inner_ty.kind() {
                 ty::Slice(_) | ty::Str => {
                     let len = valtree.unwrap_branch().len();
-                    let len_scalar =
-                        ScalarMaybeUninit::Scalar(Scalar::from_machine_usize(len as u64, &tcx));
+                    let len_scalar = Scalar::from_machine_usize(len as u64, &tcx);
 
                     Immediate::ScalarPair(
-                        ScalarMaybeUninit::from_maybe_pointer((*pointee_place).ptr, &tcx),
+                        Scalar::from_maybe_pointer((*pointee_place).ptr, &tcx),
                         len_scalar,
                     )
                 }

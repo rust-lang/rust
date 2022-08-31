@@ -75,10 +75,11 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         match self.safety_context {
             SafetyContext::BuiltinUnsafeBlock => {}
             SafetyContext::UnsafeBlock { ref mut used, .. } => {
-                if !self.body_unsafety.is_unsafe() || !unsafe_op_in_unsafe_fn_allowed {
-                    // Mark this block as useful
-                    *used = true;
-                }
+                // Mark this block as useful (even inside `unsafe fn`, where it is technically
+                // redundant -- but we want to eventually enable `unsafe_op_in_unsafe_fn` by
+                // default which will require those blocks:
+                // https://github.com/rust-lang/rust/issues/71668#issuecomment-1203075594).
+                *used = true;
             }
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
@@ -390,7 +391,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::InlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
-            ExprKind::Adt(box Adt {
+            ExprKind::Adt(box AdtExpr {
                 adt_def,
                 variant_index: _,
                 substs: _,
@@ -401,13 +402,13 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 (Bound::Unbounded, Bound::Unbounded) => {}
                 _ => self.requires_unsafe(expr.span, InitializingTypeWith),
             },
-            ExprKind::Closure {
+            ExprKind::Closure(box ClosureExpr {
                 closure_id,
                 substs: _,
                 upvars: _,
                 movability: _,
                 fake_reads: _,
-            } => {
+            }) => {
                 let closure_def = if let Some((did, const_param_id)) =
                     ty::WithOptConstParam::try_lookup(closure_id, self.tcx)
                 {

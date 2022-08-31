@@ -1,6 +1,7 @@
 use super::callee::DeferredCallResolution;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -12,7 +13,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{
+    self, ObligationCause, ObligationCtxt, TraitEngine, TraitEngineExt as _,
+};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -84,7 +87,29 @@ impl<'tcx> Inherited<'_, 'tcx> {
             infcx: tcx
                 .infer_ctxt()
                 .ignoring_regions()
-                .with_fresh_in_progress_typeck_results(hir_owner),
+                .with_fresh_in_progress_typeck_results(hir_owner)
+                .with_normalize_fn_sig_for_diagnostic(Lrc::new(move |infcx, fn_sig| {
+                    if fn_sig.has_escaping_bound_vars() {
+                        return fn_sig;
+                    }
+                    infcx.probe(|_| {
+                        let ocx = ObligationCtxt::new_in_snapshot(infcx);
+                        let normalized_fn_sig = ocx.normalize(
+                            ObligationCause::dummy(),
+                            // FIXME(compiler-errors): This is probably not the right param-env...
+                            infcx.tcx.param_env(def_id),
+                            fn_sig,
+                        );
+                        if ocx.select_all_or_error().is_empty() {
+                            let normalized_fn_sig =
+                                infcx.resolve_vars_if_possible(normalized_fn_sig);
+                            if !normalized_fn_sig.needs_infer() {
+                                return normalized_fn_sig;
+                            }
+                        }
+                        fn_sig
+                    })
+                })),
             def_id,
         }
     }

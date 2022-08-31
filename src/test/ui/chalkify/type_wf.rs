@@ -15,8 +15,8 @@ fn main() {
        x: 5,
     };
 
-    let s = S { //~ ERROR the trait bound `{float}: Foo` is not satisfied
-        x: 5.0,
+    let s = S {
+        x: 5.0, //~ ERROR the trait bound `{float}: Foo` is not satisfied
     };
 
     let s = S {

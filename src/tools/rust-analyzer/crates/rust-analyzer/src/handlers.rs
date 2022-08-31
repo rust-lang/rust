@@ -51,6 +51,12 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> Result<
     Ok(())
 }
 
+pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> Result<()> {
+    let _p = profile::span("handle_stop_flycheck");
+    state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
+    Ok(())
+}
+
 pub(crate) fn handle_analyzer_status(
     snap: GlobalStateSnapshot,
     params: lsp_ext::AnalyzerStatusParams,
@@ -703,10 +709,8 @@ pub(crate) fn handle_runnables(
 
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
-        if let Some(offset) = offset {
-            if !runnable.nav.full_range.contains_inclusive(offset) {
-                continue;
-            }
+        if should_skip_for_offset(&runnable, offset) {
+            continue;
         }
         if should_skip_target(&runnable, cargo_spec.as_ref()) {
             continue;
@@ -770,6 +774,14 @@ pub(crate) fn handle_runnables(
         }
     }
     Ok(res)
+}
+
+fn should_skip_for_offset(runnable: &Runnable, offset: Option<TextSize>) -> bool {
+    match offset {
+        None => false,
+        _ if matches!(&runnable.kind, RunnableKind::TestMod { .. }) => false,
+        Some(offset) => !runnable.nav.full_range.contains_inclusive(offset),
+    }
 }
 
 pub(crate) fn handle_related_tests(
@@ -1492,10 +1504,8 @@ pub(crate) fn handle_semantic_tokens_full(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(file_id)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     // Unconditionally cache the tokens
     snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
@@ -1513,10 +1523,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(file_id)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
@@ -1544,10 +1552,8 @@ pub(crate) fn handle_semantic_tokens_range(
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
-    let highlights = snap.analysis.highlight_range(frange)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight_range(snap.config.highlighting_config(), frange)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
 }
 
@@ -1765,7 +1771,7 @@ fn run_rustfmt(
 
     let line_index = snap.file_line_index(file_id)?;
 
-    let mut rustfmt = match snap.config.rustfmt() {
+    let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.args(extra_args);
@@ -1830,12 +1836,12 @@ fn run_rustfmt(
         }
     };
 
-    let mut rustfmt = rustfmt
+    let mut rustfmt = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .context(format!("Failed to spawn {:?}", rustfmt))?;
+        .context(format!("Failed to spawn {:?}", command))?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
@@ -1854,7 +1860,11 @@ fn run_rustfmt(
                 // formatting because otherwise an error is surfaced to the user on top of the
                 // syntax error diagnostics they're already receiving. This is especially jarring
                 // if they have format on save enabled.
-                tracing::info!("rustfmt exited with status 1, assuming parse error and ignoring");
+                tracing::warn!(
+                    ?command,
+                    %captured_stderr,
+                    "rustfmt exited with status 1"
+                );
                 Ok(None)
             }
             _ => {

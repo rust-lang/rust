@@ -990,42 +990,7 @@ impl Config {
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    // This is currently all tier 1 targets and tier 2 targets with host tools
-                    // (since others may not have CI artifacts)
-                    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
-                    // FIXME: this is duplicated in bootstrap.py
-                    let supported_platforms = [
-                        // tier 1
-                        "aarch64-unknown-linux-gnu",
-                        "i686-pc-windows-gnu",
-                        "i686-pc-windows-msvc",
-                        "i686-unknown-linux-gnu",
-                        "x86_64-unknown-linux-gnu",
-                        "x86_64-apple-darwin",
-                        "x86_64-pc-windows-gnu",
-                        "x86_64-pc-windows-msvc",
-                        // tier 2 with host tools
-                        "aarch64-apple-darwin",
-                        "aarch64-pc-windows-msvc",
-                        "aarch64-unknown-linux-musl",
-                        "arm-unknown-linux-gnueabi",
-                        "arm-unknown-linux-gnueabihf",
-                        "armv7-unknown-linux-gnueabihf",
-                        "mips-unknown-linux-gnu",
-                        "mips64-unknown-linux-gnuabi64",
-                        "mips64el-unknown-linux-gnuabi64",
-                        "mipsel-unknown-linux-gnu",
-                        "powerpc-unknown-linux-gnu",
-                        "powerpc64-unknown-linux-gnu",
-                        "powerpc64le-unknown-linux-gnu",
-                        "riscv64gc-unknown-linux-gnu",
-                        "s390x-unknown-linux-gnu",
-                        "x86_64-unknown-freebsd",
-                        "x86_64-unknown-illumos",
-                        "x86_64-unknown-linux-musl",
-                        "x86_64-unknown-netbsd",
-                    ];
-                    supported_platforms.contains(&&*config.build.triple)
+                    crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => false,
@@ -1176,6 +1141,7 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.build.triple;
+            let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let mut build_target = config
                 .target_config
                 .entry(config.build)
@@ -1183,7 +1149,6 @@ impl Config {
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
         }

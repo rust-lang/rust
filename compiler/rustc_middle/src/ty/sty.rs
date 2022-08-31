@@ -325,6 +325,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
             _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
         }
     }
+
+    pub fn print_as_impl_trait(self) -> ty::print::PrintClosureAsImpl<'tcx> {
+        ty::print::PrintClosureAsImpl { closure: self }
+    }
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
@@ -1616,6 +1620,10 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => true,
             _ => self.is_free(),
         }
+    }
+
+    pub fn is_var(self) -> bool {
+        matches!(self.kind(), ty::ReVar(_))
     }
 }
 

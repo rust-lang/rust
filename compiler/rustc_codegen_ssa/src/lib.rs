@@ -168,6 +168,13 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
+pub enum CodegenErrors<'a> {
+    WrongFileType,
+    EmptyVersionNumber,
+    EncodingVersionMismatch { version_array: String, rlink_version: u32 },
+    RustcVersionMismatch { rustc_version: String, current_version: &'a str },
+}
+
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
@@ -212,30 +219,34 @@ impl CodegenResults {
         encoder.finish()
     }
 
-    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {
+    pub fn deserialize_rlink<'a>(data: Vec<u8>) -> Result<Self, CodegenErrors<'a>> {
         // The Decodable machinery is not used here because it panics if the input data is invalid
         // and because its internal representation may change.
         if !data.starts_with(RLINK_MAGIC) {
-            return Err("The input does not look like a .rlink file".to_string());
+            return Err(CodegenErrors::WrongFileType);
         }
         let data = &data[RLINK_MAGIC.len()..];
         if data.len() < 4 {
-            return Err("The input does not contain version number".to_string());
+            return Err(CodegenErrors::EmptyVersionNumber);
         }
 
         let mut version_array: [u8; 4] = Default::default();
         version_array.copy_from_slice(&data[..4]);
         if u32::from_be_bytes(version_array) != RLINK_VERSION {
-            return Err(".rlink file was produced with encoding version {version_array}, but the current version is {RLINK_VERSION}".to_string());
+            return Err(CodegenErrors::EncodingVersionMismatch {
+                version_array: String::from_utf8_lossy(&version_array).to_string(),
+                rlink_version: RLINK_VERSION,
+            });
         }
 
         let mut decoder = MemDecoder::new(&data[4..], 0);
         let rustc_version = decoder.read_str();
         let current_version = RUSTC_VERSION.unwrap();
         if rustc_version != current_version {
-            return Err(format!(
-                ".rlink file was produced by rustc version {rustc_version}, but the current version is {current_version}."
-            ));
+            return Err(CodegenErrors::RustcVersionMismatch {
+                rustc_version: rustc_version.to_string(),
+                current_version,
+            });
         }
 
         let codegen_results = CodegenResults::decode(&mut decoder);

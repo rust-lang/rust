@@ -77,6 +77,10 @@ impl Rawness {
             Rawness::Ref
         }
     }
+
+    pub fn is_raw(&self) -> bool {
+        matches!(self, Self::RawPtr)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

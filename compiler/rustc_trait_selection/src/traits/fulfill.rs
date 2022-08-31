@@ -597,6 +597,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
     }
 
+    #[inline(never)]
     fn process_backedge<'c, I>(
         &mut self,
         cycle: I,

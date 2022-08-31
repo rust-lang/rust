@@ -1857,8 +1857,8 @@ pub mod tls {
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
         pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
 
-        /// Used to prevent layout from recursing too deeply.
-        pub layout_depth: usize,
+        /// Used to prevent queries from calling too deeply.
+        pub query_depth: usize,
 
         /// The current dep graph task. This is used to add dependencies to queries
         /// when executing them.
@@ -1872,7 +1872,7 @@ pub mod tls {
                 tcx,
                 query: None,
                 diagnostics: None,
-                layout_depth: 0,
+                query_depth: 0,
                 task_deps: TaskDepsRef::Ignore,
             }
         }

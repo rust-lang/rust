@@ -1,0 +1,18 @@
+LIBRARY extern
+EXPORTS
+    cdecl_fn_undecorated
+    cdecl_fn_noprefix
+    cdecl_fn_decorated
+    stdcall_fn_undecorated
+    _stdcall_fn_decorated@4
+    fastcall_fn_undecorated
+    @fastcall_fn_decorated@4
+
+    ;MSVC doesn't seem to recognize the "no prefix" syntax.
+    stdcall_fn_noprefix@4=_stdcall_fn_noprefix@4
+    fastcall_fn_noprefix@4=@fastcall_fn_noprefix@4
+
+    ;Variables are never decorated
+    extern_variable_undecorated
+    extern_variable_noprefix
+    extern_variable_decorated

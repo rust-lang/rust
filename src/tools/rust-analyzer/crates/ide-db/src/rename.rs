@@ -82,7 +82,7 @@ impl Definition {
     }
 
     /// Textual range of the identifier which will change when renaming this
-    /// `Definition`. Note that some definitions, like buitin types, can't be
+    /// `Definition`. Note that some definitions, like builtin types, can't be
     /// renamed.
     pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
         let res = match self {

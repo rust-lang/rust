@@ -711,7 +711,7 @@ impl<'tcx> WfPredicates<'tcx> {
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((mut pred, span), origin_def_id)| {
                 let code = if span.is_dummy() {
-                    traits::MiscObligation
+                    traits::ItemObligation(origin_def_id)
                 } else {
                     traits::BindingObligation(origin_def_id, span)
                 };

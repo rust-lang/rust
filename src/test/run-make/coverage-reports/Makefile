@@ -75,7 +75,7 @@ ifdef RUSTC_BLESS_TEST
 	rm -f expected_*
 endif
 
--include clear_expected_if_blessed
+include clear_expected_if_blessed
 
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation

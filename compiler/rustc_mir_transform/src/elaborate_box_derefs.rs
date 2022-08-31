@@ -69,9 +69,7 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             let (unique_ty, nonnull_ty, ptr_ty) =
                 build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
 
-            let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
-
-            self.patch.add_statement(location, StatementKind::StorageLive(ptr_local));
+            let ptr_local = self.patch.new_internal(ptr_ty, source_info.span);
 
             self.patch.add_assign(
                 location,
@@ -83,11 +81,6 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             );
 
             place.local = ptr_local;
-
-            self.patch.add_statement(
-                Location { block: location.block, statement_index: location.statement_index + 1 },
-                StatementKind::StorageDead(ptr_local),
-            );
         }
 
         self.super_place(place, context, location);
@@ -114,27 +107,8 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
             let mut visitor =
                 ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
-            for (block, BasicBlockData { statements, terminator, .. }) in
-                body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut()
-            {
-                let mut index = 0;
-                for statement in statements {
-                    let location = Location { block, statement_index: index };
-                    visitor.visit_statement(statement, location);
-                    index += 1;
-                }
-
-                let location = Location { block, statement_index: index };
-                match terminator {
-                    // yielding into a box is handled when lowering generators
-                    Some(Terminator { kind: TerminatorKind::Yield { value, .. }, .. }) => {
-                        visitor.visit_operand(value, location);
-                    }
-                    Some(terminator) => {
-                        visitor.visit_terminator(terminator, location);
-                    }
-                    None => {}
-                }
+            for (block, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+                visitor.visit_basic_block_data(block, data);
             }
 
             visitor.patch.apply(body);

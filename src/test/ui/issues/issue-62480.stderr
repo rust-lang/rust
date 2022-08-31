@@ -1,5 +1,5 @@
 error[E0767]: use of unreachable label `'a`
-  --> $DIR/issue-62480.rs:8:18
+  --> $DIR/issue-62480.rs:6:18
    |
 LL |     'a: {
    |     -- unreachable label defined here
@@ -9,7 +9,7 @@ LL |         || break 'a
    = note: labels are unreachable through functions, closures, async blocks and modules
 
 error[E0267]: `break` inside of a closure
-  --> $DIR/issue-62480.rs:8:12
+  --> $DIR/issue-62480.rs:6:12
    |
 LL |         || break 'a
    |         -- ^^^^^^^^ cannot `break` inside of a closure

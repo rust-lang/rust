@@ -1,7 +1,7 @@
 # only-gnu
 # only-linux
 
--include ../tools.mk
+include ../tools.mk
 
 # This ensures that std::env::args works in a library called from C on glibc Linux.
 

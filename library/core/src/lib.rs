@@ -130,7 +130,6 @@
 #![feature(const_replace)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
@@ -149,6 +148,7 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
+#![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -302,6 +302,8 @@ pub mod clone;
 pub mod cmp;
 pub mod convert;
 pub mod default;
+#[cfg(not(bootstrap))]
+pub mod error;
 pub mod marker;
 pub mod ops;
 

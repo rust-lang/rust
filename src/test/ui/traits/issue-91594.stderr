@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `Foo: HasComponent<()>` is not satisfied
-  --> $DIR/issue-91594.rs:10:6
+  --> $DIR/issue-91594.rs:10:1
    |
 LL | impl HasComponent<<Foo as Component<Foo>>::Interface> for Foo {}
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasComponent<()>` is not implemented for `Foo`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasComponent<()>` is not implemented for `Foo`
    |
    = help: the trait `HasComponent<<Foo as Component<Foo>>::Interface>` is implemented for `Foo`
 note: required for `Foo` to implement `Component<Foo>`

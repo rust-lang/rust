@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, MacroCallId, MacroDefKind};
+use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -12,7 +12,10 @@ use crate::{
     db::DefDatabase,
     intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
-    nameres::{attr_resolution::ResolvedAttr, proc_macro::ProcMacroKind, DefMap},
+    nameres::{
+        attr_resolution::ResolvedAttr, diagnostics::DefDiagnostic, proc_macro::ProcMacroKind,
+        DefMap,
+    },
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -210,6 +213,13 @@ pub struct TraitData {
 
 impl TraitData {
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
+        db.trait_data_with_diagnostics(tr).0
+    }
+
+    pub(crate) fn trait_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        tr: TraitId,
+    ) -> (Arc<TraitData>, Arc<Vec<DefDiagnostic>>) {
         let tr_loc @ ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
@@ -229,17 +239,20 @@ impl TraitData {
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
-        let (items, attribute_calls) = collector.finish();
+        let (items, attribute_calls, diagnostics) = collector.finish();
 
-        Arc::new(TraitData {
-            name,
-            attribute_calls,
-            items,
-            is_auto,
-            is_unsafe,
-            visibility,
-            skip_array_during_method_dispatch,
-        })
+        (
+            Arc::new(TraitData {
+                name,
+                attribute_calls,
+                items,
+                is_auto,
+                is_unsafe,
+                visibility,
+                skip_array_during_method_dispatch,
+            }),
+            Arc::new(diagnostics),
+        )
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {
@@ -280,7 +293,14 @@ pub struct ImplData {
 
 impl ImplData {
     pub(crate) fn impl_data_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplData> {
-        let _p = profile::span("impl_data_query");
+        db.impl_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn impl_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: ImplId,
+    ) -> (Arc<ImplData>, Arc<Vec<DefDiagnostic>>) {
+        let _p = profile::span("impl_data_with_diagnostics_query");
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
         let item_tree = tree_id.item_tree(db);
@@ -293,10 +313,13 @@ impl ImplData {
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::ImplId(id));
         collector.collect(&item_tree, tree_id.tree_id(), &impl_def.items);
 
-        let (items, attribute_calls) = collector.finish();
+        let (items, attribute_calls, diagnostics) = collector.finish();
         let items = items.into_iter().map(|(_, item)| item).collect();
 
-        Arc::new(ImplData { target_trait, self_ty, items, is_negative, attribute_calls })
+        (
+            Arc::new(ImplData { target_trait, self_ty, items, is_negative, attribute_calls }),
+            Arc::new(diagnostics),
+        )
     }
 
     pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
@@ -437,6 +460,7 @@ struct AssocItemCollector<'a> {
     db: &'a dyn DefDatabase,
     module_id: ModuleId,
     def_map: Arc<DefMap>,
+    inactive_diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
     expander: Expander,
 
@@ -459,15 +483,21 @@ impl<'a> AssocItemCollector<'a> {
             expander: Expander::new(db, file_id, module_id),
             items: Vec::new(),
             attr_calls: Vec::new(),
+            inactive_diagnostics: Vec::new(),
         }
     }
 
     fn finish(
         self,
-    ) -> (Vec<(Name, AssocItemId)>, Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>) {
+    ) -> (
+        Vec<(Name, AssocItemId)>,
+        Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
+        Vec<DefDiagnostic>,
+    ) {
         (
             self.items,
             if self.attr_calls.is_empty() { None } else { Some(Box::new(self.attr_calls)) },
+            self.inactive_diagnostics,
         )
     }
 
@@ -479,6 +509,12 @@ impl<'a> AssocItemCollector<'a> {
         'items: for &item in assoc_items {
             let attrs = item_tree.attrs(self.db, self.module_id.krate, ModItem::from(item).into());
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
+                self.inactive_diagnostics.push(DefDiagnostic::unconfigured_code(
+                    self.module_id.local_id,
+                    InFile::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast()),
+                    attrs.cfg().unwrap(),
+                    self.expander.cfg_options().clone(),
+                ));
                 continue;
             }
 

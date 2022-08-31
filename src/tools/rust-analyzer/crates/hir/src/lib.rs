@@ -72,7 +72,7 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
-use stdx::{format_to, impl_from, never};
+use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
@@ -511,6 +511,7 @@ impl Module {
             .collect()
     }
 
+    /// Fills `acc` with the module's diagnostics.
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
@@ -531,11 +532,21 @@ impl Module {
                         m.diagnostics(db, acc)
                     }
                 }
+                ModuleDef::Trait(t) => {
+                    for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
+                        emit_def_diagnostic(db, acc, diag);
+                    }
+                    acc.extend(decl.diagnostics(db))
+                }
                 _ => acc.extend(decl.diagnostics(db)),
             }
         }
 
         for impl_def in self.impl_defs(db) {
+            for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
+                emit_def_diagnostic(db, acc, diag);
+            }
+
             for item in impl_def.items(db) {
                 let def: DefWithBody = match item {
                     AssocItem::Function(it) => it.into(),
@@ -1136,6 +1147,20 @@ impl DefWithBody {
         }
     }
 
+    fn id(&self) -> DefWithBodyId {
+        match self {
+            DefWithBody::Function(it) => it.id.into(),
+            DefWithBody::Static(it) => it.id.into(),
+            DefWithBody::Const(it) => it.id.into(),
+        }
+    }
+
+    /// A textual representation of the HIR of this def's body for debugging purposes.
+    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
+        let body = db.body(self.id());
+        body.pretty_print(db.upcast(), self.id())
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
@@ -1469,19 +1494,6 @@ impl Function {
         let loc = self.id.lookup(db.upcast());
         let def_map = db.crate_def_map(loc.krate(db).into());
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
-    }
-
-    /// A textual representation of the HIR of this function for debugging purposes.
-    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
-        let body = db.body(self.id.into());
-
-        let mut result = String::new();
-        format_to!(result, "HIR expressions in the body of `{}`:\n", self.name(db));
-        for (id, expr) in body.exprs.iter() {
-            format_to!(result, "{:?}: {:?}\n", id, expr);
-        }
-
-        result
     }
 }
 
@@ -2777,20 +2789,32 @@ impl Type {
         self.ty.is_unknown()
     }
 
-    /// Checks that particular type `ty` implements `std::future::Future`.
+    /// Checks that particular type `ty` implements `std::future::IntoFuture` or
+    /// `std::future::Future`.
     /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
-        let std_future_trait = db
-            .lang_item(self.env.krate, SmolStr::new_inline("future_trait"))
-            .and_then(|it| it.as_trait());
-        let std_future_trait = match std_future_trait {
+    pub fn impls_into_future(&self, db: &dyn HirDatabase) -> bool {
+        let trait_ = db
+            .lang_item(self.env.krate, SmolStr::new_inline("into_future"))
+            .and_then(|it| {
+                let into_future_fn = it.as_function()?;
+                let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
+                let into_future_trait = assoc_item.containing_trait_or_trait_impl(db)?;
+                Some(into_future_trait.id)
+            })
+            .or_else(|| {
+                let future_trait =
+                    db.lang_item(self.env.krate, SmolStr::new_inline("future_trait"))?;
+                future_trait.as_trait()
+            });
+
+        let trait_ = match trait_ {
             Some(it) => it,
             None => return false,
         };
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), std_future_trait)
+        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), trait_)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.

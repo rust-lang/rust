@@ -31,8 +31,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("mdbook", "MPL-2.0"),            // mdbook
     ("openssl", "Apache-2.0"),        // cargo, mdbook
     ("colored", "MPL-2.0"),           // rustfmt
-    ("ordslice", "Apache-2.0"),       // rls
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // rls/cargo/... (because of serde)
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // cargo/... (because of serde)
     ("bytesize", "Apache-2.0"),       // cargo
     ("im-rc", "MPL-2.0+"),            // cargo
     ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
@@ -247,6 +246,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "unicode-width",
     "unicode-xid",
     "vcpkg",
+    "valuable",
     "version_check",
     "wasi",
     "winapi",
@@ -300,6 +300,12 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
+    "windows-sys",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_msvc",
 ];
 
 const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[

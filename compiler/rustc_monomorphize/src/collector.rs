@@ -128,7 +128,7 @@
 //! #### Unsizing Casts
 //! A subtle way of introducing neighbor edges is by casting to a trait object.
 //! Since the resulting fat-pointer contains a reference to a vtable, we need to
-//! instantiate all object-save methods of the trait, as we need to store
+//! instantiate all object-safe methods of the trait, as we need to store
 //! pointers to these functions even if they never get called anywhere. This can
 //! be seen as a special case of taking a function reference.
 //!
@@ -206,6 +206,8 @@ use rustc_target::abi::Size;
 use std::iter;
 use std::ops::Range;
 use std::path::PathBuf;
+
+use crate::errors::{LargeAssignmentsLint, RecursionLimit, RequiresLangItem, TypeLengthLimit};
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -461,7 +463,7 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = None;
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                for &id in alloc.inner().relocations().values() {
+                for &id in alloc.inner().provenance().values() {
                     collect_miri(tcx, id, &mut neighbors);
                 }
             }
@@ -604,17 +606,24 @@ fn check_recursion_limit<'tcx>(
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
     if !recursion_limit.value_within_limit(adjusted_recursion_depth) {
+        let def_span = tcx.def_span(def_id);
+        let def_path_str = tcx.def_path_str(def_id);
         let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
-        let error = format!("reached the recursion limit while instantiating `{}`", shrunk);
-        let mut err = tcx.sess.struct_span_fatal(span, &error);
-        err.span_note(
-            tcx.def_span(def_id),
-            &format!("`{}` defined here", tcx.def_path_str(def_id)),
-        );
-        if let Some(path) = written_to_path {
-            err.note(&format!("the full type name has been written to '{}'", path.display()));
-        }
-        err.emit()
+        let mut path = PathBuf::new();
+        let was_written = if written_to_path.is_some() {
+            path = written_to_path.unwrap();
+            Some(())
+        } else {
+            None
+        };
+        tcx.sess.emit_fatal(RecursionLimit {
+            span,
+            shrunk,
+            def_span,
+            def_path_str,
+            was_written,
+            path,
+        });
     }
 
     recursion_depths.insert(def_id, recursion_depth + 1);
@@ -642,16 +651,15 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     // Bail out in these cases to avoid that bad user experience.
     if !tcx.type_length_limit().value_within_limit(type_length) {
         let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
-        let msg = format!("reached the type-length limit while instantiating `{}`", shrunk);
-        let mut diag = tcx.sess.struct_span_fatal(tcx.def_span(instance.def_id()), &msg);
-        if let Some(path) = written_to_path {
-            diag.note(&format!("the full type name has been written to '{}'", path.display()));
-        }
-        diag.help(&format!(
-            "consider adding a `#![type_length_limit=\"{}\"]` attribute to your crate",
-            type_length
-        ));
-        diag.emit()
+        let span = tcx.def_span(instance.def_id());
+        let mut path = PathBuf::new();
+        let was_written = if written_to_path.is_some() {
+            path = written_to_path.unwrap();
+            Some(())
+        } else {
+            None
+        };
+        tcx.sess.emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
     }
 }
 
@@ -914,17 +922,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     // but correct span? This would make the lint at least accept crate-level lint attributes.
                     return;
                 };
-                self.tcx.struct_span_lint_hir(
+                self.tcx.emit_spanned_lint(
                     LARGE_ASSIGNMENTS,
                     lint_root,
                     source_info.span,
-                    |lint| {
-                        let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
-                        err.span_label(source_info.span, "value moved from here");
-                        err.note(&format!(r#"The current maximum size is {}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`"#, limit.bytes()));
-                        err.emit();
+                    LargeAssignmentsLint {
+                        span: source_info.span,
+                        size: layout.size.bytes(),
+                        limit: limit.bytes(),
                     },
-                );
+                )
             }
         }
     }
@@ -1044,10 +1051,12 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// them.
 ///
 /// For example, the source type might be `&SomeStruct` and the target type
-/// might be `&SomeTrait` in a cast like:
+/// might be `&dyn SomeTrait` in a cast like:
 ///
+/// ```rust,ignore (not real code)
 /// let src: &SomeStruct = ...;
-/// let target = src as &SomeTrait;
+/// let target = src as &dyn SomeTrait;
+/// ```
 ///
 /// Then the output of this function would be (SomeStruct, SomeTrait) since for
 /// constructing the `target` fat-pointer we need the vtable for that pair.
@@ -1068,8 +1077,10 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// for the pair of `T` (which is a trait) and the concrete type that `T` was
 /// originally coerced from:
 ///
+/// ```rust,ignore (not real code)
 /// let src: &ComplexStruct<SomeStruct> = ...;
-/// let target = src as &ComplexStruct<SomeTrait>;
+/// let target = src as &ComplexStruct<dyn SomeTrait>;
+/// ```
 ///
 /// Again, we want this `find_vtable_types_for_unsizing()` to provide the pair
 /// `(SomeStruct, SomeTrait)`.
@@ -1317,7 +1328,11 @@ impl<'v> RootCollector<'_, 'v> {
 
         let start_def_id = match self.tcx.lang_items().require(LangItem::Start) {
             Ok(s) => s,
-            Err(err) => self.tcx.sess.fatal(&err),
+            Err(lang_item_err) => {
+                self.tcx
+                    .sess
+                    .emit_fatal(RequiresLangItem { lang_item: lang_item_err.0.name().to_string() });
+            }
         };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).output();
 
@@ -1420,7 +1435,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
         }
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &inner in alloc.inner().relocations().values() {
+            for &inner in alloc.inner().provenance().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
                     collect_miri(tcx, inner, output);
                 });
@@ -1459,7 +1474,7 @@ fn collect_const_value<'tcx>(
     match value {
         ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_miri(tcx, ptr.provenance, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
-            for &id in alloc.inner().relocations().values() {
+            for &id in alloc.inner().provenance().values() {
                 collect_miri(tcx, id, output);
             }
         }

@@ -8,7 +8,7 @@
 static PTR_INT_CAST: () = {
     let x = &0 as *const _ as usize;
     //~^ ERROR could not evaluate static initializer
-    //~| "exposing pointers" needs an rfc before being allowed inside constants
+    //~| exposing pointers
     let _v = x == x;
 };
 
@@ -18,5 +18,8 @@ static PTR_INT_TRANSMUTE: () = unsafe {
     //~^ ERROR could not evaluate static initializer
     //~| unable to turn pointer into raw bytes
 };
+
+// I'd love to test pointer comparison, but that is not possible since
+// their `PartialEq` impl is non-`const`.
 
 fn main() {}

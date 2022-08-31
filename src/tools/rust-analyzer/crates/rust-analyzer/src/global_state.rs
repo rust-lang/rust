@@ -8,12 +8,13 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase, SourceDatabaseExt};
+use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::FxHashMap;
+use stdx::hash::NoHashHashMap;
 use vfs::AnchoredPathBuf;
 
 use crate::{
@@ -67,7 +68,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_progress_n_total: usize,
@@ -113,7 +114,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
 
@@ -157,7 +158,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
 
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), NoHashHashMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
             vfs_progress_n_total: 0,
@@ -176,9 +177,9 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut fs_refresh_changes = Vec::new();
         // A file was added or deleted
         let mut has_structure_changes = false;
+        let mut workspace_structure_change = None;
 
         let (change, changed_files) = {
             let mut change = Change::new();
@@ -192,7 +193,7 @@ impl GlobalState {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        fs_refresh_changes.push((path, file.file_id));
+                        workspace_structure_change = Some(path);
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
@@ -227,11 +228,10 @@ impl GlobalState {
 
         {
             let raw_database = self.analysis_host.raw_database();
-            let workspace_structure_change =
-                fs_refresh_changes.into_iter().find(|&(_, file_id)| {
-                    !raw_database.source_root(raw_database.file_source_root(file_id)).is_library
-                });
-            if let Some((path, _)) = workspace_structure_change {
+            // FIXME: ideally we should only trigger a workspace fetch for non-library changes
+            // but somethings going wrong with the source root business when we add a new local
+            // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
+            if let Some(path) = workspace_structure_change {
                 self.fetch_workspaces_queue
                     .request_op(format!("workspace vfs file change: {}", path.display()));
             }

@@ -13,7 +13,7 @@ LL |     if let x = 1 && i = 2 {}
    |                     ^ not found in this scope
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:9
+  --> $DIR/bad-if-let-suggestion.rs:13:9
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -22,7 +22,7 @@ LL |     if (i + j) = i {}
    |         ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `j` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:13
+  --> $DIR/bad-if-let-suggestion.rs:13:13
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -31,7 +31,7 @@ LL |     if (i + j) = i {}
    |             ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `i` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:12:18
+  --> $DIR/bad-if-let-suggestion.rs:13:18
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -40,7 +40,7 @@ LL |     if (i + j) = i {}
    |                  ^ help: a function with a similar name exists: `a`
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/bad-if-let-suggestion.rs:19:8
+  --> $DIR/bad-if-let-suggestion.rs:20:8
    |
 LL | fn a() {
    | ------ similarly named function `a` defined here
@@ -48,13 +48,22 @@ LL | fn a() {
 LL |     if x[0] = 1 {}
    |        ^ help: a function with a similar name exists: `a`
 
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/bad-if-let-suggestion.rs:5:8
+   |
+LL |     if let x = 1 && i = 2 {}
+   |        ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
 error[E0308]: mismatched types
   --> $DIR/bad-if-let-suggestion.rs:5:8
    |
 LL |     if let x = 1 && i = 2 {}
    |        ^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0308, E0425.
+Some errors have detailed explanations: E0308, E0425, E0658.
 For more information about an error, try `rustc --explain E0308`.

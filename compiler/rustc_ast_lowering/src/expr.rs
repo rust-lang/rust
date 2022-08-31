@@ -1,3 +1,9 @@
+use super::errors::{
+    AsyncGeneratorsNotSupported, AsyncNonMoveClosureNotSupported, AwaitOnlyInAsyncFnAndBlocks,
+    BaseExpressionDoubleDot, ClosureCannotBeStatic, FunctionalRecordUpdateDestructuringAssignemnt,
+    GeneratorTooManyParameters, InclusiveRangeWithNoEnd, NotSupportedForLifetimeBinderAsyncClosure,
+    RustcBoxAttributeError, UnderscoreExprLhsAssign,
+};
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::{FnDeclKind, ImplTraitPosition};
@@ -6,8 +12,6 @@ use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
@@ -46,13 +50,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
-                            self.tcx.sess
-                                .struct_span_err(
-                                    e.span,
-                                    "#[rustc_box] requires precisely one argument \
-                                    and no other attributes are allowed",
-                                )
-                                .emit();
+                            self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
                             hir::ExprKind::Err
                         }
                     } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
@@ -212,13 +210,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
                 ExprKind::Underscore => {
-                    self.tcx
-                        .sess.struct_span_err(
-                            e.span,
-                            "in expressions, `_` can only be used on the left-hand side of an assignment",
-                        )
-                        .span_label(e.span, "`_` not allowed here")
-                        .emit();
+                    self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
                     hir::ExprKind::Err
                 }
                 ExprKind::Path(ref qself, ref path) => {
@@ -250,11 +242,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            self.tcx
-                                .sess
-                                .struct_span_err(*sp, "base expression required after `..`")
-                                .span_label(*sp, "add a base expression here")
-                                .emit();
+                            self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
                             Some(&*self.arena.alloc(self.expr_err(*sp)))
                         }
                         StructRest::None => None,
@@ -448,12 +436,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let lowered_cond = self.with_loop_condition_scope(|t| t.lower_expr(cond));
         let new_cond = self.manage_let_cond(lowered_cond);
         let then = self.lower_block_expr(body);
-        let expr_break = self.expr_break(span, ThinVec::new());
+        let expr_break = self.expr_break(span, AttrVec::new());
         let stmt_break = self.stmt_expr(span, expr_break);
         let else_blk = self.block_all(span, arena_vec![self; stmt_break], None);
-        let else_expr = self.arena.alloc(self.expr_block(else_blk, ThinVec::new()));
+        let else_expr = self.arena.alloc(self.expr_block(else_blk, AttrVec::new()));
         let if_kind = hir::ExprKind::If(new_cond, self.arena.alloc(then), Some(else_expr));
-        let if_expr = self.expr(span, if_kind, ThinVec::new());
+        let if_expr = self.expr(span, if_kind, AttrVec::new());
         let block = self.block_expr(self.arena.alloc(if_expr));
         let span = self.lower_span(span.with_hi(cond.span.hi()));
         let opt_label = self.lower_label(opt_label);
@@ -512,7 +500,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let constructor = self.arena.alloc(self.expr_lang_item_path(
             method_span,
             lang_item,
-            ThinVec::new(),
+            AttrVec::new(),
             None,
         ));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
@@ -635,7 +623,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let gen_future = self.expr_lang_item_path(
             unstable_span,
             hir::LangItem::FromGenerator,
-            ThinVec::new(),
+            AttrVec::new(),
             None,
         );
 
@@ -663,17 +651,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
+                self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     dot_await_span,
-                    E0728,
-                    "`await` is only allowed inside `async` functions and blocks"
-                );
-                err.span_label(dot_await_span, "only allowed inside `async` functions and blocks");
-                if let Some(item_sp) = self.current_item {
-                    err.span_label(item_sp, "this is not `async`");
-                }
-                err.emit();
+                    item_span: self.current_item,
+                });
             }
         }
         let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
@@ -747,7 +728,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
-                this.arena.alloc(this.expr(gen_future_span, expr_break, ThinVec::new()))
+                this.arena.alloc(this.expr(gen_future_span, expr_break, AttrVec::new()))
             });
             self.arm(ready_pat, break_x)
         };
@@ -780,7 +761,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let yield_expr = self.expr(
                 span,
                 hir::ExprKind::Yield(unit, hir::YieldSource::Await { expr: Some(expr_hir_id) }),
-                ThinVec::new(),
+                AttrVec::new(),
             );
             let yield_expr = self.arena.alloc(yield_expr);
 
@@ -893,13 +874,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match generator_kind {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0628,
-                        "too many parameters for a generator (expected 0 or 1 parameters)"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(GeneratorTooManyParameters { fn_decl_span });
                 }
                 Some(movability)
             }
@@ -908,13 +883,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        fn_decl_span,
-                        E0697,
-                        "closures cannot be static"
-                    )
-                    .emit();
+                    self.tcx.sess.emit_err(ClosureCannotBeStatic { fn_decl_span });
                 }
                 None
             }
@@ -947,10 +916,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
         if let &ClosureBinder::For { span, .. } = binder {
-            self.tcx.sess.span_err(
-                span,
-                "`for<...>` binders on `async` closures are not currently supported",
-            );
+            self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -961,17 +927,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = self.with_new_scopes(|this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
-                struct_span_err!(
-                    this.tcx.sess,
-                    fn_decl_span,
-                    E0708,
-                    "`async` non-`move` closures with parameters are not currently supported",
-                )
-                .help(
-                    "consider using `let` statements to manually capture \
-                    variables by reference before entering an `async move` closure",
-                )
-                .emit();
+                this.tcx.sess.emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
             }
 
             // Transform `async |x: u8| -> X { ... }` into
@@ -987,7 +943,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::AsyncGeneratorKind::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
                 );
-                this.expr(fn_decl_span, async_body, ThinVec::new())
+                this.expr(fn_decl_span, async_body, AttrVec::new())
             });
             body_id
         });
@@ -1211,20 +1167,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                e.span,
-                                "functional record updates are not allowed in destructuring \
-                                    assignments",
-                            )
-                            .span_suggestion(
-                                e.span,
-                                "consider removing the trailing pattern",
-                                "",
-                                rustc_errors::Applicability::MachineApplicable,
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignemnt {
+                            span: e.span,
+                        });
                         true
                     }
                     StructRest::Rest(_) => true,
@@ -1257,7 +1202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ident = self.expr_ident(lhs.span, ident, binding);
         let assign =
             hir::ExprKind::Assign(self.lower_expr(lhs), ident, self.lower_span(eq_sign_span));
-        let expr = self.expr(lhs.span, assign, ThinVec::new());
+        let expr = self.expr(lhs.span, assign, AttrVec::new());
         assignments.push(self.stmt_expr(lhs.span, expr));
         pat
     }
@@ -1299,7 +1244,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let fn_path =
             hir::QPath::LangItem(hir::LangItem::RangeInclusiveNew, self.lower_span(span), None);
         let fn_expr =
-            self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
+            self.arena.alloc(self.expr(span, hir::ExprKind::Path(fn_path), AttrVec::new()));
         hir::ExprKind::Call(fn_expr, arena_vec![self; e1, e2])
     }
 
@@ -1319,7 +1264,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => self.diagnostic().span_fatal(span, "inclusive range with no end"),
+            (start, None, Closed) => {
+                self.tcx.sess.emit_err(InclusiveRangeWithNoEnd { span });
+                match start {
+                    Some(..) => hir::LangItem::RangeFrom,
+                    None => hir::LangItem::RangeFull,
+                }
+            }
         };
 
         let fields = self.arena.alloc_from_iter(
@@ -1421,13 +1372,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0727,
-                    "`async` generators are not yet supported"
-                )
-                .emit();
+                self.tcx.sess.emit_err(AsyncGeneratorsNotSupported { span });
             }
             None => self.generator_kind = Some(hir::GeneratorKind::Gen),
         }
@@ -1472,7 +1417,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `None => break`
         let none_arm = {
             let break_expr =
-                self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span, ThinVec::new()));
+                self.with_loop_scope(e.id, |this| this.expr_break_alloc(for_span, AttrVec::new()));
             let pat = self.pat_none(for_span);
             self.arm(pat, break_expr)
         };
@@ -1481,7 +1426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let some_arm = {
             let some_pat = self.pat_some(pat_span, pat);
             let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-            let body_expr = self.arena.alloc(self.expr_block(body_block, ThinVec::new()));
+            let body_expr = self.arena.alloc(self.expr_block(body_block, AttrVec::new()));
             self.arm(some_pat, body_expr)
         };
 
@@ -1596,7 +1541,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
             attr::mk_attr_outer(allow)
         };
-        let attrs = vec![attr];
+        let attrs: AttrVec = vec![attr].into();
 
         // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
         let continue_arm = {
@@ -1606,7 +1551,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 val_ident,
                 val_pat_nid,
-                ThinVec::from(attrs.clone()),
+                attrs.clone(),
             ));
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr)
@@ -1625,7 +1570,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc(residual_expr),
                 unstable_span,
             );
-            let thin_attrs = ThinVec::from(attrs);
             let ret_expr = if let Some(catch_node) = self.catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
                 self.arena.alloc(self.expr(
@@ -1634,13 +1578,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::Destination { label: None, target_id },
                         Some(from_residual_expr),
                     ),
-                    thin_attrs,
+                    attrs,
                 ))
             } else {
                 self.arena.alloc(self.expr(
                     try_span,
                     hir::ExprKind::Ret(Some(from_residual_expr)),
-                    thin_attrs,
+                    attrs,
                 ))
             };
 
@@ -1728,7 +1672,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         arms: &'hir [hir::Arm<'hir>],
         source: hir::MatchSource,
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
+        self.expr(span, hir::ExprKind::Match(arg, arms, source), AttrVec::new())
     }
 
     fn expr_break(&mut self, span: Span, attrs: AttrVec) -> hir::Expr<'hir> {
@@ -1745,12 +1689,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(
             span,
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e),
-            ThinVec::new(),
+            AttrVec::new(),
         )
     }
 
     fn expr_unit(&mut self, sp: Span) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[]), ThinVec::new()))
+        self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[]), AttrVec::new()))
     }
 
     fn expr_call_mut(
@@ -1759,7 +1703,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         e: &'hir hir::Expr<'hir>,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
+        self.expr(span, hir::ExprKind::Call(e, args), AttrVec::new())
     }
 
     fn expr_call(
@@ -1779,7 +1723,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir_id: Option<hir::HirId>,
     ) -> hir::Expr<'hir> {
         let path =
-            self.arena.alloc(self.expr_lang_item_path(span, lang_item, ThinVec::new(), hir_id));
+            self.arena.alloc(self.expr_lang_item_path(span, lang_item, AttrVec::new(), hir_id));
         self.expr_call_mut(span, path, args)
     }
 
@@ -1822,7 +1766,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ident: Ident,
         binding: hir::HirId,
     ) -> hir::Expr<'hir> {
-        self.expr_ident_with_attrs(sp, ident, binding, ThinVec::new())
+        self.expr_ident_with_attrs(sp, ident, binding, AttrVec::new())
     }
 
     fn expr_ident_with_attrs(
@@ -1860,13 +1804,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }),
                 None,
             ),
-            ThinVec::new(),
+            AttrVec::new(),
         )
     }
 
     fn expr_block_empty(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
         let blk = self.block_all(span, &[], None);
-        let expr = self.expr_block(blk, ThinVec::new());
+        let expr = self.expr_block(blk, AttrVec::new());
         self.arena.alloc(expr)
     }
 

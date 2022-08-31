@@ -20,7 +20,7 @@ pub fn expand_deriving_eq(
     let hidden = rustc_ast::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
     let doc = rustc_ast::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
     let no_coverage = cx.meta_word(span, sym::no_coverage);
-    let attrs = vec![cx.attribute(inline), cx.attribute(doc), cx.attribute(no_coverage)];
+    let attrs = vec![cx.attribute(inline), cx.attribute(doc), cx.attribute(no_coverage)].into();
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Eq),

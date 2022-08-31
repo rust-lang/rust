@@ -68,7 +68,7 @@ pub fn expand_deriving_partial_eq(
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = vec![cx.attribute(inline)].into();
     let methods = vec![MethodDef {
         name: sym::eq,
         generics: Bounds::empty(),

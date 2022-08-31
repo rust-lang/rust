@@ -1086,20 +1086,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ),
                         );
                     }
-                    if is_option_or_result && maybe_reinitialized_locations_is_empty {
-                        err.span_suggestion_verbose(
-                            fn_call_span.shrink_to_lo(),
-                            "consider calling `.as_ref()` to borrow the type's contents",
-                            "as_ref().",
-                            Applicability::MachineApplicable,
-                        );
-                    }
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
                         err.span_note(
                             self_arg.span,
                             &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                        );
+                    }
+                    if is_option_or_result && maybe_reinitialized_locations_is_empty {
+                        err.span_label(
+                            var_span,
+                            "help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents",
                         );
                     }
                 }

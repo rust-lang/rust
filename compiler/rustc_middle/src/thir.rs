@@ -15,50 +15,33 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
 use rustc_index::vec::IndexVec;
-use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
-use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
+use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts};
+use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
-
-use rustc_span::def_id::LocalDefId;
 use std::fmt;
 use std::ops::Index;
 
 pub mod visit;
 
-newtype_index! {
-    /// An index to an [`Arm`] stored in [`Thir::arms`]
-    #[derive(HashStable)]
-    pub struct ArmId {
-        DEBUG_FORMAT = "a{}"
-    }
-}
-
-newtype_index! {
-    /// An index to an [`Expr`] stored in [`Thir::exprs`]
-    #[derive(HashStable)]
-    pub struct ExprId {
-        DEBUG_FORMAT = "e{}"
-    }
-}
-
-newtype_index! {
-    #[derive(HashStable)]
-    /// An index to a [`Stmt`] stored in [`Thir::stmts`]
-    pub struct StmtId {
-        DEBUG_FORMAT = "s{}"
-    }
-}
-
 macro_rules! thir_with_elements {
-    ($($name:ident: $id:ty => $value:ty,)*) => {
+    ($($name:ident: $id:ty => $value:ty => $format:literal,)*) => {
+        $(
+            newtype_index! {
+                #[derive(HashStable)]
+                pub struct $id {
+                    DEBUG_FORMAT = $format
+                }
+            }
+        )*
+
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
@@ -91,9 +74,10 @@ macro_rules! thir_with_elements {
 }
 
 thir_with_elements! {
-    arms: ArmId => Arm<'tcx>,
-    exprs: ExprId => Expr<'tcx>,
-    stmts: StmtId => Stmt<'tcx>,
+    arms: ArmId => Arm<'tcx> => "a{}",
+    blocks: BlockId => Block => "b{}",
+    exprs: ExprId => Expr<'tcx> => "e{}",
+    stmts: StmtId => Stmt<'tcx> => "s{}",
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -121,8 +105,10 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
+type UserTy<'tcx> = Option<Box<CanonicalUserType<'tcx>>>;
+
 #[derive(Clone, Debug, HashStable)]
-pub struct Adt<'tcx> {
+pub struct AdtExpr<'tcx> {
     /// The ADT we're constructing.
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
@@ -131,11 +117,28 @@ pub struct Adt<'tcx> {
 
     /// Optional user-given substs: for something like `let x =
     /// Bar::<T> { ... }`.
-    pub user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    pub user_ty: UserTy<'tcx>,
 
     pub fields: Box<[FieldExpr]>,
     /// The base, e.g. `Foo {x: 1, .. base}`.
     pub base: Option<FruInfo<'tcx>>,
+}
+
+#[derive(Clone, Debug, HashStable)]
+pub struct ClosureExpr<'tcx> {
+    pub closure_id: LocalDefId,
+    pub substs: UpvarSubsts<'tcx>,
+    pub upvars: Box<[ExprId]>,
+    pub movability: Option<hir::Movability>,
+    pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
+}
+
+#[derive(Clone, Debug, HashStable)]
+pub struct InlineAsmExpr<'tcx> {
+    pub template: &'tcx [InlineAsmTemplatePiece],
+    pub operands: Box<[InlineAsmOperand<'tcx>]>,
+    pub options: InlineAsmOptions,
+    pub line_spans: &'tcx [Span],
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -183,7 +186,7 @@ pub enum StmtKind<'tcx> {
         initializer: Option<ExprId>,
 
         /// `let pat: ty = <INIT> else { <ELSE> }
-        else_block: Option<Block>,
+        else_block: Option<BlockId>,
 
         /// The lint level for this `let` statement.
         lint_level: LintLevel,
@@ -307,7 +310,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A block.
     Block {
-        body: Block,
+        block: BlockId,
     },
     /// An assignment: `lhs = rhs`.
     Assign {
@@ -387,27 +390,21 @@ pub enum ExprKind<'tcx> {
         fields: Box<[ExprId]>,
     },
     /// An ADT constructor, e.g. `Foo {x: 1, y: 2}`.
-    Adt(Box<Adt<'tcx>>),
+    Adt(Box<AdtExpr<'tcx>>),
     /// A type ascription on a place.
     PlaceTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A type ascription on a value, e.g. `42: i32`.
     ValueTypeAscription {
         source: ExprId,
         /// Type that the user gave to this expression
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A closure definition.
-    Closure {
-        closure_id: LocalDefId,
-        substs: UpvarSubsts<'tcx>,
-        upvars: Box<[ExprId]>,
-        movability: Option<hir::Movability>,
-        fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
-    },
+    Closure(Box<ClosureExpr<'tcx>>),
     /// A literal.
     Literal {
         lit: &'tcx hir::Lit,
@@ -416,17 +413,17 @@ pub enum ExprKind<'tcx> {
     /// For literals that don't correspond to anything in the HIR
     NonHirLiteral {
         lit: ty::ScalarInt,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// A literal of a ZST type.
     ZstLiteral {
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+        user_ty: UserTy<'tcx>,
     },
     ConstParam {
         param: ty::ParamConst,
@@ -443,12 +440,7 @@ pub enum ExprKind<'tcx> {
         def_id: DefId,
     },
     /// Inline assembly, i.e. `asm!()`.
-    InlineAsm {
-        template: &'tcx [InlineAsmTemplatePiece],
-        operands: Box<[InlineAsmOperand<'tcx>]>,
-        options: InlineAsmOptions,
-        line_spans: &'tcx [Span],
-    },
+    InlineAsm(Box<InlineAsmExpr<'tcx>>),
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
     /// A `yield` expression.
@@ -815,7 +807,10 @@ mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block, 56);
-    static_assert_size!(Expr<'_>, 104);
+    static_assert_size!(Expr<'_>, 64);
+    static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 24);
-    static_assert_size!(Stmt<'_>, 120);
+    static_assert_size!(PatKind<'_>, 112);
+    static_assert_size!(Stmt<'_>, 72);
+    static_assert_size!(StmtKind<'_>, 64);
 }

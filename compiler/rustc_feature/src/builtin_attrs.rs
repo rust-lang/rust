@@ -335,7 +335,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ABI, linking, symbols, and FFI
     ungated!(
         link, Normal,
-        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
+        template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated""#),
         DuplicatesOk,
     ),
     ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
@@ -458,10 +458,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),
     gated!(ffi_const, Normal, template!(Word), WarnFollowing, experimental!(ffi_const)),
-    gated!(
-        register_attr, CrateLevel, template!(List: "attr1, attr2, ..."), DuplicatesOk,
-        experimental!(register_attr),
-    ),
     gated!(
         register_tool, CrateLevel, template!(List: "tool1, tool2, ..."), DuplicatesOk,
         experimental!(register_tool),

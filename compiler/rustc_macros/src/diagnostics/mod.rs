@@ -23,7 +23,7 @@ use synstructure::Structure;
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(SessionDiagnostic)]
-/// #[error(borrowck::move_out_of_borrow, code = "E0505")]
+/// #[diag(borrowck::move_out_of_borrow, code = "E0505")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
@@ -67,7 +67,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 ///
 /// ```ignore (rust)
 /// #[derive(LintDiagnostic)]
-/// #[lint(lint::atomic_ordering_invalid_fail_success)]
+/// #[diag(lint::atomic_ordering_invalid_fail_success)]
 /// pub struct AtomicOrderingInvalidLint {
 ///     method: Symbol,
 ///     success_ordering: Symbol,

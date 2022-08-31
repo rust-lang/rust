@@ -10,12 +10,17 @@ use crate::value::Value;
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::cstore::{DllCallingConvention, DllImport, PeImportNameType};
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer, Size};
+use rustc_target::spec::Target;
 
 use libc::{c_char, c_uint};
+use std::fmt::Write;
 use tracing::debug;
 
 /*
@@ -356,4 +361,75 @@ fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
 
 fn try_as_const_integral(v: &Value) -> Option<&ConstantInt> {
     unsafe { llvm::LLVMIsAConstantInt(v) }
+}
+
+pub(crate) fn get_dllimport<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: DefId,
+    name: &str,
+) -> Option<&'tcx DllImport> {
+    tcx.native_library(id)
+        .map(|lib| lib.dll_imports.iter().find(|di| di.name.as_str() == name))
+        .flatten()
+}
+
+pub(crate) fn is_mingw_gnu_toolchain(target: &Target) -> bool {
+    target.vendor == "pc" && target.os == "windows" && target.env == "gnu" && target.abi.is_empty()
+}
+
+pub(crate) fn i686_decorated_name(
+    dll_import: &DllImport,
+    mingw: bool,
+    disable_name_mangling: bool,
+) -> String {
+    let name = dll_import.name.as_str();
+
+    let (add_prefix, add_suffix) = match dll_import.import_name_type {
+        Some(PeImportNameType::NoPrefix) => (false, true),
+        Some(PeImportNameType::Undecorated) => (false, false),
+        _ => (true, true),
+    };
+
+    // Worst case: +1 for disable name mangling, +1 for prefix, +4 for suffix (@@__).
+    let mut decorated_name = String::with_capacity(name.len() + 6);
+
+    if disable_name_mangling {
+        // LLVM uses a binary 1 ('\x01') prefix to a name to indicate that mangling needs to be disabled.
+        decorated_name.push('\x01');
+    }
+
+    let prefix = if add_prefix && dll_import.is_fn {
+        match dll_import.calling_convention {
+            DllCallingConvention::C | DllCallingConvention::Vectorcall(_) => None,
+            DllCallingConvention::Stdcall(_) => (!mingw
+                || dll_import.import_name_type == Some(PeImportNameType::Decorated))
+            .then_some('_'),
+            DllCallingConvention::Fastcall(_) => Some('@'),
+        }
+    } else if !dll_import.is_fn && !mingw {
+        // For static variables, prefix with '_' on MSVC.
+        Some('_')
+    } else {
+        None
+    };
+    if let Some(prefix) = prefix {
+        decorated_name.push(prefix);
+    }
+
+    decorated_name.push_str(name);
+
+    if add_suffix && dll_import.is_fn {
+        match dll_import.calling_convention {
+            DllCallingConvention::C => {}
+            DllCallingConvention::Stdcall(arg_list_size)
+            | DllCallingConvention::Fastcall(arg_list_size) => {
+                write!(&mut decorated_name, "@{}", arg_list_size).unwrap();
+            }
+            DllCallingConvention::Vectorcall(arg_list_size) => {
+                write!(&mut decorated_name, "@@{}", arg_list_size).unwrap();
+            }
+        }
+    }
+
+    decorated_name
 }

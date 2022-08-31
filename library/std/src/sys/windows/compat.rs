@@ -21,7 +21,51 @@
 
 use crate::ffi::{c_void, CStr};
 use crate::ptr::NonNull;
+use crate::sync::atomic::Ordering;
 use crate::sys::c;
+
+// This uses a static initializer to preload some imported functions.
+// The CRT (C runtime) executes static initializers before `main`
+// is called (for binaries) and before `DllMain` is called (for DLLs).
+//
+// It works by contributing a global symbol to the `.CRT$XCT` section.
+// The linker builds a table of all static initializer functions.
+// The CRT startup code then iterates that table, calling each
+// initializer function.
+//
+// NOTE: User code should instead use .CRT$XCU to reliably run after std's initializer.
+// If you're reading this and would like a guarantee here, please
+// file an issue for discussion; currently we don't guarantee any functionality
+// before main.
+// See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
+#[used]
+#[link_section = ".CRT$XCT"]
+static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
+
+/// Preload some imported functions.
+///
+/// Note that any functions included here will be unconditionally loaded in
+/// the final binary, regardless of whether or not they're actually used.
+///
+/// Therefore, this should be limited to `compat_fn_optional` functions which
+/// must be preloaded or any functions where lazier loading demonstrates a
+/// negative performance impact in practical situations.
+///
+/// Currently we only preload `WaitOnAddress` and `WakeByAddressSingle`.
+unsafe extern "C" fn init() {
+    // In an exe this code is executed before main() so is single threaded.
+    // In a DLL the system's loader lock will be held thereby synchronizing
+    // access. So the same best practices apply here as they do to running in DllMain:
+    // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
+    //
+    // DO NOT do anything interesting or complicated in this function! DO NOT call
+    // any Rust functions or CRT functions if those functions touch any global state,
+    // because this function runs during global initialization. For example, DO NOT
+    // do any dynamic allocation, don't call LoadLibrary, etc.
+
+    // Attempt to preload the synch functions.
+    load_synch_functions();
+}
 
 /// Helper macro for creating CStrs from literals and symbol names.
 macro_rules! ansi_str {
@@ -144,61 +188,56 @@ macro_rules! compat_fn_with_fallback {
     )*)
 }
 
-/// Optionally load `WaitOnAddress`.
-/// Unlike the dynamic loading described above, this does not have a fallback.
+/// Optionally loaded functions.
 ///
-/// This is rexported from sys::c. You should prefer to import
-/// from there in case this changes again in the future.
-pub mod WaitOnAddress {
-    use super::*;
-    use crate::mem;
-    use crate::ptr;
-    use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-    use crate::sys::c;
+/// Actual loading of the function defers to $load_functions.
+macro_rules! compat_fn_optional {
+    ($load_functions:expr;
+    $(
+        $(#[$meta:meta])*
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) $(-> $rettype:ty)?;
+    )+) => (
+        $(
+            pub mod $symbol {
+                use super::*;
+                use crate::ffi::c_void;
+                use crate::mem;
+                use crate::ptr::{self, NonNull};
+                use crate::sync::atomic::{AtomicPtr, Ordering};
 
-    static MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
-    static SYMBOL_NAME: &CStr = ansi_str!("WaitOnAddress");
+                pub(in crate::sys) static PTR: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 
-    // WaitOnAddress function signature.
-    type F = unsafe extern "system" fn(
-        Address: c::LPVOID,
-        CompareAddress: c::LPVOID,
-        AddressSize: c::SIZE_T,
-        dwMilliseconds: c::DWORD,
-    );
+                type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 
-    // A place to store the loaded function atomically.
-    static WAIT_ON_ADDRESS: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
-
-    // We can skip trying to load again if we already tried.
-    static LOAD_MODULE: AtomicBool = AtomicBool::new(true);
-
-    #[inline(always)]
-    pub fn option() -> Option<F> {
-        let f = WAIT_ON_ADDRESS.load(Ordering::Acquire);
-        if !f.is_null() { Some(unsafe { mem::transmute(f) }) } else { try_load() }
-    }
-
-    #[cold]
-    fn try_load() -> Option<F> {
-        if LOAD_MODULE.load(Ordering::Acquire) {
-            // load the module
-            let mut wait_on_address = None;
-            if let Some(func) = try_load_inner() {
-                WAIT_ON_ADDRESS.store(func.as_ptr(), Ordering::Release);
-                wait_on_address = Some(unsafe { mem::transmute(func) });
+                #[inline(always)]
+                pub fn option() -> Option<F> {
+                    // Miri does not understand the way we do preloading
+                    // therefore load the function here instead.
+                    #[cfg(miri)] $load_functions;
+                    NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
+                }
             }
-            // Don't try to load the module again even if loading failed.
-            LOAD_MODULE.store(false, Ordering::Release);
-            wait_on_address
-        } else {
-            None
-        }
+        )+
+    )
+}
+
+/// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
+pub(super) fn load_synch_functions() {
+    fn try_load() -> Option<()> {
+        const MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
+        const WAIT_ON_ADDRESS: &CStr = ansi_str!("WaitOnAddress");
+        const WAKE_BY_ADDRESS_SINGLE: &CStr = ansi_str!("WakeByAddressSingle");
+
+        // Try loading the library and all the required functions.
+        // If any step fails, then they all fail.
+        let library = unsafe { Module::new(MODULE_NAME) }?;
+        let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
+        let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;
+
+        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Relaxed);
+        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Relaxed);
+        Some(())
     }
 
-    // In the future this could be a `try` block but until then I think it's a
-    // little bit cleaner as a separate function.
-    fn try_load_inner() -> Option<NonNull<c_void>> {
-        unsafe { Module::new(MODULE_NAME)?.proc_address(SYMBOL_NAME) }
-    }
+    try_load();
 }
