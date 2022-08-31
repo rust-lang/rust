@@ -1,3 +1,5 @@
+//! NOTE: Keep these constants in sync with `library/std/src/sys/unix/mod.rs`!
+
 /// Do not touch `SIGPIPE`. Use whatever the parent process uses.
 #[allow(dead_code)]
 pub const INHERIT: u8 = 1;
