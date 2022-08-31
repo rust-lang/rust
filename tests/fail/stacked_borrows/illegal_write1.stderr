@@ -14,7 +14,7 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
    |
 LL |         let x: *mut u32 = xref as *const _ as *mut _;
    |                           ^^^^
-   = note: backtrace:
+   = note: BACKTRACE:
    = note: inside `main` at $DIR/illegal_write1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

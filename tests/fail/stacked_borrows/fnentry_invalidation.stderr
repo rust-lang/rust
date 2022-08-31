@@ -19,7 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique FnEntry reta
    |
 LL |     x.do_bad();
    |     ^^^^^^^^^^
-   = note: backtrace:
+   = note: BACKTRACE:
    = note: inside `main` at $DIR/fnentry_invalidation.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

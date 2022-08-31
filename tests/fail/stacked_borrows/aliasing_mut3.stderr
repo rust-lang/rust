@@ -19,7 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique FnEntry reta
    |
 LL |     safe_raw(xraw, xshr);
    |     ^^^^^^^^^^^^^^^^^^^^
-   = note: backtrace:
+   = note: BACKTRACE:
    = note: inside `safe` at $DIR/aliasing_mut3.rs:LL:CC
 note: inside `main` at $DIR/aliasing_mut3.rs:LL:CC
   --> $DIR/aliasing_mut3.rs:LL:CC

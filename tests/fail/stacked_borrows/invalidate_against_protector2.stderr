@@ -16,7 +16,7 @@ help: <TAG> is this argument
    |
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
-   = note: backtrace:
+   = note: BACKTRACE:
    = note: inside `inner` at $DIR/invalidate_against_protector2.rs:LL:CC
 note: inside `main` at $DIR/invalidate_against_protector2.rs:LL:CC
   --> $DIR/invalidate_against_protector2.rs:LL:CC
