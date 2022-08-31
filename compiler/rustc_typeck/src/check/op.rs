@@ -410,26 +410,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         let mut err = struct_span_err!(self.tcx.sess, op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
-                            self.add_type_neq_err_label(
-                                &mut err,
-                                lhs_expr.span,
-                                lhs_ty,
-                                rhs_ty,
-                                rhs_expr,
-                                op,
-                                is_assign,
-                                expected,
-                            );
-                            self.add_type_neq_err_label(
-                                &mut err,
-                                rhs_expr.span,
-                                rhs_ty,
-                                lhs_ty,
-                                lhs_expr,
-                                op,
-                                is_assign,
-                                expected,
-                            );
+                            err.span_label(lhs_expr.span, lhs_ty.to_string());
+                            err.span_label(rhs_expr.span, rhs_ty.to_string());
                         }
                         self.note_unmet_impls_on_type(&mut err, errors);
                         (err, missing_trait, use_output)
@@ -468,17 +450,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
+                let is_compatible = |lhs_ty, rhs_ty| {
+                    self.lookup_op_method(
+                        lhs_ty,
+                        Some(rhs_ty),
+                        Some(rhs_expr),
+                        Op::Binary(op, is_assign),
+                        expected,
+                    )
+                    .is_ok()
+                };
+
                 // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
                 // `a += b` => `*a += b` if a is a mut ref.
-                if is_assign == IsAssign::Yes
-                    && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
-                        suggest_deref_binop(lhs_deref_ty);
+                if !op.span.can_be_used_for_suggestions() {
+                    // Suppress suggestions when lhs and rhs are not in the same span as the error
+                } else if is_assign == IsAssign::Yes
+                    && let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty)
+                {
+                    suggest_deref_binop(lhs_deref_ty);
                 } else if is_assign == IsAssign::No
-                    && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind() {
-                    if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty, lhs_expr.span) {
+                    && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind()
+                {
+                    if self.type_is_copy_modulo_regions(
+                        self.param_env,
+                        *lhs_deref_ty,
+                        lhs_expr.span,
+                    ) {
                         suggest_deref_binop(*lhs_deref_ty);
                     }
+                } else if self.suggest_fn_call(&mut err, lhs_expr, lhs_ty, |lhs_ty| {
+                    is_compatible(lhs_ty, rhs_ty)
+                }) || self.suggest_fn_call(&mut err, rhs_expr, rhs_ty, |rhs_ty| {
+                    is_compatible(lhs_ty, rhs_ty)
+                }) || self.suggest_two_fn_call(
+                    &mut err,
+                    rhs_expr,
+                    rhs_ty,
+                    lhs_expr,
+                    lhs_ty,
+                    |lhs_ty, rhs_ty| is_compatible(lhs_ty, rhs_ty),
+                ) {
+                    // Cool
                 }
+
                 if let Some(missing_trait) = missing_trait {
                     let mut visitor = TypeParamVisitor(vec![]);
                     visitor.visit_ty(lhs_ty);
@@ -546,69 +561,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         (lhs_ty, rhs_ty, return_ty)
-    }
-
-    /// If one of the types is an uncalled function and calling it would yield the other type,
-    /// suggest calling the function. Returns `true` if suggestion would apply (even if not given).
-    fn add_type_neq_err_label(
-        &self,
-        err: &mut Diagnostic,
-        span: Span,
-        ty: Ty<'tcx>,
-        other_ty: Ty<'tcx>,
-        other_expr: &'tcx hir::Expr<'tcx>,
-        op: hir::BinOp,
-        is_assign: IsAssign,
-        expected: Expectation<'tcx>,
-    ) -> bool /* did we suggest to call a function because of missing parentheses? */ {
-        err.span_label(span, ty.to_string());
-        if let FnDef(def_id, _) = *ty.kind() {
-            if !self.tcx.has_typeck_results(def_id) {
-                return false;
-            }
-            // FIXME: Instead of exiting early when encountering bound vars in
-            // the function signature, consider keeping the binder here and
-            // propagating it downwards.
-            let Some(fn_sig) = self.tcx.fn_sig(def_id).no_bound_vars() else {
-                return false;
-            };
-
-            let other_ty = if let FnDef(def_id, _) = *other_ty.kind() {
-                if !self.tcx.has_typeck_results(def_id) {
-                    return false;
-                }
-                // We're emitting a suggestion, so we can just ignore regions
-                self.tcx.fn_sig(def_id).skip_binder().output()
-            } else {
-                other_ty
-            };
-
-            if self
-                .lookup_op_method(
-                    fn_sig.output(),
-                    Some(other_ty),
-                    Some(other_expr),
-                    Op::Binary(op, is_assign),
-                    expected,
-                )
-                .is_ok()
-            {
-                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
-                    ("( /* arguments */ )", Applicability::HasPlaceholders)
-                } else {
-                    ("()", Applicability::MaybeIncorrect)
-                };
-
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "you might have forgotten to call this function",
-                    variable_snippet,
-                    applicability,
-                );
-                return true;
-            }
-        }
-        false
     }
 
     /// Provide actionable suggestions when trying to add two strings with incorrect types,

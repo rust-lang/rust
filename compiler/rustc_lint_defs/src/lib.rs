@@ -41,7 +41,8 @@ macro_rules! pluralize {
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, Encodable, Decodable, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
     /// This suggestion should be automatically applied.
