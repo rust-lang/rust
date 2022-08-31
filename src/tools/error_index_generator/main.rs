@@ -7,7 +7,7 @@ use crate::error_codes::error_codes;
 
 use std::env;
 use std::error::Error;
-use std::fs::{self, create_dir_all, File};
+use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
@@ -65,44 +65,6 @@ fn render_markdown(output_path: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn move_folder(source: &Path, target: &Path) -> Result<(), Box<dyn Error>> {
-    let entries =
-        fs::read_dir(source)?.map(|res| res.map(|e| e.path())).collect::<Result<Vec<_>, _>>()?;
-
-    for entry in entries {
-        let file_name = entry.file_name().expect("file_name() failed").to_os_string();
-        let output = target.join(file_name);
-        if entry.is_file() {
-            fs::rename(entry, output)?;
-        } else {
-            if !output.exists() {
-                create_dir_all(&output)?;
-            }
-            move_folder(&entry, &output)?;
-        }
-    }
-
-    fs::remove_dir(&source)?;
-
-    Ok(())
-}
-
-fn render_html(output_path: &Path) -> Result<(), Box<dyn Error>> {
-    // We need to render into a temporary folder to prevent `mdbook` from removing everything
-    // in the output folder (including other completely unrelated things).
-    let tmp_output = output_path.join("tmp");
-
-    if !tmp_output.exists() {
-        create_dir_all(&tmp_output)?;
-    }
-
-    render_html_inner(&tmp_output)?;
-
-    move_folder(&tmp_output, output_path)?;
-
-    Ok(())
-}
-
 // By default, mdbook doesn't consider code blocks as Rust ones contrary to rustdoc so we have
 // to manually add `rust` attribute whenever needed.
 fn add_rust_attribute_on_codeblock(explanation: &str) -> String {
@@ -134,18 +96,14 @@ fn add_rust_attribute_on_codeblock(explanation: &str) -> String {
     })
 }
 
-fn render_html_inner(output_path: &Path) -> Result<(), Box<dyn Error>> {
-    // We need to have a little difference between `summary` and `introduction` because the "draft"
-    // chapters (the ones looking like `[a]()`) are not handled correctly when being put into a
-    // `Chapter` directly: they generate a link whereas they shouldn't.
+fn render_html(output_path: &Path) -> Result<(), Box<dyn Error>> {
     let mut introduction = format!(
-        "<script>{}</script>
+        "<script src='redirect.js'></script>
 # Rust error codes index
 
 This page lists all the error codes emitted by the Rust compiler.
 
-",
-        include_str!("redirect.js")
+"
     );
 
     let err_codes = error_codes();
@@ -153,7 +111,7 @@ This page lists all the error codes emitted by the Rust compiler.
 
     for (err_code, explanation) in err_codes.iter() {
         if let Some(explanation) = explanation {
-            introduction.push_str(&format!(" * [{0}](./error_codes/{0}.html)\n", err_code));
+            introduction.push_str(&format!(" * [{0}](./{0}.html)\n", err_code));
 
             let content = add_rust_attribute_on_codeblock(explanation);
             chapters.push(BookItem::Chapter(Chapter {
@@ -162,7 +120,7 @@ This page lists all the error codes emitted by the Rust compiler.
                 number: None,
                 sub_items: Vec::new(),
                 // We generate it into the `error_codes` folder.
-                path: Some(PathBuf::from(&format!("error_codes/{}.html", err_code))),
+                path: Some(PathBuf::from(&format!("{}.html", err_code))),
                 source_path: None,
                 parent_names: Vec::new(),
             }));
@@ -172,7 +130,7 @@ This page lists all the error codes emitted by the Rust compiler.
     }
 
     let mut config = Config::from_str(include_str!("book_config.toml"))?;
-    config.build.build_dir = output_path.to_path_buf();
+    config.build.build_dir = output_path.join("error_codes").to_path_buf();
     let mut book = MDBook::load_with_config_and_summary(
         env!("CARGO_MANIFEST_DIR"),
         config,
@@ -191,10 +149,27 @@ This page lists all the error codes emitted by the Rust compiler.
     book.book.sections.push(BookItem::Chapter(chapter));
     book.build()?;
 
-    // We don't need this file since it's handled by doc.rust-lang.org directly.
-    let _ = fs::remove_file(output_path.join("404.html"));
-    // We don't want this file either because it would overwrite the already existing `index.html`.
-    let _ = fs::remove_file(output_path.join("index.html"));
+    // We can't put this content into another file, otherwise `mbdbook` will also put it into the
+    // output directory, making a duplicate.
+    fs::write(
+        output_path.join("error-index.html"),
+        r#"<!DOCTYPE html>
+<html>
+    <head>
+        <title>Rust error codes index - Error codes index</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="Book listing all Rust error codes">
+        <script src="error_codes/redirect.js"></script>
+    </head>
+    <body>
+        <div>If you are not automatically redirected to the error code index, please <a id="index-link" href="./error_codes/error-index.html">here</a>.
+        <script>document.getElementById("index-link").click()</script>
+    </body>
+</html>"#,
+    )?;
+
+    // No need for a 404 file, it's already handled by the server.
+    fs::remove_file(output_path.join("error_codes/404.html"))?;
 
     Ok(())
 }
