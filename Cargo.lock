@@ -3905,8 +3905,10 @@ name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_macros",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -4154,7 +4156,9 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_hir",
+ "rustc_macros",
  "rustc_middle",
  "rustc_session",
  "rustc_span",

@@ -108,6 +108,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
+use crate::errors::{SymbolAlreadyDefined, UnknownPartitionStrategy};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -149,7 +150,9 @@ fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
 
     match strategy {
         "default" => Box::new(default::DefaultPartitioning),
-        _ => tcx.sess.fatal("unknown partitioning strategy"),
+        _ => {
+            tcx.sess.emit_fatal(UnknownPartitionStrategy);
+        }
     }
 }
 
@@ -331,13 +334,7 @@ where
                 (span1, span2) => span1.or(span2),
             };
 
-            let error_message = format!("symbol `{}` is already defined", sym1);
-
-            if let Some(span) = span {
-                tcx.sess.span_fatal(span, &error_message)
-            } else {
-                tcx.sess.fatal(&error_message)
-            }
+            tcx.sess.emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
         }
     }
 }

@@ -266,7 +266,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
             None
         } else if mem::size_of::<T>() == 0 {
             // See above for why 'ptr.offset' isn't used
-            self.end = self.ptr.wrapping_byte_sub(1);
+            self.end = self.end.wrapping_byte_sub(1);
 
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })

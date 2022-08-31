@@ -886,7 +886,10 @@ fn clean_function<'tcx>(
         // NOTE: generics must be cleaned before args
         let generics = clean_generics(generics, cx);
         let args = clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id);
-        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        let mut decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        if sig.header.is_async() {
+            decl.output = decl.sugared_async_return_type();
+        }
         (generics, decl)
     });
     Box::new(Function { decl, generics })

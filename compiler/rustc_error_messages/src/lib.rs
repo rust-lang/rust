@@ -41,9 +41,11 @@ fluent_messages! {
     const_eval => "../locales/en-US/const_eval.ftl",
     driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
+    session => "../locales/en-US/session.ftl",
     interface => "../locales/en-US/interface.ftl",
     infer => "../locales/en-US/infer.ftl",
     lint => "../locales/en-US/lint.ftl",
+    monomorphize => "../locales/en-US/monomorphize.ftl",
     parser => "../locales/en-US/parser.ftl",
     passes => "../locales/en-US/passes.ftl",
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
@@ -52,6 +54,7 @@ fluent_messages! {
     ty_utils => "../locales/en-US/ty_utils.ftl",
     typeck => "../locales/en-US/typeck.ftl",
     mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
+    symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

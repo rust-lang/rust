@@ -12,6 +12,7 @@
 
 #[macro_use]
 extern crate rustc_macros;
+pub mod errors;
 
 pub mod cgu_reuse_tracker;
 pub mod utils;

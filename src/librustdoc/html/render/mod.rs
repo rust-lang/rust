@@ -613,10 +613,10 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(
+pub(crate) fn render_impls(
     cx: &mut Context<'_>,
     w: &mut Buffer,
-    impls: &[&&Impl],
+    impls: &[&Impl],
     containing_item: &clean::Item,
     toggle_open_by_default: bool,
 ) {
@@ -821,7 +821,7 @@ fn assoc_method(
         href = href,
         name = name,
         generics = g.print(cx),
-        decl = d.full_print(header_len, indent, header.asyncness, cx),
+        decl = d.full_print(header_len, indent, cx),
         notable_traits = notable_traits_decl(d, cx),
         where_clause = print_where_clause(g, cx, indent, end_newline),
     )
@@ -1025,6 +1025,47 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
+fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
+    write!(
+        w,
+        "<h2 id=\"{id}\" class=\"small-section-header\">\
+            {title}\
+            <a href=\"#{id}\" class=\"anchor\"></a>\
+         </h2>"
+    );
+}
+
+pub(crate) fn render_all_impls(
+    w: &mut Buffer,
+    cx: &mut Context<'_>,
+    containing_item: &clean::Item,
+    concrete: &[&Impl],
+    synthetic: &[&Impl],
+    blanket_impl: &[&Impl],
+) {
+    let mut impls = Buffer::empty_from(w);
+    render_impls(cx, &mut impls, concrete, containing_item, true);
+    let impls = impls.into_inner();
+    if !impls.is_empty() {
+        write_impl_section_heading(w, "Trait Implementations", "trait-implementations");
+        write!(w, "<div id=\"trait-implementations-list\">{}</div>", impls);
+    }
+
+    if !synthetic.is_empty() {
+        write_impl_section_heading(w, "Auto Trait Implementations", "synthetic-implementations");
+        w.write_str("<div id=\"synthetic-implementations-list\">");
+        render_impls(cx, w, synthetic, containing_item, false);
+        w.write_str("</div>");
+    }
+
+    if !blanket_impl.is_empty() {
+        write_impl_section_heading(w, "Blanket Implementations", "blanket-implementations");
+        w.write_str("<div id=\"blanket-implementations-list\">");
+        render_impls(cx, w, blanket_impl, containing_item, false);
+        w.write_str("</div>");
+    }
+}
+
 fn render_assoc_items(
     w: &mut Buffer,
     cx: &mut Context<'_>,
@@ -1054,12 +1095,7 @@ fn render_assoc_items_inner(
         let mut tmp_buf = Buffer::empty_from(w);
         let (render_mode, id) = match what {
             AssocItemRender::All => {
-                tmp_buf.write_str(
-                    "<h2 id=\"implementations\" class=\"small-section-header\">\
-                         Implementations\
-                         <a href=\"#implementations\" class=\"anchor\"></a>\
-                     </h2>",
-                );
+                write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
                 (RenderMode::Normal, "implementations-list".to_owned())
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
@@ -1068,15 +1104,14 @@ fn render_assoc_items_inner(
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id.clone());
                 }
-                write!(
-                    tmp_buf,
-                    "<h2 id=\"{id}\" class=\"small-section-header\">\
-                         <span>Methods from {trait_}&lt;Target = {type_}&gt;</span>\
-                         <a href=\"#{id}\" class=\"anchor\"></a>\
-                     </h2>",
-                    id = id,
-                    trait_ = trait_.print(cx),
-                    type_ = type_.print(cx),
+                write_impl_section_heading(
+                    &mut tmp_buf,
+                    &format!(
+                        "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
+                        trait_ = trait_.print(cx),
+                        type_ = type_.print(cx),
+                    ),
+                    &id,
                 );
                 (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
@@ -1123,49 +1158,12 @@ fn render_assoc_items_inner(
             return;
         }
 
-        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            traits.iter().partition(|t| t.inner_impl().kind.is_auto());
-        let (blanket_impl, concrete): (Vec<&&Impl>, _) =
+        let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
+            traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        let (blanket_impl, concrete): (Vec<&Impl>, _) =
             concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
-        let mut impls = Buffer::empty_from(w);
-        render_impls(cx, &mut impls, &concrete, containing_item, true);
-        let impls = impls.into_inner();
-        if !impls.is_empty() {
-            write!(
-                w,
-                "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
-                     Trait Implementations\
-                     <a href=\"#trait-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"trait-implementations-list\">{}</div>",
-                impls
-            );
-        }
-
-        if !synthetic.is_empty() {
-            w.write_str(
-                "<h2 id=\"synthetic-implementations\" class=\"small-section-header\">\
-                     Auto Trait Implementations\
-                     <a href=\"#synthetic-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"synthetic-implementations-list\">",
-            );
-            render_impls(cx, w, &synthetic, containing_item, false);
-            w.write_str("</div>");
-        }
-
-        if !blanket_impl.is_empty() {
-            w.write_str(
-                "<h2 id=\"blanket-implementations\" class=\"small-section-header\">\
-                     Blanket Implementations\
-                     <a href=\"#blanket-implementations\" class=\"anchor\"></a>\
-                 </h2>\
-                 <div id=\"blanket-implementations-list\">",
-            );
-            render_impls(cx, w, &blanket_impl, containing_item, false);
-            w.write_str("</div>");
-        }
+        render_all_impls(w, cx, containing_item, &concrete, &synthetic, &blanket_impl);
     }
 }
 
@@ -1970,6 +1968,70 @@ fn small_url_encode(s: String) -> String {
     }
 }
 
+pub(crate) fn sidebar_render_assoc_items(
+    cx: &Context<'_>,
+    out: &mut Buffer,
+    id_map: &mut IdMap,
+    concrete: Vec<&Impl>,
+    synthetic: Vec<&Impl>,
+    blanket_impl: Vec<&Impl>,
+) {
+    let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
+        let mut links = FxHashSet::default();
+
+        let mut ret = impls
+            .iter()
+            .filter_map(|it| {
+                let trait_ = it.inner_impl().trait_.as_ref()?;
+                let encoded =
+                    id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
+
+                let i_display = format!("{:#}", trait_.print(cx));
+                let out = Escape(&i_display);
+                let prefix = match it.inner_impl().polarity {
+                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                    ty::ImplPolarity::Negative => "!",
+                };
+                let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
+                if links.insert(generated.clone()) { Some(generated) } else { None }
+            })
+            .collect::<Vec<String>>();
+        ret.sort();
+        ret
+    };
+
+    let concrete_format = format_impls(concrete, id_map);
+    let synthetic_format = format_impls(synthetic, id_map);
+    let blanket_format = format_impls(blanket_impl, id_map);
+
+    if !concrete_format.is_empty() {
+        print_sidebar_block(
+            out,
+            "trait-implementations",
+            "Trait Implementations",
+            concrete_format.iter(),
+        );
+    }
+
+    if !synthetic_format.is_empty() {
+        print_sidebar_block(
+            out,
+            "synthetic-implementations",
+            "Auto Trait Implementations",
+            synthetic_format.iter(),
+        );
+    }
+
+    if !blanket_format.is_empty() {
+        print_sidebar_block(
+            out,
+            "blanket-implementations",
+            "Blanket Implementations",
+            blanket_format.iter(),
+        );
+    }
+}
+
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     let did = it.item_id.expect_def_id();
     let cache = cx.cache();
@@ -2018,65 +2080,12 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
 
-            let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
-                let mut links = FxHashSet::default();
-
-                let mut ret = impls
-                    .iter()
-                    .filter_map(|it| {
-                        let trait_ = it.inner_impl().trait_.as_ref()?;
-                        let encoded =
-                            id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
-
-                        let i_display = format!("{:#}", trait_.print(cx));
-                        let out = Escape(&i_display);
-                        let prefix = match it.inner_impl().polarity {
-                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
-                            ty::ImplPolarity::Negative => "!",
-                        };
-                        let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
-                        if links.insert(generated.clone()) { Some(generated) } else { None }
-                    })
-                    .collect::<Vec<String>>();
-                ret.sort();
-                ret
-            };
-
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
-            let concrete_format = format_impls(concrete, &mut id_map);
-            let synthetic_format = format_impls(synthetic, &mut id_map);
-            let blanket_format = format_impls(blanket_impl, &mut id_map);
-
-            if !concrete_format.is_empty() {
-                print_sidebar_block(
-                    out,
-                    "trait-implementations",
-                    "Trait Implementations",
-                    concrete_format.iter(),
-                );
-            }
-
-            if !synthetic_format.is_empty() {
-                print_sidebar_block(
-                    out,
-                    "synthetic-implementations",
-                    "Auto Trait Implementations",
-                    synthetic_format.iter(),
-                );
-            }
-
-            if !blanket_format.is_empty() {
-                print_sidebar_block(
-                    out,
-                    "blanket-implementations",
-                    "Blanket Implementations",
-                    blanket_format.iter(),
-                );
-            }
+            sidebar_render_assoc_items(cx, out, &mut id_map, concrete, synthetic, blanket_impl);
         }
     }
 }
@@ -2346,9 +2355,54 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     buf.push_str("</section>")
 }
 
+/// Returns the list of implementations for the primitive reference type, filtering out any
+/// implementations that are on concrete or partially generic types, only keeping implementations
+/// of the form `impl<T> Trait for &T`.
+pub(crate) fn get_filtered_impls_for_reference<'a>(
+    shared: &'a Rc<SharedContext<'_>>,
+    it: &clean::Item,
+) -> (Vec<&'a Impl>, Vec<&'a Impl>, Vec<&'a Impl>) {
+    let def_id = it.item_id.expect_def_id();
+    // If the reference primitive is somehow not defined, exit early.
+    let Some(v) = shared.cache.impls.get(&def_id) else { return (Vec::new(), Vec::new(), Vec::new()) };
+    // Since there is no "direct implementation" on the reference primitive type, we filter out
+    // every implementation which isn't a trait implementation.
+    let traits: Vec<_> = v.iter().filter(|i| i.inner_impl().trait_.is_some()).collect();
+    let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
+        traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+
+    let (blanket_impl, concrete): (Vec<&Impl>, _) =
+        concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+    // Now we keep only references over full generic types.
+    let concrete: Vec<_> = concrete
+        .into_iter()
+        .filter(|t| match t.inner_impl().for_ {
+            clean::Type::BorrowedRef { ref type_, .. } => type_.is_full_generic(),
+            _ => false,
+        })
+        .collect();
+
+    (concrete, synthetic, blanket_impl)
+}
+
 fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     let mut sidebar = Buffer::new();
-    sidebar_assoc_items(cx, &mut sidebar, it);
+
+    if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
+        sidebar_assoc_items(cx, &mut sidebar, it);
+    } else {
+        let shared = Rc::clone(&cx.shared);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+
+        sidebar_render_assoc_items(
+            cx,
+            &mut sidebar,
+            &mut IdMap::new(),
+            concrete,
+            synthetic,
+            blanket_impl,
+        );
+    }
 
     if !sidebar.is_empty() {
         write!(buf, "<section>{}</section>", sidebar.into_inner());

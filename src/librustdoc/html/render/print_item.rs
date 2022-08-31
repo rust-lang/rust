@@ -16,10 +16,10 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
-    notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
-    render_attributes_in_pre, render_impl, render_rightside, render_stability_since_raw,
-    AssocItemLink, Context, ImplRenderingParameters,
+    collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
+    item_ty_to_section, notable_traits_decl, render_all_impls, render_assoc_item,
+    render_assoc_items, render_attributes_in_code, render_attributes_in_pre, render_impl,
+    render_rightside, render_stability_since_raw, AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -530,7 +530,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
-                decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
@@ -1371,8 +1371,18 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
 }
 
 fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+    let def_id = it.item_id.expect_def_id();
     document(w, cx, it, None, HeadingOffset::H2);
-    render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
+    if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
+        render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    } else {
+        // We handle the "reference" primitive type on its own because we only want to list
+        // implementations on generic types.
+        let shared = Rc::clone(&cx.shared);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+
+        render_all_impls(w, cx, it, &concrete, &synthetic, &blanket_impl);
+    }
 }
 
 fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {

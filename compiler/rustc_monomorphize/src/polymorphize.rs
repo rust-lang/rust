@@ -22,6 +22,8 @@ use rustc_span::symbol::sym;
 use std::convert::TryInto;
 use std::ops::ControlFlow;
 
+use crate::errors::UnusedGenericParams;
+
 /// Provide implementations of queries relating to polymorphization analysis.
 pub fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
@@ -206,22 +208,23 @@ fn emit_unused_generic_params_error<'tcx>(
         _ => tcx.def_span(def_id),
     };
 
-    let mut err = tcx.sess.struct_span_err(fn_span, "item has unused generic parameters");
-
+    let mut param_spans = Vec::new();
+    let mut param_names = Vec::new();
     let mut next_generics = Some(generics);
     while let Some(generics) = next_generics {
         for param in &generics.params {
             if unused_parameters.contains(param.index).unwrap_or(false) {
                 debug!(?param);
                 let def_span = tcx.def_span(param.def_id);
-                err.span_label(def_span, &format!("generic parameter `{}` is unused", param.name));
+                param_spans.push(def_span);
+                param_names.push(param.name.to_string());
             }
         }
 
         next_generics = generics.parent.map(|did| tcx.generics_of(did));
     }
 
-    err.emit();
+    tcx.sess.emit_err(UnusedGenericParams { span: fn_span, param_spans, param_names });
 }
 
 /// Visitor used to aggregate generic parameter uses.
