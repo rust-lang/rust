@@ -3,11 +3,10 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{
-    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+    get_associated_type, get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, peel_mid_ty_refs,
 };
-use clippy_utils::{meets_msrv, msrvs};
-
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -279,7 +278,19 @@ fn check_other_call_arg<'tcx>(
                 &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
                 call_substs,
             );
-            implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            // if `expr` is a `String` and generic target is [u8], skip
+            // (https://github.com/rust-lang/rust-clippy/issues/9317).
+            if let [subst] = composed_substs[..]
+                && let GenericArgKind::Type(arg_ty) = subst.unpack()
+                && arg_ty.is_slice()
+                && let inner_ty = arg_ty.builtin_index().unwrap()
+                && let ty::Uint(ty::UintTy::U8) = inner_ty.kind()
+                && let self_ty = cx.typeck_results().expr_ty(expr).peel_refs()
+                && is_type_diagnostic_item(cx, self_ty, sym::String) {
+                false
+            } else {
+                implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            }
         } else {
             false
         };
@@ -292,7 +303,7 @@ fn check_other_call_arg<'tcx>(
         // (https://github.com/rust-lang/rust-clippy/issues/8507).
         if (n_refs == 0 && !receiver_ty.is_ref())
             || trait_predicate.def_id() != as_ref_trait_id
-            || !contains_ty(fn_sig.output(), input);
+            || !fn_sig.output().contains(input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -360,25 +371,15 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for (predicate, _) in cx.tcx.predicates_of(callee_def_id).predicates.iter() {
-        // `substs` should have 1 + n elements. The first is the type on the left hand side of an
-        // `as`. The remaining n are trait parameters.
-        let is_input_substs = |substs: SubstsRef<'tcx>| {
-            if_chain! {
-                if let Some(arg) = substs.iter().next();
-                if let GenericArgKind::Type(arg_ty) = arg.unpack();
-                if arg_ty == input;
-                then { true } else { false }
-            }
-        };
+    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
             PredicateKind::Trait(trait_predicate) => {
-                if is_input_substs(trait_predicate.trait_ref.substs) {
+                if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
             },
             PredicateKind::Projection(projection_predicate) => {
-                if is_input_substs(projection_predicate.projection_ty.substs) {
+                if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
             },

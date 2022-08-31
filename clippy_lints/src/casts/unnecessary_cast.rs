@@ -90,13 +90,20 @@ pub(super) fn check<'tcx>(
 
 fn lint_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &str, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
+    let replaced_literal;
+    let matchless = if literal_str.contains(['(', ')']) {
+        replaced_literal = literal_str.replace(['(', ')'], "");
+        &replaced_literal
+    } else {
+        literal_str
+    };
     span_lint_and_sugg(
         cx,
         UNNECESSARY_CAST,
         expr.span,
         &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
         "try",
-        format!("{}_{}", literal_str.trim_end_matches('.'), cast_to),
+        format!("{}_{}", matchless.trim_end_matches('.'), cast_to),
         Applicability::MachineApplicable,
     );
 }

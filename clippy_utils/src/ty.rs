@@ -43,14 +43,6 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
     }
 }
 
-/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty<'tcx>(ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => other_ty == inner_ty,
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-    })
-}
-
 /// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
 /// constructor.
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
@@ -410,7 +402,7 @@ pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
     peel(ty, 0)
 }
 
-/// Peels off all references on the type.Returns the underlying type, the number of references
+/// Peels off all references on the type. Returns the underlying type, the number of references
 /// removed, and whether the pointer is ultimately mutable or not.
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
     fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
@@ -838,4 +830,54 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
             Some(found)
         })
         .unwrap_or(false)
+}
+
+/// Comes up with an "at least" guesstimate for the type's size, not taking into
+/// account the layout of type parameters.
+pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
+    use rustc_middle::ty::layout::LayoutOf;
+    if !is_normalizable(cx, cx.param_env, ty) {
+        return 0;
+    }
+    match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
+        (Ok(size), _) => size,
+        (Err(_), ty::Tuple(list)) => list.as_substs().types().map(|t| approx_ty_size(cx, t)).sum(),
+        (Err(_), ty::Array(t, n)) => {
+            n.try_eval_usize(cx.tcx, cx.param_env).unwrap_or_default() * approx_ty_size(cx, *t)
+        },
+        (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .sum::<u64>()
+            })
+            .sum(),
+        (Err(_), ty::Adt(def, subst)) if def.is_enum() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .sum::<u64>()
+            })
+            .max()
+            .unwrap_or_default(),
+        (Err(_), ty::Adt(def, subst)) if def.is_union() => def
+            .variants()
+            .iter()
+            .map(|v| {
+                v.fields
+                    .iter()
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst)))
+                    .max()
+                    .unwrap_or_default()
+            })
+            .max()
+            .unwrap_or_default(),
+        (Err(_), _) => 0,
+    }
 }

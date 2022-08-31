@@ -11,10 +11,13 @@ fn main() {
     let _ = (-3.1f32).exp();
     let _ = x.sqrt();
     let _ = x.cbrt();
+    let _ = (x as f32).cbrt();
     let _ = x.powi(3);
     let _ = x.powi(-2);
     let _ = x.powi(16_777_215);
     let _ = x.powi(-16_777_215);
+    let _ = (x as f32).powi(-16_777_215);
+    let _ = (x as f32).powi(3);
     // Cases where the lint shouldn't be applied
     let _ = x.powf(2.1);
     let _ = x.powf(-2.1);
