@@ -149,17 +149,11 @@ impl UninhabitedFrom<'_> {
         subst: &Substitution,
         is_enum: bool,
     ) -> ControlFlow<VisiblyUninhabited> {
-        let target_mod = self.target_mod;
-        let mut data_uninhabitedness =
-            || ty.clone().substitute(Interner, subst).visit_with(self, DebruijnIndex::INNERMOST);
-        if is_enum {
-            data_uninhabitedness()
+        if is_enum || vis.is_visible_from(self.db.upcast(), self.target_mod) {
+            let ty = ty.clone().substitute(Interner, subst);
+            ty.visit_with(self, DebruijnIndex::INNERMOST)
         } else {
-            match vis {
-                Visibility::Module(mod_id) if mod_id == target_mod => data_uninhabitedness(),
-                Visibility::Module(_) => CONTINUE_OPAQUELY_INHABITED,
-                Visibility::Public => data_uninhabitedness(),
-            }
+            CONTINUE_OPAQUELY_INHABITED
         }
     }
 }
