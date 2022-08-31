@@ -21,8 +21,51 @@
 
 use crate::ffi::{c_void, CStr};
 use crate::ptr::NonNull;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::Ordering;
 use crate::sys::c;
+
+// This uses a static initializer to preload some imported functions.
+// The CRT (C runtime) executes static initializers before `main`
+// is called (for binaries) and before `DllMain` is called (for DLLs).
+//
+// It works by contributing a global symbol to the `.CRT$XCT` section.
+// The linker builds a table of all static initializer functions.
+// The CRT startup code then iterates that table, calling each
+// initializer function.
+//
+// NOTE: User code should instead use .CRT$XCU to reliably run after std's initializer.
+// If you're reading this and would like a guarantee here, please
+// file an issue for discussion; currently we don't guarantee any functionality
+// before main.
+// See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
+#[used]
+#[link_section = ".CRT$XCT"]
+static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
+
+/// Preload some imported functions.
+///
+/// Note that any functions included here will be unconditionally loaded in
+/// the final binary, regardless of whether or not they're actually used.
+///
+/// Therefore, this should be limited to `compat_fn_optional` functions which
+/// must be preloaded or any functions where lazier loading demonstrates a
+/// negative performance impact in practical situations.
+///
+/// Currently we only preload `WaitOnAddress` and `WakeByAddressSingle`.
+unsafe extern "C" fn init() {
+    // In an exe this code is executed before main() so is single threaded.
+    // In a DLL the system's loader lock will be held thereby synchronizing
+    // access. So the same best practices apply here as they do to running in DllMain:
+    // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
+    //
+    // DO NOT do anything interesting or complicated in this function! DO NOT call
+    // any Rust functions or CRT functions if those functions touch any global state,
+    // because this function runs during global initialization. For example, DO NOT
+    // do any dynamic allocation, don't call LoadLibrary, etc.
+
+    // Attempt to preload the synch functions.
+    load_synch_functions();
+}
 
 /// Helper macro for creating CStrs from literals and symbol names.
 macro_rules! ansi_str {
@@ -72,20 +115,6 @@ impl Module {
     pub unsafe fn new(name: &CStr) -> Option<Self> {
         // SAFETY: A CStr is always null terminated.
         let module = c::GetModuleHandleA(name.as_ptr());
-        NonNull::new(module).map(Self)
-    }
-
-    /// Load the library (if not already loaded)
-    ///
-    /// # Safety
-    ///
-    /// The module must not be unloaded.
-    pub unsafe fn load_system_library(name: &CStr) -> Option<Self> {
-        let module = c::LoadLibraryExA(
-            name.as_ptr(),
-            crate::ptr::null_mut(),
-            c::LOAD_LIBRARY_SEARCH_SYSTEM32,
-        );
         NonNull::new(module).map(Self)
     }
 
@@ -182,14 +211,10 @@ macro_rules! compat_fn_optional {
 
                 #[inline(always)]
                 pub fn option() -> Option<F> {
-                    let f = PTR.load(Ordering::Acquire);
-                    if !f.is_null() { Some(unsafe { mem::transmute(f) }) } else { try_load() }
-                }
-
-                #[cold]
-                fn try_load() -> Option<F> {
-                    $load_functions;
-                    NonNull::new(PTR.load(Ordering::Acquire)).map(|f| unsafe { mem::transmute(f) })
+                    // Miri does not understand the way we do preloading
+                    // therefore load the function here instead.
+                    #[cfg(miri)] $load_functions;
+                    NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
                 }
             }
         )+
@@ -205,17 +230,14 @@ pub(super) fn load_synch_functions() {
 
         // Try loading the library and all the required functions.
         // If any step fails, then they all fail.
-        let library = unsafe { Module::load_system_library(MODULE_NAME) }?;
+        let library = unsafe { Module::new(MODULE_NAME) }?;
         let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
         let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;
 
-        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Release);
-        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Release);
+        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Relaxed);
+        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Relaxed);
         Some(())
     }
 
-    // Try to load the module but skip loading if a previous attempt failed.
-    static LOAD_MODULE: AtomicBool = AtomicBool::new(true);
-    let module_loaded = LOAD_MODULE.load(Ordering::Acquire) && try_load().is_some();
-    LOAD_MODULE.store(module_loaded, Ordering::Release)
+    try_load();
 }
