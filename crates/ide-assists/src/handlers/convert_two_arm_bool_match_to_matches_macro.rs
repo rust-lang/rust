@@ -34,13 +34,18 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         return None;
     }
     let first_arm_expr = first_arm.expr();
+    let second_arm_expr = second_arm.expr();
 
-    let invert_matches = if is_bool_literal_expr(&first_arm_expr, true) {
+    let invert_matches = if is_bool_literal_expr(&first_arm_expr, true)
+        && is_bool_literal_expr(&second_arm_expr, false)
+    {
         false
-    } else if is_bool_literal_expr(&first_arm_expr, false) {
+    } else if is_bool_literal_expr(&first_arm_expr, false)
+        && is_bool_literal_expr(&second_arm_expr, true)
+    {
         true
     } else {
-        cov_mark::hit!(non_bool_literal_match);
+        cov_mark::hit!(non_invert_bool_literal_arms);
         return None;
     };
 
@@ -118,7 +123,7 @@ fn foo(a: Option<u32>) -> bool {
 
     #[test]
     fn not_applicable_non_bool_literal_arms() {
-        cov_mark::check!(non_bool_literal_match);
+        cov_mark::check!(non_invert_bool_literal_arms);
         check_assist_not_applicable(
             convert_two_arm_bool_match_to_matches_macro,
             r#"
@@ -126,6 +131,37 @@ fn foo(a: Option<u32>) -> bool {
     match a$0 {
         Some(val) => val == 3,
         _ => false
+    }
+}
+        "#,
+        );
+    }
+    #[test]
+    fn not_applicable_both_false_arms() {
+        cov_mark::check!(non_invert_bool_literal_arms);
+        check_assist_not_applicable(
+            convert_two_arm_bool_match_to_matches_macro,
+            r#"
+fn foo(a: Option<u32>) -> bool {
+    match a$0 {
+        Some(val) => false,
+        _ => false
+    }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_both_true_arms() {
+        cov_mark::check!(non_invert_bool_literal_arms);
+        check_assist_not_applicable(
+            convert_two_arm_bool_match_to_matches_macro,
+            r#"
+fn foo(a: Option<u32>) -> bool {
+    match a$0 {
+        Some(val) => true,
+        _ => true
     }
 }
         "#,
