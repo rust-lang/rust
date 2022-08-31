@@ -1,3 +1,5 @@
+use std::fmt;
+
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Mutability, Semantics, TypeInfo};
 use ide_db::{
@@ -69,7 +71,7 @@ pub enum InlayKind {
 pub struct InlayHint {
     pub range: TextRange,
     pub kind: InlayKind,
-    pub label: String,
+    pub label: InlayHintLabel,
     pub tooltip: Option<InlayTooltip>,
 }
 
@@ -78,6 +80,78 @@ pub enum InlayTooltip {
     String(String),
     HoverRanged(FileId, TextRange),
     HoverOffset(FileId, TextSize),
+}
+
+pub struct InlayHintLabel {
+    pub parts: Vec<InlayHintLabelPart>,
+}
+
+impl InlayHintLabel {
+    pub fn as_simple_str(&self) -> Option<&str> {
+        match &*self.parts {
+            [part] => part.as_simple_str(),
+            _ => None,
+        }
+    }
+
+    pub fn prepend_str(&mut self, s: &str) {
+        match &mut *self.parts {
+            [part, ..] if part.as_simple_str().is_some() => part.text = format!("{s}{}", part.text),
+            _ => self.parts.insert(0, InlayHintLabelPart { text: s.into(), linked_location: None }),
+        }
+    }
+
+    pub fn append_str(&mut self, s: &str) {
+        match &mut *self.parts {
+            [.., part] if part.as_simple_str().is_some() => part.text.push_str(s),
+            _ => self.parts.push(InlayHintLabelPart { text: s.into(), linked_location: None }),
+        }
+    }
+}
+
+impl From<String> for InlayHintLabel {
+    fn from(s: String) -> Self {
+        Self { parts: vec![InlayHintLabelPart { text: s, linked_location: None }] }
+    }
+}
+
+impl fmt::Display for InlayHintLabel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.parts.iter().map(|part| &part.text).format(""))
+    }
+}
+
+impl fmt::Debug for InlayHintLabel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(&self.parts).finish()
+    }
+}
+
+pub struct InlayHintLabelPart {
+    pub text: String,
+    pub linked_location: Option<FileRange>,
+}
+
+impl InlayHintLabelPart {
+    pub fn as_simple_str(&self) -> Option<&str> {
+        match self {
+            Self { text, linked_location: None } => Some(text),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Debug for InlayHintLabelPart {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.as_simple_str() {
+            Some(string) => string.fmt(f),
+            None => f
+                .debug_struct("InlayHintLabelPart")
+                .field("text", &self.text)
+                .field("linked_location", &self.linked_location)
+                .finish(),
+        }
+    }
 }
 
 // Feature: Inlay Hints
@@ -281,7 +355,7 @@ fn closing_brace_hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,
-        label,
+        label: label.into(),
         tooltip: name_offset.map(|it| InlayTooltip::HoverOffset(file_id, it)),
     });
 
@@ -311,7 +385,7 @@ fn implicit_static_hints(
             acc.push(InlayHint {
                 range: t.text_range(),
                 kind: InlayKind::LifetimeHint,
-                label: "'static".to_owned(),
+                label: "'static".to_owned().into(),
                 tooltip: Some(InlayTooltip::String("Elided static lifetime".into())),
             });
         }
@@ -329,10 +403,10 @@ fn fn_lifetime_fn_hints(
         return None;
     }
 
-    let mk_lt_hint = |t: SyntaxToken, label| InlayHint {
+    let mk_lt_hint = |t: SyntaxToken, label: String| InlayHint {
         range: t.text_range(),
         kind: InlayKind::LifetimeHint,
-        label,
+        label: label.into(),
         tooltip: Some(InlayTooltip::String("Elided lifetime".into())),
     };
 
@@ -486,7 +560,8 @@ fn fn_lifetime_fn_hints(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
                     if is_empty { "" } else { ", " }
-                ),
+                )
+                .into(),
                 tooltip: Some(InlayTooltip::String("Elided lifetimes".into())),
             });
         }
@@ -535,7 +610,8 @@ fn closure_ret_hints(
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string()),
+            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string())
+            .into(),
         tooltip: Some(InlayTooltip::HoverRanged(file_id, param_list.syntax().text_range())),
     });
     Some(())
@@ -562,7 +638,7 @@ fn reborrow_hints(
     acc.push(InlayHint {
         range: expr.syntax().text_range(),
         kind: InlayKind::ImplicitReborrowHint,
-        label: label.to_string(),
+        label: label.to_string().into(),
         tooltip: Some(InlayTooltip::String("Compiler inserted reborrow".into())),
     });
     Some(())
@@ -620,9 +696,9 @@ fn chaining_hints(
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
-                label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
-                    ty.display_truncated(sema.db, config.max_length).to_string()
-                }),
+                label: hint_iterator(sema, &famous_defs, config, &ty)
+                    .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string())
+                    .into(),
                 tooltip: Some(InlayTooltip::HoverRanged(file_id, expr.syntax().text_range())),
             });
         }
@@ -674,7 +750,7 @@ fn param_name_hints(
             InlayHint {
                 range,
                 kind: InlayKind::ParameterHint,
-                label: param_name,
+                label: param_name.into(),
                 tooltip: tooltip.map(|it| InlayTooltip::HoverOffset(it.file_id, it.range.start())),
             }
         });
@@ -705,7 +781,7 @@ fn binding_mode_hints(
         acc.push(InlayHint {
             range,
             kind: InlayKind::BindingModeHint,
-            label: r.to_string(),
+            label: r.to_string().into(),
             tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
         });
     });
@@ -720,7 +796,7 @@ fn binding_mode_hints(
             acc.push(InlayHint {
                 range,
                 kind: InlayKind::BindingModeHint,
-                label: bm.to_string(),
+                label: bm.to_string().into(),
                 tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
             });
         }
@@ -772,7 +848,7 @@ fn bind_pat_hints(
             None => pat.syntax().text_range(),
         },
         kind: InlayKind::TypeHint,
-        label,
+        label: label.into(),
         tooltip: pat
             .name()
             .map(|it| it.syntax().text_range())
@@ -2223,7 +2299,9 @@ fn main() {
                     InlayHint {
                         range: 147..172,
                         kind: ChainingHint,
-                        label: "B",
+                        label: [
+                            "B",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2236,7 +2314,9 @@ fn main() {
                     InlayHint {
                         range: 147..154,
                         kind: ChainingHint,
-                        label: "A",
+                        label: [
+                            "A",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2294,7 +2374,9 @@ fn main() {
                     InlayHint {
                         range: 143..190,
                         kind: ChainingHint,
-                        label: "C",
+                        label: [
+                            "C",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2307,7 +2389,9 @@ fn main() {
                     InlayHint {
                         range: 143..179,
                         kind: ChainingHint,
-                        label: "B",
+                        label: [
+                            "B",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2350,7 +2434,9 @@ fn main() {
                     InlayHint {
                         range: 246..283,
                         kind: ChainingHint,
-                        label: "B<X<i32, bool>>",
+                        label: [
+                            "B<X<i32, bool>>",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2363,7 +2449,9 @@ fn main() {
                     InlayHint {
                         range: 246..265,
                         kind: ChainingHint,
-                        label: "A<X<i32, bool>>",
+                        label: [
+                            "A<X<i32, bool>>",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2408,7 +2496,9 @@ fn main() {
                     InlayHint {
                         range: 174..241,
                         kind: ChainingHint,
-                        label: "impl Iterator<Item = ()>",
+                        label: [
+                            "impl Iterator<Item = ()>",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2421,7 +2511,9 @@ fn main() {
                     InlayHint {
                         range: 174..224,
                         kind: ChainingHint,
-                        label: "impl Iterator<Item = ()>",
+                        label: [
+                            "impl Iterator<Item = ()>",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2434,7 +2526,9 @@ fn main() {
                     InlayHint {
                         range: 174..206,
                         kind: ChainingHint,
-                        label: "impl Iterator<Item = ()>",
+                        label: [
+                            "impl Iterator<Item = ()>",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2447,7 +2541,9 @@ fn main() {
                     InlayHint {
                         range: 174..189,
                         kind: ChainingHint,
-                        label: "&mut MyIter",
+                        label: [
+                            "&mut MyIter",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2489,7 +2585,9 @@ fn main() {
                     InlayHint {
                         range: 124..130,
                         kind: TypeHint,
-                        label: "Struct",
+                        label: [
+                            "Struct",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2502,7 +2600,9 @@ fn main() {
                     InlayHint {
                         range: 145..185,
                         kind: ChainingHint,
-                        label: "Struct",
+                        label: [
+                            "Struct",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2515,7 +2615,9 @@ fn main() {
                     InlayHint {
                         range: 145..168,
                         kind: ChainingHint,
-                        label: "Struct",
+                        label: [
+                            "Struct",
+                        ],
                         tooltip: Some(
                             HoverRanged(
                                 FileId(
@@ -2528,7 +2630,9 @@ fn main() {
                     InlayHint {
                         range: 222..228,
                         kind: ParameterHint,
-                        label: "self",
+                        label: [
+                            "self",
+                        ],
                         tooltip: Some(
                             HoverOffset(
                                 FileId(
