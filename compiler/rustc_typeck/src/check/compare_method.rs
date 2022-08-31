@@ -391,6 +391,30 @@ fn compare_predicate_entailment<'tcx>(
             return Err(diag.emit());
         }
 
+        // Check that an impl's fn return satisfies the bounds of the
+        // FIXME(RPITIT): Generalize this to nested impl traits
+        if let ty::Projection(proj) = tcx.fn_sig(trait_m.def_id).skip_binder().output().kind()
+            && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+        {
+            let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
+
+            for (predicate, span) in tcx
+                .bound_explicit_item_bounds(proj.item_def_id)
+                .transpose_iter()
+                .map(|pred| pred.map_bound(|pred| *pred).subst(tcx, trait_to_placeholder_substs))
+            {
+                ocx.register_obligation(traits::Obligation::new(
+                    traits::ObligationCause::new(
+                        return_span,
+                        impl_m_hir_id,
+                        ObligationCauseCode::BindingObligation(proj.item_def_id, span),
+                    ),
+                    param_env,
+                    predicate,
+                ));
+            }
+        }
+
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = ocx.select_all_or_error();
