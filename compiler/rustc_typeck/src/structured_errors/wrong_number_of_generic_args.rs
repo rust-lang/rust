@@ -523,6 +523,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 if self.not_enough_args_provided() {
                     self.suggest_adding_args(err);
                 } else if self.too_many_args_provided() {
+                    self.suggest_moving_args_from_assoc_fn_to_trait(err);
                     self.suggest_removing_args_or_generics(err);
                 } else {
                     unreachable!();
@@ -649,6 +650,123 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 debug!("sugg: {:?}", sugg);
 
                 err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
+            }
+        }
+    }
+
+    /// Suggests moving redundant argument(s) of an associate function to the
+    /// trait it belongs to.
+    ///
+    /// ```compile_fail
+    /// Into::into::<Option<_>>(42) // suggests considering `Into::<Option<_>>::into(42)`
+    /// ```
+    fn suggest_moving_args_from_assoc_fn_to_trait(&self, err: &mut Diagnostic) {
+        let trait_ = match self.tcx.trait_of_item(self.def_id) {
+            Some(def_id) => def_id,
+            None => return,
+        };
+
+        // Skip suggestion when the associated function is itself generic, it is unclear
+        // how to split the provided parameters between those to suggest to the trait and
+        // those to remain on the associated type.
+        let num_assoc_fn_expected_args =
+            self.num_expected_type_or_const_args() + self.num_expected_lifetime_args();
+        if num_assoc_fn_expected_args > 0 {
+            return;
+        }
+
+        let num_assoc_fn_excess_args =
+            self.num_excess_type_or_const_args() + self.num_excess_lifetime_args();
+
+        let trait_generics = self.tcx.generics_of(trait_);
+        let num_trait_generics_except_self =
+            trait_generics.count() - if trait_generics.has_self { 1 } else { 0 };
+
+        let msg = format!(
+            "consider moving {these} generic argument{s} to the `{name}` trait, which takes up to {num} argument{s}",
+            these = pluralize!("this", num_assoc_fn_excess_args),
+            s = pluralize!(num_assoc_fn_excess_args),
+            name = self.tcx.item_name(trait_),
+            num = num_trait_generics_except_self,
+        );
+
+        if let Some(hir_id) = self.path_segment.hir_id
+        && let Some(parent_node) = self.tcx.hir().find_parent_node(hir_id)
+        && let Some(parent_node) = self.tcx.hir().find(parent_node)
+        && let hir::Node::Expr(expr) = parent_node {
+            match expr.kind {
+                hir::ExprKind::Path(ref qpath) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+                        err,
+                        qpath,
+                        msg,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
+                hir::ExprKind::MethodCall(..) => {
+                    self.suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+                        err,
+                        trait_,
+                        expr,
+                        msg,
+                        num_assoc_fn_excess_args,
+                        num_trait_generics_except_self
+                    )
+                },
+                _ => return,
+            }
+        }
+    }
+
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(
+        &self,
+        err: &mut Diagnostic,
+        qpath: &'tcx hir::QPath<'tcx>,
+        msg: String,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        if let hir::QPath::Resolved(_, path) = qpath
+        && let Some(trait_path_segment) = path.segments.get(0) {
+            let num_generic_args_supplied_to_trait = trait_path_segment.args().num_generic_params();
+
+            if num_assoc_fn_excess_args == num_trait_generics_except_self - num_generic_args_supplied_to_trait {
+                if let Some(span) = self.gen_args.span_ext()
+                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    let sugg = vec![
+                        (self.path_segment.ident.span, format!("{}::{}", snippet, self.path_segment.ident)),
+                        (span.with_lo(self.path_segment.ident.span.hi()), "".to_owned())
+                    ];
+
+                    err.multipart_suggestion(
+                        msg,
+                        sugg,
+                        Applicability::MaybeIncorrect
+                    );
+                }
+            }
+        }
+    }
+
+    fn suggest_moving_args_from_assoc_fn_to_trait_for_method_call(
+        &self,
+        err: &mut Diagnostic,
+        trait_: DefId,
+        expr: &'tcx hir::Expr<'tcx>,
+        msg: String,
+        num_assoc_fn_excess_args: usize,
+        num_trait_generics_except_self: usize,
+    ) {
+        if let hir::ExprKind::MethodCall(_, args, _) = expr.kind {
+            assert_eq!(args.len(), 1);
+            if num_assoc_fn_excess_args == num_trait_generics_except_self {
+                if let Some(gen_args) = self.gen_args.span_ext()
+                && let Ok(gen_args) = self.tcx.sess.source_map().span_to_snippet(gen_args)
+                && let Ok(args) = self.tcx.sess.source_map().span_to_snippet(args[0].span) {
+                    let sugg = format!("{}::{}::{}({})", self.tcx.item_name(trait_), gen_args, self.tcx.item_name(self.def_id), args);
+                    err.span_suggestion(expr.span, msg, sugg, Applicability::MaybeIncorrect);
+                }
             }
         }
     }
