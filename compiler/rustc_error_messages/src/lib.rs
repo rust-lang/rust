@@ -44,6 +44,7 @@ fluent_messages! {
     interface => "../locales/en-US/interface.ftl",
     infer => "../locales/en-US/infer.ftl",
     lint => "../locales/en-US/lint.ftl",
+    monomorphize => "../locales/en-US/monomorphize.ftl",
     parser => "../locales/en-US/parser.ftl",
     passes => "../locales/en-US/passes.ftl",
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
