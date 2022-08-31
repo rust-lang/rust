@@ -40,7 +40,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", ident_bind_name),
                                 None,
-                                "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
+                                "match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable",
                             );
                         }
                     }
