@@ -26,23 +26,23 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
 ) -> Option<()> {
     let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
-    if match_arm_list.arms().count() != 2 {
+    let mut arms = match_arm_list.arms();
+    let first_arm = arms.next()?;
+    let second_arm = arms.next()?;
+    if arms.next().is_some() {
         cov_mark::hit!(non_two_arm_match);
         return None;
     }
-
-    let first_arm = match_arm_list.arms().next()?;
     let first_arm_expr = first_arm.expr();
 
-    let invert_matches;
-    if is_bool_literal_expr(&first_arm_expr, true) {
-        invert_matches = false;
+    let invert_matches = if is_bool_literal_expr(&first_arm_expr, true) {
+        false
     } else if is_bool_literal_expr(&first_arm_expr, false) {
-        invert_matches = true;
+        true
     } else {
         cov_mark::hit!(non_bool_literal_match);
         return None;
-    }
+    };
 
     let target_range = ctx.sema.original_range(match_expr.syntax()).range;
     let expr = match_expr.expr()?;
