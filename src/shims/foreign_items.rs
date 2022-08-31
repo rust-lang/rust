@@ -560,8 +560,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let n = Size::from_bytes(this.read_scalar(n)?.to_machine_usize(this)?);
 
                 let result = {
-                    let left_bytes = this.read_bytes_ptr(left, n)?;
-                    let right_bytes = this.read_bytes_ptr(right, n)?;
+                    let left_bytes = this.read_bytes_ptr_strip_provenance(left, n)?;
+                    let right_bytes = this.read_bytes_ptr_strip_provenance(right, n)?;
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
@@ -583,7 +583,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = val as u8;
 
                 if let Some(idx) = this
-                    .read_bytes_ptr(ptr, Size::from_bytes(num))?
+                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
                     .iter()
                     .rev()
                     .position(|&c| c == val)
@@ -606,7 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = val as u8;
 
                 let idx = this
-                    .read_bytes_ptr(ptr, Size::from_bytes(num))?
+                    .read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(num))?
                     .iter()
                     .position(|&c| c == val);
                 if let Some(idx) = idx {

@@ -24,6 +24,7 @@ fn main() {
     // starts 1 byte to the right, so using it would actually be wrong!
     let d_alias = &mut w.data as *mut _ as *mut *const u8;
     unsafe {
-        let _x = *d_alias; //~ ERROR: unable to turn pointer into raw bytes
+        let x = *d_alias;
+        let _val = *x; //~ERROR: is a dangling pointer (it has no provenance)
     }
 }

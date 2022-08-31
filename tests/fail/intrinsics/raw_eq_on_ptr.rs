@@ -6,6 +6,5 @@ extern "rust-intrinsic" {
 
 fn main() {
     let x = &0;
-    // FIXME: the error message is not great (should be UB rather than 'unsupported')
-    unsafe { raw_eq(&x, &x) }; //~ERROR: unsupported operation
+    unsafe { raw_eq(&x, &x) }; //~ERROR: `raw_eq` on bytes with provenance
 }

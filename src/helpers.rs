@@ -757,7 +757,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Step 2: get the bytes.
-        this.read_bytes_ptr(ptr, len)
+        this.read_bytes_ptr_strip_provenance(ptr, len)
     }
 
     fn read_wide_str(&self, mut ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u16>> {

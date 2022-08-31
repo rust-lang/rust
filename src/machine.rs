@@ -205,6 +205,21 @@ impl interpret::Provenance for Provenance {
             Provenance::Wildcard => None,
         }
     }
+
+    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self> {
+        match (left, right) {
+            // If both are the *same* concrete tag, that is the result.
+            (
+                Some(Provenance::Concrete { alloc_id: left_alloc, sb: left_sb }),
+                Some(Provenance::Concrete { alloc_id: right_alloc, sb: right_sb }),
+            ) if left_alloc == right_alloc && left_sb == right_sb => left,
+            // If one side is a wildcard, the best possible outcome is that it is equal to the other
+            // one, and we use that.
+            (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
+            // Otherwise, fall back to `None`.
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Debug for ProvenanceExtra {
