@@ -262,3 +262,31 @@ parser_suffixed_literal_in_attribute = suffixed literals are not allowed in attr
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
 parser_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
+
+parser_label_inner_attr_does_not_annotate_this = the inner attribute doesn't annotate this {$item}
+parser_sugg_change_inner_attr_to_outer = to annotate the {$item}, change the attribute from inner to outer style
+
+parser_inner_attr_not_permitted_after_outer_doc_comment = an inner attribute is not permitted following an outer doc comment
+    .label_attr = not permitted following an outer doc comment
+    .label_prev_doc_comment = previous doc comment
+    .label_does_not_annotate_this = {parser_label_inner_attr_does_not_annotate_this}
+    .sugg_change_inner_to_outer = {parser_sugg_change_inner_attr_to_outer}
+
+parser_inner_attr_not_permitted_after_outer_attr = an inner attribute is not permitted following an outer attribute
+    .label_attr = not permitted following an outer attribute
+    .label_prev_attr = previous outer attribute
+    .label_does_not_annotate_this = {parser_label_inner_attr_does_not_annotate_this}
+    .sugg_change_inner_to_outer = {parser_sugg_change_inner_attr_to_outer}
+
+parser_inner_attr_not_permitted = an inner attribute is not permitted in this context
+    .label_does_not_annotate_this = {parser_label_inner_attr_does_not_annotate_this}
+    .sugg_change_inner_to_outer = {parser_sugg_change_inner_attr_to_outer}
+
+parser_inner_attr_explanation = inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+parser_outer_attr_explanation = outer attributes, like `#[test]`, annotate the item following them
+
+parser_inner_doc_comment_not_permitted = expected outer doc comment
+    .note = inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+    .suggestion = you might have meant to write a regular comment
+    .label_does_not_annotate_this = the inner doc comment doesn't annotate this {$item}
+    .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style

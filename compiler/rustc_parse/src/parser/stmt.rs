@@ -1,4 +1,4 @@
-use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
+use super::attr::InnerAttrForbiddenReason;
 use super::diagnostics::AttemptLocalParseRecovery;
 use super::expr::LhsExpr;
 use super::pat::RecoverComma;
@@ -399,7 +399,12 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         let (attrs, block) = self.parse_inner_attrs_and_block()?;
         if let [.., last] = &*attrs {
-            self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);
+            self.error_on_forbidden_inner_attr(
+                last.span,
+                super::attr::InnerAttrPolicy::Forbidden(Some(
+                    InnerAttrForbiddenReason::InCodeBlock,
+                )),
+            );
         }
         Ok(block)
     }
