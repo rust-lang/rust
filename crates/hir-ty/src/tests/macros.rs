@@ -311,7 +311,6 @@ fn expr_macro_expanded_in_stmts() {
             !3..4 'a': ()
             !5..7 '()': ()
             57..84 '{     ...); } }': ()
-            63..82 'id! { ... (); }': ()
         "#]],
     );
 }
@@ -336,7 +335,6 @@ fn recursive_macro_expanded_in_stmts() {
         }
         "#,
         expect![[r#"
-            !0..13 'ng!{[leta=3]}': {unknown}
             !3..4 'a': i32
             !5..6 '3': i32
             196..237 '{     ...= a; }': ()
@@ -361,7 +359,6 @@ fn recursive_inner_item_macro_rules() {
         "#,
         expect![[r#"
             !0..1 '1': i32
-            !0..7 'mac!($)': {unknown}
             107..143 '{     ...!(); }': ()
             129..130 'a': i32
         "#]],
