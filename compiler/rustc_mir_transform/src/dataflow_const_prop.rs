@@ -182,8 +182,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                 // Branch is taken. Has no effect on state.
                 handled = true;
             } else {
-                // Branch is not taken, we can flood everything.
-                state.flood_all();
+                // Branch is not taken, we can flood everything with bottom.
+                state.flood_all_with(FlatSet::Bottom);
             }
         })
     }
