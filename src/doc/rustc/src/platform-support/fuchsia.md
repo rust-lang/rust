@@ -79,7 +79,7 @@ the following commands:
 
 ```sh
 rustup target add x86_64-fuchsia
-rustup target add aarch_64-fuchsia
+rustup target add aarch64-fuchsia
 ```
 
 After installing our Fuchsia targets, we can now compile a Rust binary that targets
