@@ -106,14 +106,14 @@ pub fn futex<'tcx>(
                     if op & futex_realtime != 0 {
                         Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
                     } else {
-                        Time::Monotonic(this.machine.clock.get_time_absolute(duration).unwrap())
+                        Time::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
                     }
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
                     if op & futex_realtime != 0 {
                         Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
                     } else {
-                        Time::Monotonic(this.machine.clock.get_time_relative(duration).unwrap())
+                        Time::Monotonic(this.machine.clock.now().checked_add(duration).unwrap())
                     }
                 })
             };

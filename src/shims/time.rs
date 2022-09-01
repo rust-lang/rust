@@ -41,7 +41,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.check_no_isolation("`clock_gettime` with real time clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            this.machine.clock.get()
+            this.machine.clock.now().duration_since(this.machine.clock.anchor())
         } else {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = this.machine.clock.get();
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
@@ -164,7 +164,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = this.machine.clock.get();
+        let duration = this.machine.clock.now().duration_since(this.machine.clock.anchor());
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;
@@ -207,9 +207,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
         // If adding the duration overflows, let's just sleep for an hour. Waking up early is always acceptable.
-        let timeout_time = this.machine.clock.get_time_relative(duration).unwrap_or_else(|| {
-            this.machine.clock.get_time_relative(Duration::from_secs(3600)).unwrap()
-        });
+        let now = this.machine.clock.now();
+        let timeout_time = now
+            .checked_add(duration)
+            .unwrap_or_else(|| now.checked_add(Duration::from_secs(3600)).unwrap());
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);
@@ -235,7 +236,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 
         let duration = Duration::from_millis(timeout_ms.into());
-        let timeout_time = this.machine.clock.get_time_relative(duration).unwrap();
+        let timeout_time = this.machine.clock.now().checked_add(duration).unwrap();
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);
