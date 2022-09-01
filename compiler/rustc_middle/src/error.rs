@@ -38,3 +38,13 @@ pub enum TypeMismatchReason {
         span: Span,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(middle::limit_invalid)]
+pub struct LimitInvalid<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub value_span: Span,
+    pub error_str: &'a str,
+}

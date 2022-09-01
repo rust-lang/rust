@@ -11,3 +11,7 @@ middle_conflict_types =
 
 middle_previous_use_here =
     previous use here
+
+middle_limit_invalid =
+    `limit` must be a non-negative integer
+    .label = {$error_str}

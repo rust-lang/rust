@@ -10,6 +10,7 @@
 //! just peeks and looks for that attribute.
 
 use crate::bug;
+use crate::error::LimitInvalid;
 use crate::ty;
 use rustc_ast::Attribute;
 use rustc_session::Session;
@@ -56,9 +57,6 @@ fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: u
             match s.as_str().parse() {
                 Ok(n) => return Limit::new(n),
                 Err(e) => {
-                    let mut err =
-                        sess.struct_span_err(attr.span, "`limit` must be a non-negative integer");
-
                     let value_span = attr
                         .meta()
                         .and_then(|meta| meta.name_value_literal_span())
@@ -74,9 +72,7 @@ fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: u
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
-
-                    err.span_label(value_span, error_str);
-                    err.emit();
+                    sess.emit_err(LimitInvalid { span: attr.span, value_span, error_str });
                 }
             }
         }
