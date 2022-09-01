@@ -526,7 +526,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 });
 
                             let enclosing_scope_span =
-                                tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(body));
+                                tcx.hir().span(tcx.hir().local_def_id_to_hir_id(body));
 
                             err.span_label(enclosing_scope_span, s);
                         }
