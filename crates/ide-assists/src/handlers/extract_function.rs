@@ -1276,32 +1276,26 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     last_ancestor
 }
 
-fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<SyntaxNode> {
-    let impl_type = Some(impl_type_name(trait_impl)?);
+fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<ast::Impl> {
+    let as_impl = ast::Impl::cast(trait_impl.clone())?;
+    let impl_type = Some(impl_type_name(&as_impl)?);
 
-    let mut sibblings = trait_impl.parent()?.children();
-    sibblings.find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
+    let sibblings = trait_impl.parent()?.children();
+    sibblings.filter_map(ast::Impl::cast)
+        .find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
 }
 
-fn last_impl_member(impl_node: &SyntaxNode) -> Option<SyntaxNode> {
-    impl_node.children().find(|c| c.kind() == SyntaxKind::ASSOC_ITEM_LIST)?.last_child()
+fn last_impl_member(impl_node: &ast::Impl) -> Option<SyntaxNode> {
+    let last_child = impl_node.assoc_item_list()?.assoc_items().last()?;
+    Some(last_child.syntax().clone())
 }
 
-fn is_trait_impl(node: &SyntaxNode) -> bool {
-    if !ast::Impl::can_cast(node.kind()) {
-        return false;
-    }
-    match ast::Impl::cast(node.clone()) {
-        Some(c) => c.trait_().is_some(),
-        None => false,
-    }
+fn is_trait_impl(node: &ast::Impl) -> bool {
+    node.trait_().is_some()
 }
 
-fn impl_type_name(impl_node: &SyntaxNode) -> Option<String> {
-    if !ast::Impl::can_cast(impl_node.kind()) {
-        return None;
-    }
-    Some(ast::Impl::cast(impl_node.clone())?.self_ty()?.to_string())
+fn impl_type_name(impl_node: &ast::Impl) -> Option<String> {
+    Some(impl_node.self_ty()?.to_string())
 }
 
 fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> String {
