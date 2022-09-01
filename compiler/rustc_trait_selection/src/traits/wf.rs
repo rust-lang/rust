@@ -434,6 +434,7 @@ impl<'tcx> WfPredicates<'tcx> {
     }
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
+    #[tracing::instrument(level = "debug", skip(self))]
     fn compute(&mut self, arg: GenericArg<'tcx>) {
         let mut walker = arg.walk();
         let param_env = self.param_env;
@@ -487,6 +488,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     continue;
                 }
             };
+
+            debug!("wf bounds for ty={:?} ty.kind={:#?}", ty, ty.kind());
 
             match *ty.kind() {
                 ty::Bool
@@ -628,9 +631,29 @@ impl<'tcx> WfPredicates<'tcx> {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.
-                    if ty::is_impl_trait_defn(self.tcx, did).is_none() {
-                        let obligations = self.nominal_obligations(did, substs);
-                        self.out.extend(obligations);
+                    debug!(
+                        "ty::Opaque(did={did:?}, substs={substs:?}, impl_trait_origin={:?}",
+                        ty::impl_trait_origin(self.tcx, did)
+                    );
+                    match ty::impl_trait_origin(self.tcx, did) {
+                        Some(hir::OpaqueTyOrigin::TyAlias) => {
+                            let obligations = self.nominal_obligations(did, substs);
+                            debug!("opaque obligations = {:#?}", obligations);
+                            self.out.extend(obligations);
+                        }
+                        Some(hir::OpaqueTyOrigin::AsyncFn(_))
+                        | Some(hir::OpaqueTyOrigin::FnReturn(_))
+                        | None => {
+                            // for opaque types introduced via `-> impl Trait` or async fn desugaring,
+                            // the where-clauses are currently kinda bogus so we skip them.
+                            //
+                            // These opaque type references only appear in 1 place (the fn return type)
+                            // and we know they are well-formed in that location if the fn's where-clauses are met.
+                            //
+                            // The only other place this type will propagate to is the return type of a fn call,
+                            // and it of course must satisfy the fn where clauses, so we know the type will be well-formed
+                            // in that context as well.\
+                        }
                     }
                 }
 
