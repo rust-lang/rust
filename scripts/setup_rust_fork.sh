@@ -10,6 +10,8 @@ git fetch
 git checkout -- .
 git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
+git am ../patches/*-sysroot-*.patch
+
 git apply - <<EOF
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
 index d95b5b7f17f..00b6f0e3635 100644
