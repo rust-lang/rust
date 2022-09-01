@@ -168,3 +168,28 @@ pub(crate) enum ShowMutatingUpvar {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum FnMutBumpFn<'a> {
+    #[label(borrowck::cannot_act)]
+    Cannot {
+        act: &'a str,
+        #[primary_span]
+        sp: Span,
+    },
+    #[label(borrowck::expects_fnmut_not_fn)]
+    NotFnHere {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::expects_fn_not_fnmut)]
+    NotFnMutHere {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::in_this_closure)]
+    Here {
+        #[primary_span]
+        span: Span,
+    },
+}

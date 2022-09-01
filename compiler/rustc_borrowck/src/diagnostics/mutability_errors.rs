@@ -22,7 +22,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::diagnostics::BorrowedContentSource;
-use crate::session_diagnostics::ShowMutatingUpvar;
+use crate::session_diagnostics::{FnMutBumpFn, ShowMutatingUpvar};
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
 
@@ -971,7 +971,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
-        err.span_label(sp, format!("cannot {act}"));
+        err.subdiagnostic(FnMutBumpFn::Cannot { act, sp });
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
@@ -1024,9 +1024,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 if let Some(span) = arg {
-                    err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
-                    err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(self.body.span, "in this closure");
+                    err.subdiagnostic(FnMutBumpFn::NotFnHere { span });
+                    err.subdiagnostic(FnMutBumpFn::NotFnMutHere { span: func.span });
+                    err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                     look_at_return = false;
                 }
             }

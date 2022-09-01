@@ -61,3 +61,16 @@ borrowck_used_impl_require_static =
 
 borrowck_require_mutable_binding =
     calling `{$place}` requires mutable binding due to {$reason}
+
+borrowck_cannot_act =
+    cannot {$act}
+
+borrowck_expects_fnmut_not_fn =
+    change this to accept `FnMut` instead of `Fn`
+
+borrowck_expects_fn_not_fnmut =
+    expects `Fn` instead of `FnMut`
+
+borrowck_in_this_closure =
+    in this closure
+
