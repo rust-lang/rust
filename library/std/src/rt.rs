@@ -72,8 +72,25 @@ macro_rules! rtunwrap {
 // Runs before `main`.
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-// The extra parameter `sigpipe` allows rustc to generate code that instructs std whether
-// or not to ignore `SIGPIPE`.
+//
+// # The `sigpipe` parameter
+//
+// Since 2014, the Rust runtime on Unix has set the `SIGPIPE` handler to
+// `SIG_IGN`. Applications have good reasons to want a different behavior
+// though, so there is a `#[unix_sigpipe = "..."]` attribute on `fn main()` that
+// can be used to select how `SIGPIPE` shall be setup (if changed at all) before
+// `fn main()` is called. See <https://github.com/rust-lang/rust/issues/97889>
+// for more info.
+//
+// The `sigpipe` parameter to this function gets its value via the code that
+// rustc generates to invoke `fn lang_start()`. The reason we have `sigpipe` for
+// all platforms and not only Unix, is because std is not allowed to have `cfg`
+// directives as this high level. See the module docs in
+// `src/tools/tidy/src/pal.rs` for more info. On all other platforms, `sigpipe`
+// has a value, but its value is ignored.
+//
+// Even though it is an `u8`, it only ever has 3 values. These are documented in
+// `compiler/rustc_session/src/config/sigpipe.rs`.
 #[cfg_attr(test, allow(dead_code))]
 unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     unsafe {
