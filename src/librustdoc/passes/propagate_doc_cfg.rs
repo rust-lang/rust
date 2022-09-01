@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::inline::{load_attrs, merge_attrs};
-use crate::clean::{Crate, Item};
+use crate::clean::{Crate, Item, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::passes::Pass;
@@ -26,30 +26,50 @@ struct CfgPropagator<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
+impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
+    // Some items need to merge their attributes with their parents' otherwise a few of them
+    // (mostly `cfg` ones) will be missing.
+    fn merge_with_parent_attributes(&mut self, item: &mut Item) {
+        let check_parent = match &*item.kind {
+            // impl blocks can be in different modules with different cfg and we need to get them
+            // as well.
+            ItemKind::ImplItem(_) => false,
+            kind if kind.is_non_assoc() => true,
+            _ => return,
+        };
+
+        let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local())
+            else { return };
+
+        let hir = self.cx.tcx.hir();
+        let hir_id = hir.local_def_id_to_hir_id(def_id);
+
+        if check_parent {
+            let expected_parent = hir.get_parent_item(hir_id);
+            // If parents are different, it means that `item` is a reexport and we need
+            // to compute the actual `cfg` by iterating through its "real" parents.
+            if self.parent == Some(expected_parent) {
+                return;
+            }
+        }
+
+        let mut attrs = Vec::new();
+        for (parent_hir_id, _) in hir.parent_iter(hir_id) {
+            if let Some(def_id) = hir.opt_local_def_id(parent_hir_id) {
+                attrs.extend_from_slice(load_attrs(self.cx, def_id.to_def_id()));
+            }
+        }
+        let (_, cfg) = merge_attrs(self.cx, None, item.attrs.other_attrs.as_slice(), Some(&attrs));
+        item.cfg = cfg;
+    }
+}
+
 impl<'a, 'tcx> DocFolder for CfgPropagator<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let old_parent_cfg = self.parent_cfg.clone();
 
-        if item.kind.is_non_assoc() &&
-            let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local()) {
-            let hir = self.cx.tcx.hir();
-            let hir_id = hir.local_def_id_to_hir_id(def_id);
-            let expected_parent = hir.get_parent_item(hir_id);
+        self.merge_with_parent_attributes(&mut item);
 
-            // If parents are different, it means that `item` is a reexport and we need to compute
-            // the actual `cfg` by iterating through its "real" parents.
-            if self.parent != Some(expected_parent) {
-                let mut attrs = Vec::new();
-                for (parent_hir_id, _) in hir.parent_iter(hir_id) {
-                    if let Some(def_id) = hir.opt_local_def_id(parent_hir_id) {
-                        attrs.extend_from_slice(load_attrs(self.cx, def_id.to_def_id()));
-                    }
-                }
-                let (_, cfg) =
-                    merge_attrs(self.cx, None, item.attrs.other_attrs.as_slice(), Some(&attrs));
-                item.cfg = cfg;
-            }
-        }
         let new_cfg = match (self.parent_cfg.take(), item.cfg.take()) {
             (None, None) => None,
             (Some(rc), None) | (None, Some(rc)) => Some(rc),
