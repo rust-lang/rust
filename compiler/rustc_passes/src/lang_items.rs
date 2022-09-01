@@ -7,6 +7,7 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
+use crate::errors::{LangItemOnIncorrectTarget, UnknownLangItem};
 use crate::check_attr::target_from_impl_item;
 use crate::weak_lang_items;
 
@@ -42,34 +43,19 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                 }
                 // Known lang item with attribute on incorrect target.
                 Some((_, expected_target)) => {
-                    struct_span_err!(
-                        self.tcx.sess,
+                    self.tcx.sess.emit_err(LangItemOnIncorrectTarget {
                         span,
-                        E0718,
-                        "`{}` language item must be applied to a {}",
-                        value,
+                        name: value,
                         expected_target,
-                    )
-                    .span_label(
-                        span,
-                        format!(
-                            "attribute should be applied to a {}, not a {}",
-                            expected_target, actual_target,
-                        ),
-                    )
-                    .emit();
+                        actual_target,
+                    });
                 }
                 // Unknown lang item.
                 _ => {
-                    struct_span_err!(
-                        self.tcx.sess,
+                    self.tcx.sess.emit_err(UnknownLangItem {
                         span,
-                        E0522,
-                        "definition of an unknown language item: `{}`",
-                        value
-                    )
-                    .span_label(span, format!("definition of unknown language item `{}`", value))
-                    .emit();
+                        name: value,
+                    });
                 }
             }
         }
