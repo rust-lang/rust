@@ -259,7 +259,7 @@ impl InferArg {
 
 #[derive(Debug, HashStable_Generic)]
 pub enum GenericArg<'hir> {
-    Lifetime(Lifetime),
+    Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
     Const(ConstArg),
     Infer(InferArg),
@@ -430,7 +430,7 @@ pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
     LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
-    Outlives(Lifetime),
+    Outlives(&'hir Lifetime),
 }
 
 impl GenericBound<'_> {
@@ -756,7 +756,7 @@ impl<'hir> WhereBoundPredicate<'hir> {
 pub struct WhereRegionPredicate<'hir> {
     pub span: Span,
     pub in_where_clause: bool,
-    pub lifetime: Lifetime,
+    pub lifetime: &'hir Lifetime,
     pub bounds: GenericBounds<'hir>,
 }
 
@@ -2499,7 +2499,7 @@ pub enum TyKind<'hir> {
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
-    Rptr(Lifetime, MutTy<'hir>),
+    Rptr(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
     /// The never type (`!`).
@@ -2518,7 +2518,7 @@ pub enum TyKind<'hir> {
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], Lifetime, TraitObjectSyntax),
+    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
     /// Unused for now.
     Typeof(AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
@@ -3474,7 +3474,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
     #[cfg(not(bootstrap))]
-    static_assert_size!(GenericArg<'_>, 32);
+    static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
@@ -3494,9 +3494,9 @@ mod size_asserts {
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
     #[cfg(not(bootstrap))]
-    static_assert_size!(TraitItem<'static>, 88);
+    static_assert_size!(TraitItem<'_>, 88);
     #[cfg(not(bootstrap))]
     static_assert_size!(TraitItemKind<'_>, 48);
-    static_assert_size!(Ty<'_>, 72);
-    static_assert_size!(TyKind<'_>, 56);
+    static_assert_size!(Ty<'_>, 48);
+    static_assert_size!(TyKind<'_>, 32);
 }

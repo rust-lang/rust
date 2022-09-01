@@ -190,7 +190,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
     )
 }
 
-fn clean_lifetime<'tcx>(lifetime: hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
+fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
     let def = cx.tcx.named_region(lifetime.hir_id);
     if let Some(
         rl::Region::EarlyBound(node_id)
@@ -495,7 +495,7 @@ fn clean_generic_param<'tcx>(
                     .filter(|bp| !bp.in_where_clause)
                     .flat_map(|bp| bp.bounds)
                     .map(|bound| match bound {
-                        hir::GenericBound::Outlives(lt) => clean_lifetime(*lt, cx),
+                        hir::GenericBound::Outlives(lt) => clean_lifetime(lt, cx),
                         _ => panic!(),
                     })
                     .collect()
@@ -1392,7 +1392,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                     }
                     _ => None,
                 });
-                if let Some(lt) = lifetime.cloned() {
+                if let Some(lt) = lifetime {
                     let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
                     let cleaned =
                         if !lt.is_elided() { clean_lifetime(lt, cx) } else { Lifetime::elided() };
