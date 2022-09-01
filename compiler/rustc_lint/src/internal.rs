@@ -51,7 +51,7 @@ fn typeck_results_of_method_fn<'tcx>(
     expr: &Expr<'_>,
 ) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
     match expr.kind {
-        ExprKind::MethodCall(segment, _, _)
+        ExprKind::MethodCall(segment, ..)
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
         {
             Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))

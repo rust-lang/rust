@@ -901,7 +901,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::MethodCall(segment, _, _) => {
+            hir::ExprKind::MethodCall(segment, ..) => {
                 if let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let generics = tcx.generics_of(def_id);
                     let insertable: Option<_> = try {
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 let generic_args = &generics.own_substs_no_defaults(tcx, substs)
                     [generics.own_counts().lifetimes..];
                 let span = match expr.kind {
-                    ExprKind::MethodCall(path, _, _) => path.ident.span,
+                    ExprKind::MethodCall(path, ..) => path.ident.span,
                     _ => expr.span,
                 };
 
@@ -1181,7 +1181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             })
             .any(|generics| generics.has_impl_trait())
         };
-        if let ExprKind::MethodCall(path, args, span) = expr.kind
+        if let ExprKind::MethodCall(path, receiver, args, span) = expr.kind
             && let Some(substs) = self.node_substs_opt(expr.hir_id)
             && substs.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
@@ -1189,12 +1189,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && !has_impl_trait(def_id)
         {
             let successor =
-                args.get(1).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
+                args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
             let substs = self.infcx.resolve_vars_if_possible(substs);
             self.update_infer_source(InferSource {
                 span: path.ident.span,
                 kind: InferSourceKind::FullyQualifiedMethodCall {
-                    receiver: args.first().unwrap(),
+                    receiver,
                     successor,
                     substs,
                     def_id,

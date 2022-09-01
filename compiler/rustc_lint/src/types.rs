@@ -1458,7 +1458,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if let ExprKind::MethodCall(ref method_path, args, _) = &expr.kind
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
@@ -1494,8 +1494,8 @@ impl InvalidAtomicOrdering {
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
             && let Some((ordering_arg, invalid_ordering)) = match method {
-                sym::load => Some((&args[1], sym::Release)),
-                sym::store => Some((&args[2], sym::Acquire)),
+                sym::load => Some((&args[0], sym::Release)),
+                sym::store => Some((&args[1], sym::Acquire)),
                 _ => None,
             }
             && let Some(ordering) = Self::match_ordering(cx, ordering_arg)
@@ -1536,8 +1536,8 @@ impl InvalidAtomicOrdering {
             else {return };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[2],
-            sym::compare_exchange | sym::compare_exchange_weak => &args[4],
+            sym::fetch_update => &args[1],
+            sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };
 

@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, &[ref callee_expr], _) = expr.kind else { return; };
+        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();

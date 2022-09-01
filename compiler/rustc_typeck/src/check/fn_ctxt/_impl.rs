@@ -987,7 +987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if found != self.tcx.types.unit {
             return;
         }
-        if let ExprKind::MethodCall(path_segment, [rcvr, ..], _) = expr.kind {
+        if let ExprKind::MethodCall(path_segment, rcvr, ..) = expr.kind {
             if self
                 .typeck_results
                 .borrow()
