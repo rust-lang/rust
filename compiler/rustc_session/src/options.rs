@@ -5,7 +5,7 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use rustc_errors::LanguageIdentifier;
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
+use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
 };
@@ -382,7 +382,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
-    pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
+    pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_instrument_coverage: &str =
@@ -763,8 +763,8 @@ mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
-        match v.and_then(LinkerFlavor::from_str) {
+    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
+        match v.and_then(LinkerFlavorCli::from_str) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
         }
@@ -1139,7 +1139,7 @@ options! {
         on C toolchain installed in the system"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
-    linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
+    linker_flavor: Option<LinkerFlavorCli> = (None, parse_linker_flavor, [UNTRACKED],
         "linker flavor"),
     linker_plugin_lto: LinkerPluginLto = (LinkerPluginLto::Disabled,
         parse_linker_plugin_lto, [TRACKED],
