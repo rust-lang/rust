@@ -318,7 +318,7 @@ fn dep_symbol_lookup_fn(
     let imported_dylibs = Box::leak(
         dylib_paths
             .into_iter()
-            .map(|path| libloading::Library::new(&path).unwrap())
+            .map(|path| unsafe { libloading::Library::new(&path).unwrap() })
             .collect::<Box<[_]>>(),
     );
 
