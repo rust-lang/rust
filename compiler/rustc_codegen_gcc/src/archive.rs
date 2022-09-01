@@ -183,7 +183,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             std::process::Command::new("ranlib").arg(output).status().expect("Couldn't run ranlib");
 
         if !status.success() {
-            self.config.sess.emit_fatal(RanlibFailure { exit_code: format!("{:?}", status.code()) });
+            self.config.sess.emit_fatal(RanlibFailure::new(status.code()));
         }
 
         any_members
