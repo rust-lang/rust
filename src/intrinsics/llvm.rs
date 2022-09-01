@@ -14,6 +14,10 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     target: Option<BasicBlock>,
 ) {
     match intrinsic {
+        "llvm.x86.sse2.pause" | "llvm.aarch64.isb" => {
+            // Spin loop hint
+        }
+
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         "llvm.x86.sse2.pmovmskb.128" | "llvm.x86.avx2.pmovmskb" | "llvm.x86.sse2.movmsk.pd" => {
             intrinsic_args!(fx, args => (a); intrinsic);
