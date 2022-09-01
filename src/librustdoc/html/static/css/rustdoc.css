@@ -759,14 +759,6 @@ pre, .rustdoc.source .example-wrap {
 	margin-bottom: 15px;
 }
 
-.content .docblock > .impl-items {
-	margin-left: 20px;
-	margin-top: -34px;
-}
-.content .docblock >.impl-items table td {
-	padding: 0;
-}
-
 .item-info {
 	display: block;
 }
