@@ -1,0 +1,12 @@
+error[E0309]: the opaque type `foo<T>::{opaque#0}` may not live long enough
+  --> $DIR/unactionable_diagnostic.rs:18:5
+   |
+LL |     foo(post, x)
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `foo<T>::{opaque#0}: 't`...
+   = note: ...so that the type `impl Trait` will meet its required lifetime bounds
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0309`.
