@@ -8,7 +8,7 @@
 
 extern crate issue_98697_reexport_with_anonymous_lifetime;
 
-// @has issue_98697/fn.repro.html '//pre[@class="rust fn"]/code' 'fn repro<F>() where F: Fn(&str)'
+// @has issue_98697/fn.repro.html '//pre[@class="rust fn"]/code' 'fn repro<F>()where F: Fn(&str)'
 // @!has issue_98697/fn.repro.html '//pre[@class="rust fn"]/code' 'for<'
 pub use issue_98697_reexport_with_anonymous_lifetime::repro;
 

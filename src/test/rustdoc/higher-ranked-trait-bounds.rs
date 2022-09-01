@@ -4,7 +4,7 @@
 pub trait Trait<'x> {}
 
 // @has foo/fn.test1.html
-// @has - '//pre' "pub fn test1<T>() where for<'a> &'a T: Iterator,"
+// @has - '//pre' "pub fn test1<T>()where for<'a> &'a T: Iterator,"
 pub fn test1<T>()
 where
     for<'a> &'a T: Iterator,
@@ -12,7 +12,7 @@ where
 }
 
 // @has foo/fn.test2.html
-// @has - '//pre' "pub fn test2<T>() where for<'a, 'b> &'a T: Trait<'b>,"
+// @has - '//pre' "pub fn test2<T>()where for<'a, 'b> &'a T: Trait<'b>,"
 pub fn test2<T>()
 where
     for<'a, 'b> &'a T: Trait<'b>,
@@ -20,7 +20,7 @@ where
 }
 
 // @has foo/fn.test3.html
-// @has - '//pre' "pub fn test3<F>() where F: for<'a, 'b> Fn(&'a u8, &'b u8),"
+// @has - '//pre' "pub fn test3<F>()where F: for<'a, 'b> Fn(&'a u8, &'b u8),"
 pub fn test3<F>()
 where
     F: for<'a, 'b> Fn(&'a u8, &'b u8),
@@ -38,7 +38,7 @@ pub struct Foo<'a> {
 // @has - '//span[@id="structfield.some_trait"]' "some_trait: &'a dyn for<'b> Trait<'b>"
 
 impl<'a> Foo<'a> {
-    // @has - '//h4[@class="code-header"]' "pub fn bar<T>() where T: Trait<'a>,"
+    // @has - '//h4[@class="code-header"]' "pub fn bar<T>()where T: Trait<'a>,"
     pub fn bar<T>()
     where
         T: Trait<'a>,
