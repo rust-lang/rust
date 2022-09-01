@@ -115,6 +115,18 @@ borrowck_bl_used_borrow_in_later_iteration_loop =
 borrowck_drop_local_might_cause_borrow =
     {$borrow_desc}borrow might be used here, when `{$local_name}` is dropped and runs the {$dtor_desc} for {$type_desc}
 
+borrowck_closure_capture_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow captured here by closure, in later iteration of loop
+
+borrowck_call_used_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow used by call, in later iteration of loop
+
+borrowck_used_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow used here, in later iteration of loop
+
+borrowck_drop_local_might_cause_borrow =
+    {$borrow_desc}borrow might be used here, when `{$local_name}` is dropped and runs the {$dtor_name} for {$type_name}
+
 borrowck_var_dropped_in_wrong_order =
     values in a scope are dropped in the opposite order they are defined
 
@@ -174,3 +186,5 @@ borrowck_moved_by_call =
 
 borrowck_type_not_impl_Copy =
     {$move_prefix}move occurs because {$place_desc} has type `{$ty}`, which does not implement the `Copy` trait
+borrowck_outlive_constraint_need_borrow_lasts =
+    {$category}requires that `{$borrow_desc}` lasts for `{$region_name}`
