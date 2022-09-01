@@ -115,7 +115,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ),
                             // FIXME(eddyb) compute both `trait_` and `for_` from
                             // the post-inference `trait_ref`, as it's more accurate.
-                            trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref.0, &[])),
+                            trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref.0, ThinVec::new())),
                             for_: clean_middle_ty(ty.0, cx, None),
                             items: cx.tcx
                                 .associated_items(impl_def_id)

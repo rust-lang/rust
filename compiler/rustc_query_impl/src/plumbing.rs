@@ -4,6 +4,9 @@
 
 use crate::keys::Key;
 use crate::{on_disk_cache, Queries};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lock;
+use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{self, DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
@@ -12,14 +15,9 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
     QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
 };
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{Diagnostic, Handler};
-
 use std::any::Any;
 use std::num::NonZeroU64;
+use thin_vec::ThinVec;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {

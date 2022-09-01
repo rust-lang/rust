@@ -426,7 +426,8 @@ impl TokenStream {
         let attr_annotated = if attrs.is_empty() {
             tokens.create_token_stream()
         } else {
-            let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
+            let attr_data =
+                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
             AttrAnnotatedTokenStream::new(vec![(
                 AttrAnnotatedTokenTree::Attributes(attr_data),
                 Spacing::Alone,

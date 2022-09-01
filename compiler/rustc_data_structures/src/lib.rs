@@ -75,7 +75,6 @@ pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
-pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;

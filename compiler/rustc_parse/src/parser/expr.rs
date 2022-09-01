@@ -944,13 +944,18 @@ impl<'a> Parser<'a> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        self.parse_dot_or_call_expr_with_(e0, lo).map(|expr| {
-            expr.map(|mut expr| {
-                attrs.extend(expr.attrs);
-                expr.attrs = attrs;
-                expr
+        let res = self.parse_dot_or_call_expr_with_(e0, lo);
+        if attrs.is_empty() {
+            res
+        } else {
+            res.map(|expr| {
+                expr.map(|mut expr| {
+                    attrs.extend(expr.attrs);
+                    expr.attrs = attrs;
+                    expr
+                })
             })
-        })
+        }
     }
 
     fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {

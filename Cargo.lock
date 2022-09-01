@@ -3208,6 +3208,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3229,6 +3230,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3323,6 +3325,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3447,6 +3450,7 @@ dependencies = [
  "stable_deref_trait",
  "stacker",
  "tempfile",
+ "thin-vec",
  "tracing",
  "winapi",
 ]
@@ -3829,6 +3833,7 @@ dependencies = [
  "rustc_target",
  "rustc_type_ir",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4018,6 +4023,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4040,6 +4046,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4095,6 +4102,7 @@ dependencies = [
  "indexmap",
  "rustc_macros",
  "smallvec",
+ "thin-vec",
 ]
 
 [[package]]
@@ -4331,6 +4339,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
+ "thin-vec",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -4883,6 +4892,12 @@ name = "textwrap"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
+
+[[package]]
+name = "thin-vec"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "104c2cb3180b6fb6d5b2278768e9b88b578d32ba751ea6e8d026688a40d7ed87"
 
 [[package]]
 name = "thiserror"

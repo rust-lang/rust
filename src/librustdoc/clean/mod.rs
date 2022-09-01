@@ -33,7 +33,8 @@ use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
-use std::{mem, vec};
+use std::mem;
+use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::formats::item_type::ItemType;
@@ -125,7 +126,7 @@ fn clean_generic_bound<'tcx>(
                 bug!("clean: parenthesized `GenericBound::LangItemTrait`");
             };
 
-            let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, &bindings);
+            let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, bindings);
             GenericBound::TraitBound(
                 PolyTrait { trait_, generic_params: vec![] },
                 hir::TraitBoundModifier::None,
@@ -147,14 +148,14 @@ fn clean_generic_bound<'tcx>(
 pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
-    bindings: &[TypeBinding],
+    bindings: ThinVec<TypeBinding>,
 ) -> Path {
     let kind = cx.tcx.def_kind(trait_ref.def_id).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
         span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
     }
     inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-    let path = external_path(cx, trait_ref.def_id, true, bindings.to_vec(), trait_ref.substs);
+    let path = external_path(cx, trait_ref.def_id, true, bindings, trait_ref.substs);
 
     debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
@@ -164,7 +165,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
 fn clean_poly_trait_ref_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    bindings: &[TypeBinding],
+    bindings: ThinVec<TypeBinding>,
 ) -> GenericBound {
     let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
 
@@ -327,7 +328,7 @@ fn clean_poly_trait_predicate<'tcx>(
     let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
     Some(WherePredicate::BoundPredicate {
         ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
-        bounds: vec![clean_poly_trait_ref_with_bindings(cx, poly_trait_ref, &[])],
+        bounds: vec![clean_poly_trait_ref_with_bindings(cx, poly_trait_ref, ThinVec::new())],
         bound_params: Vec::new(),
     })
 }
@@ -402,7 +403,7 @@ fn clean_projection<'tcx>(
     def_id: Option<DefId>,
 ) -> Type {
     let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
-    let trait_ = clean_trait_ref_with_bindings(cx, lifted.trait_ref(cx.tcx), &[]);
+    let trait_ = clean_trait_ref_with_bindings(cx, lifted.trait_ref(cx.tcx), ThinVec::new());
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
@@ -1591,12 +1592,12 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 AdtKind::Enum => ItemType::Enum,
             };
             inline::record_extern_fqn(cx, did, kind);
-            let path = external_path(cx, did, false, vec![], substs);
+            let path = external_path(cx, did, false, ThinVec::new(), substs);
             Type::Path { path }
         }
         ty::Foreign(did) => {
             inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-            let path = external_path(cx, did, false, vec![], InternalSubsts::empty());
+            let path = external_path(cx, did, false, ThinVec::new(), InternalSubsts::empty());
             Type::Path { path }
         }
         ty::Dynamic(obj, ref reg) => {
@@ -1620,7 +1621,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let mut bounds = dids
                 .map(|did| {
                     let empty = cx.tcx.intern_substs(&[]);
-                    let path = external_path(cx, did, false, vec![], empty);
+                    let path = external_path(cx, did, false, ThinVec::new(), empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     PolyTrait { trait_: path, generic_params: Vec::new() }
                 })
@@ -1696,7 +1697,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                         }
                     }
 
-                    let bindings: Vec<_> = bounds
+                    let bindings: ThinVec<_> = bounds
                         .iter()
                         .filter_map(|bound| {
                             if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder()
@@ -1717,7 +1718,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                         })
                         .collect();
 
-                    Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, &bindings))
+                    Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, bindings))
                 })
                 .collect::<Vec<_>>();
             bounds.extend(regions);
@@ -1848,12 +1849,8 @@ fn clean_generic_args<'tcx>(
             })
             .collect::<Vec<_>>()
             .into();
-        let bindings = generic_args
-            .bindings
-            .iter()
-            .map(|x| clean_type_binding(x, cx))
-            .collect::<Vec<_>>()
-            .into();
+        let bindings =
+            generic_args.bindings.iter().map(|x| clean_type_binding(x, cx)).collect::<ThinVec<_>>();
         GenericArgs::AngleBracketed { args, bindings }
     }
 }

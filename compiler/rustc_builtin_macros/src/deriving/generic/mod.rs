@@ -162,10 +162,7 @@
 pub use StaticFields::*;
 pub use SubstructureFields::*;
 
-use std::cell::RefCell;
-use std::iter;
-use std::vec;
-
+use crate::deriving;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
@@ -173,10 +170,11 @@ use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-
+use std::cell::RefCell;
+use std::iter;
+use std::vec;
+use thin_vec::thin_vec;
 use ty::{Bounds, Path, Ref, Self_, Ty};
-
-use crate::deriving;
 
 pub mod ty;
 
@@ -715,7 +713,7 @@ impl<'a> TraitDef<'a> {
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
-        let attrs = vec![attr].into();
+        let attrs = thin_vec![attr];
         let opt_trait_ref = Some(trait_ref);
 
         cx.item(

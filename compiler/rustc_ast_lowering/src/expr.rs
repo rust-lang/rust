@@ -7,7 +7,6 @@ use super::errors::{
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 use crate::{FnDeclKind, ImplTraitPosition};
-
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
@@ -18,6 +17,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
+use thin_vec::thin_vec;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -1541,7 +1541,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
             attr::mk_attr_outer(allow)
         };
-        let attrs: AttrVec = vec![attr].into();
+        let attrs: AttrVec = thin_vec![attr];
 
         // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
         let continue_arm = {

@@ -279,6 +279,7 @@ macro_rules! impl_has_attrs {
             impl HasAttrs for $T {
                 const SUPPORTS_CUSTOM_INNER_ATTRS: bool = $inner;
 
+                #[inline]
                 fn attrs(&self) -> &[Attribute] {
                     &self.attrs
                 }

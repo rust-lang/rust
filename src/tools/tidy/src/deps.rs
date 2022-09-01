@@ -223,6 +223,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "time",
     "tinystr",
     "tinyvec",
+    "thin-vec",
     "tracing",
     "tracing-attributes",
     "tracing-core",
