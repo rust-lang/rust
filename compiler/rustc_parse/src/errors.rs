@@ -624,16 +624,19 @@ pub(crate) struct LabeledLoopInBreak {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: LabeledLoopInBreakSub,
+    pub sub: WrapExpressionInParentheses,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
-pub(crate) struct LabeledLoopInBreakSub {
+#[multipart_suggestion(
+    parser::sugg_wrap_expression_in_parentheses,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct WrapExpressionInParentheses {
     #[suggestion_part(code = "(")]
-    pub first: Span,
+    pub left: Span,
     #[suggestion_part(code = ")")]
-    pub second: Span,
+    pub right: Span,
 }
 
 #[derive(Diagnostic)]
@@ -780,4 +783,90 @@ pub(crate) struct MismatchedClosingDelimiter {
     pub opening_candidate: Option<Span>,
     #[label(parser::label_unclosed)]
     pub unclosed: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::incorrect_visibility_restriction, code = "E0704")]
+#[help]
+pub(crate) struct IncorrectVisibilityRestriction {
+    #[primary_span]
+    #[suggestion(code = "in {inner_str}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub inner_str: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::assignment_else_not_allowed)]
+pub(crate) struct AssignmentElseNotAllowed {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::expected_statement_after_outer_attr)]
+pub(crate) struct ExpectedStatementAfterOuterAttr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::doc_comment_does_not_document_anything, code = "E0585")]
+#[help]
+pub(crate) struct DocCommentDoesNotDocumentAnything {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = ",", applicability = "machine-applicable")]
+    pub missing_comma: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::const_let_mutually_exclusive)]
+pub(crate) struct ConstLetMutuallyExclusive {
+    #[primary_span]
+    #[suggestion(code = "const", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_expression_in_let_else)]
+pub(crate) struct InvalidExpressionInLetElse {
+    #[primary_span]
+    pub span: Span,
+    pub operator: &'static str,
+    #[subdiagnostic]
+    pub sugg: WrapExpressionInParentheses,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_curly_in_let_else)]
+pub(crate) struct InvalidCurlyInLetElse {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: WrapExpressionInParentheses,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::compound_assignment_expression_in_let)]
+#[help]
+pub(crate) struct CompoundAssignmentExpressionInLet {
+    #[primary_span]
+    #[suggestion_short(code = "=", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::suffixed_literal_in_attribute)]
+#[help]
+pub(crate) struct SuffixedLiteralInAttribute {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::invalid_meta_item)]
+pub(crate) struct InvalidMetaItem {
+    #[primary_span]
+    pub span: Span,
+    pub token: String,
 }

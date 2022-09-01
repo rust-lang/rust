@@ -13,7 +13,6 @@ mod ty;
 use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
-use diagnostics::Error;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
@@ -32,8 +31,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic,
-    MultiSpan,
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
@@ -42,7 +40,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use std::ops::Range;
 use std::{cmp, mem, slice};
 
-use crate::errors::{MismatchedClosingDelimiter, NonStringAbiLiteral};
+use crate::errors::{
+    DocCommentDoesNotDocumentAnything, IncorrectVisibilityRestriction, MismatchedClosingDelimiter,
+    NonStringAbiLiteral,
+};
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -521,9 +522,11 @@ impl<'a> Parser<'a> {
 
     fn ident_or_err(&mut self) -> PResult<'a, (Ident, /* is_raw */ bool)> {
         self.token.ident().ok_or_else(|| match self.prev_token.kind {
-            TokenKind::DocComment(..) => {
-                self.span_err(self.prev_token.span, Error::UselessDocComment)
+            TokenKind::DocComment(..) => DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
             }
+            .into_diagnostic(&self.sess.span_diagnostic),
             _ => self.expected_ident_found(),
         })
     }
@@ -1347,23 +1350,8 @@ impl<'a> Parser<'a> {
         let path = self.parse_path(PathStyle::Mod)?;
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
-        let msg = "incorrect visibility restriction";
-        let suggestion = r##"some possible visibility restrictions are:
-`pub(crate)`: visible only on the current crate
-`pub(super)`: visible only in the current module's parent
-`pub(in path::to::module)`: visible only on the specified path"##;
-
         let path_str = pprust::path_to_string(&path);
-
-        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
-            .help(suggestion)
-            .span_suggestion(
-                path.span,
-                &format!("make this visible only to module `{}` with `in`", path_str),
-                format!("in {}", path_str),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        self.sess.emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
 
         Ok(())
     }

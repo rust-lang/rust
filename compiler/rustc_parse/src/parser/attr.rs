@@ -1,9 +1,11 @@
+use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
+
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{error_code, Diagnostic, PResult};
+use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 
@@ -337,12 +339,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unusuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.struct_span_err(lit.span, "suffixed literals are not allowed in attributes")
-                .help(
-                    "instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), \
-                    use an unsuffixed version (`1`, `1.0`, etc.)",
-                )
-                .emit();
+            self.sess.emit_err(SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)
@@ -435,9 +432,9 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        let found = pprust::token_to_string(&self.token);
-        let msg = format!("expected unsuffixed literal or identifier, found `{found}`");
-        Err(self.struct_span_err(self.token.span, &msg))
+        let token = pprust::token_to_string(&self.token).to_string();
+        Err(InvalidMetaItem { span: self.token.span, token }
+            .into_diagnostic(&self.sess.span_diagnostic))
     }
 }
 

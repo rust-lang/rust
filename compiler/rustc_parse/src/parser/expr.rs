@@ -17,14 +17,14 @@ use crate::errors::{
     InvalidIntLiteralWidth, InvalidInterpolatedExpression, InvalidLiteralSuffix,
     InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator, InvalidLogicalOperatorSub,
     InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix, LabeledLoopInBreak,
-    LabeledLoopInBreakSub, LeadingPlusNotSupported, LeftArrowOperator, LifetimeInBorrowExpression,
+    LeadingPlusNotSupported, LeftArrowOperator, LifetimeInBorrowExpression,
     MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
     MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm, MissingInInForLoop,
     MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
     NotAsNegationOperatorSub, OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse,
     ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
     StructLiteralNotAllowedHere, StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator,
-    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg,
+    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -1661,9 +1661,9 @@ impl<'a> Parser<'a> {
             let lexpr = self.parse_labeled_expr(label.take().unwrap(), true)?;
             self.sess.emit_err(LabeledLoopInBreak {
                 span: lexpr.span,
-                sub: LabeledLoopInBreakSub {
-                    first: lexpr.span.shrink_to_lo(),
-                    second: lexpr.span.shrink_to_hi(),
+                sub: WrapExpressionInParentheses {
+                    left: lexpr.span.shrink_to_lo(),
+                    right: lexpr.span.shrink_to_hi(),
                 },
             });
             Some(lexpr)

@@ -188,7 +188,8 @@ parser_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call
     .suggestion_no_fields_for_fn = if `{$name}` is a function, use the arguments directly
 
 parser_labeled_loop_in_break = parentheses are required around this expression to avoid confusion with a labeled break expression
-    .suggestion = wrap the expression in parentheses
+
+parser_sugg_wrap_expression_in_parentheses = wrap the expression in parentheses
 
 parser_array_brackets_instead_of_braces = this is a block expression, not an array
     .suggestion = to make an array, use square brackets instead of curly braces
@@ -231,3 +232,33 @@ parser_mismatched_closing_delimiter = mismatched closing delimiter: `{$delimiter
     .label_unmatched = mismatched closing delimiter
     .label_opening_candidate = closing delimiter possibly meant for this
     .label_unclosed = unclosed delimiter
+
+parser_incorrect_visibility_restriction = incorrect visibility restriction
+    .help = some possible visibility restrictions are:
+            `pub(crate)`: visible only on the current crate
+            `pub(super)`: visible only in the current module's parent
+            `pub(in path::to::module)`: visible only on the specified path
+    .suggestion = make this visible only to module `{$inner_str}` with `in`
+
+parser_assignment_else_not_allowed = <assignment> ... else {"{"} ... {"}"} is not allowed
+
+parser_expected_statement_after_outer_attr = expected statement after outer attribute
+
+parser_doc_comment_does_not_document_anything = found a documentation comment that doesn't document anything
+    .help = doc comments must come before what they document, maybe a comment was intended with `//`?
+    .suggestion = missing comma here
+
+parser_const_let_mutually_exclusive = `const` and `let` are mutually exclusive
+    .suggestion = remove `let`
+
+parser_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
+parser_invalid_curly_in_let_else = right curly brace `{"}"}` before `else` in a `let...else` statement not allowed
+
+parser_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
+    .suggestion = initialize the variable
+    .help = if you meant to overwrite, remove the `let` binding
+
+parser_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
+    .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+parser_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`

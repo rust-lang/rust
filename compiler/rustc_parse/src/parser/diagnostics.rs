@@ -55,34 +55,6 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
     }
 }
 
-pub enum Error {
-    UselessDocComment,
-}
-
-impl Error {
-    fn span_err(
-        self,
-        sp: impl Into<MultiSpan>,
-        handler: &Handler,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        match self {
-            Error::UselessDocComment => {
-                let mut err = struct_span_err!(
-                    handler,
-                    sp,
-                    E0585,
-                    "found a documentation comment that doesn't document anything",
-                );
-                err.help(
-                    "doc comments must come before what they document, maybe a comment was \
-                          intended with `//`?",
-                );
-                err
-            }
-        }
-    }
-}
-
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
     fn to_ty(&self) -> Option<P<Ty>>;
@@ -268,15 +240,6 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    #[rustc_lint_diagnostics]
-    pub(super) fn span_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        err: Error,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.span_err(sp, self.diagnostic())
-    }
-
     #[rustc_lint_diagnostics]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
