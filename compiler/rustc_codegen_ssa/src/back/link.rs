@@ -2797,20 +2797,24 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         if let LinkerFlavor::Gcc = flavor {
             match ld_impl {
                 LdImpl::Lld => {
-                    let tools_path = sess.get_tools_search_paths(false);
-                    let gcc_ld_dir = tools_path
-                        .into_iter()
-                        .map(|p| p.join("gcc-ld"))
-                        .find(|p| {
-                            p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists()
-                        })
-                        .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
-                    cmd.arg({
-                        let mut arg = OsString::from("-B");
-                        arg.push(gcc_ld_dir);
-                        arg
-                    });
-                    cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
+                    // Implement the "self-contained" part of -Zgcc-ld
+                    // by adding rustc distribution directories to the tool search path.
+                    for path in sess.get_tools_search_paths(false) {
+                        cmd.arg({
+                            let mut arg = OsString::from("-B");
+                            arg.push(path.join("gcc-ld"));
+                            arg
+                        });
+                    }
+                    // Implement the "linker flavor" part of -Zgcc-ld
+                    // by asking cc to use some kind of lld.
+                    cmd.arg("-fuse-ld=lld");
+                    if sess.target.lld_flavor != LldFlavor::Ld {
+                        // Tell clang to use a non-default LLD flavor.
+                        // Gcc doesn't understand the target option, but we currently assume
+                        // that gcc is not used for Apple and Wasm targets (#97402).
+                        cmd.arg(format!("--target={}", sess.target.llvm_target));
+                    }
                 }
             }
         } else {
