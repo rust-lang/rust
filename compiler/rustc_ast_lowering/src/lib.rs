@@ -982,6 +982,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         binder: NodeId,
         generic_params: &[GenericParam],
+        copy_generics: bool,
         in_binder: impl FnOnce(&mut Self, &'hir [hir::GenericParam<'hir>]) -> R,
     ) -> R {
         let mut new_remapping = FxHashMap::default();
@@ -999,7 +1000,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        if !self.resolver.generics_def_id_map.is_empty() {
+        if copy_generics {
             for old_node_id in generic_params.iter().map(|param| param.id) {
                 let old_def_id = self.local_def_id(old_node_id);
                 let node_id = self.next_node_id();
@@ -1453,8 +1454,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime = self.lower_lifetime(&region);
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => {
-                self.lower_lifetime_binder(t.id, &f.generic_params, |lctx, generic_params| {
+            TyKind::BareFn(ref f) => self.lower_lifetime_binder(
+                t.id,
+                &f.generic_params,
+                matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }),
+                |lctx, generic_params| {
                     hir::TyKind::BareFn(lctx.arena.alloc(hir::BareFnTy {
                         generic_params,
                         unsafety: lctx.lower_unsafety(f.unsafety),
@@ -1477,8 +1481,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ),
                         param_names: lctx.lower_fn_params_to_names(&f.decl),
                     }))
-                })
-            }
+                },
+            ),
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => hir::TyKind::Tup(
                 self.arena.alloc_from_iter(tys.iter().map(|ty| self.lower_ty_direct(ty, itctx))),
@@ -2602,6 +2606,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_lifetime_binder(
             p.trait_ref.ref_id,
             &p.bound_generic_params,
+            matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }),
             |lctx, bound_generic_params| {
                 let trait_ref = lctx.lower_trait_ref(&p.trait_ref, itctx);
                 hir::PolyTraitRef { bound_generic_params, trait_ref, span: lctx.lower_span(p.span) }
