@@ -1024,8 +1024,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 if let Some(span) = arg {
-                    err.subdiagnostic(FnMutBumpFn::NotFnHere { span });
-                    err.subdiagnostic(FnMutBumpFn::NotFnMutHere { span: func.span });
+                    err.subdiagnostic(FnMutBumpFn::AcceptFnMut { span });
+                    err.subdiagnostic(FnMutBumpFn::AcceptFn { span: func.span });
                     err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                     look_at_return = false;
                 }
@@ -1047,12 +1047,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
+                    //FIXME: empty string here don't pass lint
                     err.span_label(ident.span, "");
-                    err.span_label(
-                        sig.decl.output.span(),
-                        "change this to return `FnMut` instead of `Fn`",
-                    );
-                    err.span_label(self.body.span, "in this closure");
+                    err.subdiagnostic(FnMutBumpFn::ReturnFnMut { span: sig.decl.output.span() });
+                    err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                 }
                 _ => {}
             }

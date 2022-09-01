@@ -178,17 +178,22 @@ pub(crate) enum FnMutBumpFn<'a> {
         sp: Span,
     },
     #[label(borrowck::expects_fnmut_not_fn)]
-    NotFnHere {
+    AcceptFnMut {
         #[primary_span]
         span: Span,
     },
     #[label(borrowck::expects_fn_not_fnmut)]
-    NotFnMutHere {
+    AcceptFn {
         #[primary_span]
         span: Span,
     },
     #[label(borrowck::in_this_closure)]
     Here {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::return_fnmut)]
+    ReturnFnMut {
         #[primary_span]
         span: Span,
     },

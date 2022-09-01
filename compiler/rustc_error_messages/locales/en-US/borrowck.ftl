@@ -74,3 +74,5 @@ borrowck_expects_fn_not_fnmut =
 borrowck_in_this_closure =
     in this closure
 
+borrowck_return_fnmut =
+    change this to return `FnMut` instead of `Fn`
