@@ -418,8 +418,11 @@ pub(crate) struct InferenceContext<'a> {
 
 #[derive(Clone, Debug)]
 struct BreakableContext {
+    /// Whether this context contains at least one break expression.
     may_break: bool,
+    /// The coercion target of the context.
     coerce: CoerceMany,
+    /// The optional label of the context.
     label: Option<name::Name>,
 }
 

@@ -10,7 +10,7 @@ use chalk_ir::{
     cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
 };
 use hir_def::{
-    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Statement, UnaryOp},
+    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, LabelId, Literal, Statement, UnaryOp},
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
@@ -120,20 +120,16 @@ impl<'a> InferenceContext<'a> {
                 let ty = match label {
                     Some(_) => {
                         let break_ty = self.table.new_type_var();
-                        self.breakables.push(BreakableContext {
-                            may_break: false,
-                            coerce: CoerceMany::new(break_ty.clone()),
-                            label: label.map(|label| self.body[label].name.clone()),
+                        let (ctx, ty) = self.with_breakable_ctx(break_ty.clone(), *label, |this| {
+                            this.infer_block(
+                                tgt_expr,
+                                statements,
+                                *tail,
+                                &Expectation::has_type(break_ty),
+                            )
                         });
-                        let ty = self.infer_block(
-                            tgt_expr,
-                            statements,
-                            *tail,
-                            &Expectation::has_type(break_ty),
-                        );
-                        let ctxt = self.breakables.pop().expect("breakable stack broken");
-                        if ctxt.may_break {
-                            ctxt.coerce.complete()
+                        if ctx.may_break {
+                            ctx.coerce.complete()
                         } else {
                             ty
                         }
@@ -166,54 +162,42 @@ impl<'a> InferenceContext<'a> {
                 TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, inner_ty))
                     .intern(Interner)
             }
-            Expr::Loop { body, label } => {
-                self.breakables.push(BreakableContext {
-                    may_break: false,
-                    coerce: CoerceMany::new(self.table.new_type_var()),
-                    label: label.map(|label| self.body[label].name.clone()),
+            &Expr::Loop { body, label } => {
+                let ty = self.table.new_type_var();
+                let (ctx, ()) = self.with_breakable_ctx(ty, label, |this| {
+                    this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
                 });
-                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
 
-                let ctxt = self.breakables.pop().expect("breakable stack broken");
-
-                if ctxt.may_break {
+                if ctx.may_break {
                     self.diverges = Diverges::Maybe;
-                    ctxt.coerce.complete()
+                    ctx.coerce.complete()
                 } else {
                     TyKind::Never.intern(Interner)
                 }
             }
-            Expr::While { condition, body, label } => {
-                self.breakables.push(BreakableContext {
-                    may_break: false,
-                    coerce: CoerceMany::new(self.err_ty()),
-                    label: label.map(|label| self.body[label].name.clone()),
+            &Expr::While { condition, body, label } => {
+                self.with_breakable_ctx(self.err_ty(), label, |this| {
+                    this.infer_expr(
+                        condition,
+                        &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
+                    );
+                    this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
                 });
-                self.infer_expr(
-                    *condition,
-                    &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
-                );
-                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
-                let _ctxt = self.breakables.pop().expect("breakable stack broken");
+
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            Expr::For { iterable, body, pat, label } => {
-                let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
-
-                self.breakables.push(BreakableContext {
-                    may_break: false,
-                    coerce: CoerceMany::new(self.err_ty()),
-                    label: label.map(|label| self.body[label].name.clone()),
-                });
+            &Expr::For { iterable, body, pat, label } => {
+                let iterable_ty = self.infer_expr(iterable, &Expectation::none());
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
-                self.infer_pat(*pat, &pat_ty, BindingMode::default());
+                self.infer_pat(pat, &pat_ty, BindingMode::default());
+                let (_ctx, ()) = self.with_breakable_ctx(self.err_ty(), label, |this| {
+                    this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
+                });
 
-                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
-                let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
@@ -1471,5 +1455,20 @@ impl<'a> InferenceContext<'a> {
                 _ => return None,
             },
         })
+    }
+
+    fn with_breakable_ctx<T>(
+        &mut self,
+        ty: Ty,
+        label: Option<LabelId>,
+        cb: impl FnOnce(&mut Self) -> T,
+    ) -> (BreakableContext, T) {
+        self.breakables.push({
+            let label = label.map(|label| self.body[label].name.clone());
+            BreakableContext { may_break: false, coerce: CoerceMany::new(ty), label }
+        });
+        let res = cb(self);
+        let ctx = self.breakables.pop().expect("breakable stack broken");
+        (ctx, res)
     }
 }
