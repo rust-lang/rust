@@ -4,6 +4,7 @@ use crate::creader::{CStore, CrateMetadataRef};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
+use rustc_ast::ast::AttrId;
 use rustc_ast::ptr::P;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -160,6 +161,7 @@ pub(super) struct DecodeContext<'a, 'tcx> {
     blob: &'a MetadataBlob,
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
+    next_id: u32,
 
     lazy_state: LazyState,
 
@@ -189,6 +191,7 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
             blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
+            next_id: 0,
             lazy_state: LazyState::NoNode,
             alloc_decoding_session: self
                 .cdata()
@@ -449,6 +452,14 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
         ExpnIndex::from_u32(d.read_u32())
+    }
+}
+
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for AttrId {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> AttrId {
+        let id = d.next_id;
+        d.next_id += 1;
+        AttrId::from_u32(id)
     }
 }
 

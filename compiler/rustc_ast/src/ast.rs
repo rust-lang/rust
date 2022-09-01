@@ -2522,8 +2522,8 @@ impl<S: Encoder> Encodable<S> for AttrId {
 }
 
 impl<D: Decoder> Decodable<D> for AttrId {
-    fn decode(_: &mut D) -> AttrId {
-        crate::attr::mk_attr_id()
+    default fn decode(_: &mut D) -> AttrId {
+        panic!("cannot decode `AttrId` with `{}`", std::any::type_name::<D>());
     }
 }
 
