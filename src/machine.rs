@@ -1036,6 +1036,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         // These are our preemption points.
         ecx.maybe_preempt_active_thread();
 
+        // Make sure some time passes.
         ecx.machine.clock.tick();
 
         Ok(())

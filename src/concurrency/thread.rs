@@ -869,6 +869,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         callback: TimeoutCallback<'mir, 'tcx>,
     ) {
         let this = self.eval_context_mut();
+        if !this.machine.communicate() && matches!(call_time, Time::RealTime(..)) {
+            panic!("cannot have `RealTime` callback with isolation enabled!")
+        }
         this.machine.threads.register_timeout_callback(thread, call_time, callback);
     }
 
