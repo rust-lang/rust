@@ -8527,9 +8527,10 @@ public:
 
         Value *invertedReturn = nullptr;
         auto ifound = gutils->invertedPointers.find(orig);
+        PHINode *placeholder = nullptr;
         if (ifound != gutils->invertedPointers.end()) {
           if (shadowReturnUsed)
-            invertedReturn = cast<PHINode>(&*ifound->second);
+            invertedReturn = placeholder = cast<PHINode>(&*ifound->second);
         }
 
         Value *normalReturn = subretused ? newCall : nullptr;
@@ -8562,10 +8563,9 @@ public:
                                tape);
         }
 
-        if (ifound != gutils->invertedPointers.end()) {
-          auto placeholder = cast<PHINode>(&*ifound->second);
+        if (placeholder) {
           if (!shadowReturnUsed) {
-            gutils->invertedPointers.erase(ifound);
+            gutils->invertedPointers.erase(orig);
             gutils->erase(placeholder);
           } else {
             if (invertedReturn && invertedReturn != placeholder) {
