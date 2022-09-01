@@ -805,7 +805,11 @@ fn check_newlines(fmtstr: &StrLit) -> bool {
     let contents = fmtstr.symbol.as_str();
 
     let mut cb = |r: Range<usize>, c: Result<char, EscapeError>| {
-        let c = c.unwrap();
+        let c = match c {
+            Ok(c) => c,
+            Err(e) if !e.is_fatal() => return,
+            Err(e) => panic!("{:?}", e),
+        };
 
         if r.end == contents.len() && c == '\n' && !last_was_cr && !has_internal_newline {
             should_lint = true;

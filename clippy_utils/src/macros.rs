@@ -389,8 +389,10 @@ impl FormatString {
         };
 
         let mut unescaped = String::with_capacity(inner.len());
-        unescape_literal(inner, mode, &mut |_, ch| {
-            unescaped.push(ch.unwrap());
+        unescape_literal(inner, mode, &mut |_, ch| match ch {
+            Ok(ch) => unescaped.push(ch),
+            Err(e) if !e.is_fatal() => (),
+            Err(e) => panic!("{:?}", e),
         });
 
         let mut parts = Vec::new();
