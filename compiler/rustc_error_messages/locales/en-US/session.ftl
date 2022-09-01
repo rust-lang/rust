@@ -56,3 +56,13 @@ session_target_invalid_bits_size = {$err}
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
 
 session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform
+
+session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
+
+session_crate_name_does_not_match = `--crate-name` and `#[crate_name]` are required to match, but `{$s}` != `{$name}`
+
+session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has a leading hyphen
+
+session_crate_name_empty = crate name must not be empty
+
+session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`

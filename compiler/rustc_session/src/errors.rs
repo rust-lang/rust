@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use crate::cgu_reuse_tracker::CguReuse;
 use crate::{self as rustc_session, SessionDiagnostic};
-use rustc_errors::{fluent, DiagnosticBuilder, Handler, MultiSpan};
+use rustc_errors::{fluent, DiagnosticBuilder, ErrorGuaranteed, Handler, MultiSpan};
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::TargetDataLayoutErrors;
@@ -169,4 +169,53 @@ pub struct StackProtectorNotSupportedForTarget<'a> {
 #[diag(session::split_debuginfo_unstable_platform)]
 pub struct SplitDebugInfoUnstablePlatform {
     pub debuginfo: SplitDebuginfo,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::file_is_not_writeable)]
+pub struct FileIsNotWriteable<'a> {
+    pub file: &'a std::path::Path,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::crate_name_does_not_match)]
+pub struct CrateNameDoesNotMatch<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub s: &'a str,
+    pub name: Symbol,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::crate_name_invalid)]
+pub struct CrateNameInvalid<'a> {
+    pub s: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::crate_name_empty)]
+pub struct CrateNameEmpty {
+    #[primary_span]
+    pub span: Option<Span>,
+}
+
+pub struct InvalidCharacterInCrateName<'a> {
+    pub span: Option<Span>,
+    pub character: char,
+    pub crate_name: &'a str,
+}
+
+impl crate::SessionDiagnostic<'_> for InvalidCharacterInCrateName<'_> {
+    fn into_diagnostic(
+        self,
+        sess: &Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess.struct_err(fluent::session::invalid_character_in_create_name);
+        if let Some(sp) = self.span {
+            diag.set_span(sp);
+        }
+        diag.set_arg("character", self.character);
+        diag.set_arg("crate_name", self.crate_name);
+        diag
+    }
 }
