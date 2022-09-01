@@ -10,7 +10,7 @@ use core::ops::Index;
 
 /// Default hasher for `HashMap`.
 #[cfg(feature = "ahash")]
-pub type DefaultHashBuilder = ahash::RandomState;
+pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
 
 /// Dummy default hasher for `HashMap`.
 #[cfg(not(feature = "ahash"))]
