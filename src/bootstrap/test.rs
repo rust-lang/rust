@@ -854,7 +854,10 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
         .output()
         .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
         .unwrap_or(String::new());
-    lines.lines().find_map(|l| l.split(":browser-ui-test@").skip(1).next()).map(|v| v.to_owned())
+    lines
+        .lines()
+        .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
+        .map(|v| v.to_owned())
 }
 
 fn get_browser_ui_test_version(npm: &Path) -> Option<String> {
