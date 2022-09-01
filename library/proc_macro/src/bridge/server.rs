@@ -11,8 +11,6 @@ pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
     type SourceFile: 'static + Clone;
-    type MultiSpan: 'static;
-    type Diagnostic: 'static;
     type Span: 'static + Copy + Eq + Hash;
     type Symbol: 'static;
 }
