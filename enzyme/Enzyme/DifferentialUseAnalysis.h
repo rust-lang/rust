@@ -101,7 +101,7 @@ static inline bool is_use_directly_needed_in_reverse(
     }
     if (MTI->getArgOperand(2) != val)
       return false;
-    return !gutils->isConstantInstruction(MTI);
+    return !gutils->isConstantValue(MTI->getArgOperand(0));
   }
 
   // Preserve the length of memsets of backward creation shadows,
