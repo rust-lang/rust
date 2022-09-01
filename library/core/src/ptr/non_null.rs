@@ -6,7 +6,7 @@ use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::Unique;
+use crate::ptr::{Thin, Unique};
 use crate::slice::{self, SliceIndex};
 
 /// `*mut T` but non-zero and [covariant].
@@ -450,9 +450,9 @@ impl<T: ?Sized> NonNull<T> {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    pub const fn cast<U>(self) -> NonNull<U> {
+    pub const fn cast<U: ?Sized + Thin>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
-        unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
+        unsafe { NonNull::new_unchecked(self.as_ptr().cast()) }
     }
 }
 

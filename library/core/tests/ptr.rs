@@ -107,6 +107,40 @@ fn test_is_null() {
 }
 
 #[test]
+fn test_cast() {
+    // `cast` works like `as` for unsized types
+    let cs: *const [u8] = &[1, 2, 3];
+    assert_eq!(cs.cast::<u8>(), cs as *const u8);
+
+    let ms: *mut [u8] = &mut [1, 2, 3];
+    assert_eq!(ms.cast::<u8>(), ms as *mut u8);
+
+    let ci: *const dyn ToString = &3;
+    assert_eq!(ci.cast::<u8>(), ci as *const u8);
+
+    let mi: *mut dyn ToString = &mut 3;
+    assert_eq!(mi.cast::<u8>(), mi as *mut u8);
+
+    // `cast` can be used to cast between extern types
+    extern "C" {
+        type Extern1;
+        type Extern2;
+    }
+
+    let p: *const u8 = &42;
+    let e: *const Extern1 = p.cast();
+    assert_eq!(e.cast::<Extern2>(), e as *const Extern2);
+
+    let p: *mut u8 = &mut 42;
+    let e: *mut Extern1 = p.cast();
+    assert_eq!(e.cast::<Extern2>(), e as *mut Extern2);
+
+    let p: NonNull<u8> = NonNull::from(&42);
+    let e: NonNull<Extern1> = p.cast();
+    assert_eq!(Some(e.cast::<Extern2>()), NonNull::new(e.as_ptr() as *mut Extern2));
+}
+
+#[test]
 fn test_as_ref() {
     unsafe {
         let p: *const isize = null();
@@ -485,8 +519,8 @@ fn ptr_metadata() {
     let () = metadata(&[4, 7]);
     let () = metadata(&(4, String::new()));
     let () = metadata(&Pair(4, String::new()));
-    let () = metadata(ptr::null::<()>() as *const Extern);
-    let () = metadata(ptr::null::<()>() as *const <&u32 as std::ops::Deref>::Target);
+    let () = metadata(ptr::null::<()>().cast::<Extern>());
+    let () = metadata(ptr::null::<()>().cast::<<&u32 as std::ops::Deref>::Target>());
 
     assert_eq!(metadata("foo"), 3_usize);
     assert_eq!(metadata(&[4, 7][..]), 2_usize);

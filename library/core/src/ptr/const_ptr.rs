@@ -43,8 +43,9 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
     #[inline]
-    pub const fn cast<U>(self) -> *const U {
-        self as _
+    pub const fn cast<U: ?Sized + Thin>(self) -> *const U {
+        // TODO: Just use `self as _` when the compiler understands `Thin`
+        from_raw_parts(self as *const (), ())
     }
 
     /// Use the pointer value in a new pointer of another type.

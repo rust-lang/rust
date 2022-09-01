@@ -41,9 +41,10 @@ impl<T: ?Sized> *mut T {
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[inline(always)]
-    pub const fn cast<U>(self) -> *mut U {
-        self as _
+    #[inline]
+    pub const fn cast<U: ?Sized + Thin>(self) -> *mut U {
+        // TODO: Just use `self as _` when the compiler understands `Thin`
+        from_raw_parts_mut(self as *mut (), ())
     }
 
     /// Use the pointer value in a new pointer of another type.
