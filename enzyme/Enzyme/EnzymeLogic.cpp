@@ -2801,8 +2801,9 @@ void createTerminator(DiffeGradientUtils *gutils, BasicBlock *oBB,
       toret =
           nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
     } else {
-      toret = nBuilder.CreateInsertValue(
-          toret, Constant::getNullValue(ret->getType()), 1);
+      Type *retTy = gutils->getShadowType(ret->getType());
+      toret =
+          nBuilder.CreateInsertValue(toret, Constant::getNullValue(retTy), 1);
     }
     break;
   }

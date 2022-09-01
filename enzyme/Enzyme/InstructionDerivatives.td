@@ -142,3 +142,7 @@ def : CallPattern<(Op $x),
                   ["expm1"],
                   [(FMul (Intrinsic<"exp", [(TypeOf<""> $x)]> $x), (DiffeRet<"">))]
                   >;
+
+def : CallPattern<(Op $x),
+                  ["sinc", "sincf", "sincl"],
+                  [(FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> $x), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x))]>;
