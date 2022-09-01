@@ -135,6 +135,3 @@ borrowck_perhaps_save_in_new_local_to_drop =
 
 borrowck_outlive_constraint_need_borrow_for =
     {$category}requires that `{$desc}` is borrowed for `{$region_name}`
-
-borrowck_outlive_constraint_need_borrow_lasts =
-    {$category}requires that `{$borrow_desc}` lasts for `{$region_name}`
