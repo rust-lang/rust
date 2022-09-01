@@ -248,7 +248,7 @@ impl<'a> NormalizedPat<'a> {
                 } else {
                     (None, adt.non_enum_variant())
                 };
-                let (front, back) = match wild_idx {
+                let (front, back) = match wild_idx.as_opt_usize() {
                     Some(i) => pats.split_at(i),
                     None => (pats, [].as_slice()),
                 };
@@ -268,7 +268,7 @@ impl<'a> NormalizedPat<'a> {
                     ty::Tuple(subs) => subs.len(),
                     _ => return Self::Wild,
                 };
-                let (front, back) = match wild_idx {
+                let (front, back) = match wild_idx.as_opt_usize() {
                     Some(i) => pats.split_at(i),
                     None => (pats, [].as_slice()),
                 };

@@ -1059,6 +1059,35 @@ impl fmt::Display for RangeEnd {
     }
 }
 
+// Equivalent to `Option<usize>`. That type takes up 16 bytes on 64-bit, but
+// this type only takes up 4 bytes, at the cost of being restricted to a
+// maximum value of `u32::MAX - 1`. In practice, this is more than enough.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable_Generic)]
+pub struct DotDotPos(u32);
+
+impl DotDotPos {
+    // Panics if n >= u32::MAX.
+    pub fn new(n: Option<usize>) -> Self {
+        match n {
+            Some(n) => {
+                assert!(n < u32::MAX as usize);
+                Self(n as u32)
+            }
+            None => Self(u32::MAX),
+        }
+    }
+
+    pub fn as_opt_usize(&self) -> Option<usize> {
+        if self.0 == u32::MAX { None } else { Some(self.0 as usize) }
+    }
+}
+
+impl fmt::Debug for DotDotPos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_opt_usize().fmt(f)
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
@@ -1075,9 +1104,9 @@ pub enum PatKind<'hir> {
     Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
+    /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
-    TupleStruct(QPath<'hir>, &'hir [Pat<'hir>], Option<usize>),
+    TupleStruct(QPath<'hir>, &'hir [Pat<'hir>], DotDotPos),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
@@ -1089,7 +1118,7 @@ pub enum PatKind<'hir> {
     /// A tuple pattern (e.g., `(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`
-    Tuple(&'hir [Pat<'hir>], Option<usize>),
+    Tuple(&'hir [Pat<'hir>], DotDotPos),
 
     /// A `box` pattern.
     Box(&'hir Pat<'hir>),
@@ -3486,8 +3515,8 @@ mod size_asserts {
     static_assert_size!(ItemKind<'_>, 48);
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
-    static_assert_size!(Pat<'_>, 88);
-    static_assert_size!(PatKind<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 48);
     static_assert_size!(PathSegment<'_>, 56);
     static_assert_size!(QPath<'_>, 24);

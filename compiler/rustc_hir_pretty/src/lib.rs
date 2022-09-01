@@ -1761,7 +1761,8 @@ impl<'a> State<'a> {
             PatKind::TupleStruct(ref qpath, elts, ddpos) => {
                 self.print_qpath(qpath, true);
                 self.popen();
-                if let Some(ddpos) = ddpos {
+                if let Some(ddpos) = ddpos.as_opt_usize() {
+                    let ddpos = ddpos as usize;
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
                     if ddpos != 0 {
                         self.word_space(",");
@@ -1804,7 +1805,7 @@ impl<'a> State<'a> {
             }
             PatKind::Tuple(elts, ddpos) => {
                 self.popen();
-                if let Some(ddpos) = ddpos {
+                if let Some(ddpos) = ddpos.as_opt_usize() {
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
                     if ddpos != 0 {
                         self.word_space(",");

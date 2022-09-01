@@ -981,7 +981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [Pat<'tcx>],
-        ddpos: Option<usize>,
+        ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
-            || subpats.len() < variant.fields.len() && ddpos.is_some()
+            || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
         {
             let ty::Adt(_, substs) = pat_ty.kind() else {
                 bug!("unexpected pattern type {:?}", pat_ty);
@@ -1254,14 +1254,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         elements: &'tcx [Pat<'tcx>],
-        ddpos: Option<usize>,
+        ddpos: hir::DotDotPos,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let mut expected_len = elements.len();
-        if ddpos.is_some() {
+        if ddpos.as_opt_usize().is_some() {
             // Require known type only when `..` is present.
             if let ty::Tuple(tys) = self.structurally_resolved_type(span, expected).kind() {
                 expected_len = tys.len();
