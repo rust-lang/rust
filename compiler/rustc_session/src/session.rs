@@ -29,6 +29,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     EmissionGuarantee, ErrorGuaranteed, FluentBundle, Handler, LazyFallbackBundle, MultiSpan,
+    Noted,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -541,6 +542,15 @@ impl Session {
     }
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
+    }
+    pub fn create_note<'a>(
+        &'a self,
+        note: impl SessionDiagnostic<'a, Noted>,
+    ) -> DiagnosticBuilder<'a, Noted> {
+        self.parse_sess.create_note(note)
+    }
+    pub fn emit_note<'a>(&'a self, note: impl SessionDiagnostic<'a, Noted>) -> Noted {
+        self.parse_sess.emit_note(note)
     }
     pub fn create_fatal<'a>(
         &'a self,
