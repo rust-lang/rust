@@ -309,9 +309,7 @@ union AC {
 
 #[derive(SessionSubdiagnostic)]
 #[label(parser::add_paren)]
-//~^ NOTE previously specified here
 #[label(parser::add_paren)]
-//~^ ERROR specified multiple times
 struct AD {
     #[primary_span]
     span: Span,
