@@ -1034,6 +1034,7 @@ impl f32 {
             }
         }
 
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
         fn rt_f32_to_u32(x: f32) -> u32 {
             // SAFETY: `u32` is a plain old datatype so we can always... uh...
             // ...look, just pretend you forgot what you just read.
@@ -1125,6 +1126,7 @@ impl f32 {
             }
         }
 
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
         fn rt_u32_to_f32(x: u32) -> f32 {
             // SAFETY: `u32` is a plain old datatype so we can always... uh...
             // ...look, just pretend you forgot what you just read.

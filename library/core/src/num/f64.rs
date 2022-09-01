@@ -1027,6 +1027,7 @@ impl f64 {
             }
         }
 
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
         fn rt_f64_to_u64(rt: f64) -> u64 {
             // SAFETY: `u64` is a plain old datatype so we can always... uh...
             // ...look, just pretend you forgot what you just read.
@@ -1123,6 +1124,7 @@ impl f64 {
             }
         }
 
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
         fn rt_u64_to_f64(rt: u64) -> f64 {
             // SAFETY: `u64` is a plain old datatype so we can always... uh...
             // ...look, just pretend you forgot what you just read.
