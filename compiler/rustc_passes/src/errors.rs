@@ -1,4 +1,5 @@
 use rustc_errors::{Applicability, MultiSpan};
+use rustc_hir::Target;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -680,5 +681,25 @@ pub struct MissingAllocErrorHandler;
 #[note]
 #[help]
 pub struct MissingLangItem {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::lang_item_on_incorrect_target, code = "E0718")]
+pub struct LangItemOnIncorrectTarget {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Symbol,
+    pub expected_target: Target,
+    pub actual_target: Target,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes::unknown_lang_item, code = "E0522")]
+pub struct UnknownLangItem {
+    #[primary_span]
+    #[label]
+    pub span: Span,
     pub name: Symbol,
 }
