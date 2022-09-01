@@ -167,3 +167,15 @@ pub(crate) enum RegionNameLables {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum RequireBorrowLasts<'a> {
+    #[label(borrowck::outlive_constraint_need_borrow_lasts_for)]
+    Lasts {
+        category: &'a str,
+        borrow_desc: &'a str,
+        region_name: &'a RegionName,
+        #[primary_span]
+        span: Span,
+    },
+}

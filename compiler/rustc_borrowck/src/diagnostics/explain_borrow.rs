@@ -16,6 +16,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
 use crate::region_infer::BlameConstraint;
+use crate::session_diagnostics::RequireBorrowLasts;
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -257,15 +258,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         ),
                     );
                 } else {
-                    err.span_label(
+                    //FIXME: src/test/ui/consts/const-eval/const-eval-intrinsic-promotion.rs
+                    let sub_label = RequireBorrowLasts::Lasts {
+                        category: category.description(),
+                        borrow_desc,
+                        region_name,
                         span,
-                        format!(
-                            "{}requires that {}borrow lasts for `{}`",
-                            category.description(),
-                            borrow_desc,
-                            region_name,
-                        ),
-                    );
+                    };
+                    err.subdiagnostic(sub_label);
                 };
 
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);

@@ -61,3 +61,6 @@ borrowck_used_impl_require_static =
 
 borrowck_lifetime_defined_here =
     lifetime `{$rg_name}` defined here
+
+borrowck_outlive_constraint_need_borrow_lasts_for =
+    {$category}requires that `{$borrow_desc}` lasts for `{$region_name}`
