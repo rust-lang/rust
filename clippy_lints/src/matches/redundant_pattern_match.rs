@@ -2,7 +2,7 @@ use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::needs_ordered_drop;
+use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
 use clippy_utils::{higher, is_lang_ctor, is_trait_method, match_def_path, paths};
 use if_chain::if_chain;
@@ -12,7 +12,7 @@ use rustc_hir::LangItem::{OptionNone, PollPending};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
-use rustc_span::sym;
+use rustc_span::{sym, Symbol, def_id::DefId};
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
@@ -75,9 +75,9 @@ fn find_sugg_for_if_let<'tcx>(
                     ("is_some()", op_ty)
                 } else if Some(id) == lang_items.poll_ready_variant() {
                     ("is_ready()", op_ty)
-                } else if match_def_path(cx, id, &paths::IPADDR_V4) {
+                } else if is_pat_variant(cx, check_pat, qpath, &paths::IPADDR_V4, Item::Diag(sym!(IpAddr), sym!(V4))) {
                     ("is_ipv4()", op_ty)
-                } else if match_def_path(cx, id, &paths::IPADDR_V6) {
+                } else if is_pat_variant(cx, check_pat, qpath, &paths::IPADDR_V6, Item::Diag(sym!(IpAddr), sym!(V6))) {
                     ("is_ipv6()", op_ty)
                 } else {
                     return;
@@ -174,6 +174,7 @@ fn find_sugg_for_if_let<'tcx>(
 
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
+        let lang_items = cx.tcx.lang_items();
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 
         let found_good_method = match node_pair {
@@ -188,7 +189,9 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                         path_left,
                         path_right,
                         &paths::RESULT_OK,
+                        Item::Lang(lang_items.result_ok_variant()),
                         &paths::RESULT_ERR,
+                        Item::Lang(lang_items.result_err_variant()),
                         "is_ok()",
                         "is_err()",
                     )
@@ -199,7 +202,9 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                             path_left,
                             path_right,
                             &paths::IPADDR_V4,
+                            Item::Diag(sym!(IpAddr), sym!(V4)),
                             &paths::IPADDR_V6,
+                            Item::Diag(sym!(IpAddr), sym!(V6)),
                             "is_ipv4()",
                             "is_ipv6()",
                         )
@@ -213,13 +218,16 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 if patterns.len() == 1 =>
             {
                 if let PatKind::Wild = patterns[0].kind {
+
                     find_good_method_for_match(
                         cx,
                         arms,
                         path_left,
                         path_right,
                         &paths::OPTION_SOME,
+                        Item::Lang(lang_items.option_some_variant()),
                         &paths::OPTION_NONE,
+                        Item::Lang(lang_items.option_none_variant()),
                         "is_some()",
                         "is_none()",
                     )
@@ -230,7 +238,9 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                             path_left,
                             path_right,
                             &paths::POLL_READY,
+                            Item::Lang(lang_items.poll_ready_variant()),
                             &paths::POLL_PENDING,
+                            Item::Lang(lang_items.poll_pending_variant()),
                             "is_ready()",
                             "is_pending()",
                         )
@@ -266,28 +276,67 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
     }
 }
 
+#[derive(Clone, Copy)]
+enum Item {
+  Lang(Option<DefId>),
+  Diag(Symbol, Symbol),
+}
+
+fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expected_path: &[&str], expected_item: Item) -> bool {
+    let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else { return false };
+
+    // TODO: Path matching can be removed when `IpAddr` is a diagnostic item.
+    if match_def_path(cx, id, expected_path) {
+        return true
+    }
+
+    match expected_item {
+        Item::Lang(expected_id) => {
+            Some(cx.tcx.parent(id)) == expected_id
+        },
+        Item::Diag(expected_ty, expected_variant) => {
+            let ty = cx.typeck_results().pat_ty(pat);
+
+            if is_type_diagnostic_item(cx, ty, expected_ty) {
+                let variant = ty.ty_adt_def()
+                    .expect("struct pattern type is not an ADT")
+                    .variant_of_res(cx.qpath_res(path, pat.hir_id));
+
+                return variant.name == expected_variant
+            }
+
+            false
+        }
+    }
+}
+
 #[expect(clippy::too_many_arguments)]
 fn find_good_method_for_match<'a>(
     cx: &LateContext<'_>,
     arms: &[Arm<'_>],
     path_left: &QPath<'_>,
     path_right: &QPath<'_>,
-    expected_left: &[&str],
-    expected_right: &[&str],
+    expected_path_left: &[&str],
+    expected_item_left: Item,
+    expected_path_right: &[&str],
+    expected_item_right: Item,
     should_be_left: &'a str,
     should_be_right: &'a str,
 ) -> Option<&'a str> {
-    let left_id = cx
-        .typeck_results()
-        .qpath_res(path_left, arms[0].pat.hir_id)
-        .opt_def_id()?;
-    let right_id = cx
-        .typeck_results()
-        .qpath_res(path_right, arms[1].pat.hir_id)
-        .opt_def_id()?;
-    let body_node_pair = if match_def_path(cx, left_id, expected_left) && match_def_path(cx, right_id, expected_right) {
+    let pat_left = arms[0].pat;
+    let pat_right = arms[1].pat;
+
+    let body_node_pair = if (
+        is_pat_variant(cx, pat_left, path_left, expected_path_left, expected_item_left)
+    ) && (
+        is_pat_variant(cx, pat_right, path_right, expected_path_right, expected_item_right)
+    ) {
         (&arms[0].body.kind, &arms[1].body.kind)
-    } else if match_def_path(cx, right_id, expected_left) && match_def_path(cx, right_id, expected_right) {
+    } else if (
+        is_pat_variant(cx, pat_left, path_left, expected_path_right, expected_item_right)
+    ) && (
+        is_pat_variant(cx, pat_right, path_right, expected_path_left, expected_item_left)
+    ) {
         (&arms[1].body.kind, &arms[0].body.kind)
     } else {
         return None;
