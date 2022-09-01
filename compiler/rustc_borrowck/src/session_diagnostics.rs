@@ -321,12 +321,16 @@ pub(crate) enum MustValidFor<'a> {
         #[primary_span]
         span: Span,
     },
+}
 
-    #[label(borrowck::outlive_constraint_need_borrow_lasts_for)]
-    Lasts {
-        category: &'a str,
-        borrow_desc: &'a str,
-        region_name: &'a RegionName,
+//mutability_errors.rs
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum ShowMutatingUpvar {
+    #[label(borrowck::require_mutable_binding)]
+    RequireMutableBinding {
+        place: String,
+        reason: String,
         #[primary_span]
         span: Span,
     },

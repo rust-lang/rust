@@ -130,3 +130,6 @@ borrowck_outlive_constraint_need_borrow_for =
 
 borrowck_outlive_constraint_need_borrow_lasts_for =
     {$category}requires that `{$borrow_desc}` lasts for `{$region_name}`
+
+borrowck_require_mutable_binding =
+    calling `{$place}` requires mutable binding due to {$reason}
