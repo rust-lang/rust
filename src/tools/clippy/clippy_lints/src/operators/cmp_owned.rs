@@ -38,7 +38,7 @@ fn symmetric_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: Ty<'t
 fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
     let typeck = cx.typeck_results();
     let (arg, arg_span) = match expr.kind {
-        ExprKind::MethodCall(.., [arg], _)
+        ExprKind::MethodCall(_, arg, [], _)
             if typeck
                 .type_dependent_def_id(expr.hir_id)
                 .and_then(|id| cx.tcx.trait_of_item(id))

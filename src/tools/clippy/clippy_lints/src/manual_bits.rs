@@ -134,7 +134,7 @@ fn create_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, base_sugg: String) -> Stri
 fn is_ty_conversion(expr: &Expr<'_>) -> bool {
     if let ExprKind::Cast(..) = expr.kind {
         true
-    } else if let ExprKind::MethodCall(path, [_], _) = expr.kind
+    } else if let ExprKind::MethodCall(path, _, [], _) = expr.kind
         && path.ident.name == rustc_span::sym::try_into
     {
         // This is only called for `usize` which implements `TryInto`. Therefore,

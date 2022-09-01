@@ -48,7 +48,7 @@ struct MatchExprVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
-            ExprKind::MethodCall(segment, [receiver], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
+            ExprKind::MethodCall(segment, receiver, [], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
             _ => walk_expr(self, ex),
         }
     }

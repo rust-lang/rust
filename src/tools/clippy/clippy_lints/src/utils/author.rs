@@ -402,10 +402,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(func);
                 self.slice(args, |e| self.expr(e));
             },
-            ExprKind::MethodCall(method_name, args, _) => {
-                bind!(self, method_name, args);
-                kind!("MethodCall({method_name}, {args}, _)");
+            ExprKind::MethodCall(method_name, receiver, args, _) => {
+                bind!(self, method_name, receiver, args);
+                kind!("MethodCall({method_name}, {receiver}, {args}, _)");
                 self.ident(field!(method_name.ident));
+                self.expr(receiver);
                 self.slice(args, |e| self.expr(e));
             },
             ExprKind::Tup(elements) => {

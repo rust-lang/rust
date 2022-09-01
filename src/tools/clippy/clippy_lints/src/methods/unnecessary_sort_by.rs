@@ -50,9 +50,13 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
         // The two exprs are method calls.
         // Check to see that the function is the same and the arguments are mirrored
         // This is enough because the receiver of the method is listed in the arguments
-        (ExprKind::MethodCall(left_segment, left_args, _), ExprKind::MethodCall(right_segment, right_args, _)) => {
+        (
+            ExprKind::MethodCall(left_segment, left_receiver, left_args, _),
+            ExprKind::MethodCall(right_segment, right_receiver, right_args, _),
+        ) => {
             left_segment.ident == right_segment.ident
                 && iter::zip(*left_args, *right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
+                && mirrored_exprs(left_receiver, a_ident, right_receiver, b_ident)
         },
         // Two tuples with mirrored contents
         (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => {
@@ -125,7 +129,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
             Param { pat: Pat { kind: PatKind::Binding(_, _, right_ident, _), .. }, .. }
         ] = &closure_body.params;
-        if let ExprKind::MethodCall(method_path, [left_expr, right_expr], _) = closure_body.value.kind;
+        if let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind;
         if method_path.ident.name == sym::cmp;
         if is_trait_method(cx, &closure_body.value, sym::Ord);
         then {

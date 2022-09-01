@@ -164,15 +164,15 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
     suggestion.maybe_par()
 }
 
-fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(method) = get_specialized_log_method(cx, &args[1]) {
+fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
+    if let Some(method) = get_specialized_log_method(cx, &args[0]) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", Sugg::hir(cx, &args[0], "..").maybe_par(), method),
+            format!("{}.{}()", Sugg::hir(cx, receiver, "..").maybe_par(), method),
             Applicability::MachineApplicable,
         );
     }
@@ -180,14 +180,14 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 
 // TODO: Lint expressions of the form `(x + y).ln()` where y > 1 and
 // suggest usage of `(x + (y - 1)).ln_1p()` instead
-fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
         },
         lhs,
         rhs,
-    ) = &args[0].kind
+    ) = receiver.kind
     {
         let recv = match (
             constant(cx, cx.typeck_results(), lhs),
@@ -235,9 +235,9 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
     }
 }
 
-fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
+fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), receiver) {
         let method = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
             "exp"
         } else if F32(2.0) == value || F64(2.0) == value {
@@ -252,24 +252,24 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             expr.span,
             "exponent for bases 2 and e can be computed more accurately",
             "consider using",
-            format!("{}.{}()", prepare_receiver_sugg(cx, &args[1]), method),
+            format!("{}.{}()", prepare_receiver_sugg(cx, &args[0]), method),
             Applicability::MachineApplicable,
         );
     }
 
     // Check argument
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[1]) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
         let (lint, help, suggestion) = if F32(1.0 / 2.0) == value || F64(1.0 / 2.0) == value {
             (
                 SUBOPTIMAL_FLOPS,
                 "square-root of a number can be computed more efficiently and accurately",
-                format!("{}.sqrt()", Sugg::hir(cx, &args[0], "..").maybe_par()),
+                format!("{}.sqrt()", Sugg::hir(cx, receiver, "..").maybe_par()),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
                 IMPRECISE_FLOPS,
                 "cube-root of a number can be computed more accurately",
-                format!("{}.cbrt()", Sugg::hir(cx, &args[0], "..").maybe_par()),
+                format!("{}.cbrt()", Sugg::hir(cx, receiver, "..").maybe_par()),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
@@ -277,7 +277,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                 "exponentiation with integer powers can be computed more efficiently",
                 format!(
                     "{}.powi({})",
-                    Sugg::hir(cx, &args[0], "..").maybe_par(),
+                    Sugg::hir(cx, receiver, "..").maybe_par(),
                     numeric_literal::format(&exponent.to_string(), None, false)
                 ),
             )
@@ -297,13 +297,14 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
-fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[1]) {
+fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
+    if let Some((value, _)) = constant(cx, cx.typeck_results(), &args[0]) {
         if value == Int(2) {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 if let Some(grandparent) = get_parent_expr(cx, parent) {
-                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, args, _) = grandparent.kind {
-                        if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
+                    if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = grandparent.kind
+                    {
+                        if method_name.as_str() == "sqrt" && detect_hypot(cx, receiver).is_some() {
                             return;
                         }
                     }
@@ -327,8 +328,8 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                         "consider using",
                         format!(
                             "{}.mul_add({}, {})",
-                            Sugg::hir(cx, &args[0], "..").maybe_par(),
-                            Sugg::hir(cx, &args[0], ".."),
+                            Sugg::hir(cx, receiver, "..").maybe_par(),
+                            Sugg::hir(cx, receiver, ".."),
                             Sugg::hir(cx, other_addend, ".."),
                         ),
                         Applicability::MachineApplicable,
@@ -339,14 +340,14 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
     }
 }
 
-fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
+fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
     if let ExprKind::Binary(
         Spanned {
             node: BinOpKind::Add, ..
         },
         add_lhs,
         add_rhs,
-    ) = args[0].kind
+    ) = receiver.kind
     {
         // check if expression of the form x * x + y * y
         if_chain! {
@@ -363,12 +364,12 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
         if_chain! {
             if let ExprKind::MethodCall(
                 PathSegment { ident: lmethod_name, .. },
-                [largs_0, largs_1, ..],
+                largs_0, [largs_1, ..],
                 _
             ) = &add_lhs.kind;
             if let ExprKind::MethodCall(
                 PathSegment { ident: rmethod_name, .. },
-                [rargs_0, rargs_1, ..],
+                rargs_0, [rargs_1, ..],
                 _
             ) = &add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
@@ -384,8 +385,8 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
     None
 }
 
-fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(message) = detect_hypot(cx, args) {
+fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
+    if let Some(message) = detect_hypot(cx, receiver) {
         span_lint_and_sugg(
             cx,
             IMPRECISE_FLOPS,
@@ -406,7 +407,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
-        if let ExprKind::MethodCall(path, [self_arg, ..], _) = &lhs.kind;
+        if let ExprKind::MethodCall(path, self_arg, ..) = &lhs.kind;
         if cx.typeck_results().expr_ty(self_arg).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
@@ -450,8 +451,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     ) = &expr.kind
     {
         if let Some(parent) = get_parent_expr(cx, expr) {
-            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, args, _) = parent.kind {
-                if method_name.as_str() == "sqrt" && detect_hypot(cx, args).is_some() {
+            if let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = parent.kind {
+                if method_name.as_str() == "sqrt" && detect_hypot(cx, receiver).is_some() {
                     return;
                 }
             }
@@ -586,14 +587,14 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, args_a, _) = expr_a.kind;
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, args_b, _) = expr_b.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, args_a, _) = expr_a.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, args_b, _) = expr_b.kind;
         then {
             return method_name_a.as_str() == method_name_b.as_str() &&
                 args_a.len() == args_b.len() &&
                 (
                     ["ln", "log2", "log10"].contains(&method_name_a.as_str()) ||
-                    method_name_a.as_str() == "log" && args_a.len() == 2 && eq_expr_value(cx, &args_a[1], &args_b[1])
+                    method_name_a.as_str() == "log" && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0])
                 );
         }
     }
@@ -612,8 +613,8 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             rhs,
         ) = &expr.kind;
         if are_same_base_logs(cx, lhs, rhs);
-        if let ExprKind::MethodCall(_, [largs_self, ..], _) = &lhs.kind;
-        if let ExprKind::MethodCall(_, [rargs_self, ..], _) = &rhs.kind;
+        if let ExprKind::MethodCall(_, largs_self, ..) = &lhs.kind;
+        if let ExprKind::MethodCall(_, rargs_self, ..) = &rhs.kind;
         then {
             span_lint_and_sugg(
                 cx,
@@ -711,16 +712,16 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             return;
         }
 
-        if let ExprKind::MethodCall(path, args, _) = &expr.kind {
-            let recv_ty = cx.typeck_results().expr_ty(&args[0]);
+        if let ExprKind::MethodCall(path, receiver, args, _) = &expr.kind {
+            let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() {
                 match path.ident.name.as_str() {
-                    "ln" => check_ln1p(cx, expr, args),
-                    "log" => check_log_base(cx, expr, args),
-                    "powf" => check_powf(cx, expr, args),
-                    "powi" => check_powi(cx, expr, args),
-                    "sqrt" => check_hypot(cx, expr, args),
+                    "ln" => check_ln1p(cx, expr, receiver),
+                    "log" => check_log_base(cx, expr, receiver, args),
+                    "powf" => check_powf(cx, expr, receiver, args),
+                    "powi" => check_powi(cx, expr, receiver, args),
+                    "sqrt" => check_hypot(cx, expr, receiver),
                     _ => {},
                 }
             }

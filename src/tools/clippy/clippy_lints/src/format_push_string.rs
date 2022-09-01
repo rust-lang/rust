@@ -54,7 +54,7 @@ fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 impl<'tcx> LateLintPass<'tcx> for FormatPushString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let arg = match expr.kind {
-            ExprKind::MethodCall(_, [_, arg], _) => {
+            ExprKind::MethodCall(_, _, [arg], _) => {
                 if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) &&
                 match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
                     arg

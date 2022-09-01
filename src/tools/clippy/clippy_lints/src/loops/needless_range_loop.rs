@@ -188,7 +188,7 @@ pub(super) fn check<'tcx>(
 
 fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method, [recv], _) = expr.kind;
+        if let ExprKind::MethodCall(method, recv, [], _) = expr.kind;
         if method.ident.name == sym::len;
         if let ExprKind::Path(QPath::Resolved(_, path)) = recv.kind;
         if path.segments.len() == 1;
@@ -301,7 +301,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(meth, [args_0, args_1, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind;
             if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(args_1, args_0, expr);
@@ -356,9 +356,12 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::MethodCall(_, args, _) => {
+            ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-                for (ty, expr) in iter::zip(self.cx.tcx.fn_sig(def_id).inputs().skip_binder(), args) {
+                for (ty, expr) in iter::zip(
+                    self.cx.tcx.fn_sig(def_id).inputs().skip_binder(),
+                    std::iter::once(receiver).chain(args.iter()),
+                ) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {

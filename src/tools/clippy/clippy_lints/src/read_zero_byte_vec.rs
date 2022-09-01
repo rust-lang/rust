@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                 // finds use of `_.read(&mut v)`
                 let mut read_found = false;
                 let mut visitor = expr_visitor_no_bodies(|expr| {
-                    if let ExprKind::MethodCall(path, [_self, arg], _) = expr.kind
+                    if let ExprKind::MethodCall(path, _self, [arg], _) = expr.kind
                         && let PathSegment { ident: read_or_read_exact, .. } = *path
                         && matches!(read_or_read_exact.as_str(), "read" | "read_exact")
                         && let ExprKind::AddrOf(_, hir::Mutability::Mut, inner) = arg.kind

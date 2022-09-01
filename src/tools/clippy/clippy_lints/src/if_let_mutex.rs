@@ -129,7 +129,7 @@ impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
 
 fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
+        if let ExprKind::MethodCall(path, self_arg, ..) = &expr.kind;
         if path.ident.as_str() == "lock";
         let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
         if is_type_diagnostic_item(cx, ty, sym::Mutex);

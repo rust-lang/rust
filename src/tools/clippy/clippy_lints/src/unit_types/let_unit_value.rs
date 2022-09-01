@@ -128,7 +128,7 @@ fn needs_inferred_result_ty(
     locals_to_check: &mut Vec<HirId>,
     seen_locals: &mut HirIdSet,
 ) -> bool {
-    let (id, args) = match e.kind {
+    let (id, receiver, args) = match e.kind {
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(ref path),
@@ -137,11 +137,11 @@ fn needs_inferred_result_ty(
             },
             args,
         ) => match cx.qpath_res(path, *hir_id) {
-            Res::Def(DefKind::AssocFn | DefKind::Fn, id) => (id, args),
+            Res::Def(DefKind::AssocFn | DefKind::Fn, id) => (id, None, args),
             _ => return false,
         },
-        ExprKind::MethodCall(_, args, _) => match cx.typeck_results().type_dependent_def_id(e.hir_id) {
-            Some(id) => (id, args),
+        ExprKind::MethodCall(_, receiver, args, _) => match cx.typeck_results().type_dependent_def_id(e.hir_id) {
+            Some(id) => (id, Some(receiver), args),
             None => return false,
         },
         ExprKind::Path(QPath::Resolved(None, path)) => {
@@ -156,6 +156,11 @@ fn needs_inferred_result_ty(
     };
     let sig = cx.tcx.fn_sig(id).skip_binder();
     if let ty::Param(output_ty) = *sig.output().kind() {
+        let args: Vec<&Expr<'_>> = if let Some(receiver) = receiver {
+            std::iter::once(receiver).chain(args.iter()).collect()
+        } else {
+            args.iter().collect()
+        };
         sig.inputs().iter().zip(args).all(|(&ty, arg)| {
             !ty.is_param(output_ty.index) || each_value_source_needs_inference(cx, arg, locals_to_check, seen_locals)
         })

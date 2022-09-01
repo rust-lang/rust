@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                 "like this",
                 format!("{}{}.{}('{}')",
                         if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
+                        snippet_with_applicability(cx, args[0].0.span, "..", &mut applicability),
                         suggest,
                         c.escape_default()),
                 applicability,

@@ -373,12 +373,14 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::LessEqual
         | AssocOp::NotEqual
         | AssocOp::Greater
-        | AssocOp::GreaterEqual => format!(
-            "{} {} {}",
-            lhs,
-            op.to_ast_binop().expect("Those are AST ops").to_string(),
-            rhs
-        ),
+        | AssocOp::GreaterEqual => {
+            format!(
+                "{} {} {}",
+                lhs,
+                op.to_ast_binop().expect("Those are AST ops").to_string(),
+                rhs
+            )
+        },
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::AssignOp(op) => {
             format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
@@ -868,15 +870,15 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
         let ty = match parent_expr.kind {
-            ExprKind::MethodCall(_, call_args, _) => {
+            ExprKind::MethodCall(_, receiver, call_args, _) => {
                 if let Some(sig) = self
                     .cx
                     .typeck_results()
                     .type_dependent_def_id(parent_expr.hir_id)
                     .map(|did| self.cx.tcx.fn_sig(did).skip_binder())
                 {
-                    call_args
-                        .iter()
+                    std::iter::once(receiver)
+                        .chain(call_args.iter())
                         .position(|arg| arg.hir_id == cmt_hir_id)
                         .map(|i| sig.inputs()[i])
                 } else {
@@ -933,14 +935,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                        ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
                             let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
                             self.next_pos = span.hi();
                             return;
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 

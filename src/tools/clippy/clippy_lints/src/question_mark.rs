@@ -86,7 +86,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     if_chain! {
         if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
         if !is_else_clause(cx.tcx, expr);
-        if let ExprKind::MethodCall(segment, [caller, ..], _) = &cond.kind;
+        if let ExprKind::MethodCall(segment, caller, ..) = &cond.kind;
         let caller_ty = cx.typeck_results().expr_ty(caller);
         let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then, r#else);
         if is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block);
