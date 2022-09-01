@@ -462,8 +462,8 @@ impl Map {
         filter: &mut impl FnMut(Ty<'tcx>) -> bool,
     ) {
         if filter(ty) {
-            self.register(local, projection)
-                .expect("projection should only contain convertible elements");
+            // Since downcasts are currently not allowed, this might fail.
+            let _ = self.register(local, projection);
         }
         if max_derefs > 0 {
             if let Some(ty::TypeAndMut { ty, .. }) = ty.builtin_deref(false) {
@@ -496,6 +496,11 @@ impl Map {
 
         // Apply the projection.
         for &elem in projection {
+            // For now, downcast is not allowed (see #101168).
+            match elem {
+                PlaceElem::Downcast(..) => return Err(()),
+                _ => (),
+            }
             let elem = elem.try_into()?;
             index = *self.projections.entry((index, elem)).or_insert_with(|| {
                 // Prepend new child to the linked list.
