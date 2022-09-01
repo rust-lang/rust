@@ -374,7 +374,7 @@ pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgFromDisplay,
     DiagnosticArgValue, DiagnosticId, DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -988,7 +988,11 @@ impl Handler {
     }
 
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        if self.inner.borrow().has_errors() { Some(ErrorGuaranteed(())) } else { None }
+        if self.inner.borrow().has_errors() {
+            Some(ErrorGuaranteed(()))
+        } else {
+            None
+        }
     }
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {
