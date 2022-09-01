@@ -269,3 +269,56 @@ pub(crate) enum BorrowLaterBorrowUsedLaterInLoop<'a> {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum UsedLaterDropped<'a> {
+    #[label(borrowck::drop_local_might_cause_borrow)]
+    UsedHere {
+        borrow_desc: &'a str,
+        local_name: &'a str,
+        type_desc: &'a str,
+        dtor_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::var_dropped_in_wrong_order)]
+    OppositeOrder {},
+    #[label(borrowck::temporary_access_to_borrow)]
+    TemporaryCreatedHere {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::drop_temporary_might_cause_borrow_use)]
+    MightUsedHere {
+        borrow_desc: &'a str,
+        type_desc: &'a str,
+        dtor_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion_verbose(
+        borrowck::consider_add_semicolon,
+        applicability = "maybe-incorrect",
+        code = ";"
+    )]
+    AddSemicolon {
+        #[primary_span]
+        span: Span,
+    },
+
+    #[note(borrowck::consider_forcing_temporary_drop_sooner)]
+    ManualDrop {},
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum MustValidFor<'a> {
+    #[label(borrowck::outlive_constraint_need_borrow_for)]
+    Borrowed {
+        category: &'a str,
+        desc: &'a str,
+        region_name: &'a RegionName,
+        #[primary_span]
+        span: Span,
+    },
+}

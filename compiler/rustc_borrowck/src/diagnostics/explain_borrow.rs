@@ -1,3 +1,6 @@
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
+
 //! Print diagnostics to explain why values are borrowed.
 
 use std::collections::VecDeque;
@@ -18,6 +21,7 @@ use rustc_span::{sym, DesugaringKind, Span};
 use crate::region_infer::BlameConstraint;
 use crate::session_diagnostics::{
     BorrowLaterBorrowUsedLaterInLoop, BorrowUsedHere, BorrowUsedLater, BorrowUsedLaterInLoop,
+    MustValidFor, UsedLaterDropped,
 };
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
@@ -220,41 +224,33 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                 match local_names[dropped_local] {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
-                        let message = format!(
-                            "{B}borrow might be used here, when `{LOC}` is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            LOC = local_name,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
-                        );
-                        err.span_label(body.source_info(drop_loc).span, message);
+                        let sub_label = UsedLaterDropped::UsedHere {
+                            borrow_desc,
+                            local_name: &local_name.to_ident_string(),
+                            type_desc: &type_desc,
+                            dtor_desc,
+                            span: body.source_info(drop_loc).span,
+                        };
+                        err.subdiagnostic(sub_label);
 
                         if should_note_order {
-                            err.note(
-                                "values in a scope are dropped \
-                                 in the opposite order they are defined",
-                            );
+                            let sub_note = UsedLaterDropped::OppositeOrder {};
+                            err.subdiagnostic(sub_note);
                         }
                     }
                     _ => {
-                        err.span_label(
-                            local_decl.source_info.span,
-                            format!(
-                                "a temporary with access to the {B}borrow \
-                                 is created here ...",
-                                B = borrow_desc
-                            ),
-                        );
-                        let message = format!(
-                            "... and the {B}borrow might be used here, \
-                             when that temporary is dropped \
-                             and runs the {DTOR} for {TYPE}",
-                            B = borrow_desc,
-                            TYPE = type_desc,
-                            DTOR = dtor_desc
-                        );
-                        err.span_label(body.source_info(drop_loc).span, message);
+                        let sub_label = UsedLaterDropped::TemporaryCreatedHere {
+                            borrow_desc,
+                            span: local_decl.source_info.span,
+                        };
+                        err.subdiagnostic(sub_label);
+                        let sub_label_2 = UsedLaterDropped::MightUsedHere {
+                            borrow_desc,
+                            type_desc: &type_desc,
+                            dtor_desc,
+                            span: body.source_info(drop_loc).span,
+                        };
+                        err.subdiagnostic(sub_label_2);
 
                         if let Some(info) = &local_decl.is_block_tail {
                             if info.tail_result_is_ignored {
@@ -266,21 +262,16 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     })
                                     .unwrap_or(false)
                                 {
-                                    err.span_suggestion_verbose(
-                                        info.span.shrink_to_hi(),
-                                        "consider adding semicolon after the expression so its \
-                                        temporaries are dropped sooner, before the local variables \
-                                        declared by the block are dropped",
-                                        ";",
-                                        Applicability::MaybeIncorrect,
-                                    );
+                                    let sub_suggest = UsedLaterDropped::AddSemicolon {
+                                        span: info.span.shrink_to_hi(),
+                                    };
+                                    err.subdiagnostic(sub_suggest);
                                 }
                             } else {
-                                err.note(
-                                    "the temporary is part of an expression at the end of a \
-                                     block;\nconsider forcing this temporary to be dropped sooner, \
-                                     before the block's local variables are dropped",
-                                );
+                                let sub_note = UsedLaterDropped::ManualDrop {};
+                                err.subdiagnostic(sub_note);
+
+                                //FIXME: waiting for multipart suggestion derive
                                 err.multipart_suggestion(
                                     "for example, you could save the expression's value in a new \
                                      local variable `x` and then make `x` be the expression at the \
@@ -306,15 +297,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 region_name.highlight_region_name(err);
 
                 if let Some(desc) = opt_place_desc {
-                    err.span_label(
+                    let sub_label = MustValidFor::Borrowed {
+                        category: category.description(),
+                        desc,
+                        region_name,
                         span,
-                        format!(
-                            "{}requires that `{}` is borrowed for `{}`",
-                            category.description(),
-                            desc,
-                            region_name,
-                        ),
-                    );
+                    };
+                    err.subdiagnostic(sub_label);
                 } else {
                     err.span_label(
                         span,
