@@ -182,7 +182,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
-    BreakOutsideOfLoop { expr: ExprId },
+    BreakOutsideOfLoop { expr: ExprId, is_break: bool },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
 }
 
