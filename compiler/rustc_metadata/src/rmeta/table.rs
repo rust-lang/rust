@@ -50,7 +50,7 @@ macro_rules! fixed_size_enum {
                 }
                 match b[0] - 1 {
                     $(${index()} => Some($($pat)*),)*
-                    _ => panic!("Unexpected ImplPolarity code: {:?}", b[0]),
+                    _ => panic!("Unexpected {} code: {:?}", stringify!($ty), b[0]),
                 }
             }
 
@@ -137,6 +137,21 @@ fixed_size_enum! {
     hir::IsAsync {
         ( NotAsync )
         ( Async    )
+    }
+}
+
+fixed_size_enum! {
+    ty::AssocItemContainer {
+        ( TraitContainer )
+        ( ImplContainer  )
+    }
+}
+
+fixed_size_enum! {
+    MacroKind {
+        ( Attr   )
+        ( Bang   )
+        ( Derive )
     }
 }
 

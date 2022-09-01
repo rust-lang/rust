@@ -55,6 +55,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::exported_symbols::SymbolExportInfo,
     crate::middle::resolve_lifetime::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
+    ty::AssocItemContainer,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,

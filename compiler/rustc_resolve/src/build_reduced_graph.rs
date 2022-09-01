@@ -1029,7 +1029,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::AssocFn, def_id) => {
-                if cstore.fn_has_self_parameter_untracked(def_id) {
+                if cstore.fn_has_self_parameter_untracked(def_id, self.r.session) {
                     self.r.has_self.insert(def_id);
                 }
             }

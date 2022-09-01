@@ -334,7 +334,6 @@ macro_rules! define_tables {
 }
 
 define_tables! {
-    kind: Table<DefIndex, LazyValue<EntryKind>>,
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
     children: Table<DefIndex, LazyArray<DefIndex>>,
 
@@ -393,39 +392,13 @@ define_tables! {
     proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     generator_diagnostic_data: Table<DefIndex, LazyValue<GeneratorDiagnosticData<'static>>>,
     may_have_doc_links: Table<DefIndex, ()>,
-}
-
-#[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
-enum EntryKind {
-    AnonConst,
-    Const,
-    Static,
-    ForeignStatic,
-    ForeignMod,
-    ForeignType,
-    GlobalAsm,
-    Type,
-    TypeParam,
-    ConstParam,
-    OpaqueTy,
-    Enum,
-    Field,
-    Variant(LazyValue<VariantData>),
-    Struct(LazyValue<VariantData>),
-    Union(LazyValue<VariantData>),
-    Fn,
-    ForeignFn,
-    Mod(LazyArray<ModChild>),
-    MacroDef(LazyValue<ast::MacArgs>, /*macro_rules*/ bool),
-    ProcMacro(MacroKind),
-    Closure,
-    Generator,
-    Trait,
-    Impl,
-    AssocFn { container: ty::AssocItemContainer, has_self: bool },
-    AssocType(ty::AssocItemContainer),
-    AssocConst(ty::AssocItemContainer),
-    TraitAlias,
+    variant_data: Table<DefIndex, LazyValue<VariantData>>,
+    assoc_container: Table<DefIndex, ty::AssocItemContainer>,
+    // Slot is full when macro is macro_rules.
+    macro_rules: Table<DefIndex, ()>,
+    macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
+    proc_macro: Table<DefIndex, MacroKind>,
+    module_reexports: Table<DefIndex, LazyArray<ModChild>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -459,7 +432,6 @@ pub fn provide(providers: &mut Providers) {
 
 trivially_parameterized_over_tcx! {
     VariantData,
-    EntryKind,
     RawDefId,
     TraitImpls,
     IncoherentImpls,
