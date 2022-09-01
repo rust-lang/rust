@@ -15,13 +15,14 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_target = { path = "../rustc_target" }
 unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"
 annotate-snippets = "0.9"
 termize = "0.1.1"
-serde = { version = "1.0.125", features = ["derive"] }
+serde = { version = "1.0.125", features = [ "derive" ] }
 serde_json = "1.0.59"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["handleapi", "synchapi", "winbase"] }
+winapi = { version = "0.3", features = [ "handleapi", "synchapi", "winbase" ] }
