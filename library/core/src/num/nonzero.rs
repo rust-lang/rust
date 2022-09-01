@@ -309,8 +309,8 @@ macro_rules! nonzero_unsigned_operations {
     ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
             impl $Ty {
-                /// Add an unsigned integer to a non-zero value.
-                /// Check for overflow and return [`None`] on overflow
+                /// Adds an unsigned integer to a non-zero value.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 ///
@@ -346,7 +346,7 @@ macro_rules! nonzero_unsigned_operations {
                     }
                 }
 
-                /// Add an unsigned integer to a non-zero value.
+                /// Adds an unsigned integer to a non-zero value.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -377,7 +377,7 @@ macro_rules! nonzero_unsigned_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
 
-                /// Add an unsigned integer to a non-zero value,
+                /// Adds an unsigned integer to a non-zero value,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -409,7 +409,7 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Returns the smallest power of two greater than or equal to n.
-                /// Check for overflow and return [`None`]
+                /// Checks for overflow and returns [`None`]
                 /// if the next power of two is greater than the type’s maximum value.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
@@ -545,7 +545,7 @@ macro_rules! nonzero_signed_operations {
                 }
 
                 /// Checked absolute value.
-                /// Check for overflow and returns [`None`] if
+                /// Checks for overflow and returns [`None`] if
                 #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
                 /// The result cannot be zero.
                 ///
@@ -740,8 +740,8 @@ macro_rules! nonzero_unsigned_signed_operations {
     ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
-                /// Multiply two non-zero integers together.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Multiplies two non-zero integers together.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
@@ -777,7 +777,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     }
                 }
 
-                /// Multiply two non-zero integers together.
+                /// Multiplies two non-zero integers together.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -809,7 +809,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
 
-                /// Multiply two non-zero integers together,
+                /// Multiplies two non-zero integers together,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -849,8 +849,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
 
-                /// Raise non-zero value to an integer power.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Raises non-zero value to an integer power.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
