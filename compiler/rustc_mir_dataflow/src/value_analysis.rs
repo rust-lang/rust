@@ -146,10 +146,7 @@ pub trait ValueAnalysis<'tcx> {
             Rvalue::CopyForDeref(place) => {
                 self.handle_operand(&Operand::Copy(*place), state).into()
             }
-            _ => {
-                // FIXME: Check that other Rvalues really have no side-effect.
-                ValueOrPlaceOrRef::Unknown
-            }
+            _ => ValueOrPlaceOrRef::Unknown,
         }
     }
 
@@ -200,7 +197,20 @@ pub trait ValueAnalysis<'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, _terminator: &Terminator<'tcx>, _state: &mut State<Self::Value>) {}
+    fn super_terminator(&self, terminator: &Terminator<'tcx>, _state: &mut State<Self::Value>) {
+        match &terminator.kind {
+            TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
+                // Effect is applied by `handle_call_return`.
+            }
+            TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
+                // They would have an effect, but are not allowed in this phase.
+                bug!("encountered disallowed terminator");
+            }
+            _ => {
+                // The other terminators can be ignored.
+            }
+        }
+    }
 
     fn handle_call_return(
         &self,

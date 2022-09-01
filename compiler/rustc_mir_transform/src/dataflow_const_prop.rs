@@ -35,7 +35,6 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
     }
 }
 
-// FIXME: Consider support for discriminants, mutable references, arrays and slices.
 struct ConstAnalysis<'tcx> {
     map: Map,
     tcx: TyCtxt<'tcx>,
