@@ -22,7 +22,6 @@ use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_middle::ty::Ty;
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use smallvec::SmallVec;
-use tracing::debug;
 
 /// Declare a function.
 ///

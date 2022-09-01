@@ -130,7 +130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// N.B., this code relies on `self.diverges` to be accurate. In particular, assignments to `!`
     /// will be permitted if the diverges flag is currently "always".
-    #[tracing::instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
+    #[instrument(level = "debug", skip(self, expr, expected_ty_expr, allow_two_phase))]
     pub fn demand_coerce_diag(
         &self,
         expr: &hir::Expr<'tcx>,

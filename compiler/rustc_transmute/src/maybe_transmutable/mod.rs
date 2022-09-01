@@ -110,7 +110,7 @@ where
             // Remove all `Def` nodes from `src`, without checking their visibility.
             let src = src.prune(&|def| true);
 
-            tracing::trace!(?src, "pruned src");
+            trace!(?src, "pruned src");
 
             // Remove all `Def` nodes from `dst`, additionally...
             let dst = if assume_visibility {
@@ -121,7 +121,7 @@ where
                 dst.prune(&|def| context.is_accessible_from(def, scope))
             };
 
-            tracing::trace!(?dst, "pruned dst");
+            trace!(?dst, "pruned dst");
 
             // Convert `src` from a tree-based representation to an NFA-based representation.
             // If the conversion fails because `src` is uninhabited, conclude that the transmutation

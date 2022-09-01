@@ -5,6 +5,9 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
+#[macro_use]
+extern crate tracing;
+
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
 use rustc_data_structures::sync::Lrc;
@@ -16,7 +19,6 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use tracing::{instrument, trace};
 
 #[cfg(not(parallel_compiler))]
 use std::cell::LazyCell as Lazy;

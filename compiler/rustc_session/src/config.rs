@@ -2530,7 +2530,7 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
             ),
         ),
     };
-    tracing::debug!("got unpretty option: {first:?}");
+    debug!("got unpretty option: {first:?}");
     Some(first)
 }
 

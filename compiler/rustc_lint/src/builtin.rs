@@ -59,7 +59,6 @@ use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
 use std::fmt::Write;
-use tracing::{debug, trace};
 
 // hardwired lints from librustc_middle
 pub use rustc_session::lint::builtin::*;

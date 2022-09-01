@@ -11,8 +11,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-use tracing::debug;
-
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
         let (visitor, has_feature, span, name, explain, help) =

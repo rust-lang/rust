@@ -19,7 +19,6 @@ use crate::errors::UnconstrainedOpaqueType;
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
 /// This should be called using the query `tcx.opt_const_param_of`.
-#[instrument(level = "debug", skip(tcx))]
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     use hir::*;
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

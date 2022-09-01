@@ -23,7 +23,6 @@ use rustc_target::abi::{
     AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
 use std::ops::Range;
-use tracing::debug;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
     let alloc = alloc.inner();

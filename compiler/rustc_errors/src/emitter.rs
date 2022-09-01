@@ -34,7 +34,6 @@ use std::iter;
 use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Buffer, Color, WriteColor};
-use tracing::*;
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
 const DEFAULT_COLUMN_WIDTH: usize = 140;

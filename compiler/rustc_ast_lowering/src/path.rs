@@ -13,7 +13,6 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::smallvec;
-use tracing::debug;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]

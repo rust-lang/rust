@@ -17,7 +17,6 @@ use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use tracing::debug;
 
 mod drop_ranges;
 

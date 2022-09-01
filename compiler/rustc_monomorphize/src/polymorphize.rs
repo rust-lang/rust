@@ -33,7 +33,6 @@ pub fn provide(providers: &mut Providers) {
 ///
 /// Returns a bitset where bits representing unused parameters are set (`is_empty` indicates all
 /// parameters are used).
-#[instrument(level = "debug", skip(tcx))]
 fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,

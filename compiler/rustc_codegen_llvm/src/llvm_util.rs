@@ -15,7 +15,6 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
-use tracing::debug;
 
 use std::mem;
 use std::path::Path;

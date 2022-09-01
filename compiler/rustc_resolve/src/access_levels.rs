@@ -39,7 +39,7 @@ impl<'r, 'a> AccessLevelsVisitor<'r, 'a> {
             visit::walk_crate(&mut visitor, krate);
         }
 
-        tracing::info!("resolve::access_levels: {:#?}", r.access_levels);
+        info!("resolve::access_levels: {:#?}", r.access_levels);
     }
 
     fn reset(&mut self) {

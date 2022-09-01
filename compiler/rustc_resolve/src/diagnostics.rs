@@ -25,7 +25,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
-use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::late::{PatternSource, Rib};

@@ -44,8 +44,6 @@ use rls_data::{
     RefKind, Relation, RelationKind, SpanData,
 };
 
-use tracing::{debug, error};
-
 #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5213
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {

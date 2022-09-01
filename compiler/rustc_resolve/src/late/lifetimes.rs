@@ -278,7 +278,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
 /// lifetimes into a single binder.) This requires us to resolve the
 /// *trait definition* of `Sub`; basically just enough lifetime information
 /// to look at the supertraits.
-#[tracing::instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx))]
 fn resolve_lifetimes_trait_definition(
     tcx: TyCtxt<'_>,
     local_def_id: LocalDefId,
@@ -289,7 +289,7 @@ fn resolve_lifetimes_trait_definition(
 /// Computes the `ResolveLifetimes` map that contains data for an entire `Item`.
 /// You should not read the result of this query directly, but rather use
 /// `named_region_map`, `is_late_bound_map`, etc.
-#[tracing::instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx))]
 fn resolve_lifetimes(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> ResolveLifetimes {
     convert_named_region_map(do_resolve(tcx, local_def_id, false))
 }
@@ -647,7 +647,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         match ty.kind {
             hir::TyKind::BareFn(ref c) => {
@@ -930,7 +930,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
         match lifetime_ref.name {
             hir::LifetimeName::Static => self.insert_lifetime(lifetime_ref, Region::Static),
@@ -1212,7 +1212,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             scope: &wrap_scope,
             trait_definition_only: self.trait_definition_only,
         };
-        let span = tracing::debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
+        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
         {
             let _enter = span.enter();
             f(&mut this);
@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         self.with(scope, walk);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_lifetime_ref(
         &mut self,
         region_def_id: LocalDefId,
@@ -1409,7 +1409,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         );
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_segment_args(
         &mut self,
         res: Res,
@@ -1659,7 +1659,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_fn_like_elision(
         &mut self,
         inputs: &'tcx [hir::Ty<'tcx>],
@@ -1707,7 +1707,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: Region) {
         debug!(
             node = ?self.tcx.hir().node_to_string(lifetime_ref.hir_id),

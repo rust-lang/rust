@@ -44,7 +44,6 @@ use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,

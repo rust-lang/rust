@@ -8,6 +8,9 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
+#[macro_use]
+extern crate tracing;
+
 mod callbacks;
 mod errors;
 pub mod interface;

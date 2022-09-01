@@ -18,7 +18,6 @@ use rustc_middle::ty::{self, TyCtxt};
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
-#[instrument(level = "debug", skip(tcx))]
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
@@ -74,7 +73,6 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
         let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-        debug!("Cache miss: {trait_ref:?} => {impl_source:?}");
         Ok(&*tcx.arena.alloc(impl_source))
     })
 }

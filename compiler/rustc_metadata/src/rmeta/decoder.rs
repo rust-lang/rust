@@ -42,7 +42,6 @@ use std::iter::TrustedLen;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
-use tracing::debug;
 
 pub(super) use cstore_impl::provide;
 pub use cstore_impl::provide_extern;

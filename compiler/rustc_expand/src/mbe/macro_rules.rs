@@ -32,7 +32,6 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
-use tracing::debug;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,

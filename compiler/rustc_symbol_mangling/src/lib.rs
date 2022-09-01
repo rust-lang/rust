@@ -97,6 +97,9 @@
 #[macro_use]
 extern crate rustc_middle;
 
+#[macro_use]
+extern crate tracing;
+
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -106,8 +109,6 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
-
-use tracing::debug;
 
 mod legacy;
 mod v0;

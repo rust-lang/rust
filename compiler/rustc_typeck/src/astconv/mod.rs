@@ -144,7 +144,7 @@ enum ConvertedBindingKind<'a, 'tcx> {
 /// instantiated with some generic arguments providing `'a` explicitly,
 /// we taint those arguments with `ExplicitLateBound::Yes` so that we
 /// can provide an appropriate diagnostic later.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ExplicitLateBound {
     Yes,
     No,
@@ -167,7 +167,7 @@ pub(crate) enum GenericArgPosition {
 
 /// A marker denoting that the generic arguments that were
 /// provided did not match the respective generic parameters.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct GenericArgCountMismatch {
     /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
     pub reported: Option<ErrorGuaranteed>,
@@ -177,7 +177,7 @@ pub struct GenericArgCountMismatch {
 
 /// Decorates the result of a generic argument count mismatch
 /// check with whether explicit late bounds were provided.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GenericArgCountResult {
     pub explicit_late_bound: ExplicitLateBound,
     pub correct: Result<(), GenericArgCountMismatch>,
@@ -201,7 +201,7 @@ pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
 }
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn ast_region_to_region(
         &self,
         lifetime: &hir::Lifetime,
@@ -210,7 +210,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
-        let r = match tcx.named_region(lifetime.hir_id) {
+        match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => tcx.lifetimes.re_static,
 
             Some(rl::Region::LateBound(debruijn, index, def_id)) => {
@@ -255,9 +255,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx.lifetimes.re_static
                 })
             }
-        };
-        debug!("ast_region_to_region(lifetime={:?}) yields {:?}", lifetime, r);
-        r
+        }
     }
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
@@ -317,7 +315,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// `[Vec<u8>, u8]` and `generic_args` are the arguments for the associated
     /// type itself: `['a]`. The returned `SubstsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
-    #[tracing::instrument(level = "debug", skip(self, span))]
+    #[instrument(level = "debug", skip(self, span), ret)]
     fn create_substs_for_ast_path<'a>(
         &self,
         span: Span,
@@ -537,11 +535,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &mut substs_ctx,
         );
 
-        debug!(
-            "create_substs_for_ast_path(generic_params={:?}, self_ty={:?}) -> {:?}",
-            generics, self_ty, substs
-        );
-
         (substs, arg_count)
     }
 
@@ -716,7 +709,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// where `'a` is a bound region at depth 0. Similarly, the `poly_trait_ref` would be
     /// `Bar<'a>`. The returned poly-trait-ref will have this binder instantiated explicitly,
     /// however.
-    #[tracing::instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
+    #[instrument(level = "debug", skip(self, span, constness, bounds, speculative))]
     pub(crate) fn instantiate_poly_trait_ref(
         &self,
         trait_ref: &hir::TraitRef<'_>,
@@ -808,7 +801,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty::TraitRef::new(trait_def_id, substs)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, span))]
+    #[instrument(level = "debug", skip(self, span))]
     fn create_substs_for_ast_trait_ref<'a>(
         &self,
         span: Span,
@@ -922,7 +915,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// **A note on binders:** there is an implied binder around
     /// `param_ty` and `ast_bounds`. See `instantiate_poly_trait_ref`
     /// for more details.
-    #[tracing::instrument(level = "debug", skip(self, ast_bounds, bounds))]
+    #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
     pub(crate) fn add_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'hir>>>(
         &self,
         param_ty: Ty<'tcx>,
@@ -1028,10 +1021,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// **A note on binders:** given something like `T: for<'a> Iterator<Item = &'a u32>`, the
     /// `trait_ref` here will be `for<'a> T: Iterator`. The `binding` data however is from *inside*
     /// the binder (e.g., `&'a u32`) and hence may reference bound regions.
-    #[tracing::instrument(
-        level = "debug",
-        skip(self, bounds, speculative, dup_bindings, path_span)
-    )]
+    #[instrument(level = "debug", skip(self, bounds, speculative, dup_bindings, path_span))]
     fn add_predicates_for_ast_type_binding(
         &self,
         hir_ref_id: hir::HirId,
@@ -2599,7 +2589,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -2702,8 +2692,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Err => tcx.ty_error(),
         };
-
-        debug!(?result_ty);
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty

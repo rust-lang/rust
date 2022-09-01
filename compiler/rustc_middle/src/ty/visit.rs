@@ -84,7 +84,7 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", ret)]
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags)
     }
@@ -560,7 +560,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = t.flags();
         trace!(t.flags=?t.flags());
@@ -572,7 +572,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = r.type_flags();
         trace!(r.flags=?flags);
@@ -584,7 +584,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", ret)]
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         trace!(r.flags=?flags);
@@ -596,7 +596,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", ret)]
     fn visit_unevaluated(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_unevaluated_const(uv);
         trace!(r.flags=?flags);
@@ -608,7 +608,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    #[instrument(level = "trace")]
+    #[instrument(level = "trace", ret)]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",

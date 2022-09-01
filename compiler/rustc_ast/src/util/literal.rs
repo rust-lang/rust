@@ -9,7 +9,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use std::ascii;
-use tracing::debug;
 
 pub enum LitError {
     NotLiteral,

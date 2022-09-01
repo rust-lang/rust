@@ -23,8 +23,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 
-use tracing::*;
-
 use std::cell::Cell;
 use std::{mem, ptr};
 

@@ -19,7 +19,6 @@ use rustc_target::asm::*;
 
 use libc::{c_char, c_uint};
 use smallvec::SmallVec;
-use tracing::debug;
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_inline_asm(

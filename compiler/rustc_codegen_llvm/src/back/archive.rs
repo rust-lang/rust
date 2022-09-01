@@ -190,10 +190,10 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
 
             let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
 
-            tracing::trace!("invoking LLVMRustWriteImportLibrary");
-            tracing::trace!("  dll_name {:#?}", dll_name_z);
-            tracing::trace!("  output_path {}", output_path.display());
-            tracing::trace!(
+            trace!("invoking LLVMRustWriteImportLibrary");
+            trace!("  dll_name {:#?}", dll_name_z);
+            trace!("  output_path {}", output_path.display());
+            trace!(
                 "  import names: {}",
                 dll_imports
                     .iter()

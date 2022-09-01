@@ -419,7 +419,6 @@ fn collect_items_rec<'tcx>(
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.node);
 
     let mut neighbors = MonoItems { compute_inlining: true, tcx, items: Vec::new() };
     let recursion_depth_reset;
@@ -545,8 +544,6 @@ fn collect_items_rec<'tcx>(
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
-
-    debug!("END collect_items_rec({})", starting_point.node);
 }
 
 /// Format instance name that is already known to be too long for rustc.
@@ -1148,23 +1145,18 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
-#[instrument(skip(tcx), level = "debug")]
+#[instrument(skip(tcx), level = "debug", ret)]
 fn create_fn_mono_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
-    debug!("create_fn_mono_item(instance={})", instance);
-
     let def_id = instance.def_id();
     if tcx.sess.opts.unstable_opts.profile_closures && def_id.is_local() && tcx.is_closure(def_id) {
         crate::util::dump_closure_profile(tcx, instance);
     }
 
-    let respanned = respan(source, MonoItem::Fn(instance.polymorphize(tcx)));
-    debug!(?respanned);
-
-    respanned
+    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1309,7 +1301,7 @@ impl<'v> RootCollector<'_, 'v> {
     #[instrument(skip(self), level = "debug")]
     fn push_if_root(&mut self, def_id: LocalDefId) {
         if self.is_root(def_id) {
-            debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
+            debug!("found root");
 
             let instance = Instance::mono(self.tcx, def_id.to_def_id());
             self.output.push(create_fn_mono_item(self.tcx, instance, DUMMY_SP));

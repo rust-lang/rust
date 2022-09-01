@@ -1,3 +1,4 @@
+use info;
 use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -31,7 +32,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
-use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;

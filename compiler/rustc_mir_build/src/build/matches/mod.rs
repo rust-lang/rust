@@ -155,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// * From each pre-binding block to the next pre-binding block.
     /// * From each otherwise block to the next pre-binding block.
-    #[tracing::instrument(level = "debug", skip(self, arms))]
+    #[instrument(level = "debug", skip(self, arms))]
     pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,

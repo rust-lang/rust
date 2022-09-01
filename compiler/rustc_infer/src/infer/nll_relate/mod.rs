@@ -542,7 +542,7 @@ where
         true
     }
 
-    #[instrument(skip(self, info), level = "trace")]
+    #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -559,8 +559,6 @@ where
         let r = self.relate(a, b)?;
 
         self.ambient_variance = old_ambient_variance;
-
-        debug!(?r);
 
         Ok(r)
     }

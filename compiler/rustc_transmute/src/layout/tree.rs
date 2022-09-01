@@ -317,7 +317,7 @@ pub(crate) mod rustc {
                             tcx,
                         )?,
                         AdtKind::Enum => {
-                            tracing::trace!(?adt_def, "treeifying enum");
+                            trace!(?adt_def, "treeifying enum");
                             let mut tree = Tree::uninhabited();
 
                             for (idx, discr) in adt_def.discriminants(tcx) {
@@ -381,7 +381,7 @@ pub(crate) mod rustc {
             let clamp =
                 |align: Align| align.clamp(min_align, max_align).bytes().try_into().unwrap();
 
-            let variant_span = tracing::trace_span!(
+            let variant_span = trace_span!(
                 "treeifying variant",
                 min_align = ?min_align,
                 max_align = ?max_align,
@@ -396,22 +396,22 @@ pub(crate) mod rustc {
 
             // The layout of the variant is prefixed by the discriminant, if any.
             if let Some(discr) = discr {
-                tracing::trace!(?discr, "treeifying discriminant");
+                trace!(?discr, "treeifying discriminant");
                 let discr_layout = alloc::Layout::from_size_align(
                     layout_summary.discriminant_size,
                     clamp(layout_summary.discriminant_align),
                 )
                 .unwrap();
-                tracing::trace!(?discr_layout, "computed discriminant layout");
+                trace!(?discr_layout, "computed discriminant layout");
                 variant_layout = variant_layout.extend(discr_layout).unwrap().0;
                 tree = tree.then(Self::from_disr(discr, tcx, layout_summary.discriminant_size));
             }
 
             // Next come fields.
-            let fields_span = tracing::trace_span!("treeifying fields").entered();
+            let fields_span = trace_span!("treeifying fields").entered();
             for field_def in variant_def.fields.iter() {
                 let field_ty = field_def.ty(tcx, substs_ref);
-                let _span = tracing::trace_span!("treeifying field", field = ?field_ty).entered();
+                let _span = trace_span!("treeifying field", field = ?field_ty).entered();
 
                 // begin with the field's visibility
                 tree = tree.then(Self::def(Def::Field(field_def)));
@@ -434,7 +434,7 @@ pub(crate) mod rustc {
             drop(fields_span);
 
             // finally: padding
-            let padding_span = tracing::trace_span!("adding trailing padding").entered();
+            let padding_span = trace_span!("adding trailing padding").entered();
             let padding_needed = layout_summary.total_size - variant_layout.size();
             if padding_needed > 0 {
                 tree = tree.then(Self::padding(padding_needed));
@@ -467,7 +467,7 @@ pub(crate) mod rustc {
             layout.align().abi.bytes().try_into().unwrap(),
         )
         .unwrap();
-        tracing::trace!(?ty, ?layout, "computed layout for type");
+        trace!(?ty, ?layout, "computed layout for type");
         Ok(layout)
     }
 }

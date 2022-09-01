@@ -15,7 +15,6 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::thin_vec;
-use tracing::debug;
 
 use std::{iter, mem};
 

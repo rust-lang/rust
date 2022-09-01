@@ -555,7 +555,7 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*
             #[inline(always)]
-            #[tracing::instrument(level = "trace", skip(self, tcx))]
+            #[tracing::instrument(level = "trace", skip(self, tcx), ret)]
             fn $name(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,

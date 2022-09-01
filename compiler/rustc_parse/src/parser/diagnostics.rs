@@ -29,7 +29,6 @@ use std::ops::{Deref, DerefMut};
 use std::mem::take;
 
 use crate::parser;
-use tracing::{debug, trace};
 
 const TURBOFISH_SUGGESTION_STR: &str =
     "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments";

@@ -135,7 +135,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    #[tracing::instrument(level = "debug", skip(self, infcx, param_env, cause))]
+    #[instrument(level = "debug", skip(self, infcx, param_env, cause))]
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,

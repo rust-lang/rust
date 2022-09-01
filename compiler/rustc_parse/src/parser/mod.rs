@@ -37,7 +37,6 @@ use rustc_errors::{
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use tracing::debug;
 
 use std::ops::Range;
 use std::{cmp, mem, slice};

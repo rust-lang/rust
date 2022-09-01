@@ -334,7 +334,7 @@ pub enum InternKind {
 /// tracks where in the value we are and thus can show much better error messages.
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
-#[tracing::instrument(level = "debug", skip(ecx))]
+#[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_recursive<
     'mir,
     'tcx: 'mir,

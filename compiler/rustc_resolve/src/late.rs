@@ -32,7 +32,6 @@ use smallvec::{smallvec, SmallVec};
 use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
-use tracing::debug;
 
 mod diagnostics;
 pub(crate) mod lifetimes;
@@ -1390,7 +1389,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, work))]
+    #[instrument(level = "debug", skip(self, work))]
     fn with_lifetime_rib<T>(
         &mut self,
         kind: LifetimeRibKind,
@@ -1404,7 +1403,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ret
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         let ident = lifetime.ident;
 
@@ -1508,7 +1507,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, LifetimeElisionCandidate::Named);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
@@ -1573,7 +1572,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetime(&mut self, anchor_id: NodeId, span: Span) {
         let id = self.r.next_node_id();
         let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
@@ -1586,7 +1585,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.resolve_anonymous_lifetime(&lt, true);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
@@ -1604,7 +1603,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         res
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetimes_in_path(
         &mut self,
         path_id: NodeId,
@@ -1804,7 +1803,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn record_lifetime_res(
         &mut self,
         id: NodeId,
@@ -1827,7 +1826,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn record_lifetime_param(&mut self, id: NodeId, res: LifetimeRes) {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!(
@@ -1838,7 +1837,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     /// Perform resolution of a function signature, accounting for lifetime elision.
-    #[tracing::instrument(level = "debug", skip(self, inputs))]
+    #[instrument(level = "debug", skip(self, inputs))]
     fn resolve_fn_signature(
         &mut self,
         fn_id: NodeId,
@@ -3268,11 +3267,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         finalize: Finalize,
     ) -> PartialRes {
-        tracing::debug!(
+        debug!(
             "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself,
-            path,
-            finalize,
+            qself, path, finalize,
         );
         let ns = source.namespace();
 

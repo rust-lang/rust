@@ -28,7 +28,7 @@ use super::SelectionCandidate::{self, *};
 use super::{EvaluatedCandidate, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn candidate_from_obligation<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -48,7 +48,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let Some(c) =
             self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
         {
-            debug!(candidate = ?c, "CACHE HIT");
+            debug!("CACHE HIT");
             return c;
         }
 
@@ -61,7 +61,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (candidate, dep_node) =
             self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
-        debug!(?candidate, "CACHE MISS");
+        debug!("CACHE MISS");
         self.insert_candidate_cache(
             stack.obligation.param_env,
             cache_fresh_trait_pred,
@@ -337,7 +337,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(candidates)
     }
 
-    #[tracing::instrument(level = "debug", skip(self, candidates))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_candidates_from_projected_tys(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -367,7 +367,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// supplied to find out whether it is listed among them.
     ///
     /// Never affects the inference environment.
-    #[tracing::instrument(level = "debug", skip(self, stack, candidates))]
+    #[instrument(level = "debug", skip(self, stack, candidates))]
     fn assemble_candidates_from_caller_bounds<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
@@ -880,7 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
     }
 
-    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
+    #[instrument(level = "debug", skip(self, obligation, candidates))]
     fn assemble_candidates_for_transmutability(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -898,7 +898,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates.vec.push(TransmutabilityCandidate);
     }
 
-    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
+    #[instrument(level = "debug", skip(self, obligation, candidates))]
     fn assemble_candidates_for_trait_alias(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -917,7 +917,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
-    #[tracing::instrument(level = "debug", skip(self, candidates))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,
         conditions: BuiltinImplConditions<'tcx>,

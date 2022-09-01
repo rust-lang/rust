@@ -7,8 +7,6 @@ use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 
-use tracing::debug;
-
 // Public for rustfmt usage
 #[derive(Debug)]
 pub enum InnerAttrPolicy<'a> {

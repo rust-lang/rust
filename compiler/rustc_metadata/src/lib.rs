@@ -26,6 +26,9 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_data_structures;
 
+#[macro_use]
+extern crate tracing;
+
 pub use rmeta::{provide, provide_extern};
 
 mod dependency_format;

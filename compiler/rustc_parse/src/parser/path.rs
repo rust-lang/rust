@@ -13,7 +13,6 @@ use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 
 use std::mem;
-use tracing::debug;
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]

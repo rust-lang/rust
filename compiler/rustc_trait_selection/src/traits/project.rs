@@ -231,7 +231,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
 /// If successful, this may result in additional obligations.
 ///
 /// See [poly_project_and_unify_type] for an explanation of the return value.
-#[tracing::instrument(level = "debug", skip(selcx))]
+#[instrument(level = "debug", skip(selcx))]
 fn project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>,
@@ -1206,7 +1206,7 @@ impl<'tcx> Progress<'tcx> {
 ///
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
-#[tracing::instrument(level = "info", skip(selcx))]
+#[instrument(level = "info", skip(selcx))]
 fn project<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
@@ -1368,7 +1368,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     );
 }
 
-#[tracing::instrument(
+#[instrument(
     level = "debug",
     skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
 )]
@@ -1419,7 +1419,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     }
 }
 
-#[tracing::instrument(level = "debug", skip(selcx, obligation, candidate_set))]
+#[instrument(level = "debug", skip(selcx, obligation, candidate_set))]
 fn assemble_candidates_from_impls<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,

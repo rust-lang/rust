@@ -168,7 +168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `call_expr`:             the complete method call: (`foo.bar::<T1,...Tn>(...)`)
     /// * `self_expr`:             the self expression (`foo`)
     /// * `args`:                  the expressions of the arguments (`a, b + 1, ...`)
-    #[instrument(level = "debug", skip(self, call_expr, self_expr))]
+    #[instrument(level = "debug", skip(self))]
     pub fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
@@ -178,11 +178,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
-        debug!(
-            "lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
-            segment.ident, self_ty, call_expr, self_expr
-        );
-
         let pick =
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
@@ -383,7 +378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// In particular, it doesn't really do any probing: it simply constructs
     /// an obligation for a particular trait with the given self type and checks
     /// whether that trait is implemented.
-    #[instrument(level = "debug", skip(self, span, opt_input_types))]
+    #[instrument(level = "debug", skip(self, span))]
     pub(super) fn lookup_method_in_trait(
         &self,
         span: Span,
@@ -392,11 +387,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        debug!(
-            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?}, opt_input_types={:?})",
-            self_ty, m_name, trait_def_id, opt_input_types
-        );
-
         let (obligation, substs) =
             self.obligation_for_method(span, trait_def_id, self_ty, opt_input_types);
         self.construct_obligation_for_trait(
@@ -576,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `self_ty`:               the type to search within (`Foo`)
     /// * `self_ty_span`           the span for the type being searched within (span of `Foo`)
     /// * `expr_id`:               the [`hir::HirId`] of the expression composing the entire call
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn resolve_fully_qualified_call(
         &self,
         span: Span,
@@ -585,11 +575,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty_span: Span,
         expr_id: hir::HirId,
     ) -> Result<(DefKind, DefId), MethodError<'tcx>> {
-        debug!(
-            "resolve_fully_qualified_call: method_name={:?} self_ty={:?} expr_id={:?}",
-            method_name, self_ty, expr_id,
-        );
-
         let tcx = self.tcx;
 
         // Check if we have an enum variant.
@@ -633,21 +618,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &pick,
         );
 
-        debug!("resolve_fully_qualified_call: pick={:?}", pick);
+        debug!(?pick);
         {
             let mut typeck_results = self.typeck_results.borrow_mut();
             let used_trait_imports = Lrc::get_mut(&mut typeck_results.used_trait_imports).unwrap();
             for import_id in pick.import_ids {
-                debug!("resolve_fully_qualified_call: used_trait_import: {:?}", import_id);
+                debug!(used_trait_import=?import_id);
                 used_trait_imports.insert(import_id);
             }
         }
 
         let def_kind = pick.item.kind.as_def_kind();
-        debug!(
-            "resolve_fully_qualified_call: def_kind={:?}, def_id={:?}",
-            def_kind, pick.item.def_id
-        );
         tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }
