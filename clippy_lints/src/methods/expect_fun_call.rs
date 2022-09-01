@@ -19,6 +19,7 @@ pub(super) fn check<'tcx>(
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
+    receiver: &'tcx hir::Expr<'tcx>,
     args: &'tcx [hir::Expr<'tcx>],
 ) {
     // Strip `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
@@ -28,16 +29,13 @@ pub(super) fn check<'tcx>(
         loop {
             arg_root = match &arg_root.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, call_args, _) => {
-                    if call_args.len() == 1
-                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref)
-                        && {
-                            let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
-                            let base_type = arg_type.peel_refs();
-                            *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym::String)
-                        }
-                    {
-                        &call_args[0]
+                hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
+                    if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
+                        let arg_type = cx.typeck_results().expr_ty(receiver);
+                        let base_type = arg_type.peel_refs();
+                        *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym::String)
+                    } {
+                        receiver
                     } else {
                         break;
                     }
@@ -114,11 +112,11 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    if args.len() != 2 || name != "expect" || !is_call(&args[1].kind) {
+    if args.len() != 1 || name != "expect" || !is_call(&args[0].kind) {
         return;
     }
 
-    let receiver_type = cx.typeck_results().expr_ty_adjusted(&args[0]);
+    let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
     let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym::Option) {
         "||"
     } else if is_type_diagnostic_item(cx, receiver_type, sym::Result) {
@@ -127,7 +125,7 @@ pub(super) fn check<'tcx>(
         return;
     };
 
-    let arg_root = get_arg_root(cx, &args[1]);
+    let arg_root = get_arg_root(cx, &args[0]);
 
     let span_replace_word = method_span.with_hi(expr.span.hi());
 

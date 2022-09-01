@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
                                 }
                             }
                         },
-                        hir::ExprKind::MethodCall(method, [obj], _) => if_chain! {
+                        hir::ExprKind::MethodCall(method, obj, [], _) => if_chain! {
                             if ident_eq(name, obj) && method.ident.name == sym::clone;
                             if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
                             if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);

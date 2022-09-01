@@ -66,9 +66,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(parent_expr) = get_parent_expr(cx, expr)
             && let Assign(left_expr, collect_expr, _) = &parent_expr.kind
-            && let hir::ExprKind::MethodCall(seg, _, _) = &collect_expr.kind
+            && let hir::ExprKind::MethodCall(seg, ..) = &collect_expr.kind
             && seg.args.is_none()
-            && let hir::ExprKind::MethodCall(_, [target_expr], _) = &collect_expr.kind
+            && let hir::ExprKind::MethodCall(_, target_expr, [], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && match_def_path(cx, collect_def_id, &paths::CORE_ITER_COLLECT) {
             check_into_iter(cx, parent_expr, left_expr, target_expr, self.msrv);
@@ -87,10 +87,10 @@ fn check_into_iter(
     target_expr: &hir::Expr<'_>,
     msrv: Option<RustcVersion>,
 ) {
-    if let hir::ExprKind::MethodCall(_, [into_iter_expr, _], _) = &target_expr.kind
+    if let hir::ExprKind::MethodCall(_, into_iter_expr, [_], _) = &target_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
-        && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &into_iter_expr.kind
+        && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && match_def_path(cx, into_iter_def_id, &paths::CORE_ITER_INTO_ITER)
         && match_acceptable_type(cx, left_expr, msrv)
@@ -106,14 +106,14 @@ fn check_iter(
     target_expr: &hir::Expr<'_>,
     msrv: Option<RustcVersion>,
 ) {
-    if let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
+    if let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(copied_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
         && (match_def_path(cx, copied_def_id, &paths::CORE_ITER_COPIED)
             || match_def_path(cx, copied_def_id, &paths::CORE_ITER_CLONED))
-        && let hir::ExprKind::MethodCall(_, [iter_expr, _], _) = &filter_expr.kind
+        && let hir::ExprKind::MethodCall(_, iter_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
-        && let hir::ExprKind::MethodCall(_, [struct_expr], _) = &iter_expr.kind
+        && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &iter_expr.kind
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
         && match_acceptable_def_path(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
@@ -130,13 +130,13 @@ fn check_to_owned(
     msrv: Option<RustcVersion>,
 ) {
     if meets_msrv(msrv,  msrvs::STRING_RETAIN)
-        && let hir::ExprKind::MethodCall(_, [filter_expr], _) = &target_expr.kind
+        && let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
         && match_def_path(cx, to_owned_def_id, &paths::TO_OWNED_METHOD)
-        && let hir::ExprKind::MethodCall(_, [chars_expr, _], _) = &filter_expr.kind
+        && let hir::ExprKind::MethodCall(_, chars_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
-        && let hir::ExprKind::MethodCall(_, [str_expr], _) = &chars_expr.kind
+        && let hir::ExprKind::MethodCall(_, str_expr, [], _) = &chars_expr.kind
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
         && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
@@ -147,7 +147,7 @@ fn check_to_owned(
 }
 
 fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::Expr<'_>, filter_expr: &hir::Expr<'_>) {
-    if let hir::ExprKind::MethodCall(_, [_, closure], _) = filter_expr.kind
+    if let hir::ExprKind::MethodCall(_, _, [closure], _) = filter_expr.kind
         && let hir::ExprKind::Closure(&hir::Closure { body, ..}) = closure.kind
         && let filter_body = cx.tcx.hir().body(body)
         && let [filter_params] = filter_body.params

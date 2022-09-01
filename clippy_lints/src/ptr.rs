@@ -591,8 +591,11 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             set_skip_flag();
                         }
                     },
-                    ExprKind::MethodCall(name, expr_args @ [self_arg, ..], _) => {
-                        let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
+                    ExprKind::MethodCall(name, self_arg, expr_args, _) => {
+                        let i = std::iter::once(self_arg)
+                            .chain(expr_args.iter())
+                            .position(|arg| arg.hir_id == child_id)
+                            .unwrap_or(0);
                         if i == 0 {
                             // Check if the method can be renamed.
                             let name = name.ident.as_str();

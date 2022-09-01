@@ -100,7 +100,7 @@ impl VecPushSearcher {
                         || get_parent_expr(cx, last_place)
                             .map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
                 },
-                ExprKind::MethodCall(_, [recv, ..], _)
+                ExprKind::MethodCall(_, recv, ..)
                     if recv.hir_id == e.hir_id
                         && adjusted_mut == Mutability::Mut
                         && !adjusted_ty.peel_refs().is_slice() =>
@@ -201,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let Some(searcher) = self.searcher.take() {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
-                && let ExprKind::MethodCall(name, [self_arg, _], _) = expr.kind
+                && let ExprKind::MethodCall(name, self_arg, [_], _) = expr.kind
                 && path_to_local_id(self_arg, searcher.local_id)
                 && name.ident.as_str() == "push"
             {

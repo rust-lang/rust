@@ -144,8 +144,9 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
 
 impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::MethodCall(_, args, _) = expr.kind {
+        if let ExprKind::MethodCall(_, receiver, args, _) = expr.kind {
             let arg_indices = get_args_to_check(cx, expr);
+            let args = std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>();
             for (i, trait_name) in arg_indices {
                 if i < args.len() {
                     match check_arg(cx, &args[i]) {

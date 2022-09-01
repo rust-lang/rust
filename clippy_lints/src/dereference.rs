@@ -581,7 +581,7 @@ fn try_parse_ref_op<'tcx>(
     expr: &'tcx Expr<'_>,
 ) -> Option<(RefOp, &'tcx Expr<'tcx>)> {
     let (def_id, arg) = match expr.kind {
-        ExprKind::MethodCall(_, [arg], _) => (typeck.type_dependent_def_id(expr.hir_id)?, arg),
+        ExprKind::MethodCall(_, arg, [], _) => (typeck.type_dependent_def_id(expr.hir_id)?, arg),
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(path),
@@ -796,16 +796,19 @@ fn walk_parents<'tcx>(
                             },
                         })
                     }),
-                ExprKind::MethodCall(_, args, _) => {
+                ExprKind::MethodCall(_, receiver, args, _) => {
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
-                    args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
-                        if i == 0 {
-                            // Check for calls to trait methods where the trait is implemented on a reference.
-                            // Two cases need to be handled:
-                            // * `self` methods on `&T` will never have auto-borrow
-                            // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
-                            //   priority.
-                            if e.hir_id != child_id {
+                    std::iter::once(receiver)
+                        .chain(args.iter())
+                        .position(|arg| arg.hir_id == child_id)
+                        .map(|i| {
+                            if i == 0 {
+                                // Check for calls to trait methods where the trait is implemented on a reference.
+                                // Two cases need to be handled:
+                                // * `self` methods on `&T` will never have auto-borrow
+                                // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
+                                //   priority.
+                                if e.hir_id != child_id {
                                 Position::ReborrowStable(precedence)
                             } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
                                 && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
@@ -834,20 +837,20 @@ fn walk_parents<'tcx>(
                             } else {
                                 Position::MethodReceiver
                             }
-                        } else {
-                            let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
-                            if let ty::Param(param_ty) = ty.kind() {
-                                needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
                             } else {
-                                ty_auto_deref_stability(
-                                    cx,
-                                    cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
-                                    precedence,
-                                )
-                                .position_for_arg()
+                                let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
+                                if let ty::Param(param_ty) = ty.kind() {
+                                    needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
+                                } else {
+                                    ty_auto_deref_stability(
+                                        cx,
+                                        cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
+                                        precedence,
+                                    )
+                                    .position_for_arg()
+                                }
                             }
-                        }
-                    })
+                        })
                 },
                 ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
                 ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),

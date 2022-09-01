@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(
                 // This is a duplicate of what's happening in clippy_lints::methods::method_call,
                 // which isn't ideal, We want to get the method call span,
                 // but prefer to avoid changing the signature of the function itself.
-                if let hir::ExprKind::MethodCall(_, _, span) = expr.kind {
+                if let hir::ExprKind::MethodCall(.., span) = expr.kind {
                     span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
                         diag.span_suggestion(
                             span,

@@ -304,13 +304,13 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             }
                             return;
                         },
-                        ExprKind::MethodCall(_, args, _)
+                        ExprKind::MethodCall(_, receiver, args, _)
                             if typeck.type_dependent_def_id(parent.hir_id).map_or(false, |id| {
                                 id == param.fn_id
                                     && has_matching_substs(param.fn_kind, typeck.node_substs(parent.hir_id))
                             }) =>
                         {
-                            if let Some(idx) = args.iter().position(|arg| arg.hir_id == child_id) {
+                            if let Some(idx) = std::iter::once(receiver).chain(args.iter()).position(|arg| arg.hir_id == child_id) {
                                 param.uses.push(Usage::new(span, idx));
                             }
                             return;

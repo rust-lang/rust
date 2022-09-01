@@ -35,32 +35,29 @@ pub(super) fn check<'tcx>(
         ) => (arg, "&mut "),
         ExprKind::MethodCall(
             method,
-            [
-                Expr {
-                    kind: ExprKind::Array([arg]),
-                    ..
-                },
-            ],
+            Expr {
+                kind: ExprKind::Array([arg]),
+                ..
+            },
+            [],
             _,
         ) if method.ident.name == rustc_span::sym::iter => (arg, "&"),
         ExprKind::MethodCall(
             method,
-            [
-                Expr {
-                    kind: ExprKind::Array([arg]),
-                    ..
-                },
-            ],
+            Expr {
+                kind: ExprKind::Array([arg]),
+                ..
+            },
+            [],
             _,
         ) if method.ident.name.as_str() == "iter_mut" => (arg, "&mut "),
         ExprKind::MethodCall(
             method,
-            [
-                Expr {
-                    kind: ExprKind::Array([arg]),
-                    ..
-                },
-            ],
+            Expr {
+                kind: ExprKind::Array([arg]),
+                ..
+            },
+            [],
             _,
         ) if method.ident.name == rustc_span::sym::into_iter => (arg, ""),
         // Only check for arrays edition 2021 or later, as this case will trigger a compiler error otherwise.
