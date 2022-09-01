@@ -207,7 +207,6 @@ h1, h2, h3, h4, h5, h6,
 a.source,
 .search-input,
 .search-results .result-name,
-.content table td:first-child > a,
 .item-left > a,
 .out-of-band,
 span.since,
@@ -757,14 +756,6 @@ pre, .rustdoc.source .example-wrap {
 .content .methods > div:not(.notable-traits):not(.method) {
 	margin-left: 40px;
 	margin-bottom: 15px;
-}
-
-.content .docblock > .impl-items {
-	margin-left: 20px;
-	margin-top: -34px;
-}
-.content .docblock >.impl-items table td {
-	padding: 0;
 }
 
 .item-info {

@@ -1737,8 +1737,8 @@ pub(crate) fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let id =
-        cx.derive_id(get_id_for_impl(&i.inner_impl().for_, i.inner_impl().trait_.as_ref(), cx));
+    let inner_impl = i.inner_impl();
+    let id = cx.derive_id(get_id_for_impl(&inner_impl.for_, inner_impl.trait_.as_ref(), cx));
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
@@ -1750,9 +1750,9 @@ pub(crate) fn render_impl_summary(
     write!(w, "<h3 class=\"code-header in-band\">");
 
     if let Some(use_absolute) = use_absolute {
-        write!(w, "{}", i.inner_impl().print(use_absolute, cx));
+        write!(w, "{}", inner_impl.print(use_absolute, cx));
         if show_def_docs {
-            for it in &i.inner_impl().items {
+            for it in &inner_impl.items {
                 if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
                     w.write_str("<span class=\"where fmt-newline\">  ");
                     assoc_type(
@@ -1770,11 +1770,11 @@ pub(crate) fn render_impl_summary(
             }
         }
     } else {
-        write!(w, "{}", i.inner_impl().print(false, cx));
+        write!(w, "{}", inner_impl.print(false, cx));
     }
     write!(w, "</h3>");
 
-    let is_trait = i.inner_impl().trait_.is_some();
+    let is_trait = inner_impl.trait_.is_some();
     if is_trait {
         if let Some(portability) = portability(&i.impl_item, Some(parent)) {
             write!(w, "<span class=\"item-info\">{}</span>", portability);

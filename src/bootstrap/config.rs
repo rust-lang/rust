@@ -388,6 +388,7 @@ impl PartialEq<&str> for TargetSelection {
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
+    pub llvm_has_rust_patches: Option<bool>,
     /// Some(path to FileCheck) if one was specified.
     pub llvm_filecheck: Option<PathBuf>,
     pub llvm_libunwind: Option<LlvmLibunwind>,
@@ -733,6 +734,7 @@ define_config! {
         default_linker: Option<PathBuf> = "default-linker",
         linker: Option<String> = "linker",
         llvm_config: Option<String> = "llvm-config",
+        llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         android_ndk: Option<String> = "android-ndk",
@@ -1109,6 +1111,7 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
                 }
+                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }

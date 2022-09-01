@@ -133,6 +133,7 @@ macro_rules! early_lint_passes {
                 UnusedBraces: UnusedBraces,
                 UnusedImportBraces: UnusedImportBraces,
                 UnsafeCode: UnsafeCode,
+                SpecialModuleName: SpecialModuleName,
                 AnonymousParameters: AnonymousParameters,
                 EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
                 NonCamelCaseTypes: NonCamelCaseTypes,

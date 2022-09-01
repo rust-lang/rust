@@ -46,6 +46,7 @@ no_llvm_build
 /dist/
 /unicode-downloads
 /target
+/src/bootstrap/target
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/

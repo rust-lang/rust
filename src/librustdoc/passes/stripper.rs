@@ -91,7 +91,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::ExternCrateItem { .. } => {}
             clean::ImportItem(ref imp) => {
                 // Because json doesn't inline imports from private modules, we need to mark
-                // the imported item as retained so it's impls won't be stripped.i
+                // the imported item as retained so it's impls won't be stripped.
                 //
                 // FIXME: Is it necessary to check for json output here: See
                 // https://github.com/rust-lang/rust/pull/100325#discussion_r941495215

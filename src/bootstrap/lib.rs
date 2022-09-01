@@ -112,6 +112,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use config::Target;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -395,13 +396,18 @@ impl Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
+        #[cfg(unix)]
+        // keep this consistent with the equivalent check in x.py:
+        // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => match env::var_os("USER") {
-                Some(user) => user != sudo_user,
-                None => false,
-            },
+            Some(_sudo_user) => {
+                let uid = unsafe { libc::getuid() };
+                uid == 0
+            }
             None => false,
         };
+        #[cfg(not(unix))]
+        let is_sudo = false;
 
         let ignore_git = config.ignore_git;
         let rust_info = channel::GitInfo::new(ignore_git, &src);
@@ -834,12 +840,13 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        if self.config.llvm_from_ci && target == self.config.build {
-            return true;
-        }
-
         match self.config.target_config.get(&target) {
-            Some(ref c) => c.llvm_config.is_none(),
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            Some(Target { llvm_config, .. }) => {
+                // If the user set llvm-config we assume Rust is not patched,
+                // but first check to see if it was configured by llvm-from-ci.
+                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
+            }
             None => true,
         }
     }
