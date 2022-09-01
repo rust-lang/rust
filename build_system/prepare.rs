@@ -18,7 +18,7 @@ pub(crate) fn prepare() {
         "abi-checker",
         "Gankra",
         "abi-checker",
-        "a2232d45f202846f5c02203c9f27355360f9a2ff",
+        "4c6dc8c9c687e2b3a760ff2176ce236872b37212",
     );
     apply_patches("abi-checker", Path::new("abi-checker"));
 
