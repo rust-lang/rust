@@ -212,8 +212,8 @@ fn main() -> Result<()> {
     ui(Mode::Panic, "tests/panic", WithDependencies)?;
     ui(Mode::Fail { require_patterns: true }, "tests/fail", WithDependencies)?;
     if cfg!(target_os = "linux") {
-        ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
-        ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithDependencies)?;
+        //FIXME(miri#2526): ui(Mode::Pass, "tests/extern-so/pass", WithoutDependencies)?;
+        //FIXME(miri#2526): ui(Mode::Fail { require_patterns: true }, "tests/extern-so/fail", WithDependencies)?;
     }
 
     Ok(())

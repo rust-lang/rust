@@ -20,7 +20,7 @@ doctest = false # and no doc tests
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
 env_logger = "0.9"
-libffi = "3.0.0"
+#FIXME(miri#2526): libffi = "3.0.0"
 libloading = "0.7"
 log = "0.4"
 shell-escape = "0.1.4"

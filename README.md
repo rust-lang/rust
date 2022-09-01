@@ -346,17 +346,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   this flag is **unsound**.
 * `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
   memory effects.
-* `-Zmiri-extern-so-file=<path to a shared object file>` is an experimental flag for providing support
-  for FFI calls. Functions not provided by that file are still executed via the usual Miri shims.
-  **WARNING**: If an invalid/incorrect `.so` file is specified, this can cause undefined behaviour in Miri itself!
-  And of course, Miri cannot do any checks on the actions taken by the external code.
-  Note that Miri has its own handling of file descriptors, so if you want to replace *some* functions
-  working on file descriptors, you will have to replace *all* of them, or the two kinds of
-  file descriptors will be mixed up.
-  This is **work in progress**; currently, only integer arguments and return values are
-  supported (and no, pointer/integer casts to work around this limitation will not work;
-  they will fail horribly).
-  Follow [the discussion on supporting other types](https://github.com/rust-lang/miri/issues/2365). 
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
