@@ -16,7 +16,6 @@ use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::concurrency::sync::SynchronizationState;
-use crate::shims::time::{Clock, Instant};
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -186,6 +185,17 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 pub enum Time {
     Monotonic(Instant),
     RealTime(SystemTime),
+}
+
+impl Time {
+    /// How long do we have to wait from now until the specified time?
+    fn get_wait_time(&self, clock: &Clock) -> Duration {
+        match self {
+            Time::Monotonic(instant) => clock.duration_until(instant),
+            Time::RealTime(time) =>
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::new(0, 0)),
+        }
+    }
 }
 
 /// Callbacks are used to implement timeouts. For example, waiting on a
@@ -489,7 +499,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         for thread in self.threads.indices() {
             match self.timeout_callbacks.entry(thread) {
                 Entry::Occupied(entry) =>
-                    if clock.get_wait_time(&entry.get().call_time) == Duration::new(0, 0) {
+                    if entry.get().call_time.get_wait_time(clock) == Duration::new(0, 0) {
                         return Some((thread, entry.remove().callback));
                     },
                 Entry::Vacant(_) => {}
@@ -573,7 +583,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // at the time of the call".
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
         let potential_sleep_time =
-            self.timeout_callbacks.values().map(|info| clock.get_wait_time(&info.call_time)).min();
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time(clock)).min();
         if potential_sleep_time == Some(Duration::new(0, 0)) {
             return Ok(SchedulingAction::ExecuteTimeoutCallback);
         }

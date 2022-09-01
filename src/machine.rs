@@ -27,7 +27,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::{
     concurrency::{data_race, weak_memory},
-    shims::{time::Clock, unix::FileHandler},
+    shims::unix::FileHandler,
     *,
 };
 

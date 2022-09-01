@@ -840,7 +840,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME")? {
             Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
         } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
-            this.machine.clock.get_time_absolute(duration).unwrap()
+            Time::Monotonic(this.machine.clock.get_time_absolute(duration).unwrap())
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
         };

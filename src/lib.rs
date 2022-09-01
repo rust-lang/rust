@@ -51,6 +51,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod clock;
 mod concurrency;
 mod diagnostics;
 mod eval;
@@ -81,6 +82,7 @@ pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
+pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
     data_race::{
         AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd,
@@ -89,7 +91,7 @@ pub use crate::concurrency::{
     sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId},
     thread::{
         EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager,
-        ThreadState,
+        ThreadState, Time,
     },
 };
 pub use crate::diagnostics::{
