@@ -124,35 +124,22 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         // Attributes can't have attributes of their own [Editor's note: not with that attitude]
         self.collect_tokens_no_attrs(|this| {
-            if this.eat(&token::Pound) {
-                let style = if this.eat(&token::Not) {
-                    ast::AttrStyle::Inner
-                } else {
-                    ast::AttrStyle::Outer
-                };
+            assert!(this.eat(&token::Pound), "parse_attribute called in non-attribute position");
 
-                this.expect(&token::OpenDelim(Delimiter::Bracket))?;
-                let item = this.parse_attr_item(false)?;
-                this.expect(&token::CloseDelim(Delimiter::Bracket))?;
-                let attr_sp = lo.to(this.prev_token.span);
+            let style =
+                if this.eat(&token::Not) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
-                // Emit error if inner attribute is encountered and forbidden.
-                if style == ast::AttrStyle::Inner {
-                    this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
-                }
+            this.expect(&token::OpenDelim(Delimiter::Bracket))?;
+            let item = this.parse_attr_item(false)?;
+            this.expect(&token::CloseDelim(Delimiter::Bracket))?;
+            let attr_sp = lo.to(this.prev_token.span);
 
-                Ok(attr::mk_attr_from_item(
-                    &self.sess.attr_id_generator,
-                    item,
-                    None,
-                    style,
-                    attr_sp,
-                ))
-            } else {
-                let token_str = pprust::token_to_string(&this.token);
-                let msg = &format!("expected `#`, found `{token_str}`");
-                Err(this.struct_span_err(this.token.span, msg))
+            // Emit error if inner attribute is encountered and forbidden.
+            if style == ast::AttrStyle::Inner {
+                this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
             }
+
+            Ok(attr::mk_attr_from_item(&self.sess.attr_id_generator, item, None, style, attr_sp))
         })
     }
 
