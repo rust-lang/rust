@@ -305,15 +305,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     };
                     err.subdiagnostic(sub_label);
                 } else {
-                    err.span_label(
+                    //FIXME: src/test/ui/consts/const-eval/const-eval-intrinsic-promotion.rs
+                    let sub_label = MustValidFor::Lasts {
+                        category: category.description(),
+                        borrow_desc,
+                        region_name,
                         span,
-                        format!(
-                            "{}requires that {}borrow lasts for `{}`",
-                            category.description(),
-                            borrow_desc,
-                            region_name,
-                        ),
-                    );
+                    };
+                    err.subdiagnostic(sub_label);
                 };
 
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
