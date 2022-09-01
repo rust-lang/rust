@@ -6,6 +6,7 @@ use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::iter;
 use crate::marker::PhantomData;
+#[cfg(bootstrap)]
 use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
@@ -254,6 +255,7 @@ impl<'a> Formatter<'a> {
 // NB. Argument is essentially an optimized partially applied formatting function,
 // equivalent to `exists T.(&T, fn(&T, &mut Formatter<'_>) -> Result`.
 
+#[cfg(bootstrap)]
 extern "C" {
     type Opaque;
 }
@@ -266,6 +268,7 @@ extern "C" {
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
+#[cfg(bootstrap)]
 pub struct ArgumentV1<'a> {
     value: &'a Opaque,
     formatter: fn(&Opaque, &mut Formatter<'_>) -> Result,
@@ -277,10 +280,12 @@ pub struct ArgumentV1<'a> {
 #[allow(missing_debug_implementations)]
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+#[cfg(bootstrap)]
 pub struct UnsafeArg {
     _private: (),
 }
 
+#[cfg(bootstrap)]
 impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
@@ -307,6 +312,7 @@ impl UnsafeArg {
 // first argument. The read_volatile here ensures that we can safely ready out a
 // usize from the passed reference and that this address does not point at a
 // non-usize taking function.
+#[cfg(bootstrap)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     // SAFETY: ptr is a reference
@@ -314,6 +320,7 @@ static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     loop {}
 };
 
+#[cfg(bootstrap)]
 macro_rules! arg_new {
     ($f: ident, $t: ident) => {
         #[doc(hidden)]
@@ -325,6 +332,7 @@ macro_rules! arg_new {
     };
 }
 
+#[cfg(bootstrap)]
 #[rustc_diagnostic_item = "ArgumentV1Methods"]
 impl<'a> ArgumentV1<'a> {
     #[doc(hidden)]
@@ -391,6 +399,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    #[cfg(bootstrap)]
     pub const fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
             panic!("invalid args");
@@ -411,6 +420,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    #[cfg(bootstrap)]
     pub const fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
@@ -420,6 +430,26 @@ impl<'a> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
     }
 
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub const fn new(
+        // TODO
+    ) -> Arguments<'a> {
+        unimplemented!() // TODO
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub const fn from_static_str(s: &'static str) -> Arguments<'a> {
+        unimplemented!() // TODO
+    }
+
     /// Estimates the length of the formatted text.
     ///
     /// This is intended to be used for setting initial `String` capacity
@@ -427,6 +457,16 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn estimated_capacity(&self) -> usize {
+        unimplemented!() // TODO
+    }
+
+    /// Old estimated_capacity().
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn estimated_capacity(&self) -> usize {
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
@@ -471,6 +511,16 @@ impl<'a> Arguments<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arguments")]
 #[derive(Copy, Clone)]
+#[cfg(not(bootstrap))]
+pub struct Arguments<'a> {
+    // TODO
+}
+
+/// Old fmt::Arguments.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Arguments")]
+#[derive(Copy, Clone)]
+#[cfg(bootstrap)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
     pieces: &'a [&'static str],
@@ -513,6 +563,17 @@ impl<'a> Arguments<'a> {
     #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
     #[must_use]
     #[inline]
+    #[cfg(not(bootstrap))]
+    pub const fn as_str(&self) -> Option<&'static str> {
+        unimplemented!() // TODO
+    }
+
+    /// Old as_str().
+    #[stable(feature = "fmt_as_str", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
+    #[must_use]
+    #[inline]
+    #[cfg(bootstrap)]
     pub const fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {
             ([], []) => Some(""),
@@ -1192,6 +1253,14 @@ pub trait UpperExp {
 ///
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    unimplemented!() // TODO
+}
+
+/// Old write().
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter::new(output);
     let mut idx = 0;
@@ -1236,6 +1305,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
+#[cfg(bootstrap)]
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
@@ -1257,6 +1327,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     (value.formatter)(value.value, fmt)
 }
 
+#[cfg(bootstrap)]
 unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
     match *cnt {
         rt::v1::Count::Is(n) => Some(n),
