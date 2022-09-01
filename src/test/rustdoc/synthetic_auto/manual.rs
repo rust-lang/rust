@@ -1,6 +1,6 @@
 // @has manual/struct.Foo.html
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
-// 'impl<T> Sync for Foo<T> where T: Sync'
+// 'impl<T> Sync for Foo<T>where T: Sync'
 //
 // @has - '//*[@id="trait-implementations-list"]//*[@class="impl has-srclink"]//h3[@class="code-header in-band"]' \
 // 'impl<T> Send for Foo<T>'
