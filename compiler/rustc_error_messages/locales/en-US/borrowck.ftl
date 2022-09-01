@@ -58,3 +58,6 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_require_mutable_binding =
+    calling `{$place}` requires mutable binding due to {$reason}

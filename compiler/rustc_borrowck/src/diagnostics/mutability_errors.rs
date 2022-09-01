@@ -1,3 +1,6 @@
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{
     Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
 };
@@ -19,6 +22,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::diagnostics::BorrowedContentSource;
+use crate::session_diagnostics::ShowMutatingUpvar;
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
 
@@ -864,14 +868,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } else {
                 bug!("not an upvar")
             };
-            err.span_label(
-                *span,
-                format!(
-                    "calling `{}` requires mutable binding due to {}",
-                    self.describe_place(the_place_err).unwrap(),
-                    reason
-                ),
-            );
+            let place = self.describe_place(the_place_err).unwrap();
+            let sub_label = ShowMutatingUpvar::RequireMutableBinding { place, reason, span: *span };
+            err.subdiagnostic(sub_label);
         }
     }
 

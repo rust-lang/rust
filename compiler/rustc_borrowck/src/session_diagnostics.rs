@@ -157,3 +157,14 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+//mutability_errors.rs
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum ShowMutatingUpvar {
+    #[label(borrowck::require_mutable_binding)]
+    RequireMutableBinding {
+        place: String,
+        reason: String,
+        #[primary_span]
+        span: Span,
+    },
+}
