@@ -354,6 +354,12 @@ lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .suggestion = consider restricting its visibility
     .help = or consider exporting it for use by other crates
 
+lint_builtin_unexpected_cli_config_name = unexpected `{$name}` as condition name
+    .help = was set with `--cfg` but isn't in the `--check-cfg` expected names
+
+lint_builtin_unexpected_cli_config_value = unexpected condition value `{$value}` for condition name `{$name}`
+    .help = was set with `--cfg` but isn't in the `--check-cfg` expected values
+
 lint_builtin_type_alias_bounds_help = use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to associated types in type aliases
 
 lint_builtin_type_alias_where_clause = where clauses are not enforced in type aliases
