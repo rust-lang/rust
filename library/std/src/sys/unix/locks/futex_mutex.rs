@@ -53,7 +53,7 @@ impl Mutex {
             // We avoid an unnecessary write if it as already set to 2,
             // to be friendlier for the caches.
             if state != 2 && self.futex.swap(2, Acquire) == 0 {
-                // We changed it from 0 to 2, so we just succesfully locked it.
+                // We changed it from 0 to 2, so we just successfully locked it.
                 return;
             }
 

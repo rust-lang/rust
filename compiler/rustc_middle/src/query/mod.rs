@@ -1151,7 +1151,7 @@ rustc_queries! {
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
         storage(ArenaCacheSelector<'tcx>)
-        desc { |tcx| "rendering constant intializer of `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "rendering constant initializer of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }

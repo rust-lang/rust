@@ -332,7 +332,7 @@ pub enum StatementKind<'tcx> {
     /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
     /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
     /// `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning with the first byte of
-    /// the `src` place are copied to the continguous range of bytes beginning with the first byte
+    /// the `src` place are copied to the contiguous range of bytes beginning with the first byte
     /// of `dest`.
     ///
     /// **Needs clarification**: In what order are operands computed and dereferenced? It should
@@ -378,7 +378,7 @@ pub enum FakeReadCause {
     /// Some(closure_def_id).
     /// Otherwise, the value of the optional LocalDefId will be None.
     //
-    // We can use LocaDefId here since fake read statements are removed
+    // We can use LocalDefId here since fake read statements are removed
     // before codegen in the `CleanupNonCodegenStatements` pass.
     ForMatchedPlace(Option<LocalDefId>),
 

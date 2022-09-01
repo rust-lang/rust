@@ -32,7 +32,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(vtable_ptr.into())
     }
 
-    /// Returns a high-level representation of the entires of the given vtable.
+    /// Returns a high-level representation of the entries of the given vtable.
     pub fn get_vtable_entries(
         &self,
         vtable: Pointer<Option<M::Provenance>>,

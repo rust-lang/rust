@@ -1179,7 +1179,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::Ty<'hir> {
         // Check whether we should interpret this as a bare trait object.
         // This check mirrors the one in late resolution.  We only introduce this special case in
-        // the rare occurence we need to lower `Fresh` anonymous lifetimes.
+        // the rare occurrence we need to lower `Fresh` anonymous lifetimes.
         // The other cases when a qpath should be opportunistically made a trait object are handled
         // by `ty_path`.
         if qself.is_none()

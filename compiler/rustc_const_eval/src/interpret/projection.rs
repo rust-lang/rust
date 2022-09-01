@@ -1,6 +1,6 @@
 //! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
 //!
-//! OpTy and PlaceTy genrally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
+//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
 //! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
 //! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
 //! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,

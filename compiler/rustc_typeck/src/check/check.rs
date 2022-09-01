@@ -101,7 +101,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             decl.output.span(),
             param_env,
         ));
-    // If we replaced declared_ret_ty with infer vars, then we must be infering
+    // If we replaced declared_ret_ty with infer vars, then we must be inferring
     // an opaque type, so set a flag so we can improve diagnostics.
     fcx.return_type_has_opaque = ret_ty != declared_ret_ty;
 
@@ -1543,7 +1543,7 @@ fn detect_discriminant_duplicate<'tcx>(
             None => {
                 // At this point we know this discriminant is a duplicate, and was not explicitly
                 // assigned by the user. Here we iterate backwards to fetch the HIR for the last
-                // explictly assigned discriminant, and letting the user know that this was the
+                // explicitly assigned discriminant, and letting the user know that this was the
                 // increment startpoint, and how many steps from there leading to the duplicate
                 if let Some((n, hir::Variant { span, ident, .. })) =
                     vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
@@ -1566,7 +1566,7 @@ fn detect_discriminant_duplicate<'tcx>(
     };
 
     // Here we loop through the discriminants, comparing each discriminant to another.
-    // When a duplicate is detected, we instatiate an error and point to both
+    // When a duplicate is detected, we instantiate an error and point to both
     // initial and duplicate value. The duplicate discriminant is then discarded by swapping
     // it with the last element and decrementing the `vec.len` (which is why we have to evaluate
     // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional

@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     ///
     /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferrably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
     /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,

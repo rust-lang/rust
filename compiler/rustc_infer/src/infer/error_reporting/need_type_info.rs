@@ -199,7 +199,7 @@ fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
 }
 
 /// We don't want to directly use `ty_to_string` for closures as their type isn't really
-/// something users are familar with. Directly printing the `fn_sig` of closures also
+/// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
 fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
     let ty::Closure(_, substs) = ty.kind() else { unreachable!() };

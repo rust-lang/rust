@@ -1,5 +1,5 @@
 // Regression test for hashing involving canonical variables.  In this
-// test -- which has an intensional error -- the type of the value
+// test -- which has an intentional error -- the type of the value
 // being dropped winds up including a type variable. Canonicalization
 // would then produce a `?0` which -- in turn -- triggered an ICE in
 // hashing.

@@ -59,7 +59,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                         ErrorHandled::TooGeneric => {
                             span_bug!(
                                 constant.span,
-                                "codgen encountered polymorphic constant: {:?}",
+                                "codegen encountered polymorphic constant: {:?}",
                                 err
                             );
                         }

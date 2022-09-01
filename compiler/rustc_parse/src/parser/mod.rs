@@ -281,7 +281,7 @@ impl TokenCursor {
                         if delim != Delimiter::Invisible {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
-                        // No open delimeter to return; continue on to the next iteration.
+                        // No open delimiter to return; continue on to the next iteration.
                     }
                 };
             } else if let Some(frame) = self.stack.pop() {

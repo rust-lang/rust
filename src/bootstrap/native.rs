@@ -638,7 +638,7 @@ fn configure_cmake(
 
         if target.contains("darwin") {
             // Make sure that CMake does not build universal binaries on macOS.
-            // Explicitly specifiy the one single target architecture.
+            // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
                 // macOS uses a different name for building arm64
                 cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");

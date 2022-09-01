@@ -2321,7 +2321,7 @@ impl<T> [T] {
     }
 
     /// Binary searches this slice for a given element.
-    /// This behaves similary to [`contains`] if this slice is sorted.
+    /// This behaves similarly to [`contains`] if this slice is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -3530,7 +3530,7 @@ impl<T> [T] {
         // alignment targeted for U.
         // `crate::ptr::align_offset` is called with a correctly aligned and
         // valid pointer `ptr` (it comes from a reference to `self`) and with
-        // a size that is a power of two (since it comes from the alignement for U),
+        // a size that is a power of two (since it comes from the alignment for U),
         // satisfying its safety constraints.
         let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {

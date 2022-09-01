@@ -3206,7 +3206,7 @@ declare_lint! {
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
     Warn,
-    "tranparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
+    "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
     };

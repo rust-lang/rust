@@ -90,7 +90,7 @@
 //! isn't *pointer*-sized but address-space/offset/allocation-sized (we'll probably continue
 //! to conflate these notions). This would potentially make it possible to more efficiently
 //! target platforms where pointers are larger than offsets, such as CHERI and maybe some
-//! segmented architecures.
+//! segmented architectures.
 //!
 //! ## Provenance
 //!
@@ -172,7 +172,7 @@
 //! a pointer to a usize is generally an operation which *only* extracts the address. It is
 //! therefore *impossible* to construct a valid pointer from a usize because there is no way
 //! to restore the address-space and provenance. In other words, pointer-integer-pointer
-//! roundtrips are not possible (in the sense that the resulting pointer is not dereferencable).
+//! roundtrips are not possible (in the sense that the resulting pointer is not dereferenceable).
 //!
 //! The key insight to making this model *at all* viable is the [`with_addr`][] method:
 //!
@@ -272,7 +272,7 @@
 //!
 //! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
 //!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
-//!   never be dereferencable. In general, it is always sound for an integer to pretend
+//!   never be dereferenceable. In general, it is always sound for an integer to pretend
 //!   to be a pointer "for fun" as long as you don't use operations on it which require
 //!   it to be valid (offset, read, write, etc).
 //!

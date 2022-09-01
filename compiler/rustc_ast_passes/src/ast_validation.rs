@@ -1800,7 +1800,7 @@ pub(crate) enum ForbiddenLetReason {
     NotSupportedOr(Span),
     /// A let chain with invalid parentheses
     ///
-    /// For exemple, `let 1 = 1 && (expr && expr)` is allowed
+    /// For example, `let 1 = 1 && (expr && expr)` is allowed
     /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
     NotSupportedParentheses(Span),
 }

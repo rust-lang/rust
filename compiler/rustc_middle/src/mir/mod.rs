@@ -1457,7 +1457,7 @@ pub struct PlaceRef<'tcx> {
 // Once we stop implementing `Ord` for `DefId`,
 // this impl will be unnecessary. Until then, we'll
 // leave this impl in place to prevent re-adding a
-// dependnecy on the `Ord` impl for `DefId`
+// dependency on the `Ord` impl for `DefId`
 impl<'tcx> !PartialOrd for PlaceRef<'tcx> {}
 
 impl<'tcx> Place<'tcx> {

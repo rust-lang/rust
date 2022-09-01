@@ -60,7 +60,7 @@ endif
 # for now, but it is effectively ignored for all tests that don't include this file anyway.
 #
 # (Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files (if generated)
-# may order results from multiple files inconsistently, which might also have to be accomodated
+# may order results from multiple files inconsistently, which might also have to be accommodated
 # if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
 # appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
@@ -157,7 +157,7 @@ else
 	# `// ignore-llvm-cov-show-diffs` anymore. This directive exists to work around a limitation
 	# with `llvm-cov show`. When reporting coverage for multiple instantiations of a generic function,
 	# with different type substitutions, `llvm-cov show` prints these in a non-deterministic order,
-	# breaking the `diff` comparision.
+	# breaking the `diff` comparison.
 	#
 	# A partial workaround is implemented below, with `diff --ignore-matching-lines=RE`
 	# to ignore each line prefixing each generic instantiation coverage code region.

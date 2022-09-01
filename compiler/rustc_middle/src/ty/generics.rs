@@ -266,7 +266,7 @@ impl<'tcx> Generics {
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
-        // of semantic equivalance. While not ideal, that's
+        // of semantic equivalence. While not ideal, that's
         // good enough for now as this should only be used
         // for diagnostics anyways.
         own_params.end -= self

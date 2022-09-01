@@ -85,7 +85,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-#"
         else:
             option = "-s"
-        # If curl is not present on Win32, we shoud not sys.exit
+        # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32)
         run(["curl", option,

@@ -1082,7 +1082,7 @@ extern "rust-intrinsic" {
     /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
     /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
     /// as expected -- this is touching on many unspecified aspects of the Rust memory model.
-    /// Depending on what the code is doing, the following alternatives are preferrable to
+    /// Depending on what the code is doing, the following alternatives are preferable to
     /// pointer-to-integer transmutation:
     /// - If the code just wants to store data of arbitrary type in some buffer and needs to pick a
     ///   type for that buffer, it can use [`MaybeUninit`][mem::MaybeUninit].

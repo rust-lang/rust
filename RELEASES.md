@@ -1442,7 +1442,7 @@ Compatibility Notes
 - [Mixing Option and Result via `?` is no longer permitted in closures for inferred types.][86831]
 - [Previously unsound code is no longer permitted where different constructors in branches
   could require different lifetimes.][85574]
-- As previously mentioned the [`std::arch` instrinsics now uses stricter const checking][83278]
+- As previously mentioned the [`std::arch` intrinsics now uses stricter const checking][83278]
   than before and may reject some previously accepted code.
 - [`i128` multiplication on Cortex M0+ platforms currently unconditionally causes overflow
    when compiled with `codegen-units = 1`.][86063]
@@ -2520,7 +2520,7 @@ Compatibility Notes
 - [Fixed a regression parsing `{} && false` in tail expressions.][74650]
 - [Added changes to how proc-macros are expanded in `macro_rules!` that should
   help to preserve more span information.][73084] These changes may cause
-  compiliation errors if your macro was unhygenic or didn't correctly handle
+  compilation errors if your macro was unhygenic or didn't correctly handle
   `Delimiter::None`.
 - [Moved support for the CloudABI target to tier 3.][75568]
 - [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]

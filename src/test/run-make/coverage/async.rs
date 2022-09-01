@@ -52,7 +52,7 @@ fn j(x: u8) {
         if x == 8 {
             1 // This line appears covered, but the 1-character expression span covering the `1`
               // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
-              // `fn j()` executes the open brace for the funciton body, followed by the function's
+              // `fn j()` executes the open brace for the function body, followed by the function's
               // first executable statement, `match x`. Inner function declarations are not
               // "visible" to the MIR for `j()`, so the code region counts all lines between the
               // open brace and the first statement as executed, which is, in a sense, true.

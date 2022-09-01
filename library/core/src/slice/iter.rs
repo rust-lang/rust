@@ -2754,10 +2754,10 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
                 None => 0,
             };
             // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantess the split point is inbounds.
+            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
             let (head, tail) = unsafe { self.v.split_at_mut(start) };
             // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
-            // Therefore the bounds check in split_at_mut guarantess the split point is inbounds.
+            // Therefore the bounds check in split_at_mut guarantees the split point is inbounds.
             let (nth, _) = unsafe { tail.split_at_mut(end - start) };
             self.v = head;
             // SAFETY: Nothing else points to or will point to the contents of this slice.

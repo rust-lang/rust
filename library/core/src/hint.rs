@@ -31,7 +31,7 @@ use crate::intrinsics;
 ///
 /// `unreachable_unchecked()` can be used in situations where the compiler
 /// can't prove invariants that were previously established. Such situations
-/// have a higher chance of occuring if those invariants are upheld by
+/// have a higher chance of occurring if those invariants are upheld by
 /// external code that the compiler can't analyze.
 /// ```
 /// fn prepare_inputs(divisors: &mut Vec<u32>) {
