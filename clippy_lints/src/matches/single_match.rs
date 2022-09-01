@@ -201,12 +201,8 @@ fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>,
             // in the arms, so we need to evaluate the correct offsets here in order to iterate in
             // both arms at the same time.
             let len = max(
-                left_in.len() + {
-                    if left_pos.is_some() { 1 } else { 0 }
-                },
-                right_in.len() + {
-                    if right_pos.is_some() { 1 } else { 0 }
-                },
+                left_in.len() + usize::from(left_pos.is_some()),
+                right_in.len() + usize::from(right_pos.is_some()),
             );
             let mut left_pos = left_pos.unwrap_or(usize::MAX);
             let mut right_pos = right_pos.unwrap_or(usize::MAX);

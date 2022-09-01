@@ -6,6 +6,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
+    LintId::of(bool_to_int_with_if::BOOL_TO_INT_WITH_IF),
     LintId::of(casts::FN_TO_NUMERIC_CAST),
     LintId::of(casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION),
     LintId::of(collapsible_if::COLLAPSIBLE_ELSE_IF),

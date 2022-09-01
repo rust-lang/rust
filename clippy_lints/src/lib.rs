@@ -178,6 +178,7 @@ mod attrs;
 mod await_holding_invalid;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
+mod bool_to_int_with_if;
 mod booleans;
 mod borrow_deref_ref;
 mod cargo;
@@ -900,6 +901,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(manual_string_new::ManualStringNew));
     store.register_late_pass(|| Box::new(unused_peekable::UnusedPeekable));
     store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
+    store.register_late_pass(|| Box::new(bool_to_int_with_if::BoolToIntWithIf));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
