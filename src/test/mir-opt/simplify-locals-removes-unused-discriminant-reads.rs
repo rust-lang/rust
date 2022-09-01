@@ -1,4 +1,4 @@
-// compile-flags: -Zunsound-mir-opts
+// unit-test: SimplifyLocals
 
 fn map(x: Option<Box<()>>) -> Option<Box<()>> {
     match x {
