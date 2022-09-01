@@ -1,10 +1,32 @@
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
+use std::borrow::Cow;
+
+struct ExitCode {
+    pub exit_code: Option<i32>,
+}
+
+impl IntoDiagnosticArg for ExitCode {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self.exit_code {
+            Some(t) => t.into_diagnostic_arg(),
+            None => DiagnosticArgValue::Str(Cow::Borrowed("None")),
+        }
+    }
+}
 
 #[derive(SessionDiagnostic)]
 #[diag(codegen_gcc::ranlib_failure)]
 pub(crate) struct RanlibFailure {
-    pub exit_code: String,
+    exit_code: ExitCode,
+}
+
+impl RanlibFailure {
+    pub fn new(exit_code: Option<i32>) -> Self {
+        let exit_code = ExitCode{ exit_code };
+        RanlibFailure { exit_code }
+    }
 }
 
 #[derive(SessionDiagnostic)]
