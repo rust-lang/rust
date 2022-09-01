@@ -36,4 +36,107 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn try_blocks_are_borders() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: loop {
+        try {
+                break;
+              //^^^^^ error: break outside of loop
+                break 'a;
+              //^^^^^^^^ error: break outside of loop
+                continue;
+              //^^^^^^^^ error: continue outside of loop
+                continue 'a;
+              //^^^^^^^^^^^ error: continue outside of loop
+        };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn async_blocks_are_borders() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: loop {
+        try {
+                break;
+              //^^^^^ error: break outside of loop
+                break 'a;
+              //^^^^^^^^ error: break outside of loop
+                continue;
+              //^^^^^^^^ error: continue outside of loop
+                continue 'a;
+              //^^^^^^^^^^^ error: continue outside of loop
+        };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn closures_are_borders() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: loop {
+        try {
+                break;
+              //^^^^^ error: break outside of loop
+                break 'a;
+              //^^^^^^^^ error: break outside of loop
+                continue;
+              //^^^^^^^^ error: continue outside of loop
+                continue 'a;
+              //^^^^^^^^^^^ error: continue outside of loop
+        };
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn blocks_pass_through() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: loop {
+        {
+            break;
+            break 'a;
+            continue;
+            continue 'a;
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn label_blocks() {
+        check_diagnostics(
+            r#"
+fn foo() {
+    'a: {
+        break;
+      //^^^^^ error: break outside of loop
+        break 'a;
+        continue;
+      //^^^^^^^^ error: continue outside of loop
+        continue 'a;
+      //^^^^^^^^^^^ error: continue outside of loop
+    }
+}
+"#,
+        );
+    }
 }

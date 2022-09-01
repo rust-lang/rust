@@ -424,15 +424,39 @@ struct BreakableContext {
     coerce: CoerceMany,
     /// The optional label of the context.
     label: Option<name::Name>,
+    kind: BreakableKind,
+}
+
+#[derive(Clone, Debug)]
+enum BreakableKind {
+    Block,
+    Loop,
+    /// A border is something like an async block, closure etc. Anything that prevents
+    /// breaking/continuing through
+    Border,
 }
 
 fn find_breakable<'c>(
     ctxs: &'c mut [BreakableContext],
     label: Option<&name::Name>,
 ) -> Option<&'c mut BreakableContext> {
+    let mut ctxs = ctxs
+        .iter_mut()
+        .rev()
+        .take_while(|it| matches!(it.kind, BreakableKind::Block | BreakableKind::Loop));
     match label {
-        Some(_) => ctxs.iter_mut().rev().find(|ctx| ctx.label.as_ref() == label),
-        None => ctxs.last_mut(),
+        Some(_) => ctxs.find(|ctx| ctx.label.as_ref() == label),
+        None => ctxs.find(|ctx| matches!(ctx.kind, BreakableKind::Loop)),
+    }
+}
+
+fn find_continuable<'c>(
+    ctxs: &'c mut [BreakableContext],
+    label: Option<&name::Name>,
+) -> Option<&'c mut BreakableContext> {
+    match label {
+        Some(_) => find_breakable(ctxs, label).filter(|it| matches!(it.kind, BreakableKind::Loop)),
+        None => find_breakable(ctxs, label),
     }
 }
 

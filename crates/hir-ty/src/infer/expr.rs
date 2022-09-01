@@ -23,7 +23,7 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef::{self, Autoderef},
     consteval,
-    infer::coerce::CoerceMany,
+    infer::{coerce::CoerceMany, find_continuable, BreakableKind},
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
@@ -120,15 +120,19 @@ impl<'a> InferenceContext<'a> {
                 let ty = match label {
                     Some(_) => {
                         let break_ty = self.table.new_type_var();
-                        let (breaks, ty) =
-                            self.with_breakable_ctx(break_ty.clone(), *label, |this| {
+                        let (breaks, ty) = self.with_breakable_ctx(
+                            BreakableKind::Block,
+                            break_ty.clone(),
+                            *label,
+                            |this| {
                                 this.infer_block(
                                     tgt_expr,
                                     statements,
                                     *tail,
                                     &Expectation::has_type(break_ty),
                                 )
-                            });
+                            },
+                        );
                         breaks.unwrap_or(ty)
                     }
                     None => self.infer_block(tgt_expr, statements, *tail, expected),
@@ -136,9 +140,17 @@ impl<'a> InferenceContext<'a> {
                 self.resolver = old_resolver;
                 ty
             }
-            Expr::Unsafe { body } | Expr::Const { body } => self.infer_expr(*body, expected),
+            Expr::Unsafe { body } => self.infer_expr(*body, expected),
+            Expr::Const { body } => {
+                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                    this.infer_expr(*body, expected)
+                })
+                .1
+            }
             Expr::TryBlock { body } => {
-                let _inner = self.infer_expr(*body, expected);
+                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                    let _inner = this.infer_expr(*body, expected);
+                });
                 // FIXME should be std::result::Result<{inner}, _>
                 self.err_ty()
             }
@@ -147,7 +159,10 @@ impl<'a> InferenceContext<'a> {
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
 
-                let inner_ty = self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+                let (_, inner_ty) =
+                    self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                        this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty))
+                    });
 
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
@@ -161,9 +176,10 @@ impl<'a> InferenceContext<'a> {
             }
             &Expr::Loop { body, label } => {
                 let ty = self.table.new_type_var();
-                let (breaks, ()) = self.with_breakable_ctx(ty, label, |this| {
-                    this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
-                });
+                let (breaks, ()) =
+                    self.with_breakable_ctx(BreakableKind::Loop, ty, label, |this| {
+                        this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
+                    });
 
                 match breaks {
                     Some(breaks) => {
@@ -174,7 +190,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             &Expr::While { condition, body, label } => {
-                self.with_breakable_ctx(self.err_ty(), label, |this| {
+                self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
                     this.infer_expr(
                         condition,
                         &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
@@ -192,7 +208,7 @@ impl<'a> InferenceContext<'a> {
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
 
                 self.infer_pat(pat, &pat_ty, BindingMode::default());
-                self.with_breakable_ctx(self.err_ty(), label, |this| {
+                self.with_breakable_ctx(BreakableKind::Loop, self.err_ty(), label, |this| {
                     this.infer_expr(body, &Expectation::has_type(TyBuilder::unit()));
                 });
 
@@ -251,7 +267,9 @@ impl<'a> InferenceContext<'a> {
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
 
-                self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                    this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+                });
 
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
@@ -355,7 +373,7 @@ impl<'a> InferenceContext<'a> {
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or_else(|| self.err_ty())
             }
             Expr::Continue { label } => {
-                if let None = find_breakable(&mut self.breakables, label.as_ref()) {
+                if let None = find_continuable(&mut self.breakables, label.as_ref()) {
                     self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
                         expr: tgt_expr,
                         is_break: false,
@@ -1466,13 +1484,14 @@ impl<'a> InferenceContext<'a> {
 
     fn with_breakable_ctx<T>(
         &mut self,
+        kind: BreakableKind,
         ty: Ty,
         label: Option<LabelId>,
         cb: impl FnOnce(&mut Self) -> T,
     ) -> (Option<Ty>, T) {
         self.breakables.push({
             let label = label.map(|label| self.body[label].name.clone());
-            BreakableContext { may_break: false, coerce: CoerceMany::new(ty), label }
+            BreakableContext { kind, may_break: false, coerce: CoerceMany::new(ty), label }
         });
         let res = cb(self);
         let ctx = self.breakables.pop().expect("breakable stack broken");
