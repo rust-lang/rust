@@ -46,7 +46,7 @@ pub(crate) struct LinkageConstOrMutType {
 
 #[derive(SessionDiagnostic)]
 #[diag(codegen_gcc::lto_not_supported)]
-pub(crate) struct LTONotSupported {}
+pub(crate) struct LTONotSupported;
 
 #[derive(SessionDiagnostic)]
 #[diag(codegen_gcc::unwinding_inline_asm)]
