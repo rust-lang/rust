@@ -157,3 +157,52 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+//explain_borrow.rs
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum BorrowUsedHere {
+    #[label(borrowck::used_here_by_closure)]
+    ByClosure {
+        #[primary_span]
+        path_span: Span,
+    },
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum BorrowUsedLater<'a> {
+    #[label(borrowck::borrow_later_captured_by_trait_object)]
+    TraitCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(borrowck::borrow_later_captured_by_closure)]
+    ClosureCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(borrowck::borrow_later_used_by_call)]
+    Call {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(borrowck::borrow_later_stored_here)]
+    FakeLetRead {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(borrowck::borrow_later_used_here)]
+    Other {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+}

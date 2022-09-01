@@ -16,6 +16,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 
 use crate::region_infer::BlameConstraint;
+use crate::session_diagnostics::{BorrowUsedHere, BorrowUsedLater};
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
@@ -67,20 +68,28 @@ impl<'tcx> BorrowExplanation<'tcx> {
     ) {
         match *self {
             BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
-                let message = match later_use_kind {
-                    LaterUseKind::TraitCapture => "captured here by trait object",
-                    LaterUseKind::ClosureCapture => "captured here by closure",
-                    LaterUseKind::Call => "used by call",
-                    LaterUseKind::FakeLetRead => "stored here",
-                    LaterUseKind::Other => "used here",
-                };
                 // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
                 if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
                     if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
-                        err.span_label(
-                            var_or_use_span,
-                            format!("{}borrow later {}", borrow_desc, message),
-                        );
+                        let sub_err = match later_use_kind {
+                            LaterUseKind::TraitCapture => {
+                                BorrowUsedLater::TraitCapture { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::ClosureCapture => BorrowUsedLater::ClosureCapture {
+                                borrow_desc,
+                                span: var_or_use_span,
+                            },
+                            LaterUseKind::Call => {
+                                BorrowUsedLater::Call { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::FakeLetRead => {
+                                BorrowUsedLater::FakeLetRead { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::Other => {
+                                BorrowUsedLater::Other { borrow_desc, span: var_or_use_span }
+                            }
+                        };
+                        err.subdiagnostic(sub_err);
                     }
                 } else {
                     // path_span must be `Some` as otherwise the if condition is true
@@ -88,13 +97,27 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span is only present in the case of closure capture
                     assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
                     if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
-                        let path_label = "used here by closure";
-                        let capture_kind_label = message;
-                        err.span_label(
-                            var_or_use_span,
-                            format!("{}borrow later {}", borrow_desc, capture_kind_label),
-                        );
-                        err.span_label(path_span, path_label);
+                        let sub_err = match later_use_kind {
+                            LaterUseKind::TraitCapture => {
+                                BorrowUsedLater::TraitCapture { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::ClosureCapture => BorrowUsedLater::ClosureCapture {
+                                borrow_desc,
+                                span: var_or_use_span,
+                            },
+                            LaterUseKind::Call => {
+                                BorrowUsedLater::Call { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::FakeLetRead => {
+                                BorrowUsedLater::FakeLetRead { borrow_desc, span: var_or_use_span }
+                            }
+                            LaterUseKind::Other => {
+                                BorrowUsedLater::Other { borrow_desc, span: var_or_use_span }
+                            }
+                        };
+                        err.subdiagnostic(sub_err);
+                        let sub_label = BorrowUsedHere::ByClosure { path_span };
+                        err.subdiagnostic(sub_label);
                     }
                 }
             }
