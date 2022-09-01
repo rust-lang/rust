@@ -1,21 +1,15 @@
 use std::time::{Duration, Instant};
 
-fn duration_sanity(diff: Duration) {
-    // The virtual clock is deterministic and I got 29us on a 64-bit Linux machine. However, this
-    // changes according to the platform so we use an interval to be safe. This should be updated
-    // if `NANOSECONDS_PER_BASIC_BLOCK` changes.
-    assert!(diff.as_micros() > 10);
-    assert!(diff.as_micros() < 40);
-}
-
 fn test_sleep() {
+    // We sleep a *long* time here -- but the clock is virtual so the test should still pass quickly.
     let before = Instant::now();
-    std::thread::sleep(Duration::from_millis(100));
+    std::thread::sleep(Duration::from_secs(3600));
     let after = Instant::now();
-    assert!((after - before).as_millis() >= 100);
+    assert!((after - before).as_secs() >= 3600);
 }
 
-fn main() {
+/// Ensure that time passes even if we don't sleep (but just wor).
+fn test_time_passes() {
     // Check `Instant`.
     let now1 = Instant::now();
     // Do some work to make time pass.
@@ -28,7 +22,14 @@ fn main() {
     let diff = now2.duration_since(now1);
     assert_eq!(now1 + diff, now2);
     assert_eq!(now2 - diff, now1);
-    duration_sanity(diff);
+    // The virtual clock is deterministic and I got 29us on a 64-bit Linux machine. However, this
+    // changes according to the platform so we use an interval to be safe. This should be updated
+    // if `NANOSECONDS_PER_BASIC_BLOCK` changes.
+    assert!(diff.as_micros() > 10);
+    assert!(diff.as_micros() < 40);
+}
 
+fn main() {
+    test_time_passes();
     test_sleep();
 }
