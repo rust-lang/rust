@@ -902,7 +902,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             hir::ExprKind::MethodCall(.., args, _) => {
                 // only the first closre parameter of the method. args[0] is MethodCall PathSegment
                 for i in 1..args.len() {
-                    if let hir::ExprKind::Closure(..) = args[i].kind {
+                    if let hir::ExprKind::Closure(hir::Closure {
+                        capture_clause: hir::CaptureBy::Ref,
+                        ..
+                    }) = args[i].kind
+                    {
                         closure_span = Some(args[i].span.shrink_to_lo());
                         break;
                     }
@@ -911,7 +915,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             hir::ExprKind::Block(blk, _) => {
                 if let Some(ref expr) = blk.expr {
                     // only when the block is a closure
-                    if let hir::ExprKind::Closure(..) = expr.kind {
+                    if let hir::ExprKind::Closure(hir::Closure {
+                        capture_clause: hir::CaptureBy::Ref,
+                        ..
+                    }) = expr.kind
+                    {
                         closure_span = Some(expr.span.shrink_to_lo());
                     }
                 }
@@ -921,7 +929,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                format!("consider adding 'move' keyword before the nested closure"),
+                "consider adding 'move' keyword before the nested closure",
                 "move ",
                 Applicability::MaybeIncorrect,
             );
