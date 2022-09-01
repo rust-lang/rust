@@ -42,8 +42,10 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast::{ClosureBinder, StmtKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::IntoDiagnostic;
-use rustc_errors::{Applicability, Diagnostic, PResult};
+use rustc_errors::{
+    Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
+    StashKey,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -1513,11 +1515,11 @@ impl<'a> Parser<'a> {
     /// Parse `'label: $expr`. The label is already parsed.
     fn parse_labeled_expr(
         &mut self,
-        label: Label,
+        label_: Label,
         mut consume_colon: bool,
     ) -> PResult<'a, P<Expr>> {
-        let lo = label.ident.span;
-        let label = Some(label);
+        let lo = label_.ident.span;
+        let label = Some(label_);
         let ate_colon = self.eat(&token::Colon);
         let expr = if self.eat_keyword(kw::While) {
             self.parse_while_expr(label, lo)
@@ -1529,6 +1531,19 @@ impl<'a> Parser<'a> {
             || self.token.is_whole_block()
         {
             self.parse_block_expr(label, lo, BlockCheckMode::Default)
+        } else if !ate_colon
+            && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
+                || self.token.is_op())
+        {
+            let lit = self.recover_unclosed_char(label_.ident, |self_| {
+                self_.sess.create_err(UnexpectedTokenAfterLabel {
+                    span: self_.token.span,
+                    remove_label: None,
+                    enclose_in_block: None,
+                })
+            });
+            consume_colon = false;
+            Ok(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else if !ate_colon
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
@@ -1601,6 +1616,39 @@ impl<'a> Parser<'a> {
         }
 
         Ok(expr)
+    }
+
+    /// Emit an error when a char is parsed as a lifetime because of a missing quote
+    pub(super) fn recover_unclosed_char(
+        &mut self,
+        lifetime: Ident,
+        err: impl FnOnce(&mut Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
+    ) -> ast::Lit {
+        if let Some(mut diag) =
+            self.sess.span_diagnostic.steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
+        {
+            diag.span_suggestion_verbose(
+                lifetime.span.shrink_to_hi(),
+                "add `'` to close the char literal",
+                "'",
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+        } else {
+            err(self)
+                .span_suggestion_verbose(
+                    lifetime.span.shrink_to_hi(),
+                    "add `'` to close the char literal",
+                    "'",
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+        }
+        ast::Lit {
+            token_lit: token::Lit::new(token::LitKind::Char, lifetime.name, None),
+            kind: ast::LitKind::Char(lifetime.name.as_str().chars().next().unwrap_or('_')),
+            span: lifetime.span,
+        }
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
@@ -1728,7 +1776,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
-        self.parse_opt_lit().ok_or_else(|| {
+        self.parse_opt_lit().ok_or(()).or_else(|()| {
             if let token::Interpolated(inner) = &self.token.kind {
                 let expr = match inner.as_ref() {
                     token::NtExpr(expr) => Some(expr),
@@ -1740,12 +1788,22 @@ impl<'a> Parser<'a> {
                         let mut err = InvalidInterpolatedExpression { span: self.token.span }
                             .into_diagnostic(&self.sess.span_diagnostic);
                         err.downgrade_to_delayed_bug();
-                        return err;
+                        return Err(err);
                     }
                 }
             }
-            let msg = format!("unexpected token: {}", super::token_descr(&self.token));
-            self.struct_span_err(self.token.span, &msg)
+            let token = self.token.clone();
+            let err = |self_: &mut Self| {
+                let msg = format!("unexpected token: {}", super::token_descr(&token));
+                self_.struct_span_err(token.span, &msg)
+            };
+            // On an error path, eagerly consider a lifetime to be an unclosed character lit
+            if self.token.is_lifetime() {
+                let lt = self.expect_lifetime();
+                Ok(self.recover_unclosed_char(lt.ident, err))
+            } else {
+                Err(err(self))
+            }
         })
     }
 
