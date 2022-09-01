@@ -3172,3 +3172,81 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
         }
     }
 }
+
+declare_lint! {
+    /// The `special_module_name` lint detects module
+    /// declarations for files that have a special meaning.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// mod lib;
+    ///
+    /// fn main() {
+    ///     lib::run();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Cargo recognizes `lib.rs` and `main.rs` as the root of a
+    /// library or binary crate, so declaring them as modules
+    /// will lead to miscompilation of the crate unless configured
+    /// explicitly.
+    ///
+    /// To access a library from a binary target within the same crate,
+    /// use `your_crate_name::` as the path path instead of `lib::`:
+    ///
+    /// ```rust,compile_fail
+    /// // bar/src/lib.rs
+    /// fn run() {
+    ///     // ...
+    /// }
+    ///
+    /// // bar/src/main.rs
+    /// fn main() {
+    ///     bar::run();
+    /// }
+    /// ```
+    ///
+    /// Binary targets cannot be used as libraries and so declaring
+    /// one as a module is not allowed.
+    pub SPECIAL_MODULE_NAME,
+    Warn,
+    "module declarations for files with a special meaning",
+}
+
+declare_lint_pass!(SpecialModuleName => [SPECIAL_MODULE_NAME]);
+
+impl EarlyLintPass for SpecialModuleName {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+        for item in &krate.items {
+            if let ast::ItemKind::Mod(
+                _,
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _),
+            ) = item.kind
+            {
+                if item.attrs.iter().any(|a| a.has_name(sym::path)) {
+                    continue;
+                }
+
+                match item.ident.name.as_str() {
+                    "lib" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, |lint| {
+                        lint.build("found module declaration for lib.rs")
+                            .note("lib.rs is the root of this crate's library target")
+                            .help("to refer to it from other targets, use the library's name as the path")
+                            .emit()
+                    }),
+                    "main" => cx.struct_span_lint(SPECIAL_MODULE_NAME, item.span, |lint| {
+                        lint.build("found module declaration for main.rs")
+                            .note("a binary crate cannot be used as library")
+                            .emit()
+                    }),
+                    _ => continue
+                }
+            }
+        }
+    }
+}
