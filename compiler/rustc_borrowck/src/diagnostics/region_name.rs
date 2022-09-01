@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::session_diagnostics::RegionNameLables;
 use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -106,7 +107,11 @@ impl RegionName {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
             | RegionNameSource::NamedEarlyBoundRegion(span) => {
-                diag.span_label(*span, format!("lifetime `{self}` defined here"));
+                let name = format!("{self}");
+                diag.subdiagnostic(RegionNameLables::LifetimeDefinedHere {
+                    span: *span,
+                    rg_name: name,
+                });
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
                 diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));

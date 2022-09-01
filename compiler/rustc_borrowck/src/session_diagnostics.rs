@@ -157,3 +157,13 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum RegionNameLables {
+    #[label(borrowck::lifetime_defined_here)]
+    LifetimeDefinedHere {
+        rg_name: String,
+        #[primary_span]
+        span: Span,
+    },
+}
