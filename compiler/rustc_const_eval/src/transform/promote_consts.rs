@@ -293,10 +293,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                     } else {
                         let terminator = block.terminator();
                         match &terminator.kind {
-                            TerminatorKind::Call { func, args, .. } => {
-                                self.validate_call(func, args)
+                            TerminatorKind::Call(call) => {
+                                self.validate_call(&call.func, &call.args)
                             }
-                            TerminatorKind::Yield { .. } => Err(Unpromotable),
+                            TerminatorKind::Yield(_) => Err(Unpromotable),
                             kind => {
                                 span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                             }
@@ -785,7 +785,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             } else {
                 let terminator = self.source[loc.block].terminator_mut();
                 let target = match terminator.kind {
-                    TerminatorKind::Call { target: Some(target), .. } => target,
+                    TerminatorKind::Call(box CallTerminator { target: Some(target), .. }) => target,
                     ref kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
                     }
@@ -797,7 +797,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             };
 
             match terminator.kind {
-                TerminatorKind::Call { mut func, mut args, from_hir_call, fn_span, .. } => {
+                TerminatorKind::Call(box CallTerminator {
+                    mut func,
+                    mut args,
+                    from_hir_call,
+                    fn_span,
+                    ..
+                }) => {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
@@ -807,7 +813,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let new_target = self.new_block();
 
                     *self.promoted[last].terminator_mut() = Terminator {
-                        kind: TerminatorKind::Call {
+                        kind: TerminatorKind::Call(Box::new(CallTerminator {
                             func,
                             args,
                             cleanup: None,
@@ -815,7 +821,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             target: Some(new_target),
                             from_hir_call,
                             fn_span,
-                        },
+                        })),
                         source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator
                     };
@@ -1043,12 +1049,10 @@ pub fn is_const_fn_in_array_repeat_expression<'tcx>(
     }
 
     for block in body.basic_blocks.iter() {
-        if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
-            &block.terminator
-        {
-            if let Operand::Constant(box Constant { literal, .. }) = func {
+        if let Some(Terminator { kind: TerminatorKind::Call(call), .. }) = &block.terminator {
+            if let Operand::Constant(box Constant { literal, .. }) = call.func {
                 if let ty::FnDef(def_id, _) = *literal.ty().kind() {
-                    if destination == place {
+                    if call.destination == *place {
                         if ccx.tcx.is_const_fn(def_id) {
                             return true;
                         }

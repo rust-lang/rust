@@ -9,8 +9,9 @@ use rustc_hir::GeneratorKind;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
-    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, Call, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location,
+    Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
@@ -91,11 +92,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check if we are attempting to call a closure after it has been invoked.
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
-        if let TerminatorKind::Call {
+        if let TerminatorKind::Call(box Call {
             func: Operand::Constant(box Constant { literal, .. }),
             args,
             ..
-        } = &terminator.kind
+        }) = &terminator.kind
         {
             if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
@@ -435,7 +436,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if !is_terminator {
                         continue;
                     } else if let Some(Terminator {
-                        kind: TerminatorKind::Call { ref func, from_hir_call: false, .. },
+                        kind: TerminatorKind::Call(box Call { ref func, from_hir_call: false, .. }),
                         ..
                     }) = bbd.terminator
                     {
@@ -825,7 +826,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, from_hir_call, .. }, ..
+            kind: TerminatorKind::Call(box Call { fn_span, from_hir_call, .. }),
+            ..
         }) = &self.body[location.block].terminator
         {
             let Some((method_did, method_substs)) =

@@ -1343,7 +1343,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+            TerminatorKind::DropAndReplace(box DropAndReplace {
+                ref place,
+                ref value,
+                target: _,
+                unwind: _,
+            }) => {
                 let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
@@ -1361,7 +1366,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
+            TerminatorKind::SwitchInt(box SwitchInt { ref discr, switch_ty, .. }) => {
                 self.check_operand(discr, term_location);
 
                 let discr_ty = discr.ty(body, tcx);
@@ -1385,14 +1390,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call {
+            TerminatorKind::Call(box Call {
                 ref func,
                 ref args,
                 ref destination,
                 from_hir_call,
                 target,
                 ..
-            } => {
+            }) => {
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(arg, term_location);
@@ -1452,15 +1457,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_call_inputs(body, term, &sig, args, term_location, from_hir_call);
             }
-            TerminatorKind::Assert { ref cond, ref msg, .. } => {
-                self.check_operand(cond, term_location);
+            TerminatorKind::Assert(ref assert) => {
+                self.check_operand(&assert.cond, term_location);
 
-                let cond_ty = cond.ty(body, tcx);
+                let cond_ty = assert.cond.ty(body, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { ref len, ref index } = assert.msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
@@ -1469,10 +1474,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Yield { ref value, .. } => {
-                self.check_operand(value, term_location);
+            TerminatorKind::Yield(ref y) => {
+                self.check_operand(&y.value, term_location);
 
-                let value_ty = value.ty(body, tcx);
+                let value_ty = y.value.ty(body, tcx);
                 match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
@@ -1584,8 +1589,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = if let TerminatorKind::Call { func, .. } = &term.kind {
-            Some(func.ty(body, self.infcx.tcx))
+        let func_ty = if let TerminatorKind::Call(call) = &term.kind {
+            Some(call.func.ty(body, self.infcx.tcx))
         } else {
             None
         };
@@ -1623,8 +1628,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup)
             }
-            TerminatorKind::SwitchInt { ref targets, .. } => {
-                for target in targets.all_targets() {
+            TerminatorKind::SwitchInt(ref si) => {
+                for target in si.targets.all_targets() {
                     self.assert_iscleanup(body, block_data, *target, is_cleanup);
                 }
             }
@@ -1648,7 +1653,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, block_data, "generator_drop in cleanup block")
                 }
             }
-            TerminatorKind::Yield { resume, drop, .. } => {
+            TerminatorKind::Yield(box Yield { resume, drop, .. }) => {
                 if is_cleanup {
                     span_mirbug!(self, block_data, "yield in cleanup block")
                 }
@@ -1659,8 +1664,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
-            | TerminatorKind::DropAndReplace { target, unwind, .. }
-            | TerminatorKind::Assert { target, cleanup: unwind, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplace { target, unwind, .. })
+            | TerminatorKind::Assert(box AssertTerminator { target, cleanup: unwind, .. }) => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
@@ -1669,7 +1674,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::Call { ref target, cleanup, .. } => {
+            TerminatorKind::Call(box Call { ref target, cleanup, .. }) => {
                 if let &Some(target) = target {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }
@@ -1693,7 +1698,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.assert_iscleanup(body, block_data, unwind, true);
                 }
             }
-            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsm { destination, cleanup, .. }) => {
                 if let Some(target) = destination {
                     self.assert_iscleanup(body, block_data, target, is_cleanup);
                 }

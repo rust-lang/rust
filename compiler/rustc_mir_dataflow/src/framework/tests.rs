@@ -34,7 +34,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
     block(1, mir::TerminatorKind::Return);
     block(
         2,
-        mir::TerminatorKind::Call {
+        mir::TerminatorKind::Call(Box::new(mir::CallTerminator {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
             destination: dummy_place.clone(),
@@ -42,13 +42,13 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
-        },
+        })),
     );
     block(3, mir::TerminatorKind::Return);
     block(0, mir::TerminatorKind::Return);
     block(
         4,
-        mir::TerminatorKind::Call {
+        mir::TerminatorKind::Call(Box::new(mir::CallTerminator {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
             destination: dummy_place.clone(),
@@ -56,7 +56,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
-        },
+        })),
     );
 
     mir::Body::new_cfg_only(blocks)

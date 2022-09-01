@@ -112,7 +112,10 @@ where
 
         match terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                place: dropped_place,
+                ..
+            }) => {
                 // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut
                 // self` as a parameter. In the general case, a drop impl could launder that
                 // reference into the surrounding environment through a raw pointer, thus creating

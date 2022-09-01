@@ -38,14 +38,13 @@ impl SwitchSourceCache {
         self.cache.get_or_init(|| {
             let mut switch_sources: SwitchSources = FxHashMap::default();
             for (bb, data) in basic_blocks.iter_enumerated() {
-                if let Some(Terminator {
-                    kind: TerminatorKind::SwitchInt { targets, .. }, ..
-                }) = &data.terminator
+                if let Some(Terminator { kind: TerminatorKind::SwitchInt(si), .. }) =
+                    &data.terminator
                 {
-                    for (value, target) in targets.iter() {
+                    for (value, target) in si.targets.iter() {
                         switch_sources.entry((target, bb)).or_default().push(Some(value));
                     }
-                    switch_sources.entry((targets.otherwise(), bb)).or_default().push(None);
+                    switch_sources.entry((si.targets.otherwise(), bb)).or_default().push(None);
                 }
             }
 

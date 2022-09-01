@@ -7,8 +7,8 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
+    Body, Call, CastKind, ConstraintCategory, FakeReadCause, Local, Location, Operand, Place,
+    Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
@@ -569,8 +569,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { ref func, from_hir_call: true, .. } =
-                        block.terminator().kind
+                    if let TerminatorKind::Call(box Call {
+                        ref func, from_hir_call: true, ..
+                    }) = block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
@@ -699,8 +700,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let terminator = block.terminator();
                 debug!("was_captured_by_trait_object: terminator={:?}", terminator);
 
-                if let TerminatorKind::Call { destination, target: Some(block), args, .. } =
-                    &terminator.kind
+                if let TerminatorKind::Call(box Call {
+                    destination,
+                    target: Some(block),
+                    args,
+                    ..
+                }) = &terminator.kind
                 {
                     if let Some(dest) = destination.as_local() {
                         debug!(

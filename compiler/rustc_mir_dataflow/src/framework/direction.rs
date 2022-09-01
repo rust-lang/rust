@@ -1,5 +1,5 @@
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Location, SwitchTargets};
+use rustc_middle::mir::{self, BasicBlock, DropAndReplaceTerminator, Location, SwitchTargets};
 use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
@@ -233,7 +233,11 @@ impl Direction for Backward {
                 // Apply terminator-specific edge effects.
                 //
                 // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
-                mir::TerminatorKind::Call { destination, target: Some(dest), .. } if dest == bb => {
+                mir::TerminatorKind::Call(box mir::CallTerminator {
+                    destination,
+                    target: Some(dest),
+                    ..
+                }) if dest == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
@@ -243,9 +247,11 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::InlineAsm {
-                    destination: Some(dest), ref operands, ..
-                } if dest == bb => {
+                mir::TerminatorKind::InlineAsm(box mir::InlineAsmTerminator {
+                    destination: Some(dest),
+                    ref operands,
+                    ..
+                }) if dest == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
@@ -255,13 +261,19 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::Yield { resume, resume_arg, .. } if resume == bb => {
+                mir::TerminatorKind::Yield(box mir::YieldTerminator {
+                    resume, resume_arg, ..
+                }) if resume == bb => {
                     let mut tmp = exit_state.clone();
                     analysis.apply_yield_resume_effect(&mut tmp, resume, resume_arg);
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { targets: _, ref discr, switch_ty: _ } => {
+                mir::TerminatorKind::SwitchInt(box mir::SwitchIntTerminator {
+                    targets: _,
+                    ref discr,
+                    switch_ty: _,
+                }) => {
                     let mut applier = BackwardSwitchIntEdgeEffectsApplier {
                         body,
                         pred,
@@ -279,14 +291,24 @@ impl Direction for Backward {
                 }
 
                 // Ignore dead unwinds.
-                mir::TerminatorKind::Call { cleanup: Some(unwind), .. }
-                | mir::TerminatorKind::Assert { cleanup: Some(unwind), .. }
+                mir::TerminatorKind::Call(box mir::CallTerminator {
+                    cleanup: Some(unwind),
+                    ..
+                })
+                | mir::TerminatorKind::Assert(box mir::AssertTerminator {
+                    cleanup: Some(unwind),
+                    ..
+                })
                 | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
-                | mir::TerminatorKind::DropAndReplace { unwind: Some(unwind), .. }
+                | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                    unwind: Some(unwind),
+                    ..
+                })
                 | mir::TerminatorKind::FalseUnwind { unwind: Some(unwind), .. }
-                | mir::TerminatorKind::InlineAsm { cleanup: Some(unwind), .. }
-                    if unwind == bb =>
-                {
+                | mir::TerminatorKind::InlineAsm(box mir::InlineAsmTerminator {
+                    cleanup: Some(unwind),
+                    ..
+                }) if unwind == bb => {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(pred, exit_state);
                     }
@@ -497,9 +519,15 @@ impl Direction for Forward {
 
             Goto { target } => propagate(target, exit_state),
 
-            Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
+            Assert(box mir::AssertTerminator {
+                target,
+                cleanup: unwind,
+                expected: _,
+                msg: _,
+                cond: _,
+            })
             | Drop { target, unwind, place: _ }
-            | DropAndReplace { target, unwind, value: _, place: _ }
+            | DropAndReplace(box DropAndReplaceTerminator { target, unwind, value: _, place: _ })
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
@@ -515,7 +543,7 @@ impl Direction for Forward {
                 propagate(imaginary_target, exit_state);
             }
 
-            Yield { resume: target, drop, resume_arg, value: _ } => {
+            Yield(box mir::YieldTerminator { resume: target, drop, resume_arg, value: _ }) => {
                 if let Some(drop) = drop {
                     propagate(drop, exit_state);
                 }
@@ -524,7 +552,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call {
+            Call(box mir::CallTerminator {
                 cleanup,
                 destination,
                 target,
@@ -532,7 +560,7 @@ impl Direction for Forward {
                 args: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
@@ -551,14 +579,14 @@ impl Direction for Forward {
                 }
             }
 
-            InlineAsm {
+            InlineAsm(box mir::InlineAsmTerminator {
                 template: _,
                 ref operands,
                 options: _,
                 line_spans: _,
                 destination,
                 cleanup,
-            } => {
+            }) => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
@@ -577,7 +605,7 @@ impl Direction for Forward {
                 }
             }
 
-            SwitchInt { ref targets, ref discr, switch_ty: _ } => {
+            SwitchInt(box mir::SwitchIntTerminator { ref targets, ref discr, switch_ty: _ }) => {
                 let mut applier = ForwardSwitchIntEdgeEffectsApplier {
                     exit_state,
                     targets,

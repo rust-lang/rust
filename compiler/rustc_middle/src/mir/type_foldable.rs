@@ -21,27 +21,41 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
         let kind = match self.kind {
             Goto { target } => Goto { target },
-            SwitchInt { discr, switch_ty, targets } => SwitchInt {
-                discr: discr.try_fold_with(folder)?,
-                switch_ty: switch_ty.try_fold_with(folder)?,
-                targets,
-            },
+            SwitchInt(box SwitchIntTerminator { discr, switch_ty, targets }) => {
+                SwitchInt(Box::new(SwitchIntTerminator {
+                    discr: discr.try_fold_with(folder)?,
+                    switch_ty: switch_ty.try_fold_with(folder)?,
+                    targets,
+                }))
+            }
             Drop { place, target, unwind } => {
                 Drop { place: place.try_fold_with(folder)?, target, unwind }
             }
-            DropAndReplace { place, value, target, unwind } => DropAndReplace {
-                place: place.try_fold_with(folder)?,
-                value: value.try_fold_with(folder)?,
+            DropAndReplace(box DropAndReplaceTerminator { place, value, target, unwind }) => {
+                DropAndReplace(Box::new(DropAndReplaceTerminator {
+                    place: place.try_fold_with(folder)?,
+                    value: value.try_fold_with(folder)?,
+                    target,
+                    unwind,
+                }))
+            }
+            Yield(box YieldTerminator { value, resume, resume_arg, drop }) => {
+                Yield(Box::new(YieldTerminator {
+                    value: value.try_fold_with(folder)?,
+                    resume,
+                    resume_arg: resume_arg.try_fold_with(folder)?,
+                    drop,
+                }))
+            }
+            Call(box CallTerminator {
+                func,
+                args,
+                destination,
                 target,
-                unwind,
-            },
-            Yield { value, resume, resume_arg, drop } => Yield {
-                value: value.try_fold_with(folder)?,
-                resume,
-                resume_arg: resume_arg.try_fold_with(folder)?,
-                drop,
-            },
-            Call { func, args, destination, target, cleanup, from_hir_call, fn_span } => Call {
+                cleanup,
+                from_hir_call,
+                fn_span,
+            }) => Call(Box::new(CallTerminator {
                 func: func.try_fold_with(folder)?,
                 args: args.try_fold_with(folder)?,
                 destination: destination.try_fold_with(folder)?,
@@ -49,8 +63,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 cleanup,
                 from_hir_call,
                 fn_span,
-            },
-            Assert { cond, expected, msg, target, cleanup } => {
+            })),
+            Assert(box AssertTerminator { cond, expected, msg, target, cleanup }) => {
                 use AssertKind::*;
                 let msg = match msg {
                     BoundsCheck { len, index } => BoundsCheck {
@@ -65,7 +79,13 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     RemainderByZero(op) => RemainderByZero(op.try_fold_with(folder)?),
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg,
                 };
-                Assert { cond: cond.try_fold_with(folder)?, expected, msg, target, cleanup }
+                Assert(Box::new(AssertTerminator {
+                    cond: cond.try_fold_with(folder)?,
+                    expected,
+                    msg,
+                    target,
+                    cleanup,
+                }))
             }
             GeneratorDrop => GeneratorDrop,
             Resume => Resume,
@@ -76,16 +96,21 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 FalseEdge { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
-            InlineAsm { template, operands, options, line_spans, destination, cleanup } => {
-                InlineAsm {
-                    template,
-                    operands: operands.try_fold_with(folder)?,
-                    options,
-                    line_spans,
-                    destination,
-                    cleanup,
-                }
-            }
+            InlineAsm(box InlineAsmTerminator {
+                template,
+                operands,
+                options,
+                line_spans,
+                destination,
+                cleanup,
+            }) => InlineAsm(Box::new(InlineAsmTerminator {
+                template,
+                operands: operands.try_fold_with(folder)?,
+                options,
+                line_spans,
+                destination,
+                cleanup,
+            })),
         };
         Ok(Terminator { source_info: self.source_info, kind })
     }

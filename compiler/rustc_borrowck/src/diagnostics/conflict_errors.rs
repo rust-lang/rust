@@ -12,7 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
-    self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
+    self, AggregateKind, BindingForm, BorrowKind, Call, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
@@ -952,12 +952,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("{:?} is a statement, so it can't be a call", loc);
                 return None;
             };
-            let TerminatorKind::Call { args, .. } = &term.kind else {
+            let TerminatorKind::Call(call) = &term.kind else {
                 debug!("not a call: {:?}", term);
                 return None;
             };
-            debug!("checking call args for uses of inner_param: {:?}", args);
-            if args.contains(&Operand::Move(inner_param)) {
+            debug!("checking call args for uses of inner_param: {:?}", call.args);
+            if call.args.contains(&Operand::Move(inner_param)) {
                 Some((loc, term))
             } else {
                 None
@@ -2031,7 +2031,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diagnostic) {
         let tcx = self.infcx.tcx;
         if let (
-            Some(Terminator { kind: TerminatorKind::Call { from_hir_call: false, .. }, .. }),
+            Some(Terminator {
+                kind: TerminatorKind::Call(box Call { from_hir_call: false, .. }),
+                ..
+            }),
             Some((method_did, method_substs)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,
@@ -2363,7 +2366,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 "annotate_argument_and_return_for_borrow: target={:?} terminator={:?}",
                 target, terminator
             );
-            if let TerminatorKind::Call { destination, target: Some(_), args, .. } =
+            if let TerminatorKind::Call(box Call { destination, target: Some(_), args, .. }) =
                 &terminator.kind
             {
                 if let Some(assigned_to) = destination.as_local() {

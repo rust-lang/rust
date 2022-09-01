@@ -155,8 +155,8 @@ pub(crate) fn mir_inliner_callees<'tcx>(
     let mut calls = FxIndexSet::default();
     for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { func, .. } = &terminator.kind {
-            let ty = func.ty(&body.local_decls, tcx);
+        if let TerminatorKind::Call(call) = &terminator.kind {
+            let ty = call.func.ty(&body.local_decls, tcx);
             let call = match ty.kind() {
                 ty::FnDef(def_id, substs) => (*def_id, *substs),
                 _ => continue,

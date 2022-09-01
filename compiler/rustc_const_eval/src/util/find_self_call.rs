@@ -13,17 +13,16 @@ pub fn find_self_call<'tcx>(
     block: BasicBlock,
 ) -> Option<(DefId, SubstsRef<'tcx>)> {
     debug!("find_self_call(local={:?}): terminator={:?}", local, &body[block].terminator);
-    if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
-        &body[block].terminator
-    {
-        debug!("find_self_call: func={:?}", func);
-        if let Operand::Constant(box Constant { literal, .. }) = func {
+    if let Some(Terminator { kind: TerminatorKind::Call(call), .. }) = &body[block].terminator {
+        debug!("find_self_call: func={:?}", call.func);
+        if let Operand::Constant(box Constant { literal, .. }) = call.func {
             if let ty::FnDef(def_id, substs) = *literal.ty().kind() {
                 if let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
                     tcx.opt_associated_item(def_id)
                 {
-                    debug!("find_self_call: args={:?}", args);
-                    if let [Operand::Move(self_place) | Operand::Copy(self_place), ..] = **args {
+                    debug!("find_self_call: args={:?}", call.args);
+                    if let [Operand::Move(self_place) | Operand::Copy(self_place), ..] = *call.args
+                    {
                         if self_place.as_local() == Some(local) {
                             return Some((def_id, substs));
                         }

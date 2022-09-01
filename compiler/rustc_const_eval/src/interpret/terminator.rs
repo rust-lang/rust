@@ -20,6 +20,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
+        use rustc_middle::mir::AssertTerminator;
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
@@ -28,7 +29,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref targets, switch_ty } => {
+            SwitchInt(box mir::SwitchIntTerminator { ref discr, ref targets, switch_ty }) => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
                 assert_eq!(discr.layout.ty, switch_ty);
@@ -56,7 +57,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call {
+            Call(box mir::CallTerminator {
                 ref func,
                 ref args,
                 destination,
@@ -64,7 +65,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref cleanup,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
@@ -128,7 +129,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.drop_in_place(&place, instance, target, unwind)?;
             }
 
-            Assert { ref cond, expected, ref msg, target, cleanup } => {
+            Assert(box AssertTerminator { ref cond, expected, ref msg, target, cleanup }) => {
                 let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);

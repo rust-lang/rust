@@ -1,5 +1,7 @@
 use rustc_index::bit_set::ChunkedBitSet;
-use rustc_middle::mir::{Body, Field, Rvalue, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::{
+    Body, DropAndReplaceTerminator, Field, Rvalue, Statement, StatementKind, TerminatorKind,
+};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -37,7 +39,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         let mut to_remove = vec![];
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             let terminator = block.terminator();
-            let (TerminatorKind::Drop { place, .. } | TerminatorKind::DropAndReplace { place, .. })
+            let (TerminatorKind::Drop { place, .. } | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { place, .. }))
                 = &terminator.kind
             else { continue };
 
@@ -64,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         for bb in to_remove {
             let block = &mut body.basic_blocks_mut()[bb];
 
-            let (TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace { target, .. })
+            let (TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { target, .. }))
                 = &block.terminator().kind
             else { unreachable!() };
 
@@ -76,7 +78,12 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
             );
 
             // If this is a `DropAndReplace`, we need to emulate the assignment to the return place.
-            if let TerminatorKind::DropAndReplace { place, value, .. } = old_terminator_kind {
+            if let TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                place,
+                value,
+                ..
+            }) = old_terminator_kind
+            {
                 block.statements.push(Statement {
                     source_info: block.terminator().source_info,
                     kind: StatementKind::Assign(Box::new((place, Rvalue::Use(value)))),

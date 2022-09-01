@@ -64,8 +64,8 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             let span = terminator.source_info.span;
 
             let call_can_unwind = match &terminator.kind {
-                TerminatorKind::Call { func, .. } => {
-                    let ty = func.ty(body, tcx);
+                TerminatorKind::Call(call) => {
+                    let ty = call.func.ty(body, tcx);
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
                         ty::FnPtr(_) => None,
@@ -81,8 +81,8 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
                     layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }
-                TerminatorKind::InlineAsm { options, .. } => {
-                    options.contains(InlineAsmOptions::MAY_UNWIND)
+                TerminatorKind::InlineAsm(asm) => {
+                    asm.options.contains(InlineAsmOptions::MAY_UNWIND)
                 }
                 _ if terminator.unwind().is_some() => {
                     span_bug!(span, "unexpected terminator that may unwind {:?}", terminator)

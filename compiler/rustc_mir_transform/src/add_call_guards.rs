@@ -50,7 +50,12 @@ impl AddCallGuards {
         for block in body.basic_blocks_mut() {
             match block.terminator {
                 Some(Terminator {
-                    kind: TerminatorKind::Call { target: Some(ref mut destination), cleanup, .. },
+                    kind:
+                        TerminatorKind::Call(box CallTerminator {
+                            target: Some(ref mut destination),
+                            cleanup,
+                            ..
+                        }),
                     source_info,
                 }) if pred_count[*destination] > 1
                     && (cleanup.is_some() || self == &AllCallEdges) =>

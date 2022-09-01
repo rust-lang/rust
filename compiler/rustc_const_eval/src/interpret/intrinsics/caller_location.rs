@@ -35,8 +35,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     block.terminator(),
                     block.terminator().kind
                 );
-                if let TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
-                    source_info.span = fn_span;
+                if let TerminatorKind::Call(call) = &block.terminator().kind {
+                    source_info.span = call.fn_span;
                 }
             }
 

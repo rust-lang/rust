@@ -149,7 +149,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     synth_info,
-                    TerminatorKind::Call {
+                    TerminatorKind::Call(Box::new(CallTerminator {
                         func: exchange_malloc,
                         args: vec![Operand::Move(size), Operand::Move(align)],
                         destination: storage,
@@ -157,7 +157,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         cleanup: None,
                         from_hir_call: false,
                         fn_span: expr_span,
-                    },
+                    })),
                 );
                 this.diverge_from(block);
                 block = success;

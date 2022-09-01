@@ -7,9 +7,11 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, Local, Location,
+    traversal, AggregateKind, AssertTerminator, BasicBlock, BinOp, Body, BorrowKind,
+    CallTerminator, CastKind, DropAndReplaceTerminator, InlineAsmTerminator, Local, Location,
     MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, RuntimePhase, Rvalue,
-    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
+    SourceScope, Statement, StatementKind, SwitchIntTerminator, Terminator, TerminatorKind, UnOp,
+    YieldTerminator, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::Subst;
@@ -704,7 +706,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, switch_ty, discr } => {
+            TerminatorKind::SwitchInt(box SwitchIntTerminator { targets, switch_ty, discr }) => {
                 let ty = discr.ty(&self.body.local_decls, self.tcx);
                 if ty != *switch_ty {
                     self.fail(
@@ -760,7 +762,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::DropAndReplace { target, unwind, .. } => {
+            TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                target, unwind, ..
+            }) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
@@ -772,7 +776,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Call { func, args, destination, target, cleanup, .. } => {
+            TerminatorKind::Call(box CallTerminator {
+                func,
+                args,
+                destination,
+                target,
+                cleanup,
+                ..
+            }) => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -812,7 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Assert { cond, target, cleanup, .. } => {
+            TerminatorKind::Assert(box AssertTerminator { cond, target, cleanup, .. }) => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
                 if cond_ty != self.tcx.types.bool {
                     self.fail(
@@ -828,7 +839,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *cleanup, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Yield { resume, drop, .. } => {
+            TerminatorKind::Yield(box YieldTerminator { resume, drop, .. }) => {
                 if self.body.generator.is_none() {
                     self.fail(location, "`Yield` cannot appear outside generator bodies");
                 }
@@ -862,7 +873,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::InlineAsm { destination, cleanup, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator { destination, cleanup, .. }) => {
                 if let Some(destination) = destination {
                     self.check_edge(location, *destination, EdgeKind::Normal);
                 }

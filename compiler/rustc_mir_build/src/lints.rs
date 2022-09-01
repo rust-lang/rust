@@ -119,8 +119,8 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
             // A diverging InlineAsm is treated as non-recursing
-            TerminatorKind::InlineAsm { destination, .. } => {
-                if destination.is_some() {
+            TerminatorKind::InlineAsm(ref asm) => {
+                if asm.destination.is_some() {
                     ControlFlow::CONTINUE
                 } else {
                     ControlFlow::Break(NonRecursive)
@@ -142,8 +142,8 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
-        if let TerminatorKind::Call { func, args, .. } = &terminator.kind {
-            if self.is_recursive_call(func, args) {
+        if let TerminatorKind::Call(call) = &terminator.kind {
+            if self.is_recursive_call(&call.func, &call.args) {
                 self.reachable_recursive_calls.push(terminator.source_info.span);
             }
         }
@@ -158,7 +158,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
         }
         // Don't traverse successors of recursive calls or false CFG edges.
         match self.body[bb].terminator().kind {
-            TerminatorKind::Call { ref func, ref args, .. } => self.is_recursive_call(func, args),
+            TerminatorKind::Call(ref call) => self.is_recursive_call(&call.func, &call.args),
             TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
             _ => false,
         }

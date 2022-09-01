@@ -455,27 +455,12 @@ pub struct CopyNonOverlapping<'tcx> {
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
-    Goto { target: BasicBlock },
+    Goto {
+        target: BasicBlock,
+    },
 
     /// Switches based on the computed value.
-    ///
-    /// First, evaluates the `discr` operand. The type of the operand must be a signed or unsigned
-    /// integer, char, or bool, and must match the given type. Then, if the list of switch targets
-    /// contains the computed value, continues execution at the associated basic block. Otherwise,
-    /// continues execution at the "otherwise" basic block.
-    ///
-    /// Target values may not appear more than once.
-    SwitchInt {
-        /// The discriminant value being tested.
-        discr: Operand<'tcx>,
-
-        /// The type of value being tested.
-        /// This is always the same as the type of `discr`.
-        /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
-        switch_ty: Ty<'tcx>,
-
-        targets: SwitchTargets,
-    },
+    SwitchInt(Box<SwitchIntTerminator<'tcx>>),
 
     /// Indicates that the landing pad is finished and that the process should continue unwinding.
     ///
@@ -525,113 +510,23 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
-
-    /// Drops the place and assigns a new value to it.
-    ///
-    /// This first performs the exact same operation as the pre drop-elaboration `Drop` terminator;
-    /// it then additionally assigns the `value` to the `place` as if by an assignment statement.
-    /// This assignment occurs both in the unwind and the regular code paths. The semantics are best
-    /// explained by the elaboration:
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
-    /// }
-    /// ```
-    ///
-    /// becomes
-    ///
-    /// ```ignore (MIR)
-    /// BB0 {
-    ///   Drop(P, goto BB1, unwind BB2)
-    /// }
-    /// BB1 {
-    ///   // P is now uninitialized
-    ///   P <- V
-    /// }
-    /// BB2 {
-    ///   // P is now uninitialized -- its dtor panicked
-    ///   P <- V
-    /// }
-    /// ```
-    ///
-    /// Disallowed after drop elaboration.
-    DropAndReplace {
+    Drop {
         place: Place<'tcx>,
-        value: Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
     },
 
-    /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
-    /// the referred to function. The operand types must match the argument types of the function.
-    /// The return place type must match the return type. The type of the `func` operand must be
-    /// callable, meaning either a function pointer, a function type, or a closure type.
-    ///
-    /// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
-    /// operands not aliasing the return place. It is unclear how this is justified in MIR, see
-    /// [#71117].
-    ///
-    /// [#71117]: https://github.com/rust-lang/rust/issues/71117
-    Call {
-        /// The function that’s being called.
-        func: Operand<'tcx>,
-        /// Arguments the function is called with.
-        /// These are owned by the callee, which is free to modify them.
-        /// This allows the memory occupied by "by-value" arguments to be
-        /// reused across function calls without duplicating the contents.
-        args: Vec<Operand<'tcx>>,
-        /// Where the returned value will be written
-        destination: Place<'tcx>,
-        /// Where to go after this call returns. If none, the call necessarily diverges.
-        target: Option<BasicBlock>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>,
-        /// `true` if this is from a call in HIR rather than from an overloaded
-        /// operator. True for overloaded function call.
-        from_hir_call: bool,
-        /// This `Span` is the span of the function, without the dot and receiver
-        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-        fn_span: Span,
-    },
+    /// Drops the place and assigns a new value to it.
+    DropAndReplace(Box<DropAndReplaceTerminator<'tcx>>),
 
-    /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
-    /// initiates a panic. Initiating a panic corresponds to a `Call` terminator with some
-    /// unspecified constant as the function to call, all the operands stored in the `AssertMessage`
-    /// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
-    /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
-    /// assertion does not fail, execution continues at the specified basic block.
-    Assert {
-        cond: Operand<'tcx>,
-        expected: bool,
-        msg: AssertMessage<'tcx>,
-        target: BasicBlock,
-        cleanup: Option<BasicBlock>,
-    },
+    /// A function call.
+    Call(Box<CallTerminator<'tcx>>),
+
+    /// An assertion.
+    Assert(Box<AssertTerminator<'tcx>>),
 
     /// Marks a suspend point.
-    ///
-    /// Like `Return` terminators in generator bodies, this computes `value` and then a
-    /// `GeneratorState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
-    /// the return place of the function calling this one, and execution continues in the calling
-    /// function. When next invoked with the same first argument, execution of this function
-    /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
-    /// place. If the generator is dropped before then, the `drop` basic block is invoked.
-    ///
-    /// Not permitted in bodies that are not generator bodies, or after generator lowering.
-    ///
-    /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
-    Yield {
-        /// The value to return.
-        value: Operand<'tcx>,
-        /// Where to resume to.
-        resume: BasicBlock,
-        /// The place to store the resume argument in.
-        resume_arg: Place<'tcx>,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
-        drop: Option<BasicBlock>,
-    },
+    Yield(Box<YieldTerminator<'tcx>>),
 
     /// Indicates the end of dropping a generator.
     ///
@@ -678,30 +573,173 @@ pub enum TerminatorKind<'tcx> {
         unwind: Option<BasicBlock>,
     },
 
-    /// Block ends with an inline assembly block. This is a terminator since
-    /// inline assembly is allowed to diverge.
-    InlineAsm {
-        /// The template for the inline assembly, with placeholders.
-        template: &'tcx [InlineAsmTemplatePiece],
+    // Inline assembly block.
+    InlineAsm(Box<InlineAsmTerminator<'tcx>>),
+}
 
-        /// The operands for the inline assembly, as `Operand`s or `Place`s.
-        operands: Vec<InlineAsmOperand<'tcx>>,
+// njn: replace
+pub type Assert<'tcx> = AssertTerminator<'tcx>;
+pub type Call<'tcx> = CallTerminator<'tcx>;
+pub type DropAndReplace<'tcx> = DropAndReplaceTerminator<'tcx>;
+pub type InlineAsm<'tcx> = InlineAsmTerminator<'tcx>;
+pub type SwitchInt<'tcx> = SwitchIntTerminator<'tcx>;
+pub type Yield<'tcx> = YieldTerminator<'tcx>;
 
-        /// Miscellaneous options for the inline assembly.
-        options: InlineAsmOptions,
+/// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
+/// initiates a panic. Initiating a panic corresponds to a `Call` terminator with some
+/// unspecified constant as the function to call, all the operands stored in the `AssertMessage`
+/// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
+/// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
+/// assertion does not fail, execution continues at the specified basic block.
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct AssertTerminator<'tcx> {
+    pub cond: Operand<'tcx>,
+    pub expected: bool,
+    pub msg: AssertMessage<'tcx>,
+    pub target: BasicBlock,
+    pub cleanup: Option<BasicBlock>,
+}
 
-        /// Source spans for each line of the inline assembly code. These are
-        /// used to map assembler errors back to the line in the source code.
-        line_spans: &'tcx [Span],
+/// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
+/// the referred to function. The operand types must match the argument types of the function.
+/// The return place type must match the return type. The type of the `func` operand must be
+/// callable, meaning either a function pointer, a function type, or a closure type.
+///
+/// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
+/// operands not aliasing the return place. It is unclear how this is justified in MIR, see
+/// [#71117].
+///
+/// [#71117]: https://github.com/rust-lang/rust/issues/71117
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct CallTerminator<'tcx> {
+    /// The function that’s being called.
+    pub func: Operand<'tcx>,
+    /// Arguments the function is called with.
+    /// These are owned by the callee, which is free to modify them.
+    /// This allows the memory occupied by "by-value" arguments to be
+    /// reused across function calls without duplicating the contents.
+    pub args: Vec<Operand<'tcx>>,
+    /// Where the returned value will be written
+    pub destination: Place<'tcx>,
+    /// Where to go after this call returns. If none, the call necessarily diverges.
+    pub target: Option<BasicBlock>,
+    /// Cleanups to be done if the call unwinds.
+    pub cleanup: Option<BasicBlock>,
+    /// `true` if this is from a call in HIR rather than from an overloaded
+    /// operator. True for overloaded function call.
+    pub from_hir_call: bool,
+    /// This `Span` is the span of the function, without the dot and receiver
+    /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+    pub fn_span: Span,
+}
 
-        /// Destination block after the inline assembly returns, unless it is
-        /// diverging (InlineAsmOptions::NORETURN).
-        destination: Option<BasicBlock>,
+/// Drops the place and assigns a new value to it.
+///
+/// This first performs the exact same operation as the pre drop-elaboration `Drop` terminator;
+/// it then additionally assigns the `value` to the `place` as if by an assignment statement.
+/// This assignment occurs both in the unwind and the regular code paths. The semantics are best
+/// explained by the elaboration:
+///
+/// ```ignore (MIR)
+/// BB0 {
+///   DropAndReplace(P <- V, goto BB1, unwind BB2)
+/// }
+/// ```
+///
+/// becomes
+///
+/// ```ignore (MIR)
+/// BB0 {
+///   Drop(P, goto BB1, unwind BB2)
+/// }
+/// BB1 {
+///   // P is now uninitialized
+///   P <- V
+/// }
+/// BB2 {
+///   // P is now uninitialized -- its dtor panicked
+///   P <- V
+/// }
+/// ```
+///
+/// Disallowed after drop elaboration.
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct DropAndReplaceTerminator<'tcx> {
+    pub place: Place<'tcx>,
+    pub value: Operand<'tcx>,
+    pub target: BasicBlock,
+    pub unwind: Option<BasicBlock>,
+}
 
-        /// Cleanup to be done if the inline assembly unwinds. This is present
-        /// if and only if InlineAsmOptions::MAY_UNWIND is set.
-        cleanup: Option<BasicBlock>,
-    },
+/// Block ends with an inline assembly block. This is a terminator since
+/// inline assembly is allowed to diverge.
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct InlineAsmTerminator<'tcx> {
+    /// The template for the inline assembly, with placeholders.
+    pub template: &'tcx [InlineAsmTemplatePiece],
+
+    /// The operands for the inline assembly, as `Operand`s or `Place`s.
+    pub operands: Vec<InlineAsmOperand<'tcx>>,
+
+    /// Miscellaneous options for the inline assembly.
+    pub options: InlineAsmOptions,
+
+    /// Source spans for each line of the inline assembly code. These are
+    /// used to map assembler errors back to the line in the source code.
+    pub line_spans: &'tcx [Span],
+
+    /// Destination block after the inline assembly returns, unless it is
+    /// diverging (InlineAsmOptions::NORETURN).
+    pub destination: Option<BasicBlock>,
+
+    /// Cleanup to be done if the inline assembly unwinds. This is present
+    /// if and only if InlineAsmOptions::MAY_UNWIND is set.
+    pub cleanup: Option<BasicBlock>,
+}
+
+/// Switches based on the computed value.
+///
+/// First, evaluates the `discr` operand. The type of the operand must be a signed or unsigned
+/// integer, char, or bool, and must match the given type. Then, if the list of switch targets
+/// contains the computed value, continues execution at the associated basic block. Otherwise,
+/// continues execution at the "otherwise" basic block.
+///
+/// Target values may not appear more than once.
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct SwitchIntTerminator<'tcx> {
+    /// The discriminant value being tested.
+    pub discr: Operand<'tcx>,
+
+    /// The type of value being tested.
+    /// This is always the same as the type of `discr`.
+    /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
+    pub switch_ty: Ty<'tcx>,
+
+    pub targets: SwitchTargets,
+}
+
+/// Marks a suspend point.
+///
+/// Like `Return` terminators in generator bodies, this computes `value` and then a
+/// `GeneratorState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
+/// the return place of the function calling this one, and execution continues in the calling
+/// function. When next invoked with the same first argument, execution of this function
+/// continues at the `resume` basic block, with the second argument written to the `resume_arg`
+/// place. If the generator is dropped before then, the `drop` basic block is invoked.
+///
+/// Not permitted in bodies that are not generator bodies, or after generator lowering.
+///
+/// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct YieldTerminator<'tcx> {
+    /// The value to return.
+    pub value: Operand<'tcx>,
+    /// Where to resume to.
+    pub resume: BasicBlock,
+    /// The place to store the resume argument in.
+    pub resume_arg: Place<'tcx>,
+    /// Cleanup to be done if the generator is dropped at this suspend point.
+    pub drop: Option<BasicBlock>,
 }
 
 /// Information about an assertion failure.

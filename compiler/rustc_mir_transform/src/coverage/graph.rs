@@ -487,8 +487,8 @@ fn bcb_filtered_successors<'a, 'tcx>(
     Box::new(
         match &term_kind {
             // SwitchInt successors are never unwind, and all of them should be traversed.
-            TerminatorKind::SwitchInt { ref targets, .. } => {
-                None.into_iter().chain(targets.all_targets().into_iter().copied())
+            TerminatorKind::SwitchInt(si) => {
+                None.into_iter().chain(si.targets.all_targets().into_iter().copied())
             }
             // For all other kinds, return only the first successor, if any, and ignore unwinds.
             // NOTE: `chain(&[])` is required to coerce the `option::iter` (from

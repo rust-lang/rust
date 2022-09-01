@@ -12,9 +12,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind, Location,
-    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
-    RETURN_PLACE,
+    AssertTerminator, BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind,
+    Location, Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, Terminator,
+    TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -1067,7 +1067,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &mut terminator.kind {
-            TerminatorKind::Assert { expected, ref mut cond, .. } => {
+            TerminatorKind::Assert(box AssertTerminator { expected, ref mut cond, .. }) => {
                 if let Some(ref value) = self.eval_operand(&cond) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = Scalar::from_bool(*expected);
@@ -1096,11 +1096,11 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::SwitchInt { ref mut discr, .. } => {
+            TerminatorKind::SwitchInt(si) => {
                 // FIXME: This is currently redundant with `visit_operand`, but sadly
                 // always visiting operands currently causes a perf regression in LLVM codegen, so
                 // `visit_operand` currently only runs for propagates places for `mir_opt_level=4`.
-                self.propagate_operand(discr)
+                self.propagate_operand(&mut si.discr)
             }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }

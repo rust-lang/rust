@@ -178,15 +178,15 @@ impl<'tcx> Inliner<'tcx> {
         // Normally, this shouldn't be required, but trait normalization failure can create a
         // validation ICE.
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
-        let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
-        let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
+        let TerminatorKind::Call(call) = &terminator.kind else { bug!() };
+        let destination_ty = call.destination.ty(&caller_body.local_decls, self.tcx).ty;
         let output_type = callee_body.return_ty();
         if !equal_up_to_regions(self.tcx, self.param_env, output_type, destination_ty) {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
         if callsite.fn_sig.abi() == Abi::RustCall {
-            let (arg_tuple, skipped_args) = match &args[..] {
+            let (arg_tuple, skipped_args) = match &call.args[..] {
                 [arg_tuple] => (arg_tuple, 0),
                 [_, arg_tuple] => (arg_tuple, 1),
                 _ => bug!("Expected `rust-call` to have 1 or 2 args"),
@@ -207,7 +207,7 @@ impl<'tcx> Inliner<'tcx> {
                 }
             }
         } else {
-            for (arg, input) in args.iter().zip(callee_body.args_iter()) {
+            for (arg, input) in call.args.iter().zip(callee_body.args_iter()) {
                 let input_type = callee_body.local_decls[input].ty;
                 let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
                 if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
@@ -302,8 +302,8 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { ref func, target, .. } = terminator.kind {
-            let func_ty = func.ty(caller_body, self.tcx);
+        if let TerminatorKind::Call(ref call) = terminator.kind {
+            let func_ty = call.func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, substs) = *func_ty.kind() {
                 // To resolve an instance its substs have to be fully normalized.
                 let substs = self.tcx.try_normalize_erasing_regions(self.param_env, substs).ok()?;
@@ -324,7 +324,7 @@ impl<'tcx> Inliner<'tcx> {
                     callee,
                     fn_sig,
                     block: bb,
-                    target,
+                    target: call.target,
                     source_info: terminator.source_info,
                 });
             }
@@ -417,7 +417,8 @@ impl<'tcx> Inliner<'tcx> {
         // FIXME: Give a bonus to functions with only a single caller
         let diverges = matches!(
             callee_body.basic_blocks[START_BLOCK].terminator().kind,
-            TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
+            TerminatorKind::Unreachable
+                | TerminatorKind::Call(box CallTerminator { target: None, .. })
         );
         if diverges && !matches!(callee_attrs.inline, InlineAttr::Always) {
             return Err("callee diverges unconditionally");
@@ -445,7 +446,12 @@ impl<'tcx> Inliner<'tcx> {
 
             let term = blk.terminator();
             if let TerminatorKind::Drop { ref place, target, unwind }
-            | TerminatorKind::DropAndReplace { ref place, target, unwind, .. } = term.kind
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref place,
+                target,
+                unwind,
+                ..
+            }) = term.kind
             {
                 work_list.push(target);
 
@@ -489,7 +495,7 @@ impl<'tcx> Inliner<'tcx> {
     ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();
         match terminator.kind {
-            TerminatorKind::Call { args, destination, cleanup, .. } => {
+            TerminatorKind::Call(box CallTerminator { args, destination, cleanup, .. }) => {
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
@@ -773,7 +779,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         let tcx = self.tcx;
         match terminator.kind {
             TerminatorKind::Drop { ref place, unwind, .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref place,
+                unwind,
+                ..
+            }) => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instance.subst_mir(tcx, &place.ty(self.callee_body, tcx).ty);
                 if ty.needs_drop(tcx, self.param_env) {
@@ -785,7 +795,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     self.cost += INSTR_COST;
                 }
             }
-            TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
+            TerminatorKind::Call(box CallTerminator {
+                func: Operand::Constant(ref f),
+                cleanup,
+                ..
+            }) => {
                 let fn_ty = self.instance.subst_mir(tcx, &f.literal.ty());
                 self.cost += if let ty::FnDef(def_id, _) = *fn_ty.kind() && tcx.is_intrinsic(def_id) {
                     // Don't give intrinsics the extra penalty for calls
@@ -797,16 +811,16 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
-            TerminatorKind::Assert { cleanup, .. } => {
+            TerminatorKind::Assert(ref assert) => {
                 self.cost += CALL_PENALTY;
-                if cleanup.is_some() {
+                if assert.cleanup.is_some() {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
             TerminatorKind::Resume => self.cost += RESUME_PENALTY,
-            TerminatorKind::InlineAsm { cleanup, .. } => {
+            TerminatorKind::InlineAsm(ref asm) => {
                 self.cost += INSTR_COST;
-                if cleanup.is_some() {
+                if asm.cleanup.is_some() {
                     self.cost += LANDINGPAD_PENALTY;
                 }
             }
@@ -1078,13 +1092,17 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::Goto { ref mut target } => {
                 *target = self.map_block(*target);
             }
-            TerminatorKind::SwitchInt { ref mut targets, .. } => {
-                for tgt in targets.all_targets_mut() {
+            TerminatorKind::SwitchInt(ref mut si) => {
+                for tgt in si.targets.all_targets_mut() {
                     *tgt = self.map_block(*tgt);
                 }
             }
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref mut target,
+                ref mut unwind,
+                ..
+            }) => {
                 *target = self.map_block(*target);
                 if let Some(tgt) = *unwind {
                     *unwind = Some(self.map_block(tgt));
@@ -1094,7 +1112,9 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *unwind = self.cleanup_block;
                 }
             }
-            TerminatorKind::Call { ref mut target, ref mut cleanup, .. } => {
+            TerminatorKind::Call(box CallTerminator {
+                ref mut target, ref mut cleanup, ..
+            }) => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
@@ -1106,7 +1126,11 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *cleanup = self.cleanup_block;
                 }
             }
-            TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
+            TerminatorKind::Assert(box AssertTerminator {
+                ref mut target,
+                ref mut cleanup,
+                ..
+            }) => {
                 *target = self.map_block(*target);
                 if let Some(tgt) = *cleanup {
                     *cleanup = Some(self.map_block(tgt));
@@ -1139,7 +1163,11 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             {
                 bug!("False unwinds should have been removed before inlining")
             }
-            TerminatorKind::InlineAsm { ref mut destination, ref mut cleanup, .. } => {
+            TerminatorKind::InlineAsm(box InlineAsmTerminator {
+                ref mut destination,
+                ref mut cleanup,
+                ..
+            }) => {
                 if let Some(ref mut tgt) = *destination {
                     *tgt = self.map_block(*tgt);
                 } else if !self.in_cleanup_block {

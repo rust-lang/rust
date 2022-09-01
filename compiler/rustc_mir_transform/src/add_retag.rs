@@ -114,9 +114,11 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             .iter_mut()
             .filter_map(|block_data| {
                 match block_data.terminator().kind {
-                    TerminatorKind::Call { target: Some(target), destination, .. }
-                        if needs_retag(&destination) =>
-                    {
+                    TerminatorKind::Call(box CallTerminator {
+                        target: Some(target),
+                        destination,
+                        ..
+                    }) if needs_retag(&destination) => {
                         // Remember the return destination for later
                         Some((block_data.terminator().source_info, destination, target))
                     }

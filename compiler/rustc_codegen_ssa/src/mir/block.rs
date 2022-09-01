@@ -1073,7 +1073,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, &mut bx, target);
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
+            mir::TerminatorKind::SwitchInt(box mir::SwitchIntTerminator {
+                ref discr,
+                switch_ty,
+                ref targets,
+            }) => {
                 self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
             }
 
@@ -1089,7 +1093,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_drop_terminator(helper, bx, place, target, unwind);
             }
 
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
+            mir::TerminatorKind::Assert(box mir::AssertTerminator {
+                ref cond,
+                expected,
+                ref msg,
+                target,
+                cleanup,
+            }) => {
                 self.codegen_assert_terminator(
                     helper, bx, terminator, cond, expected, msg, target, cleanup,
                 );
@@ -1099,7 +1109,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
             }
 
-            mir::TerminatorKind::Call {
+            mir::TerminatorKind::Call(box mir::CallTerminator {
                 ref func,
                 ref args,
                 destination,
@@ -1107,7 +1117,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
                 from_hir_call: _,
                 fn_span,
-            } => {
+            }) => {
                 self.codegen_call_terminator(
                     helper,
                     bx,
@@ -1127,14 +1137,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bug!("borrowck false edges in codegen")
             }
 
-            mir::TerminatorKind::InlineAsm {
+            mir::TerminatorKind::InlineAsm(box mir::InlineAsmTerminator {
                 template,
                 ref operands,
                 options,
                 line_spans,
                 destination,
                 cleanup,
-            } => {
+            }) => {
                 self.codegen_asm_terminator(
                     helper,
                     bx,

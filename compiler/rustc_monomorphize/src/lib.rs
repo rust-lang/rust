@@ -1,4 +1,5 @@
 #![feature(array_windows)]
+#![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
 #![recursion_limit = "256"]

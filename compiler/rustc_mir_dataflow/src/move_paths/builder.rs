@@ -377,55 +377,40 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable => {}
 
-            TerminatorKind::Assert { ref cond, .. } => {
-                self.gather_operand(cond);
+            TerminatorKind::Assert(ref assert) => {
+                self.gather_operand(&assert.cond);
             }
 
-            TerminatorKind::SwitchInt { ref discr, .. } => {
-                self.gather_operand(discr);
+            TerminatorKind::SwitchInt(ref si) => {
+                self.gather_operand(&si.discr);
             }
 
-            TerminatorKind::Yield { ref value, resume_arg: place, .. } => {
-                self.gather_operand(value);
-                self.create_move_path(place);
-                self.gather_init(place.as_ref(), InitKind::Deep);
+            TerminatorKind::Yield(ref y) => {
+                self.gather_operand(&y.value);
+                self.create_move_path(y.resume_arg);
+                self.gather_init(y.resume_arg.as_ref(), InitKind::Deep);
             }
 
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
                 self.gather_move(place);
             }
-            TerminatorKind::DropAndReplace { place, ref value, .. } => {
-                self.create_move_path(place);
-                self.gather_operand(value);
-                self.gather_init(place.as_ref(), InitKind::Deep);
+            TerminatorKind::DropAndReplace(ref dar) => {
+                self.create_move_path(dar.place);
+                self.gather_operand(&dar.value);
+                self.gather_init(dar.place.as_ref(), InitKind::Deep);
             }
-            TerminatorKind::Call {
-                ref func,
-                ref args,
-                destination,
-                target,
-                cleanup: _,
-                from_hir_call: _,
-                fn_span: _,
-            } => {
-                self.gather_operand(func);
-                for arg in args {
-                    self.gather_operand(arg);
+            TerminatorKind::Call(ref call) => {
+                self.gather_operand(&call.func);
+                for arg in &call.args {
+                    self.gather_operand(&arg);
                 }
-                if let Some(_bb) = target {
-                    self.create_move_path(destination);
-                    self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                if let Some(_bb) = call.target {
+                    self.create_move_path(call.destination);
+                    self.gather_init(call.destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
-            TerminatorKind::InlineAsm {
-                template: _,
-                ref operands,
-                options: _,
-                line_spans: _,
-                destination: _,
-                cleanup: _,
-            } => {
-                for op in operands {
+            TerminatorKind::InlineAsm(ref asm) => {
+                for op in &asm.operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
                          => {

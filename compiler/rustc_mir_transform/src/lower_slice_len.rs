@@ -49,7 +49,7 @@ fn lower_slice_len_call<'tcx>(
 
     let terminator = block.terminator();
     match &terminator.kind {
-        TerminatorKind::Call {
+        TerminatorKind::Call(box CallTerminator {
             func,
             args,
             destination,
@@ -57,7 +57,7 @@ fn lower_slice_len_call<'tcx>(
             cleanup: None,
             from_hir_call: true,
             ..
-        } => {
+        }) => {
             // some heuristics for fast rejection
             if args.len() != 1 {
                 return;

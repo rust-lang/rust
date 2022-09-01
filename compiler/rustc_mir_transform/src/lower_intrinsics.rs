@@ -14,8 +14,13 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
         let local_decls = &body.local_decls;
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
-            if let TerminatorKind::Call { func, args, destination, target, .. } =
-                &mut terminator.kind
+            if let TerminatorKind::Call(box CallTerminator {
+                func,
+                args,
+                destination,
+                target,
+                ..
+            }) = &mut terminator.kind
             {
                 let func_ty = func.ty(local_decls, tcx);
                 let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(tcx, func_ty) else {

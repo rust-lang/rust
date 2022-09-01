@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{
     self, traversal,
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
-    Mutability,
+    Call, Mutability,
 };
 use rustc_middle::ty::{self, visit::TypeVisitor, Ty};
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis, ResultsCursor};
@@ -285,7 +285,7 @@ fn is_call_with_ref_arg<'tcx>(
     kind: &'tcx mir::TerminatorKind<'tcx>,
 ) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, mir::Local)> {
     if_chain! {
-        if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
+        if let mir::TerminatorKind::Call(box Call { func, args, destination, .. }) = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
         if let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind();
@@ -582,11 +582,11 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'_>, _loc: mir::Location) {
-        if let mir::TerminatorKind::Call {
+        if let mir::TerminatorKind::Call(box Call {
             args,
             destination: mir::Place { local: dest, .. },
             ..
-        } = &terminator.kind
+        }) = &terminator.kind
         {
             // TODO add doc
             // If the call returns something with lifetimes,

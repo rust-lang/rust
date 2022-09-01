@@ -63,10 +63,10 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
     let mut new_blocks: SmallVec<[(BasicBlock, BasicBlock); 6]> = SmallVec::new();
     let predecessors = body.basic_blocks.predecessors();
     'block_iter: for (block_id, block) in body.basic_blocks.iter_enumerated() {
-        if let TerminatorKind::SwitchInt {
+        if let TerminatorKind::SwitchInt(box SwitchIntTerminator {
             discr: Operand::Copy(switch_place) | Operand::Move(switch_place),
             ..
-        } = block.terminator().kind
+        }) = block.terminator().kind
         {
             // If the block is on an unwind path, do not
             // apply the optimization as unwind paths
@@ -156,8 +156,8 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                 }
             }
 
-            TerminatorKind::SwitchInt { ref mut targets, .. } => {
-                targets.all_targets_mut().iter_mut().for_each(|x| {
+            TerminatorKind::SwitchInt(ref mut si) => {
+                si.targets.all_targets_mut().iter_mut().for_each(|x| {
                     if *x == target_id {
                         *x = new_block_id;
                     }

@@ -326,7 +326,8 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
+            TerminatorKind::Assert(assert) => {
+                let AssertTerminator { cond, expected, msg, target, cleanup: _ } = &**assert;
                 if !fx.tcx.sess.overflow_checks() {
                     if let mir::AssertKind::OverflowNeg(_) = *msg {
                         let target = fx.get_block(*target);
@@ -370,7 +371,8 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 }
             }
 
-            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
+            TerminatorKind::SwitchInt(si) => {
+                let SwitchInt { discr, switch_ty, targets } = &**si;
                 let discr = codegen_operand(fx, discr).load_scalar(fx);
 
                 let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
@@ -418,15 +420,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     switch.emit(&mut fx.bcx, discr, otherwise_block);
                 }
             }
-            TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target,
-                fn_span,
-                cleanup: _,
-                from_hir_call: _,
-            } => {
+            TerminatorKind::Call(call) => {
+                let Call { func, args, destination, target, fn_span, cleanup: _, from_hir_call: _ } =
+                    &**call;
                 fx.tcx.sess.time("codegen call", || {
                     crate::abi::codegen_terminator_call(
                         fx,
@@ -438,14 +434,16 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     )
                 });
             }
-            TerminatorKind::InlineAsm {
-                template,
-                operands,
-                options,
-                destination,
-                line_spans: _,
-                cleanup: _,
-            } => {
+            TerminatorKind::InlineAsm(asm) => {
+                let InlineAsm {
+                    template,
+                    operands,
+                    options,
+                    destination,
+                    line_spans: _,
+                    cleanup: _,
+                } = &**asm;
+
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     fx.tcx.sess.span_fatal(
                         source_info.span,

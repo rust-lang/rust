@@ -16,9 +16,9 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand, Place,
-    Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, AssertTerminator, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location,
+    Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind,
+    Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -635,7 +635,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.source_info = Some(source_info);
         self.super_terminator(terminator, location);
         match &terminator.kind {
-            TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
+            TerminatorKind::Assert(box AssertTerminator {
+                expected, ref msg, ref cond, ..
+            }) => {
                 if let Some(ref value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = Scalar::from_bool(*expected);

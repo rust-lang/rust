@@ -85,15 +85,22 @@ impl<'tcx> MockBlocks<'tcx> {
 
     fn link(&mut self, from_block: BasicBlock, to_block: BasicBlock) {
         match self.blocks[from_block].terminator_mut().kind {
-            TerminatorKind::Assert { ref mut target, .. }
-            | TerminatorKind::Call { target: Some(ref mut target), .. }
+            TerminatorKind::Assert(box AssertTerminator { ref mut target, .. })
+            | TerminatorKind::Call(box CallTerminator { target: Some(ref mut target), .. })
             | TerminatorKind::Drop { ref mut target, .. }
-            | TerminatorKind::DropAndReplace { ref mut target, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref mut target, ..
+            })
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
             | TerminatorKind::FalseUnwind { real_target: ref mut target, .. }
             | TerminatorKind::Goto { ref mut target }
-            | TerminatorKind::InlineAsm { destination: Some(ref mut target), .. }
-            | TerminatorKind::Yield { resume: ref mut target, .. } => *target = to_block,
+            | TerminatorKind::InlineAsm(box InlineAsmTerminator {
+                destination: Some(ref mut target),
+                ..
+            })
+            | TerminatorKind::Yield(box YieldTerminator { resume: ref mut target, .. }) => {
+                *target = to_block
+            }
             ref invalid => bug!("Invalid from_block: {:?}", invalid),
         }
     }
@@ -112,12 +119,12 @@ impl<'tcx> MockBlocks<'tcx> {
 
     fn set_branch(&mut self, switchint: BasicBlock, branch_index: usize, to_block: BasicBlock) {
         match self.blocks[switchint].terminator_mut().kind {
-            TerminatorKind::SwitchInt { ref mut targets, .. } => {
-                let mut branches = targets.iter().collect::<Vec<_>>();
+            TerminatorKind::SwitchInt(ref mut asm) => {
+                let mut branches = asm.targets.iter().collect::<Vec<_>>();
                 let otherwise = if branch_index == branches.len() {
                     to_block
                 } else {
-                    let old_otherwise = targets.otherwise();
+                    let old_otherwise = asm.targets.otherwise();
                     if branch_index > branches.len() {
                         branches.push((branches.len() as u128, old_otherwise));
                         while branches.len() < branch_index {
@@ -129,7 +136,7 @@ impl<'tcx> MockBlocks<'tcx> {
                         old_otherwise
                     }
                 };
-                *targets = SwitchTargets::new(branches.into_iter(), otherwise);
+                asm.targets = SwitchTargets::new(branches.into_iter(), otherwise);
             }
             ref invalid => bug!("Invalid BasicBlock kind or no to_block: {:?}", invalid),
         }
@@ -138,7 +145,7 @@ impl<'tcx> MockBlocks<'tcx> {
     fn call(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
         self.add_block_from(
             some_from_block,
-            TerminatorKind::Call {
+            TerminatorKind::Call(Box::new(CallTerminator {
                 func: Operand::Copy(self.dummy_place.clone()),
                 args: vec![],
                 destination: self.dummy_place.clone(),
@@ -146,7 +153,7 @@ impl<'tcx> MockBlocks<'tcx> {
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: DUMMY_SP,
-            },
+            })),
         )
     }
 
@@ -155,11 +162,11 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        let switchint_kind = TerminatorKind::SwitchInt {
+        let switchint_kind = TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
             discr: Operand::Move(Place::from(self.new_temp())),
             switch_ty: self.bool_ty, // just a dummy value
             targets: SwitchTargets::static_if(0, TEMP_BLOCK, TEMP_BLOCK),
-        };
+        }));
         self.add_block_from(some_from_block, switchint_kind)
     }
 
@@ -184,19 +191,24 @@ fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
                 let span = term.source_info.span;
                 let sp = format!("(span:{},{})", span.lo().to_u32(), span.hi().to_u32());
                 match kind {
-                    TerminatorKind::Assert { target, .. }
-                    | TerminatorKind::Call { target: Some(target), .. }
+                    TerminatorKind::Assert(box AssertTerminator { target, .. })
+                    | TerminatorKind::Call(box CallTerminator { target: Some(target), .. })
                     | TerminatorKind::Drop { target, .. }
-                    | TerminatorKind::DropAndReplace { target, .. }
+                    | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                        target, ..
+                    })
                     | TerminatorKind::FalseEdge { real_target: target, .. }
                     | TerminatorKind::FalseUnwind { real_target: target, .. }
                     | TerminatorKind::Goto { target }
-                    | TerminatorKind::InlineAsm { destination: Some(target), .. }
-                    | TerminatorKind::Yield { resume: target, .. } => {
+                    | TerminatorKind::InlineAsm(box InlineAsmTerminator {
+                        destination: Some(target),
+                        ..
+                    })
+                    | TerminatorKind::Yield(box YieldTerminator { resume: target, .. }) => {
                         format!("{}{:?}:{} -> {:?}", sp, bb, debug::term_type(kind), target)
                     }
-                    TerminatorKind::SwitchInt { targets, .. } => {
-                        format!("{}{:?}:{} -> {:?}", sp, bb, debug::term_type(kind), targets)
+                    TerminatorKind::SwitchInt(si) => {
+                        format!("{}{:?}:{} -> {:?}", sp, bb, debug::term_type(kind), si.targets)
                     }
                     _ => format!("{}{:?}:{}", sp, bb, debug::term_type(kind)),
                 }

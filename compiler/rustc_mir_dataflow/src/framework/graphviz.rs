@@ -217,8 +217,8 @@ where
         // state at block entry.
         self.results.seek_to_block_end(block);
         if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
-            let after_terminator_name = match terminator.kind {
-                mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
+            let after_terminator_name = match &terminator.kind {
+                mir::TerminatorKind::Call(call) if call.target.is_some() => "(on unwind)",
                 _ => "(on end)",
             };
 
@@ -230,15 +230,15 @@ where
         // FIXME: These should really be printed as part of each outgoing edge rather than the node
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
-        match terminator.kind {
-            mir::TerminatorKind::Call { destination, .. } => {
+        match &terminator.kind {
+            mir::TerminatorKind::Call(call) => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
-                            CallReturnPlaces::Call(destination),
+                            CallReturnPlaces::Call(call.destination),
                         );
                     });
 
@@ -256,11 +256,11 @@ where
                 })?;
             }
 
-            mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
+            mir::TerminatorKind::Yield(y) => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
                     let state_on_generator_drop = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
-                        analysis.apply_yield_resume_effect(state, resume, resume_arg);
+                        analysis.apply_yield_resume_effect(state, y.resume, y.resume_arg);
                     });
 
                     write!(
@@ -277,14 +277,14 @@ where
                 })?;
             }
 
-            mir::TerminatorKind::InlineAsm { destination: Some(_), ref operands, .. } => {
+            mir::TerminatorKind::InlineAsm(asm) if asm.destination.is_some() => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
                             block,
-                            CallReturnPlaces::InlineAsm(operands),
+                            CallReturnPlaces::InlineAsm(&asm.operands),
                         );
                     });
 

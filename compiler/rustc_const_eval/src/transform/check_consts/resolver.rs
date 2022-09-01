@@ -226,15 +226,15 @@ where
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
+        if let mir::TerminatorKind::DropAndReplace(dar) = &terminator.kind {
             let qualif = qualifs::in_operand::<Q, _>(
                 self.ccx,
                 &mut |l| self.state.qualif.contains(l),
-                value,
+                &dar.value,
             );
 
-            if !place.is_indirect() {
-                self.assign_qualif_direct(place, qualif);
+            if !dar.place.is_indirect() {
+                self.assign_qualif_direct(&dar.place, qualif);
             }
         }
 

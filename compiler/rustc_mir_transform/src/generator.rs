@@ -338,7 +338,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 Operand::Move(Place::from(self.new_ret_local)),
                 None,
             )),
-            TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
+            TerminatorKind::Yield(box YieldTerminator { ref value, resume, resume_arg, drop }) => {
                 Some((VariantIdx::new(0), Some((resume, resume_arg)), value.clone(), drop))
             }
             _ => None,
@@ -849,11 +849,11 @@ fn insert_switch<'tcx>(
     let (assign, discr) = transform.get_discr(body);
     let switch_targets =
         SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
-    let switch = TerminatorKind::SwitchInt {
+    let switch = TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
         discr: Operand::Move(discr),
         switch_ty: transform.discr_ty,
         targets: switch_targets,
-    };
+    }));
 
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().raw.insert(
@@ -992,7 +992,7 @@ fn insert_panic_block<'tcx>(
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks.len());
-    let term = TerminatorKind::Assert {
+    let term = TerminatorKind::Assert(Box::new(AssertTerminator {
         cond: Operand::Constant(Box::new(Constant {
             span: body.span,
             user_ty: None,
@@ -1002,7 +1002,7 @@ fn insert_panic_block<'tcx>(
         msg: message,
         target: assert_block,
         cleanup: None,
-    };
+    }));
 
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
@@ -1461,7 +1461,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
         // Checking for aliasing in terminators is probably overkill, but until we have actual
         // semantics, we should be conservative here.
         match &terminator.kind {
-            TerminatorKind::Call {
+            TerminatorKind::Call(box CallTerminator {
                 func,
                 args,
                 destination,
@@ -1469,7 +1469,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
-            } => {
+            }) => {
                 self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {
@@ -1478,7 +1478,12 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 });
             }
 
-            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
+            TerminatorKind::Yield(box YieldTerminator {
+                value,
+                resume: _,
+                resume_arg,
+                drop: _,
+            }) => {
                 self.check_assigned_place(*resume_arg, |this| this.visit_operand(value, location));
             }
 

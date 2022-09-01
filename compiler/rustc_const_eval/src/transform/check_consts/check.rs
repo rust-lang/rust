@@ -688,7 +688,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, fn_span, from_hir_call, .. } => {
+            TerminatorKind::Call(box CallTerminator {
+                func, args, fn_span, from_hir_call, ..
+            }) => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id();
 
@@ -935,7 +937,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
             // projections that cannot be `NeedsNonConstDrop`.
             TerminatorKind::Drop { place: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                place: dropped_place,
+                ..
+            }) => {
                 // If we are checking live drops after drop-elaboration, don't emit duplicate
                 // errors here.
                 if super::post_drop_elaboration::checking_enabled(self.ccx) {

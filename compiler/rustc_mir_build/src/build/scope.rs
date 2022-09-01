@@ -1092,7 +1092,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::DropAndReplace { place, value, target: next_target, unwind: None },
+            TerminatorKind::DropAndReplace(Box::new(DropAndReplaceTerminator {
+                place,
+                value,
+                target: next_target,
+                unwind: None,
+            })),
         );
         self.diverge_from(block);
 
@@ -1116,7 +1121,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::Assert { cond, expected, msg, target: success_block, cleanup: None },
+            TerminatorKind::Assert(Box::new(AssertTerminator {
+                cond,
+                expected,
+                msg,
+                target: success_block,
+                cleanup: None,
+            })),
         );
         self.diverge_from(block);
 
@@ -1350,8 +1361,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
     }
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = cfg.block_data_mut(from).terminator_mut();
-        if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
-            *drop = Some(to);
+        if let TerminatorKind::Yield(y) = &mut term.kind {
+            y.drop = Some(to);
         } else {
             span_bug!(
                 term.source_info.span,
@@ -1372,11 +1383,11 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. }
-            | TerminatorKind::DropAndReplace { unwind, .. }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { unwind, .. })
             | TerminatorKind::FalseUnwind { unwind, .. }
-            | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. }
-            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
+            | TerminatorKind::Call(box CallTerminator { cleanup: unwind, .. })
+            | TerminatorKind::Assert(box AssertTerminator { cleanup: unwind, .. })
+            | TerminatorKind::InlineAsm(box InlineAsmTerminator { cleanup: unwind, .. }) => {
                 *unwind = Some(to);
             }
             TerminatorKind::Goto { .. }

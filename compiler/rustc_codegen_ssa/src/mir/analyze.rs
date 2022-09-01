@@ -8,7 +8,10 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{self, Location, TerminatorKind};
+use rustc_middle::mir::{
+    self, AssertTerminator, CallTerminator, DropAndReplaceTerminator, InlineAsmTerminator,
+    Location, TerminatorKind,
+};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -278,10 +281,10 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
-                TerminatorKind::Call { cleanup: unwind, .. }
-                | TerminatorKind::InlineAsm { cleanup: unwind, .. }
-                | TerminatorKind::Assert { cleanup: unwind, .. }
-                | TerminatorKind::DropAndReplace { unwind, .. }
+                TerminatorKind::Call(box CallTerminator { cleanup: unwind, .. })
+                | TerminatorKind::InlineAsm(box InlineAsmTerminator { cleanup: unwind, .. })
+                | TerminatorKind::Assert(box AssertTerminator { cleanup: unwind, .. })
+                | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { unwind, .. })
                 | TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {
                         debug!(

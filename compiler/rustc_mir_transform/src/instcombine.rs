@@ -3,8 +3,8 @@
 use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
-    BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
-    SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
+    BinOp, Body, CallTerminator, Constant, ConstantKind, LocalDecls, Operand, Place,
+    ProjectionElem, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -140,7 +140,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let TerminatorKind::Call { func, args, destination, target, .. } = &mut terminator.kind
+        let TerminatorKind::Call(box CallTerminator { func, args, destination, target, .. }) = &mut terminator.kind
         else { return };
 
         // It's definitely not a clone if there are multiple arguments

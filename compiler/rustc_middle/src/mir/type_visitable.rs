@@ -8,22 +8,22 @@ impl<'tcx> TypeVisitable<'tcx> for Terminator<'tcx> {
         use crate::mir::TerminatorKind::*;
 
         match self.kind {
-            SwitchInt { ref discr, switch_ty, .. } => {
+            SwitchInt(box SwitchIntTerminator { ref discr, switch_ty, .. }) => {
                 discr.visit_with(visitor)?;
                 switch_ty.visit_with(visitor)
             }
             Drop { ref place, .. } => place.visit_with(visitor),
-            DropAndReplace { ref place, ref value, .. } => {
+            DropAndReplace(box DropAndReplaceTerminator { ref place, ref value, .. }) => {
                 place.visit_with(visitor)?;
                 value.visit_with(visitor)
             }
-            Yield { ref value, .. } => value.visit_with(visitor),
-            Call { ref func, ref args, ref destination, .. } => {
+            Yield(box YieldTerminator { ref value, .. }) => value.visit_with(visitor),
+            Call(box CallTerminator { ref func, ref args, ref destination, .. }) => {
                 destination.visit_with(visitor)?;
                 func.visit_with(visitor)?;
                 args.visit_with(visitor)
             }
-            Assert { ref cond, ref msg, .. } => {
+            Assert(box AssertTerminator { ref cond, ref msg, .. }) => {
                 cond.visit_with(visitor)?;
                 use AssertKind::*;
                 match msg {
@@ -41,7 +41,7 @@ impl<'tcx> TypeVisitable<'tcx> for Terminator<'tcx> {
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => ControlFlow::CONTINUE,
                 }
             }
-            InlineAsm { ref operands, .. } => operands.visit_with(visitor),
+            InlineAsm(box InlineAsmTerminator { ref operands, .. }) => operands.visit_with(visitor),
             Goto { .. }
             | Resume
             | Abort

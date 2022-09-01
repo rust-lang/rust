@@ -94,9 +94,11 @@ fn find_dead_unwinds<'tcx>(
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref place, unwind: Some(_), .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind: Some(_), .. } => {
-                und.derefer(place.as_ref(), body).unwrap_or(*place)
-            }
+            | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                ref place,
+                unwind: Some(_),
+                ..
+            }) => und.derefer(place.as_ref(), body).unwrap_or(*place),
             _ => continue,
         };
 
@@ -303,9 +305,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let terminator = data.terminator();
             let place = match terminator.kind {
                 TerminatorKind::Drop { ref place, .. }
-                | TerminatorKind::DropAndReplace { ref place, .. } => {
-                    self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place)
-                }
+                | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                    ref place, ..
+                }) => self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place),
                 _ => continue,
             };
 
@@ -388,7 +390,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::DropAndReplace { mut place, ref value, target, unwind } => {
+                TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
+                    mut place,
+                    ref value,
+                    target,
+                    unwind,
+                }) => {
                     assert!(!data.is_cleanup);
 
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
@@ -512,9 +519,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            if let TerminatorKind::Call {
-                destination, target: Some(tgt), cleanup: Some(_), ..
-            } = data.terminator().kind
+            if let TerminatorKind::Call(box CallTerminator {
+                destination,
+                target: Some(tgt),
+                cleanup: Some(_),
+                ..
+            }) = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 
@@ -593,8 +603,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // There may be a critical edge after this call,
             // so mark the return as initialized *before* the
             // call.
-            if let TerminatorKind::Call { destination, target: Some(_), cleanup: None, .. } =
-                data.terminator().kind
+            if let TerminatorKind::Call(box CallTerminator {
+                destination,
+                target: Some(_),
+                cleanup: None,
+                ..
+            }) = data.terminator().kind
             {
                 assert!(!self.patch.is_patched(bb));
 

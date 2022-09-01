@@ -263,7 +263,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Call {
+                    TerminatorKind::Call(Box::new(CallTerminator {
                         func: fun,
                         args,
                         cleanup: None,
@@ -283,7 +283,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         },
                         from_hir_call,
                         fn_span,
-                    },
+                    })),
                 );
                 this.diverge_from(block);
                 success.unit()
@@ -469,7 +469,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::InlineAsm {
+                    TerminatorKind::InlineAsm(Box::new(InlineAsmTerminator {
                         template,
                         operands,
                         options,
@@ -480,7 +480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Some(destination_block)
                         },
                         cleanup: None,
-                    },
+                    })),
                 );
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     this.diverge_from(block);
@@ -544,7 +544,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
+                    TerminatorKind::Yield(Box::new(YieldTerminator {
+                        value,
+                        resume,
+                        resume_arg: destination,
+                        drop: None,
+                    })),
                 );
                 this.generator_drop_cleanup(block);
                 resume.unit()

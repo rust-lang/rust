@@ -832,19 +832,22 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         let tcx = self.tcx;
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, .. } => {
-                let callee_ty = func.ty(self.body, tcx);
+            mir::TerminatorKind::Call(ref call) => {
+                let callee_ty = call.func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref place, .. }
-            | mir::TerminatorKind::DropAndReplace { ref place, .. } => {
+            | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
+                ref place,
+                ..
+            }) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let ty = self.monomorphize(ty);
                 visit_drop_use(self.tcx, ty, true, source, self.output);
             }
-            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
-                for op in operands {
+            mir::TerminatorKind::InlineAsm(ref asm) => {
+                for op in &asm.operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.literal.ty());
@@ -861,8 +864,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     }
                 }
             }
-            mir::TerminatorKind::Assert { ref msg, .. } => {
-                let lang_item = match msg {
+            mir::TerminatorKind::Assert(ref assert) => {
+                let lang_item = match assert.msg {
                     mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
                     _ => LangItem::Panic,
                 };

@@ -168,8 +168,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         self.borrowed_locals.borrow().analysis().terminator_effect(trans, terminator, loc);
 
         match &terminator.kind {
-            TerminatorKind::Call { destination, .. } => {
-                trans.gen(destination.local);
+            TerminatorKind::Call(call) => {
+                trans.gen(call.destination.local);
             }
 
             // Note that we do *not* gen the `resume_arg` of `Yield` terminators. The reason for
@@ -178,8 +178,8 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             // place to have storage *before* the yield, only after.
             TerminatorKind::Yield { .. } => {}
 
-            TerminatorKind::InlineAsm { operands, .. } => {
-                for op in operands {
+            TerminatorKind::InlineAsm(asm) => {
+                for op in &asm.operands {
                     match op {
                         InlineAsmOperand::Out { place, .. }
                         | InlineAsmOperand::InOut { out_place: place, .. } => {
@@ -218,18 +218,19 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
         terminator: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        match terminator.kind {
+        match &terminator.kind {
             // For call terminators the destination requires storage for the call
             // and after the call returns successfully, but not after a panic.
             // Since `propagate_call_unwind` doesn't exist, we have to kill the
             // destination here, and then gen it again in `call_return_effect`.
-            TerminatorKind::Call { destination, .. } => {
-                trans.kill(destination.local);
+            TerminatorKind::Call(call) => {
+                trans.kill(call.destination.local);
             }
 
             // The same applies to InlineAsm outputs.
-            TerminatorKind::InlineAsm { ref operands, .. } => {
-                CallReturnPlaces::InlineAsm(operands).for_each(|place| trans.kill(place.local));
+            TerminatorKind::InlineAsm(asm) => {
+                CallReturnPlaces::InlineAsm(&asm.operands)
+                    .for_each(|place| trans.kill(place.local));
             }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new

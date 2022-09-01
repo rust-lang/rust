@@ -76,7 +76,7 @@ where
     let terminator = match terminator_kind {
         // This will unconditionally run into an unreachable and is therefore unreachable as well.
         TerminatorKind::Goto { target } if is_unreachable(*target) => TerminatorKind::Unreachable,
-        TerminatorKind::SwitchInt { targets, discr, switch_ty } => {
+        TerminatorKind::SwitchInt(box SwitchInt { targets, discr, switch_ty }) => {
             let otherwise = targets.otherwise();
 
             // If all targets are unreachable, we can be unreachable as well.
@@ -110,11 +110,11 @@ where
                     return None;
                 }
 
-                TerminatorKind::SwitchInt {
+                TerminatorKind::SwitchInt(Box::new(SwitchInt {
                     discr: discr.clone(),
                     switch_ty: *switch_ty,
                     targets: new_targets,
-                }
+                }))
             } else {
                 // If the otherwise branch is reachable, we don't want to delete any unreachable branches.
                 return None;

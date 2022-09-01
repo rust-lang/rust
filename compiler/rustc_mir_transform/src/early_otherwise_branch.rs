@@ -119,11 +119,11 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
             should_cleanup = true;
 
-            let TerminatorKind::SwitchInt {
+            let TerminatorKind::SwitchInt(box SwitchIntTerminator {
                 discr: parent_op,
                 switch_ty: parent_ty,
                 targets: parent_targets
-            } = &bbs[parent].terminator().kind else {
+            }) = &bbs[parent].terminator().kind else {
                 unreachable!()
             };
             // Always correct since we can only switch on `Copy` types
@@ -168,22 +168,22 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             );
 
             let eq_new_targets = parent_targets.iter().map(|(value, child)| {
-                let TerminatorKind::SwitchInt{ targets, .. } = &bbs[child].terminator().kind else {
+                let TerminatorKind::SwitchInt(si) = &bbs[child].terminator().kind else {
                     unreachable!()
                 };
-                (value, targets.target_for_value(value))
+                (value, si.targets.target_for_value(value))
             });
             let eq_targets = SwitchTargets::new(eq_new_targets, opt_data.destination);
 
             // Create `bbEq` in example above
             let eq_switch = BasicBlockData::new(Some(Terminator {
                 source_info: bbs[parent].terminator().source_info,
-                kind: TerminatorKind::SwitchInt {
+                kind: TerminatorKind::SwitchInt(Box::new(SwitchIntTerminator {
                     // switch on the first discriminant, so we can mark the second one as dead
                     discr: parent_op,
                     switch_ty: opt_data.child_ty,
                     targets: eq_targets,
-                },
+                })),
             }));
 
             let eq_bb = patch.new_block(eq_switch);
@@ -317,11 +317,11 @@ fn evaluate_candidate<'tcx>(
     parent: BasicBlock,
 ) -> Option<OptimizationData<'tcx>> {
     let bbs = &body.basic_blocks;
-    let TerminatorKind::SwitchInt {
+    let TerminatorKind::SwitchInt(box SwitchIntTerminator {
         targets,
         switch_ty: parent_ty,
         ..
-    } = &bbs[parent].terminator().kind else {
+    }) = &bbs[parent].terminator().kind else {
         return None
     };
     let parent_dest = {
@@ -338,11 +338,11 @@ fn evaluate_candidate<'tcx>(
     };
     let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
-    let TerminatorKind::SwitchInt {
+    let TerminatorKind::SwitchInt(box SwitchIntTerminator {
         switch_ty: child_ty,
         targets: child_targets,
         ..
-    } = &child_terminator.kind else {
+    }) = &child_terminator.kind else {
         return None
     };
     if child_ty != parent_ty {
@@ -403,7 +403,7 @@ fn verify_candidate_branch<'tcx>(
         return false;
     }
     // ...terminate on a `SwitchInt` that invalidates that local
-    let TerminatorKind::SwitchInt{ discr: switch_op, targets, .. } = &branch.terminator().kind else {
+    let TerminatorKind::SwitchInt(box SwitchIntTerminator { discr: switch_op, targets, .. }) = &branch.terminator().kind else {
         return false
     };
     if *switch_op != Operand::Move(*discr_place) {

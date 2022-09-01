@@ -56,12 +56,12 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             }
 
             let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {
-                TerminatorKind::SwitchInt {
+                TerminatorKind::SwitchInt(box SwitchIntTerminator {
                     discr: ref discr @ (Operand::Copy(_) | Operand::Move(_)),
                     switch_ty,
                     ref targets,
                     ..
-                } if targets.iter().len() == 1 => {
+                }) if targets.iter().len() == 1 => {
                     let (value, target) = targets.iter().next().unwrap();
                     if target == targets.otherwise() {
                         continue;
