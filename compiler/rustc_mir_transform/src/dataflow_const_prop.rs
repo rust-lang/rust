@@ -3,7 +3,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
-use rustc_mir_dataflow::value_analysis::{Map, ProjElem, State, ValueAnalysis, ValueOrPlace};
+use rustc_mir_dataflow::value_analysis::{
+    Map, ProjElem, State, ValueAnalysis, ValueOrPlace, ValueOrPlaceOrRef,
+};
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
 
@@ -59,6 +61,12 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
         match rvalue {
             Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                 let target = self.map().find(target.as_ref());
+                if let Some(target) = target {
+                    // We should not track any projections other than
+                    // what is overwritten below, but just in case...
+                    state.flood_idx(target, self.map());
+                }
+
                 let value_target = target.and_then(|target| {
                     self.map().apply_elem(target, ProjElem::Field(0_u32.into()))
                 });
@@ -70,12 +78,12 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     let (val, overflow) = self.binary_op(state, *op, left, right);
 
                     if let Some(value_target) = value_target {
-                        state.assign_idx(value_target, ValueOrPlace::Value(val), self.map());
+                        state.assign_idx(value_target, ValueOrPlaceOrRef::Value(val), self.map());
                     }
                     if let Some(overflow_target) = overflow_target {
                         state.assign_idx(
                             overflow_target,
-                            ValueOrPlace::Value(overflow),
+                            ValueOrPlaceOrRef::Value(overflow),
                             self.map(),
                         );
                     }
@@ -89,7 +97,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
+    ) -> ValueOrPlaceOrRef<Self::Value> {
         match rvalue {
             Rvalue::Cast(CastKind::Misc, operand, ty) => {
                 let operand = self.eval_operand(operand, state);
@@ -97,24 +105,24 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                     FlatSet::Elem(operand) => self
                         .ecx
                         .misc_cast(&operand, *ty)
-                        .map(|result| ValueOrPlace::Value(self.wrap_immediate(result, *ty)))
-                        .unwrap_or(ValueOrPlace::Unknown),
-                    _ => ValueOrPlace::Unknown,
+                        .map(|result| ValueOrPlaceOrRef::Value(self.wrap_immediate(result, *ty)))
+                        .unwrap_or(ValueOrPlaceOrRef::Unknown),
+                    _ => ValueOrPlaceOrRef::Unknown,
                 }
             }
             Rvalue::BinaryOp(op, box (left, right)) => {
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
                 // FIXME: Just ignore overflow here?
-                ValueOrPlace::Value(val)
+                ValueOrPlaceOrRef::Value(val)
             }
             Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
                 FlatSet::Elem(value) => self
                     .ecx
                     .unary_op(*op, &value)
-                    .map(|val| ValueOrPlace::Value(self.wrap_immty(val)))
-                    .unwrap_or(ValueOrPlace::Value(FlatSet::Top)),
-                FlatSet::Bottom => ValueOrPlace::Value(FlatSet::Bottom),
-                FlatSet::Top => ValueOrPlace::Value(FlatSet::Top),
+                    .map(|val| ValueOrPlaceOrRef::Value(self.wrap_immty(val)))
+                    .unwrap_or(ValueOrPlaceOrRef::Value(FlatSet::Top)),
+                FlatSet::Bottom => ValueOrPlaceOrRef::Value(FlatSet::Bottom),
+                FlatSet::Top => ValueOrPlaceOrRef::Value(FlatSet::Top),
             },
             _ => self.super_rvalue(rvalue, state),
         }
@@ -175,7 +183,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                 handled = true;
             } else {
                 // Branch is not taken, we can flood everything.
-                state.flood_all(FlatSet::Bottom);
+                state.flood_all();
             }
         })
     }

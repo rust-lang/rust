@@ -115,35 +115,15 @@ pub trait ValueAnalysis<'tcx> {
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
     ) {
-        match rvalue {
-            Rvalue::Ref(_, BorrowKind::Shared, place) => {
-                let target_deref = self
-                    .map()
-                    .find(target.as_ref())
-                    .and_then(|target| self.map().apply_elem(target, ProjElem::Deref));
-                let place = self.map().find(place.as_ref());
-                match (target_deref, place) {
-                    (Some(target_deref), Some(place)) => {
-                        state.assign_idx(target_deref, ValueOrPlace::Place(place), self.map())
-                    }
-                    _ => (),
-                }
-            }
-            Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-                state.flood(place.as_ref(), self.map(), Self::Value::top());
-            }
-            _ => {
-                let result = self.handle_rvalue(rvalue, state);
-                state.assign(target.as_ref(), result, self.map());
-            }
-        }
+        let result = self.handle_rvalue(rvalue, state);
+        state.assign(target.as_ref(), result, self.map());
     }
 
     fn handle_rvalue(
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
+    ) -> ValueOrPlaceOrRef<Self::Value> {
         self.super_rvalue(rvalue, state)
     }
 
@@ -151,16 +131,24 @@ pub trait ValueAnalysis<'tcx> {
         &self,
         rvalue: &Rvalue<'tcx>,
         state: &mut State<Self::Value>,
-    ) -> ValueOrPlace<Self::Value> {
+    ) -> ValueOrPlaceOrRef<Self::Value> {
         match rvalue {
-            Rvalue::Use(operand) => self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
-            Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
-                bug!("this rvalue must be handled by handle_assign() or super_assign()")
+            Rvalue::Use(operand) => self.handle_operand(operand, state).into(),
+            Rvalue::Ref(_, BorrowKind::Shared, place) => self
+                .map()
+                .find(place.as_ref())
+                .map(ValueOrPlaceOrRef::Ref)
+                .unwrap_or(ValueOrPlaceOrRef::Unknown),
+            Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+                state.flood(place.as_ref(), self.map());
+                ValueOrPlaceOrRef::Unknown
+            }
+            Rvalue::CopyForDeref(place) => {
+                self.handle_operand(&Operand::Copy(*place), state).into()
             }
             _ => {
                 // FIXME: Check that other Rvalues really have no side-effect.
-                ValueOrPlace::Unknown
+                ValueOrPlaceOrRef::Unknown
             }
         }
     }
@@ -228,7 +216,7 @@ pub trait ValueAnalysis<'tcx> {
         state: &mut State<Self::Value>,
     ) {
         return_places.for_each(|place| {
-            state.flood(place.as_ref(), self.map(), Self::Value::top());
+            state.flood(place.as_ref(), self.map());
         })
     }
 
@@ -270,7 +258,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
         for arg in body.args_iter() {
-            state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map(), T::Value::top());
+            state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());
         }
     }
 }
@@ -328,22 +316,34 @@ rustc_index::newtype_index!(
 pub struct State<V>(IndexVec<ValueIndex, V>);
 
 impl<V: Clone + HasTop> State<V> {
-    pub fn flood_all(&mut self, value: V) {
+    pub fn flood_all(&mut self) {
+        self.flood_all_with(V::top())
+    }
+
+    pub fn flood_all_with(&mut self, value: V) {
         self.0.raw.fill(value);
     }
 
-    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
+    pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
         if let Some(root) = map.find(place) {
-            self.flood_idx(root, map, value);
+            self.flood_idx_with(root, map, value);
         }
     }
 
-    pub fn flood_idx(&mut self, place: PlaceIndex, map: &Map, value: V) {
+    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
+        self.flood_with(place, map, V::top())
+    }
+
+    pub fn flood_idx_with(&mut self, place: PlaceIndex, map: &Map, value: V) {
         map.preorder_invoke(place, &mut |place| {
             if let Some(vi) = map.places[place].value_index {
                 self.0[vi] = value.clone();
             }
         });
+    }
+
+    pub fn flood_idx(&mut self, place: PlaceIndex, map: &Map) {
+        self.flood_idx_with(place, map, V::top())
     }
 
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
@@ -360,30 +360,40 @@ impl<V: Clone + HasTop> State<V> {
             if let Some(source_child) = map.projections.get(&(source, projection)) {
                 self.assign_place_idx(target_child, *source_child, map);
             } else {
-                self.flood_idx(target_child, map, V::top());
+                self.flood_idx(target_child, map);
             }
         }
     }
 
-    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
+    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlaceOrRef<V>, map: &Map) {
         if let Some(target) = map.find(target) {
             self.assign_idx(target, result, map);
+        } else {
+            // We don't track this place nor any projections, assignment can be ignored.
         }
     }
 
-    pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlace<V>, map: &Map) {
+    pub fn assign_idx(&mut self, target: PlaceIndex, result: ValueOrPlaceOrRef<V>, map: &Map) {
         match result {
-            ValueOrPlace::Value(value) => {
+            ValueOrPlaceOrRef::Value(value) => {
                 // First flood the target place in case we also track any projections (although
-                // this scenario is currently not well-supported with the ValueOrPlace interface).
-                self.flood_idx(target, map, V::top());
+                // this scenario is currently not well-supported by the API).
+                self.flood_idx(target, map);
                 if let Some(value_index) = map.places[target].value_index {
                     self.0[value_index] = value;
                 }
             }
-            ValueOrPlace::Place(source) => self.assign_place_idx(target, source, map),
-            ValueOrPlace::Unknown => {
-                self.flood_idx(target, map, V::top());
+            ValueOrPlaceOrRef::Place(source) => self.assign_place_idx(target, source, map),
+            ValueOrPlaceOrRef::Ref(source) => {
+                if let Some(value_index) = map.places[target].value_index {
+                    self.0[value_index] = V::top();
+                }
+                if let Some(target_deref) = map.apply_elem(target, ProjElem::Deref) {
+                    self.assign_place_idx(target_deref, source, map);
+                }
+            }
+            ValueOrPlaceOrRef::Unknown => {
+                self.flood_idx(target, map);
             }
         }
     }
@@ -576,6 +586,23 @@ pub enum ValueOrPlace<V> {
     Value(V),
     Place(PlaceIndex),
     Unknown,
+}
+
+pub enum ValueOrPlaceOrRef<V> {
+    Value(V),
+    Place(PlaceIndex),
+    Ref(PlaceIndex),
+    Unknown,
+}
+
+impl<V> From<ValueOrPlace<V>> for ValueOrPlaceOrRef<V> {
+    fn from(x: ValueOrPlace<V>) -> Self {
+        match x {
+            ValueOrPlace::Value(value) => ValueOrPlaceOrRef::Value(value),
+            ValueOrPlace::Place(place) => ValueOrPlaceOrRef::Place(place),
+            ValueOrPlace::Unknown => ValueOrPlaceOrRef::Unknown,
+        }
+    }
 }
 
 pub trait HasBottom {
