@@ -177,29 +177,92 @@ pub(crate) enum BorrowUsedLater<'a> {
         #[primary_span]
         span: Span,
     },
-
     #[label(borrowck::borrow_later_captured_by_closure)]
     ClosureCapture {
         borrow_desc: &'a str,
         #[primary_span]
         span: Span,
     },
-
     #[label(borrowck::borrow_later_used_by_call)]
     Call {
         borrow_desc: &'a str,
         #[primary_span]
         span: Span,
     },
-
     #[label(borrowck::borrow_later_stored_here)]
     FakeLetRead {
         borrow_desc: &'a str,
         #[primary_span]
         span: Span,
     },
-
     #[label(borrowck::borrow_later_used_here)]
+    Other {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum BorrowUsedLaterInLoop<'a> {
+    #[label(borrowck::trait_capture_borrow_in_later_iteration_loop)]
+    TraitCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::closure_capture_borrow_in_later_iteration_loop)]
+    ClosureCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::call_used_borrow_in_later_iteration_loop)]
+    Call {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::borrow_later_stored_here)]
+    FakeLetRead {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::used_borrow_in_later_iteration_loop)]
+    Other {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+}
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum BorrowLaterBorrowUsedLaterInLoop<'a> {
+    #[label(borrowck::bl_trait_capture_borrow_in_later_iteration_loop)]
+    TraitCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::bl_closure_capture_borrow_in_later_iteration_loop)]
+    ClosureCapture {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::call_used_borrow_in_later_iteration_loop)]
+    Call {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::bl_borrow_later_stored_here)]
+    FakeLetRead {
+        borrow_desc: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::bl_used_borrow_in_later_iteration_loop)]
     Other {
         borrow_desc: &'a str,
         #[primary_span]
