@@ -76,7 +76,7 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
             show_error!("xargo is too old; please upgrade to the latest version")
         }
         let mut cmd = cargo();
-        cmd.args(&["install", "xargo"]);
+        cmd.args(["install", "xargo"]);
         ask_to_run(cmd, ask_user, "install a recent enough xargo");
     }
 
@@ -93,7 +93,7 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
         None => {
             // Check for `rust-src` rustup component.
             let output = miri_for_host()
-                .args(&["--print", "sysroot"])
+                .args(["--print", "sysroot"])
                 .output()
                 .expect("failed to determine sysroot");
             if !output.status.success() {
@@ -110,7 +110,7 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
             if !rustup_src.join("std").join("Cargo.toml").exists() {
                 // Ask the user to install the `rust-src` component, and use that.
                 let mut cmd = Command::new("rustup");
-                cmd.args(&["component", "add", "rust-src"]);
+                cmd.args(["component", "add", "rust-src"]);
                 ask_to_run(
                     cmd,
                     ask_user,
@@ -136,7 +136,7 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
     let dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
     let dir = dirs.cache_dir();
     if !dir.exists() {
-        fs::create_dir_all(&dir).unwrap();
+        fs::create_dir_all(dir).unwrap();
     }
     // The interesting bit: Xargo.toml (only needs content if we actually need std)
     let xargo_toml = if std::env::var_os("MIRI_NO_STD").is_some() {
@@ -178,8 +178,8 @@ path = "lib.rs"
     // Now invoke xargo.
     let mut command = xargo_check();
     command.arg("check").arg("-q");
-    command.current_dir(&dir);
-    command.env("XARGO_HOME", &dir);
+    command.current_dir(dir);
+    command.env("XARGO_HOME", dir);
     command.env("XARGO_RUST_SRC", &rust_src);
     // We always need to set a target so rustc bootstrap can tell apart host from target crates.
     command.arg("--target").arg(target);
