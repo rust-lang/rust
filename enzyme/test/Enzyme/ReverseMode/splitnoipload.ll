@@ -65,7 +65,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %qidx = load i64*, i64** %pidx, align 8
 ; CHECK-NEXT:   %idx = load i64, i64* %qidx, align 8
 ; CHECK-NEXT:   %1 = getelementptr inbounds i64, i64* %idx_malloccache, i64 %iv
-; CHECK-NEXT:   store i64 %idx, i64* %1, align 8, !invariant.group !0
+; CHECK-NEXT:   store i64 %idx, i64* %1, align 8, !invariant.group !
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv, %n
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup, label %for.body
 ; CHECK-NEXT: }
@@ -82,7 +82,7 @@ attributes #2 = { nounwind }
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %entry
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %n, %entry ], [ %7, %incinvertfor.body ]
 ; CHECK-NEXT:   %1 = getelementptr inbounds i64, i64* %tapeArg, i64 %"iv'ac.0"
-; CHECK-NEXT:   %2 = load i64, i64* %1, align 8, !invariant.group !1
+; CHECK-NEXT:   %2 = load i64, i64* %1, align 8, !invariant.group !
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %2
 ; CHECK-NEXT:   %3 = load double, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %differeturn

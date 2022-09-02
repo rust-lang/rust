@@ -142,7 +142,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertomp.precond.then:                           ; preds = %invertomp.inner.for.body, %omp.precond.then
-; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !13
+; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !
 ; CHECK-NEXT:   call void @__kmpc_for_static_fini(%struct.ident_t* @1, i32 %_unwrap)
 ; CHECK-NEXT:   br label %invertentry
 
@@ -154,7 +154,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   %1 = load double, double* %"outidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"outidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds double, double* %tmp, i64 %_unwrap3
-; CHECK-NEXT:   %_unwrap4 = load double, double* %arrayidx_unwrap, align 8, !tbaa !9, !invariant.group !16
+; CHECK-NEXT:   %_unwrap4 = load double, double* %arrayidx_unwrap, align 8, !tbaa !9, !invariant.group !
 ; CHECK-NEXT:   %2 = call fast double @sqrt(double %_unwrap4)
 ; CHECK-NEXT:   %3 = fmul fast double 5.000000e-01, %1
 ; CHECK-NEXT:   %4 = fdiv fast double %3, %2

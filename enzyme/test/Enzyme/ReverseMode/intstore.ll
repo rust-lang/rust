@@ -51,7 +51,6 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffestore(double* nocapture readonly %x, double* nocapture %"x'", double* nocapture %y, double* nocapture %"y'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"x'" to i64*
 ; CHECK-NEXT:   %0 = bitcast double* %x to i64*
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast double* %"y'" to i64*
 ; CHECK-NEXT:   %1 = bitcast double* %y to i64*
@@ -59,12 +58,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store i64 %2, i64* %1
 ; CHECK-NEXT:   %3 = load i64, i64* %[[ipc]]
 ; CHECK-NEXT:   store i64 0, i64* %[[ipc]]
-; CHECK-NEXT:   %4 = load i64, i64* %[[ipc2]]
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %3 to double
-; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %4 to double
-; CHECK-NEXT:   %7 = fadd fast double %[[add2]], %[[add1]]
-; CHECK-NEXT:   %8 = bitcast double %7 to i64
-; CHECK-NEXT:   store i64 %8, i64* %[[ipc2]]
+; CHECK-DAG:    %[[add2:.+]] = load double, double* %"x'"
+; CHECK-NEXT:   %[[a7:.+]] = fadd fast double %[[add2]], %[[add1]]
+; CHECK-NEXT:   store double %[[a7]], double* %"x'"
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

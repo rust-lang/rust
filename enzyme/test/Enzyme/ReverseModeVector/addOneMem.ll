@@ -16,7 +16,6 @@ entry:
 
 declare void @__enzyme_autodiff(void (double*)*, ...)
 
-
 ; CHECK: define void @test_derivative(double* %x, double* %xp1, double* %xp2, double* %xp3)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"add'de.i" = alloca [3 x double]
@@ -65,16 +64,18 @@ declare void @__enzyme_autodiff(void (double*)*, ...)
 ; CHECK-NEXT:   %27 = fadd fast double %26, %24
 ; CHECK-NEXT:   store double %27, double* %25
 ; CHECK-NEXT:   %28 = load [3 x double], [3 x double]* %"'de.i"
-; CHECK-NEXT:   %29 = load double, double* %xp1
-; CHECK-NEXT:   %30 = load double, double* %xp2
-; CHECK-NEXT:   %31 = extractvalue [3 x double] %28, 0
-; CHECK-NEXT:   %32 = fadd fast double %29, %31
-; CHECK-NEXT:   %33 = extractvalue [3 x double] %28, 1
-; CHECK-NEXT:   %34 = fadd fast double %30, %33
-; CHECK-NEXT:   %35 = extractvalue [3 x double] %28, 2
-; CHECK-NEXT:   store double %32, double* %xp1
-; CHECK-NEXT:   store double %34, double* %xp2
-; CHECK-NEXT:   store double %35, double* %xp3
+; CHECK-NEXT:   %[[i31:.+]] = extractvalue [3 x double] %28, 0
+; CHECK-NEXT:   %[[i29:.+]] = load double, double* %xp1
+; CHECK-NEXT:   %[[i32:.+]] = fadd fast double %[[i29]], %[[i31]]
+; CHECK-NEXT:   store double %[[i32]], double* %xp1
+; CHECK-NEXT:   %[[i33:.+]] = extractvalue [3 x double] %28, 1
+; CHECK-NEXT:   %[[i30:.+]] = load double, double* %xp2
+; CHECK-NEXT:   %[[i34:.+]] = fadd fast double %[[i30]], %[[i33]]
+; CHECK-NEXT:   store double %[[i34]], double* %xp2
+; CHECK-NEXT:   %[[i35:.+]] = extractvalue [3 x double] %28, 2
+; CHECK-NEXT:   %[[i36:.+]] = load double, double* %xp3
+; CHECK-NEXT:   %[[i37:.+]] = fadd fast double %[[i36]], %[[i35]]
+; CHECK-NEXT:   store double %[[i37]], double* %xp3
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 24, i8* %0)
 ; CHECK-NEXT:   call void @llvm.lifetime.end.p0i8(i64 24, i8* %1)
 ; CHECK-NEXT:   ret void

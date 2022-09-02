@@ -95,23 +95,19 @@ entry:
 ; CHECK-NEXT:   %18 = load [2 x i64], [2 x i64]* %"i3'de"
 ; CHECK-NEXT:   store [2 x i64] zeroinitializer, [2 x i64]* %"i3'de"
 ; CHECK-NEXT:   %19 = extractvalue [2 x i64 addrspace(12)*] %"i2'", 0
-; CHECK-NEXT:   %20 = load i64, i64 addrspace(12)* %19
+; CHECK-NEXT:   %20 = bitcast i64 addrspace(12)* %19 to double addrspace(12)*
 ; CHECK-NEXT:   %21 = extractvalue [2 x i64 addrspace(12)*] %"i2'", 1
-; CHECK-NEXT:   %22 = load i64, i64 addrspace(12)* %21
+; CHECK-NEXT:   %22 = bitcast i64 addrspace(12)* %21 to double addrspace(12)*
 ; CHECK-NEXT:   %23 = extractvalue [2 x i64] %18, 0
 ; CHECK-DAG:   %[[i24:.+]] = bitcast i64 %23 to double
-; CHECK-DAG:   %[[i25:.+]] = bitcast i64 %20 to double
-; CHECK-NEXT:   %26 = fadd fast double %[[i25]], %[[i24]]
-; CHECK-NEXT:   %27 = bitcast double %26 to i64
-; CHECK-NEXT:   %28 = extractvalue [2 x i64] %18, 1
-; CHECK-DAG:   %[[i29:.+]] = bitcast i64 %28 to double
-; CHECK-DAG:   %[[i30:.+]] = bitcast i64 %22 to double
-; CHECK-NEXT:   %31 = fadd fast double %[[i30]], %[[i29]]
-; CHECK-NEXT:   %32 = bitcast double %31 to i64
-; CHECK-NEXT:   %33 = extractvalue [2 x i64 addrspace(12)*] %"i2'", 0
-; CHECK-NEXT:   store i64 %27, i64 addrspace(12)* %33
-; CHECK-NEXT:   %34 = extractvalue [2 x i64 addrspace(12)*] %"i2'", 1
-; CHECK-NEXT:   store i64 %32, i64 addrspace(12)* %34
+; CHECK-NEXT:   %[[i28:.+]] = extractvalue [2 x i64] %18, 1
+; CHECK-DAG:   %[[i29:.+]] = bitcast i64 %[[i28]] to double
+; CHECK-DAG:   %[[i25:.+]] = load double, double addrspace(12)* %20
+; CHECK-NEXT:   %[[i26:.+]] = fadd fast double %[[i25]], %[[i24]]
+; CHECK-NEXT:   store double %[[i26]], double addrspace(12)* %20
+; CHECK-DAG:   %[[i30:.+]] = load double, double addrspace(12)* %22
+; CHECK-NEXT:   %[[i31:.+]] = fadd fast double %[[i30]], %[[i29]]
+; CHECK-NEXT:   store double %[[i31]], double addrspace(12)* %22
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

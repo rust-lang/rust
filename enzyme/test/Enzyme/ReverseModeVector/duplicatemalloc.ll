@@ -92,20 +92,20 @@ attributes #4 = { nounwind }
 
 ; SHARED: define internal fastcc void @diffe3f([3 x double*] %"x'", [3 x double] %differeturn)
 ; SHARED-NEXT: entry:
-; SHARED-NEXT:   %0 = extractvalue [3 x double*] %"x'", 0
-; SHARED-NEXT:   %1 = load double, double* %0
-; SHARED-NEXT:   %2 = extractvalue [3 x double*] %"x'", 1
-; SHARED-NEXT:   %3 = load double, double* %2
-; SHARED-NEXT:   %4 = extractvalue [3 x double*] %"x'", 2
-; SHARED-NEXT:   %5 = load double, double* %4
-; SHARED-NEXT:   %6 = extractvalue [3 x double] %differeturn, 0
-; SHARED-NEXT:   %7 = fadd fast double %1, %6
-; SHARED-NEXT:   %8 = extractvalue [3 x double] %differeturn, 1
-; SHARED-NEXT:   %9 = fadd fast double %3, %8
-; SHARED-NEXT:   %10 = extractvalue [3 x double] %differeturn, 2
-; SHARED-NEXT:   %11 = fadd fast double %5, %10
-; SHARED-NEXT:   store double %7, double* %0
-; SHARED-NEXT:   store double %9, double* %2
-; SHARED-NEXT:   store double %11, double* %4
+; SHARED-NEXT:   %[[i0:.+]] = extractvalue [3 x double*] %"x'", 0
+; SHARED-NEXT:   %[[i6:.+]] = extractvalue [3 x double] %differeturn, 0
+; SHARED-NEXT:   %[[i1:.+]] = load double, double* %[[i0]]
+; SHARED-NEXT:   %[[i7:.+]] = fadd fast double %[[i1]], %[[i6]]
+; SHARED-NEXT:   store double %[[i7]], double* %[[i0]]
+; SHARED-NEXT:   %[[i2:.+]] = extractvalue [3 x double*] %"x'", 1
+; SHARED-NEXT:   %[[i8:.+]] = extractvalue [3 x double] %differeturn, 1
+; SHARED-NEXT:   %[[i3:.+]] = load double, double* %[[i2]]
+; SHARED-NEXT:   %[[i9:.+]] = fadd fast double %[[i3]], %[[i8]]
+; SHARED-NEXT:   store double %[[i9]], double* %[[i2]]
+; SHARED-NEXT:   %[[i4:.+]] = extractvalue [3 x double*] %"x'", 2
+; SHARED-NEXT:   %[[i10:.+]] = extractvalue [3 x double] %differeturn, 2
+; SHARED-NEXT:   %[[i5:.+]] = load double, double* %[[i4]]
+; SHARED-NEXT:   %[[i11:.+]] = fadd fast double %[[i5]], %[[i10]]
+; SHARED-NEXT:   store double %[[i11]], double* %[[i4]]
 ; SHARED-NEXT:   ret void
 ; SHARED-NEXT: }

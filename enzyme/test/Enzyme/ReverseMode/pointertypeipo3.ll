@@ -123,12 +123,11 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %[[pret:.+]] = extractvalue { {{.*}}, i64 } %tapeArg, 0
 ; CHECK-NEXT:   %[[dpop:.+]] = call { i64 } @diffepop(i64 %[[agg]], i64 %differeturn, {{.*}} %[[pret]])
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { i64 } %[[dpop]], 0
-; CHECK-NEXT:   %2 = load i64, i64* %"this'"
+; CHECK-NEXT:   %2 = bitcast i64* %"this'" to double*
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %[[ev]] to double
-; CHECK-DAG:    %[[add2:.+]] = bitcast i64 %2 to double
+; CHECK-DAG:    %[[add2:.+]] = load double, double* %2
 ; CHECK-NEXT:   %5 = fadd fast double %[[add2]], %[[add1]]
-; CHECK-NEXT:   %6 = bitcast double %5 to i64
-; CHECK-NEXT:   store i64 %6, i64* %"this'"
+; CHECK-NEXT:   store double %5, double* %2
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -142,19 +141,18 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %[[a2:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 3
 ; CHECK-NEXT:   %0 = call { i64 } @diffemul(i64 %[[a2]], i64 %differeturn)
 ; CHECK-NEXT:   %1 = extractvalue { i64 } %0, 0
-; CHECK-NEXT:   %2 = load i64, i64* %"call.i'ip_phi"
+; CHECK-NEXT:   %2 = bitcast i64* %"call.i'ip_phi" to double*
 ; CHECK-DAG:    %[[sadd1:.+]] = bitcast i64 %1 to double
-; CHECK-DAG:    %[[sadd2:.+]] = bitcast i64 %2 to double
+; CHECK-DAG:    %[[sadd2:.+]] = load double, double* %2
 ; CHECK-NEXT:   %5 = fadd fast double %[[sadd2]], %[[sadd1]]
-; CHECK-NEXT:   %6 = bitcast double %5 to i64
-; CHECK-NEXT:   store i64 %6, i64* %"call.i'ip_phi"
+; CHECK-NEXT:   store double %5, double* %2
 ; CHECK-NEXT:   call void @diffecast(i64* %arr, i64* %"arr'ipc")
-; CHECK-NEXT:   %7 = load i64, i64* %"arr'ipc"
+; CHECK-NEXT:   %[[a7:.+]] = load i64, i64* %"arr'ipc"
 ; CHECK-NEXT:   store i64 0, i64* %"arr'ipc"
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %malloccall)
-; CHECK-NEXT:   %8 = insertvalue { i64 } undef, i64 %7, 0
-; CHECK-NEXT:   ret { i64 } %8
+; CHECK-NEXT:   %[[a8:.+]] = insertvalue { i64 } undef, i64 %[[a7]], 0
+; CHECK-NEXT:   ret { i64 } %[[a8]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { i64 } @diffemul(i64 %a, i64 %differeturn)

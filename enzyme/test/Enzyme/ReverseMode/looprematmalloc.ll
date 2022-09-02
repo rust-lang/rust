@@ -197,7 +197,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: remat_loop_loopExit:                              ; preds = %remat_loop_setLoop
 ; CHECK-NEXT:   %i7_unwrap = getelementptr inbounds [30 x double], [30 x double]* %i_unwrap, i64 0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %i8_unwrap = load double, double* %i7_unwrap, align 8, !tbaa !2, !invariant.group !6
+; CHECK-NEXT:   %i8_unwrap = load double, double* %i7_unwrap, align 8, !tbaa !2, !invariant.group !
 ; CHECK-NEXT:   %m0diffei8 = fmul fast double %"i10'de.0", %i8_unwrap
 ; CHECK-NEXT:   %20 = fadd fast double %m0diffei8, %m0diffei8
 ; CHECK-NEXT:   %"i'ipc_unwrap8" = bitcast i8* %"i1'mi" to [30 x double]*

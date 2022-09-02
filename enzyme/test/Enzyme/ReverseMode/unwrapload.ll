@@ -95,7 +95,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; SHARED-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; SHARED-NEXT:   %a19 = load i64, i64* %a4, align 4
 ; SHARED-NEXT:   %0 = getelementptr inbounds i64, i64* %a19_malloccache, i64 %iv
-; SHARED-NEXT:   store i64 %a19, i64* %0, align 8, !invariant.group !0
+; SHARED-NEXT:   store i64 %a19, i64* %0, align 8, !invariant.group !
 ; SHARED-NEXT:   store i64 %iv.next, i64* %a4, align 4
 ; SHARED-NEXT:   br label %loop2
 

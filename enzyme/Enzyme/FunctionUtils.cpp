@@ -417,11 +417,16 @@ UpgradeAllocasToMallocs(Function *NewF, DerivativeMode mode,
     auto rep = CreateAllocation(B, AI->getAllocatedType(),
                                 B.CreateZExtOrTrunc(AI->getArraySize(), i64),
                                 nam, &CI);
-    CI->setMetadata("enzyme_fromstack",
-                    MDNode::get(CI->getContext(),
-                                {ConstantAsMetadata::get(ConstantInt::get(
-                                    IntegerType::get(AI->getContext(), 64),
-                                    AI->getAlignment()))}));
+#if LLVM_VERSION_MAJOR > 10
+    auto align = AI->getAlign().value();
+#else
+    auto align = AI->getAlignment();
+#endif
+    CI->setMetadata(
+        "enzyme_fromstack",
+        MDNode::get(CI->getContext(),
+                    {ConstantAsMetadata::get(ConstantInt::get(
+                        IntegerType::get(AI->getContext(), 64), align))}));
 
     auto PT0 = cast<PointerType>(rep->getType());
     auto PT1 = cast<PointerType>(AI->getType());

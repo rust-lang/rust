@@ -157,7 +157,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
 ; CHECK-NEXT:   %[[gepprimal:.+]] = getelementptr inbounds i8*, i8** %call_malloccache, i64 %iv
-; CHECK-NEXT:   store i8* %call, i8** %[[gepprimal]], align 8, !invariant.group !8
+; CHECK-NEXT:   store i8* %call, i8** %[[gepprimal]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2

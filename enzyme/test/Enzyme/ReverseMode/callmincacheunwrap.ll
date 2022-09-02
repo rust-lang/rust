@@ -92,7 +92,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"call'ipg_unwrap", align 8
 ; CHECK-NEXT:   %4 = extractvalue { i64, double*, double* } %tapeArg, 2
 ; CHECK-NEXT:   %5 = getelementptr inbounds double, double* %4, i64 %"iv'ac.0"
-; CHECK-NEXT:   %6 = load double, double* %5, align 8, !invariant.group !14
+; CHECK-NEXT:   %6 = load double, double* %5, align 8, !invariant.group !
 ; CHECK-NEXT:   %m0diffeld = fmul fast double %3, %6
 ; CHECK-NEXT:   %m1diffeld = fmul fast double %3, %6
 ; CHECK-NEXT:   %7 = fadd fast double %m0diffeld, %m1diffeld

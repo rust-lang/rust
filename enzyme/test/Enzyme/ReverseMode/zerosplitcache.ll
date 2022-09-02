@@ -50,7 +50,7 @@ declare dso_local double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal { i8*, double } @augmented_above(double %i10) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8), !enzyme_fromstack !0
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8), !enzyme_fromstack !
 ; CHECK-NEXT:   %m = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   call void @augmented_set(double* %m, double* undef, double %i10)
 ; CHECK-NEXT:   %i12 = load double, double* %m, align 8

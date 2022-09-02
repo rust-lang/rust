@@ -62,7 +62,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %X1 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   %L1 = load double, double* %X1
 ; CHECK-NEXT:   %[[gepL1:.+]] = getelementptr inbounds double, double* %L1_malloccache, i64 %iv
-; CHECK-NEXT:   store double %L1, double* %[[gepL1]], align 8, !invariant.group !0
+; CHECK-NEXT:   store double %L1, double* %[[gepL1]], align 8, !invariant.group ![[g0:[0-9]+]]
 ; CHECK-NEXT:   br label %loop2
 
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
@@ -76,14 +76,14 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %[[i2:.+]] = mul nuw nsw i64 %iv, 4
 ; CHECK-NEXT:   %[[i3:.+]] = add nuw nsw i64 %iv1, %[[i2]]
 ; CHECK-NEXT:   %[[i4:.+]] = getelementptr inbounds double, double* %L2_malloccache, i64 %[[i3]]
-; CHECK-NEXT:   store double %L2, double* %[[i4]], align 8, !invariant.group !1
+; CHECK-NEXT:   store double %L2, double* %[[i4]], align 8, !invariant.group ![[g1:[0-9]+]]
 ; CHECK-NEXT:   %exit2 = icmp eq i64 %iv.next2, 4
 ; CHECK-NEXT:   br i1 %exit2, label %cleanup, label %loop2
 
 ; CHECK: cleanup:                                          ; preds = %loop2
 ; CHECK-NEXT:   %.pre = load i64, i64* %rows
 ; CHECK-NEXT:   %[[gepiv:.+]] = getelementptr inbounds i64, i64* %.pre_malloccache, i64 %iv
-; CHECK-NEXT:   store i64 %.pre, i64* %[[gepiv]], align 8, !invariant.group !2
+; CHECK-NEXT:   store i64 %.pre, i64* %[[gepiv]], align 8, !invariant.group ![[g2:[0-9]+]]
 ; CHECK-NEXT:   %exit1 = icmp eq i64 %iv.next, 4
 ; CHECK-NEXT:   br i1 %exit1, label %invertcleanup, label %loop1
 
@@ -114,7 +114,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK: invertloop2_phirc:                                ; preds = %invertloop2
 ; CHECK-NEXT:   %10 = sub nuw i64 %"iv'ac.0", 1
 ; CHECK-NEXT:   %11 = getelementptr inbounds i64, i64* %.pre_malloccache, i64 %10
-; CHECK-NEXT:   %12 = load i64, i64* %11, align 8, !invariant.group !2
+; CHECK-NEXT:   %12 = load i64, i64* %11, align 8, !invariant.group ![[g2]]
 ; CHECK-NEXT:   br label %invertloop2_phimerge
 
 ; CHECK: invertloop2_phimerge:                             ; preds = %invertloop2, %invertloop2_phirc
@@ -125,10 +125,10 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %15 = mul nuw nsw i64 %"iv'ac.0", 4
 ; CHECK-NEXT:   %16 = add nuw nsw i64 %"iv1'ac.0", %15
 ; CHECK-NEXT:   %17 = getelementptr inbounds double, double* %L2_malloccache, i64 %16
-; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group !1
+; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group ![[g1]]
 ; CHECK-NEXT:   %m0diffeL1 = fmul fast double %14, %18
 ; CHECK-NEXT:   %19 = getelementptr inbounds double, double* %L1_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %20 = load double, double* %19, align 8, !invariant.group !0
+; CHECK-NEXT:   %20 = load double, double* %19, align 8, !invariant.group ![[g0]]
 ; CHECK-NEXT:   %m1diffeL2 = fmul fast double %14, %20
 ; CHECK-NEXT:   %21 = fadd fast double %"L1'de.0", %m0diffeL1
 ; CHECK-NEXT:   %"X2'ipg_unwrap" = getelementptr inbounds double, double* %"x'", i64 %"iv1'ac.0"

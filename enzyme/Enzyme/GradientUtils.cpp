@@ -106,9 +106,18 @@ llvm::cl::opt<bool>
                                  "reverse rather than caching"));
 }
 
-unsigned int MD_ToCopy[5] = {LLVMContext::MD_dbg, LLVMContext::MD_tbaa,
-                             LLVMContext::MD_tbaa_struct, LLVMContext::MD_range,
-                             LLVMContext::MD_nonnull};
+SmallVector<unsigned int, 9> MD_ToCopy = {
+    LLVMContext::MD_dbg,
+    LLVMContext::MD_tbaa,
+    LLVMContext::MD_tbaa_struct,
+    LLVMContext::MD_range,
+    LLVMContext::MD_nonnull,
+#if LLVM_VERSION_MAJOR >= 15
+    LLVMContext::align,
+    LLVMContext::noundef,
+#endif
+    LLVMContext::MD_dereferenceable,
+    LLVMContext::MD_dereferenceable_or_null};
 
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
@@ -2613,8 +2622,9 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
 #else
                     auto align = SI->getAlignment();
 #endif
-                    setPtrDiffe(orig_ptr, valueop, NB, align, SI->isVolatile(),
-                                SI->getOrdering(), SI->getSyncScopeID(),
+                    setPtrDiffe(SI, orig_ptr, valueop, NB, align,
+                                SI->isVolatile(), SI->getOrdering(),
+                                SI->getSyncScopeID(),
                                 /*mask*/ nullptr);
                   }
                   // TODO shadow memtransfer

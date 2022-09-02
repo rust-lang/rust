@@ -136,7 +136,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   %m0diffei10 = fmul fast double %[[i6]], %rho0
 ; CHECK-NEXT:   %[[arrayidx4_unwrap5:.+]] = getelementptr inbounds double, double* %i4_unwrap, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %[[i10_unwrap6:.+]] = load double, double* %[[arrayidx4_unwrap5]], align 8, !invariant.group !7
+; CHECK-NEXT:   %[[i10_unwrap6:.+]] = load double, double* %[[arrayidx4_unwrap5]], align 8, !invariant.group !
 ; CHECK-NEXT:   %m1differho0 = fmul fast double %[[i6]], %[[i10_unwrap6]]
 ; CHECK-NEXT:   %[[i8]] = fadd fast double %"rho0'de.0", %m1differho0
 ; CHECK-NEXT:   %"arrayidx4'ipg_unwrap" = getelementptr inbounds double, double* %"i4'ipc_unwrap8", i64 %"iv1'ac.0"

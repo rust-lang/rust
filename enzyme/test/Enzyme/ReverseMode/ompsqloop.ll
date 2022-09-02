@@ -179,7 +179,7 @@ attributes #1 = { argmemonly }
 
 ; CHECK: omp.precond.then:                                 ; preds = %entry
 ; CHECK-NEXT:   store i32 0, i32* %.omp.is_last, align 4, !tbaa !7
-; CHECK-NEXT:   %0 = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !15
+; CHECK-NEXT:   %0 = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group ![[g15:[0-9]+]]
 ; CHECK-NEXT:   store i64 0, i64* %.omp.lb_smpl
 ; CHECK-NEXT:   store i64 %sub4, i64* %.omp.ub_smpl
 ; CHECK-NEXT:   store i64 1, i64* %.omp.stride_smpl
@@ -196,7 +196,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertomp.precond.then: 
-; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !15
+; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group ![[g15]]
 ; CHECK-NEXT:   call void @__kmpc_for_static_fini(%struct.ident_t* @1, i32 %_unwrap)
 ; CHECK-NEXT:   br label %invertentry
 

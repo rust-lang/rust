@@ -101,7 +101,7 @@ attributes #3 = { nounwind }
 
 ; CHECK: bb381:                                            ; preds = %bb377
 ; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double*, double** %0, i64 %iv
-; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %[[a5]], align 8, !invariant.group !13
+; CHECK-NEXT:   %"tmp384'il_phi" = load double*, double** %[[a5]], align 8, !invariant.group !
 ; CHECK-NEXT:   br label %bb377
 
 ; CHECK: bb450:                                            ; preds = %bb377
@@ -142,7 +142,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %[[a13:.+]] = add nuw i64 %[[_unwrap3]], 1
 ; CHECK-NEXT:   %[[a14:.+]] = extractvalue { double**, i64 } %tapeArg, 0
 ; CHECK-NEXT:   %[[a15:.+]] = getelementptr inbounds double*, double** %[[a14]], i64 %[[a9]]
-; CHECK-NEXT:   %[[a16:.+]] = load double*, double** %[[a15]], align 8, !invariant.group !14
+; CHECK-NEXT:   %[[a16:.+]] = load double*, double** %[[a15]], align 8, !invariant.group !
 ; CHECK-NEXT:   %[[a17:.+]] = load double, double* %[[a16]], align 8
 ; CHECK-NEXT:   %[[a18:.+]] = fadd fast double %[[a17]], %[[a12]]
 ; CHECK-NEXT:   store double %[[a18]], double* %[[a16]], align 8

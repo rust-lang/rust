@@ -92,7 +92,7 @@ attributes #3 = { nounwind }
 ; STORE-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
 ; STORE-NEXT:   %[[a4:.+]] = load double, double* %arrayidx, align 8, !tbaa !2
 ; STORE-NEXT:   %[[a5:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %iv
-; STORE-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !tbaa !2, !invariant.group !6
+; STORE-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !tbaa !2, !invariant.group !
 ; SHARED-NEXT:   %inc = add i32 %[[a3]], 1
 ; SHARED-NEXT:   %cmp = icmp ugt i32 %inc, %N
 ; SHARED-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
@@ -105,7 +105,7 @@ attributes #3 = { nounwind }
 ; SHARED:   %"add'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"add'de.0", %incinvertfor.body ]
 ; SHARED:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
 ; SHARED-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
-; SHARED-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, {{(!tbaa !2, )?}}!invariant.group !6
+; SHARED-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, {{(!tbaa !2, )?}}!invariant.group !
 ; SHARED-NEXT:   %m0diffe = fmul fast double %"add'de.0", %[[a7]]
 ; SHARED-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
 ; SHARED-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32

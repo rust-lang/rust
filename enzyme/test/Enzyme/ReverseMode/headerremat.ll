@@ -119,7 +119,7 @@ declare void @_Z17__enzyme_autodiffPFddPdEz(double (double, double*)*, ...)
 ; CHECK-NEXT:   %i15 = fmul double %i14, %i12
 ; CHECK-NEXT:   store double %i15, double* %i13, align 8
 ; CHECK-NEXT:   %0 = getelementptr inbounds double, double* %i7_malloccache, i64 %iv
-; CHECK-NEXT:   store double %i7, double* %0, align 8, !invariant.group !0
+; CHECK-NEXT:   store double %i7, double* %0, align 8, !invariant.group ![[g0:[0-9]+]]
 ; CHECK-NEXT:   %i17 = fdiv double %i7, 8.000000e-01
 ; CHECK-NEXT:   %i18 = fmul double %i17, 2.500000e-01
 ; CHECK-NEXT:   %i20 = icmp eq i64 %iv.next, 10
@@ -147,7 +147,7 @@ declare void @_Z17__enzyme_autodiffPFddPdEz(double (double, double*)*, ...)
 ; CHECK-NEXT:   %3 = load double, double* %"i13'ipg_unwrap", align 8
 ; DCE-NEXT:   store double 0.000000e+00, double* %"i13'ipg_unwrap", align 8
 ; CHECK:   %4 = getelementptr inbounds double, double* %i7_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %5 = load double, double* %4, align 8, !invariant.group !0
+; CHECK-NEXT:   %5 = load double, double* %4, align 8, !invariant.group ![[g0]]
 ; CHECK-NEXT:   %i9_unwrap = fptosi double %5 to i32
 ; CHECK-NEXT:   %6 = icmp ne i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %6, label %invertbb5_phirc, label %invertbb5_phimerge
@@ -155,7 +155,7 @@ declare void @_Z17__enzyme_autodiffPFddPdEz(double (double, double*)*, ...)
 ; CHECK: invertbb5_phirc:                                  ; preds = %invertbb5
 ; CHECK-NEXT:   %7 = sub nuw i64 %"iv'ac.0", 1
 ; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %i7_malloccache, i64 %7
-; CHECK-NEXT:   %9 = load double, double* %8, align 8, !invariant.group !0
+; CHECK-NEXT:   %9 = load double, double* %8, align 8, !invariant.group ![[g0]]
 ; CHECK-NEXT:   %i17_unwrap = fdiv double %9, 8.000000e-01
 ; CHECK-NEXT:   %i18_unwrap = fmul double %i17_unwrap, 2.500000e-01
 ; CHECK-NEXT:   br label %invertbb5_phimerge

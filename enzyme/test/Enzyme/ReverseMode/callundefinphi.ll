@@ -563,12 +563,9 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %mul.i.i_unwrap = mul nsw i64 4, %"iv3'ac.0"
 ; CHECK-NEXT:   %add.i4.i_unwrap = add nsw i64 %mul.i.i_unwrap, %"iv5'ac.0"
 ; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %[[ipc8]], i64 %add.i4.i_unwrap
-; CHECK-NEXT:   %[[bcup:.+]] = bitcast double* %"arrayidx.i.i'ipg_unwrap" to i64*
-; CHECK-NEXT:   %[[puw1:.+]] = load i64, i64* %[[bcup]], align 8
-; CHECK-NEXT:   %[[bcpw:.+]] = bitcast i64 %[[puw1]] to double
+; CHECK-NEXT:   %[[bcpw:.+]] = load double, double* %"arrayidx.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[auw1:.+]] = fadd fast double %[[bcpw]], %[[aadd]]
-; CHECK-NEXT:   %[[tostore:.+]] = bitcast double %[[auw1]] to i64
-; CHECK-NEXT:   store i64 %[[tostore]], i64* %[[bcup]], align 8
+; CHECK-NEXT:   store double %[[auw1]], double* %"arrayidx.i.i'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[iv5cmp:.+]] = icmp eq i64 %"iv5'ac.0", 0
 ; CHECK-NEXT:   %[[nivcmp:.+]] = xor i1 %[[iv5cmp]], true
 ; CHECK-NEXT:   %[[g29:.+]] = select i1 %[[nivcmp]], i64 %[[abc]], i64 0

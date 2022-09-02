@@ -153,7 +153,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[a8:.+]] = mul nuw nsw i64 %iv, %[[smax_unwrap]]
 ; CHECK-NEXT:   %[[a9:.+]] = add nuw nsw i64 %iv1, %[[a8]]
 ; CHECK-NEXT:   %[[a10:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %[[a9]]
-; CHECK-NEXT:   store double %[[a7]], double* %[[a10]], align 8, !tbaa !6, !invariant.group !9
+; CHECK-NEXT:   store double %[[a7]], double* %[[a10]], align 8, !tbaa !6, !invariant.group ![[g9:[0-9]+]]
 ; CHECK-NEXT:   %cmp2 = icmp slt i64 %iv.next2, %[[a5]]
 ; CHECK-NEXT:   br i1 %cmp2, label %for.body4, label %for.cond.cleanup3
 
@@ -198,7 +198,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[a16:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[smax_unwrap:.+]]
 ; CHECK-NEXT:   %[[a17:.+]] = add nuw nsw i64 %"iv1'ac.1", %[[a16]]
 ; CHECK-NEXT:   %[[a18:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %[[a17]]
-; CHECK-NEXT:   %[[a19:.+]] = load double, double* %[[a18]], align 8, !tbaa !6, !invariant.group !9
+; CHECK-NEXT:   %[[a19:.+]] = load double, double* %[[a18]], align 8, !tbaa !6, !invariant.group ![[g9]]
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[a14]], %[[a19]]
 ; CHECK-NEXT:   %[[a20:.+]] = fadd fast double %"'de.1", %m0diffe
 ; CHECK-NEXT:   %[[a21:.+]] = fadd fast double %[[a20]], %m0diffe

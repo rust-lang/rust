@@ -486,6 +486,7 @@ public:
 #endif
                      Value *mask = nullptr, Value *orig_maskInit = nullptr) {
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
+    auto LoadSize = (DL.getTypeSizeInBits(I.getType()) + 1) / 8;
 
     assert(Mode == DerivativeMode::ForwardMode || gutils->can_modref_map);
     assert(Mode == DerivativeMode::ForwardMode ||
@@ -500,6 +501,64 @@ public:
     Type *type = gutils->getShadowType(I.getType());
 
     auto *newi = dyn_cast<Instruction>(gutils->getNewFromOriginal(&I));
+
+    auto vd = TR.query(&I);
+
+    if (!vd.isKnown()) {
+      auto ET = I.getType();
+      if (ET->isIntOrIntVectorTy()) {
+        vd = TypeTree(BaseType::Pointer).Only(-1);
+        goto known;
+      }
+      if (ET->isFPOrFPVectorTy()) {
+        vd = TypeTree(ConcreteType(ET->getScalarType())).Only(-1);
+        goto known;
+      }
+      if (looseTypeAnalysis || true) {
+        while (1) {
+          if (auto ST = dyn_cast<StructType>(ET)) {
+            if (ST->getNumElements()) {
+              ET = ST->getElementType(0);
+              continue;
+            }
+          }
+          if (auto AT = dyn_cast<ArrayType>(ET)) {
+            ET = AT->getElementType();
+            continue;
+          }
+          break;
+        }
+        if (ET->isFPOrFPVectorTy()) {
+          vd = TypeTree(ConcreteType(ET->getScalarType())).Only(-1);
+          goto known;
+        }
+        if (ET->isPointerTy()) {
+          vd = TypeTree(BaseType::Pointer).Only(-1);
+          goto known;
+        }
+        if (ET->isIntOrIntVectorTy()) {
+          vd = TypeTree(BaseType::Pointer).Only(-1);
+          goto known;
+        }
+        EmitWarning("CannotDeduceType", I.getDebugLoc(), gutils->oldFunc,
+                    I.getParent(), &I, "failed to deduce type of load ", I);
+        vd = TypeTree(BaseType::Pointer).Only(-1);
+        goto known;
+      }
+      if (CustomErrorHandler) {
+        std::string str;
+        raw_string_ostream ss(str);
+        ss << "Cannot deduce type of load " << I;
+        CustomErrorHandler(str.c_str(), wrap(&I), ErrorType::NoType,
+                           &TR.analyzer);
+      }
+      EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
+                  "failed to deduce type of load ", I);
+
+      TR.intType(LoadSize, &I, /*errifnotfound*/ true, /*pointerIntSame*/ true);
+      llvm_unreachable("bad mti");
+    known:;
+    }
 
     if (Mode == DerivativeMode::ForwardMode ||
         Mode == DerivativeMode::ForwardModeSplit) {
@@ -519,8 +578,7 @@ public:
         }
 
         if (can_modref) {
-          if (!I.getType()->isEmptyTy() && !I.getType()->isFPOrFPVectorTy() &&
-              TR.query(&I).Inner0().isPossiblePointer()) {
+          if (vd[{-1}].isPossiblePointer()) {
             Value *newip = gutils->cacheForReverse(
                 BuilderZ, placeholder, getIndex(&I, CacheType::Shadow));
             assert(newip->getType() == type);
@@ -531,7 +589,9 @@ public:
           }
         } else {
           Value *newip = gutils->invertPointerM(&I, BuilderZ);
-          if (EnzymeRuntimeActivityCheck && TR.query(&I)[{-1}].isFloat()) {
+          if (EnzymeRuntimeActivityCheck && vd[{-1}].isFloat()) {
+            // TODO handle mask
+            assert(!mask);
             Value *shadow = BuilderZ.CreateICmpNE(
                 gutils->getNewFromOriginal(I.getOperand(0)),
                 gutils->invertPointerM(I.getOperand(0), BuilderZ));
@@ -551,77 +611,77 @@ public:
 
     //! Store inverted pointer loads that need to be cached for use in reverse
     //! pass
-    if (!I.getType()->isEmptyTy() && !I.getType()->isFPOrFPVectorTy() &&
-        TR.query(&I).Inner0().isPossiblePointer()) {
+    if (vd[{-1}].isPossiblePointer()) {
       auto found = gutils->invertedPointers.find(&I);
-      assert(found != gutils->invertedPointers.end());
-      Instruction *placeholder = cast<Instruction>(&*found->second);
-      assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(found);
+      if (found != gutils->invertedPointers.end()) {
+        Instruction *placeholder = cast<Instruction>(&*found->second);
+        assert(placeholder->getType() == type);
+        gutils->invertedPointers.erase(found);
 
-      if (!constantval) {
-        IRBuilder<> BuilderZ(newi);
-        Value *newip = nullptr;
+        if (!constantval) {
+          IRBuilder<> BuilderZ(newi);
+          Value *newip = nullptr;
 
-        // TODO: In the case of fwd mode this should be true if the loaded value
-        // itself is used as a pointer.
-        bool needShadow = is_value_needed_in_reverse<ValueType::Shadow>(
-            gutils, &I, Mode, oldUnreachable);
+          // TODO: In the case of fwd mode this should be true if the loaded
+          // value itself is used as a pointer.
+          bool needShadow = is_value_needed_in_reverse<ValueType::Shadow>(
+              gutils, &I, Mode, oldUnreachable);
 
-        switch (Mode) {
+          switch (Mode) {
 
-        case DerivativeMode::ReverseModePrimal:
-        case DerivativeMode::ReverseModeCombined: {
-          if (!needShadow) {
-            gutils->erase(placeholder);
-          } else {
-            newip = gutils->invertPointerM(&I, BuilderZ);
-            assert(newip->getType() == type);
-            if (Mode == DerivativeMode::ReverseModePrimal && can_modref &&
-                is_value_needed_in_reverse<ValueType::Shadow>(
-                    gutils, &I, DerivativeMode::ReverseModeGradient,
-                    oldUnreachable)) {
-              gutils->cacheForReverse(BuilderZ, newip,
-                                      getIndex(&I, CacheType::Shadow));
-            }
-            placeholder->replaceAllUsesWith(newip);
-            gutils->erase(placeholder);
-            gutils->invertedPointers.insert(std::make_pair(
-                (const Value *)&I, InvertedPointerVH(gutils, newip)));
-          }
-          break;
-        }
-        case DerivativeMode::ForwardModeSplit:
-        case DerivativeMode::ForwardMode: {
-          assert(0 && "impossible branch");
-          return;
-        }
-        case DerivativeMode::ReverseModeGradient: {
-          if (!needShadow) {
-            gutils->erase(placeholder);
-          } else {
-            // only make shadow where caching needed
-            if (can_modref) {
-              newip = gutils->cacheForReverse(BuilderZ, placeholder,
-                                              getIndex(&I, CacheType::Shadow));
-              assert(newip->getType() == type);
-              gutils->invertedPointers.insert(std::make_pair(
-                  (const Value *)&I, InvertedPointerVH(gutils, newip)));
+          case DerivativeMode::ReverseModePrimal:
+          case DerivativeMode::ReverseModeCombined: {
+            if (!needShadow) {
+              gutils->erase(placeholder);
             } else {
               newip = gutils->invertPointerM(&I, BuilderZ);
               assert(newip->getType() == type);
+              if (Mode == DerivativeMode::ReverseModePrimal && can_modref &&
+                  is_value_needed_in_reverse<ValueType::Shadow>(
+                      gutils, &I, DerivativeMode::ReverseModeGradient,
+                      oldUnreachable)) {
+                gutils->cacheForReverse(BuilderZ, newip,
+                                        getIndex(&I, CacheType::Shadow));
+              }
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
               gutils->invertedPointers.insert(std::make_pair(
                   (const Value *)&I, InvertedPointerVH(gutils, newip)));
             }
+            break;
           }
-          break;
-        }
-        }
+          case DerivativeMode::ForwardModeSplit:
+          case DerivativeMode::ForwardMode: {
+            assert(0 && "impossible branch");
+            return;
+          }
+          case DerivativeMode::ReverseModeGradient: {
+            if (!needShadow) {
+              gutils->erase(placeholder);
+            } else {
+              // only make shadow where caching needed
+              if (can_modref) {
+                newip = gutils->cacheForReverse(
+                    BuilderZ, placeholder, getIndex(&I, CacheType::Shadow));
+                assert(newip->getType() == type);
+                gutils->invertedPointers.insert(std::make_pair(
+                    (const Value *)&I, InvertedPointerVH(gutils, newip)));
+              } else {
+                newip = gutils->invertPointerM(&I, BuilderZ);
+                assert(newip->getType() == type);
+                placeholder->replaceAllUsesWith(newip);
+                gutils->erase(placeholder);
+                gutils->invertedPointers.insert(std::make_pair(
+                    (const Value *)&I, InvertedPointerVH(gutils, newip)));
+              }
+            }
+            break;
+          }
+          }
 
-      } else {
-        gutils->erase(placeholder);
+        } else {
+          gutils->erase(placeholder);
+        }
       }
     }
 
@@ -687,77 +747,159 @@ public:
     // the instruction if the value is a potential pointer. This may not be
     // caught by type analysis is the result does not have a known type.
     if (!gutils->isConstantInstruction(&I)) {
-      Type *isfloat = I.getType()->isFPOrFPVectorTy()
-                          ? I.getType()->getScalarType()
-                          : nullptr;
-      if (!isfloat && I.getType()->isIntOrIntVectorTy()) {
-        auto LoadSize = DL.getTypeSizeInBits(I.getType()) / 8;
-        ConcreteType vd = BaseType::Unknown;
-        if (!OrigOffset)
-          vd =
-              TR.firstPointer(LoadSize, I.getOperand(0),
-                              /*errifnotfound*/ false, /*pointerIntSame*/ true);
-        if (vd.isKnown())
-          isfloat = vd.isFloat();
-        else {
-          isfloat =
-              TR.intType(LoadSize, &I, /*errIfNotFound*/ !looseTypeAnalysis)
-                  .isFloat();
-        }
+      switch (Mode) {
+      case DerivativeMode::ForwardModeSplit:
+      case DerivativeMode::ForwardMode: {
+        assert(0 && "impossible branch");
+        return;
       }
+      case DerivativeMode::ReverseModeGradient:
+      case DerivativeMode::ReverseModeCombined: {
 
-      if (isfloat) {
-        switch (Mode) {
-        case DerivativeMode::ForwardModeSplit:
-        case DerivativeMode::ForwardMode: {
-          assert(0 && "impossible branch");
-          return;
-        }
-        case DerivativeMode::ReverseModeGradient:
-        case DerivativeMode::ReverseModeCombined: {
-          IRBuilder<> Builder2(parent);
-          getReverseBuilder(Builder2);
+        unsigned start = 0;
+        unsigned size = LoadSize;
 
-          Value *prediff = diffe(&I, Builder2);
-          setDiffe(&I, Constant::getNullValue(type), Builder2);
+        Value *prediff = nullptr;
+        Value *premask = nullptr;
+        BasicBlock *merge = nullptr;
 
-          if (mask && (!gutils->isConstantValue(I.getOperand(0)) ||
-                       !gutils->isConstantValue(orig_maskInit)))
-            mask = lookup(mask, Builder2);
+        IRBuilder<> Builder2(parent);
+        getReverseBuilder(Builder2);
 
-          if (!gutils->isConstantValue(I.getOperand(0))) {
-            BasicBlock *merge = nullptr;
-            if (EnzymeRuntimeActivityCheck) {
-              Value *shadow = Builder2.CreateICmpNE(
-                  lookup(gutils->getNewFromOriginal(I.getOperand(0)), Builder2),
-                  lookup(gutils->invertPointerM(I.getOperand(0), Builder2),
-                         Builder2));
+        while (1) {
+          unsigned nextStart = size;
 
-              BasicBlock *current = Builder2.GetInsertBlock();
-              BasicBlock *conditional = gutils->addReverseBlock(
-                  current, current->getName() + "_active");
-              merge = gutils->addReverseBlock(conditional,
-                                              current->getName() + "_amerge");
-              Builder2.CreateCondBr(shadow, conditional, merge);
-              Builder2.SetInsertPoint(conditional);
-            }
-            ((DiffeGradientUtils *)gutils)
-                ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
-                                        alignment, OrigOffset, mask);
-            if (merge) {
-              Builder2.CreateBr(merge);
-              Builder2.SetInsertPoint(merge);
+          auto dt = vd[{-1}];
+          for (size_t i = start; i < size; ++i) {
+            bool Legal = true;
+            dt.checkedOrIn(vd[{(int)i}], /*PointerIntSame*/ true, Legal);
+            if (!Legal) {
+              nextStart = i;
+              break;
             }
           }
-          if (mask && !gutils->isConstantValue(orig_maskInit)) {
-            addToDiffe(orig_maskInit, prediff, Builder2, isfloat,
-                       Builder2.CreateNot(mask));
+          if (!dt.isKnown()) {
+            TR.dump();
+            llvm::errs() << " vd:" << vd.str() << " start:" << start
+                         << " size: " << size << " dt:" << dt.str() << "\n";
           }
-          break;
+          assert(dt.isKnown());
+
+          if (Type *isfloat = dt.isFloat()) {
+
+            if (prediff == nullptr) {
+              prediff = diffe(&I, Builder2);
+            }
+
+            if (start == 0 && nextStart == LoadSize) {
+              setDiffe(&I, Constant::getNullValue(type), Builder2);
+            } else {
+              Value *tostore =
+                  ((DiffeGradientUtils *)gutils)->getDifferential(&I);
+
+              auto i8 = Type::getInt8Ty(tostore->getContext());
+              if (start != 0) {
+                tostore = Builder2.CreatePointerCast(
+                    tostore,
+                    PointerType::get(i8, cast<PointerType>(tostore->getType())
+                                             ->getAddressSpace()));
+                auto off = ConstantInt::get(
+                    Type::getInt64Ty(tostore->getContext()), start);
+#if LLVM_VERSION_MAJOR > 7
+                tostore = Builder2.CreateInBoundsGEP(i8, tostore, off);
+#else
+                tostore = Builder2.CreateInBoundsGEP(tostore, off);
+#endif
+              }
+              auto AT = ArrayType::get(i8, nextStart - start);
+              tostore = Builder2.CreatePointerCast(
+                  tostore,
+                  PointerType::get(AT, cast<PointerType>(tostore->getType())
+                                           ->getAddressSpace()));
+              Builder2.CreateStore(Constant::getNullValue(AT), tostore);
+            }
+
+            if (!premask && mask &&
+                (!gutils->isConstantValue(I.getOperand(0)) ||
+                 !gutils->isConstantValue(orig_maskInit))) {
+              premask = lookup(mask, Builder2);
+            }
+
+            if (!gutils->isConstantValue(I.getOperand(0))) {
+              if (EnzymeRuntimeActivityCheck && !merge) {
+                Value *shadow = Builder2.CreateICmpNE(
+                    lookup(gutils->getNewFromOriginal(I.getOperand(0)),
+                           Builder2),
+                    lookup(gutils->invertPointerM(I.getOperand(0), Builder2),
+                           Builder2));
+
+                BasicBlock *current = Builder2.GetInsertBlock();
+                BasicBlock *conditional = gutils->addReverseBlock(
+                    current, current->getName() + "_active");
+                merge = gutils->addReverseBlock(conditional,
+                                                current->getName() + "_amerge");
+                Builder2.CreateCondBr(shadow, conditional, merge);
+                Builder2.SetInsertPoint(conditional);
+              }
+              // Masked partial type is unhanled.
+              if (premask)
+                assert(start == 0 && nextStart == LoadSize);
+              ((DiffeGradientUtils *)gutils)
+                  ->addToInvertedPtrDiffe(&I, isfloat, start, nextStart - start,
+                                          I.getOperand(0), prediff, Builder2,
+                                          alignment, OrigOffset, premask);
+            }
+          }
+
+          if (nextStart == size)
+            break;
+          start = nextStart;
         }
-        case DerivativeMode::ReverseModePrimal:
-          break;
+        if (merge) {
+          Builder2.CreateBr(merge);
+          Builder2.SetInsertPoint(merge);
         }
+
+        start = 0;
+        size = LoadSize;
+
+        while (1) {
+          unsigned nextStart = size;
+
+          auto dt = vd[{-1}];
+          for (size_t i = start; i < size; ++i) {
+            bool Legal = true;
+            dt.checkedOrIn(vd[{(int)i}], /*PointerIntSame*/ true, Legal);
+            if (!Legal) {
+              nextStart = i;
+              break;
+            }
+          }
+          if (!dt.isKnown()) {
+            TR.dump();
+            llvm::errs() << " vd:" << vd.str() << " start:" << start
+                         << " size: " << size << " dt:" << dt.str() << "\n";
+          }
+          assert(dt.isKnown());
+
+          if (Type *isfloat = dt.isFloat()) {
+            if (premask && !gutils->isConstantValue(orig_maskInit)) {
+              // Masked partial type is unhanled.
+              if (premask)
+                assert(start == 0 && nextStart == LoadSize);
+              addToDiffe(orig_maskInit, prediff, Builder2, isfloat,
+                         Builder2.CreateNot(premask));
+            }
+          }
+
+          if (nextStart == size)
+            break;
+          start = nextStart;
+        }
+        break;
+      }
+      case DerivativeMode::ReverseModePrimal:
+        break;
       }
     }
   }
@@ -919,6 +1061,18 @@ public:
       return;
     }
 
+    auto scopeMD = gutils->getDerivativeAliasScope(orig_ptr, -1);
+    auto scope = MDNode::get(I.getContext(), scopeMD);
+    auto NewI = gutils->getNewFromOriginal(&I);
+    NewI->setMetadata(LLVMContext::MD_alias_scope, scope);
+
+    SmallVector<Metadata *, 1> MDs;
+    for (size_t j = 0; j < gutils->getWidth(); j++) {
+      MDs.push_back(gutils->getDerivativeAliasScope(orig_ptr, j));
+    }
+    auto noscope = MDNode::get(I.getContext(), MDs);
+    NewI->setMetadata(LLVMContext::MD_noalias, noscope);
+
     bool constantval = gutils->isConstantValue(orig_val) ||
                        parseTBAA(I, DL).Inner0().isIntegral();
 
@@ -935,8 +1089,8 @@ public:
       else
         diff = gutils->invertPointerM(orig_val, Builder2, /*nullShadow*/ true);
 
-      gutils->setPtrDiffe(orig_ptr, diff, Builder2, align, isVolatile, ordering,
-                          syncScope, mask);
+      gutils->setPtrDiffe(&I, orig_ptr, diff, Builder2, align, isVolatile,
+                          ordering, syncScope, mask);
       return;
     }
 
@@ -985,8 +1139,9 @@ public:
 
         if (constantval) {
           gutils->setPtrDiffe(
-              orig_ptr, Constant::getNullValue(gutils->getShadowType(valType)),
-              Builder2, align, isVolatile, ordering, syncScope, mask);
+              &I, orig_ptr,
+              Constant::getNullValue(gutils->getShadowType(valType)), Builder2,
+              align, isVolatile, ordering, syncScope, mask);
         } else {
           Value *diff;
           if (!mask) {
@@ -1040,8 +1195,9 @@ public:
           }
 
           gutils->setPtrDiffe(
-              orig_ptr, Constant::getNullValue(gutils->getShadowType(valType)),
-              Builder2, align, isVolatile, ordering, syncScope, mask);
+              &I, orig_ptr,
+              Constant::getNullValue(gutils->getShadowType(valType)), Builder2,
+              align, isVolatile, ordering, syncScope, mask);
           addToDiffe(orig_val, diff, Builder2, FT, mask);
         }
         break;
@@ -1055,7 +1211,7 @@ public:
 
         Value *diff = constantval ? Constant::getNullValue(diffeTy)
                                   : diffe(orig_val, Builder2);
-        gutils->setPtrDiffe(orig_ptr, diff, Builder2, align, isVolatile,
+        gutils->setPtrDiffe(&I, orig_ptr, diff, Builder2, align, isVolatile,
                             ordering, syncScope, mask);
 
         break;
@@ -1115,8 +1271,8 @@ public:
         } else {
           valueop = gutils->invertPointerM(orig_val, storeBuilder);
         }
-        gutils->setPtrDiffe(orig_ptr, valueop, storeBuilder, align, isVolatile,
-                            ordering, syncScope, mask);
+        gutils->setPtrDiffe(&I, orig_ptr, valueop, storeBuilder, align,
+                            isVolatile, ordering, syncScope, mask);
       }
     }
   }

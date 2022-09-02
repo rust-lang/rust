@@ -76,7 +76,7 @@ attributes #0 = { readnone speculatable }
 ; CHECK-NEXT:   %mul = fmul double %dload, %icall
 ; CHECK-NEXT:   store double %mul, double* %dg
 ; CHECK-NEXT:   %0 = getelementptr inbounds double, double* %icall_malloccache, i64 %iv
-; CHECK-NEXT:   store double %icall, double* %0, align 8, !invariant.group !0
+; CHECK-NEXT:   store double %icall, double* %0, align 8, !invariant.group !
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv.next, 4
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.end
 
@@ -92,7 +92,7 @@ attributes #0 = { readnone speculatable }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %0 = getelementptr inbounds double, double* %tapeArg, i64 %iv
-; CHECK-NEXT:   %icall = load double, double* %0, align 8, !invariant.group !1
+; CHECK-NEXT:   %icall = load double, double* %0, align 8, !invariant.group !
 ; CHECK-NEXT:   %"dg'ipg" = getelementptr inbounds double, double* %"__x'", i64 %iv
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv.next, 4
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.body
@@ -109,7 +109,7 @@ attributes #0 = { readnone speculatable }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"dg'ipg_unwrap"
 ; CHECK-NEXT:   %3 = fadd fast double 0.000000e+00, %2
 ; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %tapeArg, i64 %"iv'ac.0"
-; CHECK-NEXT:   %5 = load double, double* %4, align 8, !invariant.group !2
+; CHECK-NEXT:   %5 = load double, double* %4, align 8, !invariant.group !
 ; CHECK-NEXT:   %m0diffedload = fmul fast double %3, %5
 ; CHECK-NEXT:   %6 = fadd fast double 0.000000e+00, %m0diffedload
 ; CHECK-NEXT:   %7 = load double, double* %"dg'ipg_unwrap"

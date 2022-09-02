@@ -691,7 +691,9 @@ LLVMMetadataRef EnzymeMakeNonConstTBAA(LLVMMetadataRef MD) {
     return MD;
   if (!CAM->getValue()->isOneValue())
     return MD;
-  SmallVector<Metadata *, 4> MDs(M->operands());
+  SmallVector<Metadata *, 4> MDs;
+  for (auto &M : M->operands())
+    MDs.push_back(M);
   MDs[3] =
       ConstantAsMetadata::get(ConstantInt::get(CAM->getValue()->getType(), 0));
   return wrap(MDNode::get(M->getContext(), MDs));

@@ -264,23 +264,23 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %m0diffei8 = fmul fast double %"i10'de.sroa.0.0", %i8_unwrap
 ; CHECK-NEXT:   %m0diffei819 = fmul fast double %"i10'de.sroa.7.0", %i8_unwrap
 ; CHECK-NEXT:   %m0diffei820 = fmul fast double %"i10'de.sroa.14.0", %i8_unwrap
-; CHECK-NEXT:   %43 = fadd fast double %m0diffei8, %m0diffei8
-; CHECK-NEXT:   %44 = fadd fast double %m0diffei819, %m0diffei819
-; CHECK-NEXT:   %45 = fadd fast double %m0diffei820, %m0diffei820
+; CHECK-NEXT:   %[[i43:.+]] = fadd fast double %m0diffei8, %m0diffei8
+; CHECK-NEXT:   %[[i44:.+]] = fadd fast double %m0diffei819, %m0diffei819
+; CHECK-NEXT:   %[[i45:.+]] = fadd fast double %m0diffei820, %m0diffei820
 ; CHECK-NEXT:   %"i'ipc8_unwrap26" = bitcast i8* %"i1'mi2" to [30 x double]*
 ; CHECK-NEXT:   %"i7'ipg24_unwrap" = getelementptr inbounds [30 x double], [30 x double]* %"i'ipc8_unwrap26", i64 0, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %"i'ipc7_unwrap28" = bitcast i8* %"i1'mi1" to [30 x double]*
 ; CHECK-NEXT:   %"i7'ipg23_unwrap" = getelementptr inbounds [30 x double], [30 x double]* %"i'ipc7_unwrap28", i64 0, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %"i'ipc_unwrap30" = bitcast i8* %"i1'mi" to [30 x double]*
 ; CHECK-NEXT:   %"i7'ipg_unwrap" = getelementptr inbounds [30 x double], [30 x double]* %"i'ipc_unwrap30", i64 0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %46 = load double, double* %"i7'ipg_unwrap"
-; CHECK-NEXT:   %47 = load double, double* %"i7'ipg23_unwrap"
-; CHECK-NEXT:   %48 = load double, double* %"i7'ipg24_unwrap"
-; CHECK-NEXT:   %49 = fadd fast double %46, %43
-; CHECK-NEXT:   %50 = fadd fast double %47, %44
-; CHECK-NEXT:   %51 = fadd fast double %48, %45
-; CHECK-NEXT:   store double %49, double* %"i7'ipg_unwrap"
-; CHECK-NEXT:   store double %50, double* %"i7'ipg23_unwrap"
-; CHECK-NEXT:   store double %51, double* %"i7'ipg24_unwrap"
+; CHECK-NEXT:   %[[i46:.+]] = load double, double* %"i7'ipg_unwrap"
+; CHECK-NEXT:   %[[i49:.+]] = fadd fast double %[[i46]], %[[i43]]
+; CHECK-NEXT:   store double %[[i49]], double* %"i7'ipg_unwrap"
+; CHECK-NEXT:   %[[i47:.+]] = load double, double* %"i7'ipg23_unwrap"
+; CHECK-NEXT:   %[[i50:.+]] = fadd fast double %[[i47]], %[[i44]]
+; CHECK-NEXT:   store double %[[i50]], double* %"i7'ipg23_unwrap"
+; CHECK-NEXT:   %[[i48:.+]] = load double, double* %"i7'ipg24_unwrap"
+; CHECK-NEXT:   %[[i51:.+]] = fadd fast double %[[i48]], %[[i45]]
+; CHECK-NEXT:   store double %[[i51]], double* %"i7'ipg24_unwrap"
 ; CHECK-NEXT:   br label %invertsetExit
 ; CHECK-NEXT: }
