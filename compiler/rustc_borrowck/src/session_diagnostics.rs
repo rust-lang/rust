@@ -174,6 +174,7 @@ pub(crate) enum AddMoveErr {
     },
     #[note(borrowck::moved_var_cannot_copy)]
     MovedNotCopy {},
+}
 //explain_borrow.rs
 
 #[derive(SessionSubdiagnostic)]
@@ -252,6 +253,7 @@ pub(crate) enum BorrowUsedLaterInLoop<'a> {
         span: Span,
     },
 }
+
 #[derive(SessionSubdiagnostic)]
 pub(crate) enum BorrowLaterBorrowUsedLaterInLoop<'a> {
     #[label(borrowck::bl_trait_capture_borrow_in_later_iteration_loop)]
