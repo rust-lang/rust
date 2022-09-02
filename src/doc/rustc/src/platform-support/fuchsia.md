@@ -562,6 +562,7 @@ Finally, run the component:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx component run \
+    /core/ffx-laboratory:hello_fuchsia \
     fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
 ```
 
@@ -571,6 +572,7 @@ passed.
 ```sh
 ${SDK_PATH}/tools/${ARCH}/ffx component run \
     --recreate \
+    /core/ffx-laboratory:hello_fuchsia \
     fuchsia-pkg://hello-fuchsia/hello_fuchsia_manifest#meta/hello_fuchsia.cm
 ```
 
