@@ -775,9 +775,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body), body.is_some())
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: None, .. }) => {
+                let asyncness = sig.header.asyncness;
                 let names = self.lower_fn_params_to_names(&sig.decl);
-                let (generics, sig) =
-                    self.lower_method_sig(generics, sig, i.id, FnDeclKind::Trait, None);
+                let (generics, sig) = self.lower_method_sig(
+                    generics,
+                    sig,
+                    i.id,
+                    FnDeclKind::Trait,
+                    asyncness.opt_return_id(),
+                );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: Some(ref body), .. }) => {
