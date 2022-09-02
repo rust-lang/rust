@@ -1037,16 +1037,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctor"
-version = "0.1.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f877be4f7c9f246b183111634f75baa039715e3f46ce860677d3b19a69fb229c"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
 name = "curl"
 version = "0.4.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2294,6 +2284,7 @@ dependencies = [
  "getrandom 0.2.0",
  "lazy_static",
  "libc",
+ "libloading",
  "log",
  "measureme",
  "rand 0.8.5",
@@ -2471,15 +2462,6 @@ name = "os_str_bytes"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
-
-[[package]]
-name = "output_vt100"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "628223faebab4e3e40667ee0b2336d34a5b960ff60ea743ddfdbcf7770bcfb66"
-dependencies = [
- "winapi",
-]
 
 [[package]]
 name = "owo-colors"
@@ -2720,18 +2702,6 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
-
-[[package]]
-name = "pretty_assertions"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c89f989ac94207d048d92db058e4f6ec7342b0971fc58d1271ca148b799b3563"
-dependencies = [
- "ansi_term",
- "ctor",
- "diff",
- "output_vt100",
-]
 
 [[package]]
 name = "pretty_env_logger"
@@ -5135,14 +5105,16 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "ui_test"
-version = "0.1.0"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d1f546a5883ae78da735bba529ec1116661e2f73582f23920d994dc97da3a22"
 dependencies = [
  "cargo_metadata 0.15.0",
  "color-eyre",
  "colored",
  "crossbeam",
+ "diff",
  "lazy_static",
- "pretty_assertions",
  "regex",
  "rustc_version",
  "serde",
