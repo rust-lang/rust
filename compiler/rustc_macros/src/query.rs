@@ -86,7 +86,7 @@ struct QueryModifiers {
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Use this type for the in-memory cache.
-    storage: Option<Type>,
+    arena_cache: Option<Ident>,
 
     /// Cache the query to disk if the `Block` returns true.
     cache: Option<(Option<Pat>, Block)>,
@@ -121,7 +121,7 @@ struct QueryModifiers {
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut load_cached = None;
-    let mut storage = None;
+    let mut arena_cache = None;
     let mut cache = None;
     let mut desc = None;
     let mut fatal_cycle = None;
@@ -183,11 +183,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             let id = args.parse()?;
             let block = input.parse()?;
             try_insert!(load_cached = (tcx, id, block));
-        } else if modifier == "storage" {
-            let args;
-            parenthesized!(args in input);
-            let ty = args.parse()?;
-            try_insert!(storage = ty);
+        } else if modifier == "arena_cache" {
+            try_insert!(arena_cache = modifier);
         } else if modifier == "fatal_cycle" {
             try_insert!(fatal_cycle = modifier);
         } else if modifier == "cycle_delay_bug" {
@@ -213,7 +210,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     };
     Ok(QueryModifiers {
         load_cached,
-        storage,
+        arena_cache,
         cache,
         desc,
         fatal_cycle,
@@ -351,10 +348,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         if let Some(fatal_cycle) = &modifiers.fatal_cycle {
             attributes.push(quote! { (#fatal_cycle) });
         };
-        // Pass on the storage modifier
-        if let Some(ref ty) = modifiers.storage {
-            let span = ty.span();
-            attributes.push(quote_spanned! {span=> (storage #ty) });
+        // Pass on the arena modifier
+        if let Some(ref arena_cache) = modifiers.arena_cache {
+            attributes.push(quote! {span=> (#arena_cache) });
         };
         // Pass on the cycle_delay_bug modifier
         if let Some(cycle_delay_bug) = &modifiers.cycle_delay_bug {
