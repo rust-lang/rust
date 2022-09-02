@@ -54,7 +54,7 @@ LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
 help: provide the argument
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter(/* &u8 */) }
-   |                                               ~~~~~~~~~~~~~~~
+   |                                                   ~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/issue-26638.rs:5:47

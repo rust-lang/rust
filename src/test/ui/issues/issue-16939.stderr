@@ -12,7 +12,7 @@ LL | fn _foo<F: Fn()> (f: F) {
 help: remove the extra argument
    |
 LL |     |t| f();
-   |         ~~~
+   |          ~~
 
 error: aborting due to previous error
 

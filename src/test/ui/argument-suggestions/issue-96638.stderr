@@ -14,7 +14,7 @@ LL | fn f(_: usize, _: &usize, _: usize) {}
 help: provide the argument
    |
 LL |     f(/* usize */, &x, /* usize */);
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

@@ -12,7 +12,7 @@ LL |     (|_, ()| ())([return, ()]);
 help: provide the argument
    |
 LL |     (|_, ()| ())([return, ()], ());
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                 ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 
