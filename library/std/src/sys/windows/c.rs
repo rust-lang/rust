@@ -285,7 +285,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+pub const BCRYPT_RNG_ALG_HANDLE: usize = 0x81;
 
 #[repr(C)]
 pub struct UNICODE_STRING {
