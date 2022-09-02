@@ -64,7 +64,7 @@ use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 
@@ -114,6 +114,8 @@ pub struct DefMap {
     registered_attrs: Vec<SmolStr>,
     /// Custom tool modules registered with `#![register_tool]`.
     registered_tools: Vec<SmolStr>,
+    /// Unstable features of Rust enabled with `#![feature(A, B)]`.
+    unstable_features: FxHashSet<SmolStr>,
 
     edition: Edition,
     recursion_limit: Option<u32>,
@@ -284,6 +286,7 @@ impl DefMap {
             modules,
             registered_attrs: Vec::new(),
             registered_tools: Vec::new(),
+            unstable_features: FxHashSet::default(),
             diagnostics: Vec::new(),
         }
     }
@@ -312,6 +315,10 @@ impl DefMap {
 
     pub fn registered_attrs(&self) -> &[SmolStr] {
         &self.registered_attrs
+    }
+
+    pub fn is_unstable_feature_enabled(&self, feature: &str) -> bool {
+        self.unstable_features.contains(feature)
     }
 
     pub fn root(&self) -> LocalModuleId {
@@ -483,6 +490,7 @@ impl DefMap {
             registered_tools,
             fn_proc_macro_mapping,
             derive_helpers_in_scope,
+            unstable_features,
             proc_macro_loading_error: _,
             block: _,
             edition: _,
@@ -500,6 +508,7 @@ impl DefMap {
         registered_tools.shrink_to_fit();
         fn_proc_macro_mapping.shrink_to_fit();
         derive_helpers_in_scope.shrink_to_fit();
+        unstable_features.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();
