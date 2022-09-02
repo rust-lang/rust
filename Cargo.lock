@@ -3569,6 +3569,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_hir_typeck",
  "rustc_incremental",
+ "rustc_index",
  "rustc_infer",
  "rustc_interface",
  "rustc_lint",

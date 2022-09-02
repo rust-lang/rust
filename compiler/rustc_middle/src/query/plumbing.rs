@@ -337,6 +337,7 @@ macro_rules! define_callbacks {
                 // Ensure that values grow no larger than 64 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
+                #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
                     if mem::size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(

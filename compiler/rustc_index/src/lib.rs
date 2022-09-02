@@ -33,8 +33,19 @@ pub use vec::IndexVec;
 ///
 /// </div>
 #[macro_export]
+#[cfg(not(feature = "rustc_randomized_layouts"))]
 macro_rules! static_assert_size {
     ($ty:ty, $size:expr) => {
         const _: [(); $size] = [(); ::std::mem::size_of::<$ty>()];
+    };
+}
+
+#[macro_export]
+#[cfg(feature = "rustc_randomized_layouts")]
+macro_rules! static_assert_size {
+    ($ty:ty, $size:expr) => {
+        // no effect other than using the statements.
+        // struct sizes are not deterministic under randomized layouts
+        const _: (usize, usize) = ($size, ::std::mem::size_of::<$ty>());
     };
 }
