@@ -7,17 +7,6 @@ LL |     const async unsafe extern "C" fn ff5() {}
    |     |     `async` because of this
    |     `const` because of this
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/fn-header-semantic-fail.rs:17:9
-   |
-LL |         async fn ft1();
-   |         -----^^^^^^^^^^
-   |         |
-   |         `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:19:9
    |
@@ -30,17 +19,6 @@ error[E0379]: functions in traits cannot be declared const
 LL |         const async unsafe extern "C" fn ft5();
    |         ^^^^^ functions in traits cannot be const
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/fn-header-semantic-fail.rs:21:9
-   |
-LL |         const async unsafe extern "C" fn ft5();
-   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |               |
-   |               `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:21:9
    |
@@ -50,42 +28,20 @@ LL |         const async unsafe extern "C" fn ft5();
    |         |     `async` because of this
    |         `const` because of this
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/fn-header-semantic-fail.rs:29:9
-   |
-LL |         async fn ft1() {}
-   |         -----^^^^^^^^^^^^
-   |         |
-   |         `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 error[E0379]: functions in traits cannot be declared const
-  --> $DIR/fn-header-semantic-fail.rs:32:9
+  --> $DIR/fn-header-semantic-fail.rs:31:9
    |
 LL |         const fn ft3() {}
    |         ^^^^^ functions in traits cannot be const
 
 error[E0379]: functions in traits cannot be declared const
-  --> $DIR/fn-header-semantic-fail.rs:34:9
+  --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^ functions in traits cannot be const
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/fn-header-semantic-fail.rs:34:9
-   |
-LL |         const async unsafe extern "C" fn ft5() {}
-   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |               |
-   |               `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 error: functions cannot be both `const` and `async`
-  --> $DIR/fn-header-semantic-fail.rs:34:9
+  --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^-^^^^^------------------------------
@@ -94,7 +50,7 @@ LL |         const async unsafe extern "C" fn ft5() {}
    |         `const` because of this
 
 error: functions cannot be both `const` and `async`
-  --> $DIR/fn-header-semantic-fail.rs:47:9
+  --> $DIR/fn-header-semantic-fail.rs:45:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^-^^^^^------------------------------
@@ -103,7 +59,7 @@ LL |         const async unsafe extern "C" fn fi5() {}
    |         `const` because of this
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:53:18
+  --> $DIR/fn-header-semantic-fail.rs:51:18
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
@@ -116,7 +72,7 @@ LL |         fn fe1();
    |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:54:19
+  --> $DIR/fn-header-semantic-fail.rs:52:19
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
@@ -130,7 +86,7 @@ LL |         fn fe2();
    |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:55:18
+  --> $DIR/fn-header-semantic-fail.rs:53:18
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
@@ -144,7 +100,7 @@ LL |         fn fe3();
    |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:56:23
+  --> $DIR/fn-header-semantic-fail.rs:54:23
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
@@ -158,7 +114,7 @@ LL |         fn fe4();
    |         ~~
 
 error: functions in `extern` blocks cannot have qualifiers
-  --> $DIR/fn-header-semantic-fail.rs:57:42
+  --> $DIR/fn-header-semantic-fail.rs:55:42
    |
 LL |     extern "C" {
    |     ---------- in this `extern` block
@@ -172,13 +128,65 @@ LL |         fn fe5();
    |         ~~
 
 error: functions cannot be both `const` and `async`
-  --> $DIR/fn-header-semantic-fail.rs:57:9
+  --> $DIR/fn-header-semantic-fail.rs:55:9
    |
 LL |         const async unsafe extern "C" fn fe5();
    |         ^^^^^-^^^^^----------------------------
    |         |     |
    |         |     `async` because of this
    |         `const` because of this
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:17:9
+   |
+LL |         async fn ft1();
+   |         -----^^^^^^^^^^
+   |         |
+   |         `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:21:9
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:29:9
+   |
+LL |         async fn ft1() {}
+   |         -----^^^^^^^^^
+   |         |
+   |         `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/fn-header-semantic-fail.rs:33:9
+   |
+LL |         const async unsafe extern "C" fn ft5() {}
+   |         ^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 error[E0391]: cycle detected when computing type of `main::ff5::{opaque#0}`
   --> $DIR/fn-header-semantic-fail.rs:12:44
@@ -216,60 +224,24 @@ LL | |     }
 LL | | }
    | |_^
 
-error[E0053]: method `ft1` has an incompatible type for trait
-  --> $DIR/fn-header-semantic-fail.rs:29:24
-   |
-LL |         async fn ft1() {}
-   |                        ^
-   |                        |
-   |                        checked the `Output` of this `async fn`, found opaque type
-   |                        expected `()`, found opaque type
-   |
-   = note: while checking the return type of the `async fn`
-note: type in trait
-  --> $DIR/fn-header-semantic-fail.rs:17:23
-   |
-LL |         async fn ft1();
-   |                       ^
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl Future<Output = ()>`
-
-error[E0053]: method `ft5` has an incompatible type for trait
-  --> $DIR/fn-header-semantic-fail.rs:34:48
-   |
-LL |         const async unsafe extern "C" fn ft5() {}
-   |                                                ^
-   |                                                |
-   |                                                checked the `Output` of this `async fn`, found opaque type
-   |                                                expected `()`, found opaque type
-   |
-   = note: while checking the return type of the `async fn`
-note: type in trait
-  --> $DIR/fn-header-semantic-fail.rs:21:47
-   |
-LL |         const async unsafe extern "C" fn ft5();
-   |                                               ^
-   = note: expected fn pointer `unsafe extern "C" fn()`
-              found fn pointer `unsafe extern "C" fn() -> impl Future<Output = ()>`
-
 error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5::{opaque#0}`
-  --> $DIR/fn-header-semantic-fail.rs:34:48
+  --> $DIR/fn-header-semantic-fail.rs:33:48
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |                                                ^
    |
 note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
-  --> $DIR/fn-header-semantic-fail.rs:34:9
+  --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
-  --> $DIR/fn-header-semantic-fail.rs:34:9
+  --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
-  --> $DIR/fn-header-semantic-fail.rs:34:9
+  --> $DIR/fn-header-semantic-fail.rs:33:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -288,30 +260,30 @@ LL | |     }
 LL | | }
    | |_^
 
-error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5::{opaque#0}`
-  --> $DIR/fn-header-semantic-fail.rs:47:48
+error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5::{opaque#0}`
+  --> $DIR/fn-header-semantic-fail.rs:45:48
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |                                                ^
    |
-note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
-  --> $DIR/fn-header-semantic-fail.rs:47:9
+note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5`...
+  --> $DIR/fn-header-semantic-fail.rs:45:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
-  --> $DIR/fn-header-semantic-fail.rs:47:9
+note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5`...
+  --> $DIR/fn-header-semantic-fail.rs:45:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
-  --> $DIR/fn-header-semantic-fail.rs:47:9
+note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5`...
+  --> $DIR/fn-header-semantic-fail.rs:45:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing whether `impl core::future::future::Future<Output = ()>` is freeze...
    = note: ...which requires evaluating trait selection obligation `impl core::future::future::Future<Output = ()>: core::marker::Freeze`...
-   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5::{opaque#0}`, completing the cycle
+   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:40:5: 40:11>::fi5::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/fn-header-semantic-fail.rs:5:1
    |
@@ -324,7 +296,7 @@ LL | |     }
 LL | | }
    | |_^
 
-error: aborting due to 23 previous errors
+error: aborting due to 21 previous errors
 
-Some errors have detailed explanations: E0053, E0379, E0391, E0706.
-For more information about an error, try `rustc --explain E0053`.
+Some errors have detailed explanations: E0379, E0391, E0706.
+For more information about an error, try `rustc --explain E0379`.
