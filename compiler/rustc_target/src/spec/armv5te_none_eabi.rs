@@ -1,8 +1,6 @@
 //! Targets the ARMv5TE, with code as `a32` code by default.
 
-use crate::spec::{
-    cvs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions
-};
+use crate::spec::{cvs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
