@@ -883,13 +883,6 @@ rustc_queries! {
     query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
-        load_cached(tcx, id) {
-            let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                .on_disk_cache().as_ref()
-                .and_then(|c| c.try_load_query_result(*tcx, id));
-
-            typeck_results.map(|x| &*tcx.arena.alloc(x))
-        }
     }
 
     query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
