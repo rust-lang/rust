@@ -109,14 +109,12 @@ fn fetch_const<'a>(
     args: &'a [Expr<'a>],
     m: MinMax,
 ) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
-    if (receiver.is_some() && args.len() != 1) || (receiver.is_none() && args.len() != 2) {
+    let mut args = receiver.into_iter().chain(args.into_iter());
+    let arg0 = args.next()?;
+    let arg1 = args.next()?;
+    if args.next().is_some() {
         return None;
     }
-    let (arg0, arg1) = if let Some(receiver) = receiver {
-        (receiver, &args[0])
-    } else {
-        (&args[0], &args[1])
-    };
     constant_simple(cx, cx.typeck_results(), arg0).map_or_else(
         || constant_simple(cx, cx.typeck_results(), arg1).map(|c| (m, c, arg0)),
         |c| {

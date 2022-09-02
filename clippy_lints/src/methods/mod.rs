@@ -3381,7 +3381,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 impl Methods {
     #[allow(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((name, recv, [args @ ..], span)) = method_call(expr) {
+        if let Some((name, recv, args, span)) = method_call(expr) {
             match (name, args) {
                 ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
                     zst_offset::check(cx, expr, recv);
@@ -3485,7 +3485,7 @@ impl Methods {
                     }
                 },
                 ("last", []) | ("skip", [_]) => {
-                    if let Some((name2, recv2, [args2 @ ..], _span2)) = method_call(recv) {
+                    if let Some((name2, recv2, args2, _span2)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
                             iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                         }
@@ -3500,7 +3500,7 @@ impl Methods {
                     } else {
                         map_err_ignore::check(cx, expr, m_arg);
                     }
-                    if let Some((name, recv2, [args @ ..], span2)) = method_call(recv) {
+                    if let Some((name, recv2, args, span2)) = method_call(recv) {
                         match (name, args) {
                             ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, self.msrv),
                             ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, self.msrv),
@@ -3520,7 +3520,7 @@ impl Methods {
                     manual_ok_or::check(cx, expr, recv, def, map);
                 },
                 ("next", []) => {
-                    if let Some((name2, recv2, [args2 @ ..], _)) = method_call(recv) {
+                    if let Some((name2, recv2, args2, _)) = method_call(recv) {
                         match (name2, args2) {
                             ("cloned", []) => iter_overeager_cloned::check(cx, expr, recv, recv2, false, false),
                             ("filter", [arg]) => filter_next::check(cx, expr, recv2, arg),
@@ -3593,7 +3593,7 @@ impl Methods {
                 },
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [_arg]) => {
-                    if let Some((name2, recv2, [args2 @ ..], _span2)) = method_call(recv) {
+                    if let Some((name2, recv2, args2, _span2)) = method_call(recv) {
                         if let ("cloned", []) = (name2, args2) {
                             iter_overeager_cloned::check(cx, expr, recv, recv2, false, false);
                         }

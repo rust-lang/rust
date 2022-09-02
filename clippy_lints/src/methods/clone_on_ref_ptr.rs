@@ -20,8 +20,7 @@ pub(super) fn check(
     if !(args.is_empty() && method_name == sym::clone) {
         return;
     }
-    let arg = receiver;
-    let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
+    let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
     if let ty::Adt(_, subst) = obj_ty.kind() {
         let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
@@ -34,7 +33,7 @@ pub(super) fn check(
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
+        let snippet = snippet_with_macro_callsite(cx, receiver.span, "..");
 
         span_lint_and_sugg(
             cx,
