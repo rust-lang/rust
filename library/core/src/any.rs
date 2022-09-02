@@ -796,7 +796,7 @@ pub trait Provider {
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32>(|| self.num_field);
+    ///             .provide_value::<i32>(self.num_field);
     ///     }
     /// }
     /// ```
@@ -881,28 +881,55 @@ impl<'a> Demand<'a> {
     ///
     /// # Examples
     ///
+    /// Provides an `u8`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: u8 }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_value::<u8>(self.field);
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: 'static,
+    {
+        self.provide::<tags::Value<T>>(value)
+    }
+
+    /// Provide a value or other type with only static lifetimes computed using a closure.
+    ///
+    /// # Examples
+    ///
     /// Provides a `String` by cloning.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_value::<String>(|| self.field.clone());
+    ///         demand.provide_value_with::<String>(|| self.field.clone());
     ///     }
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
-    pub fn provide_value<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
+    pub fn provide_value_with<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
     where
         T: 'static,
     {
         self.provide_with::<tags::Value<T>>(fulfil)
     }
 
-    /// Provide a reference, note that the referee type must be bounded by `'static`,
+    /// Provide a reference. The referee type must be bounded by `'static`,
     /// but may be unsized.
     ///
     /// # Examples
@@ -910,7 +937,8 @@ impl<'a> Demand<'a> {
     /// Provides a reference to a field as a `&str`.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
@@ -923,6 +951,40 @@ impl<'a> Demand<'a> {
     #[unstable(feature = "provide_any", issue = "96024")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
+    }
+
+    /// Provide a reference computed using a closure. The referee type
+    /// must be bounded by `'static`, but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&str`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { business: String, party: String }
+    /// # fn today_is_a_weekday() -> bool { true }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref_with::<str>(|| {
+    ///             if today_is_a_weekday() {
+    ///                 &self.business
+    ///             } else {
+    ///                 &self.party
+    ///             }
+    ///         });
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_ref_with<T: ?Sized + 'static>(
+        &mut self,
+        fulfil: impl FnOnce() -> &'a T,
+    ) -> &mut Self {
+        self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
     }
 
     /// Provide a value with the given `Type` tag.
@@ -945,6 +1007,156 @@ impl<'a> Demand<'a> {
             res.0 = Some(fulfil());
         }
         self
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// value of the specified type. If the type does not match or has
+    /// already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if an `u8` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<u8>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = self.0 {
+    ///             demand.provide_value::<u8>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<u8> {
+    ///         Some(99)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // an `u8` value or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `u8` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_value_of::<u8>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_value::<u8>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the value or we did.
+    ///         assert!(!demand.would_be_satisfied_by_value_of::<u8>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some(42));
+    /// let child = Child { parent };
+    /// assert_eq!(Some(42), std::any::request_value::<u8>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent };
+    /// assert_eq!(Some(99), std::any::request_value::<u8>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_value_of<T>(&self) -> bool
+    where
+        T: 'static,
+    {
+        self.would_be_satisfied_by::<tags::Value<T>>()
+    }
+
+    /// Check if the `Demand` would be satisfied if provided with a
+    /// reference to a value of the specified type. If the type does
+    /// not match or has already been provided, returns false.
+    ///
+    /// # Examples
+    ///
+    /// Check if a `&str` still needs to be provided and then provides
+    /// it.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    ///
+    /// struct Parent(Option<String>);
+    ///
+    /// impl Provider for Parent {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         if let Some(v) = &self.0 {
+    ///             demand.provide_ref::<str>(v);
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// struct Child {
+    ///     parent: Parent,
+    ///     name: String,
+    /// }
+    ///
+    /// impl Child {
+    ///     // Pretend that this takes a lot of resources to evaluate.
+    ///     fn an_expensive_computation(&self) -> Option<&str> {
+    ///         Some(&self.name)
+    ///     }
+    /// }
+    ///
+    /// impl Provider for Child {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         // In general, we don't know if this call will provide
+    ///         // a `str` reference or not...
+    ///         self.parent.provide(demand);
+    ///
+    ///         // ...so we check to see if the `&str` is needed before
+    ///         // we run our expensive computation.
+    ///         if demand.would_be_satisfied_by_ref_of::<str>() {
+    ///             if let Some(v) = self.an_expensive_computation() {
+    ///                 demand.provide_ref::<str>(v);
+    ///             }
+    ///         }
+    ///
+    ///         // The demand will be satisfied now, regardless of if
+    ///         // the parent provided the reference or we did.
+    ///         assert!(!demand.would_be_satisfied_by_ref_of::<str>());
+    ///     }
+    /// }
+    ///
+    /// let parent = Parent(Some("parent".into()));
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("parent"), std::any::request_ref::<str>(&child));
+    ///
+    /// let parent = Parent(None);
+    /// let child = Child { parent, name: "child".into() };
+    /// assert_eq!(Some("child"), std::any::request_ref::<str>(&child));
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn would_be_satisfied_by_ref_of<T>(&self) -> bool
+    where
+        T: ?Sized + 'static,
+    {
+        self.would_be_satisfied_by::<tags::Ref<tags::MaybeSizedValue<T>>>()
+    }
+
+    fn would_be_satisfied_by<I>(&self) -> bool
+    where
+        I: tags::Type<'a>,
+    {
+        matches!(self.0.downcast::<I>(), Some(TaggedOption(None)))
     }
 }
 
@@ -1048,6 +1260,21 @@ unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
 #[unstable(feature = "provide_any", issue = "96024")]
 impl<'a> dyn Erased<'a> + 'a {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
+    /// or `None` otherwise.
+    #[inline]
+    fn downcast<I>(&self) -> Option<&TaggedOption<'a, I>>
+    where
+        I: tags::Type<'a>,
+    {
+        if self.tag_id() == TypeId::of::<I>() {
+            // SAFETY: Just checked whether we're pointing to an I.
+            Some(unsafe { &*(self as *const Self).cast::<TaggedOption<'a, I>>() })
+        } else {
+            None
+        }
+    }
+
+    /// Returns some mutable reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
     fn downcast_mut<I>(&mut self) -> Option<&mut TaggedOption<'a, I>>
