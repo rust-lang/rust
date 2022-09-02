@@ -1,3 +1,4 @@
+//! Type inhabitedness logic.
 use std::ops::ControlFlow::{self, Break, Continue};
 
 use chalk_ir::{
@@ -13,12 +14,14 @@ use crate::{
     db::HirDatabase, Binders, ConcreteConst, Const, ConstValue, Interner, Substitution, Ty, TyKind,
 };
 
+/// Checks whether a type is visibly uninhabited from a particular module.
 pub(crate) fn is_ty_uninhabited_from(ty: &Ty, target_mod: ModuleId, db: &dyn HirDatabase) -> bool {
     let mut uninhabited_from = UninhabitedFrom { target_mod, db };
     let inhabitedness = ty.visit_with(&mut uninhabited_from, DebruijnIndex::INNERMOST);
     inhabitedness == BREAK_VISIBLY_UNINHABITED
 }
 
+/// Checks whether a variant is visibly uninhabited from a particular module.
 pub(crate) fn is_enum_variant_uninhabited_from(
     variant: EnumVariantId,
     subst: &Substitution,
