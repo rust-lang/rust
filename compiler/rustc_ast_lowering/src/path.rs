@@ -22,13 +22,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         qself: &'itctx Option<QSelf>,
         p: &'itctx Path,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'itctx>,
+        itctx: &mut ImplTraitContext<'_, 'itctx>,
     ) -> hir::QPath<'hir>
     where
         'a: 'itctx,
     {
         let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
+        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -73,7 +73,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         segment,
                         param_mode,
                         parenthesized_generic_args,
-                        itctx.reborrow(),
+                        itctx,
                     )
                 },
             )),
@@ -119,7 +119,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 segment,
                 param_mode,
                 ParenthesizedGenericArgs::Err,
-                itctx.reborrow(),
+                itctx,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -159,7 +159,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     segment,
                     param_mode,
                     ParenthesizedGenericArgs::Err,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 )
             })),
             span: self.lower_span(p.span),
@@ -183,7 +183,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment: &'itctx PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext<'_, 'itctx>,
+        itctx: &mut ImplTraitContext<'_, 'itctx>,
     ) -> hir::PathSegment<'hir>
     where
         'a: 'itctx,
@@ -315,7 +315,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         data: &'itctx AngleBracketedArgs,
         param_mode: ParamMode,
-        mut itctx: ImplTraitContext<'_, 'itctx>,
+        itctx: &mut ImplTraitContext<'_, 'itctx>,
     ) -> (GenericArgsCtor<'hir>, bool)
     where
         'a: 'itctx,
@@ -329,14 +329,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .args
             .iter()
             .filter_map(|arg| match arg {
-                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx.reborrow())),
+                AngleBracketedArg::Arg(arg) => Some(self.lower_generic_arg(arg, itctx)),
                 AngleBracketedArg::Constraint(_) => None,
             })
             .collect();
         let bindings = self.arena.alloc_from_iter(data.args.iter().filter_map(|arg| match arg {
-            AngleBracketedArg::Constraint(c) => {
-                Some(self.lower_assoc_ty_constraint(c, itctx.reborrow()))
-            }
+            AngleBracketedArg::Constraint(c) => Some(self.lower_assoc_ty_constraint(c, itctx)),
             AngleBracketedArg::Arg(_) => None,
         }));
         let ctor = GenericArgsCtor { args, bindings, parenthesized: false, span: data.span };
@@ -354,12 +352,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+            self.lower_ty_direct(
+                ty,
+                &mut ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
+            )
         }));
         let output_ty = match output {
-            FnRetTy::Ty(ty) => {
-                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
-            }
+            FnRetTy::Ty(ty) => self
+                .lower_ty(&ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
         let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
