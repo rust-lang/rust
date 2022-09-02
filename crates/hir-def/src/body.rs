@@ -264,10 +264,10 @@ pub type LabelSource = InFile<LabelPtr>;
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
     expr_map: FxHashMap<ExprSource, ExprId>,
-    expr_map_back: ArenaMap<ExprId, Result<ExprSource, SyntheticSyntax>>,
+    expr_map_back: ArenaMap<ExprId, ExprSource>,
 
     pat_map: FxHashMap<PatSource, PatId>,
-    pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
+    pat_map_back: ArenaMap<PatId, PatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
@@ -420,7 +420,7 @@ impl Index<LabelId> for Body {
 // Perhaps `expr_syntax` and `expr_id`?
 impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
-        self.expr_map_back[expr].clone()
+        self.expr_map_back.get(expr).cloned().ok_or(SyntheticSyntax)
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
@@ -434,7 +434,7 @@ impl BodySourceMap {
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
-        self.pat_map_back[pat].clone()
+        self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
