@@ -326,10 +326,15 @@ impl File {
             cvt(c::GetFileInformationByHandle(self.handle.as_raw_handle(), &mut info))?;
             let mut reparse_tag = 0;
             if info.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                let mut b =
-                    Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
-                if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    reparse_tag = (*buf).ReparseTag;
+                let mut attr_tag: c::FILE_ATTRIBUTE_TAG_INFO = mem::zeroed();
+                cvt(c::GetFileInformationByHandleEx(
+                    self.handle.as_raw_handle(),
+                    c::FileAttributeTagInfo,
+                    ptr::addr_of_mut!(attr_tag).cast(),
+                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                ))?;
+                if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                    reparse_tag = attr_tag.ReparseTag;
                 }
             }
             Ok(FileAttr {
@@ -390,10 +395,15 @@ impl File {
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
             if attr.file_type().is_reparse_point() {
-                let mut b =
-                    Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
-                if let Ok((_, buf)) = self.reparse_point(&mut b) {
-                    attr.reparse_tag = (*buf).ReparseTag;
+                let mut attr_tag: c::FILE_ATTRIBUTE_TAG_INFO = mem::zeroed();
+                cvt(c::GetFileInformationByHandleEx(
+                    self.handle.as_raw_handle(),
+                    c::FileAttributeTagInfo,
+                    ptr::addr_of_mut!(attr_tag).cast(),
+                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                ))?;
+                if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                    reparse_tag = attr_tag.ReparseTag;
                 }
             }
             Ok(attr)
