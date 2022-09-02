@@ -15,6 +15,12 @@ use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
+/// The version placeholder that recently stabilized features contain inside the
+/// `since` field of the `#[stable]` attribute.
+///
+/// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
+pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
@@ -481,6 +487,12 @@ where
                                 continue 'outer;
                             }
                         }
+                    }
+
+                    if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+                        let version = option_env!("CFG_VERSION").unwrap_or("<current>");
+                        let version = version.split(' ').next().unwrap();
+                        since = Some(Symbol::intern(&version));
                     }
 
                     match (feature, since) {

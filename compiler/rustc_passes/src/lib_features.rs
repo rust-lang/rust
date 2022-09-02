@@ -5,6 +5,7 @@
 //! collect them instead.
 
 use rustc_ast::{Attribute, MetaItemKind};
+use rustc_attr::VERSION_PLACEHOLDER;
 use rustc_errors::struct_span_err;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
@@ -54,7 +55,6 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                         }
                     }
                 }
-                const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
                 if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
                     let version = option_env!("CFG_VERSION").unwrap_or("<current>");
