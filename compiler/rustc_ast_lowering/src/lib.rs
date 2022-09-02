@@ -546,7 +546,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> LocalDefId {
         debug_assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
-            self.opt_local_def_id(node_id).is_none(),
+            self.resolver.node_id_to_def_id.get(&node_id).is_none(),
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
             node_id,
             data,
@@ -1002,6 +1002,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let mut hir_extra_lifetimes = Vec::new();
 
+        let current_node_id_to_def_id = self.resolver.node_id_to_def_id.clone();
+
         for (ident, node_id, res) in &extra_lifetimes {
             if let Some(lifetime) = self.lifetime_res_to_generic_param(*ident, *node_id, *res) {
                 hir_extra_lifetimes.push(lifetime)
@@ -1009,11 +1011,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         if !self.resolver.generics_def_id_map.is_empty() {
-            for old_node_id in generic_params
-                .iter()
-                .filter(|param| matches!(param.kind, GenericParamKind::Lifetime))
-                .map(|param| param.id)
-            {
+            for old_node_id in generic_params.iter().map(|param| param.id) {
                 let old_def_id = self.local_def_id(old_node_id);
                 let node_id = self.next_node_id();
 
@@ -1027,7 +1025,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         // Install the remapping from old to new (if any):
-        self.with_remapping(new_remapping, &[], |lctx| {
+        let result = self.with_remapping(new_remapping, &[], |lctx| {
             let mut generic_params: Vec<_> =
                 lctx.lower_generic_params_mut(generic_params).collect();
             generic_params.extend(hir_extra_lifetimes);
@@ -1035,7 +1033,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?generic_params);
 
             in_binder(lctx, generic_params)
-        })
+        });
+
+        self.resolver.node_id_to_def_id = current_node_id_to_def_id;
+
+        result
     }
 
     fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
