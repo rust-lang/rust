@@ -23,7 +23,7 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::helpers::{convert::Truncate, target_os_is_unix};
-//FIXME(miri#2526): use crate::shims::ffi_support::EvalContextExt as _;
+use crate::shims::ffi_support::EvalContextExt as _;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
@@ -375,9 +375,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
-            /*FIXME(miri#2526): if this.call_external_c_fct(link_name, dest, args)? {
+            if this.call_external_c_fct(link_name, dest, args)? {
                 return Ok(EmulateByNameResult::NeedsJumping);
-            }*/
+            }
         }
 
         // When adding a new shim, you should follow the following pattern:
