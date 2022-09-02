@@ -248,7 +248,7 @@ jobs:
         if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
+        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix || true
 
       - name: Publish Extension (Code Marketplace, nightly)
         if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
@@ -258,4 +258,4 @@ jobs:
       - name: Publish Extension (OpenVSX, nightly)
         if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
         working-directory: ./editors/code
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
+        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix || true
