@@ -1793,24 +1793,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     .collect();
                 debug!(?type_const_defs);
 
-                let (universal_params, universal_predicates, _): (
+                let (universal_params, universal_predicates): (
                     Vec<_>,
                     Vec<_>,
-                    Vec<_>,
-                ) = itertools::multiunzip(impl_trait_inputs.iter().map(|ty| {
+                ) = impl_trait_inputs.iter().map(|ty| {
                     debug!("lowering impl trait input {:?}", ty);
                     // FIXME
                     if let TyKind::ImplTrait(node_id, ref bounds) = ty.kind {
                         let span = ty.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(ty), span);
-                        lctx.lower_generic_and_bounds(node_id, span, ident, bounds, &mut ImplTraitContext::UniversalInRPIT)
+
+                        let (universal_params, universal_predicates, _) = lctx.lower_generic_and_bounds(node_id, span, ident, bounds, &mut ImplTraitContext::UniversalInRPIT);
+                        (universal_params, universal_predicates)
                     } else {
                         unreachable!(
                             "impl_trait_inputs contains {:?} which is not TyKind::ImplTrait(..)",
                             ty.kind
                         );
                     }
-                }));
+                }).unzip();
 
                 debug!(?universal_params);
                 debug!(?universal_predicates);
