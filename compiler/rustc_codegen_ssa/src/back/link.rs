@@ -2403,6 +2403,14 @@ fn add_upstream_rust_crates<'a>(
                                 bundle: Some(false),
                                 whole_archive: Some(false) | None,
                             } => {
+                                // HACK/FIXME: Fixup a circular dependency between libgcc and libc
+                                // with glibc. This logic should be moved to the libc crate.
+                                if sess.target.os == "linux"
+                                    && sess.target.env == "gnu"
+                                    && name == "c"
+                                {
+                                    cmd.link_staticlib("gcc", false);
+                                }
                                 cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
                             }
                             NativeLibKind::LinkArg => {

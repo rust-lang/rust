@@ -849,26 +849,34 @@ impl CrateInfo {
 
         // Handle circular dependencies in the standard library.
         // See comment before `add_linked_symbol_object` function for the details.
-        let missing_weak_lang_items: FxHashSet<&Symbol> = info
-            .used_crates
-            .iter()
-            .flat_map(|cnum| {
-                tcx.missing_lang_items(*cnum)
-                    .iter()
-                    .filter(|l| lang_items::required(tcx, **l))
-                    .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
-            })
-            .collect();
-        info.linked_symbols
-            .iter_mut()
-            .filter(|(crate_type, _)| !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib))
-            .for_each(|(_, linked_symbols)| {
-                linked_symbols.extend(
-                    missing_weak_lang_items
+        // With msvc-like linkers it's both unnecessary (they support circular dependencies),
+        // and causes linking issues (when weak lang item symbols are "privatized" by LTO).
+        let target = &tcx.sess.target;
+        if !target.is_like_msvc {
+            let missing_weak_lang_items: FxHashSet<&Symbol> = info
+                .used_crates
+                .iter()
+                .flat_map(|cnum| {
+                    tcx.missing_lang_items(*cnum)
                         .iter()
-                        .map(|item| (item.to_string(), SymbolExportKind::Text)),
-                )
-            });
+                        .filter(|l| lang_items::required(tcx, **l))
+                        .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
+                })
+                .collect();
+            let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+            info.linked_symbols
+                .iter_mut()
+                .filter(|(crate_type, _)| {
+                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                })
+                .for_each(|(_, linked_symbols)| {
+                    linked_symbols.extend(
+                        missing_weak_lang_items
+                            .iter()
+                            .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
+                    )
+                });
+        }
 
         let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
             CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
@@ -888,7 +896,7 @@ impl CrateInfo {
             }
         });
 
-        if tcx.sess.target.is_like_msvc && embed_visualizers {
+        if target.is_like_msvc && embed_visualizers {
             info.natvis_debugger_visualizers =
                 collect_debugger_visualizers_transitive(tcx, DebuggerVisualizerType::Natvis);
         }
