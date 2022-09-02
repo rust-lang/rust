@@ -360,7 +360,6 @@ enum StateData<V> {
 /// reachable state). All operations on unreachable states are ignored.
 ///
 /// Flooding means assigning a value (by default `⊤`) to all tracked projections of a given place.
-/// Assigning a place (or reference thereof) to another place assumes that
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct State<V>(StateData<V>);
 
