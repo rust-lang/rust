@@ -2193,6 +2193,9 @@ impl<'a> Builder<'a> {
                 rustflags.arg("-Zvalidate-mir");
                 rustflags.arg(&format!("-Zmir-opt-level={mir_opt_level}"));
             }
+            if self.config.rust_randomize_layout {
+                rustflags.arg("--cfg=randomized_layouts");
+            }
             // Always enable inlining MIR when building the standard library.
             // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
             // That causes some mir-opt tests which inline functions from the standard library to
