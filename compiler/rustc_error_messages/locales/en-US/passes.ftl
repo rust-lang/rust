@@ -290,3 +290,6 @@ passes_unknown_lang_item = definition of an unknown language item: `{$name}`
     .label = definition of unknown language item `{$name}`
 
 passes_local_duplicate_lang_item = found duplicate lang item `{$name}`
+
+passes_invalid_attr_at_crate_level = `{$name}` attribute cannot be used at crate level
+    .suggestion = perhaps you meant to use an outer attribute

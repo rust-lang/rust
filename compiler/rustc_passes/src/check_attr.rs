@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors::{self, DebugVisualizerUnreadable};
+use crate::errors::{self, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel};
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
@@ -1867,7 +1867,7 @@ impl CheckAttrVisitor<'_> {
                     span: meta_item.span,
                     file: &file,
                     error: err,
-                } );
+                });
                 false
             }
         }
@@ -2178,25 +2178,11 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         if attr.style == AttrStyle::Inner {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
-                    let mut err = tcx.sess.struct_span_err(
-                        attr.span,
-                        &format!(
-                            "`{}` attribute cannot be used at crate level",
-                            attr_to_check.to_ident_string()
-                        ),
-                    );
-                    // Only emit an error with a suggestion if we can create a
-                    // string out of the attribute span
-                    if let Ok(src) = tcx.sess.source_map().span_to_snippet(attr.span) {
-                        let replacement = src.replace("#!", "#");
-                        err.span_suggestion_verbose(
-                            attr.span,
-                            "perhaps you meant to use an outer attribute",
-                            replacement,
-                            rustc_errors::Applicability::MachineApplicable,
-                        );
-                    }
-                    err.emit();
+                    tcx.sess.emit_err(InvalidAttrAtCrateLevel {
+                        span: attr.span,
+                        snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),
+                        name: *attr_to_check,
+                    });
                 }
             }
         }

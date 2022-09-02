@@ -1,6 +1,6 @@
 use std::{io::Error, path::Path};
 
-use rustc_errors::{Applicability, MultiSpan};
+use rustc_errors::{Applicability, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
 use rustc_hir::Target;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
@@ -713,4 +713,34 @@ pub struct UnknownLangItem {
     #[label]
     pub span: Span,
     pub name: Symbol,
+}
+
+pub struct InvalidAttrAtCrateLevel {
+    pub span: Span,
+    pub snippet: Option<String>,
+    pub name: Symbol,
+}
+
+impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+    fn into_diagnostic(
+        self,
+        handler: &'_ rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag =
+            handler.struct_err(rustc_errors::fluent::passes::invalid_attr_at_crate_level);
+        diag.set_span(self.span);
+        diag.set_arg("name", self.name);
+        // Only emit an error with a suggestion if we can create a string out
+        // of the attribute span
+        if let Some(src) = self.snippet {
+            let replacement = src.replace("#!", "#");
+            diag.span_suggestion_verbose(
+                self.span,
+                rustc_errors::fluent::passes::suggestion,
+                replacement,
+                rustc_errors::Applicability::MachineApplicable,
+            );
+        }
+        diag
+    }
 }

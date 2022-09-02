@@ -7,8 +7,8 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use crate::errors::{LangItemOnIncorrectTarget, UnknownLangItem};
 use crate::check_attr::target_from_impl_item;
+use crate::errors::{LangItemOnIncorrectTarget, UnknownLangItem};
 use crate::weak_lang_items;
 
 use rustc_errors::{pluralize, struct_span_err};
@@ -52,10 +52,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                 }
                 // Unknown lang item.
                 _ => {
-                    self.tcx.sess.emit_err(UnknownLangItem {
-                        span,
-                        name: value,
-                    });
+                    self.tcx.sess.emit_err(UnknownLangItem { span, name: value });
                 }
             }
         }
