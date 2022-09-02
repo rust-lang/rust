@@ -42,7 +42,7 @@
 #[macro_use]
 extern crate tracing;
 
-use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
+use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait, TraitFnAsync};
 
 use rustc_arena::declare_arena;
 use rustc_ast::ptr::P;
@@ -1274,7 +1274,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         generic_params,
                         unsafety: lctx.lower_unsafety(f.unsafety),
                         abi: lctx.lower_extern(f.ext),
-                        decl: lctx.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
+                        decl: lctx.lower_fn_decl(&f.decl, None, t.span, FnDeclKind::Pointer, None),
                         param_names: lctx.lower_fn_params_to_names(&f.decl),
                     }))
                 })
@@ -1677,19 +1677,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // `fn_def_id`: if `Some`, impl Trait arguments are lowered into generic parameters on the
     //      given DefId, otherwise impl Trait is disallowed. Must be `Some` if
     //      `make_ret_async` is also `Some`.
-    // `impl_trait_return_allow`: determines whether `impl Trait` can be used in return position.
-    //      This guards against trait declarations and implementations where `impl Trait` is
-    //      disallowed.
     // `make_ret_async`: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
     //      return type. This is used for `async fn` declarations. The `NodeId` is the ID of the
-    //      return type `impl Trait` item.
+    //      return type `impl Trait` item, and the `Span` points to the `async` keyword.
     #[instrument(level = "debug", skip(self))]
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
         fn_node_id: Option<NodeId>,
+        fn_span: Span,
         kind: FnDeclKind,
-        make_ret_async: Option<NodeId>,
+        make_ret_async: Option<(NodeId, Span)>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
 
@@ -1720,7 +1718,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }));
 
-        let output = if let Some(ret_id) = make_ret_async {
+        let output = if let Some((ret_id, span)) = make_ret_async {
+            if !self.tcx.features().return_position_impl_trait_in_trait {
+                self.tcx.sess.emit_feature_err(
+                    TraitFnAsync { fn_span, span },
+                    sym::return_position_impl_trait_in_trait,
+                );
+            }
+
             self.lower_async_fn_ret_ty(
                 &decl.output,
                 fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
