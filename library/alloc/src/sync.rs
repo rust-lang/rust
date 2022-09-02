@@ -1661,7 +1661,7 @@ impl<T: ?Sized> Arc<T> {
     ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
     ///     Arc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
     /// }
-    /// println!("{}", &*x); // Invliad UTF-8 in a str
+    /// println!("{}", &*x); // Invalid UTF-8 in a str
     /// ```
     /// Other `Arc` pointers to the same allocation must be to the exact same type, including lifetimes.
     /// ```ignore
