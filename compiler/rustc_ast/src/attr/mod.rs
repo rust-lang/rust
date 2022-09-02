@@ -11,11 +11,13 @@ use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
 
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
+use std::cell::Cell;
 use std::iter;
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
@@ -346,22 +348,36 @@ pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
     NestedMetaItem::MetaItem(mk_word_item(ident))
 }
 
-pub(crate) fn mk_attr_id() -> AttrId {
-    use std::sync::atomic::AtomicU32;
-    use std::sync::atomic::Ordering;
+pub struct AttrIdGenerator(WorkerLocal<Cell<u32>>);
 
-    static NEXT_ATTR_ID: AtomicU32 = AtomicU32::new(0);
+impl AttrIdGenerator {
+    pub fn new() -> Self {
+        // We use `(index as u32).reverse_bits()` to initialize the
+        // starting value of AttrId in each worker thread.
+        // The `index` is the index of the worker thread.
+        // This ensures that the AttrId generated in each thread is unique.
+        AttrIdGenerator(WorkerLocal::new(|index| Cell::new((index as u32).reverse_bits())))
+    }
 
-    let id = NEXT_ATTR_ID.fetch_add(1, Ordering::SeqCst);
-    assert!(id != u32::MAX);
-    AttrId::from_u32(id)
+    pub fn mk_attr_id(&self) -> AttrId {
+        let id = self.0.get();
+        self.0.set(id + 1);
+        AttrId::from_u32(id)
+    }
 }
 
-pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
-    mk_attr_from_item(AttrItem { path, args, tokens: None }, None, style, span)
+pub fn mk_attr(
+    g: &AttrIdGenerator,
+    style: AttrStyle,
+    path: Path,
+    args: MacArgs,
+    span: Span,
+) -> Attribute {
+    mk_attr_from_item(g, AttrItem { path, args, tokens: None }, None, style, span)
 }
 
 pub fn mk_attr_from_item(
+    g: &AttrIdGenerator,
     item: AttrItem,
     tokens: Option<LazyAttrTokenStream>,
     style: AttrStyle,
@@ -369,29 +385,30 @@ pub fn mk_attr_from_item(
 ) -> Attribute {
     Attribute {
         kind: AttrKind::Normal(P(ast::NormalAttr { item, tokens })),
-        id: mk_attr_id(),
+        id: g.mk_attr_id(),
         style,
         span,
     }
 }
 
 /// Returns an inner attribute with the given value and span.
-pub fn mk_attr_inner(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Inner, item.path, item.kind.mac_args(item.span), item.span)
+pub fn mk_attr_inner(g: &AttrIdGenerator, item: MetaItem) -> Attribute {
+    mk_attr(g, AttrStyle::Inner, item.path, item.kind.mac_args(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
-pub fn mk_attr_outer(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
+pub fn mk_attr_outer(g: &AttrIdGenerator, item: MetaItem) -> Attribute {
+    mk_attr(g, AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
 }
 
 pub fn mk_doc_comment(
+    g: &AttrIdGenerator,
     comment_kind: CommentKind,
     style: AttrStyle,
     data: Symbol,
     span: Span,
 ) -> Attribute {
-    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: mk_attr_id(), style, span }
+    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {

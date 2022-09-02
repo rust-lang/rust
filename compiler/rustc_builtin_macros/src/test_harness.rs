@@ -187,7 +187,10 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let dc_nested =
                         attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
-                    let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+                    let allow_dead_code = attr::mk_attr_outer(
+                        &self.sess.parse_sess.attr_id_generator,
+                        allow_dead_code_item,
+                    );
                     let attrs = attrs
                         .into_iter()
                         .filter(|attr| {

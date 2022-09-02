@@ -22,6 +22,7 @@ use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
+use rustc_ast::attr::AttrIdGenerator;
 use std::borrow::Cow;
 
 pub use self::delimited::IterDelimited;
@@ -107,6 +108,7 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
+    g: &AttrIdGenerator,
 ) -> String {
     let mut s =
         State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
@@ -120,7 +122,7 @@ pub fn print_crate<'a>(
         // `#![feature(prelude_import)]`
         let pi_nested = attr::mk_nested_word_item(Ident::with_dummy_span(sym::prelude_import));
         let list = attr::mk_list_item(Ident::with_dummy_span(sym::feature), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(list);
+        let fake_attr = attr::mk_attr_inner(g, list);
         s.print_attribute(&fake_attr);
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
@@ -128,7 +130,7 @@ pub fn print_crate<'a>(
         if edition == Edition::Edition2015 {
             // `#![no_std]`
             let no_std_meta = attr::mk_word_item(Ident::with_dummy_span(sym::no_std));
-            let fake_attr = attr::mk_attr_inner(no_std_meta);
+            let fake_attr = attr::mk_attr_inner(g, no_std_meta);
             s.print_attribute(&fake_attr);
         }
     }

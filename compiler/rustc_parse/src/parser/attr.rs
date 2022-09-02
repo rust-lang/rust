@@ -87,6 +87,7 @@ impl<'a> Parser<'a> {
                 // Always make an outer attribute - this allows us to recover from a misplaced
                 // inner attribute.
                 Some(attr::mk_doc_comment(
+                    &self.sess.attr_id_generator,
                     comment_kind,
                     ast::AttrStyle::Outer,
                     data,
@@ -138,7 +139,13 @@ impl<'a> Parser<'a> {
                     this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
                 }
 
-                Ok(attr::mk_attr_from_item(item, None, style, attr_sp))
+                Ok(attr::mk_attr_from_item(
+                    &self.sess.attr_id_generator,
+                    item,
+                    None,
+                    style,
+                    attr_sp,
+                ))
             } else {
                 let token_str = pprust::token_to_string(&this.token);
                 let msg = &format!("expected `#`, found `{token_str}`");
@@ -291,7 +298,13 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style == ast::AttrStyle::Inner {
                     self.bump();
-                    Some(attr::mk_doc_comment(comment_kind, attr_style, data, self.prev_token.span))
+                    Some(attr::mk_doc_comment(
+                        &self.sess.attr_id_generator,
+                        comment_kind,
+                        attr_style,
+                        data,
+                        self.prev_token.span,
+                    ))
                 } else {
                     None
                 }

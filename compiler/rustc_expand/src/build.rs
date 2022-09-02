@@ -616,7 +616,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {
-        attr::mk_attr_outer(mi)
+        attr::mk_attr_outer(&self.sess.parse_sess.attr_id_generator, mi)
     }
 
     pub fn meta_word(&self, sp: Span, w: Symbol) -> ast::MetaItem {
