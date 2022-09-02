@@ -95,6 +95,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                 inline_refs_for_file(file_id, refs);
             }
             if !definition_deleted {
+                builder.edit_file(ctx.file_id());
                 builder.delete(ast_alias.syntax().text_range());
             }
         },
@@ -979,7 +980,7 @@ fn f() -> Vec<&str> {
 }
 
 //- /foo.rs
-use super::T;
+
 fn foo() {
     let _: Vec<i8> = Vec::new();
 }
@@ -1008,6 +1009,7 @@ mod foo;
 
 
 //- /foo.rs
+
 fn foo() {
     let _: i32 = 0;
 }
