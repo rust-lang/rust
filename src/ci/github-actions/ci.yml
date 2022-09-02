@@ -264,6 +264,9 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+
 defaults:
   run:
     # On Linux, macOS, and Windows, use the system-provided bash as the default
