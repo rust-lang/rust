@@ -1173,13 +1173,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             // only the linker flavor is known; use the default linker for the selected flavor
             (None, Some(flavor)) => Some((
                 PathBuf::from(match flavor {
-                    LinkerFlavor::Em => {
-                        if cfg!(windows) {
-                            "emcc.bat"
-                        } else {
-                            "emcc"
-                        }
-                    }
                     LinkerFlavor::Gcc => {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
@@ -1194,11 +1187,17 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                         }
                     }
                     LinkerFlavor::Ld => "ld",
-                    LinkerFlavor::Msvc => "link.exe",
                     LinkerFlavor::Lld(_) => "lld",
-                    LinkerFlavor::PtxLinker => "rust-ptx-linker",
-                    LinkerFlavor::BpfLinker => "bpf-linker",
-                    LinkerFlavor::L4Bender => "l4-bender",
+                    LinkerFlavor::Msvc => "link.exe",
+                    LinkerFlavor::EmCc => {
+                        if cfg!(windows) {
+                            "emcc.bat"
+                        } else {
+                            "emcc"
+                        }
+                    }
+                    LinkerFlavor::Bpf => "bpf-linker",
+                    LinkerFlavor::Ptx => "rust-ptx-linker",
                 }),
                 flavor,
             )),
@@ -1208,7 +1207,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 });
 
                 let flavor = if stem == "emcc" {
-                    LinkerFlavor::Em
+                    LinkerFlavor::EmCc
                 } else if stem == "gcc"
                     || stem.ends_with("-gcc")
                     || stem == "clang"
@@ -1236,7 +1235,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
+    let linker_flavor = sess.opts.cg.linker_flavor.map(LinkerFlavor::from_cli);
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
 
@@ -2113,11 +2113,11 @@ fn add_order_independent_options(
         });
     }
 
-    if flavor == LinkerFlavor::PtxLinker {
+    if flavor == LinkerFlavor::Ptx {
         // Provide the linker with fallback to internal `target-cpu`.
         cmd.arg("--fallback-arch");
         cmd.arg(&codegen_results.crate_info.target_cpu);
-    } else if flavor == LinkerFlavor::BpfLinker {
+    } else if flavor == LinkerFlavor::Bpf {
         cmd.arg("--cpu");
         cmd.arg(&codegen_results.crate_info.target_cpu);
         cmd.arg("--cpu-features");

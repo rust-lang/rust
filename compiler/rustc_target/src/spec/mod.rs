@@ -92,14 +92,24 @@ mod windows_uwp_msvc_base;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
-    Em,
     Gcc,
-    L4Bender,
     Ld,
-    Msvc,
     Lld(LldFlavor),
-    PtxLinker,
+    Msvc,
+    EmCc,
+    Bpf,
+    Ptx,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum LinkerFlavorCli {
+    Gcc,
+    Ld,
+    Lld(LldFlavor),
+    Msvc,
+    Em,
     BpfLinker,
+    PtxLinker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -137,19 +147,40 @@ impl ToJson for LldFlavor {
     }
 }
 
-impl ToJson for LinkerFlavor {
-    fn to_json(&self) -> Json {
-        self.desc().to_json()
+impl LinkerFlavor {
+    pub fn from_cli(cli: LinkerFlavorCli) -> LinkerFlavor {
+        match cli {
+            LinkerFlavorCli::Gcc => LinkerFlavor::Gcc,
+            LinkerFlavorCli::Ld => LinkerFlavor::Ld,
+            LinkerFlavorCli::Lld(lld_flavor) => LinkerFlavor::Lld(lld_flavor),
+            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc,
+            LinkerFlavorCli::Em => LinkerFlavor::EmCc,
+            LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
+            LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
+        }
+    }
+
+    fn to_cli(self) -> LinkerFlavorCli {
+        match self {
+            LinkerFlavor::Gcc => LinkerFlavorCli::Gcc,
+            LinkerFlavor::Ld => LinkerFlavorCli::Ld,
+            LinkerFlavor::Lld(lld_flavor) => LinkerFlavorCli::Lld(lld_flavor),
+            LinkerFlavor::Msvc => LinkerFlavorCli::Msvc,
+            LinkerFlavor::EmCc => LinkerFlavorCli::Em,
+            LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
+            LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
+        }
     }
 }
-macro_rules! flavor_mappings {
-    ($((($($flavor:tt)*), $string:expr),)*) => (
-        impl LinkerFlavor {
+
+macro_rules! linker_flavor_cli_impls {
+    ($(($($flavor:tt)*) $string:literal)*) => (
+        impl LinkerFlavorCli {
             pub const fn one_of() -> &'static str {
                 concat!("one of: ", $($string, " ",)*)
             }
 
-            pub fn from_str(s: &str) -> Option<Self> {
+            pub fn from_str(s: &str) -> Option<LinkerFlavorCli> {
                 Some(match s {
                     $($string => $($flavor)*,)*
                     _ => return None,
@@ -165,18 +196,23 @@ macro_rules! flavor_mappings {
     )
 }
 
-flavor_mappings! {
-    ((LinkerFlavor::Em), "em"),
-    ((LinkerFlavor::Gcc), "gcc"),
-    ((LinkerFlavor::L4Bender), "l4-bender"),
-    ((LinkerFlavor::Ld), "ld"),
-    ((LinkerFlavor::Msvc), "msvc"),
-    ((LinkerFlavor::PtxLinker), "ptx-linker"),
-    ((LinkerFlavor::BpfLinker), "bpf-linker"),
-    ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
-    ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),
-    ((LinkerFlavor::Lld(LldFlavor::Ld)), "ld.lld"),
-    ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
+linker_flavor_cli_impls! {
+    (LinkerFlavorCli::Gcc) "gcc"
+    (LinkerFlavorCli::Ld) "ld"
+    (LinkerFlavorCli::Lld(LldFlavor::Ld)) "ld.lld"
+    (LinkerFlavorCli::Lld(LldFlavor::Ld64)) "ld64.lld"
+    (LinkerFlavorCli::Lld(LldFlavor::Link)) "lld-link"
+    (LinkerFlavorCli::Lld(LldFlavor::Wasm)) "wasm-ld"
+    (LinkerFlavorCli::Msvc) "msvc"
+    (LinkerFlavorCli::Em) "em"
+    (LinkerFlavorCli::BpfLinker) "bpf-linker"
+    (LinkerFlavorCli::PtxLinker) "ptx-linker"
+}
+
+impl ToJson for LinkerFlavorCli {
+    fn to_json(&self) -> Json {
+        self.desc().to_json()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
@@ -467,6 +503,7 @@ impl fmt::Display for LinkOutputKind {
 }
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
+pub type LinkArgsCli = BTreeMap<LinkerFlavorCli, Vec<StaticCow<str>>>;
 
 /// Which kind of debuginfo does the target use?
 ///
@@ -1210,19 +1247,21 @@ pub struct TargetOptions {
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: StaticCow<str>,
-    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
-    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
-    pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
-
+    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
+    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
+    pub linker_flavor: LinkerFlavor,
+    linker_flavor_json: LinkerFlavorCli,
     /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
     /// without clarifying its flavor in any way.
+    /// FIXME: Merge this into `LinkerFlavor`.
     pub lld_flavor: LldFlavor,
+    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
+    /// FIXME: Merge this into `LinkerFlavor`.
+    pub linker_is_gnu: bool,
 
-    /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs,
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
     pub post_link_objects: CrtObjects,
@@ -1231,24 +1270,31 @@ pub struct TargetOptions {
     pub post_link_objects_self_contained: CrtObjects,
     pub link_self_contained: LinkSelfContainedDefault,
 
+    /// Linker arguments that are passed *before* any user-defined libraries.
+    pub pre_link_args: LinkArgs,
+    pre_link_args_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
     pub late_link_args: LinkArgs,
+    late_link_args_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
     pub late_link_args_dynamic: LinkArgs,
+    late_link_args_dynamic_json: LinkArgsCli,
     /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
     pub late_link_args_static: LinkArgs,
+    late_link_args_static_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed *after* any
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
+    post_link_args_json: LinkArgsCli,
+
     /// Optional link script applied to `dylib` and `executable` crate types.
     /// This is a string containing the script, not a path. Can only be applied
     /// to linkers where `linker_is_gnu` is true.
     pub link_script: Option<StaticCow<str>>,
-
     /// Environment variables to be set for the linker invocation.
     pub link_env: StaticCow<[(StaticCow<str>, StaticCow<str>)]>,
     /// Environment variables to be removed for the linker invocation.
@@ -1333,8 +1379,6 @@ pub struct TargetOptions {
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
-    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
-    pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
@@ -1532,11 +1576,7 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
         LinkerFlavor::Lld(lld_flavor) => {
             panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
         }
-        LinkerFlavor::Gcc
-        | LinkerFlavor::Em
-        | LinkerFlavor::L4Bender
-        | LinkerFlavor::BpfLinker
-        | LinkerFlavor::PtxLinker => {}
+        LinkerFlavor::Gcc | LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {}
     }
 }
 
@@ -1554,6 +1594,36 @@ impl TargetOptions {
     fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
         add_link_args(&mut self.post_link_args, flavor, args);
     }
+
+    fn update_from_cli(&mut self) {
+        self.linker_flavor = LinkerFlavor::from_cli(self.linker_flavor_json);
+        for (args, args_json) in [
+            (&mut self.pre_link_args, &self.pre_link_args_json),
+            (&mut self.late_link_args, &self.late_link_args_json),
+            (&mut self.late_link_args_dynamic, &self.late_link_args_dynamic_json),
+            (&mut self.late_link_args_static, &self.late_link_args_static_json),
+            (&mut self.post_link_args, &self.post_link_args_json),
+        ] {
+            *args = args_json
+                .iter()
+                .map(|(flavor, args)| (LinkerFlavor::from_cli(*flavor), args.clone()))
+                .collect();
+        }
+    }
+
+    fn update_to_cli(&mut self) {
+        self.linker_flavor_json = self.linker_flavor.to_cli();
+        for (args, args_json) in [
+            (&self.pre_link_args, &mut self.pre_link_args_json),
+            (&self.late_link_args, &mut self.late_link_args_json),
+            (&self.late_link_args_dynamic, &mut self.late_link_args_dynamic_json),
+            (&self.late_link_args_static, &mut self.late_link_args_static_json),
+            (&self.post_link_args, &mut self.post_link_args_json),
+        ] {
+            *args_json =
+                args.iter().map(|(flavor, args)| (flavor.to_cli(), args.clone())).collect();
+        }
+    }
 }
 
 impl Default for TargetOptions {
@@ -1568,11 +1638,11 @@ impl Default for TargetOptions {
             env: "".into(),
             abi: "".into(),
             vendor: "unknown".into(),
-            linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
+            linker_flavor: LinkerFlavor::Gcc,
+            linker_flavor_json: LinkerFlavorCli::Gcc,
             lld_flavor: LldFlavor::Ld,
-            pre_link_args: LinkArgs::new(),
-            post_link_args: LinkArgs::new(),
+            linker_is_gnu: true,
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
@@ -1599,7 +1669,6 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             default_dwarf_version: 4,
-            linker_is_gnu: true,
             allows_weak_linkage: true,
             has_rpath: false,
             no_default_libraries: true,
@@ -1612,9 +1681,16 @@ impl Default for TargetOptions {
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
             link_self_contained: LinkSelfContainedDefault::False,
+            pre_link_args: LinkArgs::new(),
+            pre_link_args_json: LinkArgsCli::new(),
             late_link_args: LinkArgs::new(),
+            late_link_args_json: LinkArgsCli::new(),
             late_link_args_dynamic: LinkArgs::new(),
+            late_link_args_dynamic_json: LinkArgsCli::new(),
             late_link_args_static: LinkArgs::new(),
+            late_link_args_static_json: LinkArgsCli::new(),
+            post_link_args: LinkArgs::new(),
+            post_link_args_json: LinkArgsCli::new(),
             link_env: cvs![],
             link_env_remove: cvs![],
             archive_format: "gnu".into(),
@@ -2019,13 +2095,13 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
-            ($key_name:ident, LinkerFlavor) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match LinkerFlavor::from_str(s) {
+            ($key_name:ident = $json_name:expr, LinkerFlavor) => ( {
+                let name = $json_name;
+                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
+                    match LinkerFlavorCli::from_str(s) {
                         Some(linker_flavor) => base.$key_name = linker_flavor,
                         _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
-                                                      Use {}", s, LinkerFlavor::one_of()))),
+                                                      Use {}", s, LinkerFlavorCli::one_of()))),
                     }
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
@@ -2106,14 +2182,14 @@ impl Target {
                     base.$key_name = args;
                 }
             } );
-            ($key_name:ident, link_args) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(val) = obj.remove(&name) {
+            ($key_name:ident = $json_name:expr, link_args) => ( {
+                let name = $json_name;
+                if let Some(val) = obj.remove(name) {
                     let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
                         JSON object with fields per linker-flavor.", name))?;
-                    let mut args = LinkArgs::new();
+                    let mut args = LinkArgsCli::new();
                     for (k, v) in obj {
-                        let flavor = LinkerFlavor::from_str(&k).ok_or_else(|| {
+                        let flavor = LinkerFlavorCli::from_str(&k).ok_or_else(|| {
                             format!("{}: '{}' is not a valid value for linker-flavor. \
                                      Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
                         })?;
@@ -2199,19 +2275,20 @@ impl Target {
         key!(env);
         key!(abi);
         key!(vendor);
-        key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
+        key!(linker_flavor_json = "linker-flavor", LinkerFlavor)?;
         key!(lld_flavor, LldFlavor)?;
+        key!(linker_is_gnu, bool);
         key!(pre_link_objects = "pre-link-objects", link_objects);
         key!(post_link_objects = "post-link-objects", link_objects);
         key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
         key!(post_link_objects_self_contained = "post-link-objects-fallback", link_objects);
         key!(link_self_contained = "crt-objects-fallback", link_self_contained)?;
-        key!(pre_link_args, link_args);
-        key!(late_link_args, link_args);
-        key!(late_link_args_dynamic, link_args);
-        key!(late_link_args_static, link_args);
-        key!(post_link_args, link_args);
+        key!(pre_link_args_json = "pre-link-args", link_args);
+        key!(late_link_args_json = "late-link-args", link_args);
+        key!(late_link_args_dynamic_json = "late-link-args-dynamic", link_args);
+        key!(late_link_args_static_json = "late-link-args-static", link_args);
+        key!(post_link_args_json = "post-link-args", link_args);
         key!(link_script, optional);
         key!(link_env, env);
         key!(link_env_remove, list);
@@ -2239,7 +2316,6 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
         key!(default_dwarf_version, u32);
-        key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
@@ -2296,6 +2372,8 @@ impl Target {
             // This can cause unfortunate ICEs later down the line.
             return Err("may not set is_builtin for targets not built-in".into());
         }
+        base.update_from_cli();
+
         // Each field should have been read using `Json::remove` so any keys remaining are unused.
         let remaining_keys = obj.keys();
         Ok((
@@ -2387,42 +2465,44 @@ impl ToJson for Target {
     fn to_json(&self) -> Json {
         let mut d = serde_json::Map::new();
         let default: TargetOptions = Default::default();
+        let mut target = self.clone();
+        target.update_to_cli();
 
         macro_rules! target_val {
             ($attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                d.insert(name, self.$attr.to_json());
+                d.insert(name, target.$attr.to_json());
             }};
         }
 
         macro_rules! target_option_val {
             ($attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.$attr {
-                    d.insert(name, self.$attr.to_json());
+                if default.$attr != target.$attr {
+                    d.insert(name, target.$attr.to_json());
                 }
             }};
-            ($attr:ident, $key_name:expr) => {{
-                let name = $key_name;
-                if default.$attr != self.$attr {
-                    d.insert(name.into(), self.$attr.to_json());
+            ($attr:ident, $json_name:expr) => {{
+                let name = $json_name;
+                if default.$attr != target.$attr {
+                    d.insert(name.into(), target.$attr.to_json());
                 }
             }};
-            (link_args - $attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.$attr {
-                    let obj = self
+            (link_args - $attr:ident, $json_name:expr) => {{
+                let name = $json_name;
+                if default.$attr != target.$attr {
+                    let obj = target
                         .$attr
                         .iter()
                         .map(|(k, v)| (k.desc().to_string(), v.clone()))
                         .collect::<BTreeMap<_, _>>();
-                    d.insert(name, obj.to_json());
+                    d.insert(name.to_string(), obj.to_json());
                 }
             }};
             (env - $attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.$attr {
-                    let obj = self
+                if default.$attr != target.$attr {
+                    let obj = target
                         .$attr
                         .iter()
                         .map(|&(ref k, ref v)| format!("{k}={v}"))
@@ -2444,19 +2524,20 @@ impl ToJson for Target {
         target_option_val!(env);
         target_option_val!(abi);
         target_option_val!(vendor);
-        target_option_val!(linker_flavor);
         target_option_val!(linker);
+        target_option_val!(linker_flavor_json, "linker-flavor");
         target_option_val!(lld_flavor);
+        target_option_val!(linker_is_gnu);
         target_option_val!(pre_link_objects);
         target_option_val!(post_link_objects);
         target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");
         target_option_val!(post_link_objects_self_contained, "post-link-objects-fallback");
         target_option_val!(link_self_contained, "crt-objects-fallback");
-        target_option_val!(link_args - pre_link_args);
-        target_option_val!(link_args - late_link_args);
-        target_option_val!(link_args - late_link_args_dynamic);
-        target_option_val!(link_args - late_link_args_static);
-        target_option_val!(link_args - post_link_args);
+        target_option_val!(link_args - pre_link_args_json, "pre-link-args");
+        target_option_val!(link_args - late_link_args_json, "late-link-args");
+        target_option_val!(link_args - late_link_args_dynamic_json, "late-link-args-dynamic");
+        target_option_val!(link_args - late_link_args_static_json, "late-link-args-static");
+        target_option_val!(link_args - post_link_args_json, "post-link-args");
         target_option_val!(link_script);
         target_option_val!(env - link_env);
         target_option_val!(link_env_remove);
@@ -2485,7 +2566,6 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(default_dwarf_version);
-        target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
