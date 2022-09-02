@@ -414,6 +414,7 @@ Next, we'll build a package manifest as defined by our manifest:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/pm \
+    -api-level 8 \
     -o pkg/hello_fuchsia_manifest \
     -m pkg/hello_fuchsia.manifest \
     build \
