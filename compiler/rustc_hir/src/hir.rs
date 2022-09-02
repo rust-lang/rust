@@ -2551,7 +2551,10 @@ pub enum TyKind<'hir> {
     /// The generic argument list contains the lifetimes (and in the future
     /// possibly parameters) that are actually bound on the `impl Trait`.
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
-    /// The placeholder
+    /// A type that represents an `impl Trait` in a trait function. This is
+    /// not an opaque type, since it acts more like an associated type than
+    /// an opaque, and since it needs no generics since it inherits those
+    /// from the item's parent.
     ImplTraitInTrait(ItemId),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
