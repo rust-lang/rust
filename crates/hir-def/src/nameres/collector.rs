@@ -294,6 +294,17 @@ impl DefCollector<'_> {
                     continue;
                 }
 
+                if *attr_name == hir_expand::name![feature] {
+                    let features =
+                        attr.parse_path_comma_token_tree().into_iter().flatten().filter_map(
+                            |feat| match feat.segments() {
+                                [name] => Some(name.to_smol_str()),
+                                _ => None,
+                            },
+                        );
+                    self.def_map.unstable_features.extend(features);
+                }
+
                 let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
                     || *attr_name == hir_expand::name![register_tool];
                 if !attr_is_register_like {
