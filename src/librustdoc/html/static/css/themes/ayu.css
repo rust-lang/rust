@@ -16,6 +16,13 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--headings-border-bottom-color: #5c6773;
 	--border-color: #5c6773;
 	--button-background-color: #141920;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
+	--copy-path-button-color: #fff;
+	--copy-path-img-filter: invert(70%);
+	--copy-path-img-hover-filter: invert(100%);
 }
 
 .slider {
@@ -158,11 +165,6 @@ body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before {
-	color: #999;
-}
-
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
@@ -195,11 +197,6 @@ details.rustdoc-toggle > summary::before {
 .stab.portability > code {
 	color: #e6e1cf;
 	background: none;
-}
-
-.rightside:not(a),
-.out-of-band {
-	color: grey;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
@@ -240,10 +237,6 @@ a.test-arrow {
 a.test-arrow:hover {
 	background-color: rgba(57, 175, 215, 0.368);
 	color: #c5c5c5;
-}
-
-.code-attribute {
-	color: #999;
 }
 
 :target {
@@ -341,7 +334,6 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-.search-input:focus {}
 .content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content span.struct,.content a.struct,.block a.current.struct {}
@@ -428,16 +420,6 @@ kbd {
 	filter: invert(100);
 }
 
-#copy-path {
-	color: #fff;
-}
-#copy-path > img {
-	filter: invert(70%);
-}
-#copy-path:hover > img {
-	filter: invert(100%);
-}
-
 #settings-menu > a:hover, #settings-menu > a:focus,
 #help-button > button:hover, #help-button > button:focus {
 	border-color: #e0e0e0;
@@ -470,9 +452,6 @@ kbd {
 .scraped-example-list .scrape-help:hover {
 	border-color: white;
 	color: white;
-}
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: #999;
 }
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);

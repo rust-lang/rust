@@ -987,6 +987,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	width: 100%;
 	background-color: var(--button-background-color);
 }
+.search-input:focus {
+	border-color: var(--search-input-focused-border-color);
+}
 
 .search-results {
 	display: none;
@@ -1167,6 +1170,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	float: right;
 }
 
+.rightside:not(a),
+.out-of-band {
+	color: var(--right-side-color);
+}
+
+
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
@@ -1205,6 +1214,7 @@ a.test-arrow:hover {
 
 .code-attribute {
 	font-weight: 300;
+	color: var(--code-attribute-color);
 }
 
 .item-spacer {
@@ -1478,6 +1488,16 @@ pre.rust {
 	background-color: var(--button-background-color);
 }
 
+#copy-path {
+	color: var(--copy-path-button-color);
+}
+#copy-path > img {
+	filter: var(--copy-path-img-filter);
+}
+#copy-path:hover > img {
+	filter: var(--copy-path-img-hover-filter);
+}
+
 @keyframes rotating {
 	from {
 		transform: rotate(0deg);
@@ -1599,6 +1619,12 @@ details.rustdoc-toggle > summary::before {
 	display: inline-block;
 	vertical-align: middle;
 	opacity: .5;
+}
+
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: var(--toggles-color);
 }
 
 /* Screen readers see the text version at the end the line.
