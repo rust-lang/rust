@@ -16,7 +16,7 @@ fn check_conditional_variables_notify_all() {
                 let (lock, cvar) = &*pair2;
                 let guard = lock.lock().unwrap();
                 // Block waiting on the conditional variable.
-                let _x = cvar.wait(guard).unwrap();
+                let _guard = cvar.wait(guard).unwrap();
             })
         })
         .inspect(|_| {
