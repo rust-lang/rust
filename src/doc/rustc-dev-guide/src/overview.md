@@ -190,7 +190,7 @@ satisfy/optimize for. For example,
   the input programs says they do, and should continue to do so despite the
   tremendous amount of change constantly going on.
 - Integration: a number of other tools need to use the compiler in
-  various ways (e.g. cargo, clippy, miri, RLS) that must be supported.
+  various ways (e.g. cargo, clippy, miri) that must be supported.
 - Compiler stability: the compiler should not crash or fail ungracefully on the
   stable channel.
 - Rust stability: the compiler must respect Rust's stability guarantees by not

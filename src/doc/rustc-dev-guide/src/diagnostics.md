@@ -388,10 +388,8 @@ In addition to telling the user exactly _why_ their code is wrong, it's
 oftentimes furthermore possible to tell them how to fix it. To this end,
 `DiagnosticBuilder` offers a structured suggestions API, which formats code
 suggestions pleasingly in the terminal, or (when the `--error-format json` flag
-is passed) as JSON for consumption by tools, most notably the [Rust Language
-Server][rls] and [`rustfix`][rustfix].
+is passed) as JSON for consumption by tools like [`rustfix`][rustfix].
 
-[rls]: https://github.com/rust-lang/rls
 [rustfix]: https://github.com/rust-lang/rustfix
 
 Not all suggestions should be applied mechanically, they have a degree of
@@ -757,7 +755,7 @@ then dumped into the `Session::buffered_lints` used by the rest of the compiler.
 
 The compiler accepts an `--error-format json` flag to output
 diagnostics as JSON objects (for the benefit of tools such as `cargo
-fix` or the RLS). It looks like this:
+fix`). It looks like this:
 
 ```console
 $ rustc json_error_demo.rs --error-format json
@@ -771,7 +769,7 @@ object, but the series of lines taken together is, unfortunately, not
 valid JSON, thwarting tools and tricks (such as [piping to `python3 -m
 json.tool`](https://docs.python.org/3/library/json.html#module-json.tool))
 that require such. (One speculates that this was intentional for LSP
-performance purposes, so that each line/object can be sent to RLS as
+performance purposes, so that each line/object can be sent as
 it is flushed?)
 
 Also note the "rendered" field, which contains the "human" output as a

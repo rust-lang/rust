@@ -174,7 +174,7 @@ Still, it probably provides useful first guidepost to what happens in there.
   following stages of compilation?
 * Who calls it and how it is actually used.
 * Is it a pass and then the result is only used, or can it be computed
-  incrementally (e.g. for RLS)?
+  incrementally?
 * The overall strategy description is a bit vague.
 * Where does the name `Rib` come from?
 * Does this thing have its own tests, or is it tested only as part of some e2e

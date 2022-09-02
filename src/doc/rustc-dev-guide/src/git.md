@@ -149,7 +149,7 @@ Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
 	modified:   src/tools/cargo (new commits)
-	modified:   src/tools/rls (new commits)
+	modified:   src/tools/miri (new commits)
 
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
@@ -391,7 +391,7 @@ you might want to get used to the main concepts of Git before reading this secti
 
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
 Rust projects from within the `rust` repo. Examples include Rust's fork of
-`llvm-project` and many devtools such as `cargo` and `rls`.
+`llvm-project` and many devtools such as `cargo` and `miri`.
 
 Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.
@@ -434,6 +434,5 @@ exist and that they correspond to some sort of embedded subrepository dependency
 that Git can nicely and fairly conveniently handle for us.
 
 [Git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
-[`rust-toolstate`]: https://rust-lang-nursery.github.io/rust-toolstate/
 [`rust-lang/miri`]: https://github.com/rust-lang/miri
 [miri-update]: https://github.com/rust-lang/rust/pull/77500/files

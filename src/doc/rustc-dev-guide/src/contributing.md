@@ -249,37 +249,37 @@ subtrees) actually needs to use `git subtree`.
 
 ### External Dependencies (submodules)
 
-Currently building Rust will also build the following external projects:
+Building Rust will also use external git repositories tracked using [git
+submodules]. The complete list may be found in the [`.gitmodules`] file. Some
+of these projects are required (like `stdarch` for the standard library) and
+some of them are optional (like [Miri]).
 
-* [miri](https://github.com/rust-lang/miri)
-* [rls](https://github.com/rust-lang/rls/)
+Usage of submodules is discussed more in the [Using Git
+chapter](git.md#git-submodules).
 
-We allow breakage of these tools in the nightly channel. Maintainers of these
-projects will be notified of the breakages and should fix them as soon as
-possible.
-
-After the external is fixed, one could add the changes with
-
-```sh
-git add path/to/submodule
-```
-
-outside the submodule.
-
-In order to prepare your tool-fixing PR, you can run the build locally by doing
-`./x.py build src/tools/TOOL`. If you will be editing the sources
-there, you may wish to set `submodules = false` in the `config.toml`
-to prevent `x.py` from resetting to the original branch.
+Some of the submodules are allowed to be in a "broken" state where they either
+don't build or their tests don't pass. These include [Miri] and the
+documentation books like [The Rust Reference]. Maintainers of these projects
+will be notified when the project is in a broken state, and they should fix
+them as soon as possible. The current status is tracked on the [toolstate
+website]. More information may be found on the Forge [Toolstate chapter].
 
 Breakage is not allowed in the beta and stable channels, and must be addressed
-before the PR is merged.
+before the PR is merged. They are also not allowed to be broken on master in
+the week leading up to the beta cut.
+
+[git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
+[`.gitmodules`]: https://github.com/rust-lang/rust/blob/master/.gitmodules
+[Miri]: https://github.com/rust-lang/miri
+[The Rust Reference]: https://github.com/rust-lang/reference/
+[toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
+[Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
 
 #### Breaking Tools Built With The Compiler
 
 Rust's build system builds a number of tools that make use of the internals of
 the compiler and that are hosted in a separate repository, and included in Rust
-via git submodules. This includes [RLS](https://github.com/rust-lang/rls) and
-[Miri](https://github.com/rust-lang/Miri). If these tools break because of your
+via git submodules (such as [Miri]). If these tools break because of your
 changes, you may run into a sort of "chicken and egg" problem. These tools rely
 on the latest compiler to be built so you can't update them (in their own
 repositories) to reflect your changes to the compiler until those changes are
@@ -299,7 +299,7 @@ done and the tools are working again, you go back in the compiler and update the
 tools so they can be distributed again.
 
 This should avoid a bunch of synchronization dances and is also much easier on contributors as
-there's no need to block on rls/miri/other tools changes going upstream.
+there's no need to block on tools changes going upstream.
 
 Here are those same steps in detail:
 
@@ -309,8 +309,8 @@ Here are those same steps in detail:
    from resetting to the original branch after you make your changes. If you
    need to [update any submodules to their latest versions](#updating-submodules),
    see the section of this file about that for more information.
-2. (optional) Run `./x.py test src/tools/rls` (substituting the submodule
-   that broke for `rls`). Fix any errors in the submodule (and possibly others).
+2. (optional) Run `./x.py test src/tools/miri` (substituting the submodule
+   that broke for `miri`). Fix any errors in the submodule (and possibly others).
 3. (optional) Make commits for your changes and send them to upstream repositories as a PR.
 4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
    merged because CI will be broken. You'll want to write a message on the PR referencing
@@ -322,69 +322,21 @@ Here are those same steps in detail:
 
 #### Updating submodules
 
-These instructions are specific to updating `rls`, however they may apply
+These instructions are specific to updating `miri`, however they may apply
 to the other submodules as well. Please help by improving these instructions
 if you find any discrepancies or special cases that need to be addressed.
 
-To update the `rls` submodule, start by running the appropriate
+To update the `miri` submodule, start by running the appropriate
 [`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 For example, to update to the latest commit on the remote master branch,
 you may want to run:
 ```
-git submodule update --remote src/tools/rls
+git submodule update --remote src/tools/miri
 ```
-If you run `./x.py build` now, and you are lucky, it may just work. If you see
-an error message about patches that did not resolve to any crates, you will need
-to complete a few more steps which are outlined with their rationale below.
+If you run `./x.py build` now, and you are lucky, it may just work.
 
-*(This error may change in the future to include more information.)*
-```
-error: failed to resolve patches for `https://github.com/rust-lang/rls`
-
-Caused by:
-  patch for `rls` in `https://github.com/rust-lang/rls` did not resolve to any crates
-failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
-```
-
-The [`[patch]`][patchsec] section of `Cargo.toml` can be very useful for
-testing. In addition to that, you should read the [Overriding
-dependencies][overriding] section of the documentation.
-
-[patchsec]: http://doc.crates.io/manifest.html#the-patch-section
-[overriding]: http://doc.crates.io/specifying-dependencies.html#overriding-dependencies
-
-Specifically, the following [section in Overriding dependencies][testingbugfix]
-reveals what the problem is:
-
-[testingbugfix]: http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix
-
-> Next up we need to ensure that our lock file is updated to use this new
-> version of uuid so our project uses the locally checked out copy instead of
-> one from crates.io. The way `[patch]` works is that it'll load the dependency
-> at ../path/to/uuid and then whenever crates.io is queried for versions of
-> uuid it'll also return the local version.
->
-> This means that the version number of the local checkout is significant and
-> will affect whether the patch is used. Our manifest declared uuid = "1.0"
-> which means we'll only resolve to >= 1.0.0, < 2.0.0, and Cargo's greedy
-> resolution algorithm also means that we'll resolve to the maximum version
-> within that range. Typically this doesn't matter as the version of the git
-> repository will already be greater or match the maximum version published on
-> crates.io, but it's important to keep this in mind!
-
-This says that when we updated the submodule, the version number in our
-`src/tools/rls/Cargo.toml` changed. The new version is different from
-the version in `Cargo.lock`, so the build can no longer continue.
-
-To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
-command to do this easily.
-
-```
-$ cargo update -p rls
-```
-
-This should change the version listed in `Cargo.lock` to the new version you updated
-the submodule to. Running `./x.py build` should work now.
+To add these changes to a commit, use `git add src/tools/miri` and commit the
+change. You can the push and open a PR.
 
 ## Writing Documentation
 

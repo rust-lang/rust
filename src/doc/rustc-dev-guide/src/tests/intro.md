@@ -115,7 +115,7 @@ will unpack, build, and run all tests.
 ### Tool tests
 
 Packages that are included with Rust have all of their tests run as well.
-This includes things such as cargo, clippy, rustfmt, rls, miri, bootstrap
+This includes things such as cargo, clippy, rustfmt, miri, bootstrap
 (testing the Rust build system itself), etc.
 
 Most of the tools are located in the [`src/tools`] directory.

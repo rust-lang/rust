@@ -7,7 +7,7 @@ using the interface defined in the [`rustc_interface`] crate.
 The `rustc_interface` crate provides external users with an (unstable) API
 for running code at particular times during the compilation process, allowing
 third parties to effectively use `rustc`'s internals as a library for
-analyzing a crate or emulating the compiler in-process (e.g. the RLS or rustdoc).
+analyzing a crate or emulating the compiler in-process (e.g. rustdoc).
 
 For those using `rustc` as a library, the [`rustc_interface::run_compiler()`][i_rc]
 function is the main entrypoint to the compiler. It takes a configuration for the compiler
