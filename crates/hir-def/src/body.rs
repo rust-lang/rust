@@ -250,6 +250,10 @@ pub type PatSource = InFile<PatPtr>;
 
 pub type LabelPtr = AstPtr<ast::Label>;
 pub type LabelSource = InFile<LabelPtr>;
+
+pub type FieldPtr = AstPtr<ast::RecordExprField>;
+pub type FieldSource = InFile<FieldPtr>;
+
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
 /// expression containing it; but for type inference etc., we want to operate on
@@ -274,8 +278,8 @@ pub struct BodySourceMap {
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
-    field_map: FxHashMap<InFile<AstPtr<ast::RecordExprField>>, ExprId>,
-    field_map_back: FxHashMap<ExprId, InFile<AstPtr<ast::RecordExprField>>>,
+    field_map: FxHashMap<FieldSource, ExprId>,
+    field_map_back: FxHashMap<ExprId, FieldSource>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
@@ -456,9 +460,10 @@ impl BodySourceMap {
         self.label_map.get(&src).cloned()
     }
 
-    pub fn field_syntax(&self, expr: ExprId) -> InFile<AstPtr<ast::RecordExprField>> {
+    pub fn field_syntax(&self, expr: ExprId) -> FieldSource {
         self.field_map_back[&expr].clone()
     }
+
     pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
         let src = node.map(AstPtr::new);
         self.field_map.get(&src).cloned()

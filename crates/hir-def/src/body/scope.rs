@@ -47,16 +47,9 @@ pub struct ScopeData {
 impl ExprScopes {
     pub(crate) fn expr_scopes_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
         let body = db.body(def);
-        Arc::new(ExprScopes::new(&*body))
-    }
-
-    fn new(body: &Body) -> ExprScopes {
-        let mut scopes =
-            ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
-        let mut root = scopes.root_scope();
-        scopes.add_params_bindings(body, root, &body.params);
-        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
-        scopes
+        let mut scopes = ExprScopes::new(&*body);
+        scopes.shrink_to_fit();
+        Arc::new(scopes)
     }
 
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
@@ -88,6 +81,17 @@ impl ExprScopes {
 
     pub fn scope_by_expr(&self) -> &FxHashMap<ExprId, ScopeId> {
         &self.scope_by_expr
+    }
+}
+
+impl ExprScopes {
+    fn new(body: &Body) -> ExprScopes {
+        let mut scopes =
+            ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
+        let mut root = scopes.root_scope();
+        scopes.add_params_bindings(body, root, &body.params);
+        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
+        scopes
     }
 
     fn root_scope(&mut self) -> ScopeId {
@@ -137,6 +141,13 @@ impl ExprScopes {
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
         self.scope_by_expr.insert(node, scope);
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let ExprScopes { scopes, scope_by_expr } = self;
+        scopes.shrink_to_fit();
+        scopes.values_mut().for_each(|it| it.entries.shrink_to_fit());
+        scope_by_expr.shrink_to_fit();
     }
 }
 
