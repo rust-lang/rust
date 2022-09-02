@@ -58,3 +58,11 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_data_moved_here =
+    data moved here
+
+borrowck_and_data_moved_here = ...and here
+
+borrowck_moved_var_cannot_copy =
+    move occurs because these variables have types that don't implement the `Copy` trait

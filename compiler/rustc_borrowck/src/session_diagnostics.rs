@@ -157,3 +157,21 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+//move_errors.rs
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum AddMoveErr {
+    #[label(borrowck::data_moved_here)]
+    Here {
+        #[primary_span]
+        binding_span: Span,
+    },
+    #[label(borrowck::and_data_moved_here)]
+    AndHere {
+        #[primary_span]
+        binding_span: Span,
+    },
+    #[note(borrowck::moved_var_cannot_copy)]
+    MovedNotCopy {},
+}

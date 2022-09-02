@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
@@ -8,6 +11,7 @@ use rustc_span::Span;
 
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
+use crate::session_diagnostics::AddMoveErr;
 use crate::MirBorrowckCtxt;
 
 // Often when desugaring a pattern match we may have many individual moves in
@@ -503,9 +507,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let binding_span = bind_to.source_info.span;
 
             if j == 0 {
-                err.span_label(binding_span, "data moved here");
+                err.subdiagnostic(AddMoveErr::Here { binding_span });
             } else {
-                err.span_label(binding_span, "...and here");
+                err.subdiagnostic(AddMoveErr::AndHere { binding_span });
             }
 
             if binds_to.len() == 1 {
@@ -520,10 +524,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         if binds_to.len() > 1 {
-            err.note(
-                "move occurs because these variables have types that \
-                      don't implement the `Copy` trait",
-            );
+            err.subdiagnostic(AddMoveErr::MovedNotCopy {});
         }
     }
 }
