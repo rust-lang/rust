@@ -1,5 +1,5 @@
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{self, fluent, AddSubdiagnostic};
+use rustc_errors::{self, fluent, AddSubdiagnostic, IntoDiagnosticArg};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -29,7 +29,6 @@ impl<'a> DescriptionCtx<'a> {
 
             ty::ReEmpty(ty::UniverseIndex::ROOT) => me.kind = "reempty",
 
-            // uh oh, hope no user ever sees THIS
             ty::ReEmpty(ui) => {
                 me.kind = "reemptyuni";
                 me.arg = format!("{:?}", ui);
@@ -128,19 +127,23 @@ pub enum SuffixKind {
     Continues,
 }
 
-impl PrefixKind {
-    fn add_to(self, diag: &mut rustc_errors::Diagnostic) {
-        match self {
-            Self::Empty => diag.set_arg("pref_kind", "empty"),
-        };
+impl IntoDiagnosticArg for PrefixKind {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self {
+            Self::Empty => "empty",
+        }
+        .into();
+        rustc_errors::DiagnosticArgValue::Str(kind)
     }
 }
 
-impl SuffixKind {
-    fn add_to(self, diag: &mut rustc_errors::Diagnostic) {
-        match self {
-            Self::Continues => diag.set_arg("suff_kind", "continues"),
-        };
+impl IntoDiagnosticArg for SuffixKind {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        let kind = match self {
+            Self::Continues => "continues",
+        }
+        .into();
+        rustc_errors::DiagnosticArgValue::Str(kind)
     }
 }
 
@@ -170,7 +173,7 @@ impl AddSubdiagnostic for RegionExplanation<'_> {
             diag.note(fluent::infer::region_explanation);
         }
         self.desc.add_to(diag);
-        self.prefix.add_to(diag);
-        self.suffix.add_to(diag);
+        diag.set_arg("pref_kind", self.prefix);
+        diag.set_arg("suff_kind", self.suffix);
     }
 }
