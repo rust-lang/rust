@@ -442,8 +442,7 @@ macro_rules! define_queries {
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     compute,
-                    cache_on_disk,
-                    try_load_from_disk: Self::TRY_LOAD_FROM_DISK,
+                    try_load_from_disk: if cache_on_disk { Self::TRY_LOAD_FROM_DISK } else { None },
                 }
             }
 
