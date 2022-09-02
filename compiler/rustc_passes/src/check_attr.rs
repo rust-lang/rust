@@ -1846,7 +1846,7 @@ impl CheckAttrVisitor<'_> {
                     span: meta_item.span,
                     file: &file,
                     error: err,
-                } );
+                });
                 false
             }
         }

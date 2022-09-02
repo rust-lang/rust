@@ -1,6 +1,6 @@
 use std::{io::Error, path::Path};
 
-use rustc_errors::{Applicability, MultiSpan, ErrorGuaranteed};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::Target;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_session::SessionDiagnostic;
@@ -706,7 +706,10 @@ pub struct InvalidAttrAtCrateLevel {
 }
 
 impl SessionDiagnostic<'_> for InvalidAttrAtCrateLevel {
-    fn into_diagnostic(self, sess: &'_ rustc_session::parse::ParseSess) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
+    fn into_diagnostic(
+        self,
+        sess: &'_ rustc_session::parse::ParseSess,
+    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = sess.struct_err(rustc_errors::fluent::passes::invalid_attr_at_crate_level);
         diag.set_span(self.span);
         diag.set_arg("name", self.name);
