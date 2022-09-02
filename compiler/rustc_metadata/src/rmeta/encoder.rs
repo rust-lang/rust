@@ -1,3 +1,4 @@
+use crate::errors::{FailCreateFileEncoder, FailSeekFile, FailWriteFile};
 use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
@@ -2195,7 +2196,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
 
 fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     let mut encoder = opaque::FileEncoder::new(path)
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
+        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
@@ -2240,10 +2241,10 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
     // Encode the root position.
     let header = METADATA_HEADER.len();
     file.seek(std::io::SeekFrom::Start(header as u64))
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to seek the file: {}", err)));
+        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailSeekFile { err }));
     let pos = root.position.get();
     file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
-        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
+        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailWriteFile { err }));
 
     // Return to the position where we are before writing the root position.
     file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
