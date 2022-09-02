@@ -1110,6 +1110,38 @@ impl<T: ?Sized> Rc<T> {
     /// }
     /// assert_eq!(*x, "foo");
     /// ```
+    /// Other `Rc` pointers to the same allocation must be to the same type.
+    /// ```ignore
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<str> = Rc::from("Hello, world!");
+    /// let mut y: Rc<[u8]> = x.clone().into();
+    /// unsafe {
+    ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
+    ///     Rc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
+    /// }
+    /// println!("{}", &*x); // Invliad UTF-8 in a str
+    /// ```
+    /// Other `Rc` pointers to the same allocation must be to the exact same type, including lifetimes.
+    /// ```ignore
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<&str> = Rc::new("Hello, world!");
+    /// {
+    ///     let s = String::from("Oh, no!");
+    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     unsafe {
+    ///         // this is Undefined Behavior, because x's inner type
+    ///         // is &'long str, not &'short str
+    ///         *Rc::get_mut_unchecked(&mut y) = &s;
+    ///     }
+    /// }
+    /// println!("{}", &*x); // Use-after-free
+    /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
