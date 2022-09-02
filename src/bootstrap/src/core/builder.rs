@@ -1614,6 +1614,10 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Csymbol-mangling-version=legacy");
         }
 
+        if self.config.rust_randomize_layout {
+            rustflags.arg("-Zrandomize-layout");
+        }
+
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
         // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like

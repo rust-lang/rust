@@ -1810,6 +1810,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
         }
+        if builder.config.rust_randomize_layout {
+            cmd.arg("--rust-randomized-layout");
+        }
         if builder.config.cmd.only_modified() {
             cmd.arg("--only-modified");
         }
