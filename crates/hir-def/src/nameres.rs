@@ -98,7 +98,11 @@ pub struct DefMap {
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
+    /// The prelude is empty for non-block DefMaps (unless `#[prelude_import]` was used,
+    /// but that attribute is nightly and when used in a block, it affects resolution globally
+    /// so we aren't handling this correctly anyways).
     prelude: Option<ModuleId>,
+    /// The extern prelude is only populated for non-block DefMaps
     extern_prelude: FxHashMap<Name, ModuleId>,
 
     /// Side table for resolving derive helpers.
