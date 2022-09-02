@@ -1,4 +1,6 @@
-// compile-flags: -Cpanic=abort
+// unit-test: LowerIntrinsics
+// ignore-wasm32 compiled with panic=abort by default
+
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 
@@ -28,33 +30,6 @@ pub fn forget<T>(t: T) {
 pub fn unreachable() -> ! {
     unsafe { core::intrinsics::unreachable() };
 }
-
-// EMIT_MIR lower_intrinsics.f_unit.PreCodegen.before.mir
-pub fn f_unit() {
-    f_dispatch(());
-}
-
-
-// EMIT_MIR lower_intrinsics.f_u64.PreCodegen.before.mir
-pub fn f_u64() {
-    f_dispatch(0u64);
-}
-
-#[inline(always)]
-pub fn f_dispatch<T>(t: T) {
-    if std::mem::size_of::<T>() == 0 {
-        f_zst(t);
-    } else {
-        f_non_zst(t);
-    }
-}
-
-#[inline(never)]
-pub fn f_zst<T>(_t: T) {
-}
-
-#[inline(never)]
-pub fn f_non_zst<T>(_t: T) {}
 
 // EMIT_MIR lower_intrinsics.non_const.LowerIntrinsics.diff
 pub fn non_const<T>() -> usize {

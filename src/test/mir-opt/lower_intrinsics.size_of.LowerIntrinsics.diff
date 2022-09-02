@@ -7,7 +7,7 @@
       bb0: {
 -         _0 = std::intrinsics::size_of::<T>() -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:37
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:14:5: 14:35
+-                                          // + span: $DIR/lower_intrinsics.rs:16:5: 16:35
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(<ZST>) }
 +         _0 = SizeOf(T);                  // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:37
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:37

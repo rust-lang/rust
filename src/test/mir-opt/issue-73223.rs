@@ -10,4 +10,3 @@ fn main() {
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR issue_73223.main.SimplifyArmIdentity.diff
-// EMIT_MIR issue_73223.main.PreCodegen.diff
