@@ -2367,9 +2367,9 @@ impl Async {
     }
 
     /// In this case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
-    pub fn opt_return_id(self) -> Option<NodeId> {
+    pub fn opt_return_id(self) -> Option<(NodeId, Span)> {
         match self {
-            Async::Yes { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            Async::Yes { return_impl_trait_id, span, .. } => Some((return_impl_trait_id, span)),
             Async::No => None,
         }
     }

@@ -851,7 +851,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         // We include all lifetime parameters, either named or "Fresh".
                         // The order of those parameters does not matter, as long as it is
                         // deterministic.
-                        if let Some(async_node_id) = async_node_id {
+                        if let Some((async_node_id, _)) = async_node_id {
                             let mut extra_lifetime_params = this
                                 .r
                                 .extra_lifetime_params_map
