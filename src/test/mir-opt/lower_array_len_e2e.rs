@@ -1,7 +1,6 @@
-// unit-test: NormalizeArrayLen
-// compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
+// compile-flags: -Z mir-opt-level=4
 
-// EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len_e2e.array_bound.PreCodegen.after.mir
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     if index < slice.len() {
         slice[index]
@@ -10,7 +9,7 @@ pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     }
 }
 
-// EMIT_MIR lower_array_len.array_bound_mut.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len_e2e.array_bound_mut.PreCodegen.after.mir
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
     if index < slice.len() {
         slice[index]
@@ -21,12 +20,12 @@ pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 
     }
 }
 
-// EMIT_MIR lower_array_len.array_len.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len_e2e.array_len.PreCodegen.after.mir
 pub fn array_len<const N: usize>(arr: &[u8; N]) -> usize {
     arr.len()
 }
 
-// EMIT_MIR lower_array_len.array_len_by_value.NormalizeArrayLen.diff
+// EMIT_MIR lower_array_len_e2e.array_len_by_value.PreCodegen.after.mir
 pub fn array_len_by_value<const N: usize>(arr: [u8; N]) -> usize {
     arr.len()
 }

@@ -41,7 +41,7 @@
 -         _3 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:+16:13: +16:22
 -         _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:+17:13: +17:22
 -         _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:+18:13: +18:21
--         nop;                             // scope 4 at $DIR/matches_reduce_branches.rs:+19:13: +19:15
+-         Deinit(_6);                      // scope 4 at $DIR/matches_reduce_branches.rs:+19:13: +19:15
 -         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:+19:13: +19:15
 -     }
 - 
@@ -54,7 +54,7 @@
 +         _3 = Eq(_11, const 7_i32);       // scope 4 at $DIR/matches_reduce_branches.rs:+9:13: +9:21
           _4 = const false;                // scope 4 at $DIR/matches_reduce_branches.rs:+10:13: +10:22
           _5 = const true;                 // scope 4 at $DIR/matches_reduce_branches.rs:+11:13: +11:21
--         nop;                             // scope 4 at $DIR/matches_reduce_branches.rs:+12:13: +12:15
+          Deinit(_6);                      // scope 4 at $DIR/matches_reduce_branches.rs:+12:13: +12:15
 -         goto -> bb3;                     // scope 4 at $DIR/matches_reduce_branches.rs:+12:13: +12:15
 -     }
 - 
