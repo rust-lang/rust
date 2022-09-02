@@ -444,7 +444,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(()) {
-        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
+        Some((def_id, EntryFnType::Main { .. })) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
         _ => {}
     }

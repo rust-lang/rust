@@ -1,11 +1,11 @@
-use rustc_ast::{entry::EntryPointType, Attribute};
+use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
-use rustc_session::config::{CrateType, EntryFnType};
+use rustc_session::config::{sigpipe, CrateType, EntryFnType};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
@@ -71,14 +71,12 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     }
 }
 
-fn err_if_attr_found(ctxt: &EntryContext<'_>, attrs: &[Attribute], sym: Symbol) {
+fn err_if_attr_found(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol, details: &str) {
+    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
     if let Some(attr) = ctxt.tcx.sess.find_by_name(attrs, sym) {
         ctxt.tcx
             .sess
-            .struct_span_err(
-                attr.span,
-                &format!("`{}` attribute can only be used on functions", sym),
-            )
+            .struct_span_err(attr.span, &format!("`{}` attribute {}", sym, details))
             .emit();
     }
 }
@@ -87,14 +85,16 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
     let at_root = ctxt.tcx.opt_local_parent(id.def_id) == Some(CRATE_DEF_ID);
 
     match entry_point_type(ctxt, id, at_root) {
-        EntryPointType::None => (),
+        EntryPointType::None => {
+            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on `fn main()`");
+        }
         _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
-            let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-            err_if_attr_found(ctxt, attrs, sym::start);
-            err_if_attr_found(ctxt, attrs, sym::rustc_main);
+            err_if_attr_found(ctxt, id, sym::start, "can only be used on functions");
+            err_if_attr_found(ctxt, id, sym::rustc_main, "can only be used on functions");
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
+            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on root `fn main()`");
             ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
         }
         EntryPointType::RustcMainAttr => {
@@ -116,6 +116,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
             }
         }
         EntryPointType::Start => {
+            err_if_attr_found(ctxt, id, sym::unix_sigpipe, "can only be used on `fn main()`");
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((id.def_id, ctxt.tcx.def_span(id.def_id.to_def_id())));
             } else {
@@ -136,8 +137,9 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId, EntryFnType)> {
     if let Some((def_id, _)) = visitor.start_fn {
         Some((def_id.to_def_id(), EntryFnType::Start))
-    } else if let Some((def_id, _)) = visitor.attr_main_fn {
-        Some((def_id.to_def_id(), EntryFnType::Main))
+    } else if let Some((local_def_id, _)) = visitor.attr_main_fn {
+        let def_id = local_def_id.to_def_id();
+        Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx, def_id) }))
     } else {
         if let Some(main_def) = tcx.resolutions(()).main_def && let Some(def_id) = main_def.opt_fn_def_id() {
             // non-local main imports are handled below
@@ -161,10 +163,36 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
                 )
                 .emit();
             }
-            return Some((def_id, EntryFnType::Main));
+            return Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx, def_id) }));
         }
         no_main_err(tcx, visitor);
         None
+    }
+}
+
+fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
+    if let Some(attr) = tcx.get_attr(def_id, sym::unix_sigpipe) {
+        match (attr.value_str(), attr.meta_item_list()) {
+            (Some(sym::inherit), None) => sigpipe::INHERIT,
+            (Some(sym::sig_ign), None) => sigpipe::SIG_IGN,
+            (Some(sym::sig_dfl), None) => sigpipe::SIG_DFL,
+            (_, Some(_)) => {
+                // Keep going so that `fn emit_malformed_attribute()` can print
+                // an excellent error message
+                sigpipe::DEFAULT
+            }
+            _ => {
+                tcx.sess
+                    .struct_span_err(
+                        attr.span,
+                        "valid values for `#[unix_sigpipe = \"...\"]` are `inherit`, `sig_ign`, or `sig_dfl`",
+                    )
+                    .emit();
+                sigpipe::DEFAULT
+            }
+        }
+    } else {
+        sigpipe::DEFAULT
     }
 }
 

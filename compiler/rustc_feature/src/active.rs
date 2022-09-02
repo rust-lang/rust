@@ -519,6 +519,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
+    /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
+    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.
