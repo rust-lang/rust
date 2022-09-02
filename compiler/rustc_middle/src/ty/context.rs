@@ -1089,7 +1089,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
-    query_kinds: &'tcx [DepKindStruct],
+    query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1246,7 +1246,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
-        query_kinds: &'tcx [DepKindStruct],
+        query_kinds: &'tcx [DepKindStruct<'tcx>],
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1296,7 +1296,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub(crate) fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
+    pub(crate) fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct<'tcx> {
         &self.query_kinds[k as usize]
     }
 
