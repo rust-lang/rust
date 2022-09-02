@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     adt::StructKind,
-    body::{Body, BodySourceMap, Expander, LabelSource, PatPtr},
+    body::{Body, BodySourceMap, Expander, ExprPtr, LabelPtr, LabelSource, PatPtr},
     body::{BodyDiagnostic, ExprSource, PatSource},
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
@@ -150,7 +150,7 @@ impl ExprCollector<'_> {
         LowerCtx::new(self.db, self.expander.current_file_id)
     }
 
-    fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
+    fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.to_source(ptr);
         let id = self.make_expr(expr, src.clone());
         self.source_map.expr_map.insert(src, id);
@@ -185,7 +185,7 @@ impl ExprCollector<'_> {
         id
     }
 
-    fn alloc_label(&mut self, label: Label, ptr: AstPtr<ast::Label>) -> LabelId {
+    fn alloc_label(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
         let src = self.expander.to_source(ptr);
         let id = self.make_label(label, src.clone());
         self.source_map.label_map.insert(src, id);
