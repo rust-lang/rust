@@ -1913,14 +1913,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .enumerate()
             .filter(|(_, ty)| find_param_in_ty(**ty, param_to_point_at))
             .collect();
-        let args: Vec<&'tcx hir::Expr<'tcx>> = if let Some(receiver) = receiver {
-            std::iter::once(receiver).chain(args.iter()).collect()
-        } else {
-            args.iter().collect()
-        };
-
         // If there's one field that references the given generic, great!
-        if let [(idx, _)] = args_referencing_param.as_slice() && let Some(arg) = args.get(*idx) {
+        if let [(idx, _)] = args_referencing_param.as_slice()
+            && let Some(arg) = receiver
+                .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
             error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
             error.obligation.cause.map_code(|parent_code| {
                 ObligationCauseCode::FunctionArgumentObligation {

@@ -1881,11 +1881,11 @@ pub enum ExprKind<'hir> {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The first element of the `&[Expr]` is the expression that evaluates
+    /// The `&Expr` is the expression that evaluates
     /// to the object on which the method is being called on (the receiver),
-    /// and the remaining elements are the rest of the arguments.
+    /// and the `&[Expr]` is the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d], span)`.
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d], span)`.
     /// The final `Span` represents the span of the function and arguments
     /// (e.g. `foo::<Bar, Baz>(a, b, c, d)` in `x.foo::<Bar, Baz>(a, b, c, d)`
     ///

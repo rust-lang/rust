@@ -267,7 +267,8 @@ impl<'tcx> Cx<'tcx> {
                 // When we apply adjustments to the receiver, use the span of
                 // the overall method call for better diagnostics. args[0]
                 // is guaranteed to exist, since a method call always has a receiver.
-                let old_adjustment_span = self.adjustment_span.replace((receiver.hir_id, expr_span));
+                let old_adjustment_span =
+                    self.adjustment_span.replace((receiver.hir_id, expr_span));
                 info!("Using method span: {:?}", expr.span);
                 let args = std::iter::once(receiver)
                     .chain(args.iter())

@@ -798,57 +798,55 @@ fn walk_parents<'tcx>(
                     }),
                 ExprKind::MethodCall(_, receiver, args, _) => {
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
-                    std::iter::once(receiver)
-                        .chain(args.iter())
+                    if receiver.hir_id == child_id {
+                        // Check for calls to trait methods where the trait is implemented on a reference.
+                        // Two cases need to be handled:
+                        // * `self` methods on `&T` will never have auto-borrow
+                        // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
+                        //   priority.
+                        if e.hir_id != child_id {
+                            return Some(Position::ReborrowStable(precedence))
+                        } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
+                            && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
+                            && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
+                            && let subs = match cx
+                                .typeck_results()
+                                .node_substs_opt(parent.hir_id)
+                                .and_then(|subs| subs.get(1..))
+                            {
+                                Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
+                                None => cx.tcx.mk_substs(std::iter::empty::<ty::subst::GenericArg<'_>>()),
+                            } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                // Trait methods taking `&self`
+                                sub_ty
+                            } else {
+                                // Trait methods taking `self`
+                                arg_ty
+                            } && impl_ty.is_ref()
+                            && cx.tcx.infer_ctxt().enter(|infcx|
+                                infcx
+                                    .type_implements_trait(trait_id, impl_ty, subs, cx.param_env)
+                                    .must_apply_modulo_regions()
+                            )
+                        {
+                            return Some(Position::MethodReceiverRefImpl)
+                        } else {
+                            return Some(Position::MethodReceiver)
+                        }
+                    }
+                    args.iter()
                         .position(|arg| arg.hir_id == child_id)
                         .map(|i| {
-                            if i == 0 {
-                                // Check for calls to trait methods where the trait is implemented on a reference.
-                                // Two cases need to be handled:
-                                // * `self` methods on `&T` will never have auto-borrow
-                                // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
-                                //   priority.
-                                if e.hir_id != child_id {
-                                Position::ReborrowStable(precedence)
-                            } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
-                                && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
-                                && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                && let subs = match cx
-                                    .typeck_results()
-                                    .node_substs_opt(parent.hir_id)
-                                    .and_then(|subs| subs.get(1..))
-                                {
-                                    Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
-                                    None => cx.tcx.mk_substs(std::iter::empty::<ty::subst::GenericArg<'_>>()),
-                                } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
-                                    // Trait methods taking `&self`
-                                    sub_ty
-                                } else {
-                                    // Trait methods taking `self`
-                                    arg_ty
-                                } && impl_ty.is_ref()
-                                && cx.tcx.infer_ctxt().enter(|infcx|
-                                    infcx
-                                        .type_implements_trait(trait_id, impl_ty, subs, cx.param_env)
-                                        .must_apply_modulo_regions()
+                            let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
+                            if let ty::Param(param_ty) = ty.kind() {
+                                needless_borrow_impl_arg_position(cx, parent, i + 1, *param_ty, e, precedence, msrv)
+                            } else {
+                                ty_auto_deref_stability(
+                                    cx,
+                                    cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i + 1)),
+                                    precedence,
                                 )
-                            {
-                                Position::MethodReceiverRefImpl
-                            } else {
-                                Position::MethodReceiver
-                            }
-                            } else {
-                                let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
-                                if let ty::Param(param_ty) = ty.kind() {
-                                    needless_borrow_impl_arg_position(cx, parent, i, *param_ty, e, precedence, msrv)
-                                } else {
-                                    ty_auto_deref_stability(
-                                        cx,
-                                        cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).input(i)),
-                                        precedence,
-                                    )
-                                    .position_for_arg()
-                                }
+                                .position_for_arg()
                             }
                         })
                 },

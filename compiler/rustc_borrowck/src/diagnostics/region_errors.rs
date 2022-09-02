@@ -906,7 +906,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let hir::ExprKind::Closure(hir::Closure {
                         capture_clause: hir::CaptureBy::Ref,
                         ..
-                    }) = arg.kind {
+                    }) = arg.kind
+                    {
                         closure_span = Some(arg.span.shrink_to_lo());
                         break;
                     }

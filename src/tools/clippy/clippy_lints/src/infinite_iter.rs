@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for InfiniteIter {
             MaybeInfinite => (MAYBE_INFINITE_ITER, "possible infinite iteration detected"),
             Finite => {
                 return;
-            },
+            }
         };
         span_lint(cx, lint, expr.span, msg);
     }
@@ -229,11 +229,9 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                     return MaybeInfinite.and(is_infinite(cx, receiver));
                 }
             }
-            if method.ident.name == sym!(last) {
-                let not_double_ended = cx
-                    .tcx
-                    .get_diagnostic_item(sym::DoubleEndedIterator)
-                    .map_or(false, |id| {
+            if method.ident.name == sym!(last) && args.is_empty() {
+                let not_double_ended =
+                    cx.tcx.get_diagnostic_item(sym::DoubleEndedIterator).map_or(false, |id| {
                         !implements_trait(cx, cx.typeck_results().expr_ty(receiver), id, &[])
                     });
                 if not_double_ended {

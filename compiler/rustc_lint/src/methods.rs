@@ -63,15 +63,13 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
         }
 
         match first_method_call(expr) {
-            Some((path, receiver)) if path.ident.name == sym::as_ptr => {
-                let unwrap_arg = receiver;
+            Some((path, unwrap_arg)) if path.ident.name == sym::as_ptr => {
                 let as_ptr_span = path.ident.span;
                 match first_method_call(unwrap_arg) {
                     Some((path, receiver))
                         if path.ident.name == sym::unwrap || path.ident.name == sym::expect =>
                     {
-                        let source_arg = receiver;
-                        lint_cstring_as_ptr(cx, as_ptr_span, source_arg, unwrap_arg);
+                        lint_cstring_as_ptr(cx, as_ptr_span, receiver, unwrap_arg);
                     }
                     _ => return,
                 }

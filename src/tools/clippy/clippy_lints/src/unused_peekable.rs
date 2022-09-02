@@ -150,7 +150,7 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
                                     ..
                                 },
                                 self_arg,
-                                [remaining_args @ ..],
+                                remaining_args,
                                 _,
                             ) => {
                                 let method_name = method_name_ident.name.as_str();

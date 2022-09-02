@@ -1195,14 +1195,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         segment: &hir::PathSegment<'_>,
-        receiver: &'tcx hir::Expr<'tcx>,
+        rcvr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let rcvr = &receiver;
         let rcvr_t = self.check_expr(&rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(receiver.span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(rcvr.span, rcvr_t);
         let span = segment.ident.span;
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
@@ -1219,9 +1218,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_t,
                         segment.ident,
-                        SelfSource::MethodCall(receiver),
+                        SelfSource::MethodCall(rcvr),
                         error,
-                        Some((receiver, args)),
+                        Some((rcvr, args)),
                     ) {
                         err.emit();
                     }

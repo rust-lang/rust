@@ -770,16 +770,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let hir::ExprKind::MethodCall(ref segment, receiver, args, _) = expr.kind {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
-                        if let (true, Some(true), sym::clone) = (
-                            args.is_empty(),
-                            self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
+                        if args.is_empty()
+                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
                                 |did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
                                 },
-                            ),
-                            segment.ident.name,
-                        ) {
+                            ) == Some(true)
+                            && segment.ident.name == sym::clone
+                        {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unnecessary.
                             sugg_sp = receiver.span;
