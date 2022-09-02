@@ -1,6 +1,10 @@
 use either::Either;
 use ide_db::imports::merge_imports::{try_merge_imports, try_merge_trees, MergeBehavior};
-use syntax::{algo::neighbor, ast::{self, edit_in_place::Removable}, match_ast, ted, AstNode, SyntaxElement, SyntaxNode};
+use syntax::{
+    algo::neighbor,
+    ast::{self, edit_in_place::Removable},
+    match_ast, ted, AstNode, SyntaxElement, SyntaxNode,
+};
 
 use crate::{
     assist_context::{AssistContext, Assists},

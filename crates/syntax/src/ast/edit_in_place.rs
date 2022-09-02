@@ -248,7 +248,7 @@ impl ast::WhereClause {
     }
 }
 
-pub trait Removable : AstNode {
+pub trait Removable: AstNode {
     fn remove(&self);
 }
 
