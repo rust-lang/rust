@@ -65,16 +65,16 @@ LL | #[label()]
    | ^^^^^^^^^^
 
 error: `code` is not a valid nested attribute of a `label` attribute
-  --> $DIR/subdiagnostic-derive.rs:137:1
+  --> $DIR/subdiagnostic-derive.rs:137:28
    |
 LL | #[label(parser::add_paren, code = "...")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^
 
 error: `applicability` is not a valid nested attribute of a `label` attribute
-  --> $DIR/subdiagnostic-derive.rs:146:1
+  --> $DIR/subdiagnostic-derive.rs:146:28
    |
 LL | #[label(parser::add_paren, applicability = "machine-applicable")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unsupported type attribute for subdiagnostic enum
   --> $DIR/subdiagnostic-derive.rs:155:1
@@ -100,13 +100,11 @@ error: `#[bar = ...]` is not a valid attribute
 LL |     #[bar = 4]
    |     ^^^^^^^^^^
 
-error: `#[bar("...")]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:205:11
+error: `#[bar(...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:205:5
    |
 LL |     #[bar("...")]
-   |           ^^^^^
-   |
-   = help: first argument of the attribute should be the diagnostic slug
+   |     ^^^^^^^^^^^^^
 
 error: diagnostic slug must be first argument of a `#[label(...)]` attribute
   --> $DIR/subdiagnostic-derive.rs:217:5
@@ -163,6 +161,8 @@ error: `#[bar(...)]` is not a valid attribute
    |
 LL |     #[bar("...")]
    |     ^^^^^^^^^^^^^
+   |
+   = help: only `primary_span`, `applicability` and `skip_arg` are valid field attributes
 
 error: unexpected unsupported untagged union
   --> $DIR/subdiagnostic-derive.rs:304:1
@@ -175,7 +175,7 @@ LL | | }
    | |_^
 
 error: `#[label(parser::add_paren)]` is not a valid attribute
-  --> $DIR/subdiagnostic-derive.rs:311:28
+  --> $DIR/subdiagnostic-derive.rs:319:28
    |
 LL | #[label(parser::add_paren, parser::add_paren)]
    |                            ^^^^^^^^^^^^^^^^^
@@ -183,110 +183,69 @@ LL | #[label(parser::add_paren, parser::add_paren)]
    = help: a diagnostic slug must be the first argument to the attribute
 
 error: specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:324:5
+  --> $DIR/subdiagnostic-derive.rs:332:5
    |
 LL |     #[primary_span]
    |     ^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:321:5
+  --> $DIR/subdiagnostic-derive.rs:329:5
    |
 LL |     #[primary_span]
    |     ^^^^^^^^^^^^^^^
 
 error: subdiagnostic kind not specified
-  --> $DIR/subdiagnostic-derive.rs:330:8
+  --> $DIR/subdiagnostic-derive.rs:338:8
    |
 LL | struct AG {
    |        ^^
 
 error: specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:367:47
+  --> $DIR/subdiagnostic-derive.rs:375:47
    |
 LL | #[suggestion(parser::add_paren, code = "...", code = "...")]
    |                                               ^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:367:33
+  --> $DIR/subdiagnostic-derive.rs:375:33
    |
 LL | #[suggestion(parser::add_paren, code = "...", code = "...")]
    |                                 ^^^^^^^^^^^^
 
 error: specified multiple times
-  --> $DIR/subdiagnostic-derive.rs:385:5
+  --> $DIR/subdiagnostic-derive.rs:393:5
    |
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
    |
 note: previously specified here
-  --> $DIR/subdiagnostic-derive.rs:382:5
+  --> $DIR/subdiagnostic-derive.rs:390:5
    |
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
 error: the `#[applicability]` attribute can only be applied to fields of type `Applicability`
-  --> $DIR/subdiagnostic-derive.rs:396:5
+  --> $DIR/subdiagnostic-derive.rs:403:5
    |
 LL |     #[applicability]
    |     ^^^^^^^^^^^^^^^^
 
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:391:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | | struct AL {
-LL | |     #[primary_span]
-...  |
-LL | |     applicability: Span,
-LL | | }
-   | |_^
-
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:402:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | | struct AM {
-LL | |     #[primary_span]
-LL | |     span: Span,
-LL | | }
-   | |_^
-
 error: suggestion without `code = "..."`
-  --> $DIR/subdiagnostic-derive.rs:410:1
+  --> $DIR/subdiagnostic-derive.rs:416:1
    |
-LL | / #[suggestion(parser::add_paren)]
-LL | |
-LL | | struct AN {
-LL | |     #[primary_span]
-...  |
-LL | |     applicability: Applicability,
-LL | | }
-   | |_^
+LL | #[suggestion(parser::add_paren)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: invalid applicability
-  --> $DIR/subdiagnostic-derive.rs:420:46
+  --> $DIR/subdiagnostic-derive.rs:426:46
    |
 LL | #[suggestion(parser::add_paren, code ="...", applicability = "foo")]
    |                                              ^^^^^^^^^^^^^^^^^^^^^
 
-error: suggestion without `applicability`
-  --> $DIR/subdiagnostic-derive.rs:438:1
-   |
-LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
-LL | |
-LL | | struct AR {
-LL | |     var: String,
-LL | | }
-   | |_^
-
 error: suggestion without `#[primary_span]` field
-  --> $DIR/subdiagnostic-derive.rs:438:1
+  --> $DIR/subdiagnostic-derive.rs:444:1
    |
 LL | / #[suggestion(parser::add_paren, code = "...")]
-LL | |
 LL | |
 LL | | struct AR {
 LL | |     var: String,
@@ -294,22 +253,155 @@ LL | | }
    | |_^
 
 error: unsupported type attribute for subdiagnostic enum
-  --> $DIR/subdiagnostic-derive.rs:453:1
+  --> $DIR/subdiagnostic-derive.rs:458:1
    |
 LL | #[label]
    | ^^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:473:39
+  --> $DIR/subdiagnostic-derive.rs:478:39
    |
 LL | #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
    |                                       ^^^^^^^
 
 error: `var` doesn't refer to a field on this type
-  --> $DIR/subdiagnostic-derive.rs:492:43
+  --> $DIR/subdiagnostic-derive.rs:497:43
    |
 LL |     #[suggestion(parser::add_paren, code ="{var}", applicability = "machine-applicable")]
    |                                           ^^^^^^^
+
+error: `#[suggestion_part]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:520:5
+   |
+LL |     #[suggestion_part]
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[suggestion_part(...)]` is only valid in multipart suggestions, use `#[primary_span]` instead
+
+error: `#[suggestion_part(...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:523:5
+   |
+LL |     #[suggestion_part(code = "...")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[suggestion_part(...)]` is only valid in multipart suggestions
+
+error: suggestion without `#[primary_span]` field
+  --> $DIR/subdiagnostic-derive.rs:517:1
+   |
+LL | / #[suggestion(parser::add_paren, code = "...")]
+LL | |
+LL | | struct BA {
+LL | |     #[suggestion_part]
+...  |
+LL | |     var: String,
+LL | | }
+   | |_^
+
+error: `code` is not a valid nested attribute of a `multipart_suggestion` attribute
+  --> $DIR/subdiagnostic-derive.rs:532:43
+   |
+LL | #[multipart_suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
+   |                                           ^^^^^^^^^^^^
+
+error: multipart suggestion without any `#[suggestion_part(...)]` fields
+  --> $DIR/subdiagnostic-derive.rs:532:1
+   |
+LL | / #[multipart_suggestion(parser::add_paren, code = "...", applicability = "machine-applicable")]
+LL | |
+LL | |
+LL | | struct BBa {
+LL | |     var: String,
+LL | | }
+   | |_^
+
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:542:5
+   |
+LL |     #[suggestion_part]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:550:5
+   |
+LL |     #[suggestion_part()]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[primary_span]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:559:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: multipart suggestions use one or more `#[suggestion_part]`s rather than one `#[primary_span]`
+
+error: multipart suggestion without any `#[suggestion_part(...)]` fields
+  --> $DIR/subdiagnostic-derive.rs:556:1
+   |
+LL | / #[multipart_suggestion(parser::add_paren)]
+LL | |
+LL | | struct BC {
+LL | |     #[primary_span]
+LL | |
+LL | |     span: Span,
+LL | | }
+   | |_^
+
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:567:5
+   |
+LL |     #[suggestion_part]
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion_part(...)]` attribute without `code = "..."`
+  --> $DIR/subdiagnostic-derive.rs:570:5
+   |
+LL |     #[suggestion_part()]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion_part(foo = ...)]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:573:23
+   |
+LL |     #[suggestion_part(foo = "bar")]
+   |                       ^^^^^^^^^^^
+   |
+   = help: `code` is the only valid nested attribute
+
+error: the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+  --> $DIR/subdiagnostic-derive.rs:576:5
+   |
+LL |     #[suggestion_part(code = "...")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `#[suggestion_part(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+  --> $DIR/subdiagnostic-derive.rs:579:5
+   |
+LL |     #[suggestion_part()]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:587:37
+   |
+LL |     #[suggestion_part(code = "...", code = ",,,")]
+   |                                     ^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:587:23
+   |
+LL |     #[suggestion_part(code = "...", code = ",,,")]
+   |                       ^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/subdiagnostic-derive.rs:617:5
+   |
+LL |     #[applicability]
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/subdiagnostic-derive.rs:614:43
+   |
+LL | #[multipart_suggestion(parser::add_paren, applicability = "machine-applicable")]
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:63:3
@@ -371,6 +463,6 @@ error[E0425]: cannot find value `slug` in module `rustc_errors::fluent`
 LL | #[label(slug)]
    |         ^^^^ not found in `rustc_errors::fluent`
 
-error: aborting due to 50 previous errors
+error: aborting due to 63 previous errors
 
 For more information about this error, try `rustc --explain E0425`.
