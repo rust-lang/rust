@@ -2007,6 +2007,11 @@ in storage.js plus the media query with (min-width: 701px)
 	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
 	}
+
+	/* Align summary-nested and unnested item-info gizmos. */
+	.content .impl-items > .item-info {
+		margin-left: 34px;
+	}
 }
 
 @media print {
