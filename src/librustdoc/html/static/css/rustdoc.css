@@ -778,10 +778,6 @@ pre, .rustdoc.source .example-wrap {
 	margin-bottom: .6em;
 }
 
-.content .impl-items > .item-info {
-	margin-left: 40px;
-}
-
 .impl-items {
 	flex-basis: 100%;
 }
