@@ -46,6 +46,7 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-13 \
       --enable-llvm-link-shared \
+      --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10
 
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
