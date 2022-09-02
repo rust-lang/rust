@@ -445,7 +445,7 @@ impl<'tcx> Inliner<'tcx> {
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind }
+            if let TerminatorKind::Drop(box DropT { ref place, target, unwind })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref place,
                 target,
@@ -778,7 +778,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let tcx = self.tcx;
         match terminator.kind {
-            TerminatorKind::Drop { ref place, unwind, .. }
+            TerminatorKind::Drop(box DropT { ref place, unwind, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref place,
                 unwind,
@@ -1097,7 +1097,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
                     *tgt = self.map_block(*tgt);
                 }
             }
-            TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
+            TerminatorKind::Drop(box DropT { ref mut target, ref mut unwind, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref mut target,
                 ref mut unwind,

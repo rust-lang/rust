@@ -365,12 +365,12 @@ impl DropTree {
             let Some(block) = blocks[drop_idx] else { continue };
             match drop_data.0.kind {
                 DropKind::Value => {
-                    let terminator = TerminatorKind::Drop {
+                    let terminator = TerminatorKind::Drop(Box::new(DropT {
                         target: blocks[drop_data.1].unwrap(),
                         // The caller will handle this if needed.
                         unwind: None,
                         place: drop_data.0.local.into(),
-                    };
+                    }));
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
                 // Root nodes don't correspond to a drop.
@@ -1206,7 +1206,11 @@ fn build_scope_drops<'tcx>(
                 cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Drop { place: local.into(), target: next, unwind: None },
+                    TerminatorKind::Drop(Box::new(DropT {
+                        place: local.into(),
+                        target: next,
+                        unwind: None,
+                    })),
                 );
                 block = next;
             }
@@ -1382,7 +1386,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
     fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
         let term = &mut cfg.block_data_mut(from).terminator_mut();
         match &mut term.kind {
-            TerminatorKind::Drop { unwind, .. }
+            TerminatorKind::Drop(box DropT { unwind, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { unwind, .. })
             | TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call(box CallTerminator { cleanup: unwind, .. })

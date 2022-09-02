@@ -6,7 +6,7 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    AssertTerminator, Body, Call, CastKind, DropAndReplace, NullOp, Operand, Place, ProjectionElem,
+    AssertTerminator, Body, Call, CastKind, DropT, DropAndReplace, NullOp, Operand, Place, ProjectionElem,
     Rvalue, Statement, StatementKind, SwitchInt, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
@@ -277,7 +277,7 @@ fn check_terminator<'a, 'tcx>(
         | TerminatorKind::Resume
         | TerminatorKind::Unreachable => Ok(()),
 
-        TerminatorKind::Drop { place, .. } => check_place(tcx, *place, span, body),
+        TerminatorKind::Drop(box DropT { place, .. }) => check_place(tcx, *place, span, body),
         TerminatorKind::DropAndReplace(box DropAndReplace { place, value, .. }) => {
             check_place(tcx, *place, span, body)?;
             check_operand(tcx, value, span, body)

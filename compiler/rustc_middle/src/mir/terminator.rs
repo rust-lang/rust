@@ -4,8 +4,9 @@ use crate::ty::{self, Ty, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use super::{
-    AssertTerminator, BasicBlock, CallTerminator, DropAndReplaceTerminator, InlineAsmOperand,
-    InlineAsmTerminator, Operand, SourceInfo, SwitchIntTerminator, TerminatorKind, YieldTerminator,
+    AssertTerminator, BasicBlock, CallTerminator, DropAndReplaceTerminator, DropT,
+    InlineAsmOperand, InlineAsmTerminator, Operand, SourceInfo, SwitchIntTerminator,
+    TerminatorKind, YieldTerminator,
 };
 use rustc_ast::InlineAsmTemplatePiece;
 pub use rustc_ast::Mutability;
@@ -164,7 +165,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Call(box CallTerminator { target: Some(t), cleanup: None, .. })
             | Yield(box YieldTerminator { resume: t, drop: None, .. })
             | DropAndReplace(box DropAndReplaceTerminator { target: t, unwind: None, .. })
-            | Drop { target: t, unwind: None, .. }
+            | Drop(box DropT { target: t, unwind: None, .. })
             | Assert(box AssertTerminator { target: t, cleanup: None, .. })
             | FalseUnwind { real_target: t, unwind: None }
             | InlineAsm(box InlineAsmTerminator { destination: Some(t), cleanup: None, .. })
@@ -176,7 +177,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | DropAndReplace(box DropAndReplaceTerminator {
                 target: t, unwind: Some(ref u), ..
             })
-            | Drop { target: t, unwind: Some(ref u), .. }
+            | Drop(box DropT { target: t, unwind: Some(ref u), .. })
             | Assert(box AssertTerminator { target: t, cleanup: Some(ref u), .. })
             | FalseUnwind { real_target: t, unwind: Some(ref u) }
             | InlineAsm(box InlineAsmTerminator {
@@ -214,7 +215,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 unwind: None,
                 ..
             })
-            | Drop { target: ref mut t, unwind: None, .. }
+            | Drop(box DropT { target: ref mut t, unwind: None, .. })
             | Assert(box AssertTerminator { target: ref mut t, cleanup: None, .. })
             | FalseUnwind { real_target: ref mut t, unwind: None }
             | InlineAsm(box InlineAsmTerminator {
@@ -236,7 +237,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 unwind: Some(ref mut u),
                 ..
             })
-            | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
+            | Drop(box DropT { target: ref mut t, unwind: Some(ref mut u), .. })
             | Assert(box AssertTerminator {
                 target: ref mut t, cleanup: Some(ref mut u), ..
             })
@@ -269,7 +270,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             TerminatorKind::Call(box CallTerminator { cleanup: ref unwind, .. })
             | TerminatorKind::Assert(box AssertTerminator { cleanup: ref unwind, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { ref unwind, .. })
-            | TerminatorKind::Drop { ref unwind, .. }
+            | TerminatorKind::Drop(box DropT { ref unwind, .. })
             | TerminatorKind::FalseUnwind { ref unwind, .. }
             | TerminatorKind::InlineAsm(box InlineAsmTerminator { cleanup: ref unwind, .. }) => {
                 Some(unwind)
@@ -293,7 +294,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref mut unwind, ..
             })
-            | TerminatorKind::Drop { ref mut unwind, .. }
+            | TerminatorKind::Drop(box DropT { ref mut unwind, .. })
             | TerminatorKind::FalseUnwind { ref mut unwind, .. }
             | TerminatorKind::InlineAsm(box InlineAsmTerminator {
                 cleanup: ref mut unwind, ..
@@ -359,7 +360,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Abort => write!(fmt, "abort"),
             Yield(y) => write!(fmt, "{:?} = yield({:?})", y.resume_arg, y.value),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({:?})", place),
+            Drop(d) => write!(fmt, "drop({:?})", d.place),
             DropAndReplace(dar) => write!(fmt, "replace({:?} <- {:?})", dar.place, dar.value),
             Call(call) => {
                 write!(fmt, "{:?} = ", call.destination)?;
@@ -464,11 +465,11 @@ impl<'tcx> TerminatorKind<'tcx> {
                 None => vec!["resume".into()],
             },
             DropAndReplace(box DropAndReplaceTerminator { unwind: None, .. })
-            | Drop { unwind: None, .. } => {
+            | Drop(box DropT { unwind: None, .. }) => {
                 vec!["return".into()]
             }
             DropAndReplace(box DropAndReplaceTerminator { unwind: Some(_), .. })
-            | Drop { unwind: Some(_), .. } => {
+            | Drop(box DropT { unwind: Some(_), .. }) => {
                 vec!["return".into(), "unwind".into()]
             }
             Assert(box AssertTerminator { cleanup: None, .. }) => vec!["".into()],

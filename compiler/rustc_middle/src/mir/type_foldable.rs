@@ -28,8 +28,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     targets,
                 }))
             }
-            Drop { place, target, unwind } => {
-                Drop { place: place.try_fold_with(folder)?, target, unwind }
+            Drop(box DropT { place, target, unwind }) => {
+                Drop(Box::new(DropT { place: place.try_fold_with(folder)?, target, unwind }))
             }
             DropAndReplace(box DropAndReplaceTerminator { place, value, target, unwind }) => {
                 DropAndReplace(Box::new(DropAndReplaceTerminator {

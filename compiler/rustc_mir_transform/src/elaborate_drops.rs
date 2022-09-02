@@ -93,7 +93,7 @@ fn find_dead_unwinds<'tcx>(
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
         let place = match bb_data.terminator().kind {
-            TerminatorKind::Drop { ref place, unwind: Some(_), .. }
+            TerminatorKind::Drop(box DropT { ref place, unwind: Some(_), .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref place,
                 unwind: Some(_),
@@ -304,7 +304,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
             let place = match terminator.kind {
-                TerminatorKind::Drop { ref place, .. }
+                TerminatorKind::Drop(box DropT { ref place, .. })
                 | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                     ref place, ..
                 }) => self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place),
@@ -362,7 +362,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { mut place, target, unwind } => {
+                TerminatorKind::Drop(box DropT { mut place, target, unwind }) => {
                     if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
                         place = new_place;
                     }
@@ -486,7 +486,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("elaborate_drop_and_replace({:?}) - untracked {:?}", terminator, parent);
                 self.patch.patch_terminator(
                     bb,
-                    TerminatorKind::Drop { place, target, unwind: Some(unwind) },
+                    TerminatorKind::Drop(Box::new(DropT { place, target, unwind: Some(unwind) })),
                 );
             }
         }

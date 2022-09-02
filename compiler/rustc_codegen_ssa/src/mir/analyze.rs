@@ -9,7 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    self, AssertTerminator, CallTerminator, DropAndReplaceTerminator, InlineAsmTerminator,
+    self, AssertTerminator, CallTerminator, DropAndReplaceTerminator, DropT, InlineAsmTerminator,
     Location, TerminatorKind,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
@@ -285,7 +285,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::InlineAsm(box InlineAsmTerminator { cleanup: unwind, .. })
                 | TerminatorKind::Assert(box AssertTerminator { cleanup: unwind, .. })
                 | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { unwind, .. })
-                | TerminatorKind::Drop { unwind, .. } => {
+                | TerminatorKind::Drop(box DropT { unwind, .. }) => {
                     if let Some(unwind) = unwind {
                         debug!(
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",

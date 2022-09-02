@@ -1089,7 +1089,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind } => {
+            mir::TerminatorKind::Drop(box mir::DropT { place, target, unwind }) => {
                 self.codegen_drop_terminator(helper, bx, place, target, unwind);
             }
 

@@ -1,5 +1,7 @@
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, DropAndReplaceTerminator, Location, SwitchTargets};
+use rustc_middle::mir::{
+    self, BasicBlock, DropAndReplaceTerminator, DropT, Location, SwitchTargets,
+};
 use rustc_middle::ty::TyCtxt;
 use std::ops::RangeInclusive;
 
@@ -299,7 +301,7 @@ impl Direction for Backward {
                     cleanup: Some(unwind),
                     ..
                 })
-                | mir::TerminatorKind::Drop { unwind: Some(unwind), .. }
+                | mir::TerminatorKind::Drop(box mir::DropT { unwind: Some(unwind), .. })
                 | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
                     unwind: Some(unwind),
                     ..
@@ -526,7 +528,7 @@ impl Direction for Forward {
                 msg: _,
                 cond: _,
             })
-            | Drop { target, unwind, place: _ }
+            | Drop(box DropT { target, unwind, place: _ })
             | DropAndReplace(box DropAndReplaceTerminator { target, unwind, value: _, place: _ })
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {

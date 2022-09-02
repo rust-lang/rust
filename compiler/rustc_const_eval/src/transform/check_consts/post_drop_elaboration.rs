@@ -80,7 +80,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
         trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
 
         match &terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. }
+            mir::TerminatorKind::Drop(box mir::DropT { place: dropped_place, .. })
             | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
                 place: dropped_place,
                 ..

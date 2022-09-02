@@ -12,7 +12,7 @@ impl<'tcx> TypeVisitable<'tcx> for Terminator<'tcx> {
                 discr.visit_with(visitor)?;
                 switch_ty.visit_with(visitor)
             }
-            Drop { ref place, .. } => place.visit_with(visitor),
+            Drop(box DropT { ref place, .. }) => place.visit_with(visitor),
             DropAndReplace(box DropAndReplaceTerminator { ref place, ref value, .. }) => {
                 place.visit_with(visitor)?;
                 value.visit_with(visitor)

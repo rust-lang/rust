@@ -87,7 +87,7 @@ impl<'tcx> MockBlocks<'tcx> {
         match self.blocks[from_block].terminator_mut().kind {
             TerminatorKind::Assert(box AssertTerminator { ref mut target, .. })
             | TerminatorKind::Call(box CallTerminator { target: Some(ref mut target), .. })
-            | TerminatorKind::Drop { ref mut target, .. }
+            | TerminatorKind::Drop(box DropT { ref mut target, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 ref mut target, ..
             })
@@ -193,7 +193,7 @@ fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
                 match kind {
                     TerminatorKind::Assert(box AssertTerminator { target, .. })
                     | TerminatorKind::Call(box CallTerminator { target: Some(target), .. })
-                    | TerminatorKind::Drop { target, .. }
+                    | TerminatorKind::Drop(box DropT { target, .. })
                     | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                         target, ..
                     })

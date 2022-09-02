@@ -233,11 +233,11 @@ where
             DropStyle::Static => {
                 self.elaborator.patch().patch_terminator(
                     bb,
-                    TerminatorKind::Drop {
+                    TerminatorKind::Drop(Box::new(DropT {
                         place: self.place,
                         target: self.succ,
                         unwind: self.unwind.into_option(),
-                    },
+                    })),
                 );
             }
             DropStyle::Conditional => {
@@ -724,11 +724,11 @@ where
 
         self.elaborator.patch().patch_terminator(
             drop_block,
-            TerminatorKind::Drop {
+            TerminatorKind::Drop(Box::new(DropT {
                 place: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
-            },
+            })),
         );
 
         loop_block
@@ -989,8 +989,11 @@ where
     }
 
     fn drop_block(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
-        let block =
-            TerminatorKind::Drop { place: self.place, target, unwind: unwind.into_option() };
+        let block = TerminatorKind::Drop(Box::new(DropT {
+            place: self.place,
+            target,
+            unwind: unwind.into_option(),
+        }));
         self.new_block(unwind, block)
     }
 

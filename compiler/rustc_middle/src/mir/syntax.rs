@@ -494,27 +494,8 @@ pub enum TerminatorKind<'tcx> {
     /// Executing this terminator is UB.
     Unreachable,
 
-    /// The behavior of this statement differs significantly before and after drop elaboration.
-    /// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
-    /// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
-    /// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
-    /// issue tracking if drop glue has any interesting semantics in addition to those of a function
-    /// call?)
-    ///
-    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
-    /// `Drop` will be executed if...
-    ///
-    /// **Needs clarification**: End of that sentence. This in effect should document the exact
-    /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
-    ///
-    /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
-    /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
-    /// > consider indirect assignments.
-    Drop {
-        place: Place<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
+    /// Drop glue.
+    Drop(Box<DropT<'tcx>>),
 
     /// Drops the place and assigns a new value to it.
     DropAndReplace(Box<DropAndReplaceTerminator<'tcx>>),
@@ -631,6 +612,29 @@ pub struct CallTerminator<'tcx> {
     /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
     pub fn_span: Span,
+}
+
+/// The behavior of this statement differs significantly before and after drop elaboration.
+/// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
+/// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
+/// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
+/// issue tracking if drop glue has any interesting semantics in addition to those of a function
+/// call?)
+///
+/// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
+/// `Drop` will be executed if...
+///
+/// **Needs clarification**: End of that sentence. This in effect should document the exact
+/// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
+///
+/// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
+/// > the place or one of its "parents" occurred more recently than a move out of it. This does not
+/// > consider indirect assignments.
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+pub struct DropT<'tcx> {
+    pub place: Place<'tcx>,
+    pub target: BasicBlock,
+    pub unwind: Option<BasicBlock>,
 }
 
 /// Drops the place and assigns a new value to it.

@@ -936,7 +936,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
             // projections that cannot be `NeedsNonConstDrop`.
-            TerminatorKind::Drop { place: dropped_place, .. }
+            TerminatorKind::Drop(box DropT { place: dropped_place, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator {
                 place: dropped_place,
                 ..

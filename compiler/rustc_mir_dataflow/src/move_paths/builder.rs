@@ -391,8 +391,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_init(y.resume_arg.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
-                self.gather_move(place);
+            TerminatorKind::Drop(ref d) => {
+                self.gather_move(d.place);
             }
             TerminatorKind::DropAndReplace(ref dar) => {
                 self.create_move_path(dar.place);

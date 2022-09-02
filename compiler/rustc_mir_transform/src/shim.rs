@@ -488,11 +488,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 // Drop previous field and goto previous cleanup block.
                 self.block(
                     vec![],
-                    TerminatorKind::Drop {
+                    TerminatorKind::Drop(Box::new(DropT {
                         place: previous_field,
                         target: previous_cleanup,
                         unwind: None,
-                    },
+                    })),
                     true,
                 );
             } else {
@@ -695,7 +695,11 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
+            TerminatorKind::Drop(Box::new(DropT {
+                place: rcvr_place(),
+                target: BasicBlock::new(2),
+                unwind: None,
+            })),
             false,
         );
     }
@@ -706,7 +710,11 @@ fn build_call_shim<'tcx>(
         block(
             &mut blocks,
             vec![],
-            TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
+            TerminatorKind::Drop(Box::new(DropT {
+                place: rcvr_place(),
+                target: BasicBlock::new(4),
+                unwind: None,
+            })),
             true,
         );
 

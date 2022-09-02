@@ -20,7 +20,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> InterpResult<'tcx> {
-        use rustc_middle::mir::AssertTerminator;
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
@@ -120,7 +119,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Drop { place, target, unwind } => {
+            Drop(box mir::DropT { place, target, unwind }) => {
                 let place = self.eval_place(place)?;
                 let ty = place.layout.ty;
                 trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
@@ -129,7 +128,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.drop_in_place(&place, instance, target, unwind)?;
             }
 
-            Assert(box AssertTerminator { ref cond, expected, ref msg, target, cleanup }) => {
+            Assert(box mir::AssertTerminator { ref cond, expected, ref msg, target, cleanup }) => {
                 let cond_val = self.read_scalar(&self.eval_operand(cond, None)?)?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);

@@ -1663,7 +1663,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => {}
-            TerminatorKind::Drop { target, unwind, .. }
+            TerminatorKind::Drop(box DropT { target, unwind, .. })
             | TerminatorKind::DropAndReplace(box DropAndReplace { target, unwind, .. })
             | TerminatorKind::Assert(box AssertTerminator { target, cleanup: unwind, .. }) => {
                 self.assert_iscleanup(body, block_data, target, is_cleanup);

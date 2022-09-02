@@ -1,6 +1,6 @@
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{
-    Body, DropAndReplaceTerminator, Field, Rvalue, Statement, StatementKind, TerminatorKind,
+    Body, DropAndReplaceTerminator, DropT, Field, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
@@ -39,7 +39,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         let mut to_remove = vec![];
         for (bb, block) in body.basic_blocks.iter_enumerated() {
             let terminator = block.terminator();
-            let (TerminatorKind::Drop { place, .. } | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { place, .. }))
+            let (TerminatorKind::Drop(box DropT { place, .. }) | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { place, .. }))
                 = &terminator.kind
             else { continue };
 
@@ -66,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
         for bb in to_remove {
             let block = &mut body.basic_blocks_mut()[bb];
 
-            let (TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { target, .. }))
+            let (TerminatorKind::Drop(box DropT { target, .. }) | TerminatorKind::DropAndReplace(box DropAndReplaceTerminator { target, .. }))
                 = &block.terminator().kind
             else { unreachable!() };
 

@@ -111,7 +111,7 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. }
+            mir::TerminatorKind::Drop(box mir::DropT { place: dropped_place, .. })
             | mir::TerminatorKind::DropAndReplace(box mir::DropAndReplaceTerminator {
                 place: dropped_place,
                 ..

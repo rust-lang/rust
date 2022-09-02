@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertTerminator, BasicBlock, Body, BorrowKind, Call, DropAndReplace, InlineAsm,
+    AssertTerminator, BasicBlock, Body, BorrowKind, Call, DropAndReplace, DropT, InlineAsm,
     InlineAsmOperand, Location, Mutability, Operand, Place, Rvalue, Statement, StatementKind,
     SwitchInt, Terminator, TerminatorKind, Yield,
 };
@@ -104,7 +104,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt(box SwitchInt { ref discr, switch_ty: _, targets: _ }) => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop(box DropT { place: drop_place, target: _, unwind: _ }) => {
                 self.access_place(
                     location,
                     *drop_place,

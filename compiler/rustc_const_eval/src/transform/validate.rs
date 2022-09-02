@@ -8,10 +8,10 @@ use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     traversal, AggregateKind, AssertTerminator, BasicBlock, BinOp, Body, BorrowKind,
-    CallTerminator, CastKind, DropAndReplaceTerminator, InlineAsmTerminator, Local, Location,
-    MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, RuntimePhase, Rvalue,
-    SourceScope, Statement, StatementKind, SwitchIntTerminator, Terminator, TerminatorKind, UnOp,
-    YieldTerminator, START_BLOCK,
+    CallTerminator, CastKind, DropAndReplaceTerminator, DropT, InlineAsmTerminator, Local,
+    Location, MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, RuntimePhase,
+    Rvalue, SourceScope, Statement, StatementKind, SwitchIntTerminator, Terminator, TerminatorKind,
+    UnOp, YieldTerminator, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::Subst;
@@ -756,7 +756,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Drop { target, unwind, .. } => {
+            TerminatorKind::Drop(box DropT { target, unwind, .. }) => {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 if let Some(unwind) = unwind {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);

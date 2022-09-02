@@ -27,9 +27,9 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
     traversal, AggregateKind, AssertTerminator, BasicBlock, Body, BorrowCheckResult, BorrowKind,
-    Call, ClearCrossCrate, DropAndReplace, Field, InlineAsm, InlineAsmOperand, Local, Location,
-    Mutability, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Promoted, Rvalue, Statement,
-    StatementKind, SwitchInt, Terminator, TerminatorKind, VarDebugInfoContents, Yield,
+    Call, ClearCrossCrate, DropAndReplace, DropT, Field, InlineAsm, InlineAsmOperand, Local,
+    Location, Mutability, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Promoted, Rvalue,
+    Statement, StatementKind, SwitchInt, Terminator, TerminatorKind, VarDebugInfoContents, Yield,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
@@ -636,7 +636,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             TerminatorKind::SwitchInt(box SwitchInt { ref discr, switch_ty: _, targets: _ }) => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+            TerminatorKind::Drop(box DropT { place, target: _, unwind: _ }) => {
                 debug!(
                     "visit_terminator_drop \
                      loc: {:?} term: {:?} place: {:?} span: {:?}",

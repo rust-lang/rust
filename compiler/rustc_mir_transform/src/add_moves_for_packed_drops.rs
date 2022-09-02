@@ -60,9 +60,7 @@ fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) 
         let terminator = data.terminator();
 
         match terminator.kind {
-            TerminatorKind::Drop { place, .. }
-                if util::is_disaligned(tcx, body, param_env, place) =>
-            {
+            TerminatorKind::Drop(ref d) if util::is_disaligned(tcx, body, param_env, d.place) => {
                 add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
             }
             TerminatorKind::DropAndReplace { .. } => {
@@ -84,7 +82,7 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let TerminatorKind::Drop { ref place, target, unwind } = terminator.kind else {
+    let TerminatorKind::Drop(box DropT { ref place, target, unwind }) = terminator.kind else {
         unreachable!();
     };
 
@@ -102,6 +100,10 @@ fn add_move_for_packed_drop<'tcx>(
     patch.add_assign(loc, Place::from(temp), Rvalue::Use(Operand::Move(*place)));
     patch.patch_terminator(
         loc.block,
-        TerminatorKind::Drop { place: Place::from(temp), target: storage_dead_block, unwind },
+        TerminatorKind::Drop(Box::new(DropT {
+            place: Place::from(temp),
+            target: storage_dead_block,
+            unwind,
+        })),
     );
 }
