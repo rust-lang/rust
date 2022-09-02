@@ -27,7 +27,6 @@ fn main() {
     struct Y;
     impl X for Y {
         async fn ft1() {} //~ ERROR functions in traits cannot be declared `async`
-        //~^ ERROR has an incompatible type for trait
         unsafe fn ft2() {} // OK.
         const fn ft3() {} //~ ERROR functions in traits cannot be declared const
         extern "C" fn ft4() {}
@@ -36,7 +35,6 @@ fn main() {
         //~| ERROR functions in traits cannot be declared const
         //~| ERROR functions cannot be both `const` and `async`
         //~| ERROR cycle detected
-        //~| ERROR has an incompatible type for trait
     }
 
     impl Y {

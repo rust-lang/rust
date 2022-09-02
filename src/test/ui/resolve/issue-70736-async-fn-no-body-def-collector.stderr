@@ -14,6 +14,14 @@ LL |     async fn inherent();
    |                        |
    |                        help: provide a definition for the function: `{ <body> }`
 
+error: associated function in `impl` without body
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
+   |
+LL |     async fn associated();
+   |     ^^^^^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the function: `{ <body> }`
+
 error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:11:5
    |
@@ -24,14 +32,8 @@ LL |     async fn associated();
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
-error: associated function in `impl` without body
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
-   |
-LL |     async fn associated();
-   |     ^^^^^^^^^^^^^^^^^^^^^-
-   |                          |
-   |                          help: provide a definition for the function: `{ <body> }`
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:5
@@ -43,26 +45,9 @@ LL |     async fn associated();
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
-error[E0053]: method `associated` has an incompatible type for trait
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:26
-   |
-LL |     async fn associated();
-   |                          ^
-   |                          |
-   |                          checked the `Output` of this `async fn`, found opaque type
-   |                          expected `()`, found opaque type
-   |
-   = note: while checking the return type of the `async fn`
-note: type in trait
-  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:11:26
-   |
-LL |     async fn associated();
-   |                          ^
-   = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl Future<Output = ()>`
+error: aborting due to 5 previous errors
 
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0053, E0706.
-For more information about an error, try `rustc --explain E0053`.
+For more information about this error, try `rustc --explain E0706`.
