@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, make, HasVisibility},
+    ast::{self, make, HasVisibility, edit_in_place::Removable},
     ted::{self, Position},
     AstNode, SyntaxKind,
 };
