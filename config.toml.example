@@ -434,6 +434,11 @@ changelog-seen = 2
 # set this value to `true`.
 #debug-logging = rust.debug-assertions (boolean)
 
+# Whether or not to build rustc, tools and the libraries with randomized type layout
+#
+# Defaults to rust.debug value
+#randomize-layout = rust.debug (boolean)
+
 # Whether or not overflow checks are enabled for the compiler and standard
 # library.
 #

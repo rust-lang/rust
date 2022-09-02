@@ -1471,6 +1471,10 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        if self.config.rust_randomize_layout {
+            rustflags.arg("-Zrandomize-layout");
+        }
+
         // Enable cfg checking of cargo features for everything but std and also enable cfg
         // checking of names and values.
         //
