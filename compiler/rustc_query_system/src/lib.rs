@@ -20,3 +20,7 @@ pub mod dep_graph;
 mod error;
 pub mod ich;
 pub mod query;
+mod values;
+
+pub use error::HandleCycleError;
+pub use values::Value;
