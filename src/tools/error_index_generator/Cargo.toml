@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustdoc = { path = "../../librustdoc" }
+mdbook = { version = "0.4", default-features = false, features = ["search"] }
 
 [[bin]]
 name = "error_index_generator"
