@@ -16,6 +16,8 @@
 #![feature(never_type)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 extern crate proc_macro;
 
@@ -37,6 +39,7 @@ mod native_libs;
 mod rmeta;
 
 pub mod creader;
+pub mod errors;
 pub mod fs;
 pub mod locator;
 
