@@ -195,6 +195,13 @@ trigger_files = [
     "compiler/rustc_macros/src/diagnostics"
 ]
 
+[autolabel."A-query-system"]
+trigger_files = [
+    "compiler/rustc_query_system",
+    "compiler/rustc_query_impl",
+    "compiler/rustc_macros/src/query.rs"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
