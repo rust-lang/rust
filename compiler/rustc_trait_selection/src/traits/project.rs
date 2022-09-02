@@ -1318,7 +1318,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
-        let trait_fn_def_id = tcx.parent(obligation.predicate.item_def_id);
+        let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
         let trait_def_id = tcx.parent(trait_fn_def_id);
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
@@ -2176,11 +2176,6 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     let impl_fn_def_id = leaf_def.item.def_id;
     let impl_fn_substs = obligation.predicate.substs.rebase_onto(tcx, trait_fn_def_id, data.substs);
 
-    let sig = tcx
-        .bound_fn_sig(impl_fn_def_id)
-        .map_bound(|fn_sig| tcx.liberate_late_bound_regions(impl_fn_def_id, fn_sig))
-        .subst(tcx, impl_fn_substs);
-
     let cause = ObligationCause::new(
         obligation.cause.span,
         obligation.cause.body_id,
@@ -2217,7 +2212,11 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         selcx,
         obligation.param_env,
         cause.clone(),
-        sig.output(),
+        tcx.bound_trait_impl_trait_tys(impl_fn_def_id)
+            .map_bound(|tys| {
+                tys.map_or_else(|_| tcx.ty_error(), |tys| tys[&obligation.predicate.item_def_id])
+            })
+            .subst(tcx, impl_fn_substs),
         &mut obligations,
     );
 

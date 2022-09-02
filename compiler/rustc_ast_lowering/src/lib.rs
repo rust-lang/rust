@@ -1358,10 +1358,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::InTrait => {
                         self.lower_impl_trait_in_trait(span, def_node_id, |lctx| {
-                            lctx.lower_param_bounds(
-                                bounds,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
-                            )
+                            lctx.lower_param_bounds(bounds, ImplTraitContext::InTrait)
                         })
                     }
                     ImplTraitContext::Universal => {
@@ -1559,8 +1556,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
-            // FIXME(RPITIT): This should be a more descriptive ImplTraitPosition, i.e. nested RPITIT
-            // FIXME(RPITIT): We _also_ should support this eventually
             let hir_bounds = lower_bounds(lctx);
             let rpitit_placeholder = hir::ImplTraitPlaceholder { bounds: hir_bounds };
             let rpitit_item = hir::Item {
@@ -2073,7 +2068,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let bound = lctx.lower_async_fn_output_type_to_future_bound(
                 output,
                 output.span(),
-                ImplTraitContext::Disallowed(ImplTraitPosition::TraitReturn),
+                ImplTraitContext::InTrait,
             );
             arena_vec![lctx; bound]
         });

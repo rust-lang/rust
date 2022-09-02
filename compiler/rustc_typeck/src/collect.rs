@@ -1602,7 +1602,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             }
             ItemKind::ImplTraitPlaceholder(_) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id).to_def_id();
-                assert_eq!(tcx.def_kind(parent_id), DefKind::AssocFn);
+                assert!(matches!(
+                    tcx.def_kind(parent_id),
+                    DefKind::AssocFn | DefKind::ImplTraitPlaceholder
+                ));
                 Some(parent_id)
             }
             _ => None,
