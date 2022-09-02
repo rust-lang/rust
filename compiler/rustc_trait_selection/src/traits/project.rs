@@ -1268,9 +1268,9 @@ fn project<'cx, 'tcx>(
     }
 }
 
-/// The first thing we have to do is scan through the parameter
-/// environment to see whether there are any projection predicates
-/// there that can answer this question.
+/// If the predicate's item is an `ImplTraitPlaceholder`, we do a select on the
+/// corresponding trait ref. If this yields an `impl`, then we're able to project
+/// to a concrete type, since we have an `impl`'s method  to provide the RPITIT.
 fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,

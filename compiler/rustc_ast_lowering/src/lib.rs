@@ -1333,7 +1333,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }
                     ImplTraitContext::InTrait => {
-                        // FIXME(RPITIT): Should we use def_node_id here?
                         self.lower_impl_trait_in_trait(span, def_node_id, |lctx| {
                             lctx.lower_param_bounds(
                                 bounds,
