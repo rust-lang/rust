@@ -455,6 +455,12 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
 }
 
 #[repr(C)]
+pub struct FILE_ATTRIBUTE_TAG_INFO {
+    pub FileAttributes: DWORD,
+    pub ReparseTag: DWORD,
+}
+
+#[repr(C)]
 pub struct FILE_DISPOSITION_INFO {
     pub DeleteFile: BOOLEAN,
 }
