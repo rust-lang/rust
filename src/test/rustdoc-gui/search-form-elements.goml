@@ -92,7 +92,7 @@ reload:
 assert-css: (
     ".search-input",
     {
-        "border-color": "rgb(240, 240, 240)",
+        "border-color": "rgb(224, 224, 224)",
         "background-color": "rgb(240, 240, 240)",
         "color": "rgb(17, 17, 17)",
     },
