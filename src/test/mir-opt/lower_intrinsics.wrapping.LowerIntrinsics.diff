@@ -32,7 +32,7 @@
           _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:48: +1:49
 -         _3 = wrapping_add::<i32>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:50
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:7:14: 7:44
+-                                          // + span: $DIR/lower_intrinsics.rs:9:14: 9:44
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> i32 {wrapping_add::<i32>}, val: Value(<ZST>) }
 +         _3 = Add(move _4, move _5);      // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:50
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:50
@@ -48,7 +48,7 @@
           _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:48: +2:49
 -         _6 = wrapping_sub::<i32>(move _7, move _8) -> bb2; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:50
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:8:14: 8:44
+-                                          // + span: $DIR/lower_intrinsics.rs:10:14: 10:44
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> i32 {wrapping_sub::<i32>}, val: Value(<ZST>) }
 +         _6 = Sub(move _7, move _8);      // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:50
 +         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:50
@@ -64,7 +64,7 @@
           _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:48: +3:49
 -         _9 = wrapping_mul::<i32>(move _10, move _11) -> bb3; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:50
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:9:14: 9:44
+-                                          // + span: $DIR/lower_intrinsics.rs:11:14: 11:44
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> i32 {wrapping_mul::<i32>}, val: Value(<ZST>) }
 +         _9 = Mul(move _10, move _11);    // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:50
 +         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:50
