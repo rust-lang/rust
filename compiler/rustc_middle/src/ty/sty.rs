@@ -849,6 +849,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)

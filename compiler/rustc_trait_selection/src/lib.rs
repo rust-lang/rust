@@ -37,5 +37,6 @@ extern crate rustc_middle;
 extern crate smallvec;
 
 pub mod autoderef;
+pub mod errors;
 pub mod infer;
 pub mod traits;
