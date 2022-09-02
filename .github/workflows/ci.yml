@@ -25,6 +25,8 @@ name: CI
   pull_request:
     branches:
       - "**"
+permissions:
+  contents: read
 defaults:
   run:
     shell: bash
