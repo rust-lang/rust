@@ -1281,7 +1281,9 @@ impl Step for Assemble {
                 compiler: build_compiler,
                 target: target_compiler.host,
             });
-            builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe("ld", target_compiler.host)));
+            for name in crate::LLD_FILE_NAMES {
+                builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe(name, target_compiler.host)));
+            }
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
