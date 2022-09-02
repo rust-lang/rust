@@ -1,0 +1,16 @@
+### What it does
+Checks for use of `.drain(..)` on `Vec` and `VecDeque` for iteration.
+
+### Why is this bad?
+`.into_iter()` is simpler with better performance.
+
+### Example
+```
+let mut foo = vec![0, 1, 2, 3];
+let bar: HashSet<usize> = foo.drain(..).collect();
+```
+Use instead:
+```
+let foo = vec![0, 1, 2, 3];
+let bar: HashSet<usize> = foo.into_iter().collect();
+```

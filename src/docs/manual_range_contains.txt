@@ -1,0 +1,19 @@
+### What it does
+Checks for expressions like `x >= 3 && x < 8` that could
+be more readably expressed as `(3..8).contains(x)`.
+
+### Why is this bad?
+`contains` expresses the intent better and has less
+failure modes (such as fencepost errors or using `||` instead of `&&`).
+
+### Example
+```
+// given
+let x = 6;
+
+assert!(x >= 3 && x < 8);
+```
+Use instead:
+```
+assert!((3..8).contains(&x));
+```

@@ -1,0 +1,16 @@
+### What it does
+Checks for usage of `_.map_or(None, Some)`.
+
+### Why is this bad?
+Readability, this can be written more concisely as
+`_.ok()`.
+
+### Example
+```
+assert_eq!(Some(1), r.map_or(None, Some));
+```
+
+Use instead:
+```
+assert_eq!(Some(1), r.ok());
+```

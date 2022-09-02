@@ -1,0 +1,20 @@
+### What it does
+Checks for usage of `libc::strlen` on a `CString` or `CStr` value,
+and suggest calling `as_bytes().len()` or `to_bytes().len()` respectively instead.
+
+### Why is this bad?
+This avoids calling an unsafe `libc` function.
+Currently, it also avoids calculating the length.
+
+### Example
+```
+use std::ffi::CString;
+let cstring = CString::new("foo").expect("CString::new failed");
+let len = unsafe { libc::strlen(cstring.as_ptr()) };
+```
+Use instead:
+```
+use std::ffi::CString;
+let cstring = CString::new("foo").expect("CString::new failed");
+let len = cstring.as_bytes().len();
+```

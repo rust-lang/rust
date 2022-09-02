@@ -1,0 +1,10 @@
+### What it does
+Checks for invisible Unicode characters in the code.
+
+### Why is this bad?
+Having an invisible character in the code makes for all
+sorts of April fools, but otherwise is very much frowned upon.
+
+### Example
+You don't see it, but there may be a zero-width space or soft hyphen
+some­where in this text.

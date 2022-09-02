@@ -1,0 +1,19 @@
+### What it does
+Checks for consecutive calls to `str::replace` (2 or more)
+that can be collapsed into a single call.
+
+### Why is this bad?
+Consecutive `str::replace` calls scan the string multiple times
+with repetitive code.
+
+### Example
+```
+let hello = "hesuo worpd"
+    .replace('s', "l")
+    .replace("u", "l")
+    .replace('p', "l");
+```
+Use instead:
+```
+let hello = "hesuo worpd".replace(&['s', 'u', 'p'], "l");
+```

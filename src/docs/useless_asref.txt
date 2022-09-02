@@ -1,0 +1,17 @@
+### What it does
+Checks for usage of `.as_ref()` or `.as_mut()` where the
+types before and after the call are the same.
+
+### Why is this bad?
+The call is unnecessary.
+
+### Example
+```
+let x: &[i32] = &[1, 2, 3, 4, 5];
+do_stuff(x.as_ref());
+```
+The correct use would be:
+```
+let x: &[i32] = &[1, 2, 3, 4, 5];
+do_stuff(x);
+```

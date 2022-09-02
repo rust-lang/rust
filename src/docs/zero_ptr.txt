@@ -1,0 +1,16 @@
+### What it does
+Catch casts from `0` to some pointer type
+
+### Why is this bad?
+This generally means `null` and is better expressed as
+{`std`, `core`}`::ptr::`{`null`, `null_mut`}.
+
+### Example
+```
+let a = 0 as *const u32;
+```
+
+Use instead:
+```
+let a = std::ptr::null::<u32>();
+```

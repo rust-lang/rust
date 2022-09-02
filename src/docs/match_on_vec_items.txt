@@ -1,0 +1,29 @@
+### What it does
+Checks for `match vec[idx]` or `match vec[n..m]`.
+
+### Why is this bad?
+This can panic at runtime.
+
+### Example
+```
+let arr = vec![0, 1, 2, 3];
+let idx = 1;
+
+match arr[idx] {
+    0 => println!("{}", 0),
+    1 => println!("{}", 3),
+    _ => {},
+}
+```
+
+Use instead:
+```
+let arr = vec![0, 1, 2, 3];
+let idx = 1;
+
+match arr.get(idx) {
+    Some(0) => println!("{}", 0),
+    Some(1) => println!("{}", 3),
+    _ => {},
+}
+```

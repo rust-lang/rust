@@ -1,0 +1,30 @@
+### What it does
+Checks for formatting of `else`. It lints if the `else`
+is followed immediately by a newline or the `else` seems to be missing.
+
+### Why is this bad?
+This is probably some refactoring remnant, even if the
+code is correct, it might look confusing.
+
+### Example
+```
+if foo {
+} { // looks like an `else` is missing here
+}
+
+if foo {
+} if bar { // looks like an `else` is missing here
+}
+
+if foo {
+} else
+
+{ // this is the `else` block of the previous `if`, but should it be?
+}
+
+if foo {
+} else
+
+if bar { // this is the `else` block of the previous `if`, but should it be?
+}
+```

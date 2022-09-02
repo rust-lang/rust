@@ -1,0 +1,21 @@
+### What it does
+Checks for `if` conditions that use blocks containing an
+expression, statements or conditions that use closures with blocks.
+
+### Why is this bad?
+Style, using blocks in the condition makes it hard to read.
+
+### Examples
+```
+if { true } { /* ... */ }
+
+if { let x = somefunc(); x } { /* ... */ }
+```
+
+Use instead:
+```
+if true { /* ... */ }
+
+let res = { let x = somefunc(); x };
+if res { /* ... */ }
+```
