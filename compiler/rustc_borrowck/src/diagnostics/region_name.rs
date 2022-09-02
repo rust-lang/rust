@@ -1,3 +1,6 @@
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::fmt::{self, Display};
 use std::iter;
 
@@ -10,6 +13,7 @@ use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::session_diagnostics::RegionNameLables;
 use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -133,48 +137,58 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
                 _,
             ) => {
-                diag.span_label(*span, format!("let's call this `{self}`"));
+                diag.subdiagnostic(RegionNameLables::NameRegion { span: *span, rg_name: self });
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
             )) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type {type_name}"),
-                );
+                diag.subdiagnostic(RegionNameLables::LifetimeInType {
+                    span: *span,
+                    type_name: &type_name,
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromOutput(
                 RegionNameHighlight::Occluded(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(
-                    *span,
-                    format!(
-                        "return type{mir_description} `{type_name}` contains a lifetime `{self}`"
-                    ),
-                );
+                diag.subdiagnostic(RegionNameLables::LifetimeInReturned {
+                    span: *span,
+                    mir_description,
+                    type_name: &type_name,
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the type of `{upvar_name}`"),
-                );
+                diag.subdiagnostic(RegionNameLables::LifetimeInTypeOf {
+                    span: *span,
+                    upvar_name: upvar_name.to_ident_string(),
+                    rg_name: self,
+                });
             }
             RegionNameSource::AnonRegionFromOutput(
                 RegionNameHighlight::CannotMatchHirTy(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
+                diag.subdiagnostic(RegionNameLables::ReturnTypeIsTpye {
+                    span: *span,
+                    mir_description,
+                    type_name: &type_name,
+                });
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.span_label(*span, format!("yield type is {type_name}"));
+                diag.subdiagnostic(RegionNameLables::YieldTypeIsTpye {
+                    span: *span,
+                    type_name: &type_name,
+                });
             }
             RegionNameSource::AnonRegionFromImplSignature(span, location) => {
-                diag.span_label(
-                    *span,
-                    format!("lifetime `{self}` appears in the `impl`'s {location}"),
-                );
+                diag.subdiagnostic(RegionNameLables::LifetimeInImpl {
+                    span: *span,
+                    rg_name: self,
+                    location: &location,
+                });
             }
             RegionNameSource::Static => {}
         }

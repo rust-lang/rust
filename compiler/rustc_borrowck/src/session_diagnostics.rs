@@ -157,3 +157,55 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum RegionNameLables<'a> {
+    #[label(borrowck::name_this_region)]
+    NameRegion {
+        #[primary_span]
+        span: Span,
+        rg_name: &'a RegionName,
+    },
+    #[label(borrowck::lifetime_appears_in_type)]
+    LifetimeInType {
+        #[primary_span]
+        span: Span,
+        type_name: &'a str,
+        rg_name: &'a RegionName,
+    },
+    #[label(borrowck::return_type_has_lifetime)]
+    LifetimeInReturned {
+        #[primary_span]
+        span: Span,
+        mir_description: &'a str,
+        type_name: &'a str,
+        rg_name: &'a RegionName,
+    },
+    #[label(borrowck::lifetime_appears_in_type_of)]
+    LifetimeInTypeOf {
+        #[primary_span]
+        span: Span,
+        upvar_name: String,
+        rg_name: &'a RegionName,
+    },
+    #[label(borrowck::return_type_is_type)]
+    ReturnTypeIsTpye {
+        #[primary_span]
+        span: Span,
+        mir_description: &'a str,
+        type_name: &'a str,
+    },
+    #[label(borrowck::yield_type_is_type)]
+    YieldTypeIsTpye {
+        #[primary_span]
+        span: Span,
+        type_name: &'a str,
+    },
+    #[label(borrowck::lifetime_appears_here_in_impl)]
+    LifetimeInImpl {
+        #[primary_span]
+        span: Span,
+        rg_name: &'a RegionName,
+        location: &'a str,
+    },
+}
