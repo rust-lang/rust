@@ -1550,29 +1550,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         generics,
                         parent_generics,
                     } => {
-                        if let Some(parent_generics) = parent_generics {
-                            let generics =
-                                self.lowering_arena.gs.alloc(parent_generics.merge(generics));
-                            self.lower_opaque_impl_trait(
-                                span,
-                                *origin,
-                                def_node_id,
-                                generics,
-                                impl_trait_inputs,
-                                bounds,
-                                itctx,
-                            )
+                        let generics = if let Some(parent_generics) = parent_generics {
+                            &*self.lowering_arena.gs.alloc(parent_generics.merge(generics))
                         } else {
-                            self.lower_opaque_impl_trait(
-                                span,
-                                *origin,
-                                def_node_id,
-                                generics,
-                                impl_trait_inputs,
-                                bounds,
-                                itctx,
-                            )
-                        }
+                            generics
+                        };
+
+                        self.lower_opaque_impl_trait(
+                            span,
+                            *origin,
+                            def_node_id,
+                            generics,
+                            impl_trait_inputs,
+                            bounds,
+                            itctx,
+                        )
                     }
                     ImplTraitContext::TypeAliasesOpaqueTy => {
                         let mut nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
