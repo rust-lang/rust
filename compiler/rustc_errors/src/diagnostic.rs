@@ -14,6 +14,7 @@ use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
@@ -91,6 +92,7 @@ into_diagnostic_arg_using_display!(
     Edition,
     Ident,
     MacroRulesNormalizedIdent,
+    ParseIntError,
 );
 
 impl IntoDiagnosticArg for bool {
