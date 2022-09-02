@@ -368,34 +368,43 @@ impl Resolver {
         for scope in self.scopes() {
             scope.process_names(&mut res, db);
         }
-        process_module_scope_names(&mut res, db, &self.module_scope);
+        let ModuleItemMap { ref def_map, module_id } = self.module_scope;
+        // FIXME: should we provide `self` here?
+        // f(
+        //     Name::self_param(),
+        //     PerNs::types(Resolution::Def {
+        //         def: m.module.into(),
+        //     }),
+        // );
+        def_map[module_id].scope.entries().for_each(|(name, def)| {
+            res.add_per_ns(name, def);
+        });
+        def_map[module_id].scope.legacy_macros().for_each(|(name, macs)| {
+            macs.iter().for_each(|&mac| {
+                res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))));
+            })
+        });
+        def_map.extern_prelude().for_each(|(name, &def)| {
+            res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
+        });
+        BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
+            res.add_per_ns(name, def);
+        });
+        if let Some(prelude) = def_map.prelude() {
+            let prelude_def_map = prelude.def_map(db);
+            for (name, def) in prelude_def_map[prelude.local_id].scope.entries() {
+                res.add_per_ns(name, def)
+            }
+        }
         res.map
     }
 
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {
         let mut traits = FxHashSet::default();
 
-        let collect_module_traits = |traits: &mut FxHashSet<_>, m: &ModuleItemMap| {
-            if let Some(prelude) = m.def_map.prelude() {
-                let prelude_def_map = prelude.def_map(db);
-                traits.extend(prelude_def_map[prelude.local_id].scope.traits());
-            }
-            traits.extend(m.def_map[m.module_id].scope.traits());
-
-            // Add all traits that are in scope because of the containing DefMaps
-            m.def_map.with_ancestor_maps(db, m.module_id, &mut |def_map, module| {
-                if let Some(prelude) = def_map.prelude() {
-                    let prelude_def_map = prelude.def_map(db);
-                    traits.extend(prelude_def_map[prelude.local_id].scope.traits());
-                }
-                traits.extend(def_map[module].scope.traits());
-                None::<()>
-            });
-        };
-
         for scope in self.scopes() {
             match scope {
-                Scope::BlockScope(m) => collect_module_traits(&mut traits, m),
+                Scope::BlockScope(m) => traits.extend(m.def_map[m.module_id].scope.traits()),
                 &Scope::ImplDefScope(impl_) => {
                     if let Some(target_trait) = &db.impl_data(impl_).target_trait {
                         if let Some(TypeNs::TraitId(trait_)) =
@@ -409,7 +418,13 @@ impl Resolver {
             }
         }
 
-        collect_module_traits(&mut traits, &self.module_scope);
+        // Fill in the prelude traits
+        if let Some(prelude) = self.module_scope.def_map.prelude() {
+            let prelude_def_map = prelude.def_map(db);
+            traits.extend(prelude_def_map[prelude.local_id].scope.traits());
+        }
+        // Fill in module visible traits
+        traits.extend(self.module_scope.def_map[self.module_scope.module_id].scope.traits());
         traits
     }
 
@@ -493,42 +508,22 @@ pub enum ScopeDef {
     Label(LabelId),
 }
 
-fn process_module_scope_names(acc: &mut ScopeNames, db: &dyn DefDatabase, m: &ModuleItemMap) {
-    // FIXME: should we provide `self` here?
-    // f(
-    //     Name::self_param(),
-    //     PerNs::types(Resolution::Def {
-    //         def: m.module.into(),
-    //     }),
-    // );
-    m.def_map[m.module_id].scope.entries().for_each(|(name, def)| {
-        acc.add_per_ns(name, def);
-    });
-    m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, macs)| {
-        macs.iter().for_each(|&mac| {
-            acc.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))));
-        })
-    });
-    m.def_map.extern_prelude().for_each(|(name, &def)| {
-        acc.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
-    });
-    if m.def_map.block_id().is_none() {
-        BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
-            acc.add_per_ns(name, def);
-        });
-    }
-    if let Some(prelude) = m.def_map.prelude() {
-        let prelude_def_map = prelude.def_map(db);
-        for (name, def) in prelude_def_map[prelude.local_id].scope.entries() {
-            acc.add_per_ns(name, def)
-        }
-    }
-}
-
 impl Scope {
     fn process_names(&self, acc: &mut ScopeNames, db: &dyn DefDatabase) {
         match self {
-            Scope::BlockScope(m) => process_module_scope_names(acc, db, m),
+            Scope::BlockScope(m) => {
+                m.def_map[m.module_id].scope.entries().for_each(|(name, def)| {
+                    acc.add_per_ns(name, def);
+                });
+                m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, macs)| {
+                    macs.iter().for_each(|&mac| {
+                        acc.add(
+                            name,
+                            ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))),
+                        );
+                    })
+                });
+            }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
                 for (local_id, param) in params.type_or_consts.iter() {

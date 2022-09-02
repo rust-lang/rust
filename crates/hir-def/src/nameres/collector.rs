@@ -512,10 +512,9 @@ impl DefCollector<'_> {
             Edition::Edition2021 => name![rust_2021],
         };
 
-        let path_kind = if self.def_map.edition == Edition::Edition2015 {
-            PathKind::Plain
-        } else {
-            PathKind::Abs
+        let path_kind = match self.def_map.edition {
+            Edition::Edition2015 => PathKind::Plain,
+            _ => PathKind::Abs,
         };
         let path =
             ModPath::from_segments(path_kind, [krate.clone(), name![prelude], edition].into_iter());
@@ -535,7 +534,6 @@ impl DefCollector<'_> {
             match per_ns.types {
                 Some((ModuleDefId::ModuleId(m), _)) => {
                     self.def_map.prelude = Some(m);
-                    return;
                 }
                 types => {
                     tracing::debug!(
@@ -850,7 +848,10 @@ impl DefCollector<'_> {
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                if import.is_extern_crate && module_id == self.def_map.root {
+                if import.is_extern_crate
+                    && self.def_map.block.is_none()
+                    && module_id == self.def_map.root
+                {
                     if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
                     {
                         self.def_map.extern_prelude.insert(name.clone(), def);
