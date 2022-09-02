@@ -13,7 +13,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:9: +2:18
           _1 = std::intrinsics::size_of::<T>; // scope 0 at $DIR/lower_intrinsics.rs:+2:21: +2:51
                                            // mir::Constant
-                                           // + span: $DIR/lower_intrinsics.rs:62:21: 62:51
+                                           // + span: $DIR/lower_intrinsics.rs:37:21: 37:51
                                            // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(<ZST>) }
           StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
           _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
