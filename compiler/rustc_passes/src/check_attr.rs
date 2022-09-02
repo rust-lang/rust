@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
+use crate::errors::{self, DebugVisualizerUnreadable};
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
@@ -1863,13 +1863,11 @@ impl CheckAttrVisitor<'_> {
         match std::fs::File::open(&file) {
             Ok(_) => true,
             Err(err) => {
-                self.tcx
-                    .sess
-                    .struct_span_err(
-                        meta_item.span,
-                        &format!("couldn't read {}: {}", file.display(), err),
-                    )
-                    .emit();
+                self.tcx.sess.emit_err(DebugVisualizerUnreadable {
+                    span: meta_item.span,
+                    file: &file,
+                    error: err,
+                } );
                 false
             }
         }
