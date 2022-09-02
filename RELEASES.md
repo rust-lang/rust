@@ -5,7 +5,8 @@ Language
 --------
 - [make `const_err` show up in future breakage reports](https://github.com/rust-lang/rust/pull/97743/)
 - [allow unions with mutable references and tuples of allowed types](https://github.com/rust-lang/rust/pull/97995/)
-- [do not mark interior mutable shared refs as dereferenceable](https://github.com/rust-lang/rust/pull/98017/)
+- It is now considered valid to deallocate memory pointed to by a shared reference `&T` [if every byte in `T` is inside an `UnsafeCell`](https://github.com/rust-lang/rust/pull/98017/)
+- Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/). This lint will become warn-by-default in the future.
 
 Compiler
 --------
@@ -87,7 +88,11 @@ Compatibility Notes
 - [Implement network primitives with ideal Rust layout, not C system layout](https://github.com/rust-lang/rust/pull/78802/)
 - [Add assertion that `transmute_copy`'s U is not larger than T](https://github.com/rust-lang/rust/pull/98839/)
 - [Add `PhantomData` marker for dropck to `BTreeMap`](https://github.com/rust-lang/rust/pull/99413/)
-- [relate `closure_substs.parent_substs()` to parent fn in NLL](https://github.com/rust-lang/rust/pull/98835/)
+- [The Drop behavior of C-like enums cast to ints has changed](https://github.com/rust-lang/rust/pull/96862/). These are already discouraged by a compiler warning.
+- [Relate late-bound closure lifetimes to parent fn in NLL](https://github.com/rust-lang/rust/pull/98835/)
+- [Errors at const-eval time are now in future incompatibility reports](https://github.com/rust-lang/rust/pull/97743/)
+- On the `thumbv6m-none-eabi` target, some incorrect `asm!` statements were erroneously accepted if they used the high registers (r8 to r14) as an input/output operand. [This is no longer accepted](https://github.com/rust-lang/rust/pull/99155/).
+- [`impl Trait` was accidentally accepted as the associated type value of return-position `impl Trait`](https://github.com/rust-lang/rust/pull/97346/), without fulfilling all the trait bounds of that associated type, as long as the hidden type satisfies said bounds. This has been fixed.
 
 Internal Changes
 ----------------
