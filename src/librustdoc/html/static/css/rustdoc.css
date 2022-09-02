@@ -1241,12 +1241,6 @@ h3.variant {
 	margin-left: 24px;
 }
 
-.toggle-label {
-	display: inline-block;
-	margin-left: 4px;
-	margin-top: 3px;
-}
-
 :target > code, :target > .code-header {
 	opacity: 1;
 }
