@@ -1650,7 +1650,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert_eq!(*x, "foo");
     /// ```
     /// Other `Arc` pointers to the same allocation must be to the same type.
-    /// ```ignore
+    /// ```no_run
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -1664,7 +1664,7 @@ impl<T: ?Sized> Arc<T> {
     /// println!("{}", &*x); // Invalid UTF-8 in a str
     /// ```
     /// Other `Arc` pointers to the same allocation must be to the exact same type, including lifetimes.
-    /// ```ignore
+    /// ```no_run
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
