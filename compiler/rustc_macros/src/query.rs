@@ -344,42 +344,25 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
         let mut attributes = Vec::new();
 
-        // Pass on the fatal_cycle modifier
-        if let Some(fatal_cycle) = &modifiers.fatal_cycle {
-            attributes.push(quote! { (#fatal_cycle) });
-        };
-        // Pass on the arena modifier
-        if let Some(ref arena_cache) = modifiers.arena_cache {
-            attributes.push(quote! {span=> (#arena_cache) });
-        };
-        // Pass on the cycle_delay_bug modifier
-        if let Some(cycle_delay_bug) = &modifiers.cycle_delay_bug {
-            attributes.push(quote! { (#cycle_delay_bug) });
-        };
-        // Pass on the no_hash modifier
-        if let Some(no_hash) = &modifiers.no_hash {
-            attributes.push(quote! { (#no_hash) });
-        };
-        // Pass on the anon modifier
-        if let Some(anon) = &modifiers.anon {
-            attributes.push(quote! { (#anon) });
-        };
-        // Pass on the eval_always modifier
-        if let Some(eval_always) = &modifiers.eval_always {
-            attributes.push(quote! { (#eval_always) });
-        };
-        // Pass on the depth_limit modifier
-        if let Some(depth_limit) = &modifiers.depth_limit {
-            attributes.push(quote! { (#depth_limit) });
-        };
-        // Pass on the separate_provide_extern modifier
-        if let Some(separate_provide_extern) = &modifiers.separate_provide_extern {
-            attributes.push(quote! { (#separate_provide_extern) });
+        macro_rules! passthrough {
+            ( $( $modifier:ident ),+ $(,)? ) => {
+                $( if let Some($modifier) = &modifiers.$modifier {
+                    attributes.push(quote! { (#$modifier) });
+                }; )+
+            }
         }
-        // Pass on the remap_env_constness modifier
-        if let Some(remap_env_constness) = &modifiers.remap_env_constness {
-            attributes.push(quote! { (#remap_env_constness) });
-        }
+
+        passthrough!(
+            fatal_cycle,
+            arena_cache,
+            cycle_delay_bug,
+            no_hash,
+            anon,
+            eval_always,
+            depth_limit,
+            separate_provide_extern,
+            remap_env_constness,
+        );
 
         // This uses the span of the query definition for the commas,
         // which can be important if we later encounter any ambiguity
