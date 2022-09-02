@@ -117,6 +117,39 @@ pub mod hash_set {
 pub use crate::map::HashMap;
 pub use crate::set::HashSet;
 
+/// Key equivalence trait.
+///
+/// This trait defines the function used to compare the input value with the
+/// map keys (or set values) during a lookup operation such as [`HashMap::get`]
+/// or [`HashSet::contains`].
+/// It is provided with a blanket implementation based on the
+/// [`Borrow`](core::borrow::Borrow) trait.
+///
+/// # Correctness
+///
+/// Equivalent values must hash to the same value.
+pub trait Equivalent<K: ?Sized> {
+    /// Checks if this value is equivalent to the given key.
+    ///
+    /// Returns `true` if both values are equivalent, and `false` otherwise.
+    ///
+    /// # Correctness
+    ///
+    /// When this function returns `true`, both `self` and `key` must hash to
+    /// the same value.
+    fn equivalent(&self, key: &K) -> bool;
+}
+
+impl<Q: ?Sized, K: ?Sized> Equivalent<K> for Q
+where
+    Q: Eq,
+    K: core::borrow::Borrow<Q>,
+{
+    fn equivalent(&self, key: &K) -> bool {
+        self == key.borrow()
+    }
+}
+
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TryReserveError {
