@@ -94,6 +94,7 @@ fn test_partial_eq() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+#[cfg(not(randomized_layouts))]
 fn test_sizes() {
     assert_eq!(core::mem::size_of::<LeafNode<(), ()>>(), 16);
     assert_eq!(core::mem::size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 2 * 8);
