@@ -1358,7 +1358,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     ImplTraitContext::InTrait => {
                         // FIXME(RPITIT): Should we use def_node_id here?
-                        self.lower_impl_trait_in_trait(span, def_node_id, bounds)
+                        self.lower_impl_trait_in_trait(span, def_node_id, |lctx| {
+                            lctx.lower_param_bounds(
+                                bounds,
+                                ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
+                            )
+                        })
                     }
                     ImplTraitContext::Universal => {
                         let span = t.span;
@@ -1546,19 +1551,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, lower_bounds))]
     fn lower_impl_trait_in_trait(
         &mut self,
         span: Span,
         opaque_ty_node_id: NodeId,
-        bounds: &GenericBounds,
+        lower_bounds: impl FnOnce(&mut Self) -> hir::GenericBounds<'hir>,
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             // FIXME(RPITIT): This should be a more descriptive ImplTraitPosition, i.e. nested RPITIT
             // FIXME(RPITIT): We _also_ should support this eventually
-            let hir_bounds = lctx
-                .lower_param_bounds(bounds, ImplTraitContext::Disallowed(ImplTraitPosition::Trait));
+            let hir_bounds = lower_bounds(lctx);
             let rpitit_placeholder = hir::ImplTraitPlaceholder { bounds: hir_bounds };
             let rpitit_item = hir::Item {
                 def_id: opaque_ty_def_id,
@@ -1719,18 +1723,44 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }));
 
         let output = if let Some((ret_id, span)) = make_ret_async {
-            if !self.tcx.features().return_position_impl_trait_in_trait {
-                self.tcx.sess.emit_feature_err(
-                    TraitFnAsync { fn_span, span },
-                    sym::return_position_impl_trait_in_trait,
-                );
+            match kind {
+                FnDeclKind::Trait => {
+                    if !kind.impl_trait_in_trait_allowed(self.tcx) {
+                        self.tcx
+                            .sess
+                            .create_feature_err(
+                                TraitFnAsync { fn_span, span },
+                                sym::return_position_impl_trait_in_trait,
+                            )
+                            .emit();
+                    }
+                    self.lower_async_fn_ret_ty_in_trait(
+                        &decl.output,
+                        fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
+                        ret_id,
+                    )
+                }
+                _ => {
+                    if !kind.impl_trait_return_allowed(self.tcx) {
+                        if kind == FnDeclKind::Impl {
+                            self.tcx
+                                .sess
+                                .create_feature_err(
+                                    TraitFnAsync { fn_span, span },
+                                    sym::return_position_impl_trait_in_trait,
+                                )
+                                .emit();
+                        } else {
+                            self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
+                        }
+                    }
+                    self.lower_async_fn_ret_ty(
+                        &decl.output,
+                        fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
+                        ret_id,
+                    )
+                }
             }
-
-            self.lower_async_fn_ret_ty(
-                &decl.output,
-                fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
-                ret_id,
-            )
         } else {
             match decl.output {
                 FnRetTy::Ty(ref ty) => {
@@ -2017,6 +2047,36 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_ref =
             hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
+        hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
+    }
+
+    // Transforms `-> T` for `async fn` into `-> OpaqueTy { .. }`
+    // combined with the following definition of `OpaqueTy`:
+    //
+    //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
+    //
+    // `output`: unlowered output type (`T` in `-> T`)
+    // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
+    // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
+    #[instrument(level = "debug", skip(self))]
+    fn lower_async_fn_ret_ty_in_trait(
+        &mut self,
+        output: &FnRetTy,
+        fn_node_id: NodeId,
+        opaque_ty_node_id: NodeId,
+    ) -> hir::FnRetTy<'hir> {
+        let span = output.span();
+
+        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
+
+        let fn_def_id = self.local_def_id(fn_node_id);
+
+        let kind = self.lower_impl_trait_in_trait(output.span(), opaque_ty_node_id, |lctx| {
+            let bound =
+                lctx.lower_async_fn_output_type_to_future_bound(output, fn_def_id, output.span());
+            arena_vec![lctx; bound]
+        });
+        let opaque_ty = self.ty(opaque_ty_span, kind);
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
