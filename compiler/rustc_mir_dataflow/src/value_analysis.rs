@@ -263,10 +263,13 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
     const NAME: &'static str = T::NAME;
 
     fn bottom_value(&self, _body: &Body<'tcx>) -> Self::Domain {
-        State(IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count))
+        State(StateData::Unreachable)
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
+        assert!(matches!(state.0, StateData::Unreachable));
+        let values = IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count);
+        *state = State(StateData::Reachable(values));
         for arg in body.args_iter() {
             state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());
         }
@@ -283,7 +286,9 @@ where
         statement: &Statement<'tcx>,
         _location: Location,
     ) {
-        self.0.handle_statement(statement, state);
+        if state.is_reachable() {
+            self.0.handle_statement(statement, state);
+        }
     }
 
     fn apply_terminator_effect(
@@ -292,7 +297,9 @@ where
         terminator: &Terminator<'tcx>,
         _location: Location,
     ) {
-        self.0.handle_terminator(terminator, state);
+        if state.is_reachable() {
+            self.0.handle_terminator(terminator, state);
+        }
     }
 
     fn apply_call_return_effect(
@@ -301,7 +308,9 @@ where
         _block: BasicBlock,
         return_places: crate::CallReturnPlaces<'_, 'tcx>,
     ) {
-        self.0.handle_call_return(return_places, state)
+        if state.is_reachable() {
+            self.0.handle_call_return(return_places, state)
+        }
     }
 
     fn apply_switch_int_edge_effects(
@@ -310,6 +319,7 @@ where
         discr: &Operand<'tcx>,
         apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
+        // FIXME: Dataflow framework provides no access to current state here.
         self.0.handle_switch_int(discr, apply_edge_effects)
     }
 }
@@ -323,15 +333,31 @@ rustc_index::newtype_index!(
 );
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct State<V>(IndexVec<ValueIndex, V>);
+enum StateData<V> {
+    Reachable(IndexVec<ValueIndex, V>),
+    Unreachable,
+}
+
+/// All operations on unreachable states are ignored.
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct State<V>(StateData<V>);
 
 impl<V: Clone + HasTop> State<V> {
+    pub fn is_reachable(&self) -> bool {
+        matches!(&self.0, StateData::Reachable(_))
+    }
+
+    pub fn mark_unreachable(&mut self) {
+        self.0 = StateData::Unreachable;
+    }
+
     pub fn flood_all(&mut self) {
         self.flood_all_with(V::top())
     }
 
     pub fn flood_all_with(&mut self, value: V) {
-        self.0.raw.fill(value);
+        let StateData::Reachable(values) = &mut self.0 else { return };
+        values.raw.fill(value);
     }
 
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
@@ -345,9 +371,10 @@ impl<V: Clone + HasTop> State<V> {
     }
 
     pub fn flood_idx_with(&mut self, place: PlaceIndex, map: &Map, value: V) {
+        let StateData::Reachable(values) = &mut self.0 else { return };
         map.preorder_invoke(place, &mut |place| {
             if let Some(vi) = map.places[place].value_index {
-                self.0[vi] = value.clone();
+                values[vi] = value.clone();
             }
         });
     }
@@ -357,11 +384,12 @@ impl<V: Clone + HasTop> State<V> {
     }
 
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
+        let StateData::Reachable(values) = &mut self.0 else { return };
         if let Some(target_value) = map.places[target].value_index {
             if let Some(source_value) = map.places[source].value_index {
-                self.0[target_value] = self.0[source_value].clone();
+                values[target_value] = values[source_value].clone();
             } else {
-                self.0[target_value] = V::top();
+                values[target_value] = V::top();
             }
         }
         for target_child in map.children(target) {
@@ -389,14 +417,16 @@ impl<V: Clone + HasTop> State<V> {
                 // First flood the target place in case we also track any projections (although
                 // this scenario is currently not well-supported by the API).
                 self.flood_idx(target, map);
+                let StateData::Reachable(values) = &mut self.0 else { return };
                 if let Some(value_index) = map.places[target].value_index {
-                    self.0[value_index] = value;
+                    values[value_index] = value;
                 }
             }
             ValueOrPlaceOrRef::Place(source) => self.assign_place_idx(target, source, map),
             ValueOrPlaceOrRef::Ref(source) => {
+                let StateData::Reachable(values) = &mut self.0 else { return };
                 if let Some(value_index) = map.places[target].value_index {
-                    self.0[value_index] = V::top();
+                    values[value_index] = V::top();
                 }
                 if let Some(target_deref) = map.apply_elem(target, ProjElem::Deref) {
                     self.assign_place_idx(target_deref, source, map);
@@ -413,13 +443,25 @@ impl<V: Clone + HasTop> State<V> {
     }
 
     pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
-        map.places[place].value_index.map(|v| self.0[v].clone()).unwrap_or(V::top())
+        match &self.0 {
+            StateData::Reachable(values) => {
+                map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::top())
+            }
+            StateData::Unreachable => V::top(),
+        }
     }
 }
 
-impl<V: JoinSemiLattice> JoinSemiLattice for State<V> {
+impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
     fn join(&mut self, other: &Self) -> bool {
-        self.0.join(&other.0)
+        match (&mut self.0, &other.0) {
+            (_, StateData::Unreachable) => false,
+            (StateData::Unreachable, _) => {
+                *self = other.clone();
+                true
+            }
+            (StateData::Reachable(this), StateData::Reachable(other)) => this.join(other),
+        }
     }
 }
 
@@ -692,18 +734,18 @@ fn iter_fields<'tcx>(
 fn debug_with_context_rec<V: Debug + Eq>(
     place: PlaceIndex,
     place_str: &str,
-    new: &State<V>,
-    old: Option<&State<V>>,
+    new: &IndexVec<ValueIndex, V>,
+    old: Option<&IndexVec<ValueIndex, V>>,
     map: &Map,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {
     if let Some(value) = map.places[place].value_index {
         match old {
-            None => writeln!(f, "{}: {:?}", place_str, new.0[value])?,
+            None => writeln!(f, "{}: {:?}", place_str, new[value])?,
             Some(old) => {
-                if new.0[value] != old.0[value] {
-                    writeln!(f, "\u{001f}-{}: {:?}", place_str, old.0[value])?;
-                    writeln!(f, "\u{001f}+{}: {:?}", place_str, new.0[value])?;
+                if new[value] != old[value] {
+                    writeln!(f, "\u{001f}-{}: {:?}", place_str, old[value])?;
+                    writeln!(f, "\u{001f}+{}: {:?}", place_str, new[value])?;
                 }
             }
         }
@@ -729,8 +771,8 @@ fn debug_with_context_rec<V: Debug + Eq>(
 }
 
 fn debug_with_context<V: Debug + Eq>(
-    new: &State<V>,
-    old: Option<&State<V>>,
+    new: &IndexVec<ValueIndex, V>,
+    old: Option<&IndexVec<ValueIndex, V>>,
     map: &Map,
     f: &mut Formatter<'_>,
 ) -> std::fmt::Result {
@@ -748,7 +790,10 @@ where
     T::Value: Debug,
 {
     fn fmt_with(&self, ctxt: &ValueAnalysisWrapper<T>, f: &mut Formatter<'_>) -> std::fmt::Result {
-        debug_with_context(self, None, ctxt.0.map(), f)
+        match &self.0 {
+            StateData::Reachable(values) => debug_with_context(values, None, ctxt.0.map(), f),
+            StateData::Unreachable => write!(f, "unreachable"),
+        }
     }
 
     fn fmt_diff_with(
@@ -757,6 +802,11 @@ where
         ctxt: &ValueAnalysisWrapper<T>,
         f: &mut Formatter<'_>,
     ) -> std::fmt::Result {
-        debug_with_context(self, Some(old), ctxt.0.map(), f)
+        match (&self.0, &old.0) {
+            (StateData::Reachable(this), StateData::Reachable(old)) => {
+                debug_with_context(this, Some(old), ctxt.0.map(), f)
+            }
+            _ => Ok(()), // Consider printing something here.
+        }
     }
 }

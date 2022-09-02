@@ -26,7 +26,8 @@
   
       bb3: {
           StorageDead(_2);                 // scope 0 at $DIR/issue_81605.rs:+1:32: +1:33
-          _0 = Add(const 1_usize, move _1); // scope 0 at $DIR/issue_81605.rs:+1:5: +1:33
+-         _0 = Add(const 1_usize, move _1); // scope 0 at $DIR/issue_81605.rs:+1:5: +1:33
++         _0 = const 2_usize;              // scope 0 at $DIR/issue_81605.rs:+1:5: +1:33
           StorageDead(_1);                 // scope 0 at $DIR/issue_81605.rs:+1:32: +1:33
           return;                          // scope 0 at $DIR/issue_81605.rs:+2:2: +2:2
       }

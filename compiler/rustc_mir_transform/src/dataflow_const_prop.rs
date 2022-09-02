@@ -148,7 +148,6 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
     ) {
         // FIXME: The dataflow framework only provides the state if we call `apply()`, which makes
         // this more inefficient than it has to be.
-        // FIXME: Perhaps we rather need a proper unreachability flag for every block.
         let mut discr_value = None;
         let mut handled = false;
         apply_edge_effects.apply(|state, target| {
@@ -181,8 +180,8 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                 // Branch is taken. Has no effect on state.
                 handled = true;
             } else {
-                // Branch is not taken, we can flood everything with bottom.
-                state.flood_all_with(FlatSet::Bottom);
+                // Branch is not taken.
+                state.mark_unreachable();
             }
         })
     }
