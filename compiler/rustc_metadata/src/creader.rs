@@ -1,5 +1,9 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
+use crate::errors::{
+    ConflictingGlobalAlloc, CrateNotPanicRuntime, GlobalAllocRequired, NoMultipleGlobalAlloc,
+    NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime, ProfilerBuiltinsNeedsCore,
+};
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
@@ -745,15 +749,10 @@ impl<'a> CrateLoader<'a> {
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
         if !data.is_panic_runtime() {
-            self.sess.err(&format!("the crate `{}` is not a panic runtime", name));
+            self.sess.emit_err(CrateNotPanicRuntime { crate_name: name });
         }
         if data.required_panic_strategy() != Some(desired_strategy) {
-            self.sess.err(&format!(
-                "the crate `{}` does not have the panic \
-                                    strategy `{}`",
-                name,
-                desired_strategy.desc()
-            ));
+            self.sess.emit_err(NoPanicStrategy { crate_name: name, strategy: desired_strategy });
         }
 
         self.cstore.injected_panic_runtime = Some(cnum);
@@ -773,10 +772,7 @@ impl<'a> CrateLoader<'a> {
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
         if name == sym::profiler_builtins && self.sess.contains_name(&krate.attrs, sym::no_core) {
-            self.sess.err(
-                "`profiler_builtins` crate (required by compiler options) \
-                        is not compatible with crate attribute `#![no_core]`",
-            );
+            self.sess.emit_err(ProfilerBuiltinsNeedsCore);
         }
 
         let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
@@ -784,18 +780,14 @@ impl<'a> CrateLoader<'a> {
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
         if !data.is_profiler_runtime() {
-            self.sess.err(&format!("the crate `{}` is not a profiler runtime", name));
+            self.sess.emit_err(NotProfilerRuntime { crate_name: name });
         }
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
         self.cstore.has_global_allocator = match &*global_allocator_spans(&self.sess, krate) {
             [span1, span2, ..] => {
-                self.sess
-                    .struct_span_err(*span2, "cannot define multiple global allocators")
-                    .span_label(*span2, "cannot define a new global allocator")
-                    .span_label(*span1, "previous global allocator defined here")
-                    .emit();
+                self.sess.emit_err(NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
                 true
             }
             spans => !spans.is_empty(),
@@ -831,11 +823,10 @@ impl<'a> CrateLoader<'a> {
             if data.has_global_allocator() {
                 match global_allocator {
                     Some(other_crate) => {
-                        self.sess.err(&format!(
-                        "the `#[global_allocator]` in {} conflicts with global allocator in: {}",
-                        other_crate,
-                        data.name()
-                    ));
+                        self.sess.emit_err(ConflictingGlobalAlloc {
+                            crate_name: data.name(),
+                            other_crate_name: other_crate,
+                        });
                     }
                     None => global_allocator = Some(data.name()),
                 }
@@ -854,10 +845,7 @@ impl<'a> CrateLoader<'a> {
         if !self.sess.contains_name(&krate.attrs, sym::default_lib_allocator)
             && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
         {
-            self.sess.err(
-                "no global memory allocator found but one is required; link to std or add \
-                 `#[global_allocator]` to a static item that implements the GlobalAlloc trait",
-            );
+            self.sess.emit_err(GlobalAllocRequired);
         }
         self.cstore.allocator_kind = Some(AllocatorKind::Default);
     }
@@ -881,14 +869,11 @@ impl<'a> CrateLoader<'a> {
         for dep in self.cstore.crate_dependencies_in_reverse_postorder(krate) {
             let data = self.cstore.get_crate_data(dep);
             if needs_dep(&data) {
-                self.sess.err(&format!(
-                    "the crate `{}` cannot depend \
-                                        on a crate that needs {}, but \
-                                        it depends on `{}`",
-                    self.cstore.get_crate_data(krate).name(),
-                    what,
-                    data.name()
-                ));
+                self.sess.emit_err(NoTransitiveNeedsDep {
+                    crate_name: self.cstore.get_crate_data(krate).name(),
+                    needs_crate_name: what,
+                    deps_crate_name: data.name(),
+                });
             }
         }
 
