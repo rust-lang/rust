@@ -119,6 +119,7 @@
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(int_roundings)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
