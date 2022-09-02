@@ -217,6 +217,8 @@ passes_debug_visualizer_invalid = invalid argument
     .note_2 = OR
     .note_3 = expected: `gdb_script_file = "..."`
 
+passes_debug_visualizer_unreadable = couldn't read {$file}: {$error}
+
 passes_rustc_allow_const_fn_unstable = attribute should be applied to `const fn`
     .label = not a `const fn`
 

@@ -1,3 +1,5 @@
+use std::{io::Error, path::Path};
+
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::Target;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
@@ -525,6 +527,15 @@ pub struct DebugVisualizerPlacement {
 pub struct DebugVisualizerInvalid {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(passes::debug_visualizer_unreadable)]
+pub struct DebugVisualizerUnreadable<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub file: &'a Path,
+    pub error: Error,
 }
 
 #[derive(SessionDiagnostic)]
