@@ -42,6 +42,7 @@ pub trait AsRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// use std::os::fd::{AsRawFd, RawFd};
     ///
     /// let mut f = File::open("foo.txt")?;
@@ -80,6 +81,7 @@ pub trait FromRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// use std::os::fd::{FromRawFd, IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
@@ -115,6 +117,7 @@ pub trait IntoRawFd {
     /// ```no_run
     /// use std::fs::File;
     /// # use std::io;
+    /// #[cfg(any(unix, target_os = "wasi"))]
     /// use std::os::fd::{IntoRawFd, RawFd};
     ///
     /// let f = File::open("foo.txt")?;
