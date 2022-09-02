@@ -1209,6 +1209,7 @@ symbols! {
         rust_eh_unregister_frames,
         rust_oom,
         rustc,
+        rustc_access_level,
         rustc_allocator,
         rustc_allocator_nounwind,
         rustc_allocator_zeroed,

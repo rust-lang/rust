@@ -33,7 +33,7 @@ use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 use std::marker::PhantomData;
@@ -42,7 +42,8 @@ use std::{cmp, fmt, mem};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
-    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, UnnamedItemIsPrivate,
+    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, ReportAccessLevel,
+    UnnamedItemIsPrivate,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,6 +905,60 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx>
             }
         }
         ControlFlow::CONTINUE
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Visitor, used for AccessLevels table checking
+////////////////////////////////////////////////////////////////////////////////
+pub struct TestReachabilityVisitor<'tcx, 'a> {
+    tcx: TyCtxt<'tcx>,
+    access_levels: &'a AccessLevels,
+}
+
+impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
+    fn access_level_diagnostic(&mut self, def_id: LocalDefId) {
+        if self.tcx.has_attr(def_id.to_def_id(), sym::rustc_access_level) {
+            let access_level = format!("{:?}", self.access_levels.map.get(&def_id));
+            let span = self.tcx.def_span(def_id.to_def_id());
+            self.tcx.sess.emit_err(ReportAccessLevel { span, descr: access_level });
+        }
+    }
+}
+
+impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        self.access_level_diagnostic(item.def_id);
+
+        match item.kind {
+            hir::ItemKind::Enum(ref def, _) => {
+                for variant in def.variants.iter() {
+                    let variant_id = self.tcx.hir().local_def_id(variant.id);
+                    self.access_level_diagnostic(variant_id);
+                    for field in variant.data.fields() {
+                        let def_id = self.tcx.hir().local_def_id(field.hir_id);
+                        self.access_level_diagnostic(def_id);
+                    }
+                }
+            }
+            hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
+                for field in def.fields() {
+                    let def_id = self.tcx.hir().local_def_id(field.hir_id);
+                    self.access_level_diagnostic(def_id);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem<'tcx>) {
+        self.access_level_diagnostic(item.def_id);
+    }
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem<'tcx>) {
+        self.access_level_diagnostic(item.def_id);
+    }
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
+        self.access_level_diagnostic(item.def_id);
     }
 }
 
@@ -2044,6 +2099,9 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
             break;
         }
     }
+
+    let mut check_visitor = TestReachabilityVisitor { tcx, access_levels: &visitor.access_levels };
+    tcx.hir().visit_all_item_likes_in_crate(&mut check_visitor);
 
     tcx.arena.alloc(visitor.access_levels)
 }

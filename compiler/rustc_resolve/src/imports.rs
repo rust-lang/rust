@@ -1133,24 +1133,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let Some(def_id) = module.opt_def_id() {
             let mut reexports = Vec::new();
 
-            module.for_each_child(self.r, |_, ident, _, binding| {
-                // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
-                // into the crate root to actual `NameBindingKind::Import`.
-                if binding.is_import()
-                    || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
-                {
-                    let res = binding.res().expect_non_local();
-                    // Ambiguous imports are treated as errors at this point and are
-                    // not exposed to other crates (see #36837 for more details).
-                    if res != def::Res::Err && !binding.is_ambiguity() {
-                        reexports.push(ModChild {
-                            ident,
-                            res,
-                            vis: binding.vis,
-                            span: binding.span,
-                            macro_rules: false,
-                        });
-                    }
+            module.for_each_child(self.r, |this, ident, _, binding| {
+                if let Some(res) = this.is_reexport(binding) {
+                    reexports.push(ModChild {
+                        ident,
+                        res,
+                        vis: binding.vis,
+                        span: binding.span,
+                        macro_rules: false,
+                    });
                 }
             });
 

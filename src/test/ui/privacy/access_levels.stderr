@@ -1,0 +1,125 @@
+error: None
+  --> $DIR/access_levels.rs:3:23
+   |
+LL | #[rustc_access_level] mod outer {
+   |                       ^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:4:27
+   |
+LL |     #[rustc_access_level] pub mod inner {
+   |                           ^^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:6:9
+   |
+LL | /         extern "C" {
+LL | |             #[rustc_access_level] static a: u8;
+LL | |             #[rustc_access_level] pub fn b();
+LL | |         }
+   | |_________^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:11:9
+   |
+LL |         pub trait Trait {
+   |         ^^^^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:17:9
+   |
+LL |         pub struct Struct {
+   |         ^^^^^^^^^^^^^^^^^
+
+error: None
+  --> $DIR/access_levels.rs:18:35
+   |
+LL |             #[rustc_access_level] a: u8,
+   |                                   ^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:19:35
+   |
+LL |             #[rustc_access_level] pub b: u8,
+   |                                   ^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:23:9
+   |
+LL |         pub union Union {
+   |         ^^^^^^^^^^^^^^^
+
+error: None
+  --> $DIR/access_levels.rs:24:35
+   |
+LL |             #[rustc_access_level] a: u8,
+   |                                   ^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:25:35
+   |
+LL |             #[rustc_access_level] pub b: u8,
+   |                                   ^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:29:9
+   |
+LL |         pub enum Enum {
+   |         ^^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:30:35
+   |
+LL |             #[rustc_access_level] A(
+   |                                   ^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:31:39
+   |
+LL |                 #[rustc_access_level] Struct,
+   |                                       ^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:32:39
+   |
+LL |                 #[rustc_access_level] Union,
+   |                                       ^^^^^
+
+error: None
+  --> $DIR/access_levels.rs:37:27
+   |
+LL |     #[rustc_access_level] macro_rules! none_macro {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Some(Public)
+  --> $DIR/access_levels.rs:42:27
+   |
+LL |     #[rustc_access_level] macro_rules! public_macro {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:12:35
+   |
+LL |             #[rustc_access_level] const A: i32;
+   |                                   ^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:13:35
+   |
+LL |             #[rustc_access_level] type B;
+   |                                   ^^^^^^
+
+error: None
+  --> $DIR/access_levels.rs:7:35
+   |
+LL |             #[rustc_access_level] static a: u8;
+   |                                   ^^^^^^^^^^^^
+
+error: Some(Exported)
+  --> $DIR/access_levels.rs:8:35
+   |
+LL |             #[rustc_access_level] pub fn b();
+   |                                   ^^^^^^^^^^
+
+error: aborting due to 20 previous errors
+

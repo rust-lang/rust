@@ -75,6 +75,14 @@ pub struct InPublicInterface<'a> {
     pub vis_span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[diag(privacy::report_access_level)]
+pub struct ReportAccessLevel {
+    #[primary_span]
+    pub span: Span,
+    pub descr: String,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(privacy::from_private_dep_in_public_interface)]
 pub struct FromPrivateDependencyInPublicInterface<'a> {
