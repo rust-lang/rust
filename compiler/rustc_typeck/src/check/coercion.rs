@@ -631,7 +631,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         )];
 
         let mut has_unsized_tuple_coercion = false;
-        let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -644,15 +643,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let trait_pred = match bound_predicate.skip_binder() {
                 ty::PredicateKind::Trait(trait_pred) if traits.contains(&trait_pred.def_id()) => {
                     if unsize_did == trait_pred.def_id() {
-                        let self_ty = trait_pred.self_ty();
                         let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
-                        if let (ty::Dynamic(ref data_a, ..), ty::Dynamic(ref data_b, ..)) =
-                            (self_ty.kind(), unsize_ty.kind())
-                            && data_a.principal_def_id() != data_b.principal_def_id()
-                        {
-                            debug!("coerce_unsized: found trait upcasting coercion");
-                            has_trait_upcasting_coercion = Some((self_ty, unsize_ty));
-                        }
                         if let ty::Tuple(..) = unsize_ty.kind() {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
@@ -720,21 +711,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 "unsized tuple coercion is not stable enough for use and is subject to change",
             )
             .emit();
-        }
-
-        if let Some((sub, sup)) = has_trait_upcasting_coercion
-            && !self.tcx().features().trait_upcasting
-        {
-            // Renders better when we erase regions, since they're not really the point here.
-            let (sub, sup) = self.tcx.erase_regions((sub, sup));
-            let mut err = feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::trait_upcasting,
-                self.cause.span,
-                &format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
-            );
-            err.note(&format!("required when coercing `{source}` into `{target}`"));
-            err.emit();
         }
 
         Ok(coercion)

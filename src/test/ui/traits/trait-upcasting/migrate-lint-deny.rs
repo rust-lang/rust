@@ -1,4 +1,4 @@
-#![deny(deref_into_dyn_supertrait)]
+// check-pass
 
 extern crate core;
 
@@ -18,8 +18,6 @@ fn take_a(_: &dyn A) {}
 
 fn whoops(b: &dyn B) {
     take_a(b)
-    //~^ ERROR `dyn B` implements `Deref` with supertrait `(dyn A + 'static)` as output
-    //~^^ WARN this was previously accepted by the compiler but is being phased out;
 }
 
 fn main() {}

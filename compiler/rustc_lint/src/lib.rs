@@ -519,6 +519,11 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "now allowed, see issue #59159 \
          <https://github.com/rust-lang/rust/issues/59159> for more information",
     );
+    store.register_removed(
+        "deref_into_dyn_supertrait",
+        "overridden by dyn upcasting coercion, see issue #89460 \
+         <https://github.com/rust-lang/rust/issues/89460> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

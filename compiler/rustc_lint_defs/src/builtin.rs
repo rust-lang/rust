@@ -3361,7 +3361,6 @@ declare_lint_pass! {
         UNUSED_TUPLE_STRUCT_FIELDS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
-        DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
@@ -3861,51 +3860,6 @@ declare_lint! {
     pub TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
     Deny,
     "invisible directionality-changing codepoints in comment"
-}
-
-declare_lint! {
-    /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
-    /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
-    ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
-    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(deref_into_dyn_supertrait)]
-    /// #![allow(dead_code)]
-    ///
-    /// use core::ops::Deref;
-    ///
-    /// trait A {}
-    /// trait B: A {}
-    /// impl<'a> Deref for dyn 'a + B {
-    ///     type Target = dyn A;
-    ///     fn deref(&self) -> &Self::Target {
-    ///         todo!()
-    ///     }
-    /// }
-    ///
-    /// fn take_a(_: &dyn A) { }
-    ///
-    /// fn take_b(b: &dyn B) {
-    ///     take_a(b);
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
-    /// over certain other coercion rules, which will cause some behavior change.
-    pub DEREF_INTO_DYN_SUPERTRAIT,
-    Warn,
-    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
-    };
 }
 
 declare_lint! {

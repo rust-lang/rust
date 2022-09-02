@@ -7,17 +7,12 @@
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
-use crate::traits;
 use crate::traits::coherence::Conflict;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{util, SelectionResult};
 use crate::traits::{Ambiguous, ErrorReporting, Overflow, Unimplemented};
 
@@ -702,56 +697,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
-    /// Temporary migration for #89190
-    fn need_migrate_deref_output_trait_object(
-        &mut self,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        cause: &ObligationCause<'tcx>,
-    ) -> Option<(Ty<'tcx>, DefId)> {
-        let tcx = self.tcx();
-        if tcx.features().trait_upcasting {
-            return None;
-        }
-
-        // <ty as Deref>
-        let trait_ref = ty::TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
-        };
-
-        let obligation = traits::Obligation::new(
-            cause.clone(),
-            param_env,
-            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
-        );
-        if !self.infcx.predicate_may_hold(&obligation) {
-            return None;
-        }
-
-        let ty = traits::normalize_projection_type(
-            self,
-            param_env,
-            ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
-                substs: trait_ref.substs,
-            },
-            cause.clone(),
-            0,
-            // We're *intentionally* throwing these away,
-            // since we don't actually use them.
-            &mut vec![],
-        )
-        .ty()
-        .unwrap();
-
-        if let ty::Dynamic(data, ..) = ty.kind() {
-            Some((ty, data.principal_def_id()?))
-        } else {
-            None
-        }
-    }
-
     /// Searches for unsizing that might apply to `obligation`.
     fn assemble_candidates_for_unsizing(
         &mut self,
@@ -809,30 +754,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = data_a.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
-                        if let Some((deref_output_ty, deref_output_trait_did)) = self
-                            .need_migrate_deref_output_trait_object(
-                                source,
-                                obligation.param_env,
-                                &obligation.cause,
-                            )
-                        {
-                            if deref_output_trait_did == target_trait_did {
-                                self.tcx().struct_span_lint_hir(
-                                    DEREF_INTO_DYN_SUPERTRAIT,
-                                    obligation.cause.body_id,
-                                    obligation.cause.span,
-                                    |lint| {
-                                        lint.build(&format!(
-                                            "`{}` implements `Deref` with supertrait `{}` as output",
-                                            source,
-                                            deref_output_ty
-                                        )).emit();
-                                    },
-                                );
-                                return;
-                            }
-                        }
-
                         for (idx, upcast_trait_ref) in
                             util::supertraits(self.tcx(), source_trait_ref).enumerate()
                         {

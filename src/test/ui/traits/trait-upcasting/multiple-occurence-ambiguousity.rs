@@ -1,12 +1,10 @@
 // check-fail
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait Bar<T> {
     fn bar(&self, _: T) {}
 }
 
-trait Foo : Bar<i32> + Bar<u32> {
+trait Foo: Bar<i32> + Bar<u32> {
     fn foo(&self, _: ()) {}
 }
 

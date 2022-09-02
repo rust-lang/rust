@@ -1,6 +1,4 @@
 // run-pass
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 struct Test {
     func: Box<dyn FnMut() + 'static>,
