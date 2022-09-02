@@ -8,7 +8,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
@@ -219,6 +218,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     }
 
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
+        let span = self.infcx.tcx.def_span(self.universal_regions.defining_ty.def_id());
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -250,7 +250,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         self.infcx
                             .tcx
                             .sess
-                            .delay_span_bug(DUMMY_SP, &format!("failed to normalize {:?}", ty));
+                            .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                         TypeOpOutput {
                             output: self.infcx.tcx.ty_error(),
                             constraints: None,
@@ -301,8 +301,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                Locations::All(DUMMY_SP),
-                DUMMY_SP,
+                Locations::All(span),
+                span,
                 ConstraintCategory::Internal,
                 &mut self.constraints,
             )

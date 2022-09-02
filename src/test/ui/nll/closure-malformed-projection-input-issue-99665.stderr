@@ -1,0 +1,71 @@
+error: lifetime may not live long enough
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:32:5
+   |
+LL |     |_: <Ty1<&u8> as MyComponent>::Properties| {};
+   |     ^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ||
+   |     |has type `<Ty1<&'1 u8> as MyComponent>::Properties`
+   |     requires that `'1` must outlive `'static`
+
+error: higher-ranked subtype error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:32:5
+   |
+LL |     |_: <Ty1<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:32:5
+   |
+LL |     |_: <Ty1<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `&[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:32:5: 32:47]`
+
+error: higher-ranked subtype error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:39:5
+   |
+LL |     |_: <Ty2<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:39:5
+   |
+LL |     |_: <Ty2<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `&[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:39:5: 39:47]`
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:32:5
+   |
+LL |     |_: <Ty1<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:32:5: 32:47]`
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:32:5
+   |
+LL |     |_: <Ty1<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:32:5: 32:47]`
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:39:5
+   |
+LL |     |_: <Ty2<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:39:5: 39:47]`
+
+error: higher-ranked lifetime error
+  --> $DIR/closure-malformed-projection-input-issue-99665.rs:39:5
+   |
+LL |     |_: <Ty2<&u8> as MyComponent>::Properties| {};
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not normalize `[closure@$DIR/closure-malformed-projection-input-issue-99665.rs:39:5: 39:47]`
+
+error: aborting due to 9 previous errors
+
