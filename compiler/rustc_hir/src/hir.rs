@@ -202,13 +202,8 @@ impl Path<'_> {
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
     pub ident: Ident,
-    // `id` and `res` are optional. We currently only use these in save-analysis,
-    // any path segments without these will not have save-analysis info and
-    // therefore will not have 'jump to def' in IDEs, but otherwise will not be
-    // affected. (In general, we don't bother to get the defs for synthesized
-    // segments, only for segments which have come from the AST).
-    pub hir_id: Option<HirId>,
-    pub res: Option<Res>,
+    pub hir_id: HirId,
+    pub res: Res,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -226,12 +221,12 @@ pub struct PathSegment<'hir> {
 
 impl<'hir> PathSegment<'hir> {
     /// Converts an identifier to the corresponding segment.
-    pub fn from_ident(ident: Ident) -> PathSegment<'hir> {
-        PathSegment { ident, hir_id: None, res: None, infer_args: true, args: None }
+    pub fn new(ident: Ident, hir_id: HirId, res: Res) -> PathSegment<'hir> {
+        PathSegment { ident, hir_id, res, infer_args: true, args: None }
     }
 
     pub fn invalid() -> Self {
-        Self::from_ident(Ident::empty())
+        Self::new(Ident::empty(), HirId::INVALID, Res::Err)
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {

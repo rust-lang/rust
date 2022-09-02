@@ -1,6 +1,5 @@
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -179,15 +178,12 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 return None;
             };
 
-            // Try to use the segment resolution if it is valid, otherwise we
-            // default to the path resolution.
-            let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-            let generics = match tcx.res_generics_def_id(res) {
+            let generics = match tcx.res_generics_def_id(segment.res) {
                 Some(def_id) => tcx.generics_of(def_id),
                 None => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(def_id),
-                        &format!("unexpected anon const res {:?} in path: {:?}", res, path),
+                        &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                     return None;
                 }
