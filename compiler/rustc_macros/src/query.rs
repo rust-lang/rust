@@ -255,7 +255,7 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
             }
 
             const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
+                = Some(crate::plumbing::try_load_from_disk::<Self::Value>);
         }
     } else {
         quote! {
