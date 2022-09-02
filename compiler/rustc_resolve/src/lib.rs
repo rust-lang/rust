@@ -2020,6 +2020,24 @@ impl<'a> Resolver<'a> {
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
+
+    // Items that go to reexport table encoded to metadata and visible through it to other crates.
+    fn is_reexport(&self, binding: &NameBinding<'a>) -> Option<def::Res<!>> {
+        // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+        // into the crate root to actual `NameBindingKind::Import`.
+        if binding.is_import()
+            || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+        {
+            let res = binding.res().expect_non_local();
+            // Ambiguous imports are treated as errors at this point and are
+            // not exposed to other crates (see #36837 for more details).
+            if res != def::Res::Err && !binding.is_ambiguity() {
+                return Some(res);
+            }
+        }
+
+        return None;
+    }
 }
 
 fn names_to_string(names: &[Symbol]) -> String {
