@@ -193,6 +193,8 @@ pub trait ValueAnalysis<'tcx> {
         Self::Value::top()
     }
 
+    /// The effect of a successful function call return should not be
+    /// applied here, see [`Analysis::apply_terminator_effect`].
     fn handle_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
         self.super_terminator(terminator, state)
     }
@@ -267,6 +269,8 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
     }
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
+        // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
+        // This utilizes that reading from an uninitialized place is UB.
         assert!(matches!(state.0, StateData::Unreachable));
         let values = IndexVec::from_elem_n(T::Value::bottom(), self.0.map().value_count);
         *state = State(StateData::Reachable(values));
@@ -325,20 +329,38 @@ where
 }
 
 rustc_index::newtype_index!(
+    /// This index uniquely identifies a place.
+    ///
+    /// Not every place has a `PlaceIndex`, and not every `PlaceIndex` correspondends to a tracked
+    /// place. However, every tracked place and all places along its projection have a `PlaceIndex`.
     pub struct PlaceIndex {}
 );
 
 rustc_index::newtype_index!(
+    /// This index uniquely identifies a tracked place and therefore a slot in [`State`].
+    ///
+    /// It is an implementation detail of this module.
     struct ValueIndex {}
 );
 
+/// See [`State`].
 #[derive(PartialEq, Eq, Clone, Debug)]
 enum StateData<V> {
     Reachable(IndexVec<ValueIndex, V>),
     Unreachable,
 }
 
-/// All operations on unreachable states are ignored.
+/// The dataflow state for an instance of [`ValueAnalysis`].
+///
+/// Every instance specifies a lattice that represents the possible values of a single tracked
+/// place. If we call this lattice `V` and set set of tracked places `P`, then a [`State`] is an
+/// element of `{unreachable} ∪ (P -> V)`. This again forms a lattice, where the bottom element is
+/// `unreachable` and the top element is the mapping `p ↦ ⊤`. Note that the mapping `p ↦ ⊥` is not
+/// the bottom element (because joining an unreachable and any other reachable state yields a
+/// reachable state). All operations on unreachable states are ignored.
+///
+/// Flooding means assigning a value (by default `⊤`) to all tracked projections of a given place.
+/// Assigning a place (or reference thereof) to another place assumes that
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct State<V>(StateData<V>);
 
@@ -383,8 +405,13 @@ impl<V: Clone + HasTop> State<V> {
         self.flood_idx_with(place, map, V::top())
     }
 
+    /// This method assumes that the given places are not overlapping, and that we can therefore
+    /// copy all entries one after another.
     pub fn assign_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map) {
         let StateData::Reachable(values) = &mut self.0 else { return };
+        // If both places are tracked, we copy the value to the target. If the target is tracked,
+        // but the source is not, we have to invalidate the value in target. If the target is not
+        // tracked, then we don't have to do anything.
         if let Some(target_value) = map.places[target].value_index {
             if let Some(source_value) = map.places[source].value_index {
                 values[target_value] = values[source_value].clone();
@@ -393,7 +420,7 @@ impl<V: Clone + HasTop> State<V> {
             }
         }
         for target_child in map.children(target) {
-            // Try to find corresponding child in source.
+            // Try to find corresponding child and recurse. Reasoning is similar as above.
             let projection = map.places[target_child].proj_elem.unwrap();
             if let Some(source_child) = map.projections.get(&(source, projection)) {
                 self.assign_place_idx(target_child, *source_child, map);
