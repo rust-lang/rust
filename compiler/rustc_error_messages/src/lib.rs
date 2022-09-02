@@ -53,6 +53,7 @@ fluent_messages! {
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     query_system => "../locales/en-US/query_system.ftl",
+    trait_selection => "../locales/en-US/trait_selection.ftl",
     save_analysis => "../locales/en-US/save_analysis.ftl",
     ty_utils => "../locales/en-US/ty_utils.ftl",
     typeck => "../locales/en-US/typeck.ftl",
