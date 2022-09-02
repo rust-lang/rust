@@ -324,11 +324,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
             ty::Slice(..) | ty::Str => {
-                let _len = try_validation!(
-                    meta.unwrap_meta().to_machine_usize(self.ecx),
-                    self.path,
-                    err_unsup!(ReadPointerAsBytes) => { "non-integer slice length in wide pointer" },
-                );
+                let _len = meta.unwrap_meta().to_machine_usize(self.ecx)?;
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
                 // "dereferenceable" check performed by Stacked Borrows.
@@ -348,11 +344,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: &OpTy<'tcx, M::Provenance>,
         kind: &str,
     ) -> InterpResult<'tcx> {
-        let value = try_validation!(
-            self.ecx.read_immediate(value),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
-        );
+        let value = self.ecx.read_immediate(value)?;
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         let place = try_validation!(
@@ -458,22 +450,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<M::Provenance>> {
-        Ok(try_validation!(
-            self.ecx.read_scalar(op),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
-        ))
+        self.ecx.read_scalar(op)
     }
 
     fn read_immediate_forced(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
-        Ok(*try_validation!(
-            self.ecx.read_immediate_raw(op, /*force*/ true),
-            self.path,
-            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
-        ).unwrap())
+        Ok(*self.ecx.read_immediate_raw(op, /*force*/ true)?.unwrap())
     }
 
     /// Check if this is a value of primitive type, and if yes check the validity of the value
@@ -535,7 +519,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.ecx.read_immediate(value).and_then(|ref i| self.ecx.ref_to_mplace(i)),
                     self.path,
                     err_ub!(InvalidUninitBytes(None)) => { "uninitialized raw pointer" },
-                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
                 );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -560,7 +543,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = try_validation!(
                     self.ecx.read_scalar(value).and_then(|v| v.check_init()),
                     self.path,
-                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
                     err_ub!(InvalidUninitBytes(None)) => { "uninitialized bytes" } expected { "a proper pointer or integer value" },
                 );
 
@@ -715,8 +697,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     { "{:x}", val } expected { "a valid enum tag" },
                 err_ub!(InvalidUninitBytes(None)) =>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
-                err_unsup!(ReadPointerAsBytes) =>
-                    { "a pointer" } expected { "a valid enum tag" },
             )
             .1)
         })
@@ -853,7 +833,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.ecx.read_bytes_ptr(mplace.ptr, Size::from_bytes(len)),
                     self.path,
                     err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
-                    err_unsup!(ReadPointerAsBytes) => { "a pointer in `str`" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
@@ -925,9 +904,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                                 throw_validation_failure!(self.path, { "uninitialized bytes" })
                             }
-                            err_unsup!(ReadPointerAsBytes) => {
-                                throw_validation_failure!(self.path, { "a pointer" } expected { "plain (non-pointer) bytes" })
-                            }
 
                             // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
@@ -968,14 +944,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(()) => Ok(()),
             // Pass through validation failures.
             Err(err) if matches!(err.kind(), err_ub!(ValidationFailure { .. })) => Err(err),
-            // Also pass through InvalidProgram, those just indicate that we could not
-            // validate and each caller will know best what to do with them.
-            Err(err) if matches!(err.kind(), InterpError::InvalidProgram(_)) => Err(err),
-            // Avoid other errors as those do not show *where* in the value the issue lies.
-            Err(err) => {
+            // Complain about any other kind of UB error -- those are bad because we'd like to
+            // report them in a way that shows *where* in the value the issue lies.
+            Err(err) if matches!(err.kind(), InterpError::UndefinedBehavior(_)) => {
                 err.print_backtrace();
-                bug!("Unexpected error during validation: {}", err);
+                bug!("Unexpected Undefined Behavior error during validation: {}", err);
             }
+            // Pass through everything else.
+            Err(err) => Err(err),
         }
     }
 
