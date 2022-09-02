@@ -758,6 +758,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
+    rustc_attr!(TEST, rustc_access_level, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
