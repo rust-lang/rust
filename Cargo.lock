@@ -2737,13 +2737,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "profiler_builtins"
-version = "0.0.0"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "psm"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4682,7 +4675,6 @@ dependencies = [
  "object 0.26.2",
  "panic_abort",
  "panic_unwind",
- "profiler_builtins",
  "rand 0.7.3",
  "rustc-demangle",
  "std_detect",

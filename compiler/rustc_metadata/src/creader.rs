@@ -764,6 +764,7 @@ impl<'a> CrateLoader<'a> {
             || !(self.sess.instrument_coverage()
                 || self.sess.opts.unstable_opts.profile
                 || self.sess.opts.cg.profile_generate.enabled())
+            || self.sess.opts.unstable_opts.profiler_runtime == "profiler_builtins"
         {
             return;
         }

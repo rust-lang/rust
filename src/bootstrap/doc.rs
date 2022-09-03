@@ -709,9 +709,9 @@ impl Step for Rustc {
             paths.into_iter().map(|p| builder.crate_paths[p]).collect()
         };
         // Find dependencies for top level crates.
-        let compiler_crates = root_crates.iter().flat_map(|krate| {
-            builder.in_tree_crates(krate, Some(target)).into_iter().map(|krate| krate.name)
-        });
+        let compiler_crates = root_crates
+            .iter()
+            .flat_map(|krate| builder.in_tree_crates(krate).into_iter().map(|krate| krate.name));
 
         let mut to_open = None;
         for krate in compiler_crates {

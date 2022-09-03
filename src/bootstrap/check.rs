@@ -152,7 +152,7 @@ impl Step for Std {
         // Explicitly pass -p for all dependencies krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        for krate in builder.in_tree_crates("test", Some(target)) {
+        for krate in builder.in_tree_crates("test") {
             cargo.arg("-p").arg(krate.name);
         }
 
@@ -228,7 +228,7 @@ impl Step for Rustc {
         // Explicitly pass -p for all compiler krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
         // than just the leaf crate.
-        for krate in builder.in_tree_crates("rustc-main", Some(target)) {
+        for krate in builder.in_tree_crates("rustc-main") {
             cargo.arg("-p").arg(krate.name);
         }
 

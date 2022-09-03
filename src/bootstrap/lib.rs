@@ -1368,7 +1368,7 @@ impl Build {
     /// Returns a Vec of all the dependencies of the given root crate,
     /// including transitive dependencies and the root itself. Only includes
     /// "local" crates (those in the local source tree, not from a registry).
-    fn in_tree_crates(&self, root: &str, target: Option<TargetSelection>) -> Vec<&Crate> {
+    fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
         let mut ret = Vec::new();
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
@@ -1386,10 +1386,6 @@ impl Build {
                 // the future, we may want to consider just filtering all
                 // build and dev dependencies in metadata::build.
                 if visited.insert(dep)
-                    && (dep != "profiler_builtins"
-                        || target
-                            .map(|t| self.config.profiler_enabled(t))
-                            .unwrap_or_else(|| self.config.any_profiler_enabled()))
                     && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
                 {
                     list.push(*dep);

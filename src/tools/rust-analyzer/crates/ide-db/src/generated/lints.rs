@@ -3726,15 +3726,6 @@ The tracking issue for this feature is: [#42524](https://github.com/rust-lang/ru
 "##,
     },
     Lint {
-        label: "profiler_runtime_lib",
-        description: r##"# `profiler_runtime_lib`
-
-This feature is internal to the Rust compiler and is not intended for general use.
-
-------------------------
-"##,
-    },
-    Lint {
         label: "raw_dylib",
         description: r##"# `raw_dylib`
 

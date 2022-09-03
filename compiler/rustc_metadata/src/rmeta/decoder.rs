@@ -1509,7 +1509,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     "proc_macro",
                                     "panic_abort",
                                     "panic_unwind",
-                                    "profiler_builtins",
                                     "rtstartup",
                                     "rustc-std-workspace-core",
                                     "rustc-std-workspace-alloc",

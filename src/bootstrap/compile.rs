@@ -327,8 +327,6 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-        // Note that `libprofiler_builtins/build.rs` also computes this so if
-        // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
         " compiler-builtins-c"
     } else {
@@ -617,7 +615,7 @@ impl Step for Rustc {
     const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let mut crates = run.builder.in_tree_crates("rustc-main", None);
+        let mut crates = run.builder.in_tree_crates("rustc-main");
         for (i, krate) in crates.iter().enumerate() {
             if krate.name == "rustc-main" {
                 crates.swap_remove(i);

@@ -94,7 +94,7 @@
     -Z                           no-leak-check=val -- disable the 'leak check' for subtyping; unsound, but useful for tests
     -Z                                 no-link=val -- compile without linking
     -Z                        no-parallel-llvm=val -- run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)
-    -Z                     no-profiler-runtime=val -- prevent automatic injection of the profiler_builtins crate
+    -Z                     no-profiler-runtime=val -- prevent automatic injection of the profiler runtime
     -Z                 no-unique-section-names=val -- do not use unique names for text and data sections when -Z function-sections is used
     -Z                          normalize-docs=val -- normalize associated items in rustdoc when generating documentation
     -Z                                     oom=val -- panic strategy for out-of-memory handling
@@ -123,7 +123,7 @@
     -Z                        profile-closures=val -- profile size of closures
     -Z                            profile-emit=val -- file path to emit profiling data at runtime when using 'profile' (default based on relative source path)
     -Z                      profile-sample-use=val -- use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)
-    -Z                        profiler-runtime=val -- name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)
+    -Z                        profiler-runtime=val -- name of the profiler runtime crate to automatically inject
     -Z                         query-dep-graph=val -- enable queries of the dependency graph for regression testing (default: no)
     -Z                        randomize-layout=val -- randomize the layout of types (default: no)
     -Z                   relax-elf-relocations=val -- whether ELF relocations can be relaxed

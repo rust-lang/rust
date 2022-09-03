@@ -578,7 +578,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         profiler_runtime, Normal, template!(Word), WarnFollowing,
-        "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
+        "the `#[profiler_runtime]` attribute is used to identify the crate \
         which contains the profiler runtime and will never be stable",
     ),
 

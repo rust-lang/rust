@@ -17,7 +17,6 @@ panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
 libc = { version = "0.2.126", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.73" }
-profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.12", default-features = false, features = ['rustc-dep-of-std'] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
@@ -57,7 +56,7 @@ backtrace = [
 gimli-symbolize = []
 
 panic-unwind = ["panic_unwind"]
-profiler = ["profiler_builtins"]
+profiler = []
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
 compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
