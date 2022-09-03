@@ -3069,3 +3069,17 @@ fn main() {
         "#,
     );
 }
+
+#[test]
+fn nested_break() {
+    check_no_mismatches(
+        r#"
+fn func() {
+    let int = loop {
+        break 0;
+        break (break 0);
+    };
+}
+    "#,
+    );
+}
