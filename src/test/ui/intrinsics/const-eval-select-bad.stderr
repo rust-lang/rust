@@ -6,7 +6,7 @@ LL |     const_eval_select((), || {}, || {});
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `~const FnOnce<()>` is not implemented for `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`
+   = help: the trait `~const FnOnce<()>` is not implemented for closure `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`
 note: the trait `FnOnce<()>` is implemented for `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`, but that implementation is not `const`
   --> $DIR/const-eval-select-bad.rs:7:27
    |

@@ -9,7 +9,7 @@ LL |     bar(foo);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Future` is not implemented for `fn() -> impl Future<Output = ()> {foo}`
+   = help: the trait `Future` is not implemented for fn item `fn() -> impl Future<Output = ()> {foo}`
    = note: fn() -> impl Future<Output = ()> {foo} must be a future or must implement `IntoFuture` to be awaited
 note: required by a bound in `bar`
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:7:16
@@ -31,7 +31,7 @@ LL |     bar(async_closure);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Future` is not implemented for `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:33]`
+   = help: the trait `Future` is not implemented for closure `[closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:33]`
    = note: [closure@$DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:11:25: 11:33] must be a future or must implement `IntoFuture` to be awaited
 note: required by a bound in `bar`
   --> $DIR/async-fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:7:16

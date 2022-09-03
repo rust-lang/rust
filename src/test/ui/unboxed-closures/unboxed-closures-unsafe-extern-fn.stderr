@@ -6,7 +6,7 @@ LL |     let x = call_it(&square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for fn item `for<'r> unsafe fn(&'r isize) -> isize {square}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `call_it`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:9:15
@@ -22,7 +22,7 @@ LL |     let y = call_it_mut(&mut square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for fn item `for<'r> unsafe fn(&'r isize) -> isize {square}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `call_it_mut`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:12:19
@@ -38,7 +38,7 @@ LL |     let z = call_it_once(square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for `for<'r> unsafe fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for fn item `for<'r> unsafe fn(&'r isize) -> isize {square}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `call_it_once`
   --> $DIR/unboxed-closures-unsafe-extern-fn.rs:15:20
