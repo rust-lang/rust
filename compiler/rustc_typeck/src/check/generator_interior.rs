@@ -408,8 +408,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
-            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
-            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+            let parent_expr = self
+                .fcx
+                .tcx
+                .hir()
+                .parent_iter(expr.hir_id)
+                .find(|(_, node)| matches!(node, hir::Node::Expr(_)))
+                .map(|(id, _)| id);
+            debug!("parent_expr: {:?}", parent_expr);
+            match parent_expr {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
                 None => {
                     self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
