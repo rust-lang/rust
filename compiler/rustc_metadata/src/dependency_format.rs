@@ -52,6 +52,10 @@
 //! than finding a number of solutions (there are normally quite a few).
 
 use crate::creader::CStore;
+use crate::errors::{
+    BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
+    RequiredPanicStrategy, RlibRequired, TwoPanicRuntimes,
+};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
@@ -136,11 +140,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 if src.rlib.is_some() {
                     continue;
                 }
-                sess.err(&format!(
-                    "crate `{}` required to be available in rlib format, \
-                                   but was not found in this form",
-                    tcx.crate_name(cnum)
-                ));
+                sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
             }
             return Vec::new();
         }
@@ -224,12 +224,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                sess.err(&format!(
-                    "crate `{}` required to be available in {} format, \
-                                   but was not found in this form",
-                    tcx.crate_name(cnum),
-                    kind
-                ));
+                sess.emit_err(LibRequired { crate_name: tcx.crate_name(cnum), kind: kind });
             }
         }
     }
@@ -253,17 +248,7 @@ fn add_library(
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                tcx.sess
-                    .struct_err(&format!(
-                        "cannot satisfy dependencies so `{}` only \
-                                              shows up once",
-                        tcx.crate_name(cnum)
-                    ))
-                    .help(
-                        "having upstream crates all available in one format \
-                           will likely make this go away",
-                    )
-                    .emit();
+                tcx.sess.emit_err(CrateDepMultiple { crate_name: tcx.crate_name(cnum) });
             }
         }
         None => {
@@ -360,11 +345,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             if let Some((prev, _)) = panic_runtime {
                 let prev_name = tcx.crate_name(prev);
                 let cur_name = tcx.crate_name(cnum);
-                sess.err(&format!(
-                    "cannot link together two \
-                                   panic runtimes: {} and {}",
-                    prev_name, cur_name
-                ));
+                sess.emit_err(TwoPanicRuntimes { prev_name, cur_name });
             }
             panic_runtime = Some((
                 cnum,
@@ -384,13 +365,10 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
         // First up, validate that our selected panic runtime is indeed exactly
         // our same strategy.
         if found_strategy != desired_strategy {
-            sess.err(&format!(
-                "the linked panic runtime `{}` is \
-                               not compiled with this crate's \
-                               panic strategy `{}`",
-                tcx.crate_name(runtime_cnum),
-                desired_strategy.desc()
-            ));
+            sess.emit_err(BadPanicStrategy {
+                runtime: tcx.crate_name(runtime_cnum),
+                strategy: desired_strategy,
+            });
         }
 
         // Next up, verify that all other crates are compatible with this panic
@@ -407,28 +385,19 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             }
 
             if let Some(found_strategy) = tcx.required_panic_strategy(cnum) && desired_strategy != found_strategy {
-                sess.err(&format!(
-                    "the crate `{}` requires \
-                               panic strategy `{}` which is \
-                               incompatible with this crate's \
-                               strategy of `{}`",
-                    tcx.crate_name(cnum),
-                    found_strategy.desc(),
-                    desired_strategy.desc()
-                ));
+                sess.emit_err(RequiredPanicStrategy {
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy,
+                    desired_strategy});
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
             if tcx.sess.opts.unstable_opts.panic_in_drop != found_drop_strategy {
-                sess.err(&format!(
-                    "the crate `{}` is compiled with the \
-                               panic-in-drop strategy `{}` which is \
-                               incompatible with this crate's \
-                               strategy of `{}`",
-                    tcx.crate_name(cnum),
-                    found_drop_strategy.desc(),
-                    tcx.sess.opts.unstable_opts.panic_in_drop.desc()
-                ));
+                sess.emit_err(IncompatiblePanicInDropStrategy {
+                    crate_name: tcx.crate_name(cnum),
+                    found_strategy: found_drop_strategy,
+                    desired_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
+                });
             }
         }
     }
