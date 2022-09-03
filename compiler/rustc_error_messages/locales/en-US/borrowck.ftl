@@ -203,3 +203,16 @@ borrowck_type_not_impl_Copy =
     {$move_prefix}move occurs because {$place_desc} has type `{$ty}`, which does not implement the `Copy` trait
 borrowck_outlive_constraint_need_borrow_lasts =
     {$category}requires that `{$borrow_desc}` lasts for `{$region_name}`
+borrowck_require_mutable_binding =
+    calling `{$place}` requires mutable binding due to {$reason}
+borrowck_cannot_act =
+    cannot {$act}
+borrowck_expects_fnmut_not_fn =
+    change this to accept `FnMut` instead of `Fn`
+borrowck_expects_fn_not_fnmut =
+    expects `Fn` instead of `FnMut`
+borrowck_empty_label = {""}
+borrowck_in_this_closure =
+    in this closure
+borrowck_return_fnmut =
+    change this to return `FnMut` instead of `Fn`

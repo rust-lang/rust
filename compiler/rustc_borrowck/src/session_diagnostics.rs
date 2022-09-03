@@ -407,6 +407,17 @@ pub(crate) enum ClosureCannotAgain {
 }
 
 #[derive(SessionSubdiagnostic)]
+pub(crate) enum ShowMutatingUpvar {
+    #[label(borrowck::require_mutable_binding)]
+    RequireMutableBinding {
+        place: String,
+        reason: String,
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(SessionSubdiagnostic)]
 pub(crate) enum CaptureCausedBy<'a> {
     #[label(borrowck::moved_by_call)]
     Call {
@@ -483,4 +494,39 @@ pub(crate) enum NotImplCopy<'a, 'tcx> {
     },
     #[note(borrowck::type_not_impl_Copy)]
     Note { place_desc: &'a str, ty: Ty<'tcx>, move_prefix: &'a str },
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum FnMutBumpFn<'a> {
+    #[label(borrowck::cannot_act)]
+    Cannot {
+        act: &'a str,
+        #[primary_span]
+        sp: Span,
+    },
+    #[label(borrowck::expects_fnmut_not_fn)]
+    AcceptFnMut {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::expects_fn_not_fnmut)]
+    AcceptFn {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::empty_label)]
+    EmptyLabel {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::in_this_closure)]
+    Here {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::return_fnmut)]
+    ReturnFnMut {
+        #[primary_span]
+        span: Span,
+    },
 }

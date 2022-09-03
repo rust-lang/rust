@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{
     Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
 };
@@ -19,6 +22,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::diagnostics::BorrowedContentSource;
+use crate::session_diagnostics::{FnMutBumpFn, ShowMutatingUpvar};
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
 
@@ -864,14 +868,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } else {
                 bug!("not an upvar")
             };
-            err.span_label(
-                *span,
-                format!(
-                    "calling `{}` requires mutable binding due to {}",
-                    self.describe_place(the_place_err).unwrap(),
-                    reason
-                ),
-            );
+            let place = self.describe_place(the_place_err).unwrap();
+            let sub_label = ShowMutatingUpvar::RequireMutableBinding { place, reason, span: *span };
+            err.subdiagnostic(sub_label);
         }
     }
 
@@ -969,7 +968,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
-        err.span_label(sp, format!("cannot {act}"));
+        err.subdiagnostic(FnMutBumpFn::Cannot { act, sp });
 
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
@@ -1022,9 +1021,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     _ => None,
                 };
                 if let Some(span) = arg {
-                    err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
-                    err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    err.span_label(self.body.span, "in this closure");
+                    err.subdiagnostic(FnMutBumpFn::AcceptFnMut { span });
+                    err.subdiagnostic(FnMutBumpFn::AcceptFn { span: func.span });
+                    err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                     look_at_return = false;
                 }
             }
@@ -1045,12 +1044,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    err.span_label(ident.span, "");
-                    err.span_label(
-                        sig.decl.output.span(),
-                        "change this to return `FnMut` instead of `Fn`",
-                    );
-                    err.span_label(self.body.span, "in this closure");
+                    err.subdiagnostic(FnMutBumpFn::EmptyLabel { span: ident.span });
+                    err.subdiagnostic(FnMutBumpFn::ReturnFnMut { span: sig.decl.output.span() });
+                    err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                 }
                 _ => {}
             }
