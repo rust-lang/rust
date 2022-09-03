@@ -382,36 +382,35 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Never.intern(Interner)
             }
             Expr::Break { expr, label } => {
-                let mut coerce = match find_breakable(&mut self.breakables, label.as_ref()) {
-                    Some(ctxt) => {
-                        // avoiding the borrowck
-                        mem::replace(
-                            &mut ctxt.coerce,
-                            CoerceMany::new(self.result.standard_types.unknown.clone()),
-                        )
-                    }
-                    None => CoerceMany::new(self.result.standard_types.unknown.clone()),
-                };
-
                 let val_ty = if let Some(expr) = *expr {
                     self.infer_expr(expr, &Expectation::none())
                 } else {
                     TyBuilder::unit()
                 };
 
-                // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
-                coerce.coerce(self, *expr, &val_ty);
+                match find_breakable(&mut self.breakables, label.as_ref()) {
+                    Some(ctxt) => {
+                        // avoiding the borrowck
+                        let mut coerce = mem::replace(
+                            &mut ctxt.coerce,
+                            CoerceMany::new(self.result.standard_types.unknown.clone()),
+                        );
 
-                if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
-                    ctxt.coerce = coerce;
-                    ctxt.may_break = true;
-                } else {
-                    self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
-                        expr: tgt_expr,
-                        is_break: true,
-                    });
-                };
+                        // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
+                        coerce.coerce(self, *expr, &val_ty);
 
+                        let ctxt = find_breakable(&mut self.breakables, label.as_ref())
+                            .expect("breakable stack changed during coercion");
+                        ctxt.coerce = coerce;
+                        ctxt.may_break = true;
+                    }
+                    None => {
+                        self.push_diagnostic(InferenceDiagnostic::BreakOutsideOfLoop {
+                            expr: tgt_expr,
+                            is_break: true,
+                        });
+                    }
+                }
                 TyKind::Never.intern(Interner)
             }
             Expr::Return { expr } => {
