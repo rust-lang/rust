@@ -1,0 +1,10 @@
+// This test ensures that the "item-info" looks about the same
+// whether or not it's inside a toggle.
+goto: file://|DOC_PATH|/lib2/struct.ItemInfoAlignmentTest.html
+
+// First, we try it in "desktop" mode.
+size: (1200, 870)
+compare-elements-position: (".impl-items > .item-info", "summary > .item-info", ("x"))
+// Next, we try it in "mobile" mode (max-width: 700px).
+size: (650, 650)
+compare-elements-position: (".impl-items > .item-info", "summary > .item-info", ("x"))
