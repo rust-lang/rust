@@ -1,4 +1,5 @@
 use super::{ForceCollect, Parser, PathStyle, TrailingToken};
+use crate::parser::diagnostics::RemoveLet;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -320,7 +321,13 @@ impl<'a> Parser<'a> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
         maybe_whole!(self, NtPat, |x| x);
 
-        let lo = self.token.span;
+        let mut lo = self.token.span;
+
+        if self.token.is_keyword(kw::Let) && self.look_ahead(1, |tok| tok.can_begin_pattern()) {
+            self.bump();
+            self.sess.emit_err(RemoveLet { span: lo });
+            lo = self.token.span;
+        }
 
         let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
             self.parse_pat_deref(expected)?

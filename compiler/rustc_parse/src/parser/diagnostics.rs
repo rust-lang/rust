@@ -705,6 +705,14 @@ pub(crate) struct LeftArrowOperator {
     pub span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[diag(parser::remove_let)]
+pub(crate) struct RemoveLet {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
