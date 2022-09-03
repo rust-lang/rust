@@ -2098,7 +2098,7 @@ impl Enum {
 
 #[derive(Clone, Debug)]
 pub(crate) enum Variant {
-    CLike,
+    CLike(Option<Discriminant>),
     Tuple(Vec<Item>),
     Struct(VariantStruct),
 }
@@ -2107,9 +2107,17 @@ impl Variant {
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match *self {
             Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
-            Self::CLike | Self::Tuple(_) => None,
+            Self::CLike(..) | Self::Tuple(_) => None,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Discriminant {
+    // In the case of cross crate re-exports, we don't have the nessesary information
+    // to reconstruct the expression of the discriminant, only the value.
+    pub(crate) expr: Option<String>,
+    pub(crate) value: String,
 }
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
@@ -2338,7 +2346,7 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id)
+                print_evaluated_const(tcx, def_id, true)
             }
         }
     }
