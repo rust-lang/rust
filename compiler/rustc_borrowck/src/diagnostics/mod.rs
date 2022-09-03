@@ -22,6 +22,8 @@ use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
+use crate::session_diagnostics::ClosureCannotAgain;
+
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 
@@ -119,14 +121,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if let Some((span, hir_place)) =
                             self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                         {
-                            diag.span_note(
-                                *span,
-                                &format!(
-                                    "closure cannot be invoked more than once because it moves the \
-                                    variable `{}` out of its environment",
-                                    ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
-                                ),
-                            );
+                            diag.subdiagnostic(ClosureCannotAgain::Invoke {
+                                place: ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                                span: *span,
+                            });
                             return;
                         }
                     }
@@ -143,14 +141,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let Some((span, hir_place)) =
                     self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                 {
-                    diag.span_note(
-                        *span,
-                        &format!(
-                            "closure cannot be moved more than once as it is not `Copy` due to \
-                             moving the variable `{}` out of its environment",
-                            ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
-                        ),
-                    );
+                    diag.subdiagnostic(ClosureCannotAgain::Move {
+                        place: ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
+                        span: *span,
+                    });
                 }
             }
         }

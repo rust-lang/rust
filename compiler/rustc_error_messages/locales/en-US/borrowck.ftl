@@ -138,3 +138,9 @@ borrowck_outlive_constraint_need_borrow_for =
 
 borrowck_consider_add_lifetime_bound =
     consider adding the following bound: `{$fr_name}: {$outlived_fr_name}`
+
+borrowck_closure_cannot_invoke_again =
+    closure cannot be invoked more than once because it moves the variable `{$place}` out of its environment
+
+borrowck_closure_cannot_move_again =
+    closure cannot be moved more than once as it is not `Copy` due to moving the variable `{$place}` out of its environment

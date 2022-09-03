@@ -343,3 +343,19 @@ pub(crate) enum OnLifetimeBound<'a> {
     #[help(borrowck::consider_add_lifetime_bound)]
     Add { fr_name: &'a RegionName, outlived_fr_name: &'a RegionName },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum ClosureCannotAgain {
+    #[note(borrowck::closure_cannot_invoke_again)]
+    Invoke {
+        place: String,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::closure_cannot_move_again)]
+    Move {
+        place: String,
+        #[primary_span]
+        span: Span,
+    },
+}
