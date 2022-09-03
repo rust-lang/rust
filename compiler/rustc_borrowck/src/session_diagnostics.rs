@@ -158,8 +158,6 @@ pub(crate) enum RequireStaticErr {
     },
 }
 
-//move_errors.rs
-
 #[derive(SessionSubdiagnostic)]
 pub(crate) enum AddMoveErr {
     #[label(borrowck::data_moved_here)]
@@ -175,7 +173,6 @@ pub(crate) enum AddMoveErr {
     #[note(borrowck::moved_var_cannot_copy)]
     MovedNotCopy {},
 }
-//explain_borrow.rs
 
 #[derive(SessionSubdiagnostic)]
 pub(crate) enum BorrowUsedHere {
