@@ -70,6 +70,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .is_err()
                     {
                         err.downgrade_to_delayed_bug();
+                    } else {
+                        // Otherwise, it's valid to suggest dereferencing the LHS here.
+                        err.span_suggestion_verbose(
+                            lhs.span.shrink_to_lo(),
+                            "consider dereferencing the left-hand side of this operation",
+                            "*",
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                 }
             }
