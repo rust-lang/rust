@@ -31,16 +31,6 @@ fn test_parse_next_component() {
         parse_next_component(OsStr::new(r"servershare"), false),
         (OsStr::new(r"servershare"), OsStr::new(""))
     );
-
-    assert_eq!(
-        parse_next_component(OsStr::new(r"server/\//\/\\\\/////\/share"), false),
-        (OsStr::new(r"server"), OsStr::new(r"share"))
-    );
-
-    assert_eq!(
-        parse_next_component(OsStr::new(r"server\\\\\\\\\\\\\\share"), true),
-        (OsStr::new(r"server"), OsStr::new(r"\\\\\\\\\\\\\share"))
-    );
 }
 
 #[test]
@@ -125,4 +115,23 @@ fn test_windows_prefix_components() {
     let drive = components.next().expect("drive is expected here");
     assert_eq!(drive.as_os_str(), OsStr::new("C:"));
     assert_eq!(components.as_path(), Path::new(""));
+}
+
+/// See #101358.
+///
+/// Note that the exact behaviour here may change in the future.
+/// In which case this test will need to adjusted.
+#[test]
+fn broken_unc_path() {
+    use crate::path::Component;
+
+    let mut components = Path::new(r"\\foo\\bar\\").components();
+    assert_eq!(components.next(), Some(Component::RootDir));
+    assert_eq!(components.next(), Some(Component::Normal("foo".as_ref())));
+    assert_eq!(components.next(), Some(Component::Normal("bar".as_ref())));
+
+    let mut components = Path::new("//foo//bar//").components();
+    assert_eq!(components.next(), Some(Component::RootDir));
+    assert_eq!(components.next(), Some(Component::Normal("foo".as_ref())));
+    assert_eq!(components.next(), Some(Component::Normal("bar".as_ref())));
 }
