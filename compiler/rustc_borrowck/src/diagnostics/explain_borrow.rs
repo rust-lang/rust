@@ -23,7 +23,6 @@ use crate::session_diagnostics::{
     BorrowLaterBorrowUsedLaterInLoop, BorrowUsedHere, BorrowUsedLater, BorrowUsedLaterInLoop,
     MustValidFor, UsedLaterDropped,
 };
-use crate::session_diagnostics::{BorrowUsedHere, BorrowUsedLater};
 use crate::{
     borrow_set::BorrowData, nll::ConstraintDescription, region_infer::Cause, MirBorrowckCtxt,
     WriteKind,
