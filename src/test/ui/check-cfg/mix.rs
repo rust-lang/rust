@@ -3,7 +3,7 @@
 // we correctly lint on the `cfg!` macro and `cfg_attr` attribute.
 //
 // check-pass
-// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar" -Z unstable-options
+// compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo") --cfg feature="bar" --cfg unknown_name -Z unstable-options
 
 #[cfg(windows)]
 fn do_windows_stuff() {}

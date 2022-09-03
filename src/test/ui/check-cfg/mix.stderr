@@ -28,6 +28,14 @@ warning: unexpected `cfg` condition name
 LL | #[cfg_attr(uu, test)]
    |            ^^
 
+warning: unexpected condition value `bar` for condition name `feature`
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected values
+
+warning: unexpected `unknown_name` as condition name
+   |
+   = help: was set with `--cfg` but isn't in the `--check-cfg` expected names
+
 warning: unexpected `cfg` condition name
   --> $DIR/mix.rs:35:10
    |
@@ -170,5 +178,5 @@ LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
    |
    = note: expected values for `feature` are: foo
 
-warning: 25 warnings emitted
+warning: 27 warnings emitted
 

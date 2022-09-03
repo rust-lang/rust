@@ -901,7 +901,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         sess.fatal(&err);
     });
 
-    let mut ret = FxHashSet::default();
+    let mut ret = CrateConfig::default();
     ret.reserve(7); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));

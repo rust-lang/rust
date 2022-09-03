@@ -8,7 +8,7 @@ use crate::lint::{
 };
 use crate::SessionDiagnostic;
 use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
 use rustc_errors::{
@@ -25,7 +25,7 @@ use std::str;
 
 /// The set of keys (and, optionally, values) that define the compilation
 /// environment of the crate, used to drive conditional compilation.
-pub type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
+pub type CrateConfig = FxIndexSet<(Symbol, Option<Symbol>)>;
 pub type CrateCheckConfig = CheckCfg<Symbol>;
 
 /// Collected spans during parsing for places where a certain feature was
@@ -241,7 +241,7 @@ impl ParseSess {
         Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(None),
-            config: FxHashSet::default(),
+            config: FxIndexSet::default(),
             check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
             raw_identifier_spans: Lock::new(Vec::new()),

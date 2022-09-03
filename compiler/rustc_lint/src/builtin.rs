@@ -3250,3 +3250,39 @@ impl EarlyLintPass for SpecialModuleName {
         }
     }
 }
+
+pub use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+
+declare_lint_pass!(UnexpectedCfgs => [UNEXPECTED_CFGS]);
+
+impl EarlyLintPass for UnexpectedCfgs {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
+        let cfg = &cx.sess().parse_sess.config;
+        let check_cfg = &cx.sess().parse_sess.check_config;
+        for &(name, value) in cfg {
+            if let Some(names_valid) = &check_cfg.names_valid {
+                if !names_valid.contains(&name) {
+                    cx.lookup(UNEXPECTED_CFGS, None::<MultiSpan>, |diag| {
+                        diag.build(fluent::lint::builtin_unexpected_cli_config_name)
+                            .help(fluent::lint::help)
+                            .set_arg("name", name)
+                            .emit();
+                    });
+                }
+            }
+            if let Some(value) = value {
+                if let Some(values) = &check_cfg.values_valid.get(&name) {
+                    if !values.contains(&value) {
+                        cx.lookup(UNEXPECTED_CFGS, None::<MultiSpan>, |diag| {
+                            diag.build(fluent::lint::builtin_unexpected_cli_config_value)
+                                .help(fluent::lint::help)
+                                .set_arg("name", name)
+                                .set_arg("value", value)
+                                .emit();
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
