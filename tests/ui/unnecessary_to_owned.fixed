@@ -357,3 +357,63 @@ mod issue_9317 {
         consume(b.to_string());
     }
 }
+
+mod issue_9351 {
+    #![allow(dead_code)]
+
+    use std::ops::Deref;
+    use std::path::{Path, PathBuf};
+
+    fn require_deref_path<T: Deref<Target = std::path::Path>>(x: T) -> T {
+        x
+    }
+
+    fn generic_arg_used_elsewhere<T: AsRef<Path>>(_x: T, _y: T) {}
+
+    fn id<T: AsRef<str>>(x: T) -> T {
+        x
+    }
+
+    fn predicates_are_satisfied(_x: impl std::fmt::Write) {}
+
+    // Should lint
+    fn single_return() -> impl AsRef<str> {
+        id("abc")
+    }
+
+    // Should not lint
+    fn multiple_returns(b: bool) -> impl AsRef<str> {
+        if b {
+            return String::new();
+        }
+
+        id("abc".to_string())
+    }
+
+    struct S1(String);
+
+    // Should not lint
+    fn fields1() -> S1 {
+        S1(id("abc".to_string()))
+    }
+
+    struct S2 {
+        s: String,
+    }
+
+    // Should not lint
+    fn fields2() {
+        let mut s = S2 { s: "abc".into() };
+        s.s = id("abc".to_string());
+    }
+
+    pub fn main() {
+        let path = std::path::Path::new("x");
+        let path_buf = path.to_owned();
+
+        // Should not lint.
+        let _x: PathBuf = require_deref_path(path.to_owned());
+        generic_arg_used_elsewhere(path.to_owned(), path_buf);
+        predicates_are_satisfied(id("abc".to_string()));
+    }
+}
