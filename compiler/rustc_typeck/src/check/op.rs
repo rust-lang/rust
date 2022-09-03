@@ -57,9 +57,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                     .is_ok()
                 {
-                    // Suppress this error, since we already emitted
-                    // a deref suggestion in check_overloaded_binop
-                    err.downgrade_to_delayed_bug();
+                    // If LHS += RHS is an error, but *LHS += RHS is successful, then we will have
+                    // emitted a better suggestion during error handling in check_overloaded_binop.
+                    if self
+                        .lookup_op_method(
+                            lhs_ty,
+                            Some(rhs_ty),
+                            Some(rhs),
+                            Op::Binary(op, IsAssign::Yes),
+                            expected,
+                        )
+                        .is_err()
+                    {
+                        err.downgrade_to_delayed_bug();
+                    }
                 }
             }
         });
