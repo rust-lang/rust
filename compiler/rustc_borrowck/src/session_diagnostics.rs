@@ -157,7 +157,7 @@ pub(crate) enum RequireStaticErr {
         multi_span: MultiSpan,
     },
 }
-//mutability_errors.rs
+
 #[derive(SessionSubdiagnostic)]
 pub(crate) enum ShowMutatingUpvar {
     #[label(borrowck::require_mutable_binding)]
@@ -184,6 +184,11 @@ pub(crate) enum FnMutBumpFn<'a> {
     },
     #[label(borrowck::expects_fn_not_fnmut)]
     AcceptFn {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::empty_label)]
+    EmptyLabel {
         #[primary_span]
         span: Span,
     },

@@ -71,6 +71,8 @@ borrowck_expects_fnmut_not_fn =
 borrowck_expects_fn_not_fnmut =
     expects `Fn` instead of `FnMut`
 
+borrowck_empty_label = {""}
+
 borrowck_in_this_closure =
     in this closure
 

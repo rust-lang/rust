@@ -1,5 +1,5 @@
-// #![deny(rustc::untranslatable_diagnostic)]
-// #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_errors::{
     Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
@@ -1047,8 +1047,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     kind: hir::ImplItemKind::Fn(sig, _),
                     ..
                 }) => {
-                    //FIXME: empty string here don't pass lint
-                    err.span_label(ident.span, "");
+                    err.subdiagnostic(FnMutBumpFn::EmptyLabel { span: ident.span });
                     err.subdiagnostic(FnMutBumpFn::ReturnFnMut { span: sig.decl.output.span() });
                     err.subdiagnostic(FnMutBumpFn::Here { span: self.body.span });
                 }
