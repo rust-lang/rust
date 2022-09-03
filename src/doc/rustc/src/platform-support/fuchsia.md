@@ -330,10 +330,18 @@ Now, create the following files inside:
 The `package` file describes our package's name and version number. Every
 package must contain one.
 
-**`pkg/hello_fuchsia.manifest`**
+**`pkg/hello_fuchsia.manifest` if using cargo**
 ```txt
-bin/hello_fuchsia=target/x86_64-fuchsia/debug/hello_fuchsia     # If using cargo...
-bin/hello_fuchsia=bin/hello_fuchsia                             # If using rustc...
+bin/hello_fuchsia=target/x86_64-fuchsia/debug/hello_fuchsia
+lib/ld.so.1=<SDK_PATH>/arch/x64/sysroot/dist/lib/ld.so.1
+lib/libfdio.so=<SDK_PATH>/arch/x64/dist/libfdio.so
+meta/package=pkg/meta/package
+meta/hello_fuchsia.cm=pkg/meta/hello_fuchsia.cm
+```
+
+**`pkg/hello_fuchsia.manifest` if using rustc**
+```txt
+bin/hello_fuchsia=bin/hello_fuchsia
 lib/ld.so.1=<SDK_PATH>/arch/x64/sysroot/dist/lib/ld.so.1
 lib/libfdio.so=<SDK_PATH>/arch/x64/dist/libfdio.so
 meta/package=pkg/meta/package

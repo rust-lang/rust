@@ -11,6 +11,13 @@
 	--headings-border-bottom-color: #ddd;
 	--border-color: #e0e0e0;
 	--button-background-color: #fff;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--search-input-focused-border-color: #66afe9;
+	--copy-path-button-color: #999;
+	--copy-path-img-filter: invert(50%);
+	--copy-path-img-hover-filter: invert(35%);
 }
 
 .slider {
@@ -125,11 +132,6 @@ body.source .example-wrap pre.rust a {
 	background: #eee;
 }
 
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before {
-	color: #999;
-}
-
 #crate-search-div::after {
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
 	filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg) brightness(114%) contrast(76%);
@@ -141,17 +143,8 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
 }
 
-.search-input:focus {
-	border-color: #66afe9;
-}
-
 .stab { background: #FFF5D6; border-color: #FFC600; }
 .stab.portability > code { background: none; }
-
-.rightside:not(a),
-.out-of-band {
-	color: grey;
-}
 
 .line-numbers :target { background-color: transparent; }
 
@@ -180,10 +173,6 @@ a.test-arrow {
 
 a.test-arrow:hover{
 	background-color: #4e8bca;
-}
-
-.code-attribute {
-	color: #999;
 }
 
 :target {
@@ -281,16 +270,6 @@ kbd {
 	border-color: #717171;
 }
 
-#copy-path {
-	color: #999;
-}
-#copy-path > img {
-	filter: invert(50%);
-}
-#copy-path:hover > img {
-	filter: invert(35%);
-}
-
 .search-results .result-name span.alias {
 	color: #000;
 }
@@ -312,9 +291,6 @@ kbd {
 .scraped-example-list .scrape-help:hover {
 	border-color: black;
 	color: black;
-}
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: #999;
 }
 .scraped-example .example-wrap .rust span.highlight {
 	background: #fcffd6;
