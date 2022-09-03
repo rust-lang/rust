@@ -159,7 +159,7 @@ pub(crate) enum RequireStaticErr {
 }
 
 #[derive(SessionSubdiagnostic)]
-pub(crate) enum RegionNameLables<'a> {
+pub(crate) enum RegionNameLabels<'a> {
     #[label(borrowck::name_this_region)]
     NameRegion {
         #[primary_span]

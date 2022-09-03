@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, DefIdTree, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
-use crate::session_diagnostics::RegionNameLables;
+use crate::session_diagnostics::RegionNameLabels;
 use crate::{nll::ToRegionVid, universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
@@ -137,13 +137,13 @@ impl RegionName {
                 RegionNameHighlight::MatchedAdtAndSegment(span),
                 _,
             ) => {
-                diag.subdiagnostic(RegionNameLables::NameRegion { span: *span, rg_name: self });
+                diag.subdiagnostic(RegionNameLabels::NameRegion { span: *span, rg_name: self });
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
             )) => {
-                diag.subdiagnostic(RegionNameLables::LifetimeInType {
+                diag.subdiagnostic(RegionNameLabels::LifetimeInType {
                     span: *span,
                     type_name: &type_name,
                     rg_name: self,
@@ -153,7 +153,7 @@ impl RegionName {
                 RegionNameHighlight::Occluded(span, type_name),
                 mir_description,
             ) => {
-                diag.subdiagnostic(RegionNameLables::LifetimeInReturned {
+                diag.subdiagnostic(RegionNameLabels::LifetimeInReturned {
                     span: *span,
                     mir_description,
                     type_name: &type_name,
@@ -161,7 +161,7 @@ impl RegionName {
                 });
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
-                diag.subdiagnostic(RegionNameLables::LifetimeInTypeOf {
+                diag.subdiagnostic(RegionNameLabels::LifetimeInTypeOf {
                     span: *span,
                     upvar_name: upvar_name.to_ident_string(),
                     rg_name: self,
@@ -171,20 +171,20 @@ impl RegionName {
                 RegionNameHighlight::CannotMatchHirTy(span, type_name),
                 mir_description,
             ) => {
-                diag.subdiagnostic(RegionNameLables::ReturnTypeIsTpye {
+                diag.subdiagnostic(RegionNameLabels::ReturnTypeIsTpye {
                     span: *span,
                     mir_description,
                     type_name: &type_name,
                 });
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
-                diag.subdiagnostic(RegionNameLables::YieldTypeIsTpye {
+                diag.subdiagnostic(RegionNameLabels::YieldTypeIsTpye {
                     span: *span,
                     type_name: &type_name,
                 });
             }
             RegionNameSource::AnonRegionFromImplSignature(span, location) => {
-                diag.subdiagnostic(RegionNameLables::LifetimeInImpl {
+                diag.subdiagnostic(RegionNameLabels::LifetimeInImpl {
                     span: *span,
                     rg_name: self,
                     location: &location,
