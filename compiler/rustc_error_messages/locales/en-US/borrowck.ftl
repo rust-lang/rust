@@ -116,12 +116,27 @@ borrowck_drop_local_might_cause_borrow =
     {$borrow_desc}borrow might be used here, when `{$local_name}` is dropped and runs the {$dtor_desc} for {$type_desc}
 
 borrowck_closure_capture_borrow_in_later_iteration_loop =
-    {$borrow_desc}borrow later borrow captured here by closure, in later iteration of loop
+    {$borrow_desc}borrow captured here by closure, in later iteration of loop
 
 borrowck_call_used_borrow_in_later_iteration_loop =
-    {$borrow_desc}borrow later borrow used by call, in later iteration of loop
+    {$borrow_desc}borrow used by call, in later iteration of loop
 
 borrowck_used_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow used here, in later iteration of loop
+
+borrowck_bl_trait_capture_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow captured here by trait object, in later iteration of loop
+
+borrowck_bl_closure_capture_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow captured here by closure, in later iteration of loop
+
+borrowck_bl_call_used_borrow_in_later_iteration_loop =
+    {$borrow_desc}borrow later borrow used by call, in later iteration of loop
+
+borrowck_bl_borrow_later_stored_here =
+    {$borrow_desc}borrow later borrow later stored here
+
+borrowck_bl_used_borrow_in_later_iteration_loop =
     {$borrow_desc}borrow later borrow used here, in later iteration of loop
 
 borrowck_drop_local_might_cause_borrow =
