@@ -288,19 +288,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [algorithm, ptr, len, flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let algorithm = this.read_scalar(algorithm)?;
+                let algorithm = algorithm.to_machine_usize(this)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_scalar(len)?.to_u32()?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
-                if flags != 2 {
-                    //      ^ BCRYPT_USE_SYSTEM_PREFERRED_RNG
-                    throw_unsup_format!(
-                        "BCryptGenRandom is supported only with the BCRYPT_USE_SYSTEM_PREFERRED_RNG flag"
-                    );
-                }
-                if algorithm.to_machine_usize(this)? != 0 {
-                    throw_unsup_format!(
-                        "BCryptGenRandom algorithm must be NULL when the flag is BCRYPT_USE_SYSTEM_PREFERRED_RNG"
-                    );
+                match flags {
+                    0 => {
+                        // BCRYPT_RNG_ALG_HANDLE
+                        if algorithm != 0x81 {
+                            throw_unsup_format!(
+                                "BCryptGenRandom algorithm must be BCRYPT_RNG_ALG_HANDLE when the flag is 0"
+                            );
+                        }
+                    }
+                    2 => {
+                        // BCRYPT_USE_SYSTEM_PREFERRED_RNG
+                        if algorithm != 0 {
+                            throw_unsup_format!(
+                                "BCryptGenRandom algorithm must be NULL when the flag is BCRYPT_USE_SYSTEM_PREFERRED_RNG"
+                            );
+                        }
+                    }
+                    _ => {
+                        throw_unsup_format!(
+                            "BCryptGenRandom is only supported with BCRYPT_USE_SYSTEM_PREFERRED_RNG or BCRYPT_RNG_ALG_HANDLE"
+                        );
+                    }
                 }
                 this.gen_random(ptr, len.into())?;
                 this.write_null(dest)?; // STATUS_SUCCESS
