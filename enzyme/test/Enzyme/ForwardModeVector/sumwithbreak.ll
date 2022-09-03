@@ -51,7 +51,9 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:    br label [[FOR_BODY:%.*]]
 ; CHECK:       for.body:
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[IF_END:%.*]] ], [ 0, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ [[TMP25:%.*]], [[IF_END]] ], [ zeroinitializer, [[ENTRY]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ [[TMP18:%.*]], [[IF_END]] ], [ 0.000000e+00, [[ENTRY]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ [[TMP21:%.*]], [[IF_END]] ], [ 0.000000e+00, [[ENTRY]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ [[TMP24:%.*]], [[IF_END]] ], [ 0.000000e+00, [[ENTRY]] ]
 ; CHECK-NEXT:    [[DATA_016:%.*]] = phi double [ [[ADD5:%.*]], [[IF_END]] ], [ 0.000000e+00, [[ENTRY]] ]
 ; CHECK-NEXT:    [[CMP2:%.*]] = fcmp fast ogt double [[DATA_016]], 1.000000e+01
 ; CHECK-NEXT:    br i1 [[CMP2]], label [[IF_THEN:%.*]], label [[IF_END]]
@@ -65,15 +67,9 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:    %"'ipl" = load double, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:    %"'ipl4" = load double, double* %"arrayidx'ipg2", align 8
 ; CHECK-NEXT:    %"'ipl5" = load double, double* %"arrayidx'ipg3", align 8
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP5:%.*]] = fadd fast double %"'ipl", [[TMP4]]
-; CHECK-NEXT:    [[TMP6:%.*]] = insertvalue [3 x double] undef, double [[TMP5]], 0
-; CHECK-NEXT:    [[TMP7:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP8:%.*]] = fadd fast double %"'ipl4", [[TMP7]]
-; CHECK-NEXT:    [[TMP9:%.*]] = insertvalue [3 x double] [[TMP6]], double [[TMP8]], 1
-; CHECK-NEXT:    [[TMP10:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP11:%.*]] = fadd fast double %"'ipl5", [[TMP10]]
-; CHECK-NEXT:    [[TMP12:%.*]] = insertvalue [3 x double] [[TMP9]], double [[TMP11]], 2
+; CHECK-NEXT:    [[TMP5:%.*]] = fadd fast double %"'ipl", [[TMP0_0]]
+; CHECK-NEXT:    [[TMP8:%.*]] = fadd fast double %"'ipl4", [[TMP0_1]]
+; CHECK-NEXT:    [[TMP11:%.*]] = fadd fast double %"'ipl5", [[TMP0_2]]
 ; CHECK-NEXT:    br label [[CLEANUP:%.*]]
 ; CHECK:       if.end:
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i64 [[IV]], 1
@@ -89,18 +85,17 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:    %"'ipl10" = load double, double* %"arrayidx4'ipg7", align 8
 ; CHECK-NEXT:    [[TMP16:%.*]] = load double, double* [[ARRAYIDX4]], align 8
 ; CHECK-NEXT:    [[ADD5]] = fadd fast double [[TMP16]], [[DATA_016]]
-; CHECK-NEXT:    [[TMP17:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP18:%.*]] = fadd fast double %"'ipl8", [[TMP17]]
-; CHECK-NEXT:    [[TMP19:%.*]] = insertvalue [3 x double] undef, double [[TMP18]], 0
-; CHECK-NEXT:    [[TMP20:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP21:%.*]] = fadd fast double %"'ipl9", [[TMP20]]
-; CHECK-NEXT:    [[TMP22:%.*]] = insertvalue [3 x double] [[TMP19]], double [[TMP21]], 1
-; CHECK-NEXT:    [[TMP23:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP24:%.*]] = fadd fast double %"'ipl10", [[TMP23]]
-; CHECK-NEXT:    [[TMP25]] = insertvalue [3 x double] [[TMP22]], double [[TMP24]], 2
+; CHECK-NEXT:    [[TMP18]] = fadd fast double %"'ipl8", [[TMP0_0]]
+; CHECK-NEXT:    [[TMP21]] = fadd fast double %"'ipl9", [[TMP0_1]]
+; CHECK-NEXT:    [[TMP24]] = fadd fast double %"'ipl10", [[TMP0_2]]
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ult i64 [[IV]], [[N]]
 ; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_BODY]], label [[CLEANUP]]
 ; CHECK:       cleanup:
-; CHECK-NEXT:    [[TMP26:%.*]] = phi {{(fast )?}}[3 x double] [ [[TMP12]], [[IF_THEN]] ], [ [[TMP25]], [[IF_END]] ]
-; CHECK-NEXT:    ret [3 x double] [[TMP26]]
+; CHECK-NEXT:    [[TMP26_0:%.*]] = phi {{(fast )?}}double [ [[TMP5]], [[IF_THEN]] ], [ [[TMP18]], [[IF_END]] ]
+; CHECK-NEXT:    [[TMP26_1:%.*]] = phi {{(fast )?}}double [ [[TMP8]], [[IF_THEN]] ], [ [[TMP21]], [[IF_END]] ]
+; CHECK-NEXT:    [[TMP26_2:%.*]] = phi {{(fast )?}}double [ [[TMP11]], [[IF_THEN]] ], [ [[TMP24]], [[IF_END]] ]
+; CHECK-NEXT:    %[[i19:.+]] = insertvalue [3 x double] undef, double [[TMP26_0]], 0
+; CHECK-NEXT:    %[[i20:.+]] = insertvalue [3 x double] %[[i19]], double [[TMP26_1]], 1
+; CHECK-NEXT:    %[[i21:.+]] = insertvalue [3 x double] %[[i20]], double [[TMP26_2]], 2
+; CHECK-NEXT:    ret [3 x double] %[[i21]]
 ;

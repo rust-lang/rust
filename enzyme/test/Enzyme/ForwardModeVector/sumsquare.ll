@@ -44,7 +44,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    br label [[FOR_BODY_I:%.*]]
 ; CHECK:       for.body.i:
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ zeroinitializer, [[ENTRY:%.*]] ], [ [[TMP16:%.*]], [[FOR_BODY_I]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY:%.*]] ], [ [[TMP9:%.*]], [[FOR_BODY_I]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY:%.*]] ], [ [[TMP12:%.*]], [[FOR_BODY_I]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY:%.*]] ], [ [[TMP15:%.*]], [[FOR_BODY_I]] ]
 ; CHECK-NEXT:    [[IV_I:%.*]] = phi i64 [ [[IV_NEXT_I:%.*]], [[FOR_BODY_I]] ], [ 0, [[ENTRY]] ]
 ; CHECK-NEXT:    [[IV_NEXT_I]] = add nuw nsw i64 [[IV_I]], 1
 ; CHECK-NEXT:    %"arrayidx'ipg.i" = getelementptr inbounds double, double* [[XP1]], i64 [[IV_I]]
@@ -61,15 +63,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:    [[TMP5:%.*]] = fadd fast double [[TMP4]], [[TMP4]]
 ; CHECK-NEXT:    [[TMP6:%.*]] = fmul fast double %"'ipl4.i", [[TMP1]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = fadd fast double [[TMP6]], [[TMP6]]
-; CHECK-NEXT:    [[TMP8:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP9:%.*]] = fadd fast double [[TMP3]], [[TMP8]]
-; CHECK-NEXT:    [[TMP10:%.*]] = insertvalue [3 x double] undef, double [[TMP9]], 0
-; CHECK-NEXT:    [[TMP11:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP12:%.*]] = fadd fast double [[TMP5]], [[TMP11]]
-; CHECK-NEXT:    [[TMP13:%.*]] = insertvalue [3 x double] [[TMP10]], double [[TMP12]], 1
-; CHECK-NEXT:    [[TMP14:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP15:%.*]] = fadd fast double [[TMP7]], [[TMP14]]
-; CHECK-NEXT:    [[TMP16]] = insertvalue [3 x double] [[TMP13]], double [[TMP15]], 2
+; CHECK-NEXT:    [[TMP9]] = fadd fast double [[TMP3]], [[TMP0_0]]
+; CHECK-NEXT:    [[TMP12]] = fadd fast double [[TMP5]], [[TMP0_1]]
+; CHECK-NEXT:    [[TMP15]] = fadd fast double [[TMP7]], [[TMP0_2]]
 ; CHECK-NEXT:    [[EXITCOND_I:%.*]] = icmp eq i64 [[IV_I]], [[N]]
 ; CHECK-NEXT:    br i1 [[EXITCOND_I]], label [[FWDDIFFE3SUMSQUARE_EXIT:%.*]], label [[FOR_BODY_I]]
 ; CHECK:       fwddiffe3sumsquare.exit:

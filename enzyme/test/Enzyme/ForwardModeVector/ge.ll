@@ -80,7 +80,9 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:    store double 0.000000e+00, double* [[TMP4:%.*]], align 8
 ; CHECK-NEXT:    ret [3 x double] [[TMP20:%.*]]
 ; CHECK:       for.body:
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ zeroinitializer, [[ENTRY:%.*]] ], [ [[TMP20]], [[FOR_BODY]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY:%.*]] ], [ [[TMP13:%.*]], [[FOR_BODY]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY]] ], [ [[TMP16:%.*]], [[FOR_BODY]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, [[ENTRY]] ], [ [[TMP19:%.*]], [[FOR_BODY]] ]
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[FOR_BODY]] ], [ 0, [[ENTRY]] ]
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i64 [[IV]], 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = trunc i64 [[IV]] to i32
@@ -102,14 +104,11 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:    [[TMP9:%.*]] = fadd fast double [[TMP8]], [[TMP8]]
 ; CHECK-NEXT:    [[TMP10:%.*]] = fmul fast double %"'ipl4", [[TMP5]]
 ; CHECK-NEXT:    [[TMP11:%.*]] = fadd fast double [[TMP10]], [[TMP10]]
-; CHECK-NEXT:    [[TMP12:%.*]] = extractvalue [3 x double] [[TMP0]], 0
-; CHECK-NEXT:    [[TMP13:%.*]] = fadd fast double [[TMP12]], [[TMP7]]
+; CHECK-NEXT:    [[TMP13]] = fadd fast double [[TMP0_0]], [[TMP7]]
 ; CHECK-NEXT:    [[TMP14:%.*]] = insertvalue [3 x double] undef, double [[TMP13]], 0
-; CHECK-NEXT:    [[TMP15:%.*]] = extractvalue [3 x double] [[TMP0]], 1
-; CHECK-NEXT:    [[TMP16:%.*]] = fadd fast double [[TMP15]], [[TMP9]]
+; CHECK-NEXT:    [[TMP16]] = fadd fast double [[TMP0_1]], [[TMP9]]
 ; CHECK-NEXT:    [[TMP17:%.*]] = insertvalue [3 x double] [[TMP14]], double [[TMP16]], 1
-; CHECK-NEXT:    [[TMP18:%.*]] = extractvalue [3 x double] [[TMP0]], 2
-; CHECK-NEXT:    [[TMP19:%.*]] = fadd fast double [[TMP18]], [[TMP11]]
+; CHECK-NEXT:    [[TMP19]] = fadd fast double [[TMP0_2]], [[TMP11]]
 ; CHECK-NEXT:    [[TMP20]] = insertvalue [3 x double] [[TMP17]], double [[TMP19]], 2
 ; CHECK-NEXT:    [[INC:%.*]] = add i32 [[TMP1]], 1
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[INC]], [[N]]

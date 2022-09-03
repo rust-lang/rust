@@ -61,19 +61,20 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:    [[TMP10:%.*]] = fdiv fast double [[TMP9]], [[TMP8]]
 ; CHECK-NEXT:    [[TMP11:%.*]] = fcmp fast oeq double [[MUL_I]], 0.000000e+00
 ; CHECK-NEXT:    [[TMP12:%.*]] = select {{(fast )?}}i1 [[TMP11]], double 0.000000e+00, double [[TMP10]]
-; CHECK-NEXT:    [[TMP13:%.*]] = insertvalue [2 x double] undef, double [[TMP12]], 0
 ; CHECK-NEXT:    [[TMP14:%.*]] = call fast double @llvm.sqrt.f64(double [[MUL_I]]) 
 ; CHECK-NEXT:    [[TMP15:%.*]] = fmul fast double 5.000000e-01, [[TMP7]]
 ; CHECK-NEXT:    [[TMP16:%.*]] = fdiv fast double [[TMP15]], [[TMP14]]
 ; CHECK-NEXT:    [[TMP17:%.*]] = fcmp fast oeq double [[MUL_I]], 0.000000e+00
 ; CHECK-NEXT:    [[TMP18:%.*]] = select {{(fast )?}}i1 [[TMP17]], double 0.000000e+00, double [[TMP16]]
-; CHECK-NEXT:    [[TMP19:%.*]] = insertvalue [2 x double] [[TMP13]], double [[TMP18]], 1
 ; CHECK-NEXT:    br label [[FWDDIFFE2SQRELU_EXIT]]
 ; CHECK:       fwddiffe2sqrelu.exit:
-; CHECK-NEXT:    [[TMP20:%.*]] = phi {{(fast )?}}[2 x double] [ [[TMP19]], [[COND_TRUE_I]] ], [ zeroinitializer, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP21:%.*]] = extractvalue [2 x double] [[TMP20]], 0
-; CHECK-NEXT:    [[TMP22:%.*]] = insertvalue [[STRUCT_GRADIENTS:%.*]] zeroinitializer, double [[TMP21]], 0
-; CHECK-NEXT:    [[TMP23:%.*]] = extractvalue [2 x double] [[TMP20]], 1
-; CHECK-NEXT:    [[TMP24:%.*]] = insertvalue [[STRUCT_GRADIENTS]] [[TMP22]], double [[TMP23]], 1
-; CHECK-NEXT:    ret [[STRUCT_GRADIENTS]] [[TMP24]]
+; CHECK-NEXT:    [[TMP20_0:%.*]] = phi {{(fast )?}}double [ [[TMP12]], [[COND_TRUE_I]] ], [ 0.000000e+00, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP20_1:%.*]] = phi {{(fast )?}}double [ [[TMP18]], [[COND_TRUE_I]] ], [ 0.000000e+00, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[TMP22:%.*]] = insertvalue [2 x double] undef, double [[TMP20_0]], 0
+; CHECK-NEXT:    [[TMP24:%.*]] = insertvalue [2 x double] [[TMP22]], double [[TMP20_1]], 1
+; CHECK-NEXT:    [[ETMP20_0:%.*]] = extractvalue [2 x double] [[TMP24]], 0
+; CHECK-NEXT:    [[ATMP22:%.*]] = insertvalue [[STRUCT_GRADIENTS:%.*]] zeroinitializer, double [[ETMP20_0]], 0
+; CHECK-NEXT:    [[ETMP20_1:%.*]] = extractvalue [2 x double] [[TMP24]], 1
+; CHECK-NEXT:    [[ATMP24:%.*]] = insertvalue [[STRUCT_GRADIENTS]] [[ATMP22]], double [[ETMP20_1]], 1
+; CHECK-NEXT:    ret [[STRUCT_GRADIENTS]] [[ATMP24]]
 ;

@@ -40,7 +40,9 @@ entry:
 ; CHECK-NEXT:    br label [[DO_BODY:%.*]]
 ; CHECK:       do.body:
 ; CHECK-NEXT:    [[IV:%.*]] = phi i64 [ [[IV_NEXT:%.*]], [[DO_BODY]] ], [ 0, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP0:%.*]] = phi [3 x i32] [ zeroinitializer, [[ENTRY]] ], [ [[TMP12:%.*]], [[DO_BODY]] ]
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi i32 [ 0, [[ENTRY]] ], [ [[TMP12_0:%.*]], [[DO_BODY]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi i32 [ 0, [[ENTRY]] ], [ [[TMP12_1:%.*]], [[DO_BODY]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi i32 [ 0, [[ENTRY]] ], [ [[TMP12_2:%.*]], [[DO_BODY]] ]
 ; CHECK-NEXT:    [[INTSUM:%.*]] = phi i32 [ 0, [[ENTRY]] ], [ [[INTADD:%.*]], [[DO_BODY]] ]
 ; CHECK-NEXT:    [[IV_NEXT]] = add nuw nsw i64 [[IV]], 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = extractvalue [3 x float*] %"array'", 0
@@ -54,23 +56,17 @@ entry:
 ; CHECK-NEXT:    %"loaded'ipl3" = load float, float* %"arrayidx'ipg1"
 ; CHECK-NEXT:    %"loaded'ipl4" = load float, float* %"arrayidx'ipg2"
 ; CHECK-NEXT:    [[LOADED:%.*]] = load float, float* [[ARRAYIDX]]
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [3 x i32] [[TMP0]], 0
-; CHECK-NEXT:    %"fltload'ipc" = bitcast i32 [[TMP4]] to float
-; CHECK-NEXT:    [[TMP5:%.*]] = extractvalue [3 x i32] [[TMP0]], 1
-; CHECK-NEXT:    %"fltload'ipc5" = bitcast i32 [[TMP5]] to float
-; CHECK-NEXT:    [[TMP6:%.*]] = extractvalue [3 x i32] [[TMP0]], 2
-; CHECK-NEXT:    %"fltload'ipc6" = bitcast i32 [[TMP6]] to float
+; CHECK-NEXT:    %"fltload'ipc" = bitcast i32 [[TMP0_0]] to float
+; CHECK-NEXT:    %"fltload'ipc5" = bitcast i32 [[TMP0_1]] to float
+; CHECK-NEXT:    %"fltload'ipc6" = bitcast i32 [[TMP0_2]] to float
 ; CHECK-NEXT:    [[FLTLOAD:%.*]] = bitcast i32 [[INTSUM]] to float
 ; CHECK-NEXT:    [[ADD:%.*]] = fadd float [[FLTLOAD]], [[LOADED]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = fadd fast float %"fltload'ipc", %"loaded'ipl"
 ; CHECK-NEXT:    [[TMP8:%.*]] = fadd fast float %"fltload'ipc5", %"loaded'ipl3"
 ; CHECK-NEXT:    [[TMP9:%.*]] = fadd fast float %"fltload'ipc6", %"loaded'ipl4"
-; CHECK-NEXT:    %"intadd'ipc" = bitcast float [[TMP7]] to i32
-; CHECK-NEXT:    [[TMP10:%.*]] = insertvalue [3 x i32] undef, i32 %"intadd'ipc", 0
-; CHECK-NEXT:    %"intadd'ipc7" = bitcast float [[TMP8]] to i32
-; CHECK-NEXT:    [[TMP11:%.*]] = insertvalue [3 x i32] [[TMP10]], i32 %"intadd'ipc7", 1
-; CHECK-NEXT:    %"intadd'ipc8" = bitcast float [[TMP9]] to i32
-; CHECK-NEXT:    [[TMP12]] = insertvalue [3 x i32] [[TMP11]], i32 %"intadd'ipc8", 2
+; CHECK-NEXT:    [[TMP12_0]] = bitcast float [[TMP7]] to i32
+; CHECK-NEXT:    [[TMP12_1]] = bitcast float [[TMP8]] to i32
+; CHECK-NEXT:    [[TMP12_2]] = bitcast float [[TMP9]] to i32
 ; CHECK-NEXT:    [[INTADD]] = bitcast float [[ADD]] to i32
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i64 [[IV_NEXT]], 5
 ; CHECK-NEXT:    br i1 [[CMP]], label [[DO_END:%.*]], label [[DO_BODY]]

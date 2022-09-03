@@ -92,42 +92,55 @@ attributes #4 = { nounwind }
 
 
 ; CHECK: define {{[^@]+}}@fwddiffe3sum_list(%struct.n* noalias readonly [[NODE:%.*]], [3 x %struct.n*] %"node'", i64 [[TIMES:%.*]]) 
-; CHECK-NEXT:  entry:
+; CHECK-NEXT:  [[ENTRY:.*]]:
 ; CHECK-NEXT:    [[CMP18:%.*]] = icmp eq %struct.n* [[NODE]], null
-; CHECK-NEXT:    br i1 [[CMP18]], label [[FOR_COND_CLEANUP:%.*]], label [[FOR_COND1_PREHEADER:%.*]]
+; CHECK-NEXT:    br i1 [[CMP18]], label [[FOR_COND_CLEANUP:%.*]], label %for.cond1.preheader.preheader
+
+; CHECK: for.cond1.preheader.preheader: 
+; CHECK-NEXT:   [[n0:%.*]] = extractvalue [3 x %struct.n*] %"node'", 0
+; CHECK-NEXT:   [[n1:%.*]] = extractvalue [3 x %struct.n*] %"node'", 1
+; CHECK-NEXT:   [[n2:%.*]] = extractvalue [3 x %struct.n*] %"node'", 2
+; CHECK-NEXT:   br label %for.cond1.preheader
+
 ; CHECK:       for.cond1.preheader:
-; CHECK-NEXT:    [[TMP0:%.*]] = phi {{(fast )?}}[3 x double] [ [[TMP19:%.*]], [[FOR_COND_CLEANUP4:%.*]] ], [ zeroinitializer, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = phi [3 x %struct.n*] [ [[TMP8:%.*]], [[FOR_COND_CLEANUP4]] ], [ %"node'", [[ENTRY]] ]
-; CHECK-NEXT:    [[VAL_020:%.*]] = phi %struct.n* [ [[TMP9:%.*]], [[FOR_COND_CLEANUP4]] ], [ [[NODE]], [[ENTRY]] ]
-; CHECK-NEXT:    [[TMP2:%.*]] = extractvalue [3 x %struct.n*] [[TMP1]], 0
-; CHECK-NEXT:    %"values'ipg" = getelementptr inbounds [[STRUCT_N:%.*]], %struct.n* [[TMP2]], i64 0, i32 0
-; CHECK-NEXT:    [[TMP3:%.*]] = extractvalue [3 x %struct.n*] [[TMP1]], 1
-; CHECK-NEXT:    %"values'ipg3" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP3]], i64 0, i32 0
-; CHECK-NEXT:    [[TMP4:%.*]] = extractvalue [3 x %struct.n*] [[TMP1]], 2
-; CHECK-NEXT:    %"values'ipg4" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP4]], i64 0, i32 0
+; CHECK-NEXT:    [[TMP0_0:%.*]] = phi {{(fast )?}}double [ [[TMP19_0:%.*]], [[FOR_COND_CLEANUP4:%.*]] ], [ 0.000000e+00, [[PH:%.*]] ]
+; CHECK-NEXT:    [[TMP0_1:%.*]] = phi {{(fast )?}}double [ [[TMP19_1:%.*]], [[FOR_COND_CLEANUP4]] ], [ 0.000000e+00, [[PH]] ]
+; CHECK-NEXT:    [[TMP0_2:%.*]] = phi {{(fast )?}}double [ [[TMP19_2:%.*]], [[FOR_COND_CLEANUP4]] ], [ 0.000000e+00, [[PH]] ]
+; CHECK-NEXT:    [[TMP1_0:%.*]] = phi %struct.n* [ [[TMP8_0:%.*]], [[FOR_COND_CLEANUP4]] ], [ [[n0]], [[PH]] ]
+; CHECK-NEXT:    [[TMP1_1:%.*]] = phi %struct.n* [ [[TMP8_1:%.*]], [[FOR_COND_CLEANUP4]] ], [ [[n1]], [[PH]] ]
+; CHECK-NEXT:    [[TMP1_2:%.*]] = phi %struct.n* [ [[TMP8_2:%.*]], [[FOR_COND_CLEANUP4]] ], [ [[n2]], [[PH]] ]
+; CHECK-NEXT:    [[VAL_020:%.*]] = phi %struct.n* [ [[TMP9:%.*]], [[FOR_COND_CLEANUP4]] ], [ [[NODE]], [[PH]] ]
+; CHECK-NEXT:    %"values'ipg" = getelementptr inbounds [[STRUCT_N:%.*]], %struct.n* [[TMP1_0]], i64 0, i32 0
+; CHECK-NEXT:    %"values'ipg3" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP1_1]], i64 0, i32 0
+; CHECK-NEXT:    %"values'ipg4" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP1_2]], i64 0, i32 0
 ; CHECK-NEXT:    %"'ipl" = load double*, double** %"values'ipg", align 8, !tbaa !2
 ; CHECK-NEXT:    %"'ipl5" = load double*, double** %"values'ipg3", align 8, !tbaa !2
 ; CHECK-NEXT:    %"'ipl6" = load double*, double** %"values'ipg4", align 8, !tbaa !2
 ; CHECK-NEXT:    br label [[FOR_BODY5:%.*]]
 ; CHECK:       for.cond.cleanup:
-; CHECK-NEXT:    [[TMP5:%.*]] = phi {{(fast )?}}[3 x double] [ zeroinitializer, [[ENTRY]] ], [ [[TMP19]], [[FOR_COND_CLEANUP4]] ]
-; CHECK-NEXT:    ret [3 x double] [[TMP5]]
+; CHECK-NEXT:    [[TMP5_0:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, %[[ENTRY]] ], [ [[TMP19_0]], [[FOR_COND_CLEANUP4]] ]
+; CHECK-NEXT:    [[TMP5_1:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, %[[ENTRY]] ], [ [[TMP19_1]], [[FOR_COND_CLEANUP4]] ]
+; CHECK-NEXT:    [[TMP5_2:%.*]] = phi {{(fast )?}}double [ 0.000000e+00, %[[ENTRY]] ], [ [[TMP19_2]], [[FOR_COND_CLEANUP4]] ]
+; CHECK-NEXT:   %[[r12:.+]] = insertvalue [3 x double] undef, double [[TMP5_0]], 0
+; CHECK-NEXT:   %[[r13:.+]] = insertvalue [3 x double] %[[r12]], double [[TMP5_1]], 1
+; CHECK-NEXT:   %[[r14:.+]] = insertvalue [3 x double] %[[r13]], double [[TMP5_2]], 2
+; CHECK-NEXT:   ret [3 x double] %[[r14]]
+
 ; CHECK:       for.cond.cleanup4:
-; CHECK-NEXT:    %"next'ipg" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP2]], i64 0, i32 1
-; CHECK-NEXT:    %"next'ipg7" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP3]], i64 0, i32 1
-; CHECK-NEXT:    %"next'ipg8" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP4]], i64 0, i32 1
+; CHECK-NEXT:    %"next'ipg" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP1_0]], i64 0, i32 1
+; CHECK-NEXT:    %"next'ipg7" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP1_1]], i64 0, i32 1
+; CHECK-NEXT:    %"next'ipg8" = getelementptr inbounds [[STRUCT_N]], %struct.n* [[TMP1_2]], i64 0, i32 1
 ; CHECK-NEXT:    [[NEXT:%.*]] = getelementptr inbounds [[STRUCT_N]], %struct.n* [[VAL_020]], i64 0, i32 1
 ; CHECK-NEXT:    %"'ipl9" = load %struct.n*, %struct.n** %"next'ipg", align 8, !tbaa !7
-; CHECK-NEXT:    [[TMP6:%.*]] = insertvalue [3 x %struct.n*] undef, %struct.n* %"'ipl9", 0
 ; CHECK-NEXT:    %"'ipl10" = load %struct.n*, %struct.n** %"next'ipg7", align 8, !tbaa !7
-; CHECK-NEXT:    [[TMP7:%.*]] = insertvalue [3 x %struct.n*] [[TMP6]], %struct.n* %"'ipl10", 1
 ; CHECK-NEXT:    %"'ipl11" = load %struct.n*, %struct.n** %"next'ipg8", align 8, !tbaa !7
-; CHECK-NEXT:    [[TMP8]] = insertvalue [3 x %struct.n*] [[TMP7]], %struct.n* %"'ipl11", 2
 ; CHECK-NEXT:    [[TMP9]] = load %struct.n*, %struct.n** [[NEXT]], align 8, !tbaa !7
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp eq %struct.n* [[TMP9]], null
-; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_COND_CLEANUP]], label [[FOR_COND1_PREHEADER]]
+; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_COND_CLEANUP]], label [[FOR_COND1_PREHEADER:%.*]]
 ; CHECK:       for.body5:
-; CHECK-NEXT:    [[TMP10:%.*]] = phi {{(fast )?}}[3 x double] [ [[TMP0]], [[FOR_COND1_PREHEADER]] ], [ [[TMP19]], [[FOR_BODY5]] ]
+; CHECK-NEXT:    [[TMP10_0:%.*]] = phi {{(fast )?}}double [ [[TMP0_0]], [[FOR_COND1_PREHEADER]] ], [ [[TMP19_0]], [[FOR_BODY5]] ]
+; CHECK-NEXT:    [[TMP10_1:%.*]] = phi {{(fast )?}}double [ [[TMP0_1]], [[FOR_COND1_PREHEADER]] ], [ [[TMP19_1]], [[FOR_BODY5]] ]
+; CHECK-NEXT:    [[TMP10_2:%.*]] = phi {{(fast )?}}double [ [[TMP0_2]], [[FOR_COND1_PREHEADER]] ], [ [[TMP19_2]], [[FOR_BODY5]] ]
 ; CHECK-NEXT:    [[IV1:%.*]] = phi i64 [ 0, [[FOR_COND1_PREHEADER]] ], [ [[IV_NEXT2:%.*]], [[FOR_BODY5]] ]
 ; CHECK-NEXT:    [[IV_NEXT2]] = add nuw nsw i64 [[IV1]], 1
 ; CHECK-NEXT:    %"arrayidx'ipg" = getelementptr inbounds double, double* %"'ipl", i64 [[IV1]]
@@ -136,15 +149,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:    %"'ipl14" = load double, double* %"arrayidx'ipg", align 8, !tbaa !8
 ; CHECK-NEXT:    %"'ipl15" = load double, double* %"arrayidx'ipg12", align 8, !tbaa !8
 ; CHECK-NEXT:    %"'ipl16" = load double, double* %"arrayidx'ipg13", align 8, !tbaa !8
-; CHECK-NEXT:    [[TMP11:%.*]] = extractvalue [3 x double] [[TMP10]], 0
-; CHECK-NEXT:    [[TMP12:%.*]] = fadd fast double %"'ipl14", [[TMP11]]
-; CHECK-NEXT:    [[TMP13:%.*]] = insertvalue [3 x double] undef, double [[TMP12]], 0
-; CHECK-NEXT:    [[TMP14:%.*]] = extractvalue [3 x double] [[TMP10]], 1
-; CHECK-NEXT:    [[TMP15:%.*]] = fadd fast double %"'ipl15", [[TMP14]]
-; CHECK-NEXT:    [[TMP16:%.*]] = insertvalue [3 x double] [[TMP13]], double [[TMP15]], 1
-; CHECK-NEXT:    [[TMP17:%.*]] = extractvalue [3 x double] [[TMP10]], 2
-; CHECK-NEXT:    [[TMP18:%.*]] = fadd fast double %"'ipl16", [[TMP17]]
-; CHECK-NEXT:    [[TMP19]] = insertvalue [3 x double] [[TMP16]], double [[TMP18]], 2
+; CHECK-NEXT:    [[TMP19_1:%.*]] = fadd fast double %"'ipl14", [[TMP10_0]]
+; CHECK-NEXT:    [[TMP19_1:%.*]] = fadd fast double %"'ipl15", [[TMP10_1]]
+; CHECK-NEXT:    [[TMP19_2:%.*]] = fadd fast double %"'ipl16", [[TMP10_2]]
 ; CHECK-NEXT:    [[EXITCOND:%.*]] = icmp eq i64 [[IV1]], [[TIMES]]
 ; CHECK-NEXT:    br i1 [[EXITCOND]], label [[FOR_COND_CLEANUP4]], label [[FOR_BODY5]]
 ;
