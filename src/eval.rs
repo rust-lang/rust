@@ -277,7 +277,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Call start function.
 
     match entry_type {
-        EntryFnType::Main => {
+        EntryFnType::Main { .. } => {
             let start_id = tcx.lang_items().start_fn().unwrap();
             let main_ret_ty = tcx.fn_sig(entry_id).output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
@@ -292,10 +292,17 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
             let main_ptr = ecx.create_fn_alloc_ptr(FnVal::Instance(entry_instance));
 
+            let sigpipe = 2; // Inlining of `DEFAULT` from https://github.com/rust-lang/rust/blob/master/compiler/rustc_session/src/config/sigpipe.rs
+
             ecx.call_function(
                 start_instance,
                 Abi::Rust,
-                &[Scalar::from_pointer(main_ptr, &ecx).into(), argc.into(), argv],
+                &[
+                    Scalar::from_pointer(main_ptr, &ecx).into(),
+                    argc.into(),
+                    argv,
+                    Scalar::from_u8(sigpipe).into(),
+                ],
                 Some(&ret_place.into()),
                 StackPopCleanup::Root { cleanup: true },
             )?;
