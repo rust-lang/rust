@@ -218,6 +218,8 @@ impl<'a> State<'a> {
             ast::ItemKind::GlobalAsm(ref asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
                 self.print_inline_asm(asm);
+                self.word(";");
+                self.end();
                 self.end();
             }
             ast::ItemKind::TyAlias(box ast::TyAlias {
