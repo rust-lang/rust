@@ -26,7 +26,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
+    ) -> Box<Pat<'tcx>> {
         self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
             convert.to_pat(cv, mir_structural_match_violation)
@@ -156,7 +156,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         &mut self,
         cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
+    ) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
@@ -166,10 +166,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // level of indirection can be eliminated
 
         let inlined_const_as_pat =
-            self.recur(cv, mir_structural_match_violation).unwrap_or_else(|_| Pat {
-                span: self.span,
-                ty: cv.ty(),
-                kind: Box::new(PatKind::Constant { value: cv }),
+            self.recur(cv, mir_structural_match_violation).unwrap_or_else(|_| {
+                Box::new(Pat {
+                    span: self.span,
+                    ty: cv.ty(),
+                    kind: PatKind::Constant { value: cv },
+                })
             });
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
@@ -271,7 +273,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         &self,
         cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Result<Pat<'tcx>, FallbackToConstRef> {
+    ) -> Result<Box<Pat<'tcx>>, FallbackToConstRef> {
         let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
@@ -398,7 +400,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     .map(|val| self.recur(*val, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
-                suffix: Vec::new(),
+                suffix: Box::new([]),
             },
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // These are not allowed and will error elsewhere anyway.
@@ -425,8 +427,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Array {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Array {
                                 prefix: tcx
                                     .destructure_mir_constant(param_env, array)
                                     .fields
@@ -434,11 +436,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
                             ty: *pointee_ty,
-                        },
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -451,8 +453,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Slice {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Slice {
                                 prefix: tcx
                                     .destructure_mir_constant(param_env, array)
                                     .fields
@@ -460,11 +462,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
                             ty: tcx.mk_slice(elem_ty),
-                        },
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -598,6 +600,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
         }
 
-        Ok(Pat { span, ty: cv.ty(), kind: Box::new(kind) })
+        Ok(Box::new(Pat { span, ty: cv.ty(), kind }))
     }
 }

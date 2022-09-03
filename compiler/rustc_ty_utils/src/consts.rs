@@ -155,9 +155,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     return true;
                 }
 
-                match pat.kind.as_ref() {
+                match pat.kind {
                     thir::PatKind::Constant { value } => value.has_param_types_or_consts(),
-                    thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
+                    thir::PatKind::Range(box thir::PatRange { lo, hi, .. }) => {
                         lo.has_param_types_or_consts() || hi.has_param_types_or_consts()
                     }
                     _ => false,

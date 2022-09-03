@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let original_source_scope = self.source_scope;
             let span = pattern.span;
             self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
-            match *pattern.kind {
+            match pattern.kind {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     mutability,
@@ -1052,7 +1052,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, pattern, place_builder, false));
+                    unpack!(
+                        block =
+                            self.place_into_pattern(block, pattern.as_ref(), place_builder, false)
+                    );
                 }
             }
             self.source_scope = original_source_scope;

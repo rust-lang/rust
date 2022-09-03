@@ -87,21 +87,21 @@ impl<'tcx> Cx<'tcx> {
                             {
                                 debug!("mirror_stmts: user_ty={:?}", user_ty);
                                 let annotation = CanonicalUserTypeAnnotation {
-                                    user_ty,
+                                    user_ty: Box::new(user_ty),
                                     span: ty.span,
                                     inferred_ty: self.typeck_results.node_type(ty.hir_id),
                                 };
-                                pattern = Pat {
+                                pattern = Box::new(Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
-                                    kind: Box::new(PatKind::AscribeUserType {
+                                    kind: PatKind::AscribeUserType {
                                         ascription: Ascription {
                                             annotation,
                                             variance: ty::Variance::Covariant,
                                         },
                                         subpattern: pattern,
-                                    }),
-                                };
+                                    },
+                                });
                             }
                         }
 

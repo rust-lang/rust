@@ -117,7 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     lint_level,
                     else_block,
                 } => {
-                    let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
+                    let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 ArmHasGuard(false),
                                                 Some((None, initializer_span)),
                                             );
-                                            this.expr_into_pattern(block, pattern.clone(), init) // irrefutable pattern
+                                            this.expr_into_pattern(block, pattern, init) // irrefutable pattern
                                         }
                                     })
                                 },

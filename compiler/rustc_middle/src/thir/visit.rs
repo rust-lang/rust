@@ -211,7 +211,7 @@ pub fn walk_arm<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, arm: &Arm<'
 
 pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'tcx>) {
     use PatKind::*;
-    match pat.kind.as_ref() {
+    match &pat.kind {
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
         | Binding {
@@ -232,18 +232,18 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
         Constant { value: _ } => {}
         Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
-            for subpattern in prefix {
+            for subpattern in prefix.iter() {
                 visitor.visit_pat(&subpattern);
             }
             if let Some(pat) = slice {
-                visitor.visit_pat(pat);
+                visitor.visit_pat(&pat);
             }
-            for subpattern in suffix {
+            for subpattern in suffix.iter() {
                 visitor.visit_pat(&subpattern);
             }
         }
         Or { pats } => {
-            for pat in pats {
+            for pat in pats.iter() {
                 visitor.visit_pat(&pat);
             }
         }

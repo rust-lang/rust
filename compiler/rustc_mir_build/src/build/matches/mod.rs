@@ -490,10 +490,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
-        match *irrefutable_pat.kind {
+        match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
@@ -518,17 +518,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // broken.
             PatKind::AscribeUserType {
                 subpattern:
-                    Pat {
+                    box Pat {
                         kind:
-                            box PatKind::Binding {
-                                mode: BindingMode::ByValue,
-                                var,
-                                subpattern: None,
-                                ..
+                            PatKind::Binding {
+                                mode: BindingMode::ByValue, var, subpattern: None, ..
                             },
                         ..
                     },
-                ascription: thir::Ascription { annotation, variance: _ },
+                ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -541,7 +538,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let ty_source_info = self.source_info(annotation.span);
 
-                let base = self.canonical_user_type_annotations.push(annotation);
+                let base = self.canonical_user_type_annotations.push(annotation.clone());
                 self.cfg.push(
                     block,
                     Statement {
@@ -581,7 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
@@ -744,7 +741,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
             pattern, pattern_user_ty
         );
-        match *pattern.kind {
+        match pattern.kind {
             PatKind::Binding {
                 mutability,
                 name,
@@ -767,7 +764,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
-                for subpattern in prefix {
+                for subpattern in prefix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
                 for subpattern in slice {
@@ -777,7 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         f,
                     );
                 }
-                for subpattern in suffix {
+                for subpattern in suffix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
@@ -830,7 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // may not all be in the leftmost subpattern. For example in
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
-                for subpattern in pats {
+                for subpattern in pats.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
                 }
             }
@@ -982,7 +979,7 @@ enum TestKind<'tcx> {
     },
 
     /// Test whether the value falls within an inclusive or exclusive range
-    Range(PatRange<'tcx>),
+    Range(Box<PatRange<'tcx>>),
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
@@ -1330,7 +1327,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // All of the or-patterns have been sorted to the end, so if the first
         // pattern is an or-pattern we only have or-patterns.
-        match *first_candidate.match_pairs[0].pattern.kind {
+        match first_candidate.match_pairs[0].pattern.kind {
             PatKind::Or { .. } => (),
             _ => {
                 self.test_candidates(
@@ -1350,7 +1347,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut otherwise = None;
         for match_pair in match_pairs {
-            let PatKind::Or { ref pats } = &*match_pair.pattern.kind else {
+            let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
                 bug!("Or-patterns should have been sorted to the end");
             };
             let or_span = match_pair.pattern.span;
@@ -1384,7 +1381,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
         otherwise: &mut Option<BasicBlock>,
-        pats: &'pat [Pat<'tcx>],
+        pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
@@ -2289,7 +2286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let else_block_span = self.thir[else_block].span;
         let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
-            let pat = Pat { ty: init.ty, span: else_block_span, kind: Box::new(PatKind::Wild) };
+            let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
             let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
             this.declare_bindings(
                 visibility_scope,
