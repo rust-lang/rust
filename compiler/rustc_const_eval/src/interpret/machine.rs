@@ -6,6 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
@@ -322,6 +323,15 @@ pub trait Machine<'mir, 'tcx>: Sized {
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
+
+    fn eval_inline_asm(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _template: &'tcx [InlineAsmTemplatePiece],
+        _operands: &[mir::InlineAsmOperand<'tcx>],
+        _options: InlineAsmOptions,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("inline assembly is not supported")
+    }
 
     /// Hook for performing extra checks on a memory read access.
     ///
