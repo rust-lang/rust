@@ -560,17 +560,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // We just want to check sizedness, so instead of introducing
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
-                    let arg_span = args.get(i).map(|a| a.span);
-                    let span = arg_span.unwrap_or(expr.span);
+                    let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
                     let input = self.replace_bound_vars_with_fresh_vars(
                         span,
                         infer::LateBoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
-                    self.require_type_is_sized(
-                        self.normalize_associated_types_in(span, input),
+                    self.require_type_is_sized_deferred(
+                        input,
                         span,
-                        traits::SizedArgumentType(arg_span),
+                        traits::SizedArgumentType(None),
                     );
                 }
             }
@@ -585,11 +584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer::LateBoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
-            self.require_type_is_sized(
-                self.normalize_associated_types_in(expr.span, output),
-                expr.span,
-                traits::SizedReturnType,
-            );
+            self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
         }
 
         // We always require that the type provided as the value for

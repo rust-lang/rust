@@ -38,6 +38,12 @@ pub struct Inherited<'a, 'tcx> {
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
+    // Some additional `Sized` obligations badly affect type inference.
+    // These obligations are added in a later stage of typeck.
+    // Removing these may also cause additional complications, see #101066.
+    pub(super) deferred_sized_obligations:
+        RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
+
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     // `FnOnce` closure. In that case, we defer full resolution of the
@@ -137,6 +143,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             infcx,
             fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
             locals: RefCell::new(Default::default()),
+            deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),

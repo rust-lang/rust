@@ -9,6 +9,24 @@ LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
    = help: the trait `Index<u32>` is not implemented for `[i32]`
    = help: the trait `Index<usize>` is implemented for `[i32]`
 
-error: aborting due to previous error
+error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+  --> $DIR/on-impl.rs:22:5
+   |
+LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a usize is required to index into a slice
+   |
+   = help: the trait `Index<u32>` is not implemented for `[i32]`
+   = help: the trait `Index<usize>` is implemented for `[i32]`
+
+error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
+  --> $DIR/on-impl.rs:22:5
+   |
+LL |     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
+   |     ^^^^^^^^^^^^^^^^^^^ a usize is required to index into a slice
+   |
+   = help: the trait `Index<u32>` is not implemented for `[i32]`
+   = help: the trait `Index<usize>` is implemented for `[i32]`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
