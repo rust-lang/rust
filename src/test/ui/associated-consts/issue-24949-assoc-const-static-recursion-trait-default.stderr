@@ -13,7 +13,7 @@ note: ...which requires const-evaluating + checking `DEFAULT_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
    |
 LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `FooDefault::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |

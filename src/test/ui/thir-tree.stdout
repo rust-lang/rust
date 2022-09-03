@@ -54,5 +54,6 @@ Thir {
         },
     ],
     stmts: [],
+    params: [],
 }
 

@@ -389,8 +389,9 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     // viewing the intraprocedural state, the -Zdump-mir output is
     // better.
 
+    let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -409,7 +410,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
 
         err
     } else {
-        let mut err = tcx.sess.diagnostic().span_note_diag(body.span, "no external requirements");
+        let mut err = tcx.sess.diagnostic().span_note_diag(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

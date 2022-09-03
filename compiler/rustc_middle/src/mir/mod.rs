@@ -18,7 +18,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{self, GeneratorKind};
+use rustc_hir::{self, GeneratorKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
 use rustc_target::abi::{Size, VariantIdx};
@@ -651,22 +651,6 @@ pub enum BindingForm<'tcx> {
     ImplicitSelf(ImplicitSelfKind),
     /// Reference used in a guard expression to ensure immutability.
     RefForGuard,
-}
-
-/// Represents what type of implicit self a function has, if any.
-#[derive(Clone, Copy, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum ImplicitSelfKind {
-    /// Represents a `fn x(self);`.
-    Imm,
-    /// Represents a `fn x(mut self);`.
-    Mut,
-    /// Represents a `fn x(&self);`.
-    ImmRef,
-    /// Represents a `fn x(&mut self);`.
-    MutRef,
-    /// Represents when a function does not have a self argument or
-    /// when a function has a `self: X` argument.
-    None,
 }
 
 TrivialTypeTraversalAndLiftImpls! { BindingForm<'tcx>, }

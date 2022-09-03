@@ -42,11 +42,11 @@
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:54: +0:55
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:54: +0:55
           StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:54: +0:55
-          return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:55
+          return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:56
       }
   
       bb2 (cleanup): {
-          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:55
+          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:+0:1: +0:56
       }
   }
 - 

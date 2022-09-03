@@ -573,7 +573,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             _ => {
                 let place_builder = unpack!(block = self.as_place_builder(block, initializer));
-                self.place_into_pattern(block, irrefutable_pat, place_builder, true)
+                self.place_into_pattern(block, &irrefutable_pat, place_builder, true)
             }
         }
     }
@@ -581,7 +581,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {

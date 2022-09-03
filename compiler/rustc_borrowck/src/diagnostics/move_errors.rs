@@ -360,7 +360,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 diag.span_label(upvar_span, "captured outer variable");
                 diag.span_label(
-                    self.body.span,
+                    self.infcx.tcx.def_span(def_id),
                     format!("captured by this `{closure_kind}` closure"),
                 );
 

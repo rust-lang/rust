@@ -13,14 +13,8 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
 note: no external requirements
   --> $DIR/escape-argument.rs:20:1
    |
-LL | / fn test() {
-LL | |     let x = 44;
-LL | |     let mut p = &x;
-LL | |
-...  |
-LL | |     deref(p);
-LL | | }
-   | |_^
+LL | fn test() {
+   | ^^^^^^^^^
    |
    = note: defining type: test
 

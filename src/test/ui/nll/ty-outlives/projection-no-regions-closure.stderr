@@ -18,11 +18,7 @@ note: no external requirements
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: Iterator,
-LL | | {
-LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | |
-LL | | }
-   | |_^
+   | |________________^
    |
    = note: defining type: no_region::<'_#1r, T>
 
@@ -55,10 +51,7 @@ note: no external requirements
 LL | / fn correct_region<'a, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: 'a + Iterator,
-LL | | {
-LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | | }
-   | |_^
+   | |_____________________^
    |
    = note: defining type: correct_region::<'_#1r, T>
 
@@ -82,11 +75,7 @@ note: no external requirements
 LL | / fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: 'b + Iterator,
-LL | | {
-LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | |
-LL | | }
-   | |_^
+   | |_____________________^
    |
    = note: defining type: wrong_region::<'_#1r, '_#2r, T>
 
@@ -120,10 +109,7 @@ LL | / fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<dyn Anything + 'a>
 LL | | where
 LL | |     T: 'b + Iterator,
 LL | |     'b: 'a,
-LL | | {
-LL | |     with_signature(x, |mut y| Box::new(y.next()))
-LL | | }
-   | |_^
+   | |___________^
    |
    = note: defining type: outlives_region::<'_#1r, '_#2r, T>
 
