@@ -106,9 +106,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {
-    args::cleanup();
-}
+pub unsafe fn cleanup() {}
 
 #[cfg(not(test))]
 #[no_mangle]
