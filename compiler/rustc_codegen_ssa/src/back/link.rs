@@ -1144,23 +1144,46 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
     }
 }
 
-fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
-    fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
-        let session_tlib =
-            filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
-        let path = session_tlib.join(filename);
-        if path.exists() {
-            return session_tlib;
-        } else {
-            let default_sysroot = filesearch::get_or_default_sysroot();
-            let default_tlib = filesearch::make_target_lib_path(
-                &default_sysroot,
-                sess.opts.target_triple.triple(),
-            );
-            return default_tlib;
-        }
+fn add_profiler_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
+    let needs_runtime = match crate_type {
+        CrateType::Executable => true,
+        CrateType::Dylib
+        | CrateType::Cdylib
+        | CrateType::ProcMacro
+        | CrateType::Rlib
+        | CrateType::Staticlib => false,
+    };
+
+    if !needs_runtime {
+        return;
     }
 
+    if !sess.opts.unstable_opts.no_profiler_runtime
+        && (sess.instrument_coverage()
+            || sess.opts.unstable_opts.profile
+            || sess.opts.cg.profile_generate.enabled())
+        // If user doesn't provide custom profiler runtime, link default llvm profiler.
+        && sess.opts.unstable_opts.profiler_runtime == "profiler_builtins"
+    {
+        link_profiler_runtime(sess, linker);
+    }
+}
+
+fn find_compiler_rt(sess: &Session, filename: &str) -> PathBuf {
+    let session_tlib =
+        filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
+    let path = session_tlib.join(filename);
+    if path.exists() {
+        return session_tlib;
+    } else {
+        let default_sysroot = filesearch::get_or_default_sysroot();
+        let default_tlib =
+            filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+        return default_tlib;
+    }
+}
+
+fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
     let channel = option_env!("CFG_RELEASE_CHANNEL")
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
@@ -1171,15 +1194,25 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         // rpath to the library as well (the rpath should be absolute, see
         // PR #41352 for details).
         let filename = format!("rustc{}_rt.{}", channel, name);
-        let path = find_sanitizer_runtime(&sess, &filename);
+        let path = find_compiler_rt(&sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
         linker.link_dylib(&filename, false, true);
     } else {
         let filename = format!("librustc{}_rt.{}.a", channel, name);
-        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        let path = find_compiler_rt(&sess, &filename).join(&filename);
         linker.link_whole_rlib(&path);
     }
+}
+
+fn link_profiler_runtime(sess: &Session, linker: &mut dyn Linker) {
+    let channel = option_env!("CFG_RELEASE_CHANNEL")
+        .map(|channel| format!("-{}", channel))
+        .unwrap_or_default();
+
+    let filename = format!("librustc{}_rt.profile.a", channel);
+    let path = find_compiler_rt(&sess, &filename).join(&filename);
+    linker.link_whole_rlib(&path);
 }
 
 /// Returns a boolean indicating whether the specified crate should be ignored
@@ -1996,6 +2029,9 @@ fn linker_with_args<'a>(
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, crate_type, cmd);
+
+    // Profiler libraries.
+    add_profiler_libraries(sess, crate_type, cmd);
 
     // Object code from the current crate.
     // Take careful note of the ordering of the arguments we pass to the linker

@@ -608,6 +608,7 @@ impl<'a> Builder<'a> {
                 tool::CargoClippy,
                 native::Llvm,
                 native::Sanitizers,
+                native::Profiler,
                 tool::Rustfmt,
                 tool::Miri,
                 tool::CargoMiri,

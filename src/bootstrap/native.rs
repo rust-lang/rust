@@ -1182,6 +1182,131 @@ fn supported_sanitizers(
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Profiler {
+    pub target: TargetSelection,
+}
+
+impl Step for Profiler {
+    type Output = Option<ProfilerRuntime>;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("profiler")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Profiler { target: run.target });
+    }
+
+    /// Builds sanitizer runtime libraries.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_rt_dir.exists() {
+            return None;
+        }
+
+        let out_dir = builder.native_dir(self.target).join("profiler");
+        let runtime = supported_profilers(&out_dir, self.target, &builder.config.channel)?;
+
+        let llvm_config = builder.ensure(Llvm { target: builder.config.build });
+        if builder.config.dry_run {
+            return Some(runtime);
+        }
+
+        let stamp = out_dir.join("profiler-finished-building");
+        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+
+        if stamp.is_done() {
+            if stamp.hash.is_none() {
+                builder.info(&format!(
+                    "Rebuild profiler by removing the file `{}`",
+                    stamp.path.display()
+                ));
+            }
+            return Some(runtime);
+        }
+
+        builder.info(&format!("Building profiler for {}", self.target));
+        t!(stamp.remove());
+        let _time = util::timeit(&builder);
+
+        let mut cfg = cmake::Config::new(&compiler_rt_dir);
+        cfg.profile("Release");
+        cfg.define("CMAKE_C_COMPILER_TARGET", self.target.triple);
+        cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
+        cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
+        cfg.define("COMPILER_RT_BUILD_LIBFUZZER", "OFF");
+        cfg.define("COMPILER_RT_BUILD_PROFILE", "ON");
+        cfg.define("COMPILER_RT_BUILD_SANITIZERS", "OFF");
+        cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
+        cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
+        cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
+        cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        configure_cmake(builder, self.target, &mut cfg, true, LdFlags::default());
+
+        t!(fs::create_dir_all(&out_dir));
+        cfg.out_dir(out_dir);
+        cfg.build_target(&runtime.cmake_target);
+        cfg.build();
+        t!(stamp.write());
+
+        Some(runtime)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ProfilerRuntime {
+    /// CMake target used to build the runtime.
+    pub cmake_target: String,
+    /// Path to the built runtime library.
+    pub path: PathBuf,
+    /// Library filename that will be used rustc.
+    pub name: String,
+}
+
+/// Returns sanitizers available on a given target.
+fn supported_profilers(
+    out_dir: &Path,
+    target: TargetSelection,
+    channel: &str,
+) -> Option<ProfilerRuntime> {
+    // LLVM's compile-rt has a special taste on target naming. :D
+    //
+    // compiler runtime's name seems to be a chaos:
+    // <https://chromium.googlesource.com/chromium/src/tools/clang/+/refs/heads/main/scripts/package.py>
+    let darwin_libs = || -> Option<ProfilerRuntime> {
+        Some(ProfilerRuntime {
+            cmake_target: format!("clang_rt.profile_osx"),
+            path: out_dir.join(&format!("build/lib/darwin/libclang_rt.profile_osx.a")),
+            name: format!("librustc-{}_rt.profile.a", channel),
+        })
+    };
+
+    let common_libs = |os: &str, arch: &str| -> Option<ProfilerRuntime> {
+        Some(ProfilerRuntime {
+            cmake_target: format!("clang_rt.profile-{}", arch),
+            path: out_dir.join(&format!("build/lib/{}/libclang_rt.profile-{}.a", os, arch)),
+            name: format!("librustc-{}_rt.profile.a", channel),
+        })
+    };
+
+    match &*target.triple {
+        "aarch64-apple-darwin" => darwin_libs(),
+        "aarch64-fuchsia" => common_libs("fuchsia", "aarch64"),
+        "aarch64-unknown-linux-gnu" => common_libs("linux", "aarch64"),
+        "x86_64-apple-darwin" => darwin_libs(),
+        "x86_64-fuchsia" => common_libs("fuchsia", "x86_64"),
+        "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64"),
+        "x86_64-unknown-netbsd" => common_libs("netbsd", "x86_64"),
+        "x86_64-unknown-illumos" => common_libs("illumos", "x86_64"),
+        "x86_64-pc-solaris" => common_libs("solaris", "x86_64"),
+        "x86_64-unknown-linux-gnu" => common_libs("linux", "x86_64"),
+        "x86_64-unknown-linux-musl" => common_libs("linux", "x86_64"),
+        _ => None,
+    }
+}
+
 struct HashStamp {
     path: PathBuf,
     hash: Option<Vec<u8>>,

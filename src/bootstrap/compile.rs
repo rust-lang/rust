@@ -205,6 +205,14 @@ fn copy_third_party_objects(
         );
     }
 
+    if builder.config.profiler_enabled(target) && compiler.stage != 0 {
+        // The profiler are only copied in stage1 or above,
+        // to avoid creating dependency on LLVM.
+        if let Some(profiler_path) = copy_profiler(builder, &compiler, target) {
+            target_deps.push((profiler_path, DependencyType::Target));
+        }
+    }
+
     if target == "x86_64-fortanix-unknown-sgx"
         || target.contains("pc-windows-gnullvm")
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
@@ -442,6 +450,24 @@ impl Step for StdLink {
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
     }
+}
+
+/// Copies profiler runtime library into target libdir.
+fn copy_profiler(
+    builder: &Builder<'_>,
+    compiler: &Compiler,
+    target: TargetSelection,
+) -> Option<PathBuf> {
+    let runtime: native::ProfilerRuntime = builder.ensure(native::Profiler { target })?;
+
+    if builder.config.dry_run {
+        return None;
+    }
+
+    let destination = builder.sysroot_libdir(*compiler, target).join(&runtime.name);
+    builder.copy(&runtime.path, &destination);
+
+    Some(destination)
 }
 
 /// Copies sanitizer runtime libraries into target libdir.
