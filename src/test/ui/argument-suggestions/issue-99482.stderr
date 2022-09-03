@@ -12,7 +12,7 @@ LL |     let f = |_: (), f: fn()| f;
 help: provide the argument
    |
 LL |     let _f = f((), main);
-   |              ~~~~~~~~~~~
+   |               ~~~~~~~~~~
 
 error: aborting due to previous error
 

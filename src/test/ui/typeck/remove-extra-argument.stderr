@@ -12,7 +12,7 @@ LL | fn l(_a: Vec<u8>) {}
 help: remove the extra argument
    |
 LL |     l(vec![])
-   |
+   |      ~~~~~~~~
 
 error: aborting due to previous error
 

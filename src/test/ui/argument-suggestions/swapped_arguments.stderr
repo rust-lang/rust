@@ -14,7 +14,7 @@ LL | fn two_args(_a: i32, _b: f32) {}
 help: swap these arguments
    |
 LL |   two_args(1, 1.0);
-   |   ~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:9:3
@@ -32,7 +32,7 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:10:3
@@ -50,7 +50,7 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:11:3
@@ -68,7 +68,7 @@ LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/swapped_arguments.rs:13:3
@@ -88,7 +88,7 @@ LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
 help: did you mean
    |
 LL |   four_args(1, 1.0, "", X {});
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |            ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 5 previous errors
 

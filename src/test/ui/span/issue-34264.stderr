@@ -64,7 +64,7 @@ LL | fn foo(Option<i32>, String) {}
 help: remove the extra argument
    |
 LL |     foo(Some(42), 2);
-   |     ~~~~~~~~~~~~~~~~
+   |        ~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/issue-34264.rs:8:13
@@ -94,7 +94,7 @@ LL | fn bar(x, y: usize) {}
 help: remove the extra argument
    |
 LL |     bar(1, 2);
-   |     ~~~~~~~~~
+   |        ~~~~~~
 
 error: aborting due to 6 previous errors
 
