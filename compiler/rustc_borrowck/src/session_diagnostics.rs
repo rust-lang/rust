@@ -337,3 +337,9 @@ pub(crate) enum MustValidFor<'a> {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum OnLifetimeBound<'a> {
+    #[help(borrowck::consider_add_lifetime_bound)]
+    Add { fr_name: &'a RegionName, outlived_fr_name: &'a RegionName },
+}
