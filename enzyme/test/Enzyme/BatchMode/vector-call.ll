@@ -42,7 +42,7 @@ entry:
 ; CHECK-NEXT:   %unwrap.call1 = extractvalue [4 x double] %call, 1
 ; CHECK-NEXT:   %unwrap.call2 = extractvalue [4 x double] %call, 2
 ; CHECK-NEXT:   %unwrap.call3 = extractvalue [4 x double] %call, 3
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %unwrap.call0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] {{(undef|poison)?}}, double %unwrap.call0, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %unwrap.call1, 1
 ; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %unwrap.call2, 2
 ; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %unwrap.call3, 3
@@ -59,7 +59,7 @@ entry:
 ; CHECK-NEXT:   %add1 = fadd double %unwrap.x1, %a
 ; CHECK-NEXT:   %add2 = fadd double %unwrap.x2, %a
 ; CHECK-NEXT:   %add3 = fadd double %unwrap.x3, %a
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %add0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] {{(undef|poison)?}}, double %add0, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %add1, 1
 ; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %add2, 2
 ; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %add3, 3

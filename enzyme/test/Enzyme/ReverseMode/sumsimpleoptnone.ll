@@ -38,7 +38,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 
 ; CHECK: define internal {{(dso_local )?}}void @diffef(double* %x, double* %"x'", double** %y, double** %"y'", i64 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = add i64 %n, 1
+; CHECK-NEXT:   %0 = add {{(nuw )?}}i64 %n, 1
 ; CHECK-NEXT:   %1 = add nuw i64 %0, 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %1, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)

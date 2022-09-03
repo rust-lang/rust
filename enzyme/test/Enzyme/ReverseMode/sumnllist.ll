@@ -177,7 +177,7 @@ attributes #4 = { nounwind }
 ; LLVM14-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %"add'de.0"
 ; SHARED-NEXT:   store double %[[arraytostore]], double* %[[arrayidxipg]]
 ; SHARED-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
-; LLVM14-NEXT:   %22 = select i1 %21, double %"add'de.0", double -0.000000e+00
+; LLVM14-NEXT:   %22 = select {{(fast )?}}i1 %21, double %"add'de.0", double {{\-?}}0.000000e+00
 ; LLVM14-NEXT:   %23 = fadd fast double %"sum.019'de.1", %22
 ; SHARED-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %incinvertfor.body5
 

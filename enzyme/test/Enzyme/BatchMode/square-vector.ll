@@ -25,7 +25,7 @@ entry:
 ; CHECK-NEXT:   %mul1 = fmul double %unwrap.x1, %unwrap.x1
 ; CHECK-NEXT:   %mul2 = fmul double %unwrap.x2, %unwrap.x2
 ; CHECK-NEXT:   %mul3 = fmul double %unwrap.x3, %unwrap.x3
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %mul0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] {{(undef|poison)?}}, double %mul0, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %mul1, 1
 ; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %mul2, 2
 ; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %mul3, 3

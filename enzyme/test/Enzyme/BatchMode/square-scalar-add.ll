@@ -30,7 +30,7 @@ entry:
 ; CHECK-NEXT:   %add1 = fadd double %mul1, %y
 ; CHECK-NEXT:   %add2 = fadd double %mul2, %y
 ; CHECK-NEXT:   %add3 = fadd double %mul3, %y
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %add0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] {{(undef|poison)?}}, double %add0, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %add1, 1
 ; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %add2, 2
 ; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %add3, 3

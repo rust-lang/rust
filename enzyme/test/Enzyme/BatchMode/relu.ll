@@ -36,14 +36,14 @@ declare [4 x double] @__enzyme_batch(...)
 ; CHECK-NEXT:   %ax1 = fmul double %x, %unwrap.a1
 ; CHECK-NEXT:   %ax2 = fmul double %x, %unwrap.a2
 ; CHECK-NEXT:   %ax3 = fmul double %x, %unwrap.a3
-; CHECK-NEXT:   %mrv = insertvalue [4 x double] undef, double %ax0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x double] {{(undef|poison)?}}, double %ax0, 0
 ; CHECK-NEXT:   %mrv1 = insertvalue [4 x double] %mrv, double %ax1, 1
 ; CHECK-NEXT:   %mrv2 = insertvalue [4 x double] %mrv1, double %ax2, 2
 ; CHECK-NEXT:   %mrv3 = insertvalue [4 x double] %mrv2, double %ax3, 3
 ; CHECK-NEXT:   ret [4 x double] %mrv3
 
 ; CHECK: cond.end:                                         ; preds = %entry
-; CHECK-NEXT:   %mrv4 = insertvalue [4 x double] undef, double %x, 0
+; CHECK-NEXT:   %mrv4 = insertvalue [4 x double] {{(undef|poison)?}}, double %x, 0
 ; CHECK-NEXT:   %mrv5 = insertvalue [4 x double] %mrv4, double %x, 1
 ; CHECK-NEXT:   %mrv6 = insertvalue [4 x double] %mrv5, double %x, 2
 ; CHECK-NEXT:   %mrv7 = insertvalue [4 x double] %mrv6, double %x, 3

@@ -74,7 +74,7 @@ declare [4 x float] @__enzyme_batch(...)
 ; CHECK-NEXT:   %lcssa = phi float [ %add1, %do.body ]
 ; CHECK-NEXT:   %lcssa3 = phi float [ %add2, %do.body ]
 ; CHECK-NEXT:   %lcssa4 = phi float [ %add3, %do.body ]
-; CHECK-NEXT:   %mrv = insertvalue [4 x float] undef, float %lcssa0, 0
+; CHECK-NEXT:   %mrv = insertvalue [4 x float] {{(undef|poison)?}}, float %lcssa0, 0
 ; CHECK-NEXT:   %mrv5 = insertvalue [4 x float] %mrv, float %lcssa, 1
 ; CHECK-NEXT:   %mrv6 = insertvalue [4 x float] %mrv5, float %lcssa3, 2
 ; CHECK-NEXT:   %mrv7 = insertvalue [4 x float] %mrv6, float %lcssa4, 3

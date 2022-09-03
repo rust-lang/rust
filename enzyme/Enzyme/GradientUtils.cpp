@@ -116,10 +116,6 @@ SmallVector<unsigned int, 9> MD_ToCopy = {
     LLVMContext::MD_tbaa_struct,
     LLVMContext::MD_range,
     LLVMContext::MD_nonnull,
-#if LLVM_VERSION_MAJOR >= 15
-    LLVMContext::align,
-    LLVMContext::noundef,
-#endif
     LLVMContext::MD_dereferenceable,
     LLVMContext::MD_dereferenceable_or_null};
 
@@ -4611,13 +4607,17 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       AllocaInst *antialloca = bb.CreateAlloca(
           inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(),
           asize, inst->getName() + "'ipa");
+#if LLVM_VERSION_MAJOR >= 11
+      antialloca->setAlignment(inst->getAlign());
+#elif LLVM_VERSION_MAJOR == 10
       if (inst->getAlignment()) {
-#if LLVM_VERSION_MAJOR >= 10
         antialloca->setAlignment(Align(inst->getAlignment()));
-#else
-        antialloca->setAlignment(inst->getAlignment());
-#endif
       }
+#else
+      if (inst->getAlignment()) {
+        antialloca->setAlignment(inst->getAlignment());
+      }
+#endif
       return antialloca;
     };
 
@@ -4632,13 +4632,17 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         auto rule = [&](Value *antialloca) {
           StoreInst *st = bb.CreateStore(
               Constant::getNullValue(inst->getAllocatedType()), antialloca);
+#if LLVM_VERSION_MAJOR >= 11
+          cast<StoreInst>(st)->setAlignment(inst->getAlign());
+#elif LLVM_VERSION_MAJOR == 10
           if (inst->getAlignment()) {
-#if LLVM_VERSION_MAJOR >= 10
             cast<StoreInst>(st)->setAlignment(Align(inst->getAlignment()));
-#else
-            cast<StoreInst>(st)->setAlignment(inst->getAlignment());
-#endif
           }
+#else
+          if (inst->getAlignment()) {
+            cast<StoreInst>(st)->setAlignment(inst->getAlignment());
+          }
+#endif
         };
 
         applyChainRule(bb, rule, antialloca);
@@ -4672,8 +4676,11 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       Type *tys[] = {dst_arg->getType(), len_arg->getType()};
       auto memset = cast<CallInst>(bb.CreateCall(
           Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
-#if LLVM_VERSION_MAJOR >= 10
-      if (inst->getAlignment()) {
+#if LLVM_VERSION_MAJOR >= 11
+      memset->addParamAttr(
+          0, Attribute::getWithAlignment(inst->getContext(), inst->getAlign()));
+#elif LLVM_VERSION_MAJOR == 10
+      if (inst->getAlignment() != 0) {
         memset->addParamAttr(
             0, Attribute::getWithAlignment(inst->getContext(),
                                            Align(inst->getAlignment())));
@@ -5614,13 +5621,17 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                         /*extraSize*/ nullptr);
 
                     auto ld = v.CreateLoad(AT, AI);
+#if LLVM_VERSION_MAJOR >= 11
+                    ld->setAlignment(AI->getAlign());
+#elif LLVM_VERSION_MAJOR == 10
                     if (AI->getAlignment()) {
-#if LLVM_VERSION_MAJOR >= 10
                       ld->setAlignment(Align(AI->getAlignment()));
-#else
-                      ld->setAlignment(AI->getAlignment());
-#endif
                     }
+#else
+                    if (AI->getAlignment()) {
+                      ld->setAlignment(AI->getAlignment());
+                    }
+#endif
                     scopeInstructions[cache].push_back(ld);
                     auto st = v.CreateStore(ld, outer);
                     auto bsize = newFunc->getParent()
