@@ -385,6 +385,30 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn current_cpu() -> io::Result<u32> {
+    Ok(unsafe { libc::sched_getcpu() as u32 })
+}
+
+#[cfg(target_vendor = "apple")]
+pub fn current_cpu() -> io::Result<u32> {
+    let mut cpu: libc::size_t = 0;
+    let res = unsafe { libc::pthread_cpu_number_np(&mut cpu) };
+    if res == 0 {
+        Ok(cpu as u32)
+    } else {
+        Err(io::const_io_error!(io::ErrorKind::NotFound, "The current cpu could not be fetched"))
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_vendor = "apple")))]
+pub fn current_cpu() -> io::Result<u32> {
+    Err(io::const_io_error!(
+        io::ErrorKind::Unsupported,
+        "The current cpu is unsupported on this platform"
+    ))
+}
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod cgroups {
     //! Currently not covered

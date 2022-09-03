@@ -347,3 +347,7 @@ unsafe fn terminate_and_delete_current_task() -> ! {
 pub fn available_parallelism() -> io::Result<crate::num::NonZeroUsize> {
     super::unsupported()
 }
+
+pub fn current_cpu() -> io::Result<u32> {
+    super::unsupported()
+}

@@ -113,6 +113,13 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     }
 }
 
+pub fn current_cpu() -> io::Result<u32> {
+    extern "C" {
+        fn GetCurrentProcessorNumber() -> u32;
+    }
+    Ok(unsafe { GetCurrentProcessorNumber() })
+}
+
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     pub type Guard = !;

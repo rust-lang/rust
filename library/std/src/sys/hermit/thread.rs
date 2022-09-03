@@ -101,6 +101,10 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     unsupported()
 }
 
+pub fn current_cpu() -> io::Result<u32> {
+    unsupported()
+}
+
 pub mod guard {
     pub type Guard = !;
     pub unsafe fn current() -> Option<Guard> {

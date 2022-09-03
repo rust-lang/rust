@@ -1652,3 +1652,22 @@ fn _assert_sync_and_send() {
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     imp::available_parallelism()
 }
+
+/// Fetches the running cpu from the current thread
+///
+/// # Examples
+///
+/// ```
+/// #![feature(current_cpu)]
+/// # #![allow(dead_code)]
+/// use std::{io, thread};
+///
+/// fn main() -> io::Result<()> {
+///     let cpu = thread::current_cpu()?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "current_cpu", issue = "none")]
+pub fn current_cpu() -> io::Result<u32> {
+    imp::current_cpu()
+}
