@@ -1307,7 +1307,6 @@ fn test_shrink_to_fit() {
     for i in 4..100 {
         xs.push(i)
     }
-    assert_eq!(xs.capacity(), 128);
     xs.shrink_to_fit();
     assert_eq!(xs.capacity(), 100);
     assert_eq!(xs, (0..100).collect::<Vec<_>>());
