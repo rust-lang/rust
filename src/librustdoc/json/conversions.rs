@@ -486,7 +486,7 @@ impl FromWithTcx<clean::Type> for Type {
             },
             QPath(box clean::QPathData { assoc, self_type, trait_, .. }) => Type::QualifiedPath {
                 name: assoc.name.to_string(),
-                args: Box::new(assoc.args.clone().into_tcx(tcx)),
+                args: Box::new(assoc.args.into_tcx(tcx)),
                 self_type: Box::new(self_type.into_tcx(tcx)),
                 trait_: trait_.into_tcx(tcx),
             },
