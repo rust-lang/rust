@@ -1162,10 +1162,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_type(tcx, local_id, def_kind) {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
-            if let DefKind::TyParam | DefKind::ConstParam = def_kind {
-                if let Some(default) = self.tcx.object_lifetime_default(def_id) {
-                    record!(self.tables.object_lifetime_default[def_id] <- default);
-                }
+            if let DefKind::TyParam = def_kind {
+                let default = self.tcx.object_lifetime_default(def_id);
+                record!(self.tables.object_lifetime_default[def_id] <- default);
             }
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));

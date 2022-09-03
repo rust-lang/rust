@@ -1148,21 +1148,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 }
 
-fn object_lifetime_default<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_def_id: DefId,
-) -> Option<ObjectLifetimeDefault> {
+fn object_lifetime_default<'tcx>(tcx: TyCtxt<'tcx>, param_def_id: DefId) -> ObjectLifetimeDefault {
+    debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
     let param_def_id = param_def_id.expect_local();
     let parent_def_id = tcx.local_parent(param_def_id);
-    let generics = tcx.hir().get_generics(parent_def_id)?;
+    let generics = tcx.hir().get_generics(parent_def_id).unwrap();
     let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
-    let param = generics.params.iter().find(|p| p.hir_id == param_hir_id)?;
+    let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
     // Scan the bounds and where-clauses on parameters to extract bounds
     // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
     // for each type parameter.
     match param.kind {
-        GenericParamKind::Lifetime { .. } => None,
         GenericParamKind::Type { .. } => {
             let mut set = Set1::Empty;
 
@@ -1181,21 +1178,17 @@ fn object_lifetime_default<'tcx>(
                 }
             }
 
-            Some(match set {
+            match set {
                 Set1::Empty => ObjectLifetimeDefault::Empty,
                 Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
                 Set1::One(hir::LifetimeName::Param(param_def_id, _)) => {
                     ObjectLifetimeDefault::Param(param_def_id.to_def_id())
                 }
                 _ => ObjectLifetimeDefault::Ambiguous,
-            })
+            }
         }
-        GenericParamKind::Const { .. } => {
-            // Generic consts don't impose any constraints.
-            //
-            // We still store a dummy value here to allow generic parameters
-            // in an arbitrary order.
-            Some(ObjectLifetimeDefault::Empty)
+        _ => {
+            bug!("object_lifetime_default_raw must only be called on a type parameter")
         }
     }
 }
@@ -1512,7 +1505,20 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             generics
                 .params
                 .iter()
-                .filter_map(|param| self.tcx.object_lifetime_default(param.def_id))
+                .filter_map(|param| {
+                    match self.tcx.def_kind(param.def_id) {
+                        // Generic consts don't impose any constraints.
+                        //
+                        // We still store a dummy value here to allow generic parameters
+                        // in an arbitrary order.
+                        DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
+                        DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
+                        // We may also get a `Trait` or `TraitAlias` because of how generics `Self` parameter
+                        // works.  Ignore it because it can't have a meaningful lifetime default.
+                        DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
+                        dk => bug!("unexpected def_kind {:?}", dk),
+                    }
+                })
                 .map(set_to_region)
                 .collect()
         });

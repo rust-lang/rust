@@ -1,24 +1,50 @@
 #![feature(rustc_attrs)]
 
 #[rustc_object_lifetime_default]
-struct A<T>(T); //~ ERROR BaseDefault
+struct A<
+    T, //~ ERROR BaseDefault
+>(T);
 
 #[rustc_object_lifetime_default]
-struct B<'a,T>(&'a (), T); //~ ERROR BaseDefault
+struct B<
+    'a,
+    T, //~ ERROR BaseDefault
+>(&'a (), T);
 
 #[rustc_object_lifetime_default]
-struct C<'a,T:'a>(&'a T); //~ ERROR 'a
+struct C<
+    'a,
+    T: 'a, //~ ERROR 'a
+>(&'a T);
 
 #[rustc_object_lifetime_default]
-struct D<'a,'b,T:'a+'b>(&'a T, &'b T); //~ ERROR Ambiguous
+struct D<
+    'a,
+    'b,
+    T: 'a + 'b, //~ ERROR Ambiguous
+>(&'a T, &'b T);
 
 #[rustc_object_lifetime_default]
-struct E<'a,'b:'a,T:'b>(&'a T, &'b T); //~ ERROR 'b
+struct E<
+    'a,
+    'b: 'a,
+    T: 'b, //~ ERROR 'b
+>(&'a T, &'b T);
 
 #[rustc_object_lifetime_default]
-struct F<'a,'b,T:'a,U:'b>(&'a T, &'b U); //~ ERROR 'a,'b
+struct F<
+    'a,
+    'b,
+    T: 'a, //~ ERROR 'a
+    U: 'b, //~ ERROR 'b
+>(&'a T, &'b U);
 
 #[rustc_object_lifetime_default]
-struct G<'a,'b,T:'a,U:'a+'b>(&'a T, &'b U); //~ ERROR 'a,Ambiguous
+struct G<
+    'a,
+    'b,
+    T: 'a,      //~ ERROR 'a
+    U: 'a + 'b, //~ ERROR Ambiguous
+>(&'a T, &'b U);
 
-fn main() { }
+fn main() {}
