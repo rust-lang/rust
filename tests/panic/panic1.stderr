@@ -6,26 +6,4 @@ stack backtrace:
  at $DIR/panic1.rs:LL:CC
    2: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
  at RUSTLIB/core/src/ops/function.rs:LL:CC
-   3: std::rt::lang_start::{closure#0}
- at RUSTLIB/std/src/rt.rs:LL:CC
-   4: std::ops::function::impls::call_once
- at RUSTLIB/core/src/ops/function.rs:LL:CC
-   5: std::panicking::r#try::do_call
- at RUSTLIB/std/src/panicking.rs:LL:CC
-   6: std::panicking::r#try
- at RUSTLIB/std/src/panicking.rs:LL:CC
-   7: std::panic::catch_unwind
- at RUSTLIB/std/src/panic.rs:LL:CC
-   8: std::rt::lang_start_internal::{closure#2}
- at RUSTLIB/std/src/rt.rs:LL:CC
-   9: std::panicking::r#try::do_call
- at RUSTLIB/std/src/panicking.rs:LL:CC
-  10: std::panicking::r#try
- at RUSTLIB/std/src/panicking.rs:LL:CC
-  11: std::panic::catch_unwind
- at RUSTLIB/std/src/panic.rs:LL:CC
-  12: std::rt::lang_start_internal
- at RUSTLIB/std/src/rt.rs:LL:CC
-  13: std::rt::lang_start
- at RUSTLIB/std/src/rt.rs:LL:CC
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
