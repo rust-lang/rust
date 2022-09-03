@@ -1021,15 +1021,18 @@ impl<T: ?Sized> RefCell<T> {
 
     /// Returns a mutable reference to the underlying data.
     ///
-    /// This call borrows `RefCell` mutably (at compile-time) so there is no
-    /// need for dynamic checks.
+    /// Since this method borrows `RefCell` mutably, it is statically guaranteed
+    /// that no borrows to the underlying data exist. The dynamic checks inherent
+    /// in [`borrow_mut`] and most other methods of `RefCell` are therefor
+    /// unnecessary.
     ///
-    /// However be cautious: this method expects `self` to be mutable, which is
-    /// generally not the case when using a `RefCell`. Take a look at the
-    /// [`borrow_mut`] method instead if `self` isn't mutable.
+    /// This method can only be called if `RefCell` can be mutably borrowed,
+    /// which in general is only the case directly after the `RefCell` has
+    /// been created. In these situations, skipping the aforementioned dynamic
+    /// borrowing checks may yield better ergonomics and runtime-performance.
     ///
-    /// Also, please be aware that this method is only for special circumstances and is usually
-    /// not what you want. In case of doubt, use [`borrow_mut`] instead.
+    /// In most situations where `RefCell` is used, it can't be borrowed mutably.
+    /// Use [`borrow_mut`] to get mutable access to the underlying data then.
     ///
     /// [`borrow_mut`]: RefCell::borrow_mut()
     ///
