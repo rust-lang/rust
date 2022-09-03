@@ -12,7 +12,7 @@ LL | fn foo<T: Fn()>(t: T) {
 help: remove the extra argument
    |
 LL |     t();
-   |     ~~~
+   |      ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:7:5
@@ -28,7 +28,7 @@ LL | fn bar(t: impl Fn()) {
 help: remove the extra argument
    |
 LL |     t();
-   |     ~~~
+   |      ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:16:5
@@ -44,7 +44,7 @@ LL | fn baz() -> impl Fn() {
 help: remove the extra argument
    |
 LL |     baz()()
-   |
+   |          ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:22:5
@@ -60,7 +60,7 @@ LL |     let x = || {};
 help: remove the extra argument
    |
 LL |     x();
-   |     ~~~
+   |      ~~
 
 error: aborting due to 4 previous errors
 

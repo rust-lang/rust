@@ -20,7 +20,7 @@ LL |     foo(&&A, B, C, D, &E, F, G);
 help: remove the extra arguments
    |
 LL |     foo(&&A, D, /* &E */, G);
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~
+   |        ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

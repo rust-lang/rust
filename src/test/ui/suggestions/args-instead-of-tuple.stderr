@@ -44,7 +44,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 help: provide the argument
    |
 LL |     let _: Option<()> = Some(());
-   |                         ~~~~~~~~
+   |                             ~~~~
 
 error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple.rs:14:34
