@@ -11697,6 +11697,7 @@ public:
         if (subretused) {
           Value *dcall = nullptr;
           assert(returnIdx);
+          assert(augmentcall);
           dcall = (returnIdx.getValue() < 0)
                       ? augmentcall
                       : BuilderZ.CreateExtractValue(

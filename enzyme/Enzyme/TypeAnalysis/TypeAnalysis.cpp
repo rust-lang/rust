@@ -2032,7 +2032,7 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
       if (direction & DOWN) {
         result |= TypeTree(BaseType::Anything)
                       .Only(-1)
-                      .ShiftIndices(dl, 0, size, size * i);
+                      .ShiftIndices(dl, 0, size, newOff);
       }
     } else {
       if ((size_t)mask[i] < numFirst) {
