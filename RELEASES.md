@@ -6,12 +6,11 @@ Language
 - [make `const_err` show up in future breakage reports](https://github.com/rust-lang/rust/pull/97743/)
 - [allow unions with mutable references and tuples of allowed types](https://github.com/rust-lang/rust/pull/97995/)
 - It is now considered valid to deallocate memory pointed to by a shared reference `&T` [if every byte in `T` is inside an `UnsafeCell`](https://github.com/rust-lang/rust/pull/98017/)
-- Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/). This lint will become warn-by-default in the future.
+- Unused tuple struct fields are now warned against in an allow-by-default lint, [`unused_tuple_struct_fields`](https://github.com/rust-lang/rust/pull/95977/), similar to the existing warning for unused struct fields. This lint will become warn-by-default in the future.
 
 Compiler
 --------
 - The minimum required versions for all `-linux-gnu` targets are now at least kernel 3.2 and glibc 2.17, for targets that previously supported older versions: [Increase the minimum linux-gnu versions](https://github.com/rust-lang/rust/pull/95026/)
-- rustc now warns about dead fields in tuple structs, just as it already did for other structs: [Warn about dead tuple struct fields](https://github.com/rust-lang/rust/pull/95977/)
 - [Keep unstable target features for asm feature checking](https://github.com/rust-lang/rust/pull/99155/)
 - [Add Nintendo Switch as tier 3 target](https://github.com/rust-lang/rust/pull/88991/)
   - Refer to Rust's [platform support page][platform-support-doc] for more
