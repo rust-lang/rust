@@ -23,7 +23,7 @@ There are seven parts to this guide:
 7. [Appendices][p7] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
-[p1]: ./getting-started.md
+[p1]: ./building/how-to-build-and-run.html
 [p2]: ./contributing.md
 [p3]: ./part-2-intro.md
 [p4]: ./part-3-intro.md
