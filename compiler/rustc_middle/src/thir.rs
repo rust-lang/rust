@@ -23,7 +23,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
@@ -695,17 +695,32 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 Ok(())
             }
             PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
-                let variant = match self.kind {
-                    PatKind::Variant { adt_def, variant_index, .. } => {
-                        Some(adt_def.variant(variant_index))
-                    }
-                    _ => self.ty.ty_adt_def().and_then(|adt| {
-                        if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }
+                let variant_and_name = match self.kind {
+                    PatKind::Variant { adt_def, variant_index, .. } => ty::tls::with(|tcx| {
+                        let variant = adt_def.variant(variant_index);
+                        let adt_did = adt_def.did();
+                        let name = if tcx.get_diagnostic_item(sym::Option) == Some(adt_did)
+                            || tcx.get_diagnostic_item(sym::Result) == Some(adt_did)
+                        {
+                            variant.name.to_string()
+                        } else {
+                            format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                        };
+                        Some((variant, name))
+                    }),
+                    _ => self.ty.ty_adt_def().and_then(|adt_def| {
+                        if !adt_def.is_enum() {
+                            ty::tls::with(|tcx| {
+                                Some((adt_def.non_enum_variant(), tcx.def_path_str(adt_def.did())))
+                            })
+                        } else {
+                            None
+                        }
                     }),
                 };
 
-                if let Some(variant) = variant {
-                    write!(f, "{}", variant.name)?;
+                if let Some((variant, name)) = &variant_and_name {
+                    write!(f, "{}", name)?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -730,8 +745,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     }
                 }
 
-                let num_fields = variant.map_or(subpatterns.len(), |v| v.fields.len());
-                if num_fields != 0 || variant.is_none() {
+                let num_fields =
+                    variant_and_name.as_ref().map_or(subpatterns.len(), |(v, _)| v.fields.len());
+                if num_fields != 0 || variant_and_name.is_none() {
                     write!(f, "(")?;
                     for i in 0..num_fields {
                         write!(f, "{}", start_or_comma())?;
