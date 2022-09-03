@@ -6,11 +6,7 @@
 #[macro_use]
 extern crate tracing;
 
-#[cfg(feature = "rustc")]
-pub(crate) use rustc_data_structures::fx::{FxHashMap as Map, FxHashSet as Set};
-
-#[cfg(not(feature = "rustc"))]
-pub(crate) use std::collections::{HashMap as Map, HashSet as Set};
+pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub(crate) mod layout;
 pub(crate) mod maybe_transmutable;
@@ -19,8 +15,8 @@ pub(crate) mod maybe_transmutable;
 pub struct Assume {
     pub alignment: bool,
     pub lifetimes: bool,
+    pub safety: bool,
     pub validity: bool,
-    pub visibility: bool,
 }
 
 /// The type encodes answers to the question: "Are these types transmutable?"
@@ -62,11 +58,17 @@ pub enum Reason {
 
 #[cfg(feature = "rustc")]
 mod rustc {
+    use super::*;
+
+    use rustc_hir::lang_items::LangItem;
     use rustc_infer::infer::InferCtxt;
     use rustc_macros::{TypeFoldable, TypeVisitable};
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::Binder;
+    use rustc_middle::ty::Const;
+    use rustc_middle::ty::ParamEnv;
     use rustc_middle::ty::Ty;
+    use rustc_middle::ty::TyCtxt;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeFoldable, TypeVisitable, Debug, Clone, Copy)]
@@ -104,6 +106,54 @@ mod rustc {
                 self.infcx.tcx,
             )
             .answer()
+        }
+    }
+
+    impl Assume {
+        /// Constructs an `Assume` from a given const-`Assume`.
+        pub fn from_const<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            param_env: ParamEnv<'tcx>,
+            c: Const<'tcx>,
+        ) -> Self {
+            use rustc_middle::ty::ScalarInt;
+            use rustc_middle::ty::TypeVisitable;
+            use rustc_span::symbol::sym;
+
+            let c = c.eval(tcx, param_env);
+
+            if let Some(err) = c.error_reported() {
+                return Self { alignment: true, lifetimes: true, safety: true, validity: true };
+            }
+
+            let adt_def = c.ty().ty_adt_def().expect("The given `Const` must be an ADT.");
+
+            assert_eq!(
+                tcx.require_lang_item(LangItem::TransmuteOpts, None),
+                adt_def.did(),
+                "The given `Const` was not marked with the `{}` lang item.",
+                LangItem::TransmuteOpts.name(),
+            );
+
+            let variant = adt_def.non_enum_variant();
+            let fields = c.to_valtree().unwrap_branch();
+
+            let get_field = |name| {
+                let (field_idx, _) = variant
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, field_def)| name == field_def.name)
+                    .expect(&format!("There were no fields named `{name}`."));
+                fields[field_idx].unwrap_leaf() == ScalarInt::TRUE
+            };
+
+            Self {
+                alignment: get_field(sym::alignment),
+                lifetimes: get_field(sym::lifetimes),
+                safety: get_field(sym::safety),
+                validity: get_field(sym::validity),
+            }
         }
     }
 }

@@ -1,18 +1,24 @@
 error[E0277]: `()` cannot be safely transmuted into `u8` in the defining scope of `should_have_correct_size::Context`.
-  --> $DIR/unit.rs:23:35
+  --> $DIR/unit.rs:28:35
    |
 LL |     assert::is_transmutable::<(), u8, Context>();
    |                                   ^^ `()` cannot be safely transmuted into `u8` in the defining scope of `should_have_correct_size::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<(), should_have_correct_size::Context, true, true, true, true>` is not implemented for `u8`
+   = help: the trait `BikeshedIntrinsicFrom<(), should_have_correct_size::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `u8`
 note: required by a bound in `is_transmutable`
   --> $DIR/unit.rs:12:14
    |
-LL |     pub fn is_transmutable<Src, Dst, Context>()
-   |            --------------- required by a bound in this
-LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |       pub fn is_transmutable<Src, Dst, Context>()
+   |              --------------- required by a bound in this
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume::ALIGNMENT
+LL | |                 .and(Assume::LIFETIMES)
+LL | |                 .and(Assume::SAFETY)
+LL | |                 .and(Assume::VALIDITY)
+LL | |         }>
+   | |__________^ required by this bound in `is_transmutable`
 
 error: aborting due to previous error
 

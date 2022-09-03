@@ -2,11 +2,13 @@
 //! provided.
 
 #![crate_type = "lib"]
+#![feature(adt_const_params)]
+#![feature(generic_const_exprs)]
 #![feature(transmutability)]
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
 
     pub fn is_transmutable<
         Src,
@@ -14,19 +16,34 @@ mod assert {
         Context,
         const ASSUME_ALIGNMENT: bool,
         const ASSUME_LIFETIMES: bool,
+        const ASSUME_SAFETY: bool,
         const ASSUME_VALIDITY: bool,
-        const ASSUME_VISIBILITY: bool,
     >()
     where
         Dst: BikeshedIntrinsicFrom<
             Src,
             Context,
-            ASSUME_ALIGNMENT,
-            ASSUME_LIFETIMES,
-            ASSUME_VALIDITY,
-            ASSUME_VISIBILITY,
+            { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
+            //~^ ERROR E0080
+            //~| ERROR E0080
+            //~| ERROR E0080
+            //~| ERROR E0080
         >,
     {}
+
+    const fn from_options(
+        alignment: bool,
+        lifetimes: bool,
+        safety: bool,
+        validity: bool,
+    ) -> Assume {
+        Assume {
+            alignment,
+            lifetimes,
+            safety,
+            validity,
+        }
+    }
 }
 
 fn test() {

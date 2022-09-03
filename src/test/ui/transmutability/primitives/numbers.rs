@@ -9,7 +9,7 @@ mod assert {
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
+        Dst: BikeshedIntrinsicFrom<Src, Context>
     {}
 }
 

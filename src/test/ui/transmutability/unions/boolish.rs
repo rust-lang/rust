@@ -7,12 +7,12 @@
 #![allow(incomplete_features)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
     pub struct Context;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, true>
+        Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY }>
     {}
 }
 
