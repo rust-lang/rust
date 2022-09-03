@@ -764,21 +764,23 @@ impl<'a> CrateLoader<'a> {
             || !(self.sess.instrument_coverage()
                 || self.sess.opts.unstable_opts.profile
                 || self.sess.opts.cg.profile_generate.enabled())
-            || self.sess.opts.unstable_opts.profiler_runtime == "profiler_builtins"
         {
             return;
         }
 
-        info!("loading profiler");
+        // If user doesn't provide custom profiler runtime, skip injection.
+        if let Some(profiler_runtime) = &self.sess.opts.unstable_opts.profiler_runtime {
+            info!("loading profiler: {}", profiler_runtime);
 
-        let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
+            let name = Symbol::intern(profiler_runtime);
 
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
-        let data = self.cstore.get_crate_data(cnum);
+            let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
+            let data = self.cstore.get_crate_data(cnum);
 
-        // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-        if !data.is_profiler_runtime() {
-            self.sess.emit_err(NotProfilerRuntime { crate_name: name });
+            // Sanity check the loaded crate to ensure it is indeed a profiler runtime
+            if !data.is_profiler_runtime() {
+                self.sess.emit_err(NotProfilerRuntime { crate_name: name });
+            }
         }
     }
 

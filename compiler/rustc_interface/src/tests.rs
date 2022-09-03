@@ -770,7 +770,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
-    tracked!(profiler_runtime, "abc".to_string());
+    tracked!(profiler_runtime, Some("abc".to_string()));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));

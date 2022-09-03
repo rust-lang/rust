@@ -601,7 +601,7 @@ pub struct CannotFindCrate {
     pub missing_core: bool,
     pub current_crate: String,
     pub is_nightly_build: bool,
-    pub profiler_runtime: Symbol,
+    pub profiler_runtime: Option<Symbol>,
     pub locator_triple: TargetTriple,
 }
 
@@ -641,7 +641,7 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
             if self.is_nightly_build {
                 diag.help(rustc_errors::fluent::metadata_consider_building_std);
             }
-        } else if self.crate_name == self.profiler_runtime {
+        } else if Some(self.crate_name) == self.profiler_runtime {
             diag.note(rustc_errors::fluent::metadata_compiler_missing_profiler);
         } else if self.crate_name.as_str().starts_with("rustc_") {
             diag.help(rustc_errors::fluent::metadata_install_missing_components);

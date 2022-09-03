@@ -1124,7 +1124,12 @@ impl CrateError {
                             .clone()
                             .unwrap_or("<unknown>".to_string()),
                         is_nightly_build: sess.is_nightly_build(),
-                        profiler_runtime: Symbol::intern(&sess.opts.unstable_opts.profiler_runtime),
+                        profiler_runtime: sess
+                            .opts
+                            .unstable_opts
+                            .profiler_runtime
+                            .as_ref()
+                            .map(|x| Symbol::intern(x)),
                         locator_triple: locator.triple,
                     });
                 }

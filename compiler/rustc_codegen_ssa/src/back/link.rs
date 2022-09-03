@@ -1163,7 +1163,7 @@ fn add_profiler_libraries(sess: &Session, crate_type: CrateType, linker: &mut dy
             || sess.opts.unstable_opts.profile
             || sess.opts.cg.profile_generate.enabled())
         // If user doesn't provide custom profiler runtime, link default llvm profiler.
-        && sess.opts.unstable_opts.profiler_runtime == "profiler_builtins"
+        && sess.opts.unstable_opts.profiler_runtime.is_none()
     {
         link_profiler_runtime(sess, linker);
     }
