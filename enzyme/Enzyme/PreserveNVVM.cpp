@@ -48,7 +48,7 @@ using namespace llvm;
 
 namespace {
 
-class PreserveNVVM : public FunctionPass {
+class PreserveNVVM final : public FunctionPass {
 public:
   static char ID;
   bool Begin;

@@ -29,7 +29,7 @@
 #include "clang/Frontend/FrontendPluginRegistry.h"
 
 template <typename ConsumerType>
-class EnzymeAction : public clang::PluginASTAction {
+class EnzymeAction final : public clang::PluginASTAction {
 protected:
   std::unique_ptr<clang::ASTConsumer>
   CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) {
@@ -46,7 +46,7 @@ protected:
   }
 };
 
-class EnzymePlugin : public clang::ASTConsumer {
+class EnzymePlugin final : public clang::ASTConsumer {
   clang::CompilerInstance &CI;
 
 public:

@@ -66,7 +66,7 @@ llvm::cl::opt<std::string>
 
 namespace {
 
-class TypeAnalysisPrinter : public FunctionPass {
+class TypeAnalysisPrinter final : public FunctionPass {
 public:
   static char ID;
   TypeAnalysisPrinter() : FunctionPass(ID) {}

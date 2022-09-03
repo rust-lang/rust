@@ -32,7 +32,7 @@
 
 #include "llvm/IR/Dominators.h"
 
-class MustExitScalarEvolution : public llvm::ScalarEvolution {
+class MustExitScalarEvolution final : public llvm::ScalarEvolution {
 public:
   llvm::SmallPtrSet<llvm::BasicBlock *, 4> GuaranteedUnreachable;
   using ScalarEvolution::ScalarEvolution;

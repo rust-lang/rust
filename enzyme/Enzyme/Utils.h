@@ -136,7 +136,7 @@ void EmitWarning(llvm::StringRef RemarkName, const llvm::Function *F,
     (llvm::errs() << ... << args) << "\n";
 }
 
-class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
+class EnzymeFailure final : public llvm::DiagnosticInfoIROptimization {
 public:
   EnzymeFailure(llvm::StringRef RemarkName, const llvm::DiagnosticLocation &Loc,
                 const llvm::Instruction *CodeRegion);
@@ -941,7 +941,7 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
                                    llvm::IRBuilder<> &B2);
 llvm::Function *getOrInsertExponentialAllocator(llvm::Module &M, bool ZeroInit);
 
-class AssertingReplacingVH : public llvm::CallbackVH {
+class AssertingReplacingVH final : public llvm::CallbackVH {
 public:
   AssertingReplacingVH() = default;
 

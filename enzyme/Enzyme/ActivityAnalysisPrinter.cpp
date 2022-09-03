@@ -74,7 +74,7 @@ static llvm::cl::opt<bool>
                   cl::Hidden, cl::desc("Whether the return is duplicated"));
 namespace {
 
-class ActivityAnalysisPrinter : public FunctionPass {
+class ActivityAnalysisPrinter final : public FunctionPass {
 public:
   static char ID;
   ActivityAnalysisPrinter() : FunctionPass(ID) {}

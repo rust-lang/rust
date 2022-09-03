@@ -109,7 +109,7 @@ struct InvertedPointerConfig : ValueMapConfig<const llvm::Value *> {
   static void onDelete(ExtraData gutils, const llvm::Value *old);
 };
 
-class InvertedPointerVH : public llvm::CallbackVH {
+class InvertedPointerVH final : public llvm::CallbackVH {
 public:
   GradientUtils *gutils;
   InvertedPointerVH(GradientUtils *gutils) : gutils(gutils) {}
@@ -1972,7 +1972,7 @@ public:
   }
 };
 
-class DiffeGradientUtils : public GradientUtils {
+class DiffeGradientUtils final : public GradientUtils {
   DiffeGradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
                      TargetLibraryInfo &TLI, TypeAnalysis &TA, TypeResults TR,
                      ValueToValueMapTy &invertedPointers_,

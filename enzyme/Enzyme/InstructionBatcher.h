@@ -43,7 +43,7 @@
 
 using namespace llvm;
 
-class InstructionBatcher : public llvm::InstVisitor<InstructionBatcher> {
+class InstructionBatcher final : public llvm::InstVisitor<InstructionBatcher> {
 public:
   InstructionBatcher(
       Function *oldFunc, Function *newFunc, unsigned width,
