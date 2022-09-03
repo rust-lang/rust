@@ -746,10 +746,19 @@ impl char {
     /// assert!(!'中'.is_lowercase());
     /// assert!(!' '.is_lowercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_LOWERCASE: bool = 'Δ'.is_lowercase();
+    /// assert!(!CAPITAL_DELTA_IS_LOWERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_lowercase(self) -> bool {
+    pub const fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
             c => c > '\x7f' && unicode::Lowercase(c),
@@ -779,10 +788,19 @@ impl char {
     /// assert!(!'中'.is_uppercase());
     /// assert!(!' '.is_uppercase());
     /// ```
+    ///
+    /// In a const context:
+    ///
+    /// ```
+    /// #![feature(const_unicode_case_lookup)]
+    /// const CAPITAL_DELTA_IS_UPPERCASE: bool = 'Δ'.is_uppercase();
+    /// assert!(CAPITAL_DELTA_IS_UPPERCASE);
+    /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_unicode_case_lookup", issue = "101400")]
     #[inline]
-    pub fn is_uppercase(self) -> bool {
+    pub const fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
             c => c > '\x7f' && unicode::Uppercase(c),
