@@ -182,6 +182,10 @@ impl Process {
         self.0
     }
 
+    pub fn interrupt(&mut self) -> io::Result<()> {
+        self.0
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         self.0
     }

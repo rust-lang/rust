@@ -1860,6 +1860,38 @@ impl Child {
         self.handle.kill()
     }
 
+    /// Signals the child process to exit. If the child has already exited, an [`InvalidInput`]
+    /// error is returned.
+    /// 
+    /// Unlike [`kill`] this allows the process to catch the signal and gracefully exit.
+    ///
+    /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function.
+    ///
+    /// This is equivalent to sending a SIGINT on Unix platforms.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    ///
+    /// let mut command = Command::new("yes");
+    /// if let Ok(mut child) = command.spawn() {
+    ///     child.interrupt().expect("command wasn't running");
+    /// } else {
+    ///     println!("yes command didn't start");
+    /// }
+    /// ```
+    ///
+    /// [`ErrorKind`]: io::ErrorKind
+    /// [`InvalidInput`]: io::ErrorKind::InvalidInput
+    #[stable(feature = "process", since = "1.0.0")]
+    pub fn interrupt(&mut self) -> io::Result<()> {
+        self.handle.interrupt()
+    }
+
+
     /// Returns the OS-assigned process identifier associated with this child.
     ///
     /// # Examples

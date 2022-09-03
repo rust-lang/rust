@@ -42,6 +42,10 @@ impl Process {
         unsupported()
     }
 
+    pub fn interrupt(&mut self) -> io::Result<()> {
+        unsupported()
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsupported()
     }

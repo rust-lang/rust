@@ -150,6 +150,20 @@ impl Process {
         }
     }
 
+    pub fn interrupt(&mut self) -> io::Result<()> {
+        // If we've already waited on this process then the pid can be recycled
+        // and used for another process, and we probably shouldn't be interrupting
+        // random processes, so just return an error.
+        if self.status.is_some() {
+            Err(io::const_io_error!(
+                ErrorKind::InvalidInput,
+                "invalid argument: can't kill an exited process",
+            ))
+        } else {
+            cvt(unsafe { libc::kill(self.pid, libc::SIGINT) }).map(drop)
+        }
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {
