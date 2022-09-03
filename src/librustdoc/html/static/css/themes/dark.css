@@ -11,6 +11,13 @@
 	--headings-border-bottom-color: #d2d2d2;
 	--border-color: #e0e0e0;
 	--button-background-color: #f0f0f0;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--search-input-focused-border-color: #008dfd;
+	--copy-path-button-color: #999;
+	--copy-path-img-filter: invert(50%);
+	--copy-path-img-hover-filter: invert(65%);
 }
 
 .slider {
@@ -129,18 +136,12 @@ body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before {
-	color: #999;
-}
-
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
 .search-input {
 	color: #111;
-	border-color: #f0f0f0;
 }
 
 #crate-search-div::after {
@@ -154,20 +155,11 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
 }
 
-.search-input:focus {
-	border-color: #008dfd;
-}
-
 .stab { background: #314559; }
 
 .stab.portability > code {
 	color: #e6e1cf;
 	background: none;
-}
-
-.rightside:not(a),
-.out-of-band {
-	color: grey;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -195,10 +187,6 @@ a.test-arrow {
 
 a.test-arrow:hover{
 	background-color: #4e8bca;
-}
-
-.code-attribute {
-	color: #999;
 }
 
 :target {
@@ -301,16 +289,6 @@ kbd {
 	border-color: #ffb900;
 }
 
-#copy-path {
-	color: #999;
-}
-#copy-path > img {
-	filter: invert(50%);
-}
-#copy-path:hover > img {
-	filter: invert(65%);
-}
-
 .search-results .result-name span.alias {
 	color: #fff;
 }
@@ -333,9 +311,6 @@ kbd {
 .scraped-example-list .scrape-help:hover {
 	border-color: white;
 	color: white;
-}
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: #999;
 }
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);
