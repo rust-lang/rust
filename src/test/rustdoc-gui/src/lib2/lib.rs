@@ -170,3 +170,13 @@ where
     type Output;
     fn index(&self, index: Idx) -> &Self::Output;
 }
+
+pub struct ItemInfoAlignmentTest;
+
+impl ItemInfoAlignmentTest {
+    /// This method has docs
+    #[deprecated]
+    pub fn foo() {}
+    #[deprecated]
+    pub fn bar() {}
+}

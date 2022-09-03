@@ -778,14 +778,6 @@ pre, .rustdoc.source .example-wrap {
 	margin-bottom: .6em;
 }
 
-.content .impl-items > .item-info {
-	margin-left: 40px;
-}
-
-.methods > .item-info, .content .impl-items > .item-info {
-	margin-top: -8px;
-}
-
 .impl-items {
 	flex-basis: 100%;
 }
@@ -2034,6 +2026,11 @@ in storage.js plus the media query with (min-width: 701px)
 	#main-content > details.rustdoc-toggle:not(.top-doc) > summary::before,
 	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
+	}
+
+	/* Align summary-nested and unnested item-info gizmos. */
+	.content .impl-items > .item-info {
+		margin-left: 34px;
 	}
 }
 
