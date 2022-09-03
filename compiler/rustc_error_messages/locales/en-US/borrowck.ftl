@@ -144,3 +144,30 @@ borrowck_closure_cannot_invoke_again =
 
 borrowck_closure_cannot_move_again =
     closure cannot be moved more than once as it is not `Copy` due to moving the variable `{$place}` out of its environment
+
+borrowck_value_moved_here =
+    value {$partially_str}moved{$move_msg} here{$loop_message}
+
+borrowck_consider_borrow_content_of_type =
+    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
+
+borrowck_function_takes_self_ownership =
+    this function takes ownership of the receiver `self`, which moves {$place_name}
+
+borrowck_moved_by_method_call =
+    {$place_name} {$partially_str}moved due to this method call{$loop_message}
+
+borrowck_moved_by_implicit_call =
+    {$place_name} {$partially_str}moved due to this implicit call to `.into_iter()`{$loop_message}
+
+borrowck_lhs_moved_by_operator_call =
+    calling this operator moves the left-hand side
+
+borrowck_moved_by_operator_use =
+    {$place_name} {$partially_str}moved due to usage in operator{$loop_message}
+
+borrowck_moved_fnonce_value =
+    this value implements `FnOnce`, which causes it to be moved when called
+
+borrowck_moved_by_call =
+    {$place_name} {$partially_str}moved due to this call{$loop_message}

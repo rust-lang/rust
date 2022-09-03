@@ -359,3 +359,68 @@ pub(crate) enum ClosureCannotAgain {
         span: Span,
     },
 }
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum CaptureCausedBy<'a> {
+    #[label(borrowck::moved_by_call)]
+    Call {
+        place_name: &'a str,
+        partially_str: &'a str,
+        loop_message: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::moved_fnonce_value)]
+    FnOnceVal {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::moved_by_operator_use)]
+    OperatorUse {
+        place_name: &'a str,
+        partially_str: &'a str,
+        loop_message: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::lhs_moved_by_operator_call)]
+    OperatorCall {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::moved_by_implicit_call)]
+    ImplicitCall {
+        place_name: &'a str,
+        partially_str: &'a str,
+        loop_message: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::moved_by_method_call)]
+    MethodCall {
+        place_name: &'a str,
+        partially_str: &'a str,
+        loop_message: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(borrowck::function_takes_self_ownership)]
+    FnTakeSelf {
+        place_name: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::consider_borrow_content_of_type)]
+    ConsiderManualBorrow {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(borrowck::value_moved_here)]
+    ValueHere {
+        move_msg: &'a str,
+        partially_str: &'a str,
+        loop_message: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+}
