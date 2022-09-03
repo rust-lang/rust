@@ -312,7 +312,7 @@ pub(super) fn write_shared(
                 if line.starts_with(&prefix) {
                     continue;
                 }
-                if line.ends_with(",") {
+                if line.ends_with(',') {
                     ret.push(line[..line.len() - 1].to_string());
                 } else {
                     // No comma (it's the case for the last added crate line)
