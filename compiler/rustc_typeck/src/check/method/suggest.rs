@@ -16,8 +16,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
@@ -30,7 +30,7 @@ use rustc_trait_selection::traits::{
 use std::cmp::Ordering;
 use std::iter;
 
-use super::probe::{Mode, ProbeScope};
+use super::probe::{IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1069,6 +1069,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
+                self.check_for_deref_method(&mut err, source, rcvr_ty, item_name);
+
                 return Some(err);
             }
 
@@ -1648,6 +1650,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("#[derive({})]\n", traits),
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    fn check_for_deref_method(
+        &self,
+        err: &mut Diagnostic,
+        self_source: SelfSource<'tcx>,
+        rcvr_ty: Ty<'tcx>,
+        item_name: Ident,
+    ) {
+        let SelfSource::QPath(ty) = self_source else { return; };
+        for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
+            if let Ok(pick) = self.probe_for_name(
+                ty.span,
+                Mode::Path,
+                item_name,
+                IsSuggestion(true),
+                deref_ty,
+                ty.hir_id,
+                ProbeScope::TraitsInScope,
+            ) {
+                if deref_ty.is_suggestable(self.tcx, true)
+                    // If this method receives `&self`, then the provided
+                    // argument _should_ coerce, so it's valid to suggest
+                    // just changing the path.
+                    && pick.item.fn_has_self_parameter
+                    && let Some(self_ty) =
+                        self.tcx.fn_sig(pick.item.def_id).inputs().skip_binder().get(0)
+                    && self_ty.is_ref()
+                {
+                    let suggested_path = match deref_ty.kind() {
+                        ty::Bool
+                        | ty::Char
+                        | ty::Int(_)
+                        | ty::Uint(_)
+                        | ty::Float(_)
+                        | ty::Adt(_, _)
+                        | ty::Str
+                        | ty::Projection(_)
+                        | ty::Param(_) => format!("{deref_ty}"),
+                        _ => format!("<{deref_ty}>"),
+                    };
+                    err.span_suggestion_verbose(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                        suggested_path,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_note(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                    );
+                }
+                return;
+            }
         }
     }
 
