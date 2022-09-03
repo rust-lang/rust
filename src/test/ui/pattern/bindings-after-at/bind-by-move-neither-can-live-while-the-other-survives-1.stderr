@@ -40,9 +40,8 @@ error[E0382]: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:12:14
    |
 LL |         Some(ref _y @ _z) => {}
-   |              ^^^^^^^^^--
-   |              |        |
-   |              |        value moved here
+   |              ^^^^^^   -- value moved here
+   |              |
    |              value borrowed here after move
    |
    = note: move occurs because value has type `X`, which does not implement the `Copy` trait
@@ -55,9 +54,8 @@ error[E0382]: borrow of moved value
   --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:26:14
    |
 LL |         Some(ref mut _y @ _z) => {}
-   |              ^^^^^^^^^^^^^--
-   |              |            |
-   |              |            value moved here
+   |              ^^^^^^^^^^   -- value moved here
+   |              |
    |              value borrowed here after move
    |
    = note: move occurs because value has type `X`, which does not implement the `Copy` trait

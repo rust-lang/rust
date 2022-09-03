@@ -262,9 +262,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:29:9
    |
 LL |     let ref mut a @ ref mut b = U;
-   |         ^^^^^^^^^^^^---------
-   |         |           |
-   |         |           first mutable borrow occurs here
+   |         ^^^^^^^^^   --------- first mutable borrow occurs here
+   |         |
    |         second mutable borrow occurs here
 ...
 LL |     drop(b);
@@ -274,9 +273,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:39:9
    |
 LL |     let ref mut a @ ref mut b = U;
-   |         ^^^^^^^^^^^^---------
-   |         |           |
-   |         |           first mutable borrow occurs here
+   |         ^^^^^^^^^   --------- first mutable borrow occurs here
+   |         |
    |         second mutable borrow occurs here
 ...
 LL |     *b = U;
@@ -286,9 +284,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:89:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-   |         ---------------^^^^^^^^^-
-   |         |              |
-   |         |              second mutable borrow occurs here
+   |         ---------      ^^^^^^^^^ second mutable borrow occurs here
+   |         |
    |         first mutable borrow occurs here
 ...
 LL |             *a = Err(U);
@@ -298,9 +295,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:89:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-   |                                     ----------------^^^^^^^^^-
-   |                                     |               |
-   |                                     |               second mutable borrow occurs here
+   |                                     ---------       ^^^^^^^^^ second mutable borrow occurs here
+   |                                     |
    |                                     first mutable borrow occurs here
 ...
 LL |             *a = Err(U);
@@ -310,9 +306,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:101:24
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-   |         ---------------^^^^^^^^^-
-   |         |              |
-   |         |              second mutable borrow occurs here
+   |         ---------      ^^^^^^^^^ second mutable borrow occurs here
+   |         |
    |         first mutable borrow occurs here
 ...
 LL |             drop(a);
@@ -322,9 +317,8 @@ error[E0499]: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-twice.rs:101:53
    |
 LL |         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
-   |                                     ----------------^^^^^^^^^-
-   |                                     |               |
-   |                                     |               second mutable borrow occurs here
+   |                                     ---------       ^^^^^^^^^ second mutable borrow occurs here
+   |                                     |
    |                                     first mutable borrow occurs here
 ...
 LL |             drop(a);
@@ -334,7 +328,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34
    |
 LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
-   |                      ------------^^^^^^^^^^^^-
+   |                      ------------^^^^^^^^^----
    |                      |           |           |
    |                      |           |           value moved here
    |                      |           value borrowed here after move

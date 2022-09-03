@@ -200,7 +200,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 LL |         match v {
 LL |             &[x @ ..] => println!("{:?}", x),
-   |               ^^^^^^ use of borrowed `v`
+   |               ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -212,7 +212,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[_, x @ ..] => println!("{:?}", x),
-   |                  ^^^^^^ use of borrowed `v`
+   |                  ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -224,7 +224,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[x @ .., _] => println!("{:?}", x),
-   |               ^^^^^^ use of borrowed `v`
+   |               ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -236,7 +236,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[_, x @ .., _] => println!("{:?}", x),
-   |                  ^^^^^^ use of borrowed `v`
+   |                  ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
