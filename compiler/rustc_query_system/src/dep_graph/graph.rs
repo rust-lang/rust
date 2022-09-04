@@ -513,15 +513,18 @@ impl<K: DepKind> DepGraph<K> {
         hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
+            // The caller query has more dependencies than the node we are creating.  We may
+            // encounter a case where this created node is marked as green, but the caller query is
+            // subsequently marked as red or recomputed.  In this case, we will end up feeding a
+            // value to an existing node.
+            //
+            // For sanity, we still check that the loaded stable hash and the new one match.
             if let Some(dep_node_index) = self.dep_node_index_of_opt(&node) {
+                let _current_fingerprint =
+                    crate::query::incremental_verify_ich(cx, result, &node, Some(hash_result));
+
                 #[cfg(debug_assertions)]
-                {
-                    let hashing_timer = cx.profiler().incr_result_hashing();
-                    let current_fingerprint =
-                        cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
-                    hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
-                    data.current.record_edge(dep_node_index, node, current_fingerprint);
-                }
+                data.current.record_edge(dep_node_index, node, _current_fingerprint);
 
                 return dep_node_index;
             }
