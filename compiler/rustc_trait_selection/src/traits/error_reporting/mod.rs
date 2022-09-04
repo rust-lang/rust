@@ -349,7 +349,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             message,
                             label,
                             note,
-                            enclosing_scope,
+                            parent_label,
                             append_const_msg,
                         } = self.on_unimplemented_note(trait_ref, &obligation);
                         let have_alt_message = message.is_some() || label.is_some();
@@ -530,7 +530,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
                             err.note(s.as_str());
                         }
-                        if let Some(ref s) = enclosing_scope {
+                        if let Some(ref s) = parent_label {
                             let body = tcx
                                 .hir()
                                 .opt_local_def_id(obligation.cause.body_id)
@@ -539,11 +539,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         hir_id: obligation.cause.body_id,
                                     })
                                 });
-
-                            let enclosing_scope_span =
-                                tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(body));
-
-                            err.span_label(enclosing_scope_span, s);
+                            err.span_label(tcx.def_span(body), s);
                         }
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);

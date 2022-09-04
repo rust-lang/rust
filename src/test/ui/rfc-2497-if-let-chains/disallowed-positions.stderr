@@ -1493,17 +1493,11 @@ LL |     if (let 0 = 0)? {}
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:132:19
    |
-LL | / fn nested_within_if_expr() {
-LL | |     if &let 0 = 0 {}
-LL | |
-LL | |
-...  |
-LL | |     if (let 0 = 0)? {}
-   | |                   ^ cannot use the `?` operator in a function that returns `()`
-...  |
-LL | |
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn nested_within_if_expr() {
+   | -------------------------- this function should return `Result` or `Option` to accept `?`
+...
+LL |     if (let 0 = 0)? {}
+   |                   ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
 
@@ -1693,17 +1687,11 @@ LL |     while (let 0 = 0)? {}
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:224:22
    |
-LL | / fn nested_within_while_expr() {
-LL | |     while &let 0 = 0 {}
-LL | |
-LL | |
-...  |
-LL | |     while (let 0 = 0)? {}
-   | |                      ^ cannot use the `?` operator in a function that returns `()`
-...  |
-LL | |
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn nested_within_while_expr() {
+   | ----------------------------- this function should return `Result` or `Option` to accept `?`
+...
+LL |     while (let 0 = 0)? {}
+   |                      ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
 
@@ -1881,17 +1869,11 @@ LL |     (let 0 = 0)?;
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:325:16
    |
-LL | / fn outside_if_and_while_expr() {
-LL | |     &let 0 = 0;
-LL | |
-LL | |
-...  |
-LL | |     (let 0 = 0)?;
-   | |                ^ cannot use the `?` operator in a function that returns `()`
-...  |
-LL | |
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn outside_if_and_while_expr() {
+   | ------------------------------ this function should return `Result` or `Option` to accept `?`
+...
+LL |     (let 0 = 0)?;
+   |                ^ cannot use the `?` operator in a function that returns `()`
    |
    = help: the trait `FromResidual<_>` is not implemented for `()`
 
