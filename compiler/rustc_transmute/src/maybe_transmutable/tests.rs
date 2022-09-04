@@ -13,7 +13,7 @@ mod bool {
             layout::Tree::<Def, !>::bool(),
             layout::Tree::<Def, !>::bool(),
             (),
-            crate::Assume { alignment: false, lifetimes: false, validity: true, visibility: false },
+            crate::Assume { alignment: false, lifetimes: false, validity: true, safety: false },
             UltraMinimal,
         )
         .answer();
@@ -26,7 +26,7 @@ mod bool {
             layout::Dfa::<!>::bool(),
             layout::Dfa::<!>::bool(),
             (),
-            crate::Assume { alignment: false, lifetimes: false, validity: true, visibility: false },
+            crate::Assume { alignment: false, lifetimes: false, validity: true, safety: false },
             UltraMinimal,
         )
         .answer();

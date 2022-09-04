@@ -4,15 +4,15 @@ error[E0277]: `i8` cannot be safely transmuted into `i16` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   i16>();
    |                                        ^^^ `i8` cannot be safely transmuted into `i16` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `i16`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i16`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u16` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:63:40
@@ -20,15 +20,15 @@ error[E0277]: `i8` cannot be safely transmuted into `u16` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   u16>();
    |                                        ^^^ `i8` cannot be safely transmuted into `u16` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `u16`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u16`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:64:40
@@ -36,15 +36,15 @@ error[E0277]: `i8` cannot be safely transmuted into `i32` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   i32>();
    |                                        ^^^ `i8` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `i32`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:65:40
@@ -52,15 +52,15 @@ error[E0277]: `i8` cannot be safely transmuted into `f32` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   f32>();
    |                                        ^^^ `i8` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `f32`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:66:40
@@ -68,15 +68,15 @@ error[E0277]: `i8` cannot be safely transmuted into `u32` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   u32>();
    |                                        ^^^ `i8` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `u32`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:67:40
@@ -84,15 +84,15 @@ error[E0277]: `i8` cannot be safely transmuted into `u64` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   u64>();
    |                                        ^^^ `i8` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:68:40
@@ -100,15 +100,15 @@ error[E0277]: `i8` cannot be safely transmuted into `i64` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   i64>();
    |                                        ^^^ `i8` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:69:40
@@ -116,15 +116,15 @@ error[E0277]: `i8` cannot be safely transmuted into `f64` in the defining scope 
 LL |     assert::is_transmutable::<   i8,   f64>();
    |                                        ^^^ `i8` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:70:39
@@ -132,15 +132,15 @@ error[E0277]: `i8` cannot be safely transmuted into `u128` in the defining scope
 LL |     assert::is_transmutable::<   i8,  u128>();
    |                                       ^^^^ `i8` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i8` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:71:39
@@ -148,15 +148,15 @@ error[E0277]: `i8` cannot be safely transmuted into `i128` in the defining scope
 LL |     assert::is_transmutable::<   i8,  i128>();
    |                                       ^^^^ `i8` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<i8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i16` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:73:40
@@ -164,15 +164,15 @@ error[E0277]: `u8` cannot be safely transmuted into `i16` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   i16>();
    |                                        ^^^ `u8` cannot be safely transmuted into `i16` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `i16`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i16`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u16` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:74:40
@@ -180,15 +180,15 @@ error[E0277]: `u8` cannot be safely transmuted into `u16` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   u16>();
    |                                        ^^^ `u8` cannot be safely transmuted into `u16` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `u16`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u16`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:75:40
@@ -196,15 +196,15 @@ error[E0277]: `u8` cannot be safely transmuted into `i32` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   i32>();
    |                                        ^^^ `u8` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `i32`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:76:40
@@ -212,15 +212,15 @@ error[E0277]: `u8` cannot be safely transmuted into `f32` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   f32>();
    |                                        ^^^ `u8` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `f32`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:77:40
@@ -228,15 +228,15 @@ error[E0277]: `u8` cannot be safely transmuted into `u32` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   u32>();
    |                                        ^^^ `u8` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `u32`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:78:40
@@ -244,15 +244,15 @@ error[E0277]: `u8` cannot be safely transmuted into `u64` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   u64>();
    |                                        ^^^ `u8` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:79:40
@@ -260,15 +260,15 @@ error[E0277]: `u8` cannot be safely transmuted into `i64` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   i64>();
    |                                        ^^^ `u8` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:80:40
@@ -276,15 +276,15 @@ error[E0277]: `u8` cannot be safely transmuted into `f64` in the defining scope 
 LL |     assert::is_transmutable::<   u8,   f64>();
    |                                        ^^^ `u8` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:81:39
@@ -292,15 +292,15 @@ error[E0277]: `u8` cannot be safely transmuted into `u128` in the defining scope
 LL |     assert::is_transmutable::<   u8,  u128>();
    |                                       ^^^^ `u8` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u8` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:82:39
@@ -308,15 +308,15 @@ error[E0277]: `u8` cannot be safely transmuted into `i128` in the defining scope
 LL |     assert::is_transmutable::<   u8,  i128>();
    |                                       ^^^^ `u8` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<u8, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:84:40
@@ -324,15 +324,15 @@ error[E0277]: `i16` cannot be safely transmuted into `i32` in the defining scope
 LL |     assert::is_transmutable::<  i16,   i32>();
    |                                        ^^^ `i16` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `i32`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:85:40
@@ -340,15 +340,15 @@ error[E0277]: `i16` cannot be safely transmuted into `f32` in the defining scope
 LL |     assert::is_transmutable::<  i16,   f32>();
    |                                        ^^^ `i16` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `f32`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:86:40
@@ -356,15 +356,15 @@ error[E0277]: `i16` cannot be safely transmuted into `u32` in the defining scope
 LL |     assert::is_transmutable::<  i16,   u32>();
    |                                        ^^^ `i16` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `u32`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:87:40
@@ -372,15 +372,15 @@ error[E0277]: `i16` cannot be safely transmuted into `u64` in the defining scope
 LL |     assert::is_transmutable::<  i16,   u64>();
    |                                        ^^^ `i16` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:88:40
@@ -388,15 +388,15 @@ error[E0277]: `i16` cannot be safely transmuted into `i64` in the defining scope
 LL |     assert::is_transmutable::<  i16,   i64>();
    |                                        ^^^ `i16` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:89:40
@@ -404,15 +404,15 @@ error[E0277]: `i16` cannot be safely transmuted into `f64` in the defining scope
 LL |     assert::is_transmutable::<  i16,   f64>();
    |                                        ^^^ `i16` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:90:39
@@ -420,15 +420,15 @@ error[E0277]: `i16` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  i16,  u128>();
    |                                       ^^^^ `i16` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i16` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:91:39
@@ -436,15 +436,15 @@ error[E0277]: `i16` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  i16,  i128>();
    |                                       ^^^^ `i16` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<i16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:93:40
@@ -452,15 +452,15 @@ error[E0277]: `u16` cannot be safely transmuted into `i32` in the defining scope
 LL |     assert::is_transmutable::<  u16,   i32>();
    |                                        ^^^ `u16` cannot be safely transmuted into `i32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `i32`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:94:40
@@ -468,15 +468,15 @@ error[E0277]: `u16` cannot be safely transmuted into `f32` in the defining scope
 LL |     assert::is_transmutable::<  u16,   f32>();
    |                                        ^^^ `u16` cannot be safely transmuted into `f32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `f32`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:95:40
@@ -484,15 +484,15 @@ error[E0277]: `u16` cannot be safely transmuted into `u32` in the defining scope
 LL |     assert::is_transmutable::<  u16,   u32>();
    |                                        ^^^ `u16` cannot be safely transmuted into `u32` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `u32`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u32`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:96:40
@@ -500,15 +500,15 @@ error[E0277]: `u16` cannot be safely transmuted into `u64` in the defining scope
 LL |     assert::is_transmutable::<  u16,   u64>();
    |                                        ^^^ `u16` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:97:40
@@ -516,15 +516,15 @@ error[E0277]: `u16` cannot be safely transmuted into `i64` in the defining scope
 LL |     assert::is_transmutable::<  u16,   i64>();
    |                                        ^^^ `u16` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:98:40
@@ -532,15 +532,15 @@ error[E0277]: `u16` cannot be safely transmuted into `f64` in the defining scope
 LL |     assert::is_transmutable::<  u16,   f64>();
    |                                        ^^^ `u16` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:99:39
@@ -548,15 +548,15 @@ error[E0277]: `u16` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  u16,  u128>();
    |                                       ^^^^ `u16` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u16` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:100:39
@@ -564,15 +564,15 @@ error[E0277]: `u16` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  u16,  i128>();
    |                                       ^^^^ `u16` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<u16, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:102:40
@@ -580,15 +580,15 @@ error[E0277]: `i32` cannot be safely transmuted into `u64` in the defining scope
 LL |     assert::is_transmutable::<  i32,   u64>();
    |                                        ^^^ `i32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:103:40
@@ -596,15 +596,15 @@ error[E0277]: `i32` cannot be safely transmuted into `i64` in the defining scope
 LL |     assert::is_transmutable::<  i32,   i64>();
    |                                        ^^^ `i32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:104:40
@@ -612,15 +612,15 @@ error[E0277]: `i32` cannot be safely transmuted into `f64` in the defining scope
 LL |     assert::is_transmutable::<  i32,   f64>();
    |                                        ^^^ `i32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:105:39
@@ -628,15 +628,15 @@ error[E0277]: `i32` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  i32,  u128>();
    |                                       ^^^^ `i32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:106:39
@@ -644,15 +644,15 @@ error[E0277]: `i32` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  i32,  i128>();
    |                                       ^^^^ `i32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<i32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:108:40
@@ -660,15 +660,15 @@ error[E0277]: `f32` cannot be safely transmuted into `u64` in the defining scope
 LL |     assert::is_transmutable::<  f32,   u64>();
    |                                        ^^^ `f32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:109:40
@@ -676,15 +676,15 @@ error[E0277]: `f32` cannot be safely transmuted into `i64` in the defining scope
 LL |     assert::is_transmutable::<  f32,   i64>();
    |                                        ^^^ `f32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:110:40
@@ -692,15 +692,15 @@ error[E0277]: `f32` cannot be safely transmuted into `f64` in the defining scope
 LL |     assert::is_transmutable::<  f32,   f64>();
    |                                        ^^^ `f32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:111:39
@@ -708,15 +708,15 @@ error[E0277]: `f32` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  f32,  u128>();
    |                                       ^^^^ `f32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:112:39
@@ -724,15 +724,15 @@ error[E0277]: `f32` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  f32,  i128>();
    |                                       ^^^^ `f32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<f32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:114:40
@@ -740,15 +740,15 @@ error[E0277]: `u32` cannot be safely transmuted into `u64` in the defining scope
 LL |     assert::is_transmutable::<  u32,   u64>();
    |                                        ^^^ `u32` cannot be safely transmuted into `u64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, false, false, false, false>` is not implemented for `u64`
+   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:115:40
@@ -756,15 +756,15 @@ error[E0277]: `u32` cannot be safely transmuted into `i64` in the defining scope
 LL |     assert::is_transmutable::<  u32,   i64>();
    |                                        ^^^ `u32` cannot be safely transmuted into `i64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, false, false, false, false>` is not implemented for `i64`
+   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:116:40
@@ -772,15 +772,15 @@ error[E0277]: `u32` cannot be safely transmuted into `f64` in the defining scope
 LL |     assert::is_transmutable::<  u32,   f64>();
    |                                        ^^^ `u32` cannot be safely transmuted into `f64` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, false, false, false, false>` is not implemented for `f64`
+   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `f64`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:117:39
@@ -788,15 +788,15 @@ error[E0277]: `u32` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  u32,  u128>();
    |                                       ^^^^ `u32` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:118:39
@@ -804,15 +804,15 @@ error[E0277]: `u32` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  u32,  i128>();
    |                                       ^^^^ `u32` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<u32, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:120:39
@@ -820,15 +820,15 @@ error[E0277]: `u64` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  u64,  u128>();
    |                                       ^^^^ `u64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u64, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<u64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `u64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:121:39
@@ -836,15 +836,15 @@ error[E0277]: `u64` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  u64,  i128>();
    |                                       ^^^^ `u64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u64, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<u64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:123:39
@@ -852,15 +852,15 @@ error[E0277]: `i64` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  i64,  u128>();
    |                                       ^^^^ `i64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i64, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<i64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `i64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:124:39
@@ -868,15 +868,15 @@ error[E0277]: `i64` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  i64,  i128>();
    |                                       ^^^^ `i64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<i64, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<i64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:126:39
@@ -884,15 +884,15 @@ error[E0277]: `f64` cannot be safely transmuted into `u128` in the defining scop
 LL |     assert::is_transmutable::<  f64,  u128>();
    |                                       ^^^^ `f64` cannot be safely transmuted into `u128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f64, assert::Context, false, false, false, false>` is not implemented for `u128`
+   = help: the trait `BikeshedIntrinsicFrom<f64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `u128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error[E0277]: `f64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
   --> $DIR/numbers.rs:127:39
@@ -900,15 +900,15 @@ error[E0277]: `f64` cannot be safely transmuted into `i128` in the defining scop
 LL |     assert::is_transmutable::<  f64,  i128>();
    |                                       ^^^^ `f64` cannot be safely transmuted into `i128` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<f64, assert::Context, false, false, false, false>` is not implemented for `i128`
+   = help: the trait `BikeshedIntrinsicFrom<f64, assert::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `i128`
 note: required by a bound in `is_transmutable`
   --> $DIR/numbers.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error: aborting due to 57 previous errors
 

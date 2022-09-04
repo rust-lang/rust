@@ -4234,6 +4234,7 @@ version = "0.1.0"
 dependencies = [
  "itertools",
  "rustc_data_structures",
+ "rustc_hir",
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
