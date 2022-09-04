@@ -12,9 +12,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -22,8 +20,6 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt as _;
 use rustc_trait_selection::traits::{FulfillmentError, TraitEngine, TraitEngineExt};
 use rustc_type_ir::sty::TyKind::*;
-
-use std::ops::ControlFlow;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
@@ -462,9 +458,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if let Some(missing_trait) = missing_trait {
-                    let mut visitor = TypeParamVisitor(vec![]);
-                    visitor.visit_ty(lhs_ty);
-
                     if op.node == hir::BinOpKind::Add
                         && self.check_str_addition(
                             lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, is_assign, op,
@@ -473,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // This has nothing here because it means we did string
                         // concatenation (e.g., "Hello " + "World!"). This means
                         // we don't want the note in the else clause to be emitted
-                    } else if let [ty] = &visitor.0[..] {
+                    } else if lhs_ty.has_param_types_or_consts() {
                         // Look for a TraitPredicate in the Fulfillment errors,
                         // and use it to generate a suggestion.
                         //
@@ -513,7 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     );
                                 }
                             }
-                        } else if *ty != lhs_ty {
+                        } else {
                             // When we know that a missing bound is responsible, we don't show
                             // this note as it is redundant.
                             err.note(&format!(
@@ -650,14 +643,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
 
-                    let mut visitor = TypeParamVisitor(vec![]);
-                    visitor.visit_ty(operand_ty);
-                    if let [_] = &visitor.0[..] && let ty::Param(_) = *operand_ty.kind() {
-                        let predicates = errors
-                            .iter()
-                            .filter_map(|error| {
-                                error.obligation.predicate.to_opt_poly_trait_pred()
-                            });
+                    if operand_ty.has_param_types_or_consts() {
+                        let predicates = errors.iter().filter_map(|error| {
+                            error.obligation.predicate.to_opt_poly_trait_pred()
+                        });
                         for pred in predicates {
                             self.suggest_restricting_param_bound(
                                 &mut err,
@@ -969,17 +958,6 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
         }
-    }
-}
-
-struct TypeParamVisitor<'tcx>(Vec<Ty<'tcx>>);
-
-impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if let ty::Param(_) = ty.kind() {
-            self.0.push(ty);
-        }
-        ty.super_visit_with(self)
     }
 }
 
