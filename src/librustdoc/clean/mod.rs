@@ -1787,10 +1787,7 @@ pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
     let kind = match variant.ctor_kind {
         CtorKind::Const => Variant::CLike(match variant.discr {
-            ty::VariantDiscr::Explicit(def_id) => Some(Discriminant {
-                expr: None,
-                value: print_evaluated_const(cx.tcx, def_id, false).unwrap(),
-            }),
+            ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
             ty::VariantDiscr::Relative(_) => None,
         }),
         CtorKind::Fn => Variant::Tuple(
@@ -1820,16 +1817,9 @@ fn clean_variant_data<'tcx>(
         hir::VariantData::Tuple(..) => {
             Variant::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
         }
-        hir::VariantData::Unit(..) => Variant::CLike(disr_expr.map(|disr| {
-            Discriminant {
-                expr: Some(print_const_expr(cx.tcx, disr.body)),
-                value: print_evaluated_const(
-                    cx.tcx,
-                    cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
-                    false,
-                )
-                .unwrap(),
-            }
+        hir::VariantData::Unit(..) => Variant::CLike(disr_expr.map(|disr| Discriminant {
+            expr: Some(disr.body),
+            value: cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
         })),
     }
 }

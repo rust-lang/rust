@@ -2116,8 +2116,20 @@ impl Variant {
 pub(crate) struct Discriminant {
     // In the case of cross crate re-exports, we don't have the nessesary information
     // to reconstruct the expression of the discriminant, only the value.
-    pub(crate) expr: Option<String>,
-    pub(crate) value: String,
+    pub(super) expr: Option<BodyId>,
+    pub(super) value: DefId,
+}
+
+impl Discriminant {
+    /// Will be `None` in the case of cross-crate reexports, and may be
+    /// simplified
+    pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        self.expr.map(|body| print_const_expr(tcx, body))
+    }
+    /// Will always be a machine readable number, without underscores or suffixes.
+    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> String {
+        print_evaluated_const(tcx, self.value, false).unwrap()
+    }
 }
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
