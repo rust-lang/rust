@@ -582,7 +582,10 @@ impl Map {
 
         // Apply the projection.
         for &elem in projection {
-            // For now, downcast is not allowed (see #101168).
+            // For now, downcast is not allowed due to aliasing between variants (see #101168).
+            // Also, according to the documentation of [`Place`], a single-variant type can be
+            // projected with and without a [`ProjectionElem::Downcast`]. This creates an ambiguity
+            // that needs to be resolved.
             match elem {
                 PlaceElem::Downcast(..) => return Err(()),
                 _ => (),
