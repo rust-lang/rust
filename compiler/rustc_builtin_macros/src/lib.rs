@@ -37,6 +37,7 @@ mod derive;
 mod deriving;
 mod edition_panic;
 mod env;
+mod errors;
 mod format;
 mod format_foreign;
 mod global_allocator;
