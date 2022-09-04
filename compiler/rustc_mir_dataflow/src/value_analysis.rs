@@ -87,12 +87,16 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::CopyNonOverlapping(..) => {
                 // FIXME: What to do here?
             }
-            StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
-            | StatementKind::Deinit(_) => {
-                // Could perhaps use these.
+            StatementKind::StorageDead(local) => {
+                // It is UB to access an unallocated local.
+                state.flood(Place::from(*local).as_ref(), self.map());
+            }
+            StatementKind::Deinit(box place) => {
+                // It is UB to access `uninit` bytes.
+                state.flood(place.as_ref(), self.map());
             }
             StatementKind::Nop
+            | StatementKind::StorageLive(..)
             | StatementKind::Retag(..)
             | StatementKind::FakeRead(..)
             | StatementKind::Coverage(..)
