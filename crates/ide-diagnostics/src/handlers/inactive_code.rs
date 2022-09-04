@@ -140,4 +140,29 @@ trait Bar {
 "#,
         );
     }
+
+    #[test]
+    fn inactive_fields() {
+        check(
+            r#"
+enum Foo {
+  #[cfg(a)] Bar,
+//^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+}
+
+struct Baz {
+  #[cfg(a)] baz: String,
+//^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+}
+
+struct Qux(#[cfg(a)] String);
+         //^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+
+union FooBar {
+  #[cfg(a)] baz: u32,
+//^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: a is disabled
+}
+"#,
+        );
+    }
 }

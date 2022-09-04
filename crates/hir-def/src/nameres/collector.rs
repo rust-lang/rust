@@ -32,8 +32,8 @@ use crate::{
     derive_macro_as_call_id,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode, MacroCall,
-        MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, FieldAstId, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
+        MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id, macro_id_to_def_id,
     nameres::{
@@ -1511,7 +1511,10 @@ impl ModCollector<'_, '_> {
             let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
             if let Some(cfg) = attrs.cfg() {
                 if !self.is_cfg_enabled(&cfg) {
-                    self.emit_unconfigured_diagnostic(item, &cfg);
+                    self.emit_unconfigured_diagnostic(
+                        InFile::new(self.file_id(), item.ast_id(&self.item_tree).upcast()),
+                        &cfg,
+                    );
                     continue;
                 }
             }
@@ -1523,22 +1526,20 @@ impl ModCollector<'_, '_> {
             }
 
             let db = self.def_collector.db;
-            let module = self.def_collector.def_map.module_id(self.module_id);
-            let def_map = &mut self.def_collector.def_map;
+            let module_id = self.module_id;
+            let module = self.def_collector.def_map.module_id(module_id);
             let update_def =
                 |def_collector: &mut DefCollector<'_>, id, name: &Name, vis, has_constructor| {
-                    def_collector.def_map.modules[self.module_id].scope.declare(id);
+                    def_collector.def_map.modules[module_id].scope.declare(id);
                     def_collector.update(
-                        self.module_id,
+                        module_id,
                         &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
                         vis,
                         ImportType::Named,
                     )
                 };
             let resolve_vis = |def_map: &DefMap, visibility| {
-                def_map
-                    .resolve_visibility(db, self.module_id, visibility)
-                    .unwrap_or(Visibility::Public)
+                def_map.resolve_visibility(db, module_id, visibility).unwrap_or(Visibility::Public)
             };
 
             match item {
@@ -1594,6 +1595,7 @@ impl ModCollector<'_, '_> {
                     let fn_id =
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
+                    let def_map = &self.def_collector.def_map;
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
                     if self.def_collector.is_proc_macro {
                         if self.module_id == def_map.root {
@@ -1614,7 +1616,10 @@ impl ModCollector<'_, '_> {
                 ModItem::Struct(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    self.process_fields(&it.fields);
+
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         StructLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
@@ -1628,7 +1633,10 @@ impl ModCollector<'_, '_> {
                 ModItem::Union(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    self.process_fields(&it.fields);
+
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         UnionLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
@@ -1642,7 +1650,21 @@ impl ModCollector<'_, '_> {
                 ModItem::Enum(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    for id in it.variants.clone() {
+                        let variant = &self.item_tree[id];
+                        let attrs = self.item_tree.attrs(self.def_collector.db, krate, id.into());
+                        if let Some(cfg) = attrs.cfg() {
+                            if !self.is_cfg_enabled(&cfg) {
+                                self.emit_unconfigured_diagnostic(
+                                    InFile::new(self.file_id(), variant.ast_id.upcast()),
+                                    &cfg,
+                                );
+                            }
+                        }
+                    }
+
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         EnumLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
@@ -1660,7 +1682,10 @@ impl ModCollector<'_, '_> {
 
                     match &it.name {
                         Some(name) => {
-                            let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                            let vis = resolve_vis(
+                                &self.def_collector.def_map,
+                                &self.item_tree[it.visibility],
+                            );
                             update_def(self.def_collector, const_id.into(), name, vis, false);
                         }
                         None => {
@@ -1674,7 +1699,8 @@ impl ModCollector<'_, '_> {
                 ModItem::Static(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         StaticLoc { container, id: ItemTreeId::new(self.tree_id, id) }
@@ -1688,7 +1714,8 @@ impl ModCollector<'_, '_> {
                 ModItem::Trait(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         TraitLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
@@ -1702,7 +1729,8 @@ impl ModCollector<'_, '_> {
                 ModItem::TypeAlias(id) => {
                     let it = &self.item_tree[id];
 
-                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    let vis =
+                        resolve_vis(&self.def_collector.def_map, &self.item_tree[it.visibility]);
                     update_def(
                         self.def_collector,
                         TypeAliasLoc { container, id: ItemTreeId::new(self.tree_id, id) }
@@ -2115,17 +2143,44 @@ impl ModCollector<'_, '_> {
         }
     }
 
+    fn process_fields(&mut self, fields: &Fields) {
+        match fields {
+            Fields::Record(range) | Fields::Tuple(range) => {
+                for id in range.clone() {
+                    let field = &self.item_tree[id];
+                    let attrs = self.item_tree.attrs(
+                        self.def_collector.db,
+                        self.def_collector.def_map.krate,
+                        id.into(),
+                    );
+                    if let Some(cfg) = attrs.cfg() {
+                        if !self.is_cfg_enabled(&cfg) {
+                            self.emit_unconfigured_diagnostic(
+                                InFile::new(
+                                    self.file_id(),
+                                    match field.ast_id {
+                                        FieldAstId::Record(it) => it.upcast(),
+                                        FieldAstId::Tuple(it) => it.upcast(),
+                                    },
+                                ),
+                                &cfg,
+                            );
+                        }
+                    }
+                }
+            }
+            Fields::Unit => {}
+        }
+    }
+
     fn is_cfg_enabled(&self, cfg: &CfgExpr) -> bool {
         self.def_collector.cfg_options.check(cfg) != Some(false)
     }
 
-    fn emit_unconfigured_diagnostic(&mut self, item: ModItem, cfg: &CfgExpr) {
-        let ast_id = item.ast_id(self.item_tree);
-
-        let ast_id = InFile::new(self.file_id(), ast_id);
+    fn emit_unconfigured_diagnostic(&mut self, ast: AstId<ast::AnyHasAttrs>, cfg: &CfgExpr) {
         self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
             self.module_id,
-            ast_id,
+            ast,
             cfg.clone(),
             self.def_collector.cfg_options.clone(),
         ));

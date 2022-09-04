@@ -3894,6 +3894,12 @@ impl AstNode for AnyHasArgList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<CallExpr> for AnyHasArgList {
+    fn from(node: CallExpr) -> AnyHasArgList { AnyHasArgList::new(node) }
+}
+impl From<MethodCallExpr> for AnyHasArgList {
+    fn from(node: MethodCallExpr) -> AnyHasArgList { AnyHasArgList::new(node) }
+}
 impl AnyHasAttrs {
     #[inline]
     pub fn new<T: ast::HasAttrs>(node: T) -> AnyHasAttrs {
@@ -3978,6 +3984,207 @@ impl AstNode for AnyHasAttrs {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<MacroCall> for AnyHasAttrs {
+    fn from(node: MacroCall) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<SourceFile> for AnyHasAttrs {
+    fn from(node: SourceFile) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Const> for AnyHasAttrs {
+    fn from(node: Const) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Enum> for AnyHasAttrs {
+    fn from(node: Enum) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ExternBlock> for AnyHasAttrs {
+    fn from(node: ExternBlock) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ExternCrate> for AnyHasAttrs {
+    fn from(node: ExternCrate) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Fn> for AnyHasAttrs {
+    fn from(node: Fn) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Impl> for AnyHasAttrs {
+    fn from(node: Impl) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MacroRules> for AnyHasAttrs {
+    fn from(node: MacroRules) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MacroDef> for AnyHasAttrs {
+    fn from(node: MacroDef) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Module> for AnyHasAttrs {
+    fn from(node: Module) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Static> for AnyHasAttrs {
+    fn from(node: Static) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Struct> for AnyHasAttrs {
+    fn from(node: Struct) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Trait> for AnyHasAttrs {
+    fn from(node: Trait) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<TypeAlias> for AnyHasAttrs {
+    fn from(node: TypeAlias) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Union> for AnyHasAttrs {
+    fn from(node: Union) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Use> for AnyHasAttrs {
+    fn from(node: Use) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ItemList> for AnyHasAttrs {
+    fn from(node: ItemList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<BlockExpr> for AnyHasAttrs {
+    fn from(node: BlockExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<SelfParam> for AnyHasAttrs {
+    fn from(node: SelfParam) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Param> for AnyHasAttrs {
+    fn from(node: Param) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RecordField> for AnyHasAttrs {
+    fn from(node: RecordField) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<TupleField> for AnyHasAttrs {
+    fn from(node: TupleField) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Variant> for AnyHasAttrs {
+    fn from(node: Variant) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<AssocItemList> for AnyHasAttrs {
+    fn from(node: AssocItemList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ExternItemList> for AnyHasAttrs {
+    fn from(node: ExternItemList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ConstParam> for AnyHasAttrs {
+    fn from(node: ConstParam) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<LifetimeParam> for AnyHasAttrs {
+    fn from(node: LifetimeParam) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<TypeParam> for AnyHasAttrs {
+    fn from(node: TypeParam) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<LetStmt> for AnyHasAttrs {
+    fn from(node: LetStmt) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ArrayExpr> for AnyHasAttrs {
+    fn from(node: ArrayExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<AwaitExpr> for AnyHasAttrs {
+    fn from(node: AwaitExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<BinExpr> for AnyHasAttrs {
+    fn from(node: BinExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<BoxExpr> for AnyHasAttrs {
+    fn from(node: BoxExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<BreakExpr> for AnyHasAttrs {
+    fn from(node: BreakExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<CallExpr> for AnyHasAttrs {
+    fn from(node: CallExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<CastExpr> for AnyHasAttrs {
+    fn from(node: CastExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ClosureExpr> for AnyHasAttrs {
+    fn from(node: ClosureExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ContinueExpr> for AnyHasAttrs {
+    fn from(node: ContinueExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<FieldExpr> for AnyHasAttrs {
+    fn from(node: FieldExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ForExpr> for AnyHasAttrs {
+    fn from(node: ForExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<IfExpr> for AnyHasAttrs {
+    fn from(node: IfExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<IndexExpr> for AnyHasAttrs {
+    fn from(node: IndexExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<Literal> for AnyHasAttrs {
+    fn from(node: Literal) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<LoopExpr> for AnyHasAttrs {
+    fn from(node: LoopExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MatchExpr> for AnyHasAttrs {
+    fn from(node: MatchExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MethodCallExpr> for AnyHasAttrs {
+    fn from(node: MethodCallExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ParenExpr> for AnyHasAttrs {
+    fn from(node: ParenExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<PathExpr> for AnyHasAttrs {
+    fn from(node: PathExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<PrefixExpr> for AnyHasAttrs {
+    fn from(node: PrefixExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RangeExpr> for AnyHasAttrs {
+    fn from(node: RangeExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RefExpr> for AnyHasAttrs {
+    fn from(node: RefExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<ReturnExpr> for AnyHasAttrs {
+    fn from(node: ReturnExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<TryExpr> for AnyHasAttrs {
+    fn from(node: TryExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<TupleExpr> for AnyHasAttrs {
+    fn from(node: TupleExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<WhileExpr> for AnyHasAttrs {
+    fn from(node: WhileExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<YieldExpr> for AnyHasAttrs {
+    fn from(node: YieldExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<LetExpr> for AnyHasAttrs {
+    fn from(node: LetExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<UnderscoreExpr> for AnyHasAttrs {
+    fn from(node: UnderscoreExpr) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<StmtList> for AnyHasAttrs {
+    fn from(node: StmtList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RecordExprFieldList> for AnyHasAttrs {
+    fn from(node: RecordExprFieldList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RecordExprField> for AnyHasAttrs {
+    fn from(node: RecordExprField) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MatchArmList> for AnyHasAttrs {
+    fn from(node: MatchArmList) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<MatchArm> for AnyHasAttrs {
+    fn from(node: MatchArm) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<IdentPat> for AnyHasAttrs {
+    fn from(node: IdentPat) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RestPat> for AnyHasAttrs {
+    fn from(node: RestPat) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
+impl From<RecordPatField> for AnyHasAttrs {
+    fn from(node: RecordPatField) -> AnyHasAttrs { AnyHasAttrs::new(node) }
+}
 impl AnyHasDocComments {
     #[inline]
     pub fn new<T: ast::HasDocComments>(node: T) -> AnyHasDocComments {
@@ -4015,6 +4222,66 @@ impl AstNode for AnyHasDocComments {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<MacroCall> for AnyHasDocComments {
+    fn from(node: MacroCall) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<SourceFile> for AnyHasDocComments {
+    fn from(node: SourceFile) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Const> for AnyHasDocComments {
+    fn from(node: Const) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Enum> for AnyHasDocComments {
+    fn from(node: Enum) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<ExternBlock> for AnyHasDocComments {
+    fn from(node: ExternBlock) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<ExternCrate> for AnyHasDocComments {
+    fn from(node: ExternCrate) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Fn> for AnyHasDocComments {
+    fn from(node: Fn) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Impl> for AnyHasDocComments {
+    fn from(node: Impl) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<MacroRules> for AnyHasDocComments {
+    fn from(node: MacroRules) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<MacroDef> for AnyHasDocComments {
+    fn from(node: MacroDef) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Module> for AnyHasDocComments {
+    fn from(node: Module) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Static> for AnyHasDocComments {
+    fn from(node: Static) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Struct> for AnyHasDocComments {
+    fn from(node: Struct) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Trait> for AnyHasDocComments {
+    fn from(node: Trait) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<TypeAlias> for AnyHasDocComments {
+    fn from(node: TypeAlias) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Union> for AnyHasDocComments {
+    fn from(node: Union) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Use> for AnyHasDocComments {
+    fn from(node: Use) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<RecordField> for AnyHasDocComments {
+    fn from(node: RecordField) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<TupleField> for AnyHasDocComments {
+    fn from(node: TupleField) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
+impl From<Variant> for AnyHasDocComments {
+    fn from(node: Variant) -> AnyHasDocComments { AnyHasDocComments::new(node) }
+}
 impl AnyHasGenericParams {
     #[inline]
     pub fn new<T: ast::HasGenericParams>(node: T) -> AnyHasGenericParams {
@@ -4030,6 +4297,27 @@ impl AstNode for AnyHasGenericParams {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<Enum> for AnyHasGenericParams {
+    fn from(node: Enum) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<Fn> for AnyHasGenericParams {
+    fn from(node: Fn) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<Impl> for AnyHasGenericParams {
+    fn from(node: Impl) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<Struct> for AnyHasGenericParams {
+    fn from(node: Struct) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<Trait> for AnyHasGenericParams {
+    fn from(node: Trait) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<TypeAlias> for AnyHasGenericParams {
+    fn from(node: TypeAlias) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
+impl From<Union> for AnyHasGenericParams {
+    fn from(node: Union) -> AnyHasGenericParams { AnyHasGenericParams::new(node) }
+}
 impl AnyHasLoopBody {
     #[inline]
     pub fn new<T: ast::HasLoopBody>(node: T) -> AnyHasLoopBody {
@@ -4043,6 +4331,15 @@ impl AstNode for AnyHasLoopBody {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<ForExpr> for AnyHasLoopBody {
+    fn from(node: ForExpr) -> AnyHasLoopBody { AnyHasLoopBody::new(node) }
+}
+impl From<LoopExpr> for AnyHasLoopBody {
+    fn from(node: LoopExpr) -> AnyHasLoopBody { AnyHasLoopBody::new(node) }
+}
+impl From<WhileExpr> for AnyHasLoopBody {
+    fn from(node: WhileExpr) -> AnyHasLoopBody { AnyHasLoopBody::new(node) }
+}
 impl AnyHasModuleItem {
     #[inline]
     pub fn new<T: ast::HasModuleItem>(node: T) -> AnyHasModuleItem {
@@ -4055,6 +4352,15 @@ impl AstNode for AnyHasModuleItem {
         Self::can_cast(syntax.kind()).then(|| AnyHasModuleItem { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<MacroItems> for AnyHasModuleItem {
+    fn from(node: MacroItems) -> AnyHasModuleItem { AnyHasModuleItem::new(node) }
+}
+impl From<SourceFile> for AnyHasModuleItem {
+    fn from(node: SourceFile) -> AnyHasModuleItem { AnyHasModuleItem::new(node) }
+}
+impl From<ItemList> for AnyHasModuleItem {
+    fn from(node: ItemList) -> AnyHasModuleItem { AnyHasModuleItem::new(node) }
 }
 impl AnyHasName {
     #[inline]
@@ -4091,6 +4397,60 @@ impl AstNode for AnyHasName {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl From<Const> for AnyHasName {
+    fn from(node: Const) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Enum> for AnyHasName {
+    fn from(node: Enum) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Fn> for AnyHasName {
+    fn from(node: Fn) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<MacroRules> for AnyHasName {
+    fn from(node: MacroRules) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<MacroDef> for AnyHasName {
+    fn from(node: MacroDef) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Module> for AnyHasName {
+    fn from(node: Module) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Static> for AnyHasName {
+    fn from(node: Static) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Struct> for AnyHasName {
+    fn from(node: Struct) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Trait> for AnyHasName {
+    fn from(node: Trait) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<TypeAlias> for AnyHasName {
+    fn from(node: TypeAlias) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Union> for AnyHasName {
+    fn from(node: Union) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Rename> for AnyHasName {
+    fn from(node: Rename) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<SelfParam> for AnyHasName {
+    fn from(node: SelfParam) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<RecordField> for AnyHasName {
+    fn from(node: RecordField) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<Variant> for AnyHasName {
+    fn from(node: Variant) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<ConstParam> for AnyHasName {
+    fn from(node: ConstParam) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<TypeParam> for AnyHasName {
+    fn from(node: TypeParam) -> AnyHasName { AnyHasName::new(node) }
+}
+impl From<IdentPat> for AnyHasName {
+    fn from(node: IdentPat) -> AnyHasName { AnyHasName::new(node) }
+}
 impl AnyHasTypeBounds {
     #[inline]
     pub fn new<T: ast::HasTypeBounds>(node: T) -> AnyHasTypeBounds {
@@ -4108,6 +4468,24 @@ impl AstNode for AnyHasTypeBounds {
         Self::can_cast(syntax.kind()).then(|| AnyHasTypeBounds { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<AssocTypeArg> for AnyHasTypeBounds {
+    fn from(node: AssocTypeArg) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
+}
+impl From<Trait> for AnyHasTypeBounds {
+    fn from(node: Trait) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
+}
+impl From<TypeAlias> for AnyHasTypeBounds {
+    fn from(node: TypeAlias) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
+}
+impl From<LifetimeParam> for AnyHasTypeBounds {
+    fn from(node: LifetimeParam) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
+}
+impl From<TypeParam> for AnyHasTypeBounds {
+    fn from(node: TypeParam) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
+}
+impl From<WherePred> for AnyHasTypeBounds {
+    fn from(node: WherePred) -> AnyHasTypeBounds { AnyHasTypeBounds::new(node) }
 }
 impl AnyHasVisibility {
     #[inline]
@@ -4142,6 +4520,195 @@ impl AstNode for AnyHasVisibility {
         Self::can_cast(syntax.kind()).then(|| AnyHasVisibility { syntax })
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl From<Const> for AnyHasVisibility {
+    fn from(node: Const) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Enum> for AnyHasVisibility {
+    fn from(node: Enum) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<ExternCrate> for AnyHasVisibility {
+    fn from(node: ExternCrate) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Fn> for AnyHasVisibility {
+    fn from(node: Fn) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Impl> for AnyHasVisibility {
+    fn from(node: Impl) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<MacroRules> for AnyHasVisibility {
+    fn from(node: MacroRules) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<MacroDef> for AnyHasVisibility {
+    fn from(node: MacroDef) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Module> for AnyHasVisibility {
+    fn from(node: Module) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Static> for AnyHasVisibility {
+    fn from(node: Static) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Struct> for AnyHasVisibility {
+    fn from(node: Struct) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Trait> for AnyHasVisibility {
+    fn from(node: Trait) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<TypeAlias> for AnyHasVisibility {
+    fn from(node: TypeAlias) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Union> for AnyHasVisibility {
+    fn from(node: Union) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Use> for AnyHasVisibility {
+    fn from(node: Use) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<RecordField> for AnyHasVisibility {
+    fn from(node: RecordField) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<TupleField> for AnyHasVisibility {
+    fn from(node: TupleField) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Variant> for AnyHasVisibility {
+    fn from(node: Variant) -> AnyHasVisibility { AnyHasVisibility::new(node) }
+}
+impl From<Item> for AnyHasAttrs {
+    fn from(node: Item) -> AnyHasAttrs {
+        match node {
+            Item::Const(it) => AnyHasAttrs::new(it),
+            Item::Enum(it) => AnyHasAttrs::new(it),
+            Item::ExternBlock(it) => AnyHasAttrs::new(it),
+            Item::ExternCrate(it) => AnyHasAttrs::new(it),
+            Item::Fn(it) => AnyHasAttrs::new(it),
+            Item::Impl(it) => AnyHasAttrs::new(it),
+            Item::MacroCall(it) => AnyHasAttrs::new(it),
+            Item::MacroRules(it) => AnyHasAttrs::new(it),
+            Item::MacroDef(it) => AnyHasAttrs::new(it),
+            Item::Module(it) => AnyHasAttrs::new(it),
+            Item::Static(it) => AnyHasAttrs::new(it),
+            Item::Struct(it) => AnyHasAttrs::new(it),
+            Item::Trait(it) => AnyHasAttrs::new(it),
+            Item::TypeAlias(it) => AnyHasAttrs::new(it),
+            Item::Union(it) => AnyHasAttrs::new(it),
+            Item::Use(it) => AnyHasAttrs::new(it),
+        }
+    }
+}
+impl From<Adt> for AnyHasAttrs {
+    fn from(node: Adt) -> AnyHasAttrs {
+        match node {
+            Adt::Enum(it) => AnyHasAttrs::new(it),
+            Adt::Struct(it) => AnyHasAttrs::new(it),
+            Adt::Union(it) => AnyHasAttrs::new(it),
+        }
+    }
+}
+impl From<AssocItem> for AnyHasAttrs {
+    fn from(node: AssocItem) -> AnyHasAttrs {
+        match node {
+            AssocItem::Const(it) => AnyHasAttrs::new(it),
+            AssocItem::Fn(it) => AnyHasAttrs::new(it),
+            AssocItem::MacroCall(it) => AnyHasAttrs::new(it),
+            AssocItem::TypeAlias(it) => AnyHasAttrs::new(it),
+        }
+    }
+}
+impl From<ExternItem> for AnyHasAttrs {
+    fn from(node: ExternItem) -> AnyHasAttrs {
+        match node {
+            ExternItem::Fn(it) => AnyHasAttrs::new(it),
+            ExternItem::MacroCall(it) => AnyHasAttrs::new(it),
+            ExternItem::Static(it) => AnyHasAttrs::new(it),
+            ExternItem::TypeAlias(it) => AnyHasAttrs::new(it),
+        }
+    }
+}
+impl From<GenericParam> for AnyHasAttrs {
+    fn from(node: GenericParam) -> AnyHasAttrs {
+        match node {
+            GenericParam::ConstParam(it) => AnyHasAttrs::new(it),
+            GenericParam::LifetimeParam(it) => AnyHasAttrs::new(it),
+            GenericParam::TypeParam(it) => AnyHasAttrs::new(it),
+        }
+    }
+}
+impl From<Item> for AnyHasDocComments {
+    fn from(node: Item) -> AnyHasDocComments {
+        match node {
+            Item::Const(it) => AnyHasDocComments::new(it),
+            Item::Enum(it) => AnyHasDocComments::new(it),
+            Item::ExternBlock(it) => AnyHasDocComments::new(it),
+            Item::ExternCrate(it) => AnyHasDocComments::new(it),
+            Item::Fn(it) => AnyHasDocComments::new(it),
+            Item::Impl(it) => AnyHasDocComments::new(it),
+            Item::MacroCall(it) => AnyHasDocComments::new(it),
+            Item::MacroRules(it) => AnyHasDocComments::new(it),
+            Item::MacroDef(it) => AnyHasDocComments::new(it),
+            Item::Module(it) => AnyHasDocComments::new(it),
+            Item::Static(it) => AnyHasDocComments::new(it),
+            Item::Struct(it) => AnyHasDocComments::new(it),
+            Item::Trait(it) => AnyHasDocComments::new(it),
+            Item::TypeAlias(it) => AnyHasDocComments::new(it),
+            Item::Union(it) => AnyHasDocComments::new(it),
+            Item::Use(it) => AnyHasDocComments::new(it),
+        }
+    }
+}
+impl From<Adt> for AnyHasDocComments {
+    fn from(node: Adt) -> AnyHasDocComments {
+        match node {
+            Adt::Enum(it) => AnyHasDocComments::new(it),
+            Adt::Struct(it) => AnyHasDocComments::new(it),
+            Adt::Union(it) => AnyHasDocComments::new(it),
+        }
+    }
+}
+impl From<AssocItem> for AnyHasDocComments {
+    fn from(node: AssocItem) -> AnyHasDocComments {
+        match node {
+            AssocItem::Const(it) => AnyHasDocComments::new(it),
+            AssocItem::Fn(it) => AnyHasDocComments::new(it),
+            AssocItem::MacroCall(it) => AnyHasDocComments::new(it),
+            AssocItem::TypeAlias(it) => AnyHasDocComments::new(it),
+        }
+    }
+}
+impl From<ExternItem> for AnyHasDocComments {
+    fn from(node: ExternItem) -> AnyHasDocComments {
+        match node {
+            ExternItem::Fn(it) => AnyHasDocComments::new(it),
+            ExternItem::MacroCall(it) => AnyHasDocComments::new(it),
+            ExternItem::Static(it) => AnyHasDocComments::new(it),
+            ExternItem::TypeAlias(it) => AnyHasDocComments::new(it),
+        }
+    }
+}
+impl From<Adt> for AnyHasGenericParams {
+    fn from(node: Adt) -> AnyHasGenericParams {
+        match node {
+            Adt::Enum(it) => AnyHasGenericParams::new(it),
+            Adt::Struct(it) => AnyHasGenericParams::new(it),
+            Adt::Union(it) => AnyHasGenericParams::new(it),
+        }
+    }
+}
+impl From<Adt> for AnyHasName {
+    fn from(node: Adt) -> AnyHasName {
+        match node {
+            Adt::Enum(it) => AnyHasName::new(it),
+            Adt::Struct(it) => AnyHasName::new(it),
+            Adt::Union(it) => AnyHasName::new(it),
+        }
+    }
+}
+impl From<Adt> for AnyHasVisibility {
+    fn from(node: Adt) -> AnyHasVisibility {
+        match node {
+            Adt::Enum(it) => AnyHasVisibility::new(it),
+            Adt::Struct(it) => AnyHasVisibility::new(it),
+            Adt::Union(it) => AnyHasVisibility::new(it),
+        }
+    }
 }
 impl std::fmt::Display for GenericArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -229,6 +229,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 .iter()
                 .map(|name| format_ident!("{}", to_upper_snake_case(&name.name.to_string())))
                 .collect();
+            let node_names: Vec<_> = nodes.iter().map(|n| format_ident!("{}", n.name)).collect();
 
             (
                 quote! {
@@ -259,10 +260,42 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             &self.syntax
                         }
                     }
+
+                    #(
+                        impl From<#node_names> for #name {
+                            fn from(node: #node_names) -> #name {
+                                #name::new(node)
+                            }
+                        }
+                    )*
                 },
             )
         })
         .unzip();
+
+    let any_enum_boilerplate_impls: Vec<_> = grammar
+        .enums
+        .iter()
+        .flat_map(|en| en.traits.iter().map(move |t| (t, en)))
+        .sorted_by_key(|(k, _)| *k)
+        .map(|(target_name, en)| {
+            let target_name = format_ident!("Any{}", target_name);
+            let enum_name = format_ident!("{}", en.name);
+            let variants: Vec<_> = en.variants.iter().map(|var| format_ident!("{}", var)).collect();
+
+            quote! {
+                impl From<#enum_name> for #target_name {
+                    fn from(node: #enum_name) -> #target_name {
+                        match node {
+                            #(
+                                #enum_name::#variants(it) => #target_name::new(it),
+                            )*
+                        }
+                    }
+                }
+            }
+        })
+        .collect();
 
     let enum_names = grammar.enums.iter().map(|it| &it.name);
     let node_names = grammar.nodes.iter().map(|it| &it.name);
@@ -305,6 +338,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         #(#node_boilerplate_impls)*
         #(#enum_boilerplate_impls)*
         #(#any_node_boilerplate_impls)*
+        #(#any_enum_boilerplate_impls)*
         #(#display_impls)*
     };
 
