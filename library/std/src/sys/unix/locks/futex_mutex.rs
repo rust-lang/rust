@@ -20,9 +20,6 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         self.futex.compare_exchange(0, 1, Acquire, Relaxed).is_ok()
     }

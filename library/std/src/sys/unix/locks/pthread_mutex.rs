@@ -52,7 +52,7 @@ impl Mutex {
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
     }
     #[inline]
-    pub unsafe fn init(&mut self) {
+    unsafe fn init(&mut self) {
         // Issue #33770
         //
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
