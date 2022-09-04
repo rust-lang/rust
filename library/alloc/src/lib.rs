@@ -128,7 +128,6 @@
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
-#![feature(pointer_byte_offsets)]
 #![cfg_attr(not(bootstrap), feature(provide_any))]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]

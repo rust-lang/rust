@@ -470,8 +470,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
@@ -553,8 +554,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn wrapping_byte_offset(self, count: isize) -> Self {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
@@ -679,8 +681,9 @@ impl<T: ?Sized> *const T {
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset_from(self, origin: *const T) -> isize {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
@@ -903,8 +906,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
@@ -990,8 +994,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
@@ -1073,8 +1078,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn wrapping_byte_add(self, count: usize) -> Self {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_add(count).cast::<()>(), metadata(self))
     }
@@ -1153,8 +1159,9 @@ impl<T: ?Sized> *const T {
     /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
-    #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
-    #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[stable(feature = "pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pointer_byte_offsets", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_allow_const_fn_unstable(ptr_metadata)]
     pub const fn wrapping_byte_sub(self, count: usize) -> Self {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_sub(count).cast::<()>(), metadata(self))
     }
