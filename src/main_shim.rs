@@ -1,7 +1,7 @@
 use rustc_hir::LangItem;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::AssocKind;
-use rustc_session::config::EntryFnType;
+use rustc_session::config::{sigpipe, EntryFnType};
 use rustc_span::symbol::Ident;
 
 use crate::prelude::*;
@@ -15,12 +15,12 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
-    let (main_def_id, is_main_fn) = match tcx.entry_fn(()) {
+    let (main_def_id, (is_main_fn, sigpipe)) = match tcx.entry_fn(()) {
         Some((def_id, entry_ty)) => (
             def_id,
             match entry_ty {
-                EntryFnType::Main => true,
-                EntryFnType::Start => false,
+                EntryFnType::Main { sigpipe } => (true, sigpipe),
+                EntryFnType::Start => (false, sigpipe::DEFAULT),
             },
         ),
         None => return,
@@ -35,7 +35,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn);
+    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn, sigpipe);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
@@ -44,6 +44,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         rust_main_def_id: DefId,
         ignore_lang_start_wrapper: bool,
         is_main_fn: bool,
+        sigpipe: u8,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -83,6 +84,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.switch_to_block(block);
             let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
+            let arg_sigpipe = bcx.ins().iconst(types::I8, sigpipe as i64);
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
@@ -143,7 +145,8 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
-                let call_inst = bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv]);
+                let call_inst =
+                    bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv, arg_sigpipe]);
                 bcx.inst_results(call_inst)[0]
             } else {
                 // using user-defined start fn

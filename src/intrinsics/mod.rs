@@ -203,7 +203,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             sym::transmute => {
                 crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
             }
-            _ => unimplemented!("unsupported instrinsic {}", intrinsic),
+            _ => unimplemented!("unsupported intrinsic {}", intrinsic),
         }
         return;
     };
