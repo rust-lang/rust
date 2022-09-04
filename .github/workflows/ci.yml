@@ -33,7 +33,7 @@ defaults:
 jobs:
   pr:
     permissions:
-      actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
+      actions: write
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -147,7 +147,7 @@ jobs:
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   auto:
     permissions:
-      actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
+      actions: write
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
@@ -554,7 +554,7 @@ jobs:
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   try:
     permissions:
-      actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
+      actions: write
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
