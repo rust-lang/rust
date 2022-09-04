@@ -1273,7 +1273,7 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-/// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
+/// Represents a `let` statement (i.e., `let <pat>:<ty> = <init>;`).
 #[derive(Debug, HashStable_Generic)]
 pub struct Local<'hir> {
     pub pat: &'hir Pat<'hir>,
