@@ -1883,10 +1883,6 @@ in storage.js plus the media query with (min-width: 701px)
 		background-color: var(--sidebar-background-color);
 	}
 
-	.source nav:not(.sidebar).sub {
-		margin-left: 32px;
-	}
-
 	.content {
 		margin-left: 0px;
 	}
