@@ -963,3 +963,54 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
         diag
     }
 }
+
+pub(crate) struct ExpectedSemi {
+    pub span: Span,
+    pub token_descr: TokenDescription,
+
+    pub unexpected_token_label: Option<Span>,
+    pub sugg: ExpectedSemiSugg,
+}
+
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
+        let mut diag = handler.struct_diagnostic(match self.token_descr.kind {
+            Some(TokenDescriptionKind::ReservedIdentifier) => {
+                fluent::parser::expected_semi_found_reserved_identifier_str
+            }
+            Some(TokenDescriptionKind::Keyword) => fluent::parser::expected_semi_found_keyword_str,
+            Some(TokenDescriptionKind::ReservedKeyword) => {
+                fluent::parser::expected_semi_found_reserved_keyword_str
+            }
+            Some(TokenDescriptionKind::DocComment) => {
+                fluent::parser::expected_semi_found_doc_comment_str
+            }
+            None => fluent::parser::expected_semi_found_str,
+        });
+        diag.set_span(self.span);
+        diag.set_arg("token_str", self.token_descr.name);
+
+        if let Some(unexpected_token_label) = self.unexpected_token_label {
+            diag.span_label(unexpected_token_label, fluent::parser::label_unexpected_token);
+        }
+
+        self.sugg.add_to_diagnostic(&mut diag);
+
+        diag
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ExpectedSemiSugg {
+    #[suggestion(
+        parser::sugg_change_this_to_semi,
+        code = ";",
+        applicability = "machine-applicable"
+    )]
+    ChangeToSemi(#[primary_span] Span),
+    #[suggestion_short(parser::sugg_add_semi, code = ";", applicability = "machine-applicable")]
+    AddSemi(#[primary_span] Span),
+}

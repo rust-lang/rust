@@ -306,3 +306,13 @@ parser_expected_identifier = expected identifier
 parser_sugg_escape_to_use_as_identifier = escape `{$ident_name}` to use it as an identifier
 
 parser_sugg_remove_comma = remove this comma
+
+parser_expected_semi_found_reserved_identifier_str = expected `;`, found reserved identifier `{$token_str}`
+parser_expected_semi_found_keyword_str = expected `;`, found keyword `{$token_str}`
+parser_expected_semi_found_reserved_keyword_str = expected `;`, found reserved keyword `{$token_str}`
+parser_expected_semi_found_doc_comment_str = expected `;`, found doc comment `{$token_str}`
+parser_expected_semi_found_str = expected `;`, found `{$token_str}`
+
+parser_sugg_change_this_to_semi = change this to `;`
+parser_sugg_add_semi = add `;` here
+parser_label_unexpected_token = unexpected token

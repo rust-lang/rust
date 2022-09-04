@@ -4,9 +4,9 @@ use super::{
     TokenExpectType, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, BadQPathStage2, BadTypePlus, BadTypePlusSub, ExpectedIdentifier, InInTypo,
-    IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, SuggEscapeToUseAsIdentifier,
-    SuggRemoveComma, UseEqInstead,
+    AmbiguousPlus, BadQPathStage2, BadTypePlus, BadTypePlusSub, ExpectedIdentifier, ExpectedSemi,
+    ExpectedSemiSugg, InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait,
+    SuggEscapeToUseAsIdentifier, SuggRemoveComma, UseEqInstead,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -388,8 +388,8 @@ impl<'a> Parser<'a> {
         expected.dedup();
 
         let sm = self.sess.source_map();
-        let msg = format!("expected `;`, found {}", super::token_descr(&self.token));
-        let appl = Applicability::MachineApplicable;
+
+        // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
                 // Likely inside a macro, can't provide meaningful suggestions.
@@ -417,11 +417,13 @@ impl<'a> Parser<'a> {
                 //
                 //   let x = 32:
                 //   let y = 42;
+                self.sess.emit_err(ExpectedSemi {
+                    span: self.token.span,
+                    token_descr: super::token_descr_struct(&self.token),
+                    unexpected_token_label: None,
+                    sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
+                });
                 self.bump();
-                let sp = self.prev_token.span;
-                self.struct_span_err(sp, &msg)
-                    .span_suggestion_short(sp, "change this to `;`", ";", appl)
-                    .emit();
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
@@ -439,11 +441,13 @@ impl<'a> Parser<'a> {
                 //
                 //   let x = 32
                 //   let y = 42;
-                let sp = self.prev_token.span.shrink_to_hi();
-                self.struct_span_err(sp, &msg)
-                    .span_label(self.token.span, "unexpected token")
-                    .span_suggestion_short(sp, "add `;` here", ";", appl)
-                    .emit();
+                let span = self.prev_token.span.shrink_to_hi();
+                self.sess.emit_err(ExpectedSemi {
+                    span,
+                    token_descr: super::token_descr_struct(&self.token),
+                    unexpected_token_label: Some(self.token.span),
+                    sugg: ExpectedSemiSugg::AddSemi(span),
+                });
                 return Ok(true);
             }
         }
@@ -480,6 +484,7 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
+        // FIXME: translation requires list formatting (for `expect`)
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
@@ -488,7 +493,7 @@ impl<'a> Parser<'a> {
                     self.prev_token.span,
                     &format!("write `fn` instead of `{symbol}` to declare a function"),
                     "fn",
-                    appl,
+                    Applicability::MachineApplicable,
                 );
             }
         }
@@ -502,7 +507,7 @@ impl<'a> Parser<'a> {
                 self.prev_token.span,
                 "write `pub` instead of `public` to make the item public",
                 "pub",
-                appl,
+                Applicability::MachineApplicable,
             );
         }
 
