@@ -536,3 +536,56 @@ pub(crate) enum RegionNameLabels<'a> {
         location: &'a str,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::type_parameter_not_used_in_trait_type_alias)]
+pub(crate) struct UnusedTypeParameter<'tcx> {
+    pub ty: Ty<'tcx>,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::non_defining_opaque_type)]
+pub(crate) struct OpaqueTypeNotDefine {
+    #[subdiagnostic]
+    pub cause: OpaqueTyDefineErrCause,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum OpaqueTyDefineErrCause {
+    #[label(borrowck::lifetime_not_used_in_trait_type_alias)]
+    UnusedLifetime {
+        #[primary_span]
+        span: Span,
+        r: String,
+    },
+    #[note(borrowck::used_non_generic_for_generic)]
+    NonGenericUsed {
+        #[primary_span]
+        span: Span,
+        descr: String,
+        arg: String,
+    },
+    #[label(borrowck::cannot_use_static_lifetime_here)]
+    UsedStaticLifetime {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum DefiningTypeNote<'a> {
+    #[note(borrowck::define_type_with_closure_substs)]
+    Closure { type_name: &'a str, subsets: &'a str },
+    #[note(borrowck::define_type_with_generator_substs)]
+    Generator { type_name: &'a str, subsets: &'a str },
+    #[note(borrowck::define_type)]
+    FnDef { type_name: &'a str },
+    #[note(borrowck::define_const_type)]
+    Const { type_name: &'a str },
+    #[note(borrowck::define_inline_constant_type)]
+    InlineConst { type_name: &'a str },
+}

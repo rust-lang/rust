@@ -218,3 +218,33 @@ borrowck_yield_type_is_type =
 
 borrowck_lifetime_appears_here_in_impl =
     lifetime `{$rg_name}` appears in the `impl`'s {$location}
+
+borrowck_type_parameter_not_used_in_trait_type_alias =
+    type parameter `{$ty}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+
+borrowck_non_defining_opaque_type =
+    non-defining opaque type use in defining scope
+
+borrowck_lifetime_not_used_in_trait_type_alias =
+    lifetime `{$r}` is part of concrete type but not used in parameter list of the `impl Trait` type alias
+
+borrowck_used_non_generic_for_generic =
+    used non-generic {$descr} `{$arg}` for generic parameter
+
+borrowck_cannot_use_static_lifetime_here =
+    cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+
+borrowck_define_inline_constant_type =
+    defining inline constant type: {$type_name}
+
+borrowck_define_const_type =
+    defining constant type: {$type_name}
+
+borrowck_define_type =
+    defining type: {$type_name}
+
+borrowck_define_type_with_generator_substs =
+    defining type: {$type_name} with generator substs {$subsets}
+
+borrowck_define_type_with_closure_substs =
+    defining type: {$type_name} with closure substs {$subsets}

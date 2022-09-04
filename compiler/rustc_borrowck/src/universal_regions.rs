@@ -1,3 +1,6 @@
+// #![deny(rustc::untranslatable_diagnostic)]
+// #![deny(rustc::diagnostic_outside_of_impl)]
+
 //! Code to extract the universally quantified regions declared on a
 //! function and the relationships between them. For example:
 //!
@@ -27,6 +30,7 @@ use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVi
 use std::iter;
 
 use crate::nll::ToRegionVid;
+use crate::session_diagnostics::DefiningTypeNote;
 
 #[derive(Debug)]
 pub struct UniversalRegions<'tcx> {
@@ -339,11 +343,9 @@ impl<'tcx> UniversalRegions<'tcx> {
     pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
-                err.note(&format!(
-                    "defining type: {} with closure substs {:#?}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                    &substs[tcx.generics_of(def_id).parent_count..],
-                ));
+                let type_name = &tcx.def_path_str_with_substs(def_id, substs);
+                let subsets = &format!("{:#?}", &substs[tcx.generics_of(def_id).parent_count..]);
+                err.subdiagnostic(DefiningTypeNote::Closure { type_name, subsets });
 
                 // FIXME: It'd be nice to print the late-bound regions
                 // here, but unfortunately these wind up stored into
@@ -356,11 +358,9 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::Generator(def_id, substs, _) => {
-                err.note(&format!(
-                    "defining type: {} with generator substs {:#?}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                    &substs[tcx.generics_of(def_id).parent_count..],
-                ));
+                let type_name = &tcx.def_path_str_with_substs(def_id, substs);
+                let subsets = &format!("{:#?}", &substs[tcx.generics_of(def_id).parent_count..]);
+                err.subdiagnostic(DefiningTypeNote::Generator { type_name, subsets });
 
                 // FIXME: As above, we'd like to print out the region
                 // `r` but doing so is not stable across architectures
@@ -371,22 +371,16 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::FnDef(def_id, substs) => {
-                err.note(&format!(
-                    "defining type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                ));
+                let type_name = &tcx.def_path_str_with_substs(def_id, substs);
+                err.subdiagnostic(DefiningTypeNote::FnDef { type_name });
             }
             DefiningTy::Const(def_id, substs) => {
-                err.note(&format!(
-                    "defining constant type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                ));
+                let type_name = &tcx.def_path_str_with_substs(def_id, substs);
+                err.subdiagnostic(DefiningTypeNote::Const { type_name });
             }
             DefiningTy::InlineConst(def_id, substs) => {
-                err.note(&format!(
-                    "defining inline constant type: {}",
-                    tcx.def_path_str_with_substs(def_id, substs),
-                ));
+                let type_name = &tcx.def_path_str_with_substs(def_id, substs);
+                err.subdiagnostic(DefiningTypeNote::InlineConst { type_name });
             }
         }
     }
