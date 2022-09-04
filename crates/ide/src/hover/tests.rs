@@ -5135,7 +5135,7 @@ fn main() { $0V; }
             ```rust
             test
             ```
-            
+
             ```rust
             pub const V: i8 = {
               let e = 123;
@@ -5162,11 +5162,10 @@ fn main() { $0V; }
             ```rust
             test
             ```
-            
+
             ```rust
             pub static V: i8 = {
               let e = 123;
-              
             }
             ```
         "#]],
