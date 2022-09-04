@@ -450,12 +450,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         {
                             "consider using `()`, or a `Result`".to_owned()
                         } else {
-                            format!(
-                                "{}the trait `{}` is not implemented for `{}`",
-                                pre_message,
-                                trait_predicate.print_modifiers_and_trait_path(),
-                                trait_ref.skip_binder().self_ty(),
-                            )
+                            let ty_desc = match trait_ref.skip_binder().self_ty().kind() {
+                                ty::FnDef(_, _) => Some("fn item"),
+                                ty::Closure(_, _) => Some("closure"),
+                                _ => None,
+                            };
+
+                            match ty_desc {
+                                Some(desc) => format!(
+                                    "{}the trait `{}` is not implemented for {} `{}`",
+                                    pre_message,
+                                    trait_predicate.print_modifiers_and_trait_path(),
+                                    desc,
+                                    trait_ref.skip_binder().self_ty(),
+                                ),
+                                None => format!(
+                                    "{}the trait `{}` is not implemented for `{}`",
+                                    pre_message,
+                                    trait_predicate.print_modifiers_and_trait_path(),
+                                    trait_ref.skip_binder().self_ty(),
+                                ),
+                            }
                         };
 
                         if self.suggest_add_reference_to_arg(
@@ -1805,13 +1820,21 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 return false;
             }
             if candidates.len() == 1 {
+                let ty_desc = match candidates[0].self_ty().kind() {
+                    ty::FnPtr(_) => Some("fn pointer"),
+                    _ => None,
+                };
+                let the_desc = match ty_desc {
+                    Some(desc) => format!(" implemented for {} `", desc),
+                    None => " implemented for `".to_string(),
+                };
                 err.highlighted_help(vec![
                     (
                         format!("the trait `{}` ", candidates[0].print_only_trait_path()),
                         Style::NoStyle,
                     ),
                     ("is".to_string(), Style::Highlight),
-                    (" implemented for `".to_string(), Style::NoStyle),
+                    (the_desc, Style::NoStyle),
                     (candidates[0].self_ty().to_string(), Style::Highlight),
                     ("`".to_string(), Style::NoStyle),
                 ]);

@@ -30,7 +30,7 @@ error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
 LL |     (|_| 2333).await;
    |               ^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
    |
-   = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
+   = help: the trait `Future` is not implemented for closure `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
    = note: [closure@$DIR/issue-62009-1.rs:12:6: 12:9] must be a future or must implement `IntoFuture` to be awaited
    = note: required for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` to implement `IntoFuture`
 help: remove the `.await`

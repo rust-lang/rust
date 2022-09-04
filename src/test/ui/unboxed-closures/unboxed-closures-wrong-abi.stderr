@@ -6,7 +6,7 @@ LL |     let x = call_it(&square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for fn item `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it`
   --> $DIR/unboxed-closures-wrong-abi.rs:9:15
    |
@@ -21,7 +21,7 @@ LL |     let y = call_it_mut(&mut square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for fn item `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it_mut`
   --> $DIR/unboxed-closures-wrong-abi.rs:12:19
    |
@@ -36,7 +36,7 @@ LL |     let z = call_it_once(square, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for `for<'r> extern "C" fn(&'r isize) -> isize {square}`
+   = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for fn item `for<'r> extern "C" fn(&'r isize) -> isize {square}`
 note: required by a bound in `call_it_once`
   --> $DIR/unboxed-closures-wrong-abi.rs:15:20
    |
