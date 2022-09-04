@@ -1335,7 +1335,7 @@ impl<T: ?Sized> *const T {
     /// Returns whether the pointer is properly aligned for `T`.
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_aligned(self) -> bool
     where
         T: Sized,
@@ -1353,7 +1353,7 @@ impl<T: ?Sized> *const T {
     /// The function panics if `align` is not a power-of-two (this includes 0).
     #[must_use]
     #[inline]
-    #[unstable(feature = "pointer_is_aligned", issue = "96284")]
+    #[stable(feature = "pointer_is_aligned", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
             panic!("is_aligned_to: align is not a power-of-two");
