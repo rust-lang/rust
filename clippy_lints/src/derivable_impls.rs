@@ -40,7 +40,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// Derive macros [sometimes use incorrect bounds](https://github.com/rust-lang/rust/issues/26925)
-    /// in generic types and the user defined `impl` maybe is more generalized or
+    /// in generic types and the user defined `impl` may be more generalized or
     /// specialized than what derive will produce. This lint can't detect the manual `impl`
     /// has exactly equal bounds, and therefore this lint is disabled for types with
     /// generic parameters.
