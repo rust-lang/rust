@@ -608,13 +608,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // That should be extracted into a helper function.
                         if constraint.ends_with('>') {
                             constraint = format!(
-                                "{}, {}={}>",
+                                "{}, {} = {}>",
                                 &constraint[..constraint.len() - 1],
                                 name,
                                 term
                             );
                         } else {
-                            constraint.push_str(&format!("<{}={}>", name, term));
+                            constraint.push_str(&format!("<{} = {}>", name, term));
                         }
                     }
 

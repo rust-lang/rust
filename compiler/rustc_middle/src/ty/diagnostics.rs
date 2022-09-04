@@ -115,9 +115,9 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
         // That should be extracted into a helper function.
         if constraint.ends_with('>') {
-            constraint = format!("{}, {}={}>", &constraint[..constraint.len() - 1], name, term);
+            constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
         } else {
-            constraint.push_str(&format!("<{}={}>", name, term));
+            constraint.push_str(&format!("<{} = {}>", name, term));
         }
     }
 
