@@ -277,7 +277,7 @@ defaults:
 jobs:
   pr:
     permissions:
-      actions: write
+      actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
     <<: *base-ci-job
     name: PR
     env:
@@ -299,7 +299,7 @@ jobs:
 
   auto:
     permissions:
-      actions: write
+      actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
     <<: *base-ci-job
     name: auto
     env:
