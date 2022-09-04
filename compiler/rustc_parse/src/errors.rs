@@ -1014,3 +1014,21 @@ pub(crate) enum ExpectedSemiSugg {
     #[suggestion_short(parser::sugg_add_semi, code = ";", applicability = "machine-applicable")]
     AddSemi(#[primary_span] Span),
 }
+
+#[derive(Diagnostic)]
+#[diag(parser::struct_literal_body_without_path)]
+pub(crate) struct StructLiteralBodyWithoutPath {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: StructLiteralBodyWithoutPathSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "has-placeholders")]
+pub(crate) struct StructLiteralBodyWithoutPathSugg {
+    #[suggestion_part(code = "{{ SomeStruct ")]
+    pub before: Span,
+    #[suggestion_part(code = " }}")]
+    pub after: Span,
+}

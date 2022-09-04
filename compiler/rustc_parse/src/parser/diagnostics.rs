@@ -6,7 +6,8 @@ use super::{
 use crate::errors::{
     AmbiguousPlus, BadQPathStage2, BadTypePlus, BadTypePlusSub, ExpectedIdentifier, ExpectedSemi,
     ExpectedSemiSugg, InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait,
-    SuggEscapeToUseAsIdentifier, SuggRemoveComma, UseEqInstead,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggEscapeToUseAsIdentifier,
+    SuggRemoveComma, UseEqInstead,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -21,10 +22,10 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{
-    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
-};
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -645,19 +646,13 @@ impl<'a> Parser<'a> {
                     //     field: value,
                     // } }
                     err.delay_as_bug();
-                    self.struct_span_err(
-                        expr.span,
-                        fluent::parser::struct_literal_body_without_path,
-                    )
-                    .multipart_suggestion(
-                        fluent::parser::suggestion,
-                        vec![
-                            (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
-                            (expr.span.shrink_to_hi(), " }".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                    self.sess.emit_err(StructLiteralBodyWithoutPath {
+                        span: expr.span,
+                        sugg: StructLiteralBodyWithoutPathSugg {
+                            before: expr.span.shrink_to_lo(),
+                            after: expr.span.shrink_to_hi(),
+                        },
+                    });
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
