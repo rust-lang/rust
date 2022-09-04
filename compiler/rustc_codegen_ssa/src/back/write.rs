@@ -999,6 +999,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
 
+    let mut each_linked_rlib_for_lto = Vec::new();
+    drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
+        if link::ignored_for_lto(sess, crate_info, cnum) {
+            return;
+        }
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+    }));
+
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols = {
         let mut exported_symbols = FxHashMap::default();
@@ -1020,7 +1028,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
             Lto::Fat | Lto::Thin => {
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                for &cnum in tcx.crates(()).iter() {
+                for &(cnum, ref _path) in &each_linked_rlib_for_lto {
                     exported_symbols.insert(cnum, copy_symbols(cnum));
                 }
                 Some(Arc::new(exported_symbols))
@@ -1039,14 +1047,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
         })
         .expect("failed to spawn helper thread");
-
-    let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(crate_info, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, crate_info, cnum) {
-            return;
-        }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
-    }));
 
     let ol =
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
