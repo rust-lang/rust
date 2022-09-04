@@ -124,12 +124,6 @@ fn retain_import_usages(usages: &mut UsageSearchResult, sema: &Semantics<'_, Roo
             if let Some(node) = maybe_node {
                 let res = match node {
                     syntax::NodeOrToken::Node(x) => !matches!(x.kind(), USE),
-                        if matches!(x.kind(), USE) {
-                            false
-                        } else {
-                            true
-                        }
-                    }
                     syntax::NodeOrToken::Token(_) => true,
                 };
                 res
