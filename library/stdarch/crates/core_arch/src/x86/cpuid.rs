@@ -62,27 +62,27 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     #[cfg(target_arch = "x86")]
     {
         asm!(
-            "movl %ebx, {0}",
+            "movl {0}, ebx",
             "cpuid",
-            "xchgl %ebx, {0}",
-            lateout(reg) ebx,
-            inlateout("eax") leaf => eax,
-            inlateout("ecx") sub_leaf => ecx,
-            lateout("edx") edx,
-            options(nostack, preserves_flags, att_syntax),
+            "xchgl {0}, ebx",
+            out(reg) ebx,
+            inout("eax") leaf => eax,
+            inout("ecx") sub_leaf => ecx,
+            out("edx") edx,
+            options(nostack, preserves_flags),
         );
     }
     #[cfg(target_arch = "x86_64")]
     {
         asm!(
-            "movq %rbx, {0:r}",
+            "movq {0:r}, rbx",
             "cpuid",
-            "xchgq %rbx, {0:r}",
-            lateout(reg) ebx,
-            inlateout("eax") leaf => eax,
-            inlateout("ecx") sub_leaf => ecx,
-            lateout("edx") edx,
-            options(nostack, preserves_flags, att_syntax),
+            "xchgq {0:r}, rbx",
+            out(reg) ebx,
+            inout("eax") leaf => eax,
+            inout("ecx") sub_leaf => ecx,
+            out("edx") edx,
+            options(nostack, preserves_flags),
         );
     }
     CpuidResult { eax, ebx, ecx, edx }
