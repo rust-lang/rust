@@ -79,6 +79,8 @@ pub(crate) fn find_all_refs(
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
 
+            retain_import_usages(&mut usages, sema);
+
             let references = usages
                 .into_iter()
                 .map(|(file_id, refs)| {
@@ -109,6 +111,32 @@ pub(crate) fn find_all_refs(
             let search = make_searcher(false);
             Some(find_defs(sema, &syntax, position.offset)?.map(search).collect())
         }
+    }
+}
+
+fn retain_import_usages(usages: &mut UsageSearchResult, sema: &Semantics<'_, RootDatabase>) {
+    for (file_id, refs) in &mut usages.references {
+        refs.retain(|x| {
+            let file_sema = sema.parse(file_id.clone()).syntax().clone();
+
+            let maybe_node = file_sema.child_or_token_at_range(x.range.clone());
+
+            if let Some(node) = maybe_node {
+                let res = match node {
+                    syntax::NodeOrToken::Node(x) => {
+                        if matches!(x.kind(), USE) {
+                            false
+                        } else {
+                            true
+                        }
+                    }
+                    syntax::NodeOrToken::Token(_) => true,
+                };
+                res
+            } else {
+                true
+            }
+        });
     }
 }
 
