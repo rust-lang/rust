@@ -1,6 +1,10 @@
-use rustc_errors::{fluent, AddSubdiagnostic, DecorateLint, EmissionGuarantee};
+use rustc_errors::{fluent, AddSubdiagnostic, Applicability, DecorateLint, EmissionGuarantee};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, SessionSubdiagnostic};
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
+
+use crate::LateContext;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_range_endpoint_out_of_range)]
@@ -146,3 +150,130 @@ pub struct InvalidAtomicOrderingDiag {
     #[label]
     pub fail_order_arg_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_op)]
+pub struct UnusedOp<'a> {
+    pub op: &'a str,
+    #[label]
+    pub label: Span,
+    #[suggestion(style = "verbose", code = "let _ = ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_result)]
+pub struct UnusedResult<'a> {
+    pub ty: Ty<'a>,
+}
+
+// FIXME(davidtwco): this isn't properly translatable becauses of the
+// pre/post strings
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_closure)]
+#[note]
+pub struct UnusedClosure<'a> {
+    pub count: usize,
+    pub pre: &'a str,
+    pub post: &'a str,
+}
+
+// FIXME(davidtwco): this isn't properly translatable becauses of the
+// pre/post strings
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_generator)]
+#[note]
+pub struct UnusedGenerator<'a> {
+    pub count: usize,
+    pub pre: &'a str,
+    pub post: &'a str,
+}
+
+// FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+// strings
+pub struct UnusedDef<'a, 'b> {
+    pub pre: &'a str,
+    pub post: &'a str,
+    pub cx: &'a LateContext<'b>,
+    pub def_id: DefId,
+    pub note: Option<Symbol>,
+}
+
+// FIXME: refactor with `Option<String>` in macro
+impl<'a, 'b, G: EmissionGuarantee> DecorateLint<'_, G> for UnusedDef<'a, 'b> {
+    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
+        let mut diag = diag.build(fluent::lint_unused_def);
+        diag.set_arg("pre", self.pre);
+        diag.set_arg("post", self.post);
+        diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
+        // check for #[must_use = "..."]
+        if let Some(note) = self.note {
+            diag.note(note.as_str());
+        }
+        diag.emit();
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_path_statement_drop)]
+pub struct PathStatementDrop {
+    #[subdiagnostic]
+    pub sub: PathStatementDropSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum PathStatementDropSub {
+    #[suggestion(
+        suggestion,
+        code = "drop({snippet});",
+        applicability = "machine-applicable"
+    )]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+    },
+    #[help(help)]
+    Help {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_path_statement_no_effect)]
+pub struct PathStatementNoEffect;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_delim)]
+pub struct UnusedDelim<'a> {
+    pub delim: &'static str,
+    pub item: &'a str,
+    #[subdiagnostic]
+    pub suggestion: Option<UnusedDelimSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+pub struct UnusedDelimSuggestion {
+    #[suggestion_part(code = "{start_replace}")]
+    pub start_span: Span,
+    pub start_replace: &'static str,
+    #[suggestion_part(code = "{end_replace}")]
+    pub end_span: Span,
+    pub end_replace: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_import_braces)]
+pub struct UnusedImportBracesDiag {
+    pub node: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_allocation)]
+pub struct UnusedAllocationDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unused_allocation_mut)]
+pub struct UnusedAllocationMutDiag;
