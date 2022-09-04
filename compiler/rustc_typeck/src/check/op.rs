@@ -12,7 +12,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -310,10 +310,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error types are considered "builtin"
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
-                let (_, item) = lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
-                let missing_trait =
-                    item.map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
-                let (mut err, use_output) = match is_assign {
+                let (_, trait_def_id) =
+                    lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
+                let missing_trait = trait_def_id
+                    .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
+                let (mut err, output_def_id) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
@@ -328,7 +329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
                         );
                         self.note_unmet_impls_on_type(&mut err, errors);
-                        (err, false)
+                        (err, None)
                     }
                     IsAssign::No => {
                         let message = match op.node {
@@ -368,11 +369,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 lhs_ty
                             ),
                         };
-                        let use_output = item.map_or(false, |def_id| {
-                            self.tcx.associated_item_def_ids(def_id).iter().any(|item_def_id| {
-                                self.tcx.opt_associated_item(*item_def_id).unwrap().name
-                                    == sym::Output
-                            })
+                        let output_def_id = trait_def_id.and_then(|def_id| {
+                            self.tcx
+                                .associated_item_def_ids(def_id)
+                                .iter()
+                                .find(|item_def_id| {
+                                    self.tcx.associated_item(*item_def_id).name == sym::Output
+                                })
+                                .cloned()
                         });
                         let mut err = struct_span_err!(self.tcx.sess, op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
@@ -380,7 +384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_label(rhs_expr.span, rhs_ty.to_string());
                         }
                         self.note_unmet_impls_on_type(&mut err, errors);
-                        (err, use_output)
+                        (err, output_def_id)
                     }
                 };
 
@@ -488,12 +492,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let Some(trait_pred) =
                                     error.obligation.predicate.to_opt_poly_trait_pred()
                                 {
-                                    let proj_pred = match error.obligation.cause.code() {
+                                    let output_associated_item = match error.obligation.cause.code()
+                                    {
                                         ObligationCauseCode::BinOp {
-                                            output_pred: Some(output_pred),
+                                            output_ty: Some(output_ty),
                                             ..
-                                        } if use_output => {
-                                            output_pred.to_opt_poly_projection_pred()
+                                        } => {
+                                            // Make sure that we're attaching `Output = ..` to the right trait predicate
+                                            if let Some(output_def_id) = output_def_id
+                                                && let Some(trait_def_id) = trait_def_id
+                                                && self.tcx.parent(output_def_id) == trait_def_id
+                                            {
+                                                Some(("Output", *output_ty))
+                                            } else {
+                                                None
+                                            }
                                         }
                                         _ => None,
                                     };
@@ -501,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     self.suggest_restricting_param_bound(
                                         &mut err,
                                         trait_pred,
-                                        proj_pred,
+                                        output_associated_item,
                                         self.body_id,
                                     );
                                 }
