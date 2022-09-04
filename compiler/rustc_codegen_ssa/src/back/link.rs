@@ -11,7 +11,7 @@ use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_metadata, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Lto, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -37,6 +37,7 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
@@ -206,17 +207,36 @@ pub fn link_binary<'a>(
 }
 
 pub fn each_linked_rlib(
+    sess: &Session,
     info: &CrateInfo,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), String> {
     let crates = info.used_crates.iter();
     let mut fmts = None;
+
+    let lto_active = matches!(sess.lto(), Lto::Fat | Lto::Thin);
+    if lto_active {
+        for combination in info.dependency_formats.iter().combinations(2) {
+            let (ty1, list1) = combination[0];
+            let (ty2, list2) = combination[1];
+            if list1 != list2 {
+                return Err(format!(
+                    "{ty1:?} and {ty2:?} do not have equivalent dependency formats (`{list1:?}` vs `{list2:?}`)"
+                ));
+            }
+        }
+    }
+
     for (ty, list) in info.dependency_formats.iter() {
         match ty {
             CrateType::Executable
             | CrateType::Staticlib
             | CrateType::Cdylib
             | CrateType::ProcMacro => {
+                fmts = Some(list);
+                break;
+            }
+            CrateType::Dylib if lto_active => {
                 fmts = Some(list);
                 break;
             }
@@ -501,7 +521,7 @@ fn link_staticlib<'a>(
     )?;
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
+    let res = each_linked_rlib(sess, &codegen_results.crate_info, &mut |cnum, path| {
         let name = codegen_results.crate_info.crate_name[&cnum];
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
 

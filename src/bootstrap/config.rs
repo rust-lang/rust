@@ -158,6 +158,7 @@ pub struct Config {
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub rust_lto: RustcLto,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -313,6 +314,28 @@ impl SplitDebuginfo {
             SplitDebuginfo::Packed
         } else {
             SplitDebuginfo::Off
+        }
+    }
+}
+
+/// LTO mode used for compiling rustc itself.
+#[derive(Default, Clone)]
+pub enum RustcLto {
+    #[default]
+    ThinLocal,
+    Thin,
+    Fat,
+}
+
+impl std::str::FromStr for RustcLto {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thin-local" => Ok(RustcLto::ThinLocal),
+            "thin" => Ok(RustcLto::Thin),
+            "fat" => Ok(RustcLto::Fat),
+            _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
     }
 }
@@ -724,6 +747,7 @@ define_config! {
         profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
+        lto: Option<String> = "lto",
     }
 }
 
@@ -1153,6 +1177,12 @@ impl Config {
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
             config.download_rustc_commit = download_ci_rustc_commit(&config, rust.download_rustc);
+
+            config.rust_lto = rust
+                .lto
+                .as_deref()
+                .map(|value| RustcLto::from_str(value).unwrap())
+                .unwrap_or_default();
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
