@@ -19,7 +19,7 @@ use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 
-/// A reference to an open file on the filesystem.
+/// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
