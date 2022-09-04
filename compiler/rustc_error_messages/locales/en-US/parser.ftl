@@ -290,3 +290,19 @@ parser_inner_doc_comment_not_permitted = expected outer doc comment
     .suggestion = you might have meant to write a regular comment
     .label_does_not_annotate_this = the inner doc comment doesn't annotate this {$item}
     .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style
+
+parser_expected_identifier_found_reserved_identifier_str = expected identifier, found reserved identifier `{$token_str}`
+parser_expected_identifier_found_keyword_str = expected identifier, found keyword `{$token_str}`
+parser_expected_identifier_found_reserved_keyword_str = expected identifier, found reserved keyword `{$token_str}`
+parser_expected_identifier_found_doc_comment_str = expected identifier, found doc comment `{$token_str}`
+parser_expected_identifier_found_str = expected identifier, found `{$token_str}`
+
+parser_expected_identifier_found_reserved_identifier = expected identifier, found reserved identifier
+parser_expected_identifier_found_keyword = expected identifier, found keyword
+parser_expected_identifier_found_reserved_keyword = expected identifier, found reserved keyword
+parser_expected_identifier_found_doc_comment = expected identifier, found doc comment
+parser_expected_identifier = expected identifier
+
+parser_sugg_escape_to_use_as_identifier = escape `{$ident_name}` to use it as an identifier
+
+parser_sugg_remove_comma = remove this comma

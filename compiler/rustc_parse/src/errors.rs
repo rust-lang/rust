@@ -1,8 +1,10 @@
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
+
+use crate::parser::{TokenDescription, TokenDescriptionKind};
 
 #[derive(Diagnostic)]
 #[diag(parser::maybe_report_ambiguous_plus)]
@@ -869,4 +871,95 @@ pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
     pub token: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion_verbose(
+    parser::sugg_escape_to_use_as_identifier,
+    applicability = "maybe-incorrect",
+    code = "r#"
+)]
+pub(crate) struct SuggEscapeToUseAsIdentifier {
+    #[primary_span]
+    pub span: Span,
+    pub ident_name: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parser::sugg_remove_comma, applicability = "machine-applicable", code = "")]
+pub(crate) struct SuggRemoveComma {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ExpectedIdentifierFound {
+    #[label(parser::expected_identifier_found_reserved_identifier)]
+    ReservedIdentifier(#[primary_span] Span),
+    #[label(parser::expected_identifier_found_keyword)]
+    Keyword(#[primary_span] Span),
+    #[label(parser::expected_identifier_found_reserved_keyword)]
+    ReservedKeyword(#[primary_span] Span),
+    #[label(parser::expected_identifier_found_doc_comment)]
+    DocComment(#[primary_span] Span),
+    #[label(parser::expected_identifier)]
+    Other(#[primary_span] Span),
+}
+
+impl ExpectedIdentifierFound {
+    pub fn new(token_descr_kind: Option<TokenDescriptionKind>, span: Span) -> Self {
+        (match token_descr_kind {
+            Some(TokenDescriptionKind::ReservedIdentifier) => {
+                ExpectedIdentifierFound::ReservedIdentifier
+            }
+            Some(TokenDescriptionKind::Keyword) => ExpectedIdentifierFound::Keyword,
+            Some(TokenDescriptionKind::ReservedKeyword) => ExpectedIdentifierFound::ReservedKeyword,
+            Some(TokenDescriptionKind::DocComment) => ExpectedIdentifierFound::DocComment,
+            None => ExpectedIdentifierFound::Other,
+        })(span)
+    }
+}
+
+pub(crate) struct ExpectedIdentifier {
+    pub span: Span,
+    pub token_descr: TokenDescription,
+    pub suggest_raw: Option<SuggEscapeToUseAsIdentifier>,
+    pub suggest_remove_comma: Option<SuggRemoveComma>,
+}
+
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, G> {
+        let mut diag = handler.struct_diagnostic(match self.token_descr.kind {
+            Some(TokenDescriptionKind::ReservedIdentifier) => {
+                fluent::parser::expected_identifier_found_reserved_identifier_str
+            }
+            Some(TokenDescriptionKind::Keyword) => {
+                fluent::parser::expected_identifier_found_keyword_str
+            }
+            Some(TokenDescriptionKind::ReservedKeyword) => {
+                fluent::parser::expected_identifier_found_reserved_keyword_str
+            }
+            Some(TokenDescriptionKind::DocComment) => {
+                fluent::parser::expected_identifier_found_doc_comment_str
+            }
+            None => fluent::parser::expected_identifier_found_str,
+        });
+        diag.set_span(self.span);
+        diag.set_arg("token_str", self.token_descr.name);
+
+        if let Some(sugg) = self.suggest_raw {
+            sugg.add_to_diagnostic(&mut diag);
+        }
+
+        ExpectedIdentifierFound::new(self.token_descr.kind, self.span).add_to_diagnostic(&mut diag);
+
+        if let Some(sugg) = self.suggest_remove_comma {
+            sugg.add_to_diagnostic(&mut diag);
+        }
+
+        diag
+    }
 }

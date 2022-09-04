@@ -410,22 +410,44 @@ pub enum FollowedByType {
     No,
 }
 
-fn token_descr_opt(token: &Token) -> Option<&'static str> {
-    Some(match token.kind {
-        _ if token.is_special_ident() => "reserved identifier",
-        _ if token.is_used_keyword() => "keyword",
-        _ if token.is_unused_keyword() => "reserved keyword",
-        token::DocComment(..) => "doc comment",
-        _ => return None,
-    })
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TokenDescriptionKind {
+    ReservedIdentifier,
+    Keyword,
+    ReservedKeyword,
+    DocComment,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct TokenDescription {
+    pub kind: Option<TokenDescriptionKind>,
+    pub name: String,
+}
+
+pub(super) fn token_descr_struct(token: &Token) -> TokenDescription {
+    let kind = match token.kind {
+        _ if token.is_special_ident() => Some(TokenDescriptionKind::ReservedIdentifier),
+        _ if token.is_used_keyword() => Some(TokenDescriptionKind::Keyword),
+        _ if token.is_unused_keyword() => Some(TokenDescriptionKind::ReservedKeyword),
+        token::DocComment(..) => Some(TokenDescriptionKind::DocComment),
+        _ => None,
+    };
+    let name = pprust::token_to_string(token).to_string();
+
+    TokenDescription { kind, name }
 }
 
 pub(super) fn token_descr(token: &Token) -> String {
-    let token_str = pprust::token_to_string(token);
-    match token_descr_opt(token) {
-        Some(prefix) => format!("{} `{}`", prefix, token_str),
-        _ => format!("`{}`", token_str),
-    }
+    let TokenDescription { kind, name } = token_descr_struct(token);
+
+    let kind = kind.map(|kind| match kind {
+        TokenDescriptionKind::ReservedIdentifier => "reserved identifier",
+        TokenDescriptionKind::Keyword => "keyword",
+        TokenDescriptionKind::ReservedKeyword => "reserved keyword",
+        TokenDescriptionKind::DocComment => "doc comment",
+    });
+
+    if let Some(kind) = kind { format!("{} `{}`", kind, name) } else { format!("`{}`", name) }
 }
 
 impl<'a> Parser<'a> {

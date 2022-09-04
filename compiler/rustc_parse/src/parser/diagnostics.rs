@@ -4,8 +4,9 @@ use super::{
     TokenExpectType, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, BadQPathStage2, BadTypePlus, BadTypePlusSub, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, UseEqInstead,
+    AmbiguousPlus, BadQPathStage2, BadTypePlus, BadTypePlusSub, ExpectedIdentifier, InInTypo,
+    IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, SuggEscapeToUseAsIdentifier,
+    SuggRemoveComma, UseEqInstead,
 };
 
 use crate::lexer::UnmatchedBrace;
@@ -23,7 +24,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
@@ -285,10 +286,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err = self.struct_span_err(
-            self.token.span,
-            &format!("expected identifier, found {}", super::token_descr(&self.token)),
-        );
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -300,34 +297,33 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
-        match self.token.ident() {
+        let suggest_raw = match self.token.ident() {
             Some((ident, false))
                 if ident.is_raw_guess()
                     && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
             {
-                err.span_suggestion_verbose(
-                    ident.span.shrink_to_lo(),
-                    &format!("escape `{}` to use it as an identifier", ident.name),
-                    "r#",
-                    Applicability::MaybeIncorrect,
-                );
+                Some(SuggEscapeToUseAsIdentifier {
+                    span: ident.span.shrink_to_lo(),
+                    ident_name: ident.name.to_string(),
+                })
             }
-            _ => {}
-        }
-        if let Some(token_descr) = super::token_descr_opt(&self.token) {
-            err.span_label(self.token.span, format!("expected identifier, found {}", token_descr));
-        } else {
-            err.span_label(self.token.span, "expected identifier");
+            _ => None,
+        };
+
+        let suggest_remove_comma =
             if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
-                err.span_suggestion(
-                    self.token.span,
-                    "remove this comma",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-            }
-        }
-        err
+                Some(SuggRemoveComma { span: self.token.span })
+            } else {
+                None
+            };
+
+        let err = ExpectedIdentifier {
+            span: self.token.span,
+            token_descr: super::token_descr_struct(&self.token),
+            suggest_raw,
+            suggest_remove_comma,
+        };
+        err.into_diagnostic(&self.sess.span_diagnostic)
     }
 
     pub(super) fn expected_one_of_not_found(
