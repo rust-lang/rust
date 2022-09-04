@@ -197,3 +197,24 @@ borrowck_in_this_closure =
 
 borrowck_return_fnmut =
     change this to return `FnMut` instead of `Fn`
+
+borrowck_name_this_region =
+    let's call this `{$rg_name}`
+
+borrowck_lifetime_appears_in_type =
+    lifetime `{$rg_name}` appears in the type {$type_name}
+
+borrowck_return_type_has_lifetime =
+    return type{$mir_description} `{$type_name}` contains a lifetime `{$rg_name}`
+
+borrowck_lifetime_appears_in_type_of =
+    lifetime `{$rg_name}` appears in the type of `{$upvar_name}`
+
+borrowck_return_type_is_type =
+    return type{$mir_description} is {$type_name}
+
+borrowck_yield_type_is_type =
+    yield type is {$type_name}
+
+borrowck_lifetime_appears_here_in_impl =
+    lifetime `{$rg_name}` appears in the `impl`'s {$location}
