@@ -127,29 +127,6 @@ rustc_queries! {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
-    /// const argument and returns `None` otherwise.
-    ///
-    /// ```ignore (incomplete)
-    /// let a = foo::<7>();
-    /// //            ^ Calling `opt_const_param_of` for this argument,
-    ///
-    /// fn foo<const N: usize>()
-    /// //           ^ returns this `DefId`.
-    ///
-    /// fn bar() {
-    /// // ^ While calling `opt_const_param_of` for other bodies returns `None`.
-    /// }
-    /// ```
-    // It looks like caching this query on disk actually slightly
-    // worsened performance in #74376.
-    //
-    // Once const generics are more prevalently used, we might want to
-    // consider only caching calls returning `Some`.
-    query opt_const_param_of(key: LocalDefId) -> Option<DefId> {
-        desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
-    }
-
     /// Given the def_id of a const-generic parameter, computes the associated default const
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
     query const_param_default(param: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
