@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! This module contains code to equate the input/output types appearing
 //! in the MIR with the expected input/output types from the function
 //! signature. This requires a bit of processing, as the expected types

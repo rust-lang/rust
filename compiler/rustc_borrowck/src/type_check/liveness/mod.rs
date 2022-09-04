@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use itertools::{Either, Itertools};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Body, Local};

@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::def_use::{self, DefUse};
 use crate::location::{LocationIndex, LocationTable};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
