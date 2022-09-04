@@ -199,10 +199,14 @@ pub trait ValueAnalysis<'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, terminator: &Terminator<'tcx>, _state: &mut State<Self::Value>) {
+    fn super_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
+            }
+            TerminatorKind::Drop { place, .. } => {
+                // Place can still be accessed after drop, and drop has mutable access to it.
+                state.flood(place.as_ref(), self.map());
             }
             TerminatorKind::DropAndReplace { .. } | TerminatorKind::Yield { .. } => {
                 // They would have an effect, but are not allowed in this phase.
