@@ -27,6 +27,7 @@ pub mod io;
 pub mod lazy_box;
 pub mod memchr;
 pub mod mutex;
+pub mod once;
 pub mod process;
 pub mod remutex;
 pub mod rwlock;
