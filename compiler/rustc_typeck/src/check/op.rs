@@ -313,7 +313,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error types are considered "builtin"
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
-                let source_map = self.tcx.sess.source_map();
                 let (mut err, missing_trait, use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
@@ -448,24 +447,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                         .is_ok()
                     {
-                        if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                            let msg = &format!(
-                                "`{}{}` can be used on `{}`, you can dereference `{}`",
-                                op.node.as_str(),
-                                match is_assign {
-                                    IsAssign::Yes => "=",
-                                    IsAssign::No => "",
-                                },
-                                lhs_deref_ty.peel_refs(),
-                                lstring,
-                            );
-                            err.span_suggestion_verbose(
-                                lhs_expr.span.shrink_to_lo(),
-                                msg,
-                                "*",
-                                rustc_errors::Applicability::MachineApplicable,
-                            );
-                        }
+                        let msg = &format!(
+                            "`{}{}` can be used on `{}` if you dereference the left-hand side",
+                            op.node.as_str(),
+                            match is_assign {
+                                IsAssign::Yes => "=",
+                                IsAssign::No => "",
+                            },
+                            lhs_deref_ty,
+                        );
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.shrink_to_lo(),
+                            msg,
+                            "*",
+                            rustc_errors::Applicability::MachineApplicable,
+                        );
                     }
                 };
 
