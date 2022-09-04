@@ -11832,6 +11832,9 @@ public:
                               orig->getName() + "'ac");
             assert(newip->getType() == orig->getType());
             placeholder->replaceAllUsesWith(newip);
+            if (placeholder == &*BuilderZ.GetInsertPoint()) {
+              BuilderZ.SetInsertPoint(placeholder->getNextNode());
+            }
             gutils->erase(placeholder);
           } else {
             newip = placeholder;

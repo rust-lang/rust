@@ -2166,8 +2166,13 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       if (!ignoreType && replace)
         cast<Instruction>(malloc)->replaceAllUsesWith(ret);
       ret->takeName(malloc);
-      if (replace)
-        erase(cast<Instruction>(malloc));
+      if (replace) {
+        auto malloci = cast<Instruction>(malloc);
+        if (malloci == &*BuilderQ.GetInsertPoint()) {
+          BuilderQ.SetInsertPoint(malloci->getNextNode());
+        }
+        erase(malloci);
+      }
     }
     return ret;
   } else {
