@@ -389,42 +389,54 @@ impl<T, A: Allocator> RawVec<T, A> {
             return Err(CapacityOverflow.into());
         }
 
-        // Size of allocator's per-allocation overhead we expect
-        // FIXME: maybe two pointers to be on the safe side? It could potentially
-        // be platform-dependent.
-        const ALLOC_OVERHEAD_SIZE: usize = mem::size_of::<usize>();
-
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        // The addition cannot overflow because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        // By minimum we increase the cap by 1/2, which combined with rounding up
-        // to the next bin should result in rougly doubling (increase between x1.5, and x2.5).
-        let wanted_cap = cmp::max(self.cap + self.cap / 2, required_cap);
 
-        let cap = if let Some(alloc_size) = wanted_cap
-            .checked_mul(mem::size_of::<T>())
-            .and_then(
-                // Add the overhead
-                |alloc_size| alloc_size.checked_add(ALLOC_OVERHEAD_SIZE),
-            )
-            .filter(|alloc_size| *alloc_size < isize::MAX as usize)
-        {
-            // Since memory allocators tend to use power of two sized bins, find the
-            // bin size we will fall into.
-            debug_assert!(alloc_size > 1);
-            let bin_size = usize::MAX >> (alloc_size - 1).leading_zeros(); // + 1 skipped to prevent overflow
-            debug_assert!(alloc_size - 1 <= bin_size);
-
-            // Leave some room for allocators that add fixed overhead (usually
-            // one pointer-size)
-            // `bin_size - ...` can't underflow, because alloc_overhead_size was already added
-            let aligned_alloc_size = bin_size - (ALLOC_OVERHEAD_SIZE - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
-
-            // Align the capacity to fit the bin
-            aligned_alloc_size / mem::size_of::<T>()
+        // Packing to bin only makes sense for types that are small enough to have a chance to be
+        // closely aligned to a power of two. For bigger `T`s, use a standard capacity doubling.
+        // This check is completely static, so compiler should have no problem keeping only one
+        // version at the time for each `T`.
+        let cap = if 2 * mem::size_of::<usize>() < mem::size_of::<T>() {
+            // This guarantees exponential growth. The doubling cannot overflow
+            // because `cap <= isize::MAX` and the type of `cap` is `usize`.
+            let cap = cmp::max(self.cap * 2, required_cap);
+            cmp::max(Self::MIN_NON_ZERO_CAP, cap)
         } else {
-            // Calculating alloc_size overflowed. We just use `wanted_cap` to preserve behavior around cap `isize` overflows.
-            wanted_cap
+            // Size of allocator's per-allocation overhead we expect
+            // FIXME: maybe two pointers to be on the safe side? It could potentially
+            // be platform-dependent.
+            const ALLOC_OVERHEAD_SIZE: usize = mem::size_of::<usize>();
+
+            // By minimum we increase the cap by 1/2, which combined with rounding up
+            // to the next bin should result in rougly doubling (increase between x1.5, and x2.5).
+            // The addition cannot overflow because `cap <= isize::MAX` and the type of `cap` is `usize`.
+            let wanted_cap = cmp::max(self.cap + self.cap / 2, required_cap);
+
+            if let Some(alloc_size) = wanted_cap
+                .checked_mul(mem::size_of::<T>())
+                .and_then(
+                    // Add the overhead
+                    |alloc_size| alloc_size.checked_add(ALLOC_OVERHEAD_SIZE),
+                )
+                .filter(|alloc_size| *alloc_size < isize::MAX as usize)
+            {
+                // Since memory allocators tend to use power of two sized bins, find the
+                // bin size we will fall into.
+                debug_assert!(alloc_size > 1);
+                let bin_size = usize::MAX >> (alloc_size - 1).leading_zeros(); // + 1 skipped to prevent overflow
+                debug_assert!(alloc_size - 1 <= bin_size);
+
+                // Leave some room for allocators that add fixed overhead (usually
+                // one pointer-size)
+                // `bin_size - ...` can't underflow, because alloc_overhead_size was already added
+                let aligned_alloc_size = bin_size - (ALLOC_OVERHEAD_SIZE - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
+
+                // Align the capacity to fit the bin
+                aligned_alloc_size / mem::size_of::<T>()
+            } else {
+                // Calculating alloc_size overflowed. We just use `wanted_cap` to preserve behavior around cap `isize` overflows.
+                wanted_cap
+            }
         };
 
         let new_layout = Layout::array::<T>(cap);
