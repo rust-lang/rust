@@ -31,13 +31,15 @@ macro_rules! define_handles {
         // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
         #[allow(non_snake_case)]
         pub(super) struct HandleStore<S: server::Types> {
+            pub(super) rpc_context: S::RpcContext,
             $($oty: handle::OwnedStore<S::$oty>,)*
             $($ity: handle::InternedStore<S::$ity>,)*
         }
 
         impl<S: server::Types> HandleStore<S> {
-            pub(super) fn new(handle_counters: &'static HandleCounters) -> Self {
+            pub(super) fn new(handle_counters: &'static HandleCounters, rpc_context: S::RpcContext) -> Self {
                 HandleStore {
+                    rpc_context,
                     $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
                     $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
                 }
@@ -174,7 +176,6 @@ macro_rules! define_handles {
 define_handles! {
     'owned:
     FreeFunctions,
-    TokenStream,
     SourceFile,
 
     'interned:
@@ -186,12 +187,6 @@ define_handles! {
 // to distinguish between 'owned and 'interned, above.
 // Alternatively, special "modes" could be listed of types in with_api
 // instead of pattern matching on methods, here and in server decl.
-
-impl Clone for TokenStream {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
 
 impl Clone for SourceFile {
     fn clone(&self) -> Self {
@@ -218,6 +213,8 @@ impl fmt::Debug for Span {
         f.write_str(&self.debug())
     }
 }
+
+pub(crate) use super::token_stream::TokenStream;
 
 pub(crate) use super::symbol::Symbol;
 
@@ -432,7 +429,7 @@ impl Client<crate::TokenStream, crate::TokenStream> {
         Client {
             get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
+                run_client(bridge, |input| f(crate::TokenStream(input)).0)
             }),
             _marker: PhantomData,
         }
@@ -447,7 +444,7 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
             get_handle_counters: HandleCounters::get,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
+                    f(crate::TokenStream(input), crate::TokenStream(input2)).0
                 })
             }),
             _marker: PhantomData,

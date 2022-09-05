@@ -14,6 +14,23 @@ pub trait Types {
     type SourceFile: 'static + Clone;
     type Span: 'static + Copy + Eq + Hash;
     type Symbol: 'static;
+
+    type RpcContext: RpcContext<Self>;
+}
+
+pub trait RpcContext<S: Types + ?Sized> {
+    /// Convert a Self::TokenStream into a sequence of `TokenTree`s,
+    /// calling the callback with each `TokenTree` in order.
+    fn tts_from_tokenstream(
+        &mut self,
+        stream: S::TokenStream,
+    ) -> Vec<TokenTree<S::TokenStream, S::Span, S::Symbol>>;
+
+    /// Convert a sequence of `TokenTree`s into a `Self::TokenStream`.
+    fn tokenstream_from_tts(
+        &mut self,
+        trees: impl Iterator<Item = TokenTree<S::TokenStream, S::Span, S::Symbol>>,
+    ) -> S::TokenStream;
 }
 
 /// Declare an associated fn of one of the traits below, adding necessary
@@ -39,6 +56,10 @@ macro_rules! declare_server_traits {
         pub trait Server: Types $(+ $name)* {
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
 
+            /// Get a helper type which can be used to serialize/deserialize
+            /// types such as TokenStream.
+            fn rpc_context(&mut self) -> Self::RpcContext;
+
             /// Intern a symbol received from RPC
             fn intern_symbol(ident: &str) -> Self::Symbol;
 
@@ -61,6 +82,9 @@ impl<S: Server> Server for MarkedTypes<S> {
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
         S::with_symbol_string(symbol.unmark(), f)
     }
+    fn rpc_context(&mut self) -> Self::RpcContext {
+        MarkedRpcContext(self.0.rpc_context())
+    }
 }
 
 macro_rules! define_mark_types_impls {
@@ -69,6 +93,8 @@ macro_rules! define_mark_types_impls {
     }),* $(,)?) => {
         impl<S: Types> Types for MarkedTypes<S> {
             $(type $name = Marked<S::$name, client::$name>;)*
+
+            type RpcContext = MarkedRpcContext<S::RpcContext>;
         }
 
         $(impl<S: $name> $name for MarkedTypes<S> {
@@ -79,6 +105,35 @@ macro_rules! define_mark_types_impls {
     }
 }
 with_api!(Self, self_, define_mark_types_impls);
+
+pub(super) struct MarkedRpcContext<R>(R);
+
+impl<S: Types, R: RpcContext<S>> RpcContext<MarkedTypes<S>> for MarkedRpcContext<R> {
+    fn tts_from_tokenstream(
+        &mut self,
+        stream: <MarkedTypes<S> as Types>::TokenStream,
+    ) -> Vec<
+        TokenTree<
+            <MarkedTypes<S> as Types>::TokenStream,
+            <MarkedTypes<S> as Types>::Span,
+            <MarkedTypes<S> as Types>::Symbol,
+        >,
+    > {
+        self.0.tts_from_tokenstream(stream.unmark()).into_iter().map(|tt| <_>::mark(tt)).collect()
+    }
+    fn tokenstream_from_tts(
+        &mut self,
+        trees: impl Iterator<
+            Item = TokenTree<
+                <MarkedTypes<S> as Types>::TokenStream,
+                <MarkedTypes<S> as Types>::Span,
+                <MarkedTypes<S> as Types>::Symbol,
+            >,
+        >,
+    ) -> <MarkedTypes<S> as Types>::TokenStream {
+        <_>::mark(self.0.tokenstream_from_tts(trees.map(|tt| tt.unmark())))
+    }
+}
 
 struct Dispatcher<S: Types> {
     handle_store: HandleStore<S>,
@@ -304,8 +359,11 @@ fn run_server<
     run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
     force_show_panics: bool,
 ) -> Result<O, PanicMessage> {
-    let mut dispatcher =
-        Dispatcher { handle_store: HandleStore::new(handle_counters), server: MarkedTypes(server) };
+    let mut server = MarkedTypes(server);
+    let mut dispatcher = Dispatcher {
+        handle_store: HandleStore::new(handle_counters, server.rpc_context()),
+        server,
+    };
 
     let globals = dispatcher.server.globals();
 
@@ -338,7 +396,7 @@ impl client::Client<crate::TokenStream, crate::TokenStream> {
             run,
             force_show_panics,
         )
-        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
+        .map(|s| <<MarkedTypes<S> as Types>::TokenStream>::unmark(s))
     }
 }
 
@@ -367,6 +425,6 @@ impl client::Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream
             run,
             force_show_panics,
         )
-        .map(|s| <Option<<MarkedTypes<S> as Types>::TokenStream>>::unmark(s).unwrap_or_default())
+        .map(|s| <<MarkedTypes<S> as Types>::TokenStream>::unmark(s))
     }
 }

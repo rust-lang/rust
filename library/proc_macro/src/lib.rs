@@ -24,6 +24,7 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
+#![feature(let_else)]
 #![feature(local_key_cell_methods)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
@@ -46,6 +47,7 @@ pub use diagnostic::{Diagnostic, Level, MultiSpan};
 use std::cmp::Ordering;
 use std::ops::RangeBounds;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::str::FromStr;
 use std::{error, fmt, iter};
 
@@ -76,7 +78,7 @@ pub fn is_available() -> bool {
 /// and `#[proc_macro_derive]` definitions.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
-pub struct TokenStream(Option<bridge::client::TokenStream>);
+pub struct TokenStream(bridge::client::TokenStream);
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for TokenStream {}
@@ -130,13 +132,13 @@ impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new() -> TokenStream {
-        TokenStream(None)
+        TokenStream(bridge::client::TokenStream::new(Vec::new()))
     }
 
     /// Checks if this `TokenStream` is empty.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn is_empty(&self) -> bool {
-        self.0.as_ref().map(|h| h.is_empty()).unwrap_or(true)
+        self.0.is_empty()
     }
 
     /// Parses this `TokenStream` as an expression and attempts to expand any
@@ -151,9 +153,8 @@ impl TokenStream {
     /// considered errors, is unspecified and may change in the future.
     #[unstable(feature = "proc_macro_expand", issue = "90765")]
     pub fn expand_expr(&self) -> Result<TokenStream, ExpandError> {
-        let stream = self.0.as_ref().ok_or(ExpandError)?;
-        match bridge::client::TokenStream::expand_expr(stream) {
-            Ok(stream) => Ok(TokenStream(Some(stream))),
+        match bridge::client::TokenStream::expand_expr(self.0.clone()) {
+            Ok(stream) => Ok(TokenStream(stream)),
             Err(_) => Err(ExpandError),
         }
     }
@@ -171,7 +172,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(Some(bridge::client::TokenStream::from_str(src))))
+        Ok(TokenStream(bridge::client::TokenStream::from_str(src)))
     }
 }
 
@@ -180,7 +181,7 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
-        self.0.as_ref().map(|t| t.to_string()).unwrap_or_default()
+        self.0.clone().to_string()
     }
 }
 
@@ -213,97 +214,11 @@ impl Default for TokenStream {
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub use quote::{quote, quote_span};
 
-fn tree_to_bridge_tree(
-    tree: TokenTree,
-) -> bridge::TokenTree<bridge::client::TokenStream, bridge::client::Span, bridge::client::Symbol> {
-    match tree {
-        TokenTree::Group(tt) => bridge::TokenTree::Group(tt.0),
-        TokenTree::Punct(tt) => bridge::TokenTree::Punct(tt.0),
-        TokenTree::Ident(tt) => bridge::TokenTree::Ident(tt.0),
-        TokenTree::Literal(tt) => bridge::TokenTree::Literal(tt.0),
-    }
-}
-
 /// Creates a token stream containing a single token tree.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
-        TokenStream(Some(bridge::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
-    }
-}
-
-/// Non-generic helper for implementing `FromIterator<TokenTree>` and
-/// `Extend<TokenTree>` with less monomorphization in calling crates.
-struct ConcatTreesHelper {
-    trees: Vec<
-        bridge::TokenTree<
-            bridge::client::TokenStream,
-            bridge::client::Span,
-            bridge::client::Symbol,
-        >,
-    >,
-}
-
-impl ConcatTreesHelper {
-    fn new(capacity: usize) -> Self {
-        ConcatTreesHelper { trees: Vec::with_capacity(capacity) }
-    }
-
-    fn push(&mut self, tree: TokenTree) {
-        self.trees.push(tree_to_bridge_tree(tree));
-    }
-
-    fn build(self) -> TokenStream {
-        if self.trees.is_empty() {
-            TokenStream(None)
-        } else {
-            TokenStream(Some(bridge::client::TokenStream::concat_trees(None, self.trees)))
-        }
-    }
-
-    fn append_to(self, stream: &mut TokenStream) {
-        if self.trees.is_empty() {
-            return;
-        }
-        stream.0 = Some(bridge::client::TokenStream::concat_trees(stream.0.take(), self.trees))
-    }
-}
-
-/// Non-generic helper for implementing `FromIterator<TokenStream>` and
-/// `Extend<TokenStream>` with less monomorphization in calling crates.
-struct ConcatStreamsHelper {
-    streams: Vec<bridge::client::TokenStream>,
-}
-
-impl ConcatStreamsHelper {
-    fn new(capacity: usize) -> Self {
-        ConcatStreamsHelper { streams: Vec::with_capacity(capacity) }
-    }
-
-    fn push(&mut self, stream: TokenStream) {
-        if let Some(stream) = stream.0 {
-            self.streams.push(stream);
-        }
-    }
-
-    fn build(mut self) -> TokenStream {
-        if self.streams.len() <= 1 {
-            TokenStream(self.streams.pop())
-        } else {
-            TokenStream(Some(bridge::client::TokenStream::concat_streams(None, self.streams)))
-        }
-    }
-
-    fn append_to(mut self, stream: &mut TokenStream) {
-        if self.streams.is_empty() {
-            return;
-        }
-        let base = stream.0.take();
-        if base.is_none() && self.streams.len() == 1 {
-            stream.0 = self.streams.pop();
-        } else {
-            stream.0 = Some(bridge::client::TokenStream::concat_streams(base, self.streams));
-        }
+        TokenStream(bridge::client::TokenStream::new(vec![tree]))
     }
 }
 
@@ -311,10 +226,7 @@ impl ConcatStreamsHelper {
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
-        let iter = trees.into_iter();
-        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
-        iter.for_each(|tree| builder.push(tree));
-        builder.build()
+        TokenStream(bridge::client::TokenStream::new(trees.into_iter().collect()))
     }
 }
 
@@ -323,72 +235,59 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
-        let iter = streams.into_iter();
-        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
-        iter.for_each(|stream| builder.push(stream));
-        builder.build()
+        TokenStream(bridge::client::TokenStream::new(streams.into_iter().flatten().collect()))
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenTree> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
-        let iter = trees.into_iter();
-        let mut builder = ConcatTreesHelper::new(iter.size_hint().0);
-        iter.for_each(|tree| builder.push(tree));
-        builder.append_to(self);
+        Rc::make_mut(&mut self.0.tokens).extend(trees)
     }
 }
 
 #[stable(feature = "token_stream_extend", since = "1.30.0")]
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        let iter = streams.into_iter();
-        let mut builder = ConcatStreamsHelper::new(iter.size_hint().0);
-        iter.for_each(|stream| builder.push(stream));
-        builder.append_to(self);
+        Rc::make_mut(&mut self.0.tokens).extend(streams.into_iter().flatten())
     }
 }
 
 /// Public implementation details for the `TokenStream` type, such as iterators.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub mod token_stream {
-    use crate::{bridge, Group, Ident, Literal, Punct, TokenStream, TokenTree};
+    use crate::{TokenStream, TokenTree};
+    use std::rc::Rc;
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
     /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    pub struct IntoIter(
-        std::vec::IntoIter<
-            bridge::TokenTree<
-                bridge::client::TokenStream,
-                bridge::client::Span,
-                bridge::client::Symbol,
-            >,
-        >,
-    );
+    pub struct IntoIter {
+        index: usize,
+        trees: Rc<Vec<TokenTree>>,
+    }
 
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     impl Iterator for IntoIter {
         type Item = TokenTree;
 
         fn next(&mut self) -> Option<TokenTree> {
-            self.0.next().map(|tree| match tree {
-                bridge::TokenTree::Group(tt) => TokenTree::Group(Group(tt)),
-                bridge::TokenTree::Punct(tt) => TokenTree::Punct(Punct(tt)),
-                bridge::TokenTree::Ident(tt) => TokenTree::Ident(Ident(tt)),
-                bridge::TokenTree::Literal(tt) => TokenTree::Literal(Literal(tt)),
-            })
+            let rv = self.trees.get(self.index).cloned();
+            if rv.is_some() {
+                self.index += 1;
+            }
+            rv
         }
 
         fn size_hint(&self) -> (usize, Option<usize>) {
-            self.0.size_hint()
+            let len = self.trees.len() - self.index;
+            (len, Some(len))
         }
 
         fn count(self) -> usize {
-            self.0.count()
+            self.size_hint().0
         }
     }
 
@@ -398,7 +297,7 @@ pub mod token_stream {
         type IntoIter = IntoIter;
 
         fn into_iter(self) -> IntoIter {
-            IntoIter(self.0.map(|v| v.into_trees()).unwrap_or_default().into_iter())
+            IntoIter { index: 0, trees: self.0.tokens }
         }
     }
 }

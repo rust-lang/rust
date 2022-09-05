@@ -4,10 +4,11 @@
 extern crate test_macros;
 
 #[derive(Print)]
+#[allow(unused)]
 enum ProceduralMasqueradeDummyType {
 //~^ ERROR using
 //~| WARN this was previously
-    Input
+    Input = (0, stringify!(input tokens!?)).0
 }
 
 fn main() {}

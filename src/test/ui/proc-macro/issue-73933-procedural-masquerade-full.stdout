@@ -1,0 +1,118 @@
+PRINT-DERIVE INPUT (DISPLAY): #[allow(unused)] enum ProceduralMasqueradeDummyType
+{ Input = (0, stringify! (input tokens! ?)).0, }
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: #0 bytes(86..87),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "allow",
+                span: #0 bytes(88..93),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "unused",
+                        span: #0 bytes(94..100),
+                    },
+                ],
+                span: #0 bytes(93..101),
+            },
+        ],
+        span: #0 bytes(87..102),
+    },
+    Ident {
+        ident: "enum",
+        span: #0 bytes(103..107),
+    },
+    Ident {
+        ident: "ProceduralMasqueradeDummyType",
+        span: #0 bytes(108..137),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "Input",
+                span: #0 bytes(191..196),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: #0 bytes(197..198),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "0",
+                        suffix: None,
+                        span: #0 bytes(200..201),
+                    },
+                    Punct {
+                        ch: ',',
+                        spacing: Alone,
+                        span: #0 bytes(201..202),
+                    },
+                    Ident {
+                        ident: "stringify",
+                        span: #0 bytes(203..212),
+                    },
+                    Punct {
+                        ch: '!',
+                        spacing: Alone,
+                        span: #0 bytes(212..213),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "input",
+                                span: #0 bytes(214..219),
+                            },
+                            Ident {
+                                ident: "tokens",
+                                span: #0 bytes(220..226),
+                            },
+                            Punct {
+                                ch: '!',
+                                spacing: Joint,
+                                span: #0 bytes(226..227),
+                            },
+                            Punct {
+                                ch: '?',
+                                spacing: Alone,
+                                span: #0 bytes(227..228),
+                            },
+                        ],
+                        span: #0 bytes(213..229),
+                    },
+                ],
+                span: #0 bytes(199..230),
+            },
+            Punct {
+                ch: '.',
+                spacing: Alone,
+                span: #0 bytes(230..231),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "0",
+                suffix: None,
+                span: #0 bytes(231..232),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: #0 bytes(233..234),
+            },
+        ],
+        span: #0 bytes(138..234),
+    },
+]

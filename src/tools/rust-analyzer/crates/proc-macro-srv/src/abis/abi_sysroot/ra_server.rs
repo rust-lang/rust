@@ -50,6 +50,7 @@ impl server::Types for RustAnalyzer {
     type SourceFile = SourceFile;
     type Span = Span;
     type Symbol = Symbol;
+    type RpcContext = RpcContext;
 }
 
 impl server::FreeFunctions for RustAnalyzer {
@@ -78,179 +79,16 @@ impl server::FreeFunctions for RustAnalyzer {
 }
 
 impl server::TokenStream for RustAnalyzer {
-    fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
-        stream.is_empty()
-    }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
         use std::str::FromStr;
 
         Self::TokenStream::from_str(src).expect("cannot parse string")
     }
-    fn to_string(&mut self, stream: &Self::TokenStream) -> String {
+    fn to_string(&mut self, stream: Self::TokenStream) -> String {
         stream.to_string()
     }
-    fn from_token_tree(
-        &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
-    ) -> Self::TokenStream {
-        match tree {
-            bridge::TokenTree::Group(group) => {
-                let group = Group {
-                    delimiter: delim_to_internal(group.delimiter),
-                    token_trees: match group.stream {
-                        Some(stream) => stream.into_iter().collect(),
-                        None => Vec::new(),
-                    },
-                };
-                let tree = TokenTree::from(group);
-                Self::TokenStream::from_iter(vec![tree])
-            }
-
-            bridge::TokenTree::Ident(ident) => {
-                // FIXME: handle raw idents
-                let text = ident.sym.text();
-                let ident: tt::Ident = tt::Ident { text, id: ident.span };
-                let leaf = tt::Leaf::from(ident);
-                let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
-            }
-
-            bridge::TokenTree::Literal(literal) => {
-                let literal = LiteralFormatter(literal);
-                let text = literal
-                    .with_stringify_parts(|parts| tt::SmolStr::from_iter(parts.iter().copied()));
-
-                let literal = tt::Literal { text, id: literal.0.span };
-                let leaf = tt::Leaf::from(literal);
-                let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
-            }
-
-            bridge::TokenTree::Punct(p) => {
-                let punct = tt::Punct {
-                    char: p.ch as char,
-                    spacing: if p.joint { Spacing::Joint } else { Spacing::Alone },
-                    id: p.span,
-                };
-                let leaf = tt::Leaf::from(punct);
-                let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
-            }
-        }
-    }
-
-    fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
-        Ok(self_.clone())
-    }
-
-    fn concat_trees(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
-    ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
-        if let Some(base) = base {
-            builder.push(base);
-        }
-        for tree in trees {
-            builder.push(self.from_token_tree(tree));
-        }
-        builder.build()
-    }
-
-    fn concat_streams(
-        &mut self,
-        base: Option<Self::TokenStream>,
-        streams: Vec<Self::TokenStream>,
-    ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
-        if let Some(base) = base {
-            builder.push(base);
-        }
-        for stream in streams {
-            builder.push(stream);
-        }
-        builder.build()
-    }
-
-    fn into_trees(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        stream
-            .into_iter()
-            .map(|tree| match tree {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(&ident.text),
-                        // FIXME: handle raw idents
-                        is_raw: false,
-                        span: ident.id,
-                    })
-                }
-                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
-                    bridge::TokenTree::Literal(bridge::Literal {
-                        // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Err,
-                        symbol: Symbol::intern(&lit.text),
-                        // FIXME: handle suffixes
-                        suffix: None,
-                        span: lit.id,
-                    })
-                }
-                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
-                    bridge::TokenTree::Punct(bridge::Punct {
-                        ch: punct.char as u8,
-                        joint: punct.spacing == Spacing::Joint,
-                        span: punct.id,
-                    })
-                }
-                tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(bridge::Group {
-                    delimiter: delim_to_external(subtree.delimiter),
-                    stream: if subtree.token_trees.is_empty() {
-                        None
-                    } else {
-                        Some(subtree.token_trees.into_iter().collect())
-                    },
-                    span: bridge::DelimSpan::from_single(
-                        subtree.delimiter.map_or(Span::unspecified(), |del| del.id),
-                    ),
-                }),
-            })
-            .collect()
-    }
-}
-
-fn delim_to_internal(d: proc_macro::Delimiter) -> Option<tt::Delimiter> {
-    let kind = match d {
-        proc_macro::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
-        proc_macro::Delimiter::Brace => tt::DelimiterKind::Brace,
-        proc_macro::Delimiter::Bracket => tt::DelimiterKind::Bracket,
-        proc_macro::Delimiter::None => return None,
-    };
-    Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind })
-}
-
-fn delim_to_external(d: Option<tt::Delimiter>) -> proc_macro::Delimiter {
-    match d.map(|it| it.kind) {
-        Some(tt::DelimiterKind::Parenthesis) => proc_macro::Delimiter::Parenthesis,
-        Some(tt::DelimiterKind::Brace) => proc_macro::Delimiter::Brace,
-        Some(tt::DelimiterKind::Bracket) => proc_macro::Delimiter::Bracket,
-        None => proc_macro::Delimiter::None,
-    }
-}
-
-fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
-    match spacing {
-        proc_macro::Spacing::Alone => Spacing::Alone,
-        proc_macro::Spacing::Joint => Spacing::Joint,
-    }
-}
-
-fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
-    match spacing {
-        Spacing::Alone => proc_macro::Spacing::Alone,
-        Spacing::Joint => proc_macro::Spacing::Joint,
+    fn expand_expr(&mut self, self_: Self::TokenStream) -> Result<Self::TokenStream, ()> {
+        Ok(self_)
     }
 }
 
@@ -349,12 +187,148 @@ impl server::Server for RustAnalyzer {
         }
     }
 
+    fn rpc_context(&mut self) -> Self::RpcContext {
+        RpcContext {}
+    }
+
     fn intern_symbol(ident: &str) -> Self::Symbol {
         Symbol::intern(&tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
         f(symbol.text().as_str())
+    }
+}
+
+pub struct RpcContext;
+
+impl server::RpcContext<RustAnalyzer> for RpcContext {
+    fn tts_from_tokenstream(
+        &mut self,
+        stream: TokenStream,
+    ) -> Vec<bridge::TokenTree<TokenStream, Span, Symbol>> {
+        stream
+            .into_iter()
+            .map(|tree| match tree {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    bridge::TokenTree::Ident(bridge::Ident {
+                        sym: Symbol::intern(&ident.text),
+                        // FIXME: handle raw idents
+                        is_raw: false,
+                        span: ident.id,
+                    })
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                    bridge::TokenTree::Literal(bridge::Literal {
+                        // FIXME: handle literal kinds
+                        kind: bridge::LitKind::Err,
+                        symbol: Symbol::intern(&lit.text),
+                        // FIXME: handle suffixes
+                        suffix: None,
+                        span: lit.id,
+                    })
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
+                    bridge::TokenTree::Punct(bridge::Punct {
+                        ch: punct.char as u8,
+                        joint: punct.spacing == Spacing::Joint,
+                        span: punct.id,
+                    })
+                }
+                tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(bridge::Group {
+                    delimiter: delim_to_external(subtree.delimiter),
+                    stream: subtree.token_trees.into_iter().collect(),
+                    span: bridge::DelimSpan::from_single(
+                        subtree.delimiter.map_or(Span::unspecified(), |del| del.id),
+                    ),
+                }),
+            })
+            .collect()
+    }
+
+    fn tokenstream_from_tts(
+        &mut self,
+        trees: impl Iterator<Item = bridge::TokenTree<TokenStream, Span, Symbol>>,
+    ) -> TokenStream {
+        let mut builder = TokenStreamBuilder::new();
+        for tree in trees {
+            builder.push(match tree {
+                bridge::TokenTree::Group(group) => {
+                    let group = Group {
+                        delimiter: delim_to_internal(group.delimiter),
+                        token_trees: group.stream.into_iter().collect(),
+                    };
+                    let tree = TokenTree::from(group);
+                    TokenStream::from_iter(vec![tree])
+                }
+
+                bridge::TokenTree::Ident(ident) => {
+                    // FIXME: handle raw idents
+                    let text = ident.sym.text();
+                    let ident: tt::Ident = tt::Ident { text, id: ident.span };
+                    let leaf = tt::Leaf::from(ident);
+                    let tree = TokenTree::from(leaf);
+                    TokenStream::from_iter(vec![tree])
+                }
+
+                bridge::TokenTree::Literal(literal) => {
+                    let literal = LiteralFormatter(literal);
+                    let text = literal.with_stringify_parts(|parts| {
+                        tt::SmolStr::from_iter(parts.iter().copied())
+                    });
+
+                    let literal = tt::Literal { text, id: literal.0.span };
+                    let leaf = tt::Leaf::from(literal);
+                    let tree = TokenTree::from(leaf);
+                    TokenStream::from_iter(vec![tree])
+                }
+
+                bridge::TokenTree::Punct(p) => {
+                    let punct = tt::Punct {
+                        char: p.ch as char,
+                        spacing: if p.joint { Spacing::Joint } else { Spacing::Alone },
+                        id: p.span,
+                    };
+                    let leaf = tt::Leaf::from(punct);
+                    let tree = TokenTree::from(leaf);
+                    TokenStream::from_iter(vec![tree])
+                }
+            });
+        }
+        builder.build()
+    }
+}
+
+fn delim_to_internal(d: proc_macro::Delimiter) -> Option<tt::Delimiter> {
+    let kind = match d {
+        proc_macro::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
+        proc_macro::Delimiter::Brace => tt::DelimiterKind::Brace,
+        proc_macro::Delimiter::Bracket => tt::DelimiterKind::Bracket,
+        proc_macro::Delimiter::None => return None,
+    };
+    Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind })
+}
+
+fn delim_to_external(d: Option<tt::Delimiter>) -> proc_macro::Delimiter {
+    match d.map(|it| it.kind) {
+        Some(tt::DelimiterKind::Parenthesis) => proc_macro::Delimiter::Parenthesis,
+        Some(tt::DelimiterKind::Brace) => proc_macro::Delimiter::Brace,
+        Some(tt::DelimiterKind::Bracket) => proc_macro::Delimiter::Bracket,
+        None => proc_macro::Delimiter::None,
+    }
+}
+
+fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
+    match spacing {
+        proc_macro::Spacing::Alone => Spacing::Alone,
+        proc_macro::Spacing::Joint => Spacing::Joint,
+    }
+}
+
+fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
+    match spacing {
+        Spacing::Alone => proc_macro::Spacing::Alone,
+        Spacing::Joint => proc_macro::Spacing::Joint,
     }
 }
 

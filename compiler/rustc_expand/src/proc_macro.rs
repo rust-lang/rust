@@ -3,14 +3,12 @@ use crate::proc_macro_server;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 struct CrossbeamMessagePipe<T> {
     tx: crossbeam_channel::Sender<T>,
@@ -116,17 +114,10 @@ impl MultiItemModifier for DeriveProcMacro {
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
         let is_stmt = matches!(item, Annotatable::Stmt(..));
-        let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess);
-        let input = if hack {
-            let nt = match item {
-                Annotatable::Item(item) => token::NtItem(item),
-                Annotatable::Stmt(stmt) => token::NtStmt(stmt),
-                _ => unreachable!(),
-            };
-            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
-        } else {
-            item.to_tokens()
-        };
+        let input = crate::base::get_ann_tokenstream_with_pretty_printing_compatibility_hack(
+            &item,
+            &ecx.sess.parse_sess,
+        );
 
         let stream = {
             let _timer =

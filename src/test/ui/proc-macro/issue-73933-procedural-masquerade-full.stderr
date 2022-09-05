@@ -1,5 +1,5 @@
 error: using `procedural-masquerade` crate
-  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+  --> $DIR/issue-73933-procedural-masquerade-full.rs:8:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ error: aborting due to previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: using `procedural-masquerade` crate
-  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+  --> $DIR/issue-73933-procedural-masquerade-full.rs:8:6
    |
 LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

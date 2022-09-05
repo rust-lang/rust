@@ -3,8 +3,8 @@ use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
@@ -1407,7 +1407,16 @@ pub fn parse_macro_name_and_helper_attrs(
 /// asserts in old versions of those crates and their wide use in the ecosystem.
 /// See issue #73345 for more details.
 /// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
+fn pretty_printing_compatibility_hack(ann: &Annotatable, sess: &ParseSess) -> bool {
+    let item = match ann {
+        Annotatable::Item(item) => item,
+        Annotatable::Stmt(stmt) => match &stmt.kind {
+            ast::StmtKind::Item(item) => item,
+            _ => return false,
+        },
+        _ => return false,
+    };
+
     let name = item.ident.name;
     if name == sym::ProceduralMasqueradeDummyType {
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
@@ -1430,26 +1439,35 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
     false
 }
 
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &ParseSess) -> bool {
-    let item = match ann {
-        Annotatable::Item(item) => item,
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return false,
-        },
-        _ => return false,
-    };
-    pretty_printing_compatibility_hack(item, sess)
-}
-
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
-    let item = match nt {
-        Nonterminal::NtItem(item) => item,
-        Nonterminal::NtStmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return false,
-        },
-        _ => return false,
-    };
-    pretty_printing_compatibility_hack(item, sess)
+/// Helper to get the TokenStream for a Annotatable, taking the
+/// `pretty_printing_compatibility_hack` into account.
+///
+/// This will inject an artificial comma token into the token stream for the
+/// `ProceduralMasqueradeDummyType` enum, to make the tokens presented to the
+/// macro match those expected by the old `pprust` output.
+pub(crate) fn get_ann_tokenstream_with_pretty_printing_compatibility_hack(
+    ann: &Annotatable,
+    sess: &ParseSess,
+) -> TokenStream {
+    let stream = ann.to_tokens();
+    // FIXME: It needs to be removed, but there are some compatibility issues
+    // (see #73345).
+    if pretty_printing_compatibility_hack(ann, sess) {
+        let mut tts: Vec<_> = stream.into_trees().collect();
+        if let Some(TokenTree::Delimited(span, _, inner)) = tts.last_mut() {
+            if !matches!(
+                inner.trees().last(),
+                Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, ..))
+            ) {
+                *inner = inner
+                    .trees()
+                    .cloned()
+                    .chain([TokenTree::token_alone(token::Comma, span.close)])
+                    .collect();
+            }
+        }
+        tts.into_iter().collect()
+    } else {
+        stream
+    }
 }
