@@ -166,25 +166,23 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
         if let ExprKind::MethodCall(segment, ..) = expr.kind {
-            if let Some(hir_id) = segment.hir_id {
-                let hir = self.tcx.hir();
-                let body_id = hir.enclosing_body_owner(hir_id);
-                // FIXME: this is showing error messages for parts of the code that are not
-                // compiled (because of cfg)!
-                //
-                // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-                let typeck_results = self.tcx.typeck_body(
-                    hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
+            let hir = self.tcx.hir();
+            let body_id = hir.enclosing_body_owner(segment.hir_id);
+            // FIXME: this is showing error messages for parts of the code that are not
+            // compiled (because of cfg)!
+            //
+            // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
+            let typeck_results = self
+                .tcx
+                .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
+            if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                self.matches.insert(
+                    segment.ident.span,
+                    match hir.span_if_local(def_id) {
+                        Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
+                        None => LinkFromSrc::External(def_id),
+                    },
                 );
-                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                    self.matches.insert(
-                        segment.ident.span,
-                        match hir.span_if_local(def_id) {
-                            Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
-                            None => LinkFromSrc::External(def_id),
-                        },
-                    );
-                }
             }
         } else if self.handle_macro(expr.span) {
             // We don't want to go deeper into the macro.

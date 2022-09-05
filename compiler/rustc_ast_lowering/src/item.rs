@@ -1439,10 +1439,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {
                 let def_id = self.local_def_id(id).to_def_id();
+                let hir_id = self.next_id();
+                let res = Res::Def(DefKind::TyParam, def_id);
                 let ty_path = self.arena.alloc(hir::Path {
                     span: param_span,
-                    res: Res::Def(DefKind::TyParam, def_id),
-                    segments: self.arena.alloc_from_iter([hir::PathSegment::from_ident(ident)]),
+                    res,
+                    segments: self
+                        .arena
+                        .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
                 });
                 let ty_id = self.next_id();
                 let bounded_ty =

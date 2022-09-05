@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 if !bound_predicate.span.from_expansion();
                 if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
                 if let Some(PathSegment {
-                    res: Some(Res::SelfTy{ trait_: Some(def_id), alias_to: _ }), ..
+                    res: Res::SelfTy{ trait_: Some(def_id), alias_to: _ }, ..
                 }) = segments.first();
                 if let Some(
                     Node::Item(

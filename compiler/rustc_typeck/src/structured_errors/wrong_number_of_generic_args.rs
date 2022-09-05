@@ -291,62 +291,60 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     // Creates lifetime name suggestions from the lifetime parameter names
     fn get_lifetime_args_suggestions_from_param_names(
         &self,
-        path_hir_id: Option<hir::HirId>,
+        path_hir_id: hir::HirId,
         num_params_to_take: usize,
     ) -> String {
         debug!(?path_hir_id);
 
-        if let Some(path_hir_id) = path_hir_id {
-            let mut ret = Vec::new();
-            for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
-                debug!(?id);
-                let params = if let Some(generics) = node.generics() {
-                    generics.params
-                } else if let hir::Node::Ty(ty) = node
-                    && let hir::TyKind::BareFn(bare_fn) = ty.kind
-                {
-                    bare_fn.generic_params
-                } else {
-                    &[]
-                };
-                ret.extend(params.iter().filter_map(|p| {
-                    let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
-                        = p.kind
-                    else { return None };
-                    let hir::ParamName::Plain(name) = p.name else { return None };
-                    Some(name.to_string())
-                }));
-                // Suggest `'static` when in const/static item-like.
-                if let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Const { .. },
-                    ..
-                })
-                | hir::Node::ForeignItem(hir::ForeignItem {
-                    kind: hir::ForeignItemKind::Static { .. },
-                    ..
-                })
-                | hir::Node::AnonConst(..) = node
-                {
-                    ret.extend(
-                        std::iter::repeat("'static".to_owned())
-                            .take(num_params_to_take.saturating_sub(ret.len())),
-                    );
-                }
-                if ret.len() >= num_params_to_take {
-                    return ret[..num_params_to_take].join(", ");
-                }
-                // We cannot refer to lifetimes defined in an outer function.
-                if let hir::Node::Item(_) = node {
-                    break;
-                }
+        let mut ret = Vec::new();
+        for (id, node) in self.tcx.hir().parent_iter(path_hir_id) {
+            debug!(?id);
+            let params = if let Some(generics) = node.generics() {
+                generics.params
+            } else if let hir::Node::Ty(ty) = node
+                && let hir::TyKind::BareFn(bare_fn) = ty.kind
+            {
+                bare_fn.generic_params
+            } else {
+                &[]
+            };
+            ret.extend(params.iter().filter_map(|p| {
+                let hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }
+                    = p.kind
+                else { return None };
+                let hir::ParamName::Plain(name) = p.name else { return None };
+                Some(name.to_string())
+            }));
+            // Suggest `'static` when in const/static item-like.
+            if let hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Static { .. } | hir::ItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Const { .. },
+                ..
+            })
+            | hir::Node::ForeignItem(hir::ForeignItem {
+                kind: hir::ForeignItemKind::Static { .. },
+                ..
+            })
+            | hir::Node::AnonConst(..) = node
+            {
+                ret.extend(
+                    std::iter::repeat("'static".to_owned())
+                        .take(num_params_to_take.saturating_sub(ret.len())),
+                );
+            }
+            if ret.len() >= num_params_to_take {
+                return ret[..num_params_to_take].join(", ");
+            }
+            // We cannot refer to lifetimes defined in an outer function.
+            if let hir::Node::Item(_) = node {
+                break;
             }
         }
 
@@ -690,8 +688,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             num = num_trait_generics_except_self,
         );
 
-        if let Some(hir_id) = self.path_segment.hir_id
-        && let Some(parent_node) = self.tcx.hir().find_parent_node(hir_id)
+        if let Some(parent_node) = self.tcx.hir().find_parent_node(self.path_segment.hir_id)
         && let Some(parent_node) = self.tcx.hir().find(parent_node)
         && let hir::Node::Expr(expr) = parent_node {
             match expr.kind {

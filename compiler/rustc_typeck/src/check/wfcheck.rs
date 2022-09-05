@@ -768,7 +768,7 @@ impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
     match ty.kind {
         hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
-            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id.to_def_id()),
+            [s] => s.res.opt_def_id() == Some(trait_def_id.to_def_id()),
             _ => false,
         },
         _ => false,

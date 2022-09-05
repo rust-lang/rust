@@ -118,8 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         _: rustc_hir::HirId,
     ) {
         if let Some(segment) = path.segments.iter().nth_back(1)
-        && let Some(res) = &segment.res
-        && lint_ty_kind_usage(cx, res)
+        && lint_ty_kind_usage(cx, &segment.res)
         {
             let span = path.span.with_hi(
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
