@@ -36,12 +36,12 @@ enum OpenOption {
 }
 
 fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprKind::MethodCall(path, arguments, _) = argument.kind {
-        let obj_ty = cx.typeck_results().expr_ty(&arguments[0]).peel_refs();
+    if let ExprKind::MethodCall(path, receiver, arguments, _) = argument.kind {
+        let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
-            let argument_option = match arguments[1].kind {
+        if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 1 {
+            let argument_option = match arguments[0].kind {
                 ExprKind::Lit(ref span) => {
                     if let Spanned {
                         node: LitKind::Bool(lit),
@@ -77,7 +77,7 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                 _ => (),
             }
 
-            get_open_options(cx, &arguments[0], options);
+            get_open_options(cx, receiver, options);
         }
     }
 }

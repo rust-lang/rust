@@ -108,7 +108,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     };
     if_chain! {
         // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
-        if let ExprKind::MethodCall(method_path, [ptr_self, .., count], _) = expr.kind;
+        if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind;
         let method_ident = method_path.ident.as_str();
         if METHODS.iter().any(|m| *m == method_ident);
 

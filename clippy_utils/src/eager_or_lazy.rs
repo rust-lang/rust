@@ -45,12 +45,7 @@ impl ops::BitOrAssign for EagernessSuggestion {
 }
 
 /// Determine the eagerness of the given function call.
-fn fn_eagerness<'tcx>(
-    cx: &LateContext<'tcx>,
-    fn_id: DefId,
-    name: Symbol,
-    args: &'tcx [Expr<'_>],
-) -> EagernessSuggestion {
+fn fn_eagerness<'tcx>(cx: &LateContext<'tcx>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
     let name = name.as_str();
 
@@ -59,7 +54,7 @@ fn fn_eagerness<'tcx>(
         None => return Lazy,
     };
 
-    if (name.starts_with("as_") || name == "len" || name == "is_empty") && args.len() == 1 {
+    if (name.starts_with("as_") || name == "len" || name == "is_empty") && have_one_arg {
         if matches!(
             cx.tcx.crate_name(fn_id.krate),
             sym::std | sym::core | sym::alloc | sym::proc_macro
@@ -127,10 +122,11 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     Res::Def(_, id) => match path {
                         QPath::Resolved(_, p) => {
-                            self.eagerness |= fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, args);
+                            self.eagerness |=
+                                fn_eagerness(self.cx, id, p.segments.last().unwrap().ident.name, !args.is_empty());
                         },
                         QPath::TypeRelative(_, name) => {
-                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, args);
+                            self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, !args.is_empty());
                         },
                         QPath::LangItem(..) => self.eagerness = Lazy,
                     },
@@ -141,12 +137,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
-                ExprKind::MethodCall(name, args, _) => {
+                ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, args));
+                        .map_or(Lazy, |id| fn_eagerness(self.cx, id, name.ident.name, true));
                 },
                 ExprKind::Index(_, e) => {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(e);

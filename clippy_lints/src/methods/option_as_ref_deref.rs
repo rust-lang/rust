@@ -56,13 +56,12 @@ pub(super) fn check<'tcx>(
             let closure_expr = peel_blocks(&closure_body.value);
 
             match &closure_expr.kind {
-                hir::ExprKind::MethodCall(_, args, _) => {
+                hir::ExprKind::MethodCall(_, receiver, [], _) => {
                     if_chain! {
-                        if args.len() == 1;
-                        if path_to_local_id(&args[0], closure_body.params[0].pat.hir_id);
+                        if path_to_local_id(receiver, closure_body.params[0].pat.hir_id);
                         let adj = cx
                             .typeck_results()
-                            .expr_adjustments(&args[0])
+                            .expr_adjustments(receiver)
                             .iter()
                             .map(|x| &x.kind)
                             .collect::<Box<[_]>>();

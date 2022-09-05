@@ -42,11 +42,11 @@ pub(super) fn check<'tcx>(
         if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(needle).peel_refs().kind();
         if !is_local_used(cx, needle, arg_id);
         then {
-            let haystack = if let ExprKind::MethodCall(path, args, _) =
+            let haystack = if let ExprKind::MethodCall(path, receiver, [], _) =
                     filter_recv.kind {
                 let p = path.ident.name;
-                if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
-                    &args[0]
+                if p == sym::iter || p == sym!(iter_mut) {
+                    receiver
                 } else {
                     filter_recv
                 }

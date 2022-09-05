@@ -180,10 +180,9 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, args, _) = &semi_stmt.kind;
+            if let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind;
             // Figure out the parameters for the method call
-            if let Some(self_expr) = args.get(0);
-            if let Some(pushed_item) = args.get(1);
+            if let Some(pushed_item) = args.get(0);
             // Check that the method being called is push() on a Vec
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
             if path.ident.name.as_str() == "push";

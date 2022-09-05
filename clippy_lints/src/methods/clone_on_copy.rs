@@ -14,11 +14,14 @@ use super::CLONE_ON_COPY;
 
 /// Checks for the `CLONE_ON_COPY` lint.
 #[allow(clippy::too_many_lines)]
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, args: &[Expr<'_>]) {
-    let arg = match args {
-        [arg] if method_name == sym::clone => arg,
-        _ => return,
-    };
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    method_name: Symbol,
+    receiver: &Expr<'_>,
+    args: &[Expr<'_>],
+) {
+    let arg = if method_name == sym::clone && args.is_empty() { receiver } else { return };
     if cx
         .typeck_results()
         .type_dependent_def_id(expr.hir_id)
@@ -81,7 +84,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                 // &*x is a nop, &x.clone() is not
                 ExprKind::AddrOf(..) => return,
                 // (*x).func() is useless, x.clone().func() can work in case func borrows self
-                ExprKind::MethodCall(_, [self_arg, ..], _)
+                ExprKind::MethodCall(_, self_arg, ..)
                     if expr.hir_id == self_arg.hir_id && ty != cx.typeck_results().expr_ty_adjusted(expr) =>
                 {
                     return;
@@ -91,7 +94,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                     hir_callee.kind,
                     ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, _, _))
                 ),
-                ExprKind::MethodCall(_, [self_arg, ..], _) if expr.hir_id == self_arg.hir_id => true,
+                ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)
                 | ExprKind::Index(..) => true,

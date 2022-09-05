@@ -30,26 +30,27 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         }
     }
 
-    match expr.kind {
-        ExprKind::Call(_, args) | ExprKind::MethodCall(_, args, _) => {
-            let args_to_recover = args
-                .iter()
-                .filter(|arg| {
-                    if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
-                        !matches!(
-                            &arg.kind,
-                            ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
-                        )
-                    } else {
-                        false
-                    }
-                })
-                .collect::<Vec<_>>();
-            if !args_to_recover.is_empty() && !is_from_proc_macro(cx, expr) {
-                lint_unit_args(cx, expr, &args_to_recover);
+    let args: Vec<_> = match expr.kind {
+        ExprKind::Call(_, args) => args.iter().collect(),
+        ExprKind::MethodCall(_, receiver, args, _) => std::iter::once(receiver).chain(args.iter()).collect(),
+        _ => return,
+    };
+
+    let args_to_recover = args
+        .into_iter()
+        .filter(|arg| {
+            if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
+                !matches!(
+                    &arg.kind,
+                    ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
+                )
+            } else {
+                false
             }
-        },
-        _ => (),
+        })
+        .collect::<Vec<_>>();
+    if !args_to_recover.is_empty() && !is_from_proc_macro(cx, expr) {
+        lint_unit_args(cx, expr, &args_to_recover.as_slice());
     }
 }
 

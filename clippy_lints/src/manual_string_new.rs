@@ -55,8 +55,8 @@ impl LateLintPass<'_> for ManualStringNew {
             ExprKind::Call(func, args) => {
                 parse_call(cx, expr.span, func, args);
             },
-            ExprKind::MethodCall(path_segment, args, _) => {
-                parse_method_call(cx, expr.span, path_segment, args);
+            ExprKind::MethodCall(path_segment, receiver, ..) => {
+                parse_method_call(cx, expr.span, path_segment, receiver);
             },
             _ => (),
         }
@@ -88,14 +88,9 @@ fn warn_then_suggest(cx: &LateContext<'_>, span: Span) {
 }
 
 /// Tries to parse an expression as a method call, emitting the warning if necessary.
-fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegment<'_>, args: &[Expr<'_>]) {
-    if args.is_empty() {
-        // When parsing TryFrom::try_from(...).expect(...), we will have more than 1 arg.
-        return;
-    }
-
+fn parse_method_call(cx: &LateContext<'_>, span: Span, path_segment: &PathSegment<'_>, receiver: &Expr<'_>) {
     let ident = path_segment.ident.as_str();
-    let method_arg_kind = &args[0].kind;
+    let method_arg_kind = &receiver.kind;
     if ["to_string", "to_owned", "into"].contains(&ident) && is_expr_kind_empty_str(method_arg_kind) {
         warn_then_suggest(cx, span);
     } else if let ExprKind::Call(func, args) = method_arg_kind {
