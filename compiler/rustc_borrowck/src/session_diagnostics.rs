@@ -589,3 +589,17 @@ pub(crate) enum DefiningTypeNote<'a> {
     #[note(borrowck::define_inline_constant_type)]
     InlineConst { type_name: &'a str },
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::borrowed_temporary_value_dropped, code = "E0716")]
+pub(crate) struct TemporaryDroppedErr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::thread_local_outlive_function, code = "E0712")]
+pub(crate) struct ThreadLocalOutliveErr {
+    #[primary_span]
+    pub span: Span,
+}

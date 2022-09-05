@@ -1,8 +1,13 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_errors::{
     struct_span_err, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+
+use crate::session_diagnostics::{TemporaryDroppedErr, ThreadLocalOutliveErr};
 
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn cannot_move_when_borrowed(
@@ -450,14 +455,14 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0712, "thread-local variable borrowed past end of function",)
+        self.infcx.tcx.sess.create_err(ThreadLocalOutliveErr { span })
     }
 
     pub(crate) fn temporary_value_borrowed_for_too_long(
         &self,
         span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
+        self.infcx.tcx.sess.create_err(TemporaryDroppedErr { span })
     }
 
     #[rustc_lint_diagnostics]

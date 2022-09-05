@@ -248,3 +248,9 @@ borrowck_define_type_with_generator_substs =
 
 borrowck_define_type_with_closure_substs =
     defining type: {$type_name} with closure substs {$subsets}
+
+borrowck_borrowed_temporary_value_dropped =
+    temporary value dropped while borrowed
+
+borrowck_thread_local_outlive_function =
+    thread-local variable borrowed past end of function
