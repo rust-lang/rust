@@ -1,6 +1,6 @@
-// EMIT_MIR enum_cast.foo.mir_map.0.mir
-// EMIT_MIR enum_cast.bar.mir_map.0.mir
-// EMIT_MIR enum_cast.boo.mir_map.0.mir
+// EMIT_MIR enum_cast.foo.built.after.mir
+// EMIT_MIR enum_cast.bar.built.after.mir
+// EMIT_MIR enum_cast.boo.built.after.mir
 
 enum Foo {
     A
@@ -27,7 +27,7 @@ fn boo(boo: Boo) -> usize {
     boo as usize
 }
 
-// EMIT_MIR enum_cast.droppy.mir_map.0.mir
+// EMIT_MIR enum_cast.droppy.built.after.mir
 enum Droppy {
     A, B, C
 }
