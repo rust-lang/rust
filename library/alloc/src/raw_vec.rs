@@ -392,7 +392,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Size of allocator's per-allocation overhead we expect
         // FIXME: maybe two pointers to be on the safe side? It could potentially
         // be platform-dependent.
-        let alloc_overhead_size = mem::size_of::<usize>();
+        const ALLOC_OVERHEAD_SIZE: usize = mem::size_of::<usize>();
 
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
@@ -401,7 +401,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             .checked_mul(mem::size_of::<T>())
             .and_then(
                 // Add the overhead
-                |alloc_size| alloc_size.checked_add(alloc_overhead_size),
+                |alloc_size| alloc_size.checked_add(ALLOC_OVERHEAD_SIZE),
             )
             .filter(|alloc_size| *alloc_size < isize::MAX as usize)
         {
@@ -414,7 +414,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // Leave some room for allocators that add fixed overhead (usually
             // one pointer-size)
             // `bin_size - ...` can't underflow, because alloc_overhead_size was already added
-            let aligned_alloc_size = bin_size - (alloc_overhead_size - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
+            let aligned_alloc_size = bin_size - (ALLOC_OVERHEAD_SIZE - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
 
             // Align the capacity to fit the bin
             aligned_alloc_size / mem::size_of::<T>()
