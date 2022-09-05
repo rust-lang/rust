@@ -1015,6 +1015,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
+        ecx.machine.since_gc += 1;
         // Possibly report our progress.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
@@ -1028,13 +1029,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         // stacks.
         // When debug assertions are enabled, run the GC as often as possible so that any cases
         // where it mistakenly removes an important tag become visible.
-        if cfg!(debug_assertions)
-            || (ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval)
-        {
+        if ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval {
             ecx.machine.since_gc = 0;
             ecx.garbage_collect_tags()?;
-        } else {
-            ecx.machine.since_gc += 1;
         }
 
         // These are our preemption points.

@@ -31,7 +31,7 @@ function run_tests {
     # optimizations up all the way).
     # Optimizations change diagnostics (mostly backtraces), so we don't check them
     #FIXME(#2155): we want to only run the pass and panic tests here, not the fail tests.
-    MIRIFLAGS="-O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+    MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
   fi
 
   ## test-cargo-miri
