@@ -41,7 +41,7 @@ pub(crate) fn prepare() {
         "portable-simd",
         "rust-lang",
         "portable-simd",
-        "b8d6b6844602f80af79cd96401339ec594d472d8",
+        "d5cd4a8112d958bd3a252327e0d069a6363249bd",
     );
     apply_patches("portable-simd", Path::new("portable-simd"));
 

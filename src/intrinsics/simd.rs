@@ -26,7 +26,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     span: Span,
 ) {
     match intrinsic {
-        sym::simd_cast => {
+        sym::simd_as | sym::simd_cast => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
             if !a.layout().ty.is_simd() {
