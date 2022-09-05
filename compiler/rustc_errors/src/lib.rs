@@ -1098,6 +1098,28 @@ impl Handler {
         );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
+
+    pub fn span_to_snippet_from_emitter(
+        &self,
+        span: rustc_span::Span,
+    ) -> Option<Result<String, rustc_span::SpanSnippetError>> {
+        self.inner
+            .borrow()
+            .emitter
+            .source_map()
+            .map_or_else(|| Option::None, |sm| Some(sm.span_to_snippet(span)))
+    }
+
+    pub fn span_start_point_from_emitter(
+        &self,
+        span: rustc_span::Span,
+    ) -> Option<rustc_span::Span> {
+        self.inner
+            .borrow()
+            .emitter
+            .source_map()
+            .map_or_else(|| Option::None, |sm| Some(sm.start_point(span)))
+    }
 }
 
 impl HandlerInner {

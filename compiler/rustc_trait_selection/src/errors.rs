@@ -1,7 +1,7 @@
-use rustc_errors::{fluent, ErrorGuaranteed};
+use rustc_errors::{fluent, ErrorGuaranteed, Handler};
 use rustc_macros::SessionDiagnostic;
 use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
-use rustc_session::{parse::ParseSess, Limit, SessionDiagnostic};
+use rustc_session::{Limit, SessionDiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -69,9 +69,9 @@ pub struct NegativePositiveConflict<'a> {
 impl SessionDiagnostic<'_> for NegativePositiveConflict<'_> {
     fn into_diagnostic(
         self,
-        sess: &ParseSess,
+        handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(fluent::trait_selection::negative_positive_conflict);
+        let mut diag = handler.struct_err(fluent::trait_selection::negative_positive_conflict);
         diag.set_arg("trait_desc", self.trait_desc);
         diag.set_arg(
             "self_desc",

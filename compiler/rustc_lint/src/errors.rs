@@ -1,6 +1,6 @@
-use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed};
+use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed, Handler};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_session::{lint::Level, parse::ParseSess, SessionDiagnostic};
+use rustc_session::{lint::Level, SessionDiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -122,9 +122,9 @@ pub struct CheckNameUnknown {
 impl SessionDiagnostic<'_> for CheckNameUnknown {
     fn into_diagnostic(
         self,
-        sess: &ParseSess,
+        handler: &Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(fluent::lint::check_name_unknown);
+        let mut diag = handler.struct_err(fluent::lint::check_name_unknown);
         diag.code(rustc_errors::error_code!(E0602));
         if let Some(suggestion) = self.suggestion {
             diag.help(fluent::lint::help);

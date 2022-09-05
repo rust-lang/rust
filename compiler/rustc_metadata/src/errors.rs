@@ -424,9 +424,9 @@ pub(crate) struct MultipleCandidates {
 impl SessionDiagnostic<'_> for MultipleCandidates {
     fn into_diagnostic(
         self,
-        sess: &'_ rustc_session::parse::ParseSess,
+        handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::multiple_candidates);
+        let mut diag = handler.struct_err(rustc_errors::fluent::metadata::multiple_candidates);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("flavor", self.flavor);
         diag.code(error_code!(E0465));
@@ -540,9 +540,9 @@ pub struct InvalidMetadataFiles {
 impl SessionDiagnostic<'_> for InvalidMetadataFiles {
     fn into_diagnostic(
         self,
-        sess: &'_ rustc_session::parse::ParseSess,
+        handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::invalid_meta_files);
+        let mut diag = handler.struct_err(rustc_errors::fluent::metadata::invalid_meta_files);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("add_info", self.add_info);
         diag.code(error_code!(E0786));
@@ -568,9 +568,9 @@ pub struct CannotFindCrate {
 impl SessionDiagnostic<'_> for CannotFindCrate {
     fn into_diagnostic(
         self,
-        sess: &'_ rustc_session::parse::ParseSess,
+        handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::metadata::cannot_find_crate);
+        let mut diag = handler.struct_err(rustc_errors::fluent::metadata::cannot_find_crate);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("add_info", self.add_info);
         diag.set_arg("locator_triple", self.locator_triple.triple());

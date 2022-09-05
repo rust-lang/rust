@@ -341,7 +341,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0283 => AmbigousImpl {
                 span,
                 source_kind,
@@ -351,7 +351,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0284 => AmbigousReturn {
                 span,
                 source_kind,
@@ -361,7 +361,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
 
@@ -537,7 +537,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0283 => AmbigousImpl {
                 span,
                 source_kind,
@@ -547,7 +547,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
             TypeAnnotationNeeded::E0284 => AmbigousReturn {
                 span,
                 source_kind,
@@ -557,7 +557,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(&self.tcx.sess.parse_sess),
+            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
 
@@ -575,7 +575,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span,
             generator_kind: GeneratorKindAsDiagArg(kind),
         }
-        .into_diagnostic(&self.tcx.sess.parse_sess)
+        .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
     }
 }
 
