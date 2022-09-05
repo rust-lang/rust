@@ -197,9 +197,11 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
                 ptr::null_mut(),
             );
 
-            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize];
-            let db = data.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = &mut (*db).ReparseTarget as *mut u16;
+            #[repr(C, align(8))]
+            struct Align8<T>(T);
+            let mut data = Align8([0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
+            let db = data.0.as_mut_ptr() as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let buf = core::ptr::addr_of_mut!((*db).ReparseTarget) as *mut u16;
             let mut i = 0;
             // FIXME: this conversion is very hacky
             let v = br"\??\";
@@ -219,7 +221,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             let res = DeviceIoControl(
                 h as *mut _,
                 FSCTL_SET_REPARSE_POINT,
-                data.as_ptr() as *mut _,
+                db.cast(),
                 (*db).ReparseDataLength + 8,
                 ptr::null_mut(),
                 0,
