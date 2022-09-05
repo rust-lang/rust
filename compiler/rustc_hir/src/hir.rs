@@ -731,6 +731,7 @@ pub enum PredicateOrigin {
 /// A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereBoundPredicate<'hir> {
+    pub hir_id: HirId,
     pub span: Span,
     /// Origin of the predicate.
     pub origin: PredicateOrigin,
