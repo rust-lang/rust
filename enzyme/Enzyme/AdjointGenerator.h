@@ -9851,7 +9851,10 @@ public:
             {
               if (!gutils->isConstantValue(arg)) {
                 Value *ptrshadow = gutils->invertPointerM(arg, BuilderZ);
-                iargs.push_back(ptrshadow);
+                applyChainRule(
+                    BuilderZ,
+                    [&](Value *ptrshadow) { iargs.push_back(ptrshadow); },
+                    ptrshadow);
               }
             }
             if (iargs.size()) {
