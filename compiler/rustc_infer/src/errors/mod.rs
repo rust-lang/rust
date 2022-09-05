@@ -448,18 +448,31 @@ impl AddSubdiagnostic for ImplNote {
     }
 }
 
-#[derive(SessionSubdiagnostic)]
 pub enum TraitSubdiag {
-    #[note(infer::msl_trait_note)]
-    Note {
-        #[primary_span]
-        span: Span,
-    },
-    #[suggestion_verbose(infer::msl_trait_sugg, code = " + '_", applicability = "maybe-incorrect")]
-    Sugg {
-        #[primary_span]
-        span: Span,
-    },
+    Note { span: Span },
+    Sugg { span: Span },
+}
+
+// FIXME We can't rely on Vec<Subdiag> working well at the moment,
+// as only the args from one of the subdiagnostics will actually be used.
+// This results in an incorrect diagnostic if more than two subdiags with the same slug are added.
+// Use untranslated messages for now.
+impl AddSubdiagnostic for TraitSubdiag {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self {
+            TraitSubdiag::Note { span } => {
+                diag.span_note(span, "this has an implicit `'static` lifetime requirement");
+            }
+            TraitSubdiag::Sugg { span } => {
+                diag.span_suggestion_verbose(
+                    span,
+                    "consider relaxing the implicit `'static` requirement",
+                    " + '_".to_owned(),
+                    rustc_errors::Applicability::MaybeIncorrect,
+                );
+            }
+        }
+    }
 }
 
 #[derive(SessionDiagnostic)]
