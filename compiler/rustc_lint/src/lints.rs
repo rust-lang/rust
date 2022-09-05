@@ -2,9 +2,113 @@ use rustc_errors::{fluent, AddSubdiagnostic, Applicability, DecorateLint, Emissi
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::{Predicate, Ty, TyCtxt};
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
 
 use crate::LateContext;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_non_camel_case_type)]
+pub struct NonCamelCaseType<'a> {
+    pub sort: &'a str,
+    pub name: &'a str,
+    #[subdiagnostic]
+    pub sub: NonCamelCaseTypeSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum NonCamelCaseTypeSub {
+    #[label(label)]
+    Label {
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        replace: String,
+    },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_non_snake_case)]
+pub struct NonSnakeCaseDiag<'a> {
+    pub sort: &'a str,
+    pub name: &'a str,
+    pub sc: String,
+    #[subdiagnostic]
+    pub sub: NonSnakeCaseDiagSub,
+}
+
+pub enum NonSnakeCaseDiagSub {
+    Label { span: Span },
+    Help,
+    RenameOrConvertSuggestion { span: Span, suggestion: Ident },
+    ConvertSuggestion { span: Span, suggestion: String },
+    SuggestionAndNote { span: Span },
+}
+
+impl AddSubdiagnostic for NonSnakeCaseDiagSub {
+    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+        match self {
+            NonSnakeCaseDiagSub::Label { span } => {
+                diag.span_label(span, fluent::label);
+            }
+            NonSnakeCaseDiagSub::Help => {
+                diag.help(fluent::help);
+            }
+            NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
+                diag.span_suggestion(
+                    span,
+                    fluent::convert_suggestion,
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            NonSnakeCaseDiagSub::RenameOrConvertSuggestion { span, suggestion } => {
+                diag.span_suggestion(
+                    span,
+                    fluent::rename_or_convert_suggestion,
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
+                diag.note(fluent::cannot_convert_note);
+                diag.span_suggestion(
+                    span,
+                    fluent::rename_suggestion,
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_non_upper_case_global)]
+pub struct NonUpperCaseGlobal<'a> {
+    pub sort: &'a str,
+    pub name: &'a str,
+    #[subdiagnostic]
+    pub sub: NonUpperCaseGlobalSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum NonUpperCaseGlobalSub {
+    #[label(label)]
+    Label {
+        #[primary_span]
+        span: Span,
+    },
+    #[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        replace: String,
+    },
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_noop_method_call)]
