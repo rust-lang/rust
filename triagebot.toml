@@ -316,9 +316,6 @@ Examples of `T-libs-api` changes:
 * Changing observable runtime behavior of library APIs
 """
 
-[mentions."library/proc_macro/src/bridge"]
-cc = ["@rust-lang/wg-rls-2"]
-
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
 
