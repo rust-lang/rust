@@ -6,6 +6,32 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 
 use crate::LateContext;
 
+#[derive(LintDiagnostic)]
+#[diag(lint_identifier_non_ascii_char)]
+pub struct IdentifierNonAsciiChar;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_identifier_uncommon_codepoints)]
+pub struct IdentifierUncommonCodepoints;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_confusable_identifier_pair)]
+pub struct ConfusableIdentifierPair {
+    pub existing_sym: Symbol,
+    pub sym: Symbol,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_mixed_script_confusables)]
+#[note(includes_note)]
+#[note]
+pub struct MixedScriptConfusables {
+    pub set: String,
+    pub includes: String,
+}
+
 pub struct NonFmtPanicUnused {
     pub count: usize,
     pub suggestion: Option<Span>,
