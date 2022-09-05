@@ -206,12 +206,8 @@ fn check_inputs(
             _ => false,
         }
     };
-    if let Some(receiver) = receiver {
-        std::iter::zip(params, std::iter::once(receiver).chain(call_args.iter()))
-            .all(|(param, arg)| check_inputs(param, arg))
-    } else {
-        std::iter::zip(params, call_args).all(|(param, arg)| check_inputs(param, arg))
-    }
+    std::iter::zip(params, receiver.into_iter().chain(call_args.iter()))
+        .all(|(param, arg)| check_inputs(param, arg))
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tcx>) -> bool {
