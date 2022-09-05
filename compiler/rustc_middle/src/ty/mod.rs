@@ -463,15 +463,6 @@ pub(crate) struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-// `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
-
-// We are actually storing a stable hash cache next to the type, so let's
-// also check the full size
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(WithStableHash<TyS<'_>>, 56);
-
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
@@ -527,10 +518,6 @@ pub(crate) struct PredicateS<'tcx> {
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
-
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateS<'_>, 56);
 
 /// Use this rather than `PredicateS`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -2533,4 +2520,15 @@ pub struct FoundRelationships {
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(PredicateS<'_>, 56);
+    static_assert_size!(TyS<'_>, 40);
+    static_assert_size!(WithStableHash<TyS<'_>>, 56);
 }
