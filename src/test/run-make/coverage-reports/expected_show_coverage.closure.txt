@@ -37,7 +37,7 @@
    37|      0|            countdown = 10;
    38|      0|        }
    39|      0|        "alt string 2".to_owned()
-   40|       |    };
+   40|      0|    };
    41|      1|    println!(
    42|      1|        "The string or alt: {}"
    43|      1|        ,
@@ -79,7 +79,7 @@
    79|      0|            countdown = 10;
    80|      1|        }
    81|      1|        "alt string 4".to_owned()
-   82|       |    };
+   82|      1|    };
    83|      1|    println!(
    84|      1|        "The string or alt: {}"
    85|      1|        ,
@@ -101,7 +101,7 @@
   101|      0|            countdown = 10;
   102|      5|        }
   103|      5|        format!("'{}'", val)
-  104|       |    };
+  104|      5|    };
   105|      1|    println!(
   106|      1|        "Repeated, quoted string: {:?}"
   107|      1|        ,
@@ -125,7 +125,7 @@
   125|      0|            countdown = 10;
   126|      0|        }
   127|      0|        "closure should be unused".to_owned()
-  128|       |    };
+  128|      0|    };
   129|       |
   130|      1|    let mut countdown = 10;
   131|      1|    let _short_unused_closure = | _unused_arg: u8 | countdown += 1;
@@ -177,7 +177,7 @@
   173|      0|            println!(
   174|      0|                "not called: {}",
   175|      0|                if is_true { "check" } else { "me" }
-  176|       |            )
+  176|      0|            )
   177|       |    ;
   178|       |
   179|      1|    let short_used_not_covered_closure_line_break_block_embedded_branch =
@@ -187,7 +187,7 @@
   183|      0|                "not called: {}",
   184|      0|                if is_true { "check" } else { "me" }
   185|       |            )
-  186|       |        }
+  186|      0|        }
   187|       |    ;
   188|       |
   189|      1|    let short_used_covered_closure_line_break_no_block_embedded_branch =
@@ -196,7 +196,7 @@
   192|      1|                "not called: {}",
   193|      1|                if is_true { "check" } else { "me" }
                                                             ^0
-  194|       |            )
+  194|      1|            )
   195|       |    ;
   196|       |
   197|      1|    let short_used_covered_closure_line_break_block_embedded_branch =
@@ -207,7 +207,7 @@
   202|      1|                if is_true { "check" } else { "me" }
                                                             ^0
   203|       |            )
-  204|       |        }
+  204|      1|        }
   205|       |    ;
   206|       |
   207|      1|    if is_false {
