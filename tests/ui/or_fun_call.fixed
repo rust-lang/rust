@@ -79,16 +79,16 @@ fn or_fun_call() {
     without_default.unwrap_or_else(Foo::new);
 
     let mut map = HashMap::<u64, String>::new();
-    map.entry(42).or_insert(String::new());
+    map.entry(42).or_default();
 
     let mut map_vec = HashMap::<u64, Vec<i32>>::new();
-    map_vec.entry(42).or_insert(vec![]);
+    map_vec.entry(42).or_default();
 
     let mut btree = BTreeMap::<u64, String>::new();
-    btree.entry(42).or_insert(String::new());
+    btree.entry(42).or_default();
 
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
-    btree_vec.entry(42).or_insert(vec![]);
+    btree_vec.entry(42).or_default();
 
     let stringy = Some(String::new());
     let _ = stringy.unwrap_or_default();
