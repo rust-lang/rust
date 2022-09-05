@@ -2,6 +2,7 @@
 
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::Symbol;
+use rustc_target::abi::Endian;
 
 use super::*;
 use crate::prelude::*;
@@ -162,6 +163,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     }
                 }
             } else {
+                // FIXME remove this case
                 intrinsic.as_str()["simd_shuffle".len()..].parse().unwrap()
             };
 
@@ -650,10 +652,90 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         }
 
-        // simd_saturating_*
-        // simd_bitmask
+        sym::simd_bitmask => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let lane_clif_ty = fx.clif_type(lane_ty).unwrap();
+
+            // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
+            // vector mask and returns the most significant bit (MSB) of each lane in the form
+            // of either:
+            // * an unsigned integer
+            // * an array of `u8`
+            // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+            //
+            // The bit order of the result depends on the byte endianness, LSB-first for little
+            // endian and MSB-first for big endian.
+            let expected_int_bits = lane_count.max(8);
+            let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+
+            match lane_ty.kind() {
+                ty::Int(_) | ty::Uint(_) => {}
+                _ => {
+                    fx.tcx.sess.span_fatal(
+                        span,
+                        &format!(
+                            "invalid monomorphization of `simd_bitmask` intrinsic: \
+                            vector argument `{}`'s element type `{}`, expected integer element \
+                            type",
+                            a.layout().ty,
+                            lane_ty
+                        ),
+                    );
+                }
+            }
+
+            let res_type =
+                Type::int_with_byte_size(u16::try_from(expected_bytes).unwrap()).unwrap();
+            let mut res = fx.bcx.ins().iconst(res_type, 0);
+
+            let lanes = match fx.tcx.sess.target.endian {
+                Endian::Big => Box::new(0..lane_count) as Box<dyn Iterator<Item = u64>>,
+                Endian::Little => Box::new((0..lane_count).rev()) as Box<dyn Iterator<Item = u64>>,
+            };
+            for lane in lanes {
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+
+                // extract sign bit of an int
+                let a_lane_sign = fx.bcx.ins().ushr_imm(a_lane, i64::from(lane_clif_ty.bits() - 1));
+
+                // shift sign bit into result
+                let a_lane_sign = clif_intcast(fx, a_lane_sign, res_type, false);
+                res = fx.bcx.ins().ishl_imm(res, 1);
+                res = fx.bcx.ins().bor(res, a_lane_sign);
+            }
+
+            match ret.layout().ty.kind() {
+                ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => {}
+                ty::Array(elem, len)
+                    if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                        && len.try_eval_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                            == Some(expected_bytes) => {}
+                _ => {
+                    fx.tcx.sess.span_fatal(
+                        span,
+                        &format!(
+                            "invalid monomorphization of `simd_bitmask` intrinsic: \
+                            cannot return `{}`, expected `u{}` or `[u8; {}]`",
+                            ret.layout().ty,
+                            expected_int_bits,
+                            expected_bytes
+                        ),
+                    );
+                }
+            }
+
+            let res = CValue::by_val(res, ret.layout());
+            ret.write_cvalue(fx, res);
+        }
+
+        // simd_arith_offset
+        // simd_saturating_add
+        // simd_saturating_sub
         // simd_scatter
         // simd_gather
+        // simd_select_bitmask
         _ => {
             fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
         }

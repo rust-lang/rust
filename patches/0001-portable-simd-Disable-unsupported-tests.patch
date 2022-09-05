@@ -1,4 +1,4 @@
-From 82f597cf81b169b0e72a576ac8751f598c059c48 Mon Sep 17 00:00:00 2001
+From b742f03694b920cc14400727d54424e8e1b60928 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
 Date: Thu, 18 Nov 2021 19:28:40 +0100
 Subject: [PATCH] Disable unsupported tests
@@ -6,10 +6,10 @@ Subject: [PATCH] Disable unsupported tests
 ---
  crates/core_simd/src/elements/int.rs     | 8 ++++++++
  crates/core_simd/src/elements/uint.rs    | 4 ++++
- crates/core_simd/src/masks/full_masks.rs | 9 +++++++++
+ crates/core_simd/src/masks/full_masks.rs | 6 ++++++
  crates/core_simd/src/vector.rs           | 2 ++
- crates/core_simd/tests/masks.rs          | 2 ++
- 5 files changed, 25 insertions(+)
+ crates/core_simd/tests/masks.rs          | 3 ---
+ 5 files changed, 20 insertions(+), 3 deletions(-)
 
 diff --git a/crates/core_simd/src/elements/int.rs b/crates/core_simd/src/elements/int.rs
 index 9b8c37e..ea95f08 100644
@@ -116,10 +116,10 @@ index 21e7e76..0d6dee2 100644
              #[inline]
              fn reduce_sum(self) -> Self::Scalar {
 diff --git a/crates/core_simd/src/masks/full_masks.rs b/crates/core_simd/src/masks/full_masks.rs
-index adf0fcb..5b10292 100644
+index adf0fcb..e7e657e 100644
 --- a/crates/core_simd/src/masks/full_masks.rs
 +++ b/crates/core_simd/src/masks/full_masks.rs
-@@ -150,6 +150,7 @@ where
+@@ -180,6 +180,7 @@ where
          super::Mask<T, LANES>: ToBitMaskArray,
          [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
      {
@@ -127,33 +127,16 @@ index adf0fcb..5b10292 100644
          assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
  
          // Safety: N is the correct bitmask size
-@@ -170,6 +171,8 @@ where
- 
-             bitmask
-         }
-+        */
-+        panic!();
-     }
- 
-     #[cfg(feature = "generic_const_exprs")]
-@@ -209,6 +212,7 @@ where
-     where
-         super::Mask<T, LANES>: ToBitMask<BitMask = U>,
-     {
-+        /*
-         // Safety: U is required to be the appropriate bitmask type
-         let bitmask: U = unsafe { intrinsics::simd_bitmask(self.0) };
- 
-@@ -218,6 +222,8 @@ where
-         } else {
-             bitmask
+@@ -202,6 +203,8 @@ where
+                 Self::splat(false).to_int(),
+             ))
          }
 +        */
 +        panic!();
      }
  
      #[inline]
-@@ -225,6 +231,7 @@ where
+@@ -225,6 +228,7 @@ where
      where
          super::Mask<T, LANES>: ToBitMask<BitMask = U>,
      {
@@ -161,7 +144,7 @@ index adf0fcb..5b10292 100644
          // LLVM assumes bit order should match endianness
          let bitmask = if cfg!(target_endian = "big") {
              bitmask.reverse_bits(LANES)
-@@ -240,6 +247,8 @@ where
+@@ -240,6 +244,8 @@ where
                  Self::splat(false).to_int(),
              ))
          }
@@ -191,24 +174,30 @@ index e8e8f68..7173c24 100644
  
  impl<T, const LANES: usize> Copy for Simd<T, LANES>
 diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
-index 673d0db..0d68b01 100644
+index 673d0db..3ebfcd1 100644
 --- a/crates/core_simd/tests/masks.rs
 +++ b/crates/core_simd/tests/masks.rs
-@@ -59,6 +59,7 @@ macro_rules! test_mask_api {
-                 assert!(!v.all());
+@@ -78,7 +78,6 @@ macro_rules! test_mask_api {
+                 let mask = core_simd::Mask::<$type, 16>::from_array(values);
+                 let bitmask = mask.to_bitmask();
+                 assert_eq!(bitmask, 0b1000001101001001);
+-                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
              }
  
-+            /*
              #[test]
-             fn roundtrip_int_conversion() {
-                 let values = [true, false, false, true, false, false, true, false];
-@@ -99,6 +100,7 @@ macro_rules! test_mask_api {
+@@ -91,13 +90,11 @@ macro_rules! test_mask_api {
+                 let mask = core_simd::Mask::<$type, 4>::from_array(values);
+                 let bitmask = mask.to_bitmask();
+                 assert_eq!(bitmask, 0b1000);
+-                assert_eq!(core_simd::Mask::<$type, 4>::from_bitmask(bitmask), mask);
+ 
+                 let values = [true, false];
+                 let mask = core_simd::Mask::<$type, 2>::from_array(values);
+                 let bitmask = mask.to_bitmask();
                  assert_eq!(bitmask, 0b01);
-                 assert_eq!(core_simd::Mask::<$type, 2>::from_bitmask(bitmask), mask);
+-                assert_eq!(core_simd::Mask::<$type, 2>::from_bitmask(bitmask), mask);
              }
-+            */
  
              #[test]
-             fn cast() {
 -- 
 2.25.1
