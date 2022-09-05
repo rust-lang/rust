@@ -2,6 +2,7 @@
 
 use super::*;
 
+use std::cell::Cell;
 use std::marker::PhantomData;
 
 // FIXME(eddyb) generate the definition of `HandleStore` in `server.rs`.
@@ -143,6 +144,38 @@ pub trait ExecutionStrategy {
     ) -> Buffer;
 }
 
+thread_local! {
+    /// While running a proc-macro with the same-thread executor, this flag will
+    /// be set, forcing nested proc-macro invocations (e.g. due to
+    /// `TokenStream::expand_expr`) to be run using a cross-thread executor.
+    ///
+    /// This is required as the thread-local state in the proc_macro client does
+    /// not handle being re-entered, and will invalidate all `Symbol`s when
+    /// entering a nested macro.
+    static ALREADY_RUNNING_SAME_THREAD: Cell<bool> = Cell::new(false);
+}
+
+/// Keep `ALREADY_RUNNING_SAME_THREAD` (see also its documentation)
+/// set to `true`, preventing same-thread reentrance.
+struct RunningSameThreadGuard(());
+
+impl RunningSameThreadGuard {
+    fn new() -> Self {
+        let already_running = ALREADY_RUNNING_SAME_THREAD.replace(true);
+        assert!(
+            !already_running,
+            "same-thread nesting (\"reentrance\") of proc macro executions is not supported"
+        );
+        RunningSameThreadGuard(())
+    }
+}
+
+impl Drop for RunningSameThreadGuard {
+    fn drop(&mut self) {
+        ALREADY_RUNNING_SAME_THREAD.set(false);
+    }
+}
+
 pub struct MaybeCrossThread<P> {
     cross_thread: bool,
     marker: PhantomData<P>,
@@ -165,7 +198,7 @@ where
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
-        if self.cross_thread {
+        if self.cross_thread || ALREADY_RUNNING_SAME_THREAD.get() {
             <CrossThread<P>>::new().run_bridge_and_client(
                 dispatcher,
                 input,
@@ -188,6 +221,8 @@ impl ExecutionStrategy for SameThread {
         run_client: extern "C" fn(BridgeConfig<'_>) -> Buffer,
         force_show_panics: bool,
     ) -> Buffer {
+        let _guard = RunningSameThreadGuard::new();
+
         let mut dispatch = |buf| dispatcher.dispatch(buf);
 
         run_client(BridgeConfig {
