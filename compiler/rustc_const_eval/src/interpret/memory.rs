@@ -520,9 +520,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Get the base address for the bytes in an `Allocation` specified by the 
     /// `AllocID` passed in; error if no such allocation exists.
-    pub fn get_alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, Size> {
+    pub fn get_alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, usize> {
         let alloc = self.get_alloc_raw(id)?;
-        Ok(alloc.get_bytes_addr())
+        Ok(alloc.expose_base_addr())
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
