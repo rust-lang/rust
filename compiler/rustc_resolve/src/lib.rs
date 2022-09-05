@@ -73,6 +73,7 @@ mod check_unused;
 mod def_collector;
 mod diagnostics;
 mod effective_visibilities;
+mod errors;
 mod ident;
 mod imports;
 mod late;
