@@ -6,7 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::SessionDiagnostic;
 use rustc_session::SessionDiagnostic;
-use rustc_span::{Span, Symbol, source_map::SourceMap};
+use rustc_span::{source_map::SourceMap, Span, Symbol};
 
 use crate::UnsupportedLiteralReason;
 

@@ -3,7 +3,7 @@ use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_session::SessionDiagnostic;
-use rustc_span::{symbol::Ident, Span, Symbol, source_map::SourceMap};
+use rustc_span::{source_map::SourceMap, symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
 #[diag(typeck::field_multiply_specified_in_initializer, code = "E0062")]
