@@ -478,11 +478,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
         };
 
-        // Use `Reveal::All` here because patterns are always monomorphic even if their function
-        // isn't.
-        let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
         let substs = self.typeck_results.node_substs(id);
-        let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
+        let instance = match ty::Instance::resolve(self.tcx, self.param_env, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
                 // It should be assoc consts if there's no error but we cannot resolve it.
@@ -505,7 +502,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let mir_structural_match_violation = self.tcx.mir_const_qualif(instance.def_id()).custom_eq;
         debug!("mir_structural_match_violation({:?}) -> {}", qpath, mir_structural_match_violation);
 
-        match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
+        match self.tcx.const_eval_instance(self.param_env, instance, Some(span)) {
             Ok(literal) => {
                 let const_ = mir::ConstantKind::Val(literal, ty);
                 let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);

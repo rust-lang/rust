@@ -1,8 +1,14 @@
-error: `Foo` cannot be used in patterns
+error: constant pattern depends on a generic parameter
   --> $DIR/structural-match.rs:15:9
    |
 LL |         VALUE => (),
    |         ^^^^^
 
-error: aborting due to previous error
+error: constant pattern depends on a generic parameter
+  --> $DIR/structural-match.rs:15:9
+   |
+LL |         VALUE => (),
+   |         ^^^^^
+
+error: aborting due to 2 previous errors
 

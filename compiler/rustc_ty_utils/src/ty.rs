@@ -335,7 +335,12 @@ fn well_formed_types_in_env<'tcx>(
 }
 
 fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    tcx.param_env(def_id).with_reveal_all_normalized(tcx)
+    let param_env = tcx.param_env(def_id);
+    ty::ParamEnv::new(
+        tcx.normalize_opaque_types(param_env.caller_bounds()),
+        traits::Reveal::All,
+        param_env.constness(),
+    )
 }
 
 fn instance_def_size_estimate<'tcx>(

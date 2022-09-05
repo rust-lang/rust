@@ -232,7 +232,6 @@ fn layout_of<'tcx>(
     let (param_env, ty) = query.into_parts();
     debug!(?ty);
 
-    let param_env = param_env.with_reveal_all_normalized(tcx);
     let unnormalized_ty = ty;
 
     // FIXME: We might want to have two different versions of `layout_of`:

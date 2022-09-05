@@ -4,11 +4,17 @@ error: `[closure@$DIR/non-structural-match-types.rs:9:17: 9:19]` cannot be used 
 LL |         const { || {} } => {},
    |         ^^^^^^^^^^^^^^^
 
-error: `impl Future<Output = ()>` cannot be used in patterns
+error: constant pattern depends on a generic parameter
   --> $DIR/non-structural-match-types.rs:12:9
    |
 LL |         const { async {} } => {},
    |         ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: constant pattern depends on a generic parameter
+  --> $DIR/non-structural-match-types.rs:12:9
+   |
+LL |         const { async {} } => {},
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

@@ -136,7 +136,6 @@ fn resolve_associated_item<'tcx>(
                 });
 
             let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = param_env.with_reveal_all_normalized(tcx);
                 let substs = rcvr_substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(
                     &infcx,

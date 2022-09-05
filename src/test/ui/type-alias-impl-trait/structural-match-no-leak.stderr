@@ -1,8 +1,14 @@
-error: `Bar` cannot be used in patterns
+error: constant pattern depends on a generic parameter
   --> $DIR/structural-match-no-leak.rs:14:9
    |
 LL |         LEAK_FREE => (),
    |         ^^^^^^^^^
 
-error: aborting due to previous error
+error: constant pattern depends on a generic parameter
+  --> $DIR/structural-match-no-leak.rs:14:9
+   |
+LL |         LEAK_FREE => (),
+   |         ^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

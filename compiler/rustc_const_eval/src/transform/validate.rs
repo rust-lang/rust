@@ -2,6 +2,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
@@ -12,13 +13,14 @@ use rustc_middle::mir::{
     ProjectionElem, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -88,25 +90,36 @@ pub fn equal_up_to_regions<'tcx>(
         return true;
     }
 
-    // Normalize lifetimes away on both sides, then compare.
-    let normalize = |ty: Ty<'tcx>| {
-        tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty).fold_with(
-            &mut BottomUpFolder {
-                tcx,
-                // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
-                // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
-                // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
-                // since one may have an `impl SomeTrait for fn(&32)` and
-                // `impl SomeTrait for fn(&'static u32)` at the same time which
-                // specify distinct values for Assoc. (See also #56105)
-                lt_op: |_| tcx.lifetimes.re_erased,
-                // Leave consts and types unchanged.
-                ct_op: |ct| ct,
-                ty_op: |ty| ty,
-            },
-        )
-    };
-    tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())
+    may_subtype_ignoring_regions(tcx, param_env, src, dest)
+        || may_subtype_ignoring_regions(tcx, param_env, dest, src)
+}
+
+fn may_subtype_ignoring_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    src: Ty<'tcx>,
+    dest: Ty<'tcx>,
+) -> bool {
+    let mut builder =
+        tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    builder.enter(|infcx| {
+        let ocx = ObligationCtxt::new(&infcx);
+        let cause = ObligationCause::dummy();
+        let src = ocx.normalize(cause.clone(), param_env, src);
+        let dest = ocx.normalize(cause.clone(), param_env, dest);
+        let Ok(infer_ok) = infcx.at(&cause, param_env).eq(src, dest) else {
+            return false;
+        };
+        let () = ocx.register_infer_ok_obligations(infer_ok);
+        let errors = ocx.select_all_or_error();
+        // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
+        // we would get unification errors because we're unable to look into opaque types,
+        // even if they're constrained in our current function.
+        //
+        // It seems very unlikely that this hides any bugs.
+        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        errors.is_empty()
+    })
 }
 
 struct TypeChecker<'a, 'tcx> {
@@ -189,16 +202,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // all normal lifetimes are erased, higher-ranked types with their
         // late-bound lifetimes are still around and can lead to type
         // differences. So we compare ignoring lifetimes.
-
-        // First, try with reveal_all. This might not work in some cases, as the predicates
-        // can be cleared in reveal_all mode. We try the reveal first anyways as it is used
-        // by some other passes like inlining as well.
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        if equal_up_to_regions(self.tcx, param_env, src, dest) {
-            return true;
-        }
-
-        // If this fails, we can try it without the reveal.
         equal_up_to_regions(self.tcx, self.param_env, src, dest)
     }
 }
@@ -285,7 +288,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         this.fail(
                         location,
                         format!(
-                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is {:?}",
+                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
                             parent, f, ty, f_ty
                         )
                     )

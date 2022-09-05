@@ -13,7 +13,8 @@ const VALUE: Foo = value();
 fn test() {
     match VALUE {
         VALUE => (),
-        //~^ `Foo` cannot be used in patterns
+        //~^ ERROR constant pattern depends on a generic parameter
+        //~| ERROR constant pattern depends on a generic parameter
         _ => (),
     }
 }

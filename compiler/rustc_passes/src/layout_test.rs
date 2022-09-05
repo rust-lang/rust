@@ -25,7 +25,7 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
 
 fn dump_layout_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId, attr: &Attribute) {
     let tcx = tcx;
-    let param_env = tcx.param_env(item_def_id);
+    let param_env = tcx.param_env_reveal_all_normalized(item_def_id);
     let ty = tcx.type_of(item_def_id);
     match tcx.layout_of(param_env.and(ty)) {
         Ok(ty_layout) => {
@@ -66,10 +66,7 @@ fn dump_layout_of<'tcx>(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId, attr: &Attri
                     }
 
                     sym::debug => {
-                        let normalized_ty = tcx.normalize_erasing_regions(
-                            param_env.with_reveal_all_normalized(tcx),
-                            ty,
-                        );
+                        let normalized_ty = tcx.normalize_erasing_regions(param_env, ty);
                         tcx.sess.span_err(
                             tcx.def_span(item_def_id.to_def_id()),
                             &format!("layout_of({:?}) = {:#?}", normalized_ty, *ty_layout),

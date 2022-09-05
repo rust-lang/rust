@@ -9,6 +9,8 @@ fn main() {
         const { || {} } => {}, //~ ERROR cannot be used in patterns
     }
     match loop {} {
-        const { async {} } => {}, //~ ERROR cannot be used in patterns
+        const { async {} } => {},
+        //~^ ERROR constant pattern depends on a generic parameter
+        //~| ERROR constant pattern depends on a generic parameter
     }
 }

@@ -13,7 +13,7 @@ LL |     let _: foo::Foo = std::mem::transmute(0u8);
    |                       ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `u8` (8 bits)
-   = note: target type: `Foo` (size can vary because of [type error])
+   = note: target type: `Foo` (this type does not have a fixed size)
 
 error: aborting due to 2 previous errors
 
