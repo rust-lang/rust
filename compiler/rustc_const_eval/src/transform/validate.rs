@@ -76,6 +76,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
 ///
 /// The point of this function is to approximate "equal up to subtyping".  However,
 /// the approximation is incorrect as variance is ignored.
+#[tracing::instrument(level = "trace", skip(tcx))]
 pub fn equal_up_to_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
@@ -170,6 +171,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     /// Check if src can be assigned into dest.
     /// This is not precise, it will accept some incorrect assignments.
+    #[tracing::instrument(level = "trace", skip(self))]
     fn mir_assign_valid_types(&self, src: Ty<'tcx>, dest: Ty<'tcx>) -> bool {
         // Fast path before we normalize.
         if src == dest {
