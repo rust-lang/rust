@@ -61,12 +61,12 @@
    46|      4|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
    47|      4|}
   ------------------
-  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
+  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<&str>:
   |   45|      2|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
   |   46|      2|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
   |   47|      2|}
   ------------------
-  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<&str>:
+  | used_inline_crate::used_only_from_this_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
   |   45|      2|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
   |   46|      2|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
   |   47|      2|}

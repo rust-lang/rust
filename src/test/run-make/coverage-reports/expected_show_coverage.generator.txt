@@ -18,7 +18,7 @@
    17|      1|    let mut generator = || {
    18|      1|        yield get_u32(is_true);
    19|      1|        return "foo";
-   20|       |    };
+   20|      1|    };
    21|       |
    22|      1|    match Pin::new(&mut generator).resume(()) {
    23|      1|        GeneratorState::Yielded(Ok(1)) => {}
