@@ -823,6 +823,14 @@ pub fn is_builtin_only_local(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| attr.only_local)
 }
 
+pub fn is_valid_for_get_attr(name: Symbol) -> bool {
+    BUILTIN_ATTRIBUTE_MAP.get(&name).map_or(false, |attr| match attr.duplicates {
+        WarnFollowing | ErrorFollowing | ErrorPreceding | FutureWarnFollowing
+        | FutureWarnPreceding => true,
+        DuplicatesOk | WarnFollowingWordOnly => false,
+    })
+}
+
 pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>> =
     LazyLock::new(|| {
         let mut map = FxHashMap::default();
