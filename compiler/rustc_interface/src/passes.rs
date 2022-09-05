@@ -68,7 +68,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
     Ok(krate)
@@ -415,7 +415,7 @@ pub fn configure_and_expand(
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     resolver.resolve_crate(&krate);

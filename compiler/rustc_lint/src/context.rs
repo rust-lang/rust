@@ -842,7 +842,7 @@ pub trait LintContext: Sized {
                     if let Some(positional_arg_to_replace) = position_sp_to_replace {
                         let name = if is_formatting_arg { named_arg_name + "$" } else { named_arg_name };
                         let span_to_replace = if let Ok(positional_arg_content) =
-                            self.sess().source_map().span_to_snippet(positional_arg_to_replace) && positional_arg_content.starts_with(":") {
+                            self.sess().source_map().span_to_snippet(positional_arg_to_replace) && positional_arg_content.starts_with(':') {
                             positional_arg_to_replace.shrink_to_lo()
                         } else {
                             positional_arg_to_replace

@@ -972,7 +972,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.process_macro_use(trait_item.span);
         match trait_item.kind {
             hir::TraitItemKind::Const(ref ty, body) => {
-                let body = body.map(|b| &self.tcx.hir().body(b).value);
+                let body = body.map(|b| self.tcx.hir().body(b).value);
                 let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
                     trait_item.def_id,

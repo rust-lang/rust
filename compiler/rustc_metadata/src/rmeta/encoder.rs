@@ -1377,19 +1377,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let keys_and_jobs = tcx
-            .mir_keys(())
-            .iter()
-            .filter_map(|&def_id| {
-                let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
-                if encode_const || encode_opt {
-                    Some((def_id, encode_const, encode_opt))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        for (def_id, encode_const, encode_opt) in keys_and_jobs.into_iter() {
+        let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
+            let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
+            if encode_const || encode_opt { Some((def_id, encode_const, encode_opt)) } else { None }
+        });
+        for (def_id, encode_const, encode_opt) in keys_and_jobs {
             debug_assert!(encode_const || encode_opt);
 
             debug!("EntryBuilder::encode_mir({:?})", def_id);

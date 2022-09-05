@@ -1155,7 +1155,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     _ => {}
                 }
-                GenericArg::Type(self.lower_ty_direct(&ty, itctx))
+                GenericArg::Type(self.lower_ty(&ty, itctx))
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
                 value: self.lower_anon_const(&ct),

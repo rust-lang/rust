@@ -120,7 +120,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-            hir::OwnerNode::Crate(lctx.arena.alloc(module))
+            hir::OwnerNode::Crate(module)
         })
     }
 
@@ -158,14 +158,18 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn lower_mod(&mut self, items: &[P<Item>], spans: &ModSpans) -> hir::Mod<'hir> {
-        hir::Mod {
+    pub(super) fn lower_mod(
+        &mut self,
+        items: &[P<Item>],
+        spans: &ModSpans,
+    ) -> &'hir hir::Mod<'hir> {
+        self.arena.alloc(hir::Mod {
             spans: hir::ModSpans {
                 inner_span: self.lower_span(spans.inner_span),
                 inject_use_span: self.lower_span(spans.inject_use_span),
             },
             item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
-        }
+        })
     }
 
     pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
@@ -947,7 +951,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         params: &'hir [hir::Param<'hir>],
         value: hir::Expr<'hir>,
     ) -> hir::BodyId {
-        let body = hir::Body { generator_kind: self.generator_kind, params, value };
+        let body = hir::Body {
+            generator_kind: self.generator_kind,
+            params,
+            value: self.arena.alloc(value),
+        };
         let id = body.id();
         debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
         self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));

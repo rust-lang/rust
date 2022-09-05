@@ -397,7 +397,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     if has_default {
                         tcx.check_optional_stability(
                             param.def_id,
-                            Some(arg.id()),
+                            Some(arg.hir_id()),
                             arg.span(),
                             None,
                             AllowUnstable::No,

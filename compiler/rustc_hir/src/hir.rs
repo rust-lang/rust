@@ -265,7 +265,7 @@ impl InferArg {
 #[derive(Debug, HashStable_Generic)]
 pub enum GenericArg<'hir> {
     Lifetime(Lifetime),
-    Type(Ty<'hir>),
+    Type(&'hir Ty<'hir>),
     Const(ConstArg),
     Infer(InferArg),
 }
@@ -280,7 +280,7 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn id(&self) -> HirId {
+    pub fn hir_id(&self) -> HirId {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
             GenericArg::Type(t) => t.hir_id,
@@ -1321,7 +1321,7 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-/// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
+/// Represents a `let` statement (i.e., `let <pat>:<ty> = <init>;`).
 #[derive(Debug, HashStable_Generic)]
 pub struct Local<'hir> {
     pub pat: &'hir Pat<'hir>,
@@ -1438,7 +1438,7 @@ pub struct BodyId {
 #[derive(Debug, HashStable_Generic)]
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
-    pub value: Expr<'hir>,
+    pub value: &'hir Expr<'hir>,
     pub generator_kind: Option<GeneratorKind>,
 }
 
@@ -2561,23 +2561,23 @@ pub enum TyKind<'hir> {
 pub enum InlineAsmOperand<'hir> {
     In {
         reg: InlineAsmRegOrRegClass,
-        expr: Expr<'hir>,
+        expr: &'hir Expr<'hir>,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Option<Expr<'hir>>,
+        expr: Option<&'hir Expr<'hir>>,
     },
     InOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Expr<'hir>,
+        expr: &'hir Expr<'hir>,
     },
     SplitInOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        in_expr: Expr<'hir>,
-        out_expr: Option<Expr<'hir>>,
+        in_expr: &'hir Expr<'hir>,
+        out_expr: Option<&'hir Expr<'hir>>,
     },
     Const {
         anon_const: AnonConst,
@@ -2991,7 +2991,7 @@ pub enum ItemKind<'hir> {
     /// A MBE macro definition (`macro_rules!` or `macro`).
     Macro(ast::MacroDef, MacroKind),
     /// A module.
-    Mod(Mod<'hir>),
+    Mod(&'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: Abi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
@@ -3495,16 +3495,32 @@ impl<'hir> Node<'hir> {
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(Block<'static>, 48);
-    static_assert_size!(Expr<'static>, 56);
-    static_assert_size!(ForeignItem<'static>, 72);
+    static_assert_size!(Block<'_>, 48);
+    static_assert_size!(Body<'_>, 32);
+    static_assert_size!(Expr<'_>, 56);
+    static_assert_size!(ExprKind<'_>, 40);
+    static_assert_size!(FnDecl<'_>, 40);
+    static_assert_size!(ForeignItem<'_>, 72);
+    static_assert_size!(ForeignItemKind<'_>, 40);
+    static_assert_size!(GenericArg<'_>, 40);
     static_assert_size!(GenericBound<'_>, 48);
-    static_assert_size!(Generics<'static>, 56);
-    static_assert_size!(ImplItem<'static>, 88);
-    static_assert_size!(Impl<'static>, 80);
-    static_assert_size!(Item<'static>, 80);
-    static_assert_size!(Pat<'static>, 88);
-    static_assert_size!(QPath<'static>, 24);
-    static_assert_size!(TraitItem<'static>, 96);
-    static_assert_size!(Ty<'static>, 72);
+    static_assert_size!(Generics<'_>, 56);
+    static_assert_size!(Impl<'_>, 80);
+    static_assert_size!(ImplItem<'_>, 88);
+    static_assert_size!(ImplItemKind<'_>, 40);
+    static_assert_size!(Item<'_>, 80);
+    static_assert_size!(ItemKind<'_>, 48);
+    static_assert_size!(Local<'_>, 64);
+    static_assert_size!(Param<'_>, 32);
+    static_assert_size!(Pat<'_>, 88);
+    static_assert_size!(PatKind<'_>, 64);
+    static_assert_size!(Path<'_>, 48);
+    static_assert_size!(PathSegment<'_>, 56);
+    static_assert_size!(QPath<'_>, 24);
+    static_assert_size!(Stmt<'_>, 32);
+    static_assert_size!(StmtKind<'_>, 16);
+    static_assert_size!(TraitItem<'_>, 96);
+    static_assert_size!(TraitItemKind<'_>, 56);
+    static_assert_size!(Ty<'_>, 72);
+    static_assert_size!(TyKind<'_>, 56);
 }

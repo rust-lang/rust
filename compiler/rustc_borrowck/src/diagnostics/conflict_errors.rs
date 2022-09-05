@@ -258,7 +258,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
-            if is_loop_move & !in_pattern {
+            // Same for if we're in a loop, see #101119.
+            if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(

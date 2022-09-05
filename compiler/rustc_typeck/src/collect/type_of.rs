@@ -78,7 +78,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         args.args
                             .iter()
                             .filter(|arg| arg.is_ty_or_const())
-                            .position(|arg| arg.id() == hir_id)
+                            .position(|arg| arg.hir_id() == hir_id)
                     })
                     .unwrap_or_else(|| {
                         bug!("no arg matching AnonConst in segment");
@@ -111,7 +111,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     args.args
                         .iter()
                         .filter(|arg| arg.is_ty_or_const())
-                        .position(|arg| arg.id() == hir_id)
+                        .position(|arg| arg.hir_id() == hir_id)
                 })
                 .unwrap_or_else(|| {
                     bug!("no arg matching AnonConst in segment");
@@ -165,7 +165,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 args.args
                 .iter()
                 .filter(|arg| arg.is_ty_or_const())
-                .position(|arg| arg.id() == hir_id)
+                .position(|arg| arg.hir_id() == hir_id)
                 .map(|index| (index, seg)).or_else(|| args.bindings
                     .iter()
                     .filter_map(TypeBinding::opt_const)
@@ -228,7 +228,7 @@ fn get_path_containing_arg_in_pat<'hir>(
             .iter()
             .filter_map(|seg| seg.args)
             .flat_map(|args| args.args)
-            .any(|arg| arg.id() == arg_id)
+            .any(|arg| arg.hir_id() == arg_id)
     };
     let mut arg_path = None;
     pat.walk(|pat| match pat.kind {
