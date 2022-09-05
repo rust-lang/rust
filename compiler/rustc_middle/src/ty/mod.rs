@@ -2274,7 +2274,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn get_attr(self, did: DefId, attr: Symbol) -> Option<&'tcx ast::Attribute> {
-        self.get_attrs(did, attr).next()
+        if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
+            bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
+        } else {
+            self.get_attrs(did, attr).next()
+        }
     }
 
     /// Determines whether an item is annotated with an attribute.
