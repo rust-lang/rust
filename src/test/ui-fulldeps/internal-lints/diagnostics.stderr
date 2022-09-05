@@ -1,5 +1,5 @@
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:37:17
+  --> $DIR/diagnostics.rs:39:17
    |
 LL |         handler.struct_err("untranslatable diagnostic")
    |                 ^^^^^^^^^^
@@ -11,13 +11,13 @@ LL | #![deny(rustc::untranslatable_diagnostic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:54:14
+  --> $DIR/diagnostics.rs:56:14
    |
 LL |         diag.note("untranslatable diagnostic");
    |              ^^^^
 
 error: diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
-  --> $DIR/diagnostics.rs:68:25
+  --> $DIR/diagnostics.rs:70:25
    |
 LL |     let _diag = handler.struct_err(fluent::parser::expect_path);
    |                         ^^^^^^^^^^
@@ -29,13 +29,13 @@ LL | #![deny(rustc::diagnostic_outside_of_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
-  --> $DIR/diagnostics.rs:71:25
+  --> $DIR/diagnostics.rs:73:25
    |
 LL |     let _diag = handler.struct_err("untranslatable diagnostic");
    |                         ^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:71:25
+  --> $DIR/diagnostics.rs:73:25
    |
 LL |     let _diag = handler.struct_err("untranslatable diagnostic");
    |                         ^^^^^^^^^^
