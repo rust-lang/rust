@@ -510,7 +510,6 @@ symbols! {
         const_deallocate,
         const_eval_limit,
         const_eval_select,
-        const_eval_select_ct,
         const_evaluatable_checked,
         const_extern_fn,
         const_fn,

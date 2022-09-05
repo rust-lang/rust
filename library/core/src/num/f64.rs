@@ -1026,10 +1026,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_f64_to_u64 = |rt| unsafe { mem::transmute::<f64, u64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f64_to_u64(rt: f64) -> u64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<f64, u64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
     }
@@ -1119,10 +1123,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_u64_to_f64 = |rt| unsafe { mem::transmute::<u64, f64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u64_to_f64(rt: u64) -> f64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<u64, f64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
     }

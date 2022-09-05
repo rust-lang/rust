@@ -1,42 +1,57 @@
-error[E0277]: the trait bound `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]: FnOnce<()>` is not satisfied
-  --> $DIR/const-eval-select-bad.rs:7:27
-   |
-LL |     const_eval_select((), || {}, || {});
-   |     -----------------     ^^^^^ expected an `FnOnce<()>` closure, found `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`
-   |     |
-   |     required by a bound introduced by this call
-   |
-   = help: the trait `~const FnOnce<()>` is not implemented for closure `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`
-note: the trait `FnOnce<()>` is implemented for `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]`, but that implementation is not `const`
+error: this argument must be a function item
   --> $DIR/const-eval-select-bad.rs:7:27
    |
 LL |     const_eval_select((), || {}, || {});
    |                           ^^^^^
-   = note: wrap the `[closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]` in a closure with no arguments: `|| { /* code */ }`
-note: required by a bound in `const_eval_select`
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     F: ~const FnOnce<ARG, Output = RET>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
+   = note: expected a function item, found [closure@$DIR/const-eval-select-bad.rs:7:27: 7:29]
+   = help: consult the documentation on `const_eval_select` for more information
 
-error[E0277]: the trait bound `{integer}: FnOnce<()>` is not satisfied
-  --> $DIR/const-eval-select-bad.rs:9:27
+error: this argument must be a function item
+  --> $DIR/const-eval-select-bad.rs:7:34
+   |
+LL |     const_eval_select((), || {}, || {});
+   |                                  ^^^^^
+   |
+   = note: expected a function item, found [closure@$DIR/const-eval-select-bad.rs:7:34: 7:36]
+   = help: consult the documentation on `const_eval_select` for more information
+
+error: this argument must be a function item
+  --> $DIR/const-eval-select-bad.rs:10:27
+   |
+LL |     const_eval_select((), 42, 0xDEADBEEF);
+   |                           ^^
+   |
+   = note: expected a function item, found {integer}
+   = help: consult the documentation on `const_eval_select` for more information
+
+error[E0277]: expected a `FnOnce<()>` closure, found `{integer}`
+  --> $DIR/const-eval-select-bad.rs:10:27
    |
 LL |     const_eval_select((), 42, 0xDEADBEEF);
    |     -----------------     ^^ expected an `FnOnce<()>` closure, found `{integer}`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `~const FnOnce<()>` is not implemented for `{integer}`
+   = help: the trait `FnOnce<()>` is not implemented for `{integer}`
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     F: ~const FnOnce<ARG, Output = RET>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
+LL |         F: FnOnce<ARG, Output = RET>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
+
+error: this argument must be a function item
+  --> $DIR/const-eval-select-bad.rs:10:31
+   |
+LL |     const_eval_select((), 42, 0xDEADBEEF);
+   |                               ^^^^^^^^^^
+   |
+   = note: expected a function item, found {integer}
+   = help: consult the documentation on `const_eval_select` for more information
 
 error[E0277]: expected a `FnOnce<()>` closure, found `{integer}`
-  --> $DIR/const-eval-select-bad.rs:9:31
+  --> $DIR/const-eval-select-bad.rs:10:31
    |
 LL |     const_eval_select((), 42, 0xDEADBEEF);
    |     -----------------         ^^^^^^^^^^ expected an `FnOnce<()>` closure, found `{integer}`
@@ -48,11 +63,11 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     G: FnOnce<ARG, Output = RET> + ~const Destruct,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
+LL |         G: FnOnce<ARG, Output = RET>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0271]: expected `fn(i32) -> bool {bar}` to be a fn item that returns `i32`, but it returns `bool`
-  --> $DIR/const-eval-select-bad.rs:29:34
+  --> $DIR/const-eval-select-bad.rs:32:34
    |
 LL |     const_eval_select((1,), foo, bar);
    |     -----------------            ^^^ expected `i32`, found `bool`
@@ -62,11 +77,11 @@ LL |     const_eval_select((1,), foo, bar);
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     G: FnOnce<ARG, Output = RET> + ~const Destruct,
-   |                    ^^^^^^^^^^^^ required by this bound in `const_eval_select`
+LL |         G: FnOnce<ARG, Output = RET>,
+   |                        ^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/const-eval-select-bad.rs:34:32
+  --> $DIR/const-eval-select-bad.rs:37:32
    |
 LL | const fn foo(n: i32) -> i32 {
    | --------------------------- found signature defined here
@@ -81,10 +96,18 @@ LL |     const_eval_select((true,), foo, baz);
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
-LL |     F: ~const FnOnce<ARG, Output = RET>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
+LL |         F: FnOnce<ARG, Output = RET>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
-error: aborting due to 5 previous errors
+error: this argument must be a `const fn`
+  --> $DIR/const-eval-select-bad.rs:42:29
+   |
+LL |     const_eval_select((1,), bar, bar);
+   |                             ^^^
+   |
+   = help: consult the documentation on `const_eval_select` for more information
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0271, E0277, E0631.
 For more information about an error, try `rustc --explain E0271`.

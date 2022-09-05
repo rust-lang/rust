@@ -54,7 +54,9 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{Destruct, DiscriminantKind};
+#[cfg(bootstrap)]
+use crate::marker::Destruct;
+use crate::marker::DiscriminantKind;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -2085,6 +2087,65 @@ extern "rust-intrinsic" {
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
     pub fn vtable_align(ptr: *const ()) -> usize;
+
+    /// Selects which function to call depending on the context.
+    ///
+    /// If this function is evaluated at compile-time, then a call to this
+    /// intrinsic will be replaced with a call to `called_in_const`. It gets
+    /// replaced with a call to `called_at_rt` otherwise.
+    ///
+    /// # Type Requirements
+    ///
+    /// The two functions must be both function items. They cannot be function
+    /// pointers or closures. The first function must be a `const fn`.
+    ///
+    /// `arg` will be the tupled arguments that will be passed to either one of
+    /// the two functions, therefore, both functions must accept the same type of
+    /// arguments. Both functions must return RET.
+    ///
+    /// # Safety
+    ///
+    /// The two functions must behave observably equivalent. Safe code in other
+    /// crates may assume that calling a `const fn` at compile-time and at run-time
+    /// produces the same result. A function that produces a different result when
+    /// evaluated at run-time, or has any other observable side-effects, is
+    /// *unsound*.
+    ///
+    /// Here is an example of how this could cause a problem:
+    /// ```no_run
+    /// #![feature(const_eval_select)]
+    /// #![feature(core_intrinsics)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::const_eval_select;
+    ///
+    /// // Crate A
+    /// pub const fn inconsistent() -> i32 {
+    ///     fn runtime() -> i32 { 1 }
+    ///     const fn compiletime() -> i32 { 2 }
+    ///
+    ///     unsafe {
+    //          // ⚠ This code violates the required equivalence of `compiletime`
+    ///         // and `runtime`.
+    ///         const_eval_select((), compiletime, runtime)
+    ///     }
+    /// }
+    ///
+    /// // Crate B
+    /// const X: i32 = inconsistent();
+    /// let x = inconsistent();
+    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// ```
+    ///
+    /// This code causes Undefined Behavior when being run, since the
+    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+    /// which violates the principle that a `const fn` must behave the same at
+    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+    where
+        G: FnOnce<ARG, Output = RET>,
+        F: FnOnce<ARG, Output = RET>;
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2094,6 +2155,11 @@ extern "rust-intrinsic" {
 
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
+///
+/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
+/// where the names specified will be moved into the macro as captured variables, and defines an item
+/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
+/// for the function declaractions and can be omitted if there is no generics.
 ///
 /// # Safety
 ///
@@ -2109,18 +2175,21 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($e:expr) => {
+    ($([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
         if cfg!(debug_assertions) {
-            // Use a closure so that we can capture arbitrary expressions from the invocation
-            let runtime = || {
+            // allow non_snake_case to allow capturing const generics
+            #[allow(non_snake_case)]
+            #[inline(always)]
+            fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // abort instead of panicking to reduce impact on code size
                     ::core::intrinsics::abort();
                 }
-            };
-            const fn comptime() {}
+            }
+            #[allow(non_snake_case)]
+            const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select((), comptime, runtime);
+            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
         }
     };
 }
@@ -2243,7 +2312,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(
+        assert_unsafe_precondition!([T](src: *const T, dst: *mut T, count: usize) =>
             is_aligned_and_not_null(src)
                 && is_aligned_and_not_null(dst)
                 && is_nonoverlapping(src, dst, count)
@@ -2329,7 +2398,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](src: *const T, dst: *mut T) =>
+            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
         copy(src, dst, count)
     }
 }
@@ -2397,63 +2467,12 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe {
-        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        assert_unsafe_precondition!([T](dst: *mut T) => is_aligned_and_not_null(dst));
         write_bytes(dst, val, count)
     }
 }
 
-/// Selects which function to call depending on the context.
-///
-/// If this function is evaluated at compile-time, then a call to this
-/// intrinsic will be replaced with a call to `called_in_const`. It gets
-/// replaced with a call to `called_at_rt` otherwise.
-///
-/// # Type Requirements
-///
-/// The two functions must be both function items. They cannot be function
-/// pointers or closures.
-///
-/// `arg` will be the arguments that will be passed to either one of the
-/// two functions, therefore, both functions must accept the same type of
-/// arguments. Both functions must return RET.
-///
-/// # Safety
-///
-/// The two functions must behave observably equivalent. Safe code in other
-/// crates may assume that calling a `const fn` at compile-time and at run-time
-/// produces the same result. A function that produces a different result when
-/// evaluated at run-time, or has any other observable side-effects, is
-/// *unsound*.
-///
-/// Here is an example of how this could cause a problem:
-/// ```no_run
-/// #![feature(const_eval_select)]
-/// #![feature(core_intrinsics)]
-/// use std::hint::unreachable_unchecked;
-/// use std::intrinsics::const_eval_select;
-///
-/// // Crate A
-/// pub const fn inconsistent() -> i32 {
-///     fn runtime() -> i32 { 1 }
-///     const fn compiletime() -> i32 { 2 }
-///
-///     unsafe {
-//          // ⚠ This code violates the required equivalence of `compiletime`
-///         // and `runtime`.
-///         const_eval_select((), compiletime, runtime)
-///     }
-/// }
-///
-/// // Crate B
-/// const X: i32 = inconsistent();
-/// let x = inconsistent();
-/// if x != X { unsafe { unreachable_unchecked(); }}
-/// ```
-///
-/// This code causes Undefined Behavior when being run, since the
-/// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
-/// which violates the principle that a `const fn` must behave the same at
-/// compile-time and at run-time. The unsafe code in crate B is fine.
+#[cfg(bootstrap)]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",
@@ -2475,6 +2494,7 @@ where
     called_at_rt.call_once(arg)
 }
 
+#[cfg(bootstrap)]
 #[unstable(
     feature = "const_eval_select",
     issue = "none",

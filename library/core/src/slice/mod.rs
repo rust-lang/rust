@@ -656,10 +656,11 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        let ptr = self.as_mut_ptr();
+        let this = self;
+        let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!(a < self.len() && b < self.len());
+            assert_unsafe_precondition!([T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len());
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -972,9 +973,10 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
+        let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1111,10 +1113,11 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
+        let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
-            exact_div(self.len(), N)
+            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
@@ -1687,7 +1690,7 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!(mid <= len);
+            assert_unsafe_precondition!((mid: usize, len: usize) => mid <= len);
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }

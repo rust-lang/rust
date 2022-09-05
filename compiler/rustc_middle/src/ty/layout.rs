@@ -263,6 +263,7 @@ fn layout_of<'tcx>(
     Ok(layout)
 }
 
+#[derive(Clone, Copy)]
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -3063,6 +3064,93 @@ fn fn_abi_of_instance<'tcx>(
     )
 }
 
+// Handle safe Rust thin and fat pointers.
+pub fn adjust_for_rust_scalar<'tcx>(
+    cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+    attrs: &mut ArgAttributes,
+    scalar: Scalar,
+    layout: TyAndLayout<'tcx>,
+    offset: Size,
+    is_return: bool,
+) {
+    // Booleans are always a noundef i1 that needs to be zero-extended.
+    if scalar.is_bool() {
+        attrs.ext(ArgExtension::Zext);
+        attrs.set(ArgAttribute::NoUndef);
+        return;
+    }
+
+    // Scalars which have invalid values cannot be undef.
+    if !scalar.is_always_valid(&cx) {
+        attrs.set(ArgAttribute::NoUndef);
+    }
+
+    // Only pointer types handled below.
+    let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
+
+    if !valid_range.contains(0) {
+        attrs.set(ArgAttribute::NonNull);
+    }
+
+    if let Some(pointee) = layout.pointee_info_at(&cx, offset) {
+        if let Some(kind) = pointee.safe {
+            attrs.pointee_align = Some(pointee.align);
+
+            // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
+            // for the entire duration of the function as they can be deallocated
+            // at any time. Same for shared mutable references. If LLVM had a
+            // way to say "dereferenceable on entry" we could use it here.
+            attrs.pointee_size = match kind {
+                PointerKind::UniqueBorrowed
+                | PointerKind::UniqueBorrowedPinned
+                | PointerKind::Frozen => pointee.size,
+                PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
+            };
+
+            // `Box`, `&T`, and `&mut T` cannot be undef.
+            // Note that this only applies to the value of the pointer itself;
+            // this attribute doesn't make it UB for the pointed-to data to be undef.
+            attrs.set(ArgAttribute::NoUndef);
+
+            // The aliasing rules for `Box<T>` are still not decided, but currently we emit
+            // `noalias` for it. This can be turned off using an unstable flag.
+            // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
+            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+
+            // `&mut` pointer parameters never alias other parameters,
+            // or mutable global data
+            //
+            // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
+            // and can be marked as both `readonly` and `noalias`, as
+            // LLVM's definition of `noalias` is based solely on memory
+            // dependencies rather than pointer equality
+            //
+            // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
+            // for UniqueBorrowed arguments, so that the codegen backend can decide whether
+            // or not to actually emit the attribute. It can also be controlled with the
+            // `-Zmutable-noalias` debugging option.
+            let no_alias = match kind {
+                PointerKind::SharedMutable
+                | PointerKind::UniqueBorrowed
+                | PointerKind::UniqueBorrowedPinned => false,
+                PointerKind::UniqueOwned => noalias_for_box,
+                PointerKind::Frozen => !is_return,
+            };
+            if no_alias {
+                attrs.set(ArgAttribute::NoAlias);
+            }
+
+            if kind == PointerKind::Frozen && !is_return {
+                attrs.set(ArgAttribute::ReadOnly);
+            }
+
+            if kind == PointerKind::UniqueBorrowed && !is_return {
+                attrs.set(ArgAttribute::NoAliasMutRef);
+            }
+        }
+    }
+}
+
 impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
     // arguments of this method, into a separate `struct`.
@@ -3118,91 +3206,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         use SpecAbi::*;
         let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
-        // Handle safe Rust thin and fat pointers.
-        let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
-                                      scalar: Scalar,
-                                      layout: TyAndLayout<'tcx>,
-                                      offset: Size,
-                                      is_return: bool| {
-            // Booleans are always a noundef i1 that needs to be zero-extended.
-            if scalar.is_bool() {
-                attrs.ext(ArgExtension::Zext);
-                attrs.set(ArgAttribute::NoUndef);
-                return;
-            }
-
-            // Scalars which have invalid values cannot be undef.
-            if !scalar.is_always_valid(self) {
-                attrs.set(ArgAttribute::NoUndef);
-            }
-
-            // Only pointer types handled below.
-            let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
-
-            if !valid_range.contains(0) {
-                attrs.set(ArgAttribute::NonNull);
-            }
-
-            if let Some(pointee) = layout.pointee_info_at(self, offset) {
-                if let Some(kind) = pointee.safe {
-                    attrs.pointee_align = Some(pointee.align);
-
-                    // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
-                    // for the entire duration of the function as they can be deallocated
-                    // at any time. Same for shared mutable references. If LLVM had a
-                    // way to say "dereferenceable on entry" we could use it here.
-                    attrs.pointee_size = match kind {
-                        PointerKind::UniqueBorrowed
-                        | PointerKind::UniqueBorrowedPinned
-                        | PointerKind::Frozen => pointee.size,
-                        PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
-                    };
-
-                    // `Box`, `&T`, and `&mut T` cannot be undef.
-                    // Note that this only applies to the value of the pointer itself;
-                    // this attribute doesn't make it UB for the pointed-to data to be undef.
-                    attrs.set(ArgAttribute::NoUndef);
-
-                    // The aliasing rules for `Box<T>` are still not decided, but currently we emit
-                    // `noalias` for it. This can be turned off using an unstable flag.
-                    // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
-                    let noalias_for_box =
-                        self.tcx().sess.opts.unstable_opts.box_noalias.unwrap_or(true);
-
-                    // `&mut` pointer parameters never alias other parameters,
-                    // or mutable global data
-                    //
-                    // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
-                    // and can be marked as both `readonly` and `noalias`, as
-                    // LLVM's definition of `noalias` is based solely on memory
-                    // dependencies rather than pointer equality
-                    //
-                    // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
-                    // for UniqueBorrowed arguments, so that the codegen backend can decide whether
-                    // or not to actually emit the attribute. It can also be controlled with the
-                    // `-Zmutable-noalias` debugging option.
-                    let no_alias = match kind {
-                        PointerKind::SharedMutable
-                        | PointerKind::UniqueBorrowed
-                        | PointerKind::UniqueBorrowedPinned => false,
-                        PointerKind::UniqueOwned => noalias_for_box,
-                        PointerKind::Frozen => !is_return,
-                    };
-                    if no_alias {
-                        attrs.set(ArgAttribute::NoAlias);
-                    }
-
-                    if kind == PointerKind::Frozen && !is_return {
-                        attrs.set(ArgAttribute::ReadOnly);
-                    }
-
-                    if kind == PointerKind::UniqueBorrowed && !is_return {
-                        attrs.set(ArgAttribute::NoAliasMutRef);
-                    }
-                }
-            }
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
             let is_return = arg_idx.is_none();
 
@@ -3218,7 +3221,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             let mut arg = ArgAbi::new(self, layout, |layout, scalar, offset| {
                 let mut attrs = ArgAttributes::new();
-                adjust_for_rust_scalar(&mut attrs, scalar, *layout, offset, is_return);
+                adjust_for_rust_scalar(*self, &mut attrs, scalar, *layout, offset, is_return);
                 attrs
             });
 

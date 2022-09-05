@@ -1033,10 +1033,14 @@ impl f32 {
                 }
             }
         }
-        // SAFETY: `u32` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_f32_to_u32 = |rt| unsafe { mem::transmute::<f32, u32>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f32_to_u32(x: f32) -> u32 {
+            // SAFETY: `u32` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f32_to_u32) }
     }
@@ -1121,10 +1125,14 @@ impl f32 {
                 }
             }
         }
-        // SAFETY: `u32` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_u32_to_f32 = |rt| unsafe { mem::transmute::<u32, f32>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u32_to_f32(x: u32) -> f32 {
+            // SAFETY: `u32` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute(x) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((v,), ct_u32_to_f32, rt_u32_to_f32) }
     }
