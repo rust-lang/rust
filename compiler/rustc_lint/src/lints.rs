@@ -7,6 +7,14 @@ use rustc_span::{Span, Symbol};
 use crate::LateContext;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_pass_by_value)]
+pub struct PassByValueDiag {
+    pub ty: String,
+    #[suggestion(code = "{ty}", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_redundant_semicolons)]
 pub struct RedundantSemicolonsDiag {
     pub multiple: bool,
