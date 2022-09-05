@@ -6,7 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::SessionDiagnostic;
 use rustc_session::SessionDiagnostic;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, source_map::SourceMap};
 
 use crate::UnsupportedLiteralReason;
 
@@ -202,13 +202,14 @@ pub(crate) struct InvalidReprHintNoValue {
 }
 
 // Error code: E0565
-pub(crate) struct UnsupportedLiteral {
+pub(crate) struct UnsupportedLiteral<'a> {
     pub span: Span,
     pub reason: UnsupportedLiteralReason,
     pub is_bytestr: bool,
+    pub source_map: &'a SourceMap,
 }
 
-impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
+impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral<'a> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             self.span,
@@ -225,10 +226,8 @@ impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
             error_code!(E0565),
         );
         if self.is_bytestr {
-            let start_point = handler.span_start_point_from_emitter(self.span).unwrap_or(self.span);
-
             diag.span_suggestion(
-                start_point,
+                self.source_map.start_point(self.span),
                 fluent::attr::unsupported_literal_suggestion,
                 "",
                 Applicability::MaybeIncorrect,
