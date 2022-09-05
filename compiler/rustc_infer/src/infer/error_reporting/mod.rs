@@ -2395,19 +2395,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             type_param_span: Option<(Span, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
+            add_lt_sugg: Option<(Span, String)>,
         ) {
             let msg = "consider adding an explicit lifetime bound";
             if let Some((sp, has_lifetimes)) = type_param_span {
                 let suggestion =
                     if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
-                err.span_suggestion_verbose(
-                    sp,
-                    &format!("{}...", msg),
-                    suggestion,
+                let mut suggestions = vec![(sp, suggestion)];
+                if let Some(add_lt_sugg) = add_lt_sugg {
+                    suggestions.push(add_lt_sugg);
+                }
+                err.multipart_suggestion_verbose(
+                    format!("{msg}..."),
+                    suggestions,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub,);
+                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub);
                 err.help(&consider);
             }
         }
@@ -2423,7 +2427,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     };
                     let mut sugg =
                         vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
-                    if let Some(lt) = add_lt_sugg {
+                    if let Some(lt) = add_lt_sugg.clone() {
                         sugg.push(lt);
                         sugg.rotate_right(1);
                     }
@@ -2529,7 +2533,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // for the bound is not suitable for suggestions when `-Zverbose` is set because it
                 // uses `Debug` output, so we handle it specially here so that suggestions are
                 // always correct.
-                binding_suggestion(&mut err, type_param_span, bound_kind, name);
+                binding_suggestion(&mut err, type_param_span, bound_kind, name, None);
                 err
             }
 
@@ -2542,7 +2546,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "{} may not live long enough",
                     labeled_user_string
                 );
-                binding_suggestion(&mut err, type_param_span, bound_kind, "'static");
+                binding_suggestion(&mut err, type_param_span, bound_kind, "'static", None);
                 err
             }
 
@@ -2576,7 +2580,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
-                            binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
+                            binding_suggestion(
+                                &mut err,
+                                type_param_span,
+                                bound_kind,
+                                new_lt,
+                                add_lt_sugg,
+                            );
                         }
                     }
                 }
