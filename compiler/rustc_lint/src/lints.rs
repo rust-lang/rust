@@ -7,6 +7,16 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 use crate::LateContext;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_cstring_ptr)]
+#[note]
+#[help]
+pub struct CStringPtr {
+    #[label(as_ptr_label)]
+    pub as_ptr: Span,
+    #[label(unwrap_label)]
+    pub unwrap: Span,
+}
+#[derive(LintDiagnostic)]
 #[diag(lint_identifier_non_ascii_char)]
 pub struct IdentifierNonAsciiChar;
 
