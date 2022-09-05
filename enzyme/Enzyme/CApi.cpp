@@ -174,6 +174,12 @@ EnzymeLogicRef CreateEnzymeLogic(uint8_t PostOpt) {
 
 void ClearEnzymeLogic(EnzymeLogicRef Ref) { eunwrap(Ref).clear(); }
 
+void EnzymeLogicErasePreprocessedFunctions(EnzymeLogicRef Ref) {
+  auto &Logic = eunwrap(Ref);
+  for (const auto &pair : Logic.PPC.cache)
+    pair.second->eraseFromParent();
+}
+
 void FreeEnzymeLogic(EnzymeLogicRef Ref) { delete (EnzymeLogic *)Ref; }
 
 EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
