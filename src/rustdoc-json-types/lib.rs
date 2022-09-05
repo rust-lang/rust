@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 18;
+pub const FORMAT_VERSION: u32 = 19;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -308,9 +308,26 @@ pub struct Enum {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "variant_kind", content = "variant_inner")]
 pub enum Variant {
-    Plain,
+    Plain(Option<Discriminant>),
     Tuple(Vec<Type>),
     Struct(Vec<Id>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Discriminant {
+    /// The expression that produced the discriminant.
+    ///
+    /// Unlike `value`, this preserves the original formatting (eg suffixes,
+    /// hexadecimal, and underscores), making it unsuitable to be machine
+    /// interpreted.
+    ///
+    /// In some cases, when the value is to complex, this may be `"{ _ }"`.
+    /// When this occurs is unstable, and may change without notice.
+    pub expr: String,
+    /// The numerical value of the discriminant. Stored as a string due to
+    /// JSON's poor support for large integers, and the fact that it would need
+    /// to store from [`i128::MIN`] to [`u128::MAX`].
+    pub value: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

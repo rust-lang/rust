@@ -261,7 +261,11 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     }
 }
 
-pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+pub(crate) fn print_evaluated_const(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    underscores_and_type: bool,
+) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
@@ -269,7 +273,7 @@ pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<St
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
                 let const_ = mir::ConstantKind::from_value(val, ty);
-                Some(print_const_with_custom_print_scalar(tcx, const_))
+                Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
             _ => None,
         }
@@ -302,23 +306,35 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: mir::ConstantKind<'_>) -> String {
+fn print_const_with_custom_print_scalar(
+    tcx: TyCtxt<'_>,
+    ct: mir::ConstantKind<'_>,
+    underscores_and_type: bool,
+) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct, ct.ty().kind()) {
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            if underscores_and_type {
+                format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            } else {
+                int.to_string()
+            }
         }
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = tcx.lift(ct.ty()).unwrap();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
-            format!(
-                "{}{}",
-                format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                i.name_str()
-            )
+            if underscores_and_type {
+                format!(
+                    "{}{}",
+                    format_integer_with_underscore_sep(&sign_extended_data.to_string()),
+                    i.name_str()
+                )
+            } else {
+                sign_extended_data.to_string()
+            }
         }
         _ => ct.to_string(),
     }

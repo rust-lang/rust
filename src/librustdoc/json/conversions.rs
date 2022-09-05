@@ -662,7 +662,7 @@ impl FromWithTcx<clean::Variant> for Variant {
     fn from_tcx(variant: clean::Variant, tcx: TyCtxt<'_>) -> Self {
         use clean::Variant::*;
         match variant {
-            CLike => Variant::Plain,
+            CLike(disr) => Variant::Plain(disr.map(|disr| disr.into_tcx(tcx))),
             Tuple(fields) => Variant::Tuple(
                 fields
                     .into_iter()
@@ -674,6 +674,18 @@ impl FromWithTcx<clean::Variant> for Variant {
                     .collect(),
             ),
             Struct(s) => Variant::Struct(ids(s.fields, tcx)),
+        }
+    }
+}
+
+impl FromWithTcx<clean::Discriminant> for Discriminant {
+    fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
+        Discriminant {
+            // expr is only none if going throught the inlineing path, which gets
+            // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
+            // the expr is always some.
+            expr: disr.expr(tcx).unwrap(),
+            value: disr.value(tcx),
         }
     }
 }

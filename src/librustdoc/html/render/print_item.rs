@@ -1203,7 +1203,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                     let name = v.name.unwrap();
                     match *v.kind {
                         clean::VariantItem(ref var) => match var {
-                            clean::Variant::CLike => write!(w, "{}", name),
+                            // FIXME(#101337): Show discriminant
+                            clean::Variant::CLike(..) => write!(w, "{}", name),
                             clean::Variant::Tuple(ref s) => {
                                 write!(w, "{}(", name);
                                 print_tuple_struct_fields(w, cx, s);

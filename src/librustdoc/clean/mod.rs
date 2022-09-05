@@ -1786,7 +1786,10 @@ pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
 
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
     let kind = match variant.ctor_kind {
-        CtorKind::Const => Variant::CLike,
+        CtorKind::Const => Variant::CLike(match variant.discr {
+            ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
+            ty::VariantDiscr::Relative(_) => None,
+        }),
         CtorKind::Fn => Variant::Tuple(
             variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         ),
@@ -1803,6 +1806,7 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
 
 fn clean_variant_data<'tcx>(
     variant: &hir::VariantData<'tcx>,
+    disr_expr: &Option<hir::AnonConst>,
     cx: &mut DocContext<'tcx>,
 ) -> Variant {
     match variant {
@@ -1813,7 +1817,10 @@ fn clean_variant_data<'tcx>(
         hir::VariantData::Tuple(..) => {
             Variant::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
         }
-        hir::VariantData::Unit(..) => Variant::CLike,
+        hir::VariantData::Unit(..) => Variant::CLike(disr_expr.map(|disr| Discriminant {
+            expr: Some(disr.body),
+            value: cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
+        })),
     }
 }
 
@@ -1967,7 +1974,7 @@ fn clean_maybe_renamed_item<'tcx>(
 }
 
 fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
-    let kind = VariantItem(clean_variant_data(&variant.data, cx));
+    let kind = VariantItem(clean_variant_data(&variant.data, &variant.disr_expr, cx));
     let what_rustc_thinks =
         Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx);
     // don't show `pub` for variants, which are always public

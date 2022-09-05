@@ -2098,7 +2098,7 @@ impl Enum {
 
 #[derive(Clone, Debug)]
 pub(crate) enum Variant {
-    CLike,
+    CLike(Option<Discriminant>),
     Tuple(Vec<Item>),
     Struct(VariantStruct),
 }
@@ -2107,8 +2107,28 @@ impl Variant {
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match *self {
             Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
-            Self::CLike | Self::Tuple(_) => None,
+            Self::CLike(..) | Self::Tuple(_) => None,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Discriminant {
+    // In the case of cross crate re-exports, we don't have the nessesary information
+    // to reconstruct the expression of the discriminant, only the value.
+    pub(super) expr: Option<BodyId>,
+    pub(super) value: DefId,
+}
+
+impl Discriminant {
+    /// Will be `None` in the case of cross-crate reexports, and may be
+    /// simplified
+    pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        self.expr.map(|body| print_const_expr(tcx, body))
+    }
+    /// Will always be a machine readable number, without underscores or suffixes.
+    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> String {
+        print_evaluated_const(tcx, self.value, false).unwrap()
     }
 }
 
@@ -2338,7 +2358,7 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id)
+                print_evaluated_const(tcx, def_id, true)
             }
         }
     }
