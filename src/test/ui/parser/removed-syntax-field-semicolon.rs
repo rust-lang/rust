@@ -1,6 +1,6 @@
 struct S {
     bar: ();
-    //~^ ERROR expected `,`, or `}`, found `;`
+    //~^ ERROR struct fields are separated by `,`
 }
 
 fn main() {}
