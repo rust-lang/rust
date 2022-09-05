@@ -1,10 +1,38 @@
 use rustc_errors::{fluent, AddSubdiagnostic, Applicability, DecorateLint, EmissionGuarantee};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, SessionSubdiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Predicate, Ty, TyCtxt};
 use rustc_span::{Span, Symbol};
 
 use crate::LateContext;
+
+pub struct DropTraitConstraintsDiag<'a> {
+    pub predicate: Predicate<'a>,
+    pub tcx: TyCtxt<'a>,
+    pub def_id: DefId,
+}
+
+impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for DropTraitConstraintsDiag<'a> {
+    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
+        let mut diag = diag.build(fluent::lint_drop_trait_constraints);
+        diag.set_arg("predicate", self.predicate);
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+        diag.emit();
+    }
+}
+
+pub struct DropGlue<'a> {
+    pub tcx: TyCtxt<'a>,
+    pub def_id: DefId,
+}
+
+impl<'a, G: EmissionGuarantee> DecorateLint<'_, G> for DropGlue<'a> {
+    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
+        let mut diag = diag.build(fluent::lint_drop_glue);
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+        diag.emit();
+    }
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_range_endpoint_out_of_range)]
