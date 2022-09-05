@@ -358,7 +358,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
-        let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
+        let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
         let binding = self.output_ty_binding(output_ty.span, output_ty);
         (
             GenericArgsCtor {

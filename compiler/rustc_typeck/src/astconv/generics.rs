@@ -647,7 +647,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 multispan.push_span_label(span_late, note);
                 tcx.struct_span_lint_hir(
                     LATE_BOUND_LIFETIME_ARGUMENTS,
-                    args.args[0].id(),
+                    args.args[0].hir_id(),
                     multispan,
                     |lint| {
                         lint.build(msg).emit();

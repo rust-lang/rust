@@ -3045,6 +3045,7 @@ mod size_asserts {
     static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
+    static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
@@ -3052,6 +3053,8 @@ mod size_asserts {
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
+    static_assert_size!(Local, 72);
+    static_assert_size!(Param, 40);
     static_assert_size!(Pat, 120);
     static_assert_size!(PatKind, 96);
     static_assert_size!(Path, 40);

@@ -155,26 +155,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let op = match *op {
                     InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
                         reg: lower_reg(reg),
-                        expr: self.lower_expr_mut(expr),
+                        expr: self.lower_expr(expr),
                     },
                     InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
                         reg: lower_reg(reg),
                         late,
-                        expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                        expr: expr.as_ref().map(|expr| self.lower_expr(expr)),
                     },
                     InlineAsmOperand::InOut { reg, late, ref expr } => {
                         hir::InlineAsmOperand::InOut {
                             reg: lower_reg(reg),
                             late,
-                            expr: self.lower_expr_mut(expr),
+                            expr: self.lower_expr(expr),
                         }
                     }
                     InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
                             reg: lower_reg(reg),
                             late,
-                            in_expr: self.lower_expr_mut(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                            in_expr: self.lower_expr(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
                     InlineAsmOperand::Const { ref anon_const } => {
