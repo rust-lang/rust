@@ -29,8 +29,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             let mut res = fx.bcx.ins().iconst(types::I32, 0);
 
             for lane in (0..lane_count).rev() {
-                let a_lane =
-                    a.value_field(fx, mir::Field::new(lane.try_into().unwrap())).load_scalar(fx);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
 
                 // cast float to int
                 let a_lane = match lane_ty {
