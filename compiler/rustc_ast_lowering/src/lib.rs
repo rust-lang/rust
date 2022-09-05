@@ -1903,13 +1903,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let universal_args: Vec<_> = impl_trait_inputs.iter().map(|ty| match ty.kind {
             TyKind::ImplTrait(node_id, _) => {
                 let def_id = self.local_def_id(node_id);
-                let span = ty.span;
+                let span = self.lower_span(ty.span);
                 let ident = Ident::from_str_and_span(&pprust::ty_to_string(ty), span);
                 hir::GenericArg::Type(hir::Ty {
                     hir_id: self.next_id(),
                     span,
                     kind: hir::TyKind::Path(hir::QPath::Resolved(None, self.arena.alloc(hir::Path {
-                        span: self.lower_span(span),
+                        span,
                         res: Res::Def(DefKind::TyParam, def_id.to_def_id()),
                         segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident))],
                     })))
