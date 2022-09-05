@@ -160,6 +160,7 @@ thread_local! {
 struct RunningSameThreadGuard(());
 
 impl RunningSameThreadGuard {
+    #[inline]
     fn new() -> Self {
         let already_running = ALREADY_RUNNING_SAME_THREAD.replace(true);
         assert!(
@@ -171,6 +172,7 @@ impl RunningSameThreadGuard {
 }
 
 impl Drop for RunningSameThreadGuard {
+    #[inline]
     fn drop(&mut self) {
         ALREADY_RUNNING_SAME_THREAD.set(false);
     }
