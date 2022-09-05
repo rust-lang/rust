@@ -8685,8 +8685,9 @@ public:
         auto ifound = gutils->invertedPointers.find(orig);
         PHINode *placeholder = nullptr;
         if (ifound != gutils->invertedPointers.end()) {
+          placeholder = cast<PHINode>(&*ifound->second);
           if (shadowReturnUsed)
-            invertedReturn = placeholder = cast<PHINode>(&*ifound->second);
+            invertedReturn = placeholder;
         }
 
         Value *normalReturn = subretused ? newCall : nullptr;
