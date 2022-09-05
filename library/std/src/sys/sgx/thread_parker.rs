@@ -9,11 +9,17 @@ use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::time::Duration;
 use fortanix_sgx_abi::{EV_UNPARK, WAIT_INDEFINITE};
 
-const EMPTY: *mut u8 = ptr::invalid_mut(0);
-/// The TCS structure must be page-aligned, so this cannot be a valid pointer
-const NOTIFIED: *mut u8 = ptr::invalid_mut(1);
+// The TCS structure must be page-aligned (this is checked by EENTER), so these cannot
+// be valid pointers
+const EMPTY: *mut u8 = ptr::invalid_mut(1);
+const NOTIFIED: *mut u8 = ptr::invalid_mut(2);
 
 pub struct Parker {
+    /// The park state. One of EMPTY, NOTIFIED or a TCS address.
+    /// A state change to NOTIFIED must be done with release ordering
+    /// and be observed with acquire ordering so that operations after
+    /// `thread::park` returns will not occur before the unpark message
+    /// was sent.
     state: AtomicPtr<u8>,
 }
 
@@ -30,23 +36,28 @@ impl Parker {
 
     // This implementation doesn't require `unsafe` and `Pin`, but other implementations do.
     pub unsafe fn park(self: Pin<&Self>) {
-        let tcs = thread::current().as_ptr();
-
         if self.state.load(Acquire) != NOTIFIED {
-            if self.state.compare_exchange(EMPTY, tcs, Acquire, Acquire).is_ok() {
-                // Loop to guard against spurious wakeups.
-                loop {
+            let mut prev = EMPTY;
+            loop {
+                // Guard against changing TCS addresses by always setting the state to
+                // the current value.
+                let tcs = thread::current().as_ptr();
+                if self.state.compare_exchange(prev, tcs, Relaxed, Acquire).is_ok() {
                     let event = usercalls::wait(EV_UNPARK, WAIT_INDEFINITE).unwrap();
                     assert!(event & EV_UNPARK == EV_UNPARK);
-                    if self.state.load(Acquire) == NOTIFIED {
-                        break;
-                    }
+                    prev = tcs;
+                } else {
+                    // The state was definitely changed by another thread at this point.
+                    // The only time this occurs is when the state is changed to NOTIFIED.
+                    // We observed this change with acquire ordering, so we can simply
+                    // change the state to EMPTY with a relaxed store.
+                    break;
                 }
             }
         }
 
         // At this point, the token was definately read with acquire ordering,
-        // so this can be a store.
+        // so this can be a relaxed store.
         self.state.store(EMPTY, Relaxed);
     }
 
@@ -56,7 +67,7 @@ impl Parker {
         let tcs = thread::current().as_ptr();
 
         if self.state.load(Acquire) != NOTIFIED {
-            if self.state.compare_exchange(EMPTY, tcs, Acquire, Acquire).is_ok() {
+            if self.state.compare_exchange(EMPTY, tcs, Relaxed, Acquire).is_ok() {
                 match usercalls::wait(EV_UNPARK, timeout) {
                     Ok(event) => assert!(event & EV_UNPARK == EV_UNPARK),
                     Err(e) => {
@@ -85,8 +96,11 @@ impl Parker {
         if !matches!(state, EMPTY | NOTIFIED) {
             // There is a thread waiting, wake it up.
             let tcs = NonNull::new(state).unwrap();
-            // This will fail if the thread has already terminated by the time the signal is send,
-            // but that is OK.
+            // This will fail if the thread has already terminated or its TCS is destroyed
+            // by the time the signal is sent, but that is fine. If another thread receives
+            // the same TCS, it will receive this notification as a spurious wakeup, but
+            // all users of `wait` should and (internally) do guard against those where
+            // necessary.
             let _ = usercalls::send(EV_UNPARK, Some(tcs));
         }
     }
