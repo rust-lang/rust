@@ -67,7 +67,7 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                 span,
                 reason,
                 is_bytestr,
-                source_map: sess.source_map(),
+                start_point_span: sess.source_map().start_point(span),
             });
         }
     }

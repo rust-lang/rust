@@ -3,7 +3,7 @@ use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_session::SessionDiagnostic;
-use rustc_span::{source_map::SourceMap, symbol::Ident, Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
 #[diag(typeck::field_multiply_specified_in_initializer, code = "E0062")]
@@ -241,16 +241,16 @@ pub struct UnconstrainedOpaqueType {
     pub name: Symbol,
 }
 
-pub struct MissingTypeParams<'a> {
+pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
+    pub span_snippet: Option<String>,
     pub missing_type_params: Vec<Symbol>,
     pub empty_generic_args: bool,
-    pub source_map: &'a SourceMap,
 }
 
 // Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
-impl<'a> SessionDiagnostic<'a> for MissingTypeParams<'a> {
+impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,
@@ -270,8 +270,8 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams<'a> {
         err.span_label(self.def_span, rustc_errors::fluent::typeck::label);
 
         let mut suggested = false;
-        if let (Ok(snippet), true) = (
-            self.source_map.span_to_snippet(self.span),
+        if let (Some(snippet), true) = (
+            self.span_snippet,
             // Don't suggest setting the type params if there are some already: the order is
             // tricky to get right and the user will already know what the syntax is.
             self.empty_generic_args,
