@@ -66,6 +66,7 @@ pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
+pub type BCRYPT_ALG_HANDLE = isize;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -285,7 +286,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-pub const BCRYPT_RNG_ALG_HANDLE: usize = 0x81;
+pub const BCRYPT_RNG_ALG_HANDLE: BCRYPT_ALG_HANDLE = 0x81;
 
 #[repr(C)]
 pub struct UNICODE_STRING {
@@ -1229,7 +1230,7 @@ extern "system" {
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
     pub fn BCryptGenRandom(
-        hAlgorithm: LPVOID,
+        hAlgorithm: BCRYPT_ALG_HANDLE,
         pBuffer: *mut u8,
         cbBuffer: ULONG,
         dwFlags: ULONG,

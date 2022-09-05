@@ -22,7 +22,6 @@
 //! [`RtlGenRandom`]: https://docs.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom
 //! [`BCryptGenRandom`]: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 //! [Pseudo-handle]: https://docs.microsoft.com/en-us/windows/win32/seccng/cng-algorithm-pseudo-handles
-use crate::io;
 use crate::mem;
 use crate::ptr;
 use crate::sys::c;
@@ -34,35 +33,41 @@ use crate::sys::c;
 /// [`HashMap`]: crate::collections::HashMap
 /// [`RandomState`]: crate::collections::hash_map::RandomState
 pub fn hashmap_random_keys() -> (u64, u64) {
+    // BCRYPT_RNG_ALG_HANDLE is only supported in Windows 10+.
+    // So for Windows 8.1 and Windows 7 we'll need a fallback when this fails
+    gen_random_keys(c::BCRYPT_RNG_ALG_HANDLE).unwrap_or_else(fallback_rng)
+}
+
+fn gen_random_keys(algorithm: c::BCRYPT_ALG_HANDLE) -> Result<(u64, u64), c::NTSTATUS> {
     let mut v = (0, 0);
-    let ret = unsafe {
+    let status = unsafe {
         let size = mem::size_of_val(&v).try_into().unwrap();
-        c::BCryptGenRandom(
-            // BCRYPT_RNG_ALG_HANDLE is only supported in Windows 10+.
-            // So for Windows 8.1 and Windows 7 we'll need a fallback when this fails.
-            ptr::invalid_mut(c::BCRYPT_RNG_ALG_HANDLE),
-            ptr::addr_of_mut!(v).cast(),
-            size,
-            0,
-        )
+        c::BCryptGenRandom(algorithm, ptr::addr_of_mut!(v).cast(), size, 0)
     };
-    if ret != 0 { fallback_rng() } else { v }
+    if c::nt_success(status) { Ok(v) } else { Err(status) }
 }
 
 /// Generate random numbers using the fallback RNG function (RtlGenRandom)
 #[cfg(not(target_vendor = "uwp"))]
 #[inline(never)]
-fn fallback_rng() -> (u64, u64) {
+fn fallback_rng(rng_status: c::NTSTATUS) -> (u64, u64) {
     let mut v = (0, 0);
     let ret =
         unsafe { c::RtlGenRandom(&mut v as *mut _ as *mut u8, mem::size_of_val(&v) as c::ULONG) };
 
-    if ret != 0 { v } else { panic!("fallback RNG broken: {}", io::Error::last_os_error()) }
+    if ret != 0 {
+        v
+    } else {
+        panic!(
+            "RNG broken: {rng_status:#x}, fallback RNG broken: {}",
+            crate::io::Error::last_os_error()
+        )
+    }
 }
 
 /// We can't use RtlGenRandom with UWP, so there is no fallback
 #[cfg(target_vendor = "uwp")]
 #[inline(never)]
-fn fallback_rng() -> (u64, u64) {
-    panic!("fallback RNG broken: RtlGenRandom() not supported on UWP");
+fn fallback_rng(rng_status: c::NTSTATUS) -> (u64, u64) {
+    panic!("RMG broken: {rng_status:#x} fallback RNG broken: RtlGenRandom() not supported on UWP");
 }
