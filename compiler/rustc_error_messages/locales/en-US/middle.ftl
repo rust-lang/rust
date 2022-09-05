@@ -1,6 +1,6 @@
 middle_drop_check_overflow =
     overflow while adding drop-check rules for {$ty}
-    .note = {$note}
+    .note = overflowed on {$overflow_ty}
 
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use

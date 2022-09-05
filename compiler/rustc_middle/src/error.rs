@@ -10,7 +10,7 @@ pub struct DropCheckOverflow<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub note: String,
+    pub overflow_ty: Ty<'tcx>,
 }
 
 #[derive(SessionDiagnostic)]

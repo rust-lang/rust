@@ -117,8 +117,7 @@ pub struct DropckOutlivesResult<'tcx> {
 impl<'tcx> DropckOutlivesResult<'tcx> {
     pub fn report_overflows(&self, tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
         if let Some(overflow_ty) = self.overflows.get(0) {
-            let note = format!("overflowed on {}", overflow_ty);
-            tcx.sess.emit_err(DropCheckOverflow { span, ty, note });
+            tcx.sess.emit_err(DropCheckOverflow { span, ty, overflow_ty: *overflow_ty });
         }
     }
 
