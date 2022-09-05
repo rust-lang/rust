@@ -730,9 +730,22 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         }
 
+        sym::simd_saturating_add | sym::simd_saturating_sub => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            let bin_op = match intrinsic {
+                sym::simd_saturating_add => BinOp::Add,
+                sym::simd_saturating_sub => BinOp::Sub,
+                _ => unreachable!(),
+            };
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane_typed(fx, x, y, ret, &|fx, x_lane, y_lane| {
+                crate::num::codegen_saturating_int_binop(fx, bin_op, x_lane, y_lane)
+            });
+        }
+
         // simd_arith_offset
-        // simd_saturating_add
-        // simd_saturating_sub
         // simd_scatter
         // simd_gather
         // simd_select_bitmask
