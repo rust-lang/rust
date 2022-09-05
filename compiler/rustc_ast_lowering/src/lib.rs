@@ -979,6 +979,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// name resolver owing to lifetime elision; this also populates the resolver's node-id->def-id
     /// map, so that later calls to `opt_node_id_to_def_id` that refer to these extra lifetime
     /// parameters will be successful.
+    /// Creating new definitions and remapping for `generic_params` if `copy_generics` is set to
+    /// `true`. This is used for RPITs.
     #[instrument(level = "debug", skip(self, in_binder))]
     #[inline]
     fn lower_lifetime_binder<R>(
