@@ -2367,9 +2367,9 @@ pub(crate) fn get_filtered_impls_for_reference<'a>(
     let Some(v) = shared.cache.impls.get(&def_id) else { return (Vec::new(), Vec::new(), Vec::new()) };
     // Since there is no "direct implementation" on the reference primitive type, we filter out
     // every implementation which isn't a trait implementation.
-    let traits: Vec<_> = v.iter().filter(|i| i.inner_impl().trait_.is_some()).collect();
+    let traits = v.iter().filter(|i| i.inner_impl().trait_.is_some());
     let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-        traits.into_iter().partition(|t| t.inner_impl().kind.is_auto());
+        traits.partition(|t| t.inner_impl().kind.is_auto());
 
     let (blanket_impl, concrete): (Vec<&Impl>, _) =
         concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
