@@ -253,9 +253,6 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
             fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
                 #expr
             }
-
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                = Some(crate::plumbing::try_load_from_disk::<Self::Value>);
         }
     } else {
         quote! {
@@ -263,8 +260,6 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
             fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
                 false
             }
-
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
         }
     };
 
@@ -332,6 +327,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             separate_provide_extern,
             remap_env_constness,
         );
+
+        if modifiers.cache.is_some() {
+            attributes.push(quote! { (cache) });
+        }
 
         // This uses the span of the query definition for the commas,
         // which can be important if we later encounter any ambiguity
