@@ -9,13 +9,7 @@ extern "platform-intrinsic" {
     pub fn simd_gt<T, U>(x: T, y: T) -> U;
     pub fn simd_ge<T, U>(x: T, y: T) -> U;
 
-    pub fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
-    pub fn simd_shuffle4<T, U>(x: T, y: T, idx: [u32; 4]) -> U;
-    pub fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
-    pub fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
-    pub fn simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U;
-    pub fn simd_shuffle64<T, U>(x: T, y: T, idx: [u32; 64]) -> U;
-    pub fn simd_shuffle128<T, U>(x: T, y: T, idx: [u32; 128]) -> U;
+    pub fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
     #[rustc_const_unstable(feature = "const_simd_insert", issue = "none")]
     pub fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;

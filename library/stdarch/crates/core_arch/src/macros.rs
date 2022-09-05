@@ -101,11 +101,11 @@ macro_rules! simd_shuffle2 {
             const IDX: [u32; 2] = $idx;
         }
 
-        simd_shuffle2($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 2] = $idx;
-        simd_shuffle2($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
 
@@ -117,11 +117,11 @@ macro_rules! simd_shuffle4 {
             const IDX: [u32; 4] = $idx;
         }
 
-        simd_shuffle4($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 4] = $idx;
-        simd_shuffle4($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
 
@@ -133,11 +133,11 @@ macro_rules! simd_shuffle8 {
             const IDX: [u32; 8] = $idx;
         }
 
-        simd_shuffle8($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 8] = $idx;
-        simd_shuffle8($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
 
@@ -149,11 +149,11 @@ macro_rules! simd_shuffle16 {
             const IDX: [u32; 16] = $idx;
         }
 
-        simd_shuffle16($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 16] = $idx;
-        simd_shuffle16($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
 
@@ -165,11 +165,11 @@ macro_rules! simd_shuffle32 {
             const IDX: [u32; 32] = $idx;
         }
 
-        simd_shuffle32($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 32] = $idx;
-        simd_shuffle32($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
 
@@ -181,10 +181,10 @@ macro_rules! simd_shuffle64 {
             const IDX: [u32; 64] = $idx;
         }
 
-        simd_shuffle64($x, $y, ConstParam::<$($imm),+>::IDX)
+        simd_shuffle($x, $y, ConstParam::<$($imm),+>::IDX)
     }};
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
         const IDX: [u32; 64] = $idx;
-        simd_shuffle64($x, $y, IDX)
+        simd_shuffle($x, $y, IDX)
     }};
 }
