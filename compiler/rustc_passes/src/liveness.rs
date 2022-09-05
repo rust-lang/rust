@@ -1041,10 +1041,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::MethodCall(.., receiver, ref args, _) => {
                 let succ = self.check_is_ty_uninhabited(expr, succ);
-                let succ = args
-                    .iter()
-                    .rev()
-                    .fold(succ, |succ, expr| self.propagate_through_expr(expr, succ));
+                let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(receiver, succ)
             }
 

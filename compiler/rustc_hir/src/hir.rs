@@ -3498,7 +3498,7 @@ mod size_asserts {
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 32);
     static_assert_size!(Expr<'_>, 64);
-    static_assert_size!(ExprKind<'_>, 40);
+    static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
