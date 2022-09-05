@@ -507,37 +507,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 _ => unreachable!(),
             };
 
-            let signed = type_sign(lhs.layout().ty);
-
-            let checked_res = crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs);
-
-            let (val, has_overflow) = checked_res.load_scalar_pair(fx);
-            let clif_ty = fx.clif_type(lhs.layout().ty).unwrap();
-
-            let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
-
-            let val = match (intrinsic, signed) {
-                (sym::saturating_add, false) => fx.bcx.ins().select(has_overflow, max, val),
-                (sym::saturating_sub, false) => fx.bcx.ins().select(has_overflow, min, val),
-                (sym::saturating_add, true) => {
-                    let rhs = rhs.load_scalar(fx);
-                    let rhs_ge_zero =
-                        fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
-                    fx.bcx.ins().select(has_overflow, sat_val, val)
-                }
-                (sym::saturating_sub, true) => {
-                    let rhs = rhs.load_scalar(fx);
-                    let rhs_ge_zero =
-                        fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, min, max);
-                    fx.bcx.ins().select(has_overflow, sat_val, val)
-                }
-                _ => unreachable!(),
-            };
-
-            let res = CValue::by_val(val, lhs.layout());
-
+            let res = crate::num::codegen_saturating_int_binop(fx, bin_op, lhs, rhs);
             ret.write_cvalue(fx, res);
         }
         sym::rotate_left => {
