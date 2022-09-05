@@ -396,8 +396,12 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
+        // The addition cannot overflow because `cap <= isize::MAX` and the type of `cap` is `usize`.
+        // By minimum we increase the cap by 1/2, which combined with rounding up
+        // to the next bin should result in rougly doubling (increase between x1.5, and x2.5).
+        let wanted_cap = cmp::max(self.cap + self.cap / 2, required_cap);
 
-        let cap = if let Some(alloc_size) = required_cap
+        let cap = if let Some(alloc_size) = wanted_cap
             .checked_mul(mem::size_of::<T>())
             .and_then(
                 // Add the overhead
@@ -419,9 +423,8 @@ impl<T, A: Allocator> RawVec<T, A> {
             // Align the capacity to fit the bin
             aligned_alloc_size / mem::size_of::<T>()
         } else {
-            // Calculating alloc_size overflowed. Use old way to preserve behavior around overflows.
-            // The doubling cannot overflow because `cap <= isize::MAX` and the type of `cap` is `usize`.
-            cmp::max(self.cap * 2, required_cap)
+            // Calculating alloc_size overflowed. We just use `wanted_cap` to preserve behavior around cap `isize` overflows.
+            wanted_cap
         };
 
         let new_layout = Layout::array::<T>(cap);

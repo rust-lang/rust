@@ -92,6 +92,15 @@ fn grow_amortized_power_of_two_bins() {
     }
 
     {
+        let mut v: RawVec<u8> = RawVec::new();
+        v.reserve_exact(0, 6);
+        assert_eq!(6, v.capacity());
+        v.reserve(0, 8);
+        // increase all the way to 32 (instead of just 32), due to minimum capacity increase
+        assert_eq!(cap_for::<u8>(32), v.capacity());
+    }
+
+    {
         let mut v: RawVec<[u8; 5]> = RawVec::new();
         v.reserve(0, 1);
         assert_eq!(cap_for::<[u8; 5]>(16), v.capacity());
