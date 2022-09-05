@@ -7,6 +7,16 @@ use rustc_span::{Span, Symbol};
 use crate::LateContext;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_noop_method_call)]
+#[note]
+pub struct NoopMethodCallDiag<'a> {
+    pub method: Symbol,
+    pub receiver_ty: Ty<'a>,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]
 pub struct PassByValueDiag {
     pub ty: String,
