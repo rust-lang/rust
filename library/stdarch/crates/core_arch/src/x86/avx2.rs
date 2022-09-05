@@ -2001,7 +2001,7 @@ pub unsafe fn _mm256_min_epu8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmovmskb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movemask_epi8(a: __m256i) -> i32 {
-    pmovmskb(a.as_i8x32())
+    simd_bitmask::<_, u32>(a.as_i8x32()) as i32
 }
 
 /// Computes the sum of absolute differences (SADs) of quadruplets of unsigned
@@ -3642,8 +3642,6 @@ extern "C" {
     fn pminud(a: u32x8, b: u32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.pminu.b"]
     fn pminub(a: u8x32, b: u8x32) -> u8x32;
-    #[link_name = "llvm.x86.avx2.pmovmskb"]
-    fn pmovmskb(a: i8x32) -> i32;
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i32) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmulhu.w"]
