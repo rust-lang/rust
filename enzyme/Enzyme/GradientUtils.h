@@ -2187,6 +2187,14 @@ public:
     Value *res = nullptr;
     if (old->getType()->isIntOrIntVectorTy()) {
       if (!addingType) {
+        if (looseTypeAnalysis) {
+          if (old->getType()->isIntegerTy(64))
+            addingType = Type::getDoubleTy(old->getContext());
+          else if (old->getType()->isIntegerTy(32))
+            addingType = Type::getFloatTy(old->getContext());
+        }
+      }
+      if (!addingType) {
         llvm::errs() << "module: " << *oldFunc->getParent() << "\n";
         llvm::errs() << "oldFunc: " << *oldFunc << "\n";
         llvm::errs() << "newFunc: " << *newFunc << "\n";
