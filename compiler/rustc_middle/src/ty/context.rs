@@ -52,7 +52,6 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
 use rustc_session::cstore::CrateStoreDyn;
-use rustc_session::errors::TargetDataLayoutParseError;
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
@@ -1252,7 +1251,7 @@ impl<'tcx> TyCtxt<'tcx> {
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
-            s.emit_fatal(TargetDataLayoutParseError { err });
+            s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(

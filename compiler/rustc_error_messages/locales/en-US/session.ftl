@@ -19,13 +19,13 @@ session_target_data_layout_parse_error = {$err}
 
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
 
-session_profile_use_file_does_not_exist = File `{$path}` passed to `-C profile-use` does not exist.
+session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist.
 
-session_linker_plugin_lto_windows_not_supported = Linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets"
+session_linker_plugin_lto_windows_not_supported = linker plugin based LTO is not supported together with `-C prefer-dynamic` when targeting Windows-like targets
 
-session_profile_sample_use_file_does_not_exist = File `{$path}` passed to `-C profile-sample-use` does not exist.
+session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist.
 
-session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`."
+session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
 
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 

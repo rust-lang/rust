@@ -1,9 +1,8 @@
 use std::num::NonZeroU32;
 
 use crate::cgu_reuse_tracker::CguReuse;
-use crate::parse::ParseSess;
-use crate::{self as rustc_session};
-use rustc_errors::{fluent, MultiSpan};
+use crate::{self as rustc_session, SessionDiagnostic};
+use rustc_errors::{fluent, DiagnosticBuilder, Handler, MultiSpan};
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::TargetDataLayoutErrors;
@@ -46,14 +45,10 @@ pub struct FeatureDiagnosticHelp {
     pub feature: Symbol,
 }
 
-pub struct TargetDataLayoutParseError<'a> {
-    pub err: TargetDataLayoutErrors<'a>,
-}
-
-impl crate::SessionDiagnostic<'_, !> for TargetDataLayoutParseError<'_> {
-    fn into_diagnostic(self, sess: &ParseSess) -> rustc_errors::DiagnosticBuilder<'_, !> {
+impl SessionDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
+    fn into_diagnostic(self, sess: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag;
-        match self.err {
+        match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 diag = sess.struct_fatal(fluent::session::target_invalid_address_space);
                 diag.set_arg("addr_space", addr_space);
