@@ -6,6 +6,43 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 
 use crate::LateContext;
 
+pub struct NonFmtPanicUnused {
+    pub count: usize,
+    pub suggestion: Option<Span>,
+}
+
+impl<G: EmissionGuarantee> DecorateLint<'_, G> for NonFmtPanicUnused {
+    fn decorate_lint(self, diag: rustc_errors::LintDiagnosticBuilder<'_, G>) {
+        let mut diag = diag.build(fluent::lint_non_fmt_panic_unused);
+        diag.set_arg("count", self.count);
+        diag.note(fluent::note);
+        if let Some(span) = self.suggestion {
+            diag.span_suggestion(
+                span.shrink_to_hi(),
+                fluent::add_args_suggestion,
+                ", ...",
+                Applicability::HasPlaceholders,
+            );
+            diag.span_suggestion(
+                span.shrink_to_lo(),
+                fluent::add_fmt_suggestion,
+                "\"{}\", ",
+                Applicability::MachineApplicable,
+            );
+        }
+        diag.emit();
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_non_fmt_panic_braces)]
+#[note]
+pub struct NonFmtPanicBraces {
+    pub count: usize,
+    #[suggestion(code = "\"{{}}\", ", applicability = "machine-applicable")]
+    pub suggestion: Option<Span>,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(lint_non_camel_case_type)]
 pub struct NonCamelCaseType<'a> {
