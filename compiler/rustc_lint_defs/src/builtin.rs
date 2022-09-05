@@ -3407,7 +3407,7 @@ declare_lint! {
     ///
     /// ### Example of drop reorder
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// # #![allow(unused)]
     ///
@@ -3443,7 +3443,7 @@ declare_lint! {
     ///
     /// ### Example of auto-trait
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// use std::thread;
     ///
