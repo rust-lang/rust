@@ -2068,12 +2068,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast_inputs = &ast_inputs[..ast_inputs.len() - 1];
         }
         let mut impl_trait_inputs = vec![];
+        let mut itctx = ImplTraitContext::Universal { apit_nodes: &mut impl_trait_inputs };
         let inputs = self.arena.alloc_from_iter(ast_inputs.iter().map(|param| {
             if fn_node_id.is_some() {
-                self.lower_ty_direct(
-                    &param.ty,
-                    &mut ImplTraitContext::Universal { apit_nodes: &mut impl_trait_inputs },
-                )
+                self.lower_ty_direct(&param.ty, &mut itctx)
             } else {
                 self.lower_ty_direct(
                     &param.ty,
