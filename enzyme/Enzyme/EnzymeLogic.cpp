@@ -2125,7 +2125,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   insert_or_assign(AugmentedCachedFunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
                                    uncacheable_args_map, can_modref_map));
-  AugmentedCachedFinished[tup] = false;
 
   auto getIndex = [&](Instruction *I, CacheType u) -> unsigned {
     return gutils->getIndex(
@@ -2708,7 +2707,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   AugmentedCachedFunctions.find(tup)->second.fn = NewF;
   if (recursive || (omp && !noTape))
     AugmentedCachedFunctions.find(tup)->second.tapeType = tapeType;
-  insert_or_assign(AugmentedCachedFinished, tup, true);
+  AugmentedCachedFunctions.find(tup)->second.isComplete = true;
 
   for (auto pair : gfnusers) {
     auto GV = pair.first;
@@ -3226,8 +3225,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   if (key.retType != DIFFE_TYPE::CONSTANT)
     assert(!key.todiff->getReturnType()->isVoidTy());
+
+  Function *prevFunction = nullptr;
   if (ReverseCachedFunctions.find(key) != ReverseCachedFunctions.end()) {
-    return ReverseCachedFunctions.find(key)->second;
+    prevFunction = ReverseCachedFunctions.find(key)->second;
+    if (!hasMetadata(prevFunction, "enzyme_placeholder"))
+      return prevFunction;
+    if (augmenteddata && !augmenteddata->isComplete)
+      return prevFunction;
   }
 
   if (key.returnUsed)
@@ -3641,6 +3646,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   insert_or_assign2<ReverseCacheKey, Function *>(ReverseCachedFunctions, key,
                                                  gutils->newFunc);
 
+  if (augmenteddata && !augmenteddata->isComplete) {
+    auto nf = gutils->newFunc;
+    delete gutils;
+    assert(!prevFunction);
+    nf->setMetadata("enzyme_placeholder", MDTuple::get(nf->getContext(), {}));
+    return nf;
+  }
+
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
 
@@ -4019,6 +4032,11 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   PPC.AlwaysInline(nf);
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(nf, /*mem2reg*/ true);
+
+  if (prevFunction) {
+    prevFunction->replaceAllUsesWith(nf);
+    prevFunction->eraseFromParent();
+  }
 
   // Do not run post processing optimizations if the body of an openmp
   // parallel so the adjointgenerator can successfully extract the allocation
@@ -4714,6 +4732,5 @@ llvm::Function *EnzymeLogic::CreateBatch(Function *tobatch, unsigned width,
 void EnzymeLogic::clear() {
   PPC.clear();
   AugmentedCachedFunctions.clear();
-  AugmentedCachedFinished.clear();
   ReverseCachedFunctions.clear();
 }
