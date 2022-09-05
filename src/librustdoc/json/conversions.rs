@@ -663,17 +663,11 @@ impl FromWithTcx<clean::Variant> for Variant {
         use clean::Variant::*;
         match variant {
             CLike(disr) => Variant::Plain(disr.map(|disr| disr.into_tcx(tcx))),
-            Tuple(fields) => Variant::Tuple(
-                fields
-                    .into_iter()
-                    .filter_map(|f| match *f.kind {
-                        clean::StructFieldItem(ty) => Some(ty.into_tcx(tcx)),
-                        clean::StrippedItem(_) => None,
-                        _ => unreachable!(),
-                    })
-                    .collect(),
-            ),
-            Struct(s) => Variant::Struct(ids(s.fields, tcx)),
+            Tuple(fields) => Variant::Tuple(ids_keeping_stripped(fields, tcx)),
+            Struct(s) => Variant::Struct {
+                fields_stripped: s.has_stripped_entries(),
+                fields: ids(s.fields, tcx),
+            },
         }
     }
 }
@@ -794,5 +788,21 @@ fn ids(items: impl IntoIterator<Item = clean::Item>, tcx: TyCtxt<'_>) -> Vec<Id>
         .into_iter()
         .filter(|x| !x.is_stripped() && !x.is_keyword())
         .map(|i| from_item_id_with_name(i.item_id, tcx, i.name))
+        .collect()
+}
+
+fn ids_keeping_stripped(
+    items: impl IntoIterator<Item = clean::Item>,
+    tcx: TyCtxt<'_>,
+) -> Vec<Option<Id>> {
+    items
+        .into_iter()
+        .map(|i| {
+            if !i.is_stripped() && !i.is_keyword() {
+                Some(from_item_id_with_name(i.item_id, tcx, i.name))
+            } else {
+                None
+            }
+        })
         .collect()
 }
