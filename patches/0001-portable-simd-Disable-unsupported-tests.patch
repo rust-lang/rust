@@ -11,44 +11,6 @@ Subject: [PATCH] Disable unsupported tests
  crates/core_simd/tests/masks.rs          | 3 ---
  5 files changed, 20 insertions(+), 3 deletions(-)
 
-diff --git a/crates/core_simd/src/masks/full_masks.rs b/crates/core_simd/src/masks/full_masks.rs
-index adf0fcb..e7e657e 100644
---- a/crates/core_simd/src/masks/full_masks.rs
-+++ b/crates/core_simd/src/masks/full_masks.rs
-@@ -180,6 +180,7 @@ where
-         super::Mask<T, LANES>: ToBitMaskArray,
-         [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
-     {
-+        /*
-         assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
- 
-         // Safety: N is the correct bitmask size
-@@ -202,6 +203,8 @@ where
-                 Self::splat(false).to_int(),
-             ))
-         }
-+        */
-+        panic!();
-     }
- 
-     #[inline]
-@@ -225,6 +228,7 @@ where
-     where
-         super::Mask<T, LANES>: ToBitMask<BitMask = U>,
-     {
-+        /*
-         // LLVM assumes bit order should match endianness
-         let bitmask = if cfg!(target_endian = "big") {
-             bitmask.reverse_bits(LANES)
-@@ -240,6 +244,8 @@ where
-                 Self::splat(false).to_int(),
-             ))
-         }
-+        */
-+        panic!();
-     }
- 
-     #[inline]
 diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
 index e8e8f68..7173c24 100644
 --- a/crates/core_simd/src/vector.rs
@@ -69,31 +31,5 @@ index e8e8f68..7173c24 100644
  }
  
  impl<T, const LANES: usize> Copy for Simd<T, LANES>
-diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
-index 673d0db..3ebfcd1 100644
---- a/crates/core_simd/tests/masks.rs
-+++ b/crates/core_simd/tests/masks.rs
-@@ -78,7 +78,6 @@ macro_rules! test_mask_api {
-                 let mask = core_simd::Mask::<$type, 16>::from_array(values);
-                 let bitmask = mask.to_bitmask();
-                 assert_eq!(bitmask, 0b1000001101001001);
--                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
-             }
- 
-             #[test]
-@@ -91,13 +90,11 @@ macro_rules! test_mask_api {
-                 let mask = core_simd::Mask::<$type, 4>::from_array(values);
-                 let bitmask = mask.to_bitmask();
-                 assert_eq!(bitmask, 0b1000);
--                assert_eq!(core_simd::Mask::<$type, 4>::from_bitmask(bitmask), mask);
- 
-                 let values = [true, false];
-                 let mask = core_simd::Mask::<$type, 2>::from_array(values);
-                 let bitmask = mask.to_bitmask();
-                 assert_eq!(bitmask, 0b01);
--                assert_eq!(core_simd::Mask::<$type, 2>::from_bitmask(bitmask), mask);
-             }
- 
-             #[test]
 -- 
 2.25.1

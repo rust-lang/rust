@@ -652,6 +652,34 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         }
 
+        sym::simd_select_bitmask => {
+            intrinsic_args!(fx, args => (m, a, b); intrinsic);
+
+            if !a.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
+                return;
+            }
+            assert_eq!(a.layout(), b.layout());
+
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let lane_layout = fx.layout_of(lane_ty);
+
+            let m = m.load_scalar(fx);
+
+            for lane in 0..lane_count {
+                let m_lane = fx.bcx.ins().ushr_imm(m, u64::from(lane) as i64);
+                let m_lane = fx.bcx.ins().band_imm(m_lane, 1);
+                let a_lane = a.value_lane(fx, lane).load_scalar(fx);
+                let b_lane = b.value_lane(fx, lane).load_scalar(fx);
+
+                let m_lane = fx.bcx.ins().icmp_imm(IntCC::Equal, m_lane, 0);
+                let res_lane =
+                    CValue::by_val(fx.bcx.ins().select(m_lane, b_lane, a_lane), lane_layout);
+
+                ret.place_lane(fx, lane).write_cvalue(fx, res_lane);
+            }
+        }
+
         sym::simd_bitmask => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
@@ -748,7 +776,6 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         // simd_arith_offset
         // simd_scatter
         // simd_gather
-        // simd_select_bitmask
         _ => {
             fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
         }
