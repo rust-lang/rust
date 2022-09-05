@@ -1812,16 +1812,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return true;
                         }
                     }
-                    // Notably, we only point to params that are local to the
-                    // item we're checking, since those are the ones we are able
-                    // to look in the final `hir::PathSegment` for. Everything else
-                    // would require a deeper search into the `qpath` than I think
-                    // is worthwhile.
-                    if let Some(param_to_point_at) = param_to_point_at
-                        && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
-                    {
-                        return true;
-                    }
+                }
+                // Notably, we only point to params that are local to the
+                // item we're checking, since those are the ones we are able
+                // to look in the final `hir::PathSegment` for. Everything else
+                // would require a deeper search into the `qpath` than I think
+                // is worthwhile.
+                if let Some(param_to_point_at) = param_to_point_at
+                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
+                {
+                    return true;
                 }
             }
             hir::ExprKind::MethodCall(segment, receiver, args, ..) => {

@@ -1,0 +1,17 @@
+error[E0277]: `()` doesn't implement `std::fmt::Display`
+  --> $DIR/point-at-type-param-in-path-expr.rs:4:19
+   |
+LL |     let x = foo::<()>;
+   |                   ^^ `()` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `()`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `foo`
+  --> $DIR/point-at-type-param-in-path-expr.rs:1:11
+   |
+LL | fn foo<T: std::fmt::Display>() {}
+   |           ^^^^^^^^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
