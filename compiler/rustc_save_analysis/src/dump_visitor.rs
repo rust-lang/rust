@@ -803,6 +803,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         ex: &'tcx hir::Expr<'tcx>,
         seg: &'tcx hir::PathSegment<'tcx>,
+        receiver: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
         debug!("process_method_call {:?} {:?}", ex, ex.span);
@@ -823,6 +824,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         // walk receiver and args
+        self.visit_expr(receiver);
         walk_list!(self, visit_expr, args);
     }
 
@@ -1343,7 +1345,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *rest)
             }
-            hir::ExprKind::MethodCall(ref seg, args, _) => self.process_method_call(ex, seg, args),
+            hir::ExprKind::MethodCall(ref seg, receiver, args, _) => {
+                self.process_method_call(ex, seg, receiver, args)
+            }
             hir::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 

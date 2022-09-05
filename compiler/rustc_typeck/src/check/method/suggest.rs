@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -998,7 +998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_ty,
                         item_name,
-                        args.map(|args| args.len()),
+                        args.map(|(_, args)| args.len() + 1),
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
@@ -2310,7 +2310,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
-    args: Option<&'tcx [hir::Expr<'tcx>]>,
+    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
@@ -2322,7 +2322,7 @@ fn print_disambiguation_help<'tcx>(
     fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
+    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args))) = (kind, args) {
         let args = format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
@@ -2330,7 +2330,8 @@ fn print_disambiguation_help<'tcx>(
             } else {
                 ""
             },
-            args.iter()
+            std::iter::once(receiver)
+                .chain(args.iter())
                 .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {
                     applicability = Applicability::HasPlaceholders;
                     "_".to_owned()

@@ -33,7 +33,7 @@ fn unpack_cond<'tcx>(cond: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
     if_chain! {
         if let ExprKind::Block(Block { stmts: [], expr: None, ..}, _) = body.kind;
-        if let ExprKind::MethodCall(method, [callee, ..], _) = unpack_cond(cond).kind;
+        if let ExprKind::MethodCall(method, callee, ..) = unpack_cond(cond).kind;
         if [sym::load, sym::compare_exchange, sym::compare_exchange_weak].contains(&method.ident.name);
         if let ty::Adt(def, _substs) = cx.typeck_results().expr_ty(callee).kind();
         if cx.tcx.is_diagnostic_item(sym::AtomicBool, def.did());

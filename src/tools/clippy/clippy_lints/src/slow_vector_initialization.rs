@@ -201,7 +201,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(path, [self_arg, extend_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind;
             if path_to_local_id(self_arg, self.vec_alloc.local_id);
             if path.ident.name == sym!(extend);
             if self.is_repeat_take(extend_arg);
@@ -215,7 +215,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Checks if the given expression is resizing a vector with 0
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
-            && let ExprKind::MethodCall(path, [self_arg, len_arg, fill_arg], _) = expr.kind
+            && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
             && path.ident.name == sym!(resize)
             // Check that is filled with 0
@@ -224,7 +224,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
                 // Check that len expression is equals to `with_capacity` expression
                 if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
                     self.slow_expression = Some(InitializationType::Resize(expr));
-                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
                     self.slow_expression = Some(InitializationType::Resize(expr));
                 }
             }
@@ -233,7 +233,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(take_path, [recv, len_arg, ..], _) = expr.kind;
+            if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind;
             if take_path.ident.name == sym!(take);
             // Check that take is applied to `repeat(0)`
             if self.is_repeat_zero(recv);
@@ -241,7 +241,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
                 // Check that len expression is equals to `with_capacity` expression
                 if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
                     return true;
-                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                } else if let ExprKind::MethodCall(path, ..) = len_arg.kind && path.ident.as_str() == "capacity" {
                     return true;
                 }
             }

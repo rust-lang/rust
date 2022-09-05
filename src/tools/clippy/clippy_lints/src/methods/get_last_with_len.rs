@@ -22,7 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
     ) = arg.kind
 
         // LHS of subtraction is "x.len()"
-        && let ExprKind::MethodCall(lhs_path, [lhs_recv], _) = &lhs.kind
+        && let ExprKind::MethodCall(lhs_path, lhs_recv, [], _) = &lhs.kind
         && lhs_path.ident.name == sym::len
 
         // RHS of subtraction is 1

@@ -755,13 +755,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         num_assoc_fn_excess_args: usize,
         num_trait_generics_except_self: usize,
     ) {
-        if let hir::ExprKind::MethodCall(_, args, _) = expr.kind {
-            assert_eq!(args.len(), 1);
+        if let hir::ExprKind::MethodCall(_, receiver, args, ..) = expr.kind {
+            assert_eq!(args.len(), 0);
             if num_assoc_fn_excess_args == num_trait_generics_except_self {
                 if let Some(gen_args) = self.gen_args.span_ext()
                 && let Ok(gen_args) = self.tcx.sess.source_map().span_to_snippet(gen_args)
-                && let Ok(args) = self.tcx.sess.source_map().span_to_snippet(args[0].span) {
-                    let sugg = format!("{}::{}::{}({})", self.tcx.item_name(trait_), gen_args, self.tcx.item_name(self.def_id), args);
+                && let Ok(receiver) = self.tcx.sess.source_map().span_to_snippet(receiver.span) {
+                    let sugg = format!("{}::{}::{}({})", self.tcx.item_name(trait_), gen_args, self.tcx.item_name(self.def_id), receiver);
                     err.span_suggestion(expr.span, msg, sugg, Applicability::MaybeIncorrect);
                 }
             }

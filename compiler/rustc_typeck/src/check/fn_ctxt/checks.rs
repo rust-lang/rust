@@ -478,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None, false),
-            hir::ExprKind::MethodCall(path_segment, _, span) => {
+            hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
                     ident_span.with_hi(args.span_ext.hi())
@@ -530,13 +530,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         let callee_expr = match &call_expr.peel_blocks().kind {
             hir::ExprKind::Call(callee, _) => Some(*callee),
-            hir::ExprKind::MethodCall(_, callee, _) => {
+            hir::ExprKind::MethodCall(_, receiver, ..) => {
                 if let Some((DefKind::AssocFn, def_id)) =
                     self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
                     && let Some(assoc) = tcx.opt_associated_item(def_id)
                     && assoc.fn_has_self_parameter
                 {
-                    Some(&callee[0])
+                    Some(*receiver)
                 } else {
                     None
                 }
@@ -1805,6 +1805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param,
                                 *call_hir_id,
                                 callee.span,
+                                None,
                                 args,
                             )
                         {
@@ -1823,7 +1824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::MethodCall(segment, args, ..) => {
+            hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -1834,6 +1835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         param,
                         hir_id,
                         segment.ident.span,
+                        Some(receiver),
                         args,
                     ) {
                         return true;
@@ -1901,7 +1903,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         param_to_point_at: ty::GenericArg<'tcx>,
         call_hir_id: hir::HirId,
         callee_span: Span,
-        args: &[hir::Expr<'tcx>],
+        receiver: Option<&'tcx hir::Expr<'tcx>>,
+        args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
         let sig = self.tcx.fn_sig(def_id).skip_binder();
         let args_referencing_param: Vec<_> = sig
@@ -1910,9 +1913,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .enumerate()
             .filter(|(_, ty)| find_param_in_ty(**ty, param_to_point_at))
             .collect();
-
         // If there's one field that references the given generic, great!
-        if let [(idx, _)] = args_referencing_param.as_slice() && let Some(arg) = args.get(*idx) {
+        if let [(idx, _)] = args_referencing_param.as_slice()
+            && let Some(arg) = receiver
+                .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
             error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
             error.obligation.cause.map_code(|parent_code| {
                 ObligationCauseCode::FunctionArgumentObligation {

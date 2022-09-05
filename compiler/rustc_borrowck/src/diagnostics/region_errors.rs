@@ -900,14 +900,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {
             hir::ExprKind::MethodCall(.., args, _) => {
-                // only the first closre parameter of the method. args[0] is MethodCall PathSegment
-                for i in 1..args.len() {
+                for arg in args {
                     if let hir::ExprKind::Closure(hir::Closure {
                         capture_clause: hir::CaptureBy::Ref,
                         ..
-                    }) = args[i].kind
+                    }) = arg.kind
                     {
-                        closure_span = Some(args[i].span.shrink_to_lo());
+                        closure_span = Some(arg.span.shrink_to_lo());
                         break;
                     }
                 }

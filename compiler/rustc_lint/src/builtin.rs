@@ -2412,13 +2412,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         _ => {}
                     }
                 }
-            } else if let hir::ExprKind::MethodCall(_, ref args, _) = expr.kind {
+            } else if let hir::ExprKind::MethodCall(_, receiver, ..) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
                 let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
                     // This is a call to *some* method named `assume_init`.
                     // See if the `self` parameter is one of the dangerous constructors.
-                    if let hir::ExprKind::Call(ref path_expr, _) = args[0].kind {
+                    if let hir::ExprKind::Call(ref path_expr, _) = receiver.kind {
                         if let hir::ExprKind::Path(ref qpath) = path_expr.kind {
                             let def_id = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
                             match cx.tcx.get_diagnostic_name(def_id) {

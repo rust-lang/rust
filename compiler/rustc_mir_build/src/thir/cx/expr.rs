@@ -261,15 +261,19 @@ impl<'tcx> Cx<'tcx> {
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
-            hir::ExprKind::MethodCall(segment, ref args, fn_span) => {
+            hir::ExprKind::MethodCall(segment, receiver, ref args, fn_span) => {
                 // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
                 let expr = self.method_callee(expr, segment.ident.span, None);
                 // When we apply adjustments to the receiver, use the span of
                 // the overall method call for better diagnostics. args[0]
                 // is guaranteed to exist, since a method call always has a receiver.
-                let old_adjustment_span = self.adjustment_span.replace((args[0].hir_id, expr_span));
+                let old_adjustment_span =
+                    self.adjustment_span.replace((receiver.hir_id, expr_span));
                 info!("Using method span: {:?}", expr.span);
-                let args = self.mirror_exprs(args);
+                let args = std::iter::once(receiver)
+                    .chain(args.iter())
+                    .map(|expr| self.mirror_expr(expr))
+                    .collect();
                 self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {
                     ty: expr.ty,

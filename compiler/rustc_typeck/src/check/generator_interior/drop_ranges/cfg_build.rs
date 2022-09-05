@@ -434,7 +434,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
                 self.handle_uninhabited_return(expr);
             }
-            ExprKind::MethodCall(_, exprs, _) => {
+            ExprKind::MethodCall(_, receiver, exprs, _) => {
+                self.visit_expr(receiver);
                 for expr in exprs {
                     self.visit_expr(expr);
                 }

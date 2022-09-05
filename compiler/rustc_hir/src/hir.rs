@@ -1876,11 +1876,11 @@ pub enum ExprKind<'hir> {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The first element of the `&[Expr]` is the expression that evaluates
+    /// The `&Expr` is the expression that evaluates
     /// to the object on which the method is being called on (the receiver),
-    /// and the remaining elements are the rest of the arguments.
+    /// and the `&[Expr]` is the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d], span)`.
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d], span)`.
     /// The final `Span` represents the span of the function and arguments
     /// (e.g. `foo::<Bar, Baz>(a, b, c, d)` in `x.foo::<Bar, Baz>(a, b, c, d)`
     ///
@@ -1888,7 +1888,7 @@ pub enum ExprKind<'hir> {
     /// the `hir_id` of the `MethodCall` node itself.
     ///
     /// [`type_dependent_def_id`]: ../../rustc_middle/ty/struct.TypeckResults.html#method.type_dependent_def_id
-    MethodCall(&'hir PathSegment<'hir>, &'hir [Expr<'hir>], Span),
+    MethodCall(&'hir PathSegment<'hir>, &'hir Expr<'hir>, &'hir [Expr<'hir>], Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -3492,8 +3492,8 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 32);
-    static_assert_size!(Expr<'_>, 56);
-    static_assert_size!(ExprKind<'_>, 40);
+    static_assert_size!(Expr<'_>, 64);
+    static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);

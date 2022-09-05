@@ -20,7 +20,7 @@ pub(super) fn check(
     if meets_msrv(msrv, msrvs::UNSIGNED_ABS)
         && let ty::Int(from) = cast_from.kind()
         && let ty::Uint(to) = cast_to.kind()
-        && let ExprKind::MethodCall(method_path, args, _) = cast_expr.kind
+        && let ExprKind::MethodCall(method_path, receiver, ..) = cast_expr.kind
         && method_path.ident.name.as_str() == "abs"
     {
         let span = if from.bit_width() == to.bit_width() {
@@ -37,7 +37,7 @@ pub(super) fn check(
             span,
             &format!("casting the result of `{cast_from}::abs()` to {cast_to}"),
             "replace with",
-            format!("{}.unsigned_abs()", Sugg::hir(cx, &args[0], "..").maybe_par()),
+            format!("{}.unsigned_abs()", Sugg::hir(cx, receiver, "..").maybe_par()),
             Applicability::MachineApplicable,
         );
     }

@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if !is_adjusted(cx, &body.value);
             if let ExprKind::Call(callee, args) = body.value.kind;
             if let ExprKind::Path(_) = callee.kind;
-            if check_inputs(cx, body.params, args);
+            if check_inputs(cx, body.params, None, args);
             let callee_ty = cx.typeck_results().expr_ty_adjusted(callee);
             let call_ty = cx.typeck_results().type_dependent_def_id(body.value.hir_id)
                 .map_or(callee_ty, |id| cx.tcx.type_of(id));
@@ -146,8 +146,8 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
         if_chain!(
             if !is_adjusted(cx, &body.value);
-            if let ExprKind::MethodCall(path, args, _) = body.value.kind;
-            if check_inputs(cx, body.params, args);
+            if let ExprKind::MethodCall(path, receiver, args, _) = body.value.kind;
+            if check_inputs(cx, body.params, Some(receiver), args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
             let substs = cx.typeck_results().node_substs(body.value.hir_id);
             let call_ty = cx.tcx.bound_type_of(method_def_id).subst(cx.tcx, substs);
@@ -167,12 +167,17 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     }
 }
 
-fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_>]) -> bool {
-    if params.len() != call_args.len() {
+fn check_inputs(
+    cx: &LateContext<'_>,
+    params: &[Param<'_>],
+    receiver: Option<&Expr<'_>>,
+    call_args: &[Expr<'_>],
+) -> bool {
+    if receiver.map_or(params.len() != call_args.len(), |_| params.len() != call_args.len() + 1) {
         return false;
     }
     let binding_modes = cx.typeck_results().pat_binding_modes();
-    std::iter::zip(params, call_args).all(|(param, arg)| {
+    let check_inputs = |param: &Param<'_>, arg| {
         match param.pat.kind {
             PatKind::Binding(_, id, ..) if path_to_local_id(arg, id) => {},
             _ => return false,
@@ -200,7 +205,9 @@ fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_
             },
             _ => false,
         }
-    })
+    };
+    std::iter::zip(params, receiver.into_iter().chain(call_args.iter()))
+        .all(|(param, arg)| check_inputs(param, arg))
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tcx>) -> bool {

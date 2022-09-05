@@ -99,7 +99,12 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     }
 }
 
-fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symbol, arg: &Expr<'_>) {
+fn check_format_in_format_args(
+    cx: &LateContext<'_>,
+    call_site: Span,
+    name: Symbol,
+    arg: &Expr<'_>,
+) {
     let expn_data = arg.span.ctxt().outer_expn_data();
     if expn_data.call_site.from_expansion() {
         return;
@@ -126,7 +131,7 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
 fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
     if_chain! {
         if !value.span.from_expansion();
-        if let ExprKind::MethodCall(_, [receiver], _) = value.kind;
+        if let ExprKind::MethodCall(_, receiver, [], _) = value.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id);
         if is_diag_trait_item(cx, method_def_id, sym::ToString);
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
@@ -177,10 +182,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
 
 // Returns true if `hir_id` is referred to by multiple format params
 fn is_aliased(args: &FormatArgsExpn<'_>, hir_id: HirId) -> bool {
-    args.params()
-        .filter(|param| param.value.hir_id == hir_id)
-        .at_most_one()
-        .is_err()
+    args.params().filter(|param| param.value.hir_id == hir_id).at_most_one().is_err()
 }
 
 fn count_needed_derefs<'tcx, I>(mut ty: Ty<'tcx>, mut iter: I) -> (usize, Ty<'tcx>)
@@ -190,11 +192,7 @@ where
     let mut n_total = 0;
     let mut n_needed = 0;
     loop {
-        if let Some(Adjustment {
-            kind: Adjust::Deref(overloaded_deref),
-            target,
-        }) = iter.next()
-        {
+        if let Some(Adjustment { kind: Adjust::Deref(overloaded_deref), target }) = iter.next() {
             n_total += 1;
             if overloaded_deref.is_some() {
                 n_needed = n_total;

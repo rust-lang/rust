@@ -120,7 +120,7 @@ fn find_sugg_for_if_let<'tcx>(
     // check that `while_let_on_iterator` lint does not trigger
     if_chain! {
         if keyword == "while";
-        if let ExprKind::MethodCall(method_path, _, _) = let_expr.kind;
+        if let ExprKind::MethodCall(method_path, ..) = let_expr.kind;
         if method_path.ident.name == sym::next;
         if is_trait_method(cx, let_expr, sym::Iterator);
         then {

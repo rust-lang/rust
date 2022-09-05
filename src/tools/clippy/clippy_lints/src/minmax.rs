@@ -75,23 +75,22 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                     .qpath_res(qpath, path.hir_id)
                     .opt_def_id()
                     .and_then(|def_id| match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::cmp_min) => fetch_const(cx, args, MinMax::Min),
-                        Some(sym::cmp_max) => fetch_const(cx, args, MinMax::Max),
+                        Some(sym::cmp_min) => fetch_const(cx, None, args, MinMax::Min),
+                        Some(sym::cmp_max) => fetch_const(cx, None, args, MinMax::Max),
                         _ => None,
                     })
             } else {
                 None
             }
         },
-        ExprKind::MethodCall(path, args, _) => {
+        ExprKind::MethodCall(path, receiver, args @ [_], _) => {
             if_chain! {
-                if let [obj, _] = args;
-                if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
+                if cx.typeck_results().expr_ty(receiver).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
                 then {
                     if path.ident.name == sym!(max) {
-                        fetch_const(cx, args, MinMax::Max)
+                        fetch_const(cx, Some(receiver), args, MinMax::Max)
                     } else if path.ident.name == sym!(min) {
-                        fetch_const(cx, args, MinMax::Min)
+                        fetch_const(cx, Some(receiver), args, MinMax::Min)
                     } else {
                         None
                     }
@@ -104,16 +103,24 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
     }
 }
 
-fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
-    if args.len() != 2 {
+fn fetch_const<'a>(
+    cx: &LateContext<'_>,
+    receiver: Option<&'a Expr<'a>>,
+    args: &'a [Expr<'a>],
+    m: MinMax,
+) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
+    let mut args = receiver.into_iter().chain(args.into_iter());
+    let arg0 = args.next()?;
+    let arg1 = args.next()?;
+    if args.next().is_some() {
         return None;
     }
-    constant_simple(cx, cx.typeck_results(), &args[0]).map_or_else(
-        || constant_simple(cx, cx.typeck_results(), &args[1]).map(|c| (m, c, &args[0])),
+    constant_simple(cx, cx.typeck_results(), arg0).map_or_else(
+        || constant_simple(cx, cx.typeck_results(), arg1).map(|c| (m, c, arg0)),
         |c| {
-            if constant_simple(cx, cx.typeck_results(), &args[1]).is_none() {
+            if constant_simple(cx, cx.typeck_results(), arg1).is_none() {
                 // otherwise ignore
-                Some((m, c, &args[1]))
+                Some((m, c, arg1))
             } else {
                 None
             }

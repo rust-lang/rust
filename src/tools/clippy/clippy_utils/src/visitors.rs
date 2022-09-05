@@ -620,7 +620,13 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                     helper(typeck, true, arg, f)?;
                 }
             },
-            ExprKind::MethodCall(_, args, _) | ExprKind::Tup(args) | ExprKind::Array(args) => {
+            ExprKind::MethodCall(_, receiver, args, _) => {
+                helper(typeck, true, receiver, f)?;
+                for arg in args {
+                    helper(typeck, true, arg, f)?;
+                }
+            },
+            ExprKind::Tup(args) | ExprKind::Array(args) => {
                 for arg in args {
                     helper(typeck, true, arg, f)?;
                 }

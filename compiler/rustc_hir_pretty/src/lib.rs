@@ -1181,9 +1181,14 @@ impl<'a> State<'a> {
         self.print_call_post(args)
     }
 
-    fn print_expr_method_call(&mut self, segment: &hir::PathSegment<'_>, args: &[hir::Expr<'_>]) {
-        let base_args = &args[1..];
-        self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX);
+    fn print_expr_method_call(
+        &mut self,
+        segment: &hir::PathSegment<'_>,
+        receiver: &hir::Expr<'_>,
+        args: &[hir::Expr<'_>],
+    ) {
+        let base_args = args;
+        self.print_expr_maybe_paren(&receiver, parser::PREC_POSTFIX);
         self.word(".");
         self.print_ident(segment.ident);
 
@@ -1394,8 +1399,8 @@ impl<'a> State<'a> {
             hir::ExprKind::Call(func, args) => {
                 self.print_expr_call(func, args);
             }
-            hir::ExprKind::MethodCall(segment, args, _) => {
-                self.print_expr_method_call(segment, args);
+            hir::ExprKind::MethodCall(segment, receiver, args, _) => {
+                self.print_expr_method_call(segment, receiver, args);
             }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -2393,9 +2398,9 @@ fn contains_exterior_struct_lit(value: &hir::Expr<'_>) -> bool {
             contains_exterior_struct_lit(x)
         }
 
-        hir::ExprKind::MethodCall(.., exprs, _) => {
+        hir::ExprKind::MethodCall(_, receiver, ..) => {
             // `X { y: 1 }.bar(...)`
-            contains_exterior_struct_lit(&exprs[0])
+            contains_exterior_struct_lit(receiver)
         }
 
         _ => false,

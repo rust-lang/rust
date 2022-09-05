@@ -324,8 +324,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),
-            ExprKind::MethodCall(segment, args, _) => {
-                self.check_method_call(expr, segment, args, expected)
+            ExprKind::MethodCall(segment, receiver, args, _) => {
+                self.check_method_call(expr, segment, receiver, args, expected)
             }
             ExprKind::Cast(e, t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(e, t) => {
@@ -1195,13 +1195,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         segment: &hir::PathSegment<'_>,
+        rcvr: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let rcvr = &args[0];
         let rcvr_t = self.check_expr(&rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(rcvr.span, rcvr_t);
         let span = segment.ident.span;
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr, args) {
@@ -1218,9 +1218,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_t,
                         segment.ident,
-                        SelfSource::MethodCall(&args[0]),
+                        SelfSource::MethodCall(rcvr),
                         error,
-                        Some(args),
+                        Some((rcvr, args)),
                     ) {
                         err.emit();
                     }
@@ -1230,14 +1230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Call the generic checker.
-        self.check_method_argument_types(
-            span,
-            expr,
-            method,
-            &args[1..],
-            DontTupleArguments,
-            expected,
-        )
+        self.check_method_argument_types(span, expr, method, &args, DontTupleArguments, expected)
     }
 
     fn check_expr_cast(

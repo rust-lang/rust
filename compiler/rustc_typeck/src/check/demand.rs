@@ -590,7 +590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let closure_params_len = closure_fn_decl.inputs.len();
         let (
             Some(Node::Expr(hir::Expr {
-                kind: hir::ExprKind::MethodCall(method_path, method_expr, _),
+                kind: hir::ExprKind::MethodCall(method_path, receiver, ..),
                 ..
             })),
             1,
@@ -598,7 +598,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
+        let self_ty = self.typeck_results.borrow().expr_ty(receiver);
         let name = method_path.ident.name;
         let is_as_ref_able = match self_ty.peel_refs().kind() {
             ty::Adt(def, _) => {
@@ -767,22 +767,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, ref args, _) = expr.kind {
+                    if let hir::ExprKind::MethodCall(ref segment, receiver, args, _) = expr.kind {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
-                        if let ([arg], Some(true), sym::clone) = (
-                            &args[..],
-                            self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
+                        if args.is_empty()
+                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
                                 |did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
                                 },
-                            ),
-                            segment.ident.name,
-                        ) {
+                            ) == Some(true)
+                            && segment.ident.name == sym::clone
+                        {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unnecessary.
-                            sugg_sp = arg.span;
+                            sugg_sp = receiver.span;
                         }
                     }
                     if let Ok(src) = sm.span_to_snippet(sugg_sp) {

@@ -711,8 +711,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                         self.suggested = true;
-                    } else if let hir::ExprKind::MethodCall(_path, args @ [_, ..], sp) = expr.kind
-                        && let hir::ExprKind::Index(val, index) = args[0].kind
+                    } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
+                        && let hir::ExprKind::Index(val, index) = receiver.kind
                         && expr.span == self.assign_span
                     {
                         // val[index].path(args..);
@@ -724,7 +724,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     ".get_mut(".to_string(),
                                 ),
                                 (
-                                    index.span.shrink_to_hi().with_hi(args[0].span.hi()),
+                                    index.span.shrink_to_hi().with_hi(receiver.span.hi()),
                                     ").map(|val| val".to_string(),
                                 ),
                                 (sp.shrink_to_hi(), ")".to_string()),
@@ -911,11 +911,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                         [
                                                             Expr {
                                                                 kind:
-                                                                    MethodCall(
-                                                                        path_segment,
-                                                                        _args,
-                                                                        span,
-                                                                    ),
+                                                                    MethodCall(path_segment, _, _, span),
                                                                 hir_id,
                                                                 ..
                                                             },
