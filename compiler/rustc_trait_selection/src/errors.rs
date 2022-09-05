@@ -4,6 +4,8 @@ use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
 use rustc_session::{parse::ParseSess, Limit, SessionDiagnostic};
 use rustc_span::{Span, Symbol};
 
+pub(crate) mod suggestions;
+
 #[derive(SessionDiagnostic)]
 #[diag(trait_selection::dump_vtable_entries)]
 pub struct DumpVTableEntries<'a> {
