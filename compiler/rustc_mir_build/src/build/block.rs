@@ -119,10 +119,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+
+                    // Lower the `else` block first because its parent scope is actually
+                    // enclosing the rest of the `let .. else ..` parts.
+                    let else_block_span = this.thir[*else_block].span;
                     // This place is not really used because this destination place
                     // should never be used to take values at the end of the failure
                     // block.
-                    let else_block_span = this.thir[*else_block].span;
                     let dummy_place = this.temp(this.tcx.types.never, else_block_span);
                     let failure_entry = this.cfg.start_new_block();
                     let failure_block;

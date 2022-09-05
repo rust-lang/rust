@@ -128,16 +128,24 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
             match statement.kind {
                 hir::StmtKind::Local(hir::Local { els: Some(els), .. }) => {
                     // Let-else has a special lexical structure for variables.
+                    // First we take a checkpoint of the current scope context here.
                     let mut prev_cx = visitor.cx;
+
                     visitor.enter_scope(Scope {
                         id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
                     visitor.visit_stmt(statement);
+                    // We need to back out temporarily to the last enclosing scope
+                    // for the `else` block, so that even the temporaries receiving
+                    // extended lifetime will be dropped inside this block.
+                    // We are visiting the `else` block in this order so that
+                    // the sequence of visits agree with the order in the default
+                    // `hir::intravisit` visitor.
                     mem::swap(&mut prev_cx, &mut visitor.cx);
-                    // We need to back out temporarily and
                     visitor.visit_block(els);
+                    // From now on, we continue normally.
                     visitor.cx = prev_cx;
                 }
                 hir::StmtKind::Local(..) | hir::StmtKind::Item(..) => {
