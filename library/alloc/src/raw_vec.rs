@@ -1,6 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
 use core::alloc::LayoutError;
+use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
@@ -393,24 +394,32 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Nothing we can really do about these checks, sadly.
         let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
-        let alloc_size = required_cap.checked_mul(mem::size_of::<T>()).ok_or(CapacityOverflow)?;
-        // Add the overhead
-        let alloc_size = alloc_size.checked_add(alloc_overhead_size).ok_or(CapacityOverflow)?;
+        let cap = if let Some(alloc_size) = required_cap
+            .checked_mul(mem::size_of::<T>())
+            .and_then(
+                // Add the overhead
+                |alloc_size| alloc_size.checked_add(alloc_overhead_size),
+            )
+            .filter(|alloc_size| *alloc_size < isize::MAX as usize)
+        {
+            // Since memory allocators tend to use power of two sized bins, find the
+            // bin size we will fall into.
+            debug_assert!(alloc_size > 1);
+            let bin_size = usize::MAX >> (alloc_size - 1).leading_zeros(); // + 1 skipped to prevent overflow
+            debug_assert!(alloc_size - 1 <= bin_size);
 
-        // Since memory allocators tend to use power of two sized bins, find the
-        // bin size we will fall into.
-        debug_assert!(alloc_size > 1);
-        let bin_size = usize::MAX >> (alloc_size - 1).leading_zeros(); // + 1 skipped to prevent overflow
+            // Leave some room for allocators that add fixed overhead (usually
+            // one pointer-size)
+            // `bin_size - ...` can't underflow, because alloc_overhead_size was already added
+            let aligned_alloc_size = bin_size - (alloc_overhead_size - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
 
-        // Leave some room for allocators that add fixed overhead (usually
-        // one pointer-size)
-        let aligned_alloc_size = bin_size.saturating_sub(alloc_overhead_size - 1) /* the +1 skipped from the previous line turned into -1 here */ ;
-
-        // Align the capacity to fit the bin
-        let cap = aligned_alloc_size / mem::size_of::<T>();
-        // Since we've added the overhead in `required_cap`, we shold never
-        // end up with smaller cap after aligning
-        debug_assert!(required_cap <= cap);
+            // Align the capacity to fit the bin
+            aligned_alloc_size / mem::size_of::<T>()
+        } else {
+            // Calculating alloc_size overflowed. Use old way to preserve behavior around overflows.
+            // The doubling cannot overflow because `cap <= isize::MAX` and the type of `cap` is `usize`.
+            cmp::max(self.cap * 2, required_cap)
+        };
 
         let new_layout = Layout::array::<T>(cap);
 
