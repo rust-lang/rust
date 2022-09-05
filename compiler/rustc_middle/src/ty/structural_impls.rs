@@ -7,7 +7,7 @@ use crate::mir::ProjectionKind;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
+use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -344,10 +344,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
 impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
     type Lifted = ty::Term<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        Some(match self {
-            Term::Ty(ty) => Term::Ty(tcx.lift(ty)?),
-            Term::Const(c) => Term::Const(tcx.lift(c)?),
-        })
+        Some(
+            match self.unpack() {
+                TermKind::Ty(ty) => TermKind::Ty(tcx.lift(ty)?),
+                TermKind::Const(c) => TermKind::Const(tcx.lift(c)?),
+            }
+            .pack(),
+        )
     }
 }
 

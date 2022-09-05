@@ -10,7 +10,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{Region, RegionVid, Term};
+use rustc_middle::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -612,7 +612,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Term::Ty(ty) = p.term().skip_binder() {
+        if let Some(ty) = p.term().skip_binder().ty() {
             matches!(ty.kind(), ty::Projection(proj) if proj == &p.skip_binder().projection_ty)
         } else {
             false

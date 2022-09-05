@@ -1586,28 +1586,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Some(values) => {
                 let values = self.resolve_vars_if_possible(values);
                 let (is_simple_error, exp_found) = match values {
-                    ValuePairs::Terms(infer::ExpectedFound {
-                        expected: ty::Term::Ty(expected),
-                        found: ty::Term::Ty(found),
-                    }) => {
-                        let is_simple_err = expected.is_simple_text() && found.is_simple_text();
-                        OpaqueTypesVisitor::visit_expected_found(self.tcx, expected, found, span)
-                            .report(diag);
+                    ValuePairs::Terms(infer::ExpectedFound { expected, found }) => {
+                        match (expected.unpack(), found.unpack()) {
+                            (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
+                                let is_simple_err =
+                                    expected.is_simple_text() && found.is_simple_text();
+                                OpaqueTypesVisitor::visit_expected_found(
+                                    self.tcx, expected, found, span,
+                                )
+                                .report(diag);
 
-                        (
-                            is_simple_err,
-                            Mismatch::Variable(infer::ExpectedFound { expected, found }),
-                        )
+                                (
+                                    is_simple_err,
+                                    Mismatch::Variable(infer::ExpectedFound { expected, found }),
+                                )
+                            }
+                            (ty::TermKind::Const(_), ty::TermKind::Const(_)) => {
+                                (false, Mismatch::Fixed("constant"))
+                            }
+                            _ => (false, Mismatch::Fixed("type")),
+                        }
                     }
-                    ValuePairs::Terms(infer::ExpectedFound {
-                        expected: ty::Term::Const(_),
-                        found: ty::Term::Const(_),
-                    }) => (false, Mismatch::Fixed("constant")),
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
-                    _ => (false, Mismatch::Fixed("type")),
                 };
                 let vals = match self.values_str(values) {
                     Some((expected, found)) => Some((expected, found)),
@@ -2273,11 +2276,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(match (exp_found.expected, exp_found.found) {
-            (ty::Term::Ty(expected), ty::Term::Ty(found)) => self.cmp(expected, found),
-            (expected, found) => (
-                DiagnosticStyledString::highlighted(expected.to_string()),
-                DiagnosticStyledString::highlighted(found.to_string()),
+        Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
+            (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => self.cmp(expected, found),
+            _ => (
+                DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
+                DiagnosticStyledString::highlighted(exp_found.found.to_string()),
             ),
         })
     }

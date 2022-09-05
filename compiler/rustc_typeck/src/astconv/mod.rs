@@ -1183,11 +1183,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `<T as Iterator>::Item = u32`
                 let assoc_item_def_id = projection_ty.skip_binder().item_def_id;
                 let def_kind = tcx.def_kind(assoc_item_def_id);
-                match (def_kind, term) {
-                    (hir::def::DefKind::AssocTy, ty::Term::Ty(_))
-                    | (hir::def::DefKind::AssocConst, ty::Term::Const(_)) => (),
+                match (def_kind, term.unpack()) {
+                    (hir::def::DefKind::AssocTy, ty::TermKind::Ty(_))
+                    | (hir::def::DefKind::AssocConst, ty::TermKind::Const(_)) => (),
                     (_, _) => {
-                        let got = if let ty::Term::Ty(_) = term { "type" } else { "constant" };
+                        let got = if let Some(_) = term.ty() { "type" } else { "constant" };
                         let expected = def_kind.descr(assoc_item_def_id);
                         tcx.sess
                             .struct_span_err(
@@ -1375,9 +1375,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self = match pred.skip_binder().term {
-                            ty::Term::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
-                            ty::Term::Const(c) => c.ty().walk().any(|arg| arg == dummy_self.into()),
+                        let references_self = match pred.skip_binder().term.unpack() {
+                            ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
+                            ty::TermKind::Const(c) => {
+                                c.ty().walk().any(|arg| arg == dummy_self.into())
+                            }
                         };
 
                         // If the projection output contains `Self`, force the user to

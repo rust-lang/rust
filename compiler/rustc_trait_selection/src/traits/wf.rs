@@ -129,9 +129,9 @@ pub fn predicate_obligations<'a, 'tcx>(
         }
         ty::PredicateKind::Projection(t) => {
             wf.compute_projection(t.projection_ty);
-            wf.compute(match t.term {
-                ty::Term::Ty(ty) => ty.into(),
-                ty::Term::Const(c) => c.into(),
+            wf.compute(match t.term.unpack() {
+                ty::TermKind::Ty(ty) => ty.into(),
+                ty::TermKind::Const(c) => c.into(),
             })
         }
         ty::PredicateKind::WellFormed(arg) => {

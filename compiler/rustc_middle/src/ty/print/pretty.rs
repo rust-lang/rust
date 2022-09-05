@@ -1,7 +1,7 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
-    self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
+    self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_apfloat::ieee::{Double, Single};
@@ -855,7 +855,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
 
                         p!(")");
-                        if let Term::Ty(ty) = return_ty.skip_binder() {
+                        if let Some(ty) = return_ty.skip_binder().ty() {
                             if !ty.is_unit() {
                                 p!(" -> ", print(return_ty));
                             }
@@ -942,13 +942,9 @@ pub trait PrettyPrinter<'tcx>:
 
                         p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name));
 
-                        match term {
-                            Term::Ty(ty) => {
-                                p!(print(ty))
-                            }
-                            Term::Const(c) => {
-                                p!(print(c));
-                            }
+                        match term.unpack() {
+                            TermKind::Ty(ty) => p!(print(ty)),
+                            TermKind::Const(c) => p!(print(c)),
                         };
                     }
 
@@ -2608,9 +2604,9 @@ define_print_and_forward_display! {
     }
 
     ty::Term<'tcx> {
-      match self {
-        ty::Term::Ty(ty) => p!(print(ty)),
-        ty::Term::Const(c) => p!(print(c)),
+      match self.unpack() {
+        ty::TermKind::Ty(ty) => p!(print(ty)),
+        ty::TermKind::Const(c) => p!(print(c)),
       }
     }
 

@@ -370,9 +370,9 @@ fn clean_type_outlives_predicate<'tcx>(
 }
 
 fn clean_middle_term<'tcx>(term: ty::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
-    match term {
-        ty::Term::Ty(ty) => Term::Type(clean_middle_ty(ty, cx, None)),
-        ty::Term::Const(c) => Term::Constant(clean_middle_const(c, cx)),
+    match term.unpack() {
+        ty::TermKind::Ty(ty) => Term::Type(clean_middle_ty(ty, cx, None)),
+        ty::TermKind::Const(c) => Term::Constant(clean_middle_const(c, cx)),
     }
 }
 
