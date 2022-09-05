@@ -11,7 +11,9 @@ extern crate rustc_macros;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use rustc_errors::{AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, fluent};
+use rustc_errors::{
+    AddSubdiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, fluent
+};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_session::SessionDiagnostic;
 use rustc_span::Span;
