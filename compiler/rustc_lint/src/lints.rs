@@ -6,6 +6,14 @@ use rustc_span::{Span, Symbol};
 
 use crate::LateContext;
 
+#[derive(LintDiagnostic)]
+#[diag(lint_redundant_semicolons)]
+pub struct RedundantSemicolonsDiag {
+    pub multiple: bool,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
 pub struct DropTraitConstraintsDiag<'a> {
     pub predicate: Predicate<'a>,
     pub tcx: TyCtxt<'a>,
