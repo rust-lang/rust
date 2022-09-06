@@ -7,8 +7,11 @@ if ("${Enzyme_TABLEGEN_EXE}" STREQUAL "")
 endif()
 
 get_target_property(TBL_LINKED_LIBS LLVMSupport INTERFACE_LINK_LIBRARIES)
+if (NOT TBL_LINKED_LIBS)
+else()
 list(REMOVE_ITEM TBL_LINKED_LIBS "ZLIB::ZLIB")
 set_property(TARGET LLVMSupport PROPERTY INTERFACE_LINK_LIBRARIES ${TBL_LINKED_LIBS})
+endif()
 
 function(enzyme_tablegen ofn)
   if (${LLVM_VERSION_MAJOR} GREATER 11)
