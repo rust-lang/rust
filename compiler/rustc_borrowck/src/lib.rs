@@ -592,8 +592,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 );
             }
             StatementKind::Intrinsic(box ref kind) => match kind {
-                // Takes a `bool` argument, and has no return value, thus being irrelevant for borrowck
-                NonDivergingIntrinsic::Assume(..) => {},
+                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state),
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
