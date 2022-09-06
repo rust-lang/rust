@@ -1,0 +1,14 @@
+error: constant pattern depends on a generic parameter
+  --> $DIR/match-arm-exhaustive.rs:19:9
+   |
+LL |         CT => (),
+   |         ^^
+
+error: constant pattern depends on a generic parameter
+  --> $DIR/match-arm-exhaustive.rs:19:9
+   |
+LL |         CT => (),
+   |         ^^
+
+error: aborting due to 2 previous errors
+
