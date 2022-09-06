@@ -434,6 +434,7 @@ impl<'tcx> WfPredicates<'tcx> {
     }
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
+    #[instrument(level = "debug", skip(self))]
     fn compute(&mut self, arg: GenericArg<'tcx>) {
         let mut walker = arg.walk();
         let param_env = self.param_env;
@@ -487,6 +488,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     continue;
                 }
             };
+
+            debug!("wf bounds for ty={:?} ty.kind={:#?}", ty, ty.kind());
 
             match *ty.kind() {
                 ty::Bool

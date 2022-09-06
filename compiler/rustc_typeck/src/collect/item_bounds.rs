@@ -53,6 +53,7 @@ fn associated_type_bounds<'tcx>(
 /// impl trait it isn't possible to write a suitable predicate on the
 /// containing function and for type-alias impl trait we don't have a backwards
 /// compatibility issue.
+#[instrument(level = "trace", skip(tcx), ret)]
 fn opaque_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_def_id: DefId,
@@ -67,6 +68,8 @@ fn opaque_type_bounds<'tcx>(
         let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
+        debug!(?bounds);
+
         tcx.arena.alloc_from_iter(bounds.predicates(tcx, item_ty))
     })
 }
