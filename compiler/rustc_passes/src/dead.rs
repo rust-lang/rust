@@ -447,7 +447,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-        if let TyKind::OpaqueDef(item_id, _) = ty.kind {
+        if let TyKind::OpaqueDef(item_id, _, _) = ty.kind {
             let item = self.tcx.hir().item(item_id);
             intravisit::walk_item(self, item);
         }

@@ -327,7 +327,6 @@ impl<'a> State<'a> {
                 self.print_ty_fn(f.abi, f.unsafety, f.decl, None, f.generic_params, f.param_names);
             }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
-            hir::TyKind::ImplTraitInTrait(..) => self.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, ref lifetime, syntax) => {
                 if syntax == ast::TraitObjectSyntax::Dyn {
@@ -608,9 +607,6 @@ impl<'a> State<'a> {
                     }
                     state.print_bounds("= impl", real_bounds);
                 });
-            }
-            hir::ItemKind::ImplTraitPlaceholder(..) => {
-                unreachable!("FIXME(RPITIT): I don't think this ever gets called here...");
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident.name, item.span);

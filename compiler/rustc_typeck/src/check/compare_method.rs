@@ -423,9 +423,28 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
         );
 
         let mut collected_tys = FxHashMap::default();
-        for (def_id, ty) in collector.types {
+        for (def_id, (ty, substs)) in collector.types {
             match infcx.fully_resolve(ty) {
                 Ok(ty) => {
+                    // `ty` contains free regions that we created earlier while liberating the
+                    // trait fn signature.  However, projection normalization expects `ty` to
+                    // contains `def_id`'s early-bound regions.
+                    let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
+                    debug!(?id_substs, ?substs);
+                    let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> = substs
+                        .iter()
+                        .enumerate()
+                        .map(|(index, arg)| (arg, id_substs[index]))
+                        .collect();
+                    debug!(?map);
+
+                    let ty = tcx.fold_regions(ty, |region, _| {
+                        if let ty::ReFree(_) = region.kind() {
+                            map[&region.into()].expect_region()
+                        } else {
+                            region
+                        }
+                    });
                     collected_tys.insert(def_id, ty);
                 }
                 Err(err) => {
@@ -444,7 +463,7 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
 
 struct ImplTraitInTraitCollector<'a, 'tcx> {
     ocx: &'a ObligationCtxt<'a, 'tcx>,
-    types: FxHashMap<DefId, Ty<'tcx>>,
+    types: FxHashMap<DefId, (Ty<'tcx>, ty::SubstsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
@@ -470,7 +489,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
         if let ty::Projection(proj) = ty.kind()
             && self.tcx().def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
         {
-            if let Some(ty) = self.types.get(&proj.item_def_id) {
+            if let Some((ty, _)) = self.types.get(&proj.item_def_id) {
                 return *ty;
             }
             //FIXME(RPITIT): Deny nested RPITIT in substs too
@@ -482,7 +501,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 span: self.span,
                 kind: TypeVariableOriginKind::MiscVariable,
             });
-            self.types.insert(proj.item_def_id, infer_ty);
+            self.types.insert(proj.item_def_id, (infer_ty, proj.substs));
             // Recurse into bounds
             for pred in self.tcx().bound_explicit_item_bounds(proj.item_def_id).transpose_iter() {
                 let pred_span = pred.0.1;

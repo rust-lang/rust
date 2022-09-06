@@ -80,8 +80,13 @@ impl Target {
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
             ItemKind::GlobalAsm(..) => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
-            ItemKind::OpaqueTy(..) => Target::OpaqueTy,
-            ItemKind::ImplTraitPlaceholder(..) => Target::ImplTraitPlaceholder,
+            ItemKind::OpaqueTy(ref opaque) => {
+                if opaque.in_trait {
+                    Target::ImplTraitPlaceholder
+                } else {
+                    Target::OpaqueTy
+                }
+            }
             ItemKind::Enum(..) => Target::Enum,
             ItemKind::Struct(..) => Target::Struct,
             ItemKind::Union(..) => Target::Union,

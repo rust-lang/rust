@@ -252,11 +252,10 @@ enum ImplTraitContext {
     ReturnPositionOpaqueTy {
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
+        in_trait: bool,
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy,
-    /// Return-position `impl Trait` in trait definition
-    InTrait,
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
 }
@@ -1343,9 +1342,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin } => {
-                        self.lower_opaque_impl_trait(span, *origin, def_node_id, bounds, itctx)
-                    }
+                    ImplTraitContext::ReturnPositionOpaqueTy { origin, in_trait } => self
+                        .lower_opaque_impl_trait(
+                            span,
+                            *origin,
+                            def_node_id,
+                            bounds,
+                            *in_trait,
+                            itctx,
+                        ),
                     ImplTraitContext::TypeAliasesOpaqueTy => {
                         let mut nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
                         self.lower_opaque_impl_trait(
@@ -1353,13 +1358,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir::OpaqueTyOrigin::TyAlias,
                             def_node_id,
                             bounds,
-                            &mut nested_itctx,
+                            false,
+                            nested_itctx,
                         )
-                    }
-                    ImplTraitContext::InTrait => {
-                        self.lower_impl_trait_in_trait(span, def_node_id, |lctx| {
-                            lctx.lower_param_bounds(bounds, ImplTraitContext::InTrait)
-                        })
                     }
                     ImplTraitContext::Universal => {
                         let span = t.span;
@@ -1430,6 +1431,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
         bounds: &GenericBounds,
+        in_trait: bool,
         itctx: &mut ImplTraitContext,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
@@ -1518,6 +1520,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: hir_bounds,
                     origin,
+                    in_trait,
                 };
                 debug!(?opaque_ty_item);
 
@@ -1544,30 +1547,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?lifetimes);
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
-    }
-
-    #[instrument(level = "debug", skip(self, lower_bounds))]
-    fn lower_impl_trait_in_trait(
-        &mut self,
-        span: Span,
-        opaque_ty_node_id: NodeId,
-        lower_bounds: impl FnOnce(&mut Self) -> hir::GenericBounds<'hir>,
-    ) -> hir::TyKind<'hir> {
-        let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
-        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
-            let hir_bounds = lower_bounds(lctx);
-            let rpitit_placeholder = hir::ImplTraitPlaceholder { bounds: hir_bounds };
-            let rpitit_item = hir::Item {
-                def_id: opaque_ty_def_id,
-                ident: Ident::empty(),
-                kind: hir::ItemKind::ImplTraitPlaceholder(rpitit_placeholder),
-                span: lctx.lower_span(span),
-                vis_span: lctx.lower_span(span.shrink_to_lo()),
-            };
-            hir::OwnerNode::Item(lctx.arena.alloc(rpitit_item))
-        });
-        hir::TyKind::ImplTraitInTrait(hir::ItemId { def_id: opaque_ty_def_id })
+        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes, in_trait)
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and
@@ -1728,30 +1708,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             )
                             .emit();
                     }
-                    self.lower_async_fn_ret_ty_in_trait(
+                    self.lower_async_fn_ret_ty(
                         &decl.output,
                         fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
                         ret_id,
+                        true,
                     )
                 }
                 _ => {
                     if !kind.impl_trait_return_allowed(self.tcx) {
-                        if kind == FnDeclKind::Impl {
-                            self.tcx
-                                .sess
-                                .create_feature_err(
-                                    TraitFnAsync { fn_span, span },
-                                    sym::return_position_impl_trait_in_trait,
-                                )
-                                .emit();
-                        } else {
-                            self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
-                        }
+                        self.tcx
+                            .sess
+                            .create_feature_err(
+                                TraitFnAsync { fn_span, span },
+                                sym::return_position_impl_trait_in_trait,
+                            )
+                            .emit();
                     }
                     self.lower_async_fn_ret_ty(
                         &decl.output,
                         fn_node_id.expect("`make_ret_async` but no `fn_def_id`"),
                         ret_id,
+                        false,
                     )
                 }
             }
@@ -1763,10 +1741,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let fn_def_id = self.local_def_id(fn_node_id);
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                                in_trait: false,
                             }
                         }
-                        Some(_) if kind.impl_trait_in_trait_allowed(self.tcx) => {
-                            ImplTraitContext::InTrait
+                        Some(fn_node_id) if kind.impl_trait_in_trait_allowed(self.tcx) => {
+                            let fn_def_id = self.local_def_id(fn_node_id);
+                            ImplTraitContext::ReturnPositionOpaqueTy {
+                                origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                                in_trait: true,
+                            }
                         }
                         _ => ImplTraitContext::Disallowed(match kind {
                             FnDeclKind::Fn | FnDeclKind::Inherent => {
@@ -1829,6 +1812,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         output: &FnRetTy,
         fn_node_id: NodeId,
         opaque_ty_node_id: NodeId,
+        in_trait: bool,
     ) -> hir::FnRetTy<'hir> {
         let span = output.span();
 
@@ -1960,6 +1944,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span,
                     ImplTraitContext::ReturnPositionOpaqueTy {
                         origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                        in_trait,
                     },
                 );
 
@@ -1999,6 +1984,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                     bounds: arena_vec![this; future_bound],
                     origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                    in_trait,
                 };
 
                 trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
@@ -2043,38 +2029,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
-        let opaque_ty_ref =
-            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
+        let opaque_ty_ref = hir::TyKind::OpaqueDef(
+            hir::ItemId { def_id: opaque_ty_def_id },
+            generic_args,
+            in_trait,
+        );
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
-        hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
-    }
-
-    // Transforms `-> T` for `async fn` into `-> OpaqueTy { .. }`
-    // combined with the following definition of `OpaqueTy`:
-    //
-    //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
-    //
-    // `output`: unlowered output type (`T` in `-> T`)
-    // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
-    // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
-    #[instrument(level = "debug", skip(self))]
-    fn lower_async_fn_ret_ty_in_trait(
-        &mut self,
-        output: &FnRetTy,
-        fn_node_id: NodeId,
-        opaque_ty_node_id: NodeId,
-    ) -> hir::FnRetTy<'hir> {
-        let kind = self.lower_impl_trait_in_trait(output.span(), opaque_ty_node_id, |lctx| {
-            let bound = lctx.lower_async_fn_output_type_to_future_bound(
-                output,
-                output.span(),
-                ImplTraitContext::InTrait,
-            );
-            arena_vec![lctx; bound]
-        });
-
-        let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, output.span(), None);
-        let opaque_ty = self.ty(opaque_ty_span, kind);
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 

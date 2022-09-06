@@ -686,7 +686,6 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
 
             hir::ItemKind::OpaqueTy(..)
-            | hir::ItemKind::ImplTraitPlaceholder(..)
             | hir::ItemKind::Use(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -708,12 +707,12 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::Use(..) => {}
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::OpaqueTy(..) => {
+            hir::ItemKind::OpaqueTy(ref opaque) => {
                 // HACK(jynelson): trying to infer the type of `impl trait` breaks `async-std` (and `pub async fn` in general)
                 // Since rustdoc never needs to do codegen and doesn't care about link-time reachability,
                 // mark this as unreachable.
                 // See https://github.com/rust-lang/rust/issues/75100
-                if !self.tcx.sess.opts.actually_rustdoc {
+                if !opaque.in_trait && !self.tcx.sess.opts.actually_rustdoc {
                     // FIXME: This is some serious pessimization intended to workaround deficiencies
                     // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
                     // reachable if they are returned via `impl Trait`, even from private functions.
@@ -721,9 +720,6 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         cmp::max(item_level, Some(AccessLevel::ReachableFromImplTrait));
                     self.reach(item.def_id, exist_level).generics().predicates().ty();
                 }
-            }
-            hir::ItemKind::ImplTraitPlaceholder(..) => {
-                // FIXME(RPITIT): Do we need to do anything here?
             }
             // Visit everything.
             hir::ItemKind::Const(..)
@@ -2039,8 +2035,7 @@ fn local_visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility {
                 //   query failing on some items, we provide it for opaque types as well.
                 | Node::Item(hir::Item {
                     kind: hir::ItemKind::Use(_, hir::UseKind::ListStem)
-                        | hir::ItemKind::OpaqueTy(..)
-                        | hir::ItemKind::ImplTraitPlaceholder(..),
+                        | hir::ItemKind::OpaqueTy(..),
                     ..
                 }) => ty::Visibility::Restricted(tcx.parent_module(hir_id)),
                 // Visibilities of trait impl items are inherited from their traits
