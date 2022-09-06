@@ -128,7 +128,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Union(..)
             | hir::ItemKind::OpaqueTy(..)
-            | hir::ItemKind::ImplTraitPlaceholder(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Impl { .. }

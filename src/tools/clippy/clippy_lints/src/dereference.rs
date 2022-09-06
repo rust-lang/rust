@@ -959,7 +959,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                     ))
                     .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
             ),
-            TyKind::OpaqueDef(..) | TyKind::ImplTraitInTrait(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
+            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
                 Position::ReborrowStable(precedence)
             },
         };
