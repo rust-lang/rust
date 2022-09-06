@@ -11,9 +11,10 @@
 //! obtained from the wrapper's name as the first two arguments.
 //! On Windows it spawns a `..\rust-lld.exe` child process.
 
+use std::env::{self, consts::EXE_SUFFIX};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::{env, process};
+use std::process;
 
 trait UnwrapOrExitWith<T> {
     fn unwrap_or_exit_with(self, context: &str) -> T;
@@ -42,7 +43,7 @@ impl<T, E: Display> UnwrapOrExitWith<T> for Result<T, E> {
 /// Exits if the parent directory cannot be determined.
 fn get_rust_lld_path(current_exe_path: &Path) -> PathBuf {
     let mut rust_lld_exe_name = "rust-lld".to_owned();
-    rust_lld_exe_name.push_str(env::consts::EXE_SUFFIX);
+    rust_lld_exe_name.push_str(EXE_SUFFIX);
     let mut rust_lld_path = current_exe_path
         .parent()
         .unwrap_or_exit_with("directory containing current executable could not be determined")
@@ -55,13 +56,14 @@ fn get_rust_lld_path(current_exe_path: &Path) -> PathBuf {
 
 /// Extract LLD flavor name from the lld-wrapper executable name.
 fn get_lld_flavor(current_exe_path: &Path) -> Result<&'static str, String> {
-    let stem = current_exe_path.file_stem();
-    Ok(match stem.and_then(|s| s.to_str()) {
+    let file = current_exe_path.file_name();
+    let stem = file.and_then(|s| s.to_str()).map(|s| s.trim_end_matches(EXE_SUFFIX));
+    Ok(match stem {
         Some("ld.lld") => "gnu",
         Some("ld64.lld") => "darwin",
         Some("lld-link") => "link",
         Some("wasm-ld") => "wasm",
-        _ => return Err(format!("{:?}", stem)),
+        _ => return Err(format!("{:?}", file)),
     })
 }
 
