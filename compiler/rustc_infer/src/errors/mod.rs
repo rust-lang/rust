@@ -453,10 +453,7 @@ pub enum TraitSubdiag {
     Sugg { span: Span },
 }
 
-// FIXME We can't rely on Vec<Subdiag> working well at the moment,
-// as only the args from one of the subdiagnostics will actually be used.
-// This results in an incorrect diagnostic if more than two subdiags with the same slug are added.
-// Use untranslated messages for now.
+// FIXME(#100717) used in `Vec<TraitSubdiag>` so requires eager translation/list support
 impl AddSubdiagnostic for TraitSubdiag {
     fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
         match self {
