@@ -1526,6 +1526,17 @@ impl<'a> Parser<'a> {
         if self.token == token::Comma {
             seen_comma = true;
         }
+        if self.eat(&token::Semi) {
+            let sp = self.prev_token.span;
+            let mut err = self.struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
+            err.span_suggestion_short(
+                sp,
+                "replace `;` with `,`",
+                ",",
+                Applicability::MachineApplicable,
+            );
+            return Err(err);
+        }
         match self.token.kind {
             token::Comma => {
                 self.bump();

@@ -144,10 +144,10 @@ while work_list:
         ) - visited
     elif item["kind"] == "variant":
         if item["inner"]["variant_kind"] == "tuple":
-            for ty in item["inner"]["variant_inner"]:
-                check_type(ty)
+            for field_id in filter(None, item["inner"]["variant_inner"]):
+                work_list.add(field_id)
         elif item["inner"]["variant_kind"] == "struct":
-            work_list |= set(item["inner"]["variant_inner"]) - visited
+            work_list |= set(item["inner"]["variant_inner"]["fields"]) - visited
     elif item["kind"] in ("function", "method"):
         check_generics(item["inner"]["generics"])
         check_decl(item["inner"]["decl"])

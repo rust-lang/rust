@@ -572,7 +572,7 @@ pub(crate) fn report_cycle<'a>(
         stack_count,
     };
 
-    cycle_diag.into_diagnostic(&sess.parse_sess)
+    cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
 pub fn print_query_stack<CTX: QueryContext>(

@@ -343,7 +343,7 @@ impl ParseSess {
         &'a self,
         err: impl SessionDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(self)
+        err.into_diagnostic(&self.span_diagnostic)
     }
 
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
@@ -354,7 +354,7 @@ impl ParseSess {
         &'a self,
         warning: impl SessionDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self)
+        warning.into_diagnostic(&self.span_diagnostic)
     }
 
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
@@ -365,7 +365,7 @@ impl ParseSess {
         &'a self,
         fatal: impl SessionDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(self)
+        fatal.into_diagnostic(&self.span_diagnostic)
     }
 
     pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {

@@ -21,7 +21,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    EmissionGuarantee, ErrorGuaranteed, FluentBundle, Handler, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -220,9 +220,9 @@ pub struct PerfStats {
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
 #[rustc_diagnostic_item = "SessionDiagnostic"]
 pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `sess`.
+    /// Write out as a diagnostic out of `Handler`.
     #[must_use]
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, T>;
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
 }
 
 impl Session {

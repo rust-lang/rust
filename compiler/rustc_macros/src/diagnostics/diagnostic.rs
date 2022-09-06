@@ -88,7 +88,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
             {
                 fn into_diagnostic(
                     self,
-                    #sess: &'__session_diagnostic_sess rustc_session::parse::ParseSess
+                    #sess: &'__session_diagnostic_sess rustc_errors::Handler
                 ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, G> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation

@@ -36,11 +36,11 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
+error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` and `UninhabitedVariants::Struct { .. }` not covered
   --> $DIR/match_same_crate.rs:38:11
    |
 LL |     match x {}
-   |           ^ patterns `Tuple(_)` and `Struct { .. }` not covered
+   |           ^ patterns `UninhabitedVariants::Tuple(_)` and `UninhabitedVariants::Struct { .. }` not covered
    |
 note: `UninhabitedVariants` defined here
   --> $DIR/match_same_crate.rs:16:23
@@ -55,7 +55,7 @@ LL |     #[non_exhaustive] Struct { x: ! }
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~     match x {
-LL +         Tuple(_) | Struct { .. } => todo!(),
+LL +         UninhabitedVariants::Tuple(_) | UninhabitedVariants::Struct { .. } => todo!(),
 LL ~     }
    |
 

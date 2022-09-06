@@ -81,7 +81,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:58:9
    |
 LL |         _ => {}
-   |         ^ pattern `Struct { .. }` not covered
+   |         ^ pattern `NonExhaustiveEnum::Struct { .. }` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:57:16
@@ -95,7 +95,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:65:9
    |
 LL |         _ => {}
-   |         ^ pattern `Tuple(_)` not covered
+   |         ^ pattern `NonExhaustiveEnum::Tuple(_)` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:64:16
@@ -109,7 +109,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:75:9
    |
 LL |         _ => {}
-   |         ^ pattern `Unit` not covered
+   |         ^ pattern `NonExhaustiveEnum::Unit` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:74:16
@@ -123,7 +123,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:92:32
    |
 LL |         NestedNonExhaustive::A(_) => {}
-   |                                ^ patterns `Tuple(_)` and `Struct { .. }` not covered
+   |                                ^ patterns `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:89:12
@@ -137,7 +137,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:94:9
    |
 LL |         _ => {}
-   |         ^ pattern `C` not covered
+   |         ^ pattern `NestedNonExhaustive::C` not covered
    |
    = help: ensure that all variants are matched explicitly by adding the suggested match arms
    = note: the matched value is of type `NestedNonExhaustive` and the `non_exhaustive_omitted_patterns` attribute was found
@@ -146,7 +146,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:132:9
    |
 LL |         _ => {}
-   |         ^ pattern `A(_)` not covered
+   |         ^ pattern `NonExhaustiveSingleVariant::A(_)` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:130:12
@@ -160,7 +160,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:144:9
    |
 LL |         _ => {}
-   |         ^ pattern `Unstable` not covered
+   |         ^ pattern `UnstableEnum::Unstable` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:143:16
@@ -174,7 +174,7 @@ error: some variants are not matched explicitly
   --> $DIR/omitted-patterns.rs:168:9
    |
 LL |         _ => {}
-   |         ^ pattern `Unstable2` not covered
+   |         ^ pattern `OnlyUnstableEnum::Unstable2` not covered
    |
 note: the lint level is defined here
   --> $DIR/omitted-patterns.rs:165:12

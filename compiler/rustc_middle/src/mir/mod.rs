@@ -839,10 +839,6 @@ pub struct LocalDecl<'tcx> {
     pub source_info: SourceInfo,
 }
 
-// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(LocalDecl<'_>, 56);
-
 /// Extra information about a some locals that's used for diagnostics and for
 /// classifying variables into local variables, statics, etc, which is needed e.g.
 /// for unsafety checking.
@@ -1316,10 +1312,6 @@ pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
 }
-
-// `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -2899,4 +2891,18 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(Statement<'_>, 32);
+    static_assert_size!(StatementKind<'_>, 16);
+    static_assert_size!(Terminator<'_>, 112);
+    static_assert_size!(TerminatorKind<'_>, 96);
 }

@@ -1,8 +1,8 @@
 //! Errors emitted by typeck.
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_session::{parse::ParseSess, SessionDiagnostic};
+use rustc_session::SessionDiagnostic;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -244,14 +244,15 @@ pub struct UnconstrainedOpaqueType {
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
+    pub span_snippet: Option<String>,
     pub missing_type_params: Vec<Symbol>,
     pub empty_generic_args: bool,
 }
 
 // Manual implementation of `SessionDiagnostic` to be able to call `span_to_snippet`.
 impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut err = sess.span_diagnostic.struct_span_err_with_code(
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut err = handler.struct_span_err_with_code(
             self.span,
             rustc_errors::fluent::typeck::missing_type_params,
             error_code!(E0393),
@@ -269,12 +270,9 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
         err.span_label(self.def_span, rustc_errors::fluent::typeck::label);
 
         let mut suggested = false;
-        if let (Ok(snippet), true) = (
-            sess.source_map().span_to_snippet(self.span),
-            // Don't suggest setting the type params if there are some already: the order is
-            // tricky to get right and the user will already know what the syntax is.
-            self.empty_generic_args,
-        ) {
+        // Don't suggest setting the type params if there are some already: the order is
+        // tricky to get right and the user will already know what the syntax is.
+        if let Some(snippet) = self.span_snippet && self.empty_generic_args {
             if snippet.ends_with('>') {
                 // The user wrote `Trait<'a, T>` or similar. To provide an accurate suggestion
                 // we would have to preserve the right order. For now, as clearly the user is

@@ -99,11 +99,11 @@ LL |         #[warn(non_exhaustive_omitted_patterns)]
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
-error[E0004]: non-exhaustive patterns: `C` not covered
+error[E0004]: non-exhaustive patterns: `Foo::C` not covered
   --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:20:11
    |
 LL |     match Foo::A {
-   |           ^^^^^^ pattern `C` not covered
+   |           ^^^^^^ pattern `Foo::C` not covered
    |
 note: `Foo` defined here
   --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:12:15
@@ -116,7 +116,7 @@ LL |         A, B, C,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Foo::B => {}
-LL +         C => todo!()
+LL +         Foo::C => todo!()
    |
 
 error: aborting due to previous error; 10 warnings emitted
