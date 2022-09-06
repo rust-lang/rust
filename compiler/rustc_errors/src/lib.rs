@@ -1250,12 +1250,12 @@ impl HandlerInner {
 
     fn treat_err_as_bug(&self) -> bool {
         self.flags.treat_err_as_bug.map_or(false, |c| {
-            self.err_count()
-                + self.lint_err_count
-                + self.delayed_span_bugs.len()
-                + self.delayed_good_path_bugs.len()
-                >= c.get()
+            self.err_count() + self.lint_err_count + self.delayed_bug_count() >= c.get()
         })
+    }
+
+    fn delayed_bug_count(&self) -> usize {
+        self.delayed_span_bugs.len() + self.delayed_good_path_bugs.len()
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -1412,12 +1412,7 @@ impl HandlerInner {
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
         if self.flags.treat_err_as_bug.map_or(false, |c| {
-            self.err_count()
-                + self.lint_err_count
-                + self.delayed_span_bugs.len()
-                + self.delayed_good_path_bugs.len()
-                + 1
-                >= c.get()
+            self.err_count() + self.lint_err_count + self.delayed_bug_count() + 1 >= c.get()
         }) {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
@@ -1518,14 +1513,24 @@ impl HandlerInner {
         if self.treat_err_as_bug() {
             match (
                 self.err_count() + self.lint_err_count,
+                self.delayed_bug_count(),
                 self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0),
             ) {
-                (1, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
-                (0 | 1, _) => {}
-                (count, as_bug) => panic!(
-                    "aborting after {} errors due to `-Z treat-err-as-bug={}`",
-                    count, as_bug,
-                ),
+                (1, 0, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
+                (0, 1, 1) => panic!("aborting due delayed bug with `-Z treat-err-as-bug=1`"),
+                (count, delayed_count, as_bug) => {
+                    if delayed_count > 0 {
+                        panic!(
+                            "aborting after {} errors and {} delayed bugs due to `-Z treat-err-as-bug={}`",
+                            count, delayed_count, as_bug,
+                        )
+                    } else {
+                        panic!(
+                            "aborting after {} errors due to `-Z treat-err-as-bug={}`",
+                            count, as_bug,
+                        )
+                    }
+                }
             }
         }
     }
