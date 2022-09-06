@@ -143,6 +143,12 @@ def : CallPattern<(Op $x),
                   [(FMul (Intrinsic<"exp", [(TypeOf<""> $x)]> $x), (DiffeRet<"">))]
                   >;
 
+// Unnormalized sinc(x) = sin(x)/x
 def : CallPattern<(Op $x),
                   ["sinc", "sincf", "sincl"],
                   [(FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> $x), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x))]>;
+
+// Normalized sinc(x) = sin(pi x)/(pi x)
+def : CallPattern<(Op $x),
+                  ["sincn", "sincnf", "sincnl"],
+                  [(FMul (DiffeRet<"">), (FDiv (FSub (Intrinsic<"cos", [(TypeOf<""> $x)]> (FMul (ConstantFP<"3.1415926535897962684626433"> $x), $x)), (Call<(SameFunc), [ReadNone,NoUnwind]> $x)), $x))]>;

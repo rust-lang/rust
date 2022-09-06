@@ -74,6 +74,7 @@ llvm::cl::opt<bool> EnzymeStrictAliasing(
 
 const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"sinc", Intrinsic::not_intrinsic},
+    {"sincn", Intrinsic::not_intrinsic},
     {"cos", Intrinsic::cos},
     {"sin", Intrinsic::sin},
     {"tan", Intrinsic::not_intrinsic},
