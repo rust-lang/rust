@@ -1577,8 +1577,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 LifetimeRes::Fresh { param, binder: _ } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-                    let old_def_id = self.local_def_id(param);
-                    if remapping.get(&old_def_id).is_none() {
+                    if let Some(old_def_id) = self.opt_local_def_id(param) && remapping.get(&old_def_id).is_none() {
                         let node_id = self.next_node_id();
 
                         let new_def_id = self.create_def(
