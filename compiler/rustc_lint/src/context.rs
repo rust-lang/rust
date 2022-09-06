@@ -50,6 +50,10 @@ use std::cell::Cell;
 use std::iter;
 use std::slice;
 
+type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync;
+type LateLintPassFactory =
+    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::Send + sync::Sync;
+
 /// Information about the registered lints.
 ///
 /// This is basically the subset of `Context` that we can
@@ -64,11 +68,11 @@ pub struct LintStore {
     /// interior mutability, we don't enforce this (and lints should, in theory,
     /// be compatible with being constructed more than once, though not
     /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub early_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub late_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub pre_expansion_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub early_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub late_passes: Vec<Box<LateLintPassFactory>>,
     /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub late_module_passes: Vec<Box<LateLintPassFactory>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
@@ -186,14 +190,20 @@ impl LintStore {
 
     pub fn register_late_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
 
     pub fn register_late_mod_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }
@@ -558,7 +568,7 @@ pub trait LintPassObject: Sized {}
 
 impl LintPassObject for EarlyLintPassObject {}
 
-impl LintPassObject for LateLintPassObject {}
+impl LintPassObject for LateLintPassObject<'_> {}
 
 pub trait LintContext: Sized {
     type PassObject: LintPassObject;
@@ -949,8 +959,8 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl LintContext for LateContext<'_> {
-    type PassObject = LateLintPassObject;
+impl<'tcx> LintContext for LateContext<'tcx> {
+    type PassObject = LateLintPassObject<'tcx>;
 
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
