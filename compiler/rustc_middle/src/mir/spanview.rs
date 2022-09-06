@@ -247,6 +247,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         StorageLive(..) => "StorageLive",
         StorageDead(..) => "StorageDead",
         Retag(..) => "Retag",
+        PlaceMention(..) => "PlaceMention",
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
         Intrinsic(..) => "Intrinsic",

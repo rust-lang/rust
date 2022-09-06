@@ -33,6 +33,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::FakeRead(..)
                 | StatementKind::StorageLive(_)
                 | StatementKind::StorageDead(_)
+                | StatementKind::PlaceMention(..)
                 | StatementKind::AscribeUserType(..)
                 | StatementKind::Coverage(..)
                 | StatementKind::ConstEvalCounter

@@ -241,6 +241,7 @@ fn check_statement<'tcx>(
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
+        | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)
         | StatementKind::ConstEvalCounter
         | StatementKind::Nop => Ok(()),

@@ -405,6 +405,13 @@ macro_rules! make_mir_visitor {
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag($(& $mutability)? *kind, place, location);
                     }
+                    StatementKind::PlaceMention(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::PlaceMention),
+                            location
+                        );
+                    }
                     StatementKind::AscribeUserType(
                         box (place, user_ty),
                         variance
@@ -1288,6 +1295,8 @@ pub enum NonUseContext {
     AscribeUserTy,
     /// The data of a user variable, for debug info.
     VarDebugInfo,
+    /// PlaceMention statement.
+    PlaceMention,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

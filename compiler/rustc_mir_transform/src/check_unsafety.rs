@@ -101,6 +101,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
+            | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter

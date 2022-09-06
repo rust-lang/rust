@@ -77,6 +77,7 @@ fn move_out_by_subslice() -> () {
     bb6: {
         StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
+        PlaceMention(_1);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:21: +2:22
         StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
         _12 = move _1[0..2];             // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
         _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:+0:27: +3:2

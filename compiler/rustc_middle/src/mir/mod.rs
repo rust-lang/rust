@@ -1453,6 +1453,9 @@ impl Debug for Statement<'_> {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
             Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
+            PlaceMention(ref place) => {
+                write!(fmt, "PlaceMention({:?})", place)
+            }
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }

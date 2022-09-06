@@ -390,6 +390,7 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
+            | mir::StatementKind::PlaceMention(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::Coverage(..)
             | mir::StatementKind::Intrinsic(..)
