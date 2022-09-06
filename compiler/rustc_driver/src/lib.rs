@@ -1346,6 +1346,7 @@ mod signal_handler {
 }
 
 pub fn main() -> ! {
+    if false {} // a no-op change
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
     init_rustc_env_logger();
