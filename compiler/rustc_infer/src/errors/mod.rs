@@ -170,7 +170,7 @@ pub enum SourceKindMultiSuggestion<'a> {
         #[suggestion_part(code = "{start_span_code}")]
         start_span: Span,
         start_span_code: String,
-        #[suggestion_part(code = "}}")]
+        #[suggestion_part(code = " }}")]
         end_span: Option<Span>,
     },
 }
