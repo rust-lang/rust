@@ -1305,31 +1305,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        if let Some(parent_hir_id) = self.tcx.hir().find_parent_node(expr.hir_id) {
-            let ty = match self.tcx.hir().find(parent_hir_id) {
-                Some(
-                    hir::Node::Local(hir::Local { ty: Some(ty), .. })
-                    | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }),
-                ) => Some(ty),
-                _ => None,
-            };
-            if let Some(ty) = ty
-                && let hir::TyKind::Array(_, length) = ty.kind
-                && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
-                && let Some(span) = self.tcx.hir().opt_span(hir_id)
-            {
-                match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
-                    Some(mut err) => {
-                        err.span_suggestion(
-                            span,
-                            "consider specifying the array length",
-                            array_len,
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.emit();
-                    }
-                    None => ()
+        let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
+            !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
+        });
+        let Some((_,
+            hir::Node::Local(hir::Local { ty: Some(ty), .. })
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }))
+        ) = parent_node else {
+            return
+        };
+        if let hir::TyKind::Array(_, length) = ty.peel_refs().kind
+            && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+            && let Some(span) = self.tcx.hir().opt_span(hir_id)
+        {
+            match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
+                Some(mut err) => {
+                    err.span_suggestion(
+                        span,
+                        "consider specifying the array length",
+                        array_len,
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
                 }
+                None => ()
             }
         }
     }
