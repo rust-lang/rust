@@ -1997,7 +1997,7 @@ impl<'a> Parser<'a> {
                     return Err(MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
                         semicolon: prev_span.shrink_to_hi(),
-                    }.into_diagnostic(self.sess));
+                    }.into_diagnostic(&self.sess.span_diagnostic));
                 }
                 Ok(_) => (),
                 Err(err) => err.cancel(),
@@ -2745,7 +2745,8 @@ impl<'a> Parser<'a> {
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, P<Expr>> {
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         if self.eat_keyword(kw::Catch) {
-            Err(CatchAfterTry { span: self.prev_token.span }.into_diagnostic(self.sess))
+            Err(CatchAfterTry { span: self.prev_token.span }
+                .into_diagnostic(&self.sess.span_diagnostic))
         } else {
             let span = span_lo.to(body.span);
             self.sess.gated_spans.gate(sym::try_blocks, span);

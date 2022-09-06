@@ -1,8 +1,8 @@
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:37:14
+  --> $DIR/diagnostics.rs:39:17
    |
-LL |         sess.struct_err("untranslatable diagnostic")
-   |              ^^^^^^^^^^
+LL |         handler.struct_err("untranslatable diagnostic")
+   |                 ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/diagnostics.rs:6:9
@@ -11,16 +11,16 @@ LL | #![deny(rustc::untranslatable_diagnostic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:54:14
+  --> $DIR/diagnostics.rs:56:14
    |
 LL |         diag.note("untranslatable diagnostic");
    |              ^^^^
 
 error: diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
-  --> $DIR/diagnostics.rs:68:22
+  --> $DIR/diagnostics.rs:70:25
    |
-LL |     let _diag = sess.struct_err(fluent::parser::expect_path);
-   |                      ^^^^^^^^^^
+LL |     let _diag = handler.struct_err(fluent::parser::expect_path);
+   |                         ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/diagnostics.rs:7:9
@@ -29,16 +29,16 @@ LL | #![deny(rustc::diagnostic_outside_of_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `SessionDiagnostic`/`AddSubdiagnostic` impls
-  --> $DIR/diagnostics.rs:71:22
+  --> $DIR/diagnostics.rs:73:25
    |
-LL |     let _diag = sess.struct_err("untranslatable diagnostic");
-   |                      ^^^^^^^^^^
+LL |     let _diag = handler.struct_err("untranslatable diagnostic");
+   |                         ^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:71:22
+  --> $DIR/diagnostics.rs:73:25
    |
-LL |     let _diag = sess.struct_err("untranslatable diagnostic");
-   |                      ^^^^^^^^^^
+LL |     let _diag = handler.struct_err("untranslatable diagnostic");
+   |                         ^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

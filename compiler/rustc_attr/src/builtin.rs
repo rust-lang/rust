@@ -63,7 +63,12 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
             sess.emit_err(session_diagnostics::MultipleStabilityLevels { span });
         }
         AttrError::UnsupportedLiteral(reason, is_bytestr) => {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral { span, reason, is_bytestr });
+            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                span,
+                reason,
+                is_bytestr,
+                start_point_span: sess.source_map().start_point(span),
+            });
         }
     }
 }

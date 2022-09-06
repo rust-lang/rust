@@ -47,9 +47,10 @@ pub struct UnusedGenericParams {
 impl SessionDiagnostic<'_> for UnusedGenericParams {
     fn into_diagnostic(
         self,
-        sess: &'_ rustc_session::parse::ParseSess,
+        handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::monomorphize::unused_generic_params);
+        let mut diag =
+            handler.struct_err(rustc_errors::fluent::monomorphize::unused_generic_params);
         diag.set_span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,

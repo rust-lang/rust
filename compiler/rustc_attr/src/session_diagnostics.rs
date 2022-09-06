@@ -1,9 +1,11 @@
 use std::num::IntErrorKind;
 
 use rustc_ast as ast;
-use rustc_errors::{error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler,
+};
 use rustc_macros::SessionDiagnostic;
-use rustc_session::{parse::ParseSess, SessionDiagnostic};
+use rustc_session::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
 
 use crate::UnsupportedLiteralReason;
@@ -49,9 +51,9 @@ pub(crate) struct UnknownMetaItem<'a> {
 
 // Manual implementation to be able to format `expected` items correctly.
 impl<'a> SessionDiagnostic<'a> for UnknownMetaItem<'_> {
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let expected = self.expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
-        let mut diag = sess.span_diagnostic.struct_span_err_with_code(
+        let mut diag = handler.struct_span_err_with_code(
             self.span,
             fluent::attr::unknown_meta_item,
             error_code!(E0541),
@@ -204,11 +206,12 @@ pub(crate) struct UnsupportedLiteral {
     pub span: Span,
     pub reason: UnsupportedLiteralReason,
     pub is_bytestr: bool,
+    pub start_point_span: Span,
 }
 
 impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = sess.span_diagnostic.struct_span_err_with_code(
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        let mut diag = handler.struct_span_err_with_code(
             self.span,
             match self.reason {
                 UnsupportedLiteralReason::Generic => fluent::attr::unsupported_literal_generic,
@@ -224,7 +227,7 @@ impl<'a> SessionDiagnostic<'a> for UnsupportedLiteral {
         );
         if self.is_bytestr {
             diag.span_suggestion(
-                sess.source_map().start_point(self.span),
+                self.start_point_span,
                 fluent::attr::unsupported_literal_suggestion,
                 "",
                 Applicability::MaybeIncorrect,
