@@ -765,10 +765,6 @@ pre, .rustdoc.source .example-wrap {
 	margin-left: 24px;
 }
 
-.sub-variant > div > .item-info {
-	margin-top: initial;
-}
-
 .content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
 }
