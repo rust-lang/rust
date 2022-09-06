@@ -1,5 +1,5 @@
 error: expected `;`, found `[`
-  --> $DIR/suggest-suggest-semicolon-before-array.rs:8:5
+  --> $DIR/suggest-semicolon-before-array.rs:8:5
    |
 LL |     [1, 3]
    |     ^
