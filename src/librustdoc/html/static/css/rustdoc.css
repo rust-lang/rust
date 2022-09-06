@@ -609,11 +609,6 @@ h2.location a {
 	text-align: center;
 }
 
-#results > table {
-	width: 100%;
-	table-layout: fixed;
-}
-
 .content > .example-wrap pre.line-numbers {
 	position: relative;
 	-webkit-user-select: none;
