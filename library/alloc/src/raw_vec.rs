@@ -401,7 +401,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // just needs 2^n sized allocation in the first place, so for already aligned caps,
         // just keep doubling.
         let cap = if 2 * mem::size_of::<usize>() < mem::size_of::<T>()
-            || (256 <= (mem::size_of::<T>() * self.cap) && self.cap.count_ones() <= 1)
+            || (256 <= (mem::size_of::<T>() * self.cap))
         {
             // This guarantees exponential growth. The doubling cannot overflow
             // because `cap <= isize::MAX` and the type of `cap` is `usize`.
@@ -424,24 +424,25 @@ impl<T, A: Allocator> RawVec<T, A> {
                     // Add the overhead
                     |alloc_size| alloc_size.checked_add(ALLOC_OVERHEAD_SIZE),
                 )
-                .filter(|alloc_size| *alloc_size < isize::MAX as usize)
+                .filter(|alloc_size| *alloc_size <= isize::MAX as usize)
             {
                 // Since memory allocators tend to use power of two sized bins, find the
                 // bin size we will fall into.
                 debug_assert!(alloc_size > 1);
-                let bin_size = usize::MAX >> (alloc_size - 1).leading_zeros(); // + 1 skipped to prevent overflow
-                debug_assert!(alloc_size - 1 <= bin_size);
+                debug_assert!(alloc_size <= isize::MAX as usize);
+                let bin_size = (usize::MAX >> (alloc_size - 1).leading_zeros()) + 1;
+                debug_assert!(alloc_size <= bin_size);
 
                 // Leave some room for allocators that add fixed overhead (usually
                 // one pointer-size)
                 // `bin_size - ...` can't underflow, because alloc_overhead_size was already added
                 if alloc_size < 256 {
-                    let aligned_alloc_size = bin_size - (ALLOC_OVERHEAD_SIZE - 1) /* the +1 skipped from the previous line turned into -1 here */;
+                    let aligned_alloc_size = bin_size - ALLOC_OVERHEAD_SIZE;
                     // Align the capacity to fit the bin
                     aligned_alloc_size / mem::size_of::<T>()
                 } else {
-                    // add the +1 after division to avoid checking overflow
-                    (bin_size / mem::size_of::<T>()) + 1
+                    // Align the capacity to fit the bin
+                    bin_size / mem::size_of::<T>()
                 }
             } else {
                 // Calculating alloc_size overflowed. We just use `wanted_cap` to preserve behavior around cap `isize` overflows.
