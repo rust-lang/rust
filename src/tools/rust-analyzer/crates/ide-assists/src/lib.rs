@@ -122,6 +122,7 @@ mod handlers {
     mod convert_let_else_to_match;
     mod convert_tuple_struct_to_named_struct;
     mod convert_to_guarded_return;
+    mod convert_two_arm_bool_match_to_matches_macro;
     mod convert_while_to_loop;
     mod destructure_tuple_binding;
     mod expand_glob_import;
@@ -179,12 +180,14 @@ mod handlers {
     mod replace_try_expr_with_match;
     mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
+    mod replace_or_with_or_else;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
     mod replace_turbofish_with_explicit_type;
     mod split_import;
+    mod unmerge_match_arm;
     mod sort_items;
     mod toggle_ignore;
     mod unmerge_use;
@@ -215,6 +218,7 @@ mod handlers {
             convert_let_else_to_match::convert_let_else_to_match,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
+            convert_two_arm_bool_match_to_matches_macro::convert_two_arm_bool_match_to_matches_macro,
             convert_while_to_loop::convert_while_to_loop,
             destructure_tuple_binding::destructure_tuple_binding,
             expand_glob_import::expand_glob_import,
@@ -273,11 +277,14 @@ mod handlers {
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
             replace_let_with_if_let::replace_let_with_if_let,
+            replace_or_with_or_else::replace_or_else_with_or,
+            replace_or_with_or_else::replace_or_with_or_else,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             sort_items::sort_items,
             split_import::split_import,
             toggle_ignore::toggle_ignore,
+            unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,
             unwrap_block::unwrap_block,

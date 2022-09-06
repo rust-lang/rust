@@ -101,21 +101,22 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
 
-            let indent = enum_ast.indent_level();
             let generic_params = enum_ast
                 .generic_param_list()
                 .and_then(|known_generics| extract_generic_params(&known_generics, &field_list));
             let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
             let def =
                 create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
+
+            let enum_ast = variant.parent_enum();
+            let indent = enum_ast.indent_level();
             def.reindent_to(indent);
 
-            let start_offset = &variant.parent_enum().syntax().clone();
-            ted::insert_all_raw(
-                ted::Position::before(start_offset),
+            ted::insert_all(
+                ted::Position::before(enum_ast.syntax()),
                 vec![
                     def.syntax().clone().into(),
-                    make::tokens::whitespace(&format!("\n\n{}", indent)).into(),
+                    make::tokens::whitespace(&format!("\n\n{indent}")).into(),
                 ],
             );
 
@@ -227,7 +228,7 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
 }
 
 fn create_struct_def(
-    variant_name: ast::Name,
+    name: ast::Name,
     variant: &ast::Variant,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     generics: Option<ast::GenericParamList>,
@@ -269,43 +270,27 @@ fn create_struct_def(
             field_list.into()
         }
     };
-
     field_list.reindent_to(IndentLevel::single());
 
-    let strukt = make::struct_(enum_vis, variant_name, generics, field_list).clone_for_update();
+    let strukt = make::struct_(enum_vis, name, generics, field_list).clone_for_update();
 
-    // FIXME: Consider making this an actual function somewhere (like in `AttrsOwnerEdit`) after some deliberation
-    let attrs_and_docs = |node: &SyntaxNode| {
-        let mut select_next_ws = false;
-        node.children_with_tokens().filter(move |child| {
-            let accept = match child.kind() {
-                ATTR | COMMENT => {
-                    select_next_ws = true;
-                    return true;
-                }
-                WHITESPACE if select_next_ws => true,
-                _ => false,
-            };
-            select_next_ws = false;
-
-            accept
-        })
-    };
-
-    // copy attributes & comments from variant
-    let variant_attrs = attrs_and_docs(variant.syntax())
-        .map(|tok| match tok.kind() {
-            WHITESPACE => make::tokens::single_newline().into(),
-            _ => tok,
-        })
-        .collect();
-    ted::insert_all(ted::Position::first_child_of(strukt.syntax()), variant_attrs);
+    // take comments from variant
+    ted::insert_all(
+        ted::Position::first_child_of(strukt.syntax()),
+        take_all_comments(variant.syntax()),
+    );
 
     // copy attributes from enum
     ted::insert_all(
         ted::Position::first_child_of(strukt.syntax()),
-        enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
+        enum_
+            .attrs()
+            .flat_map(|it| {
+                vec![it.syntax().clone_for_update().into(), make::tokens::single_newline().into()]
+            })
+            .collect(),
     );
+
     strukt
 }
 
@@ -346,14 +331,46 @@ fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList
         })
         .unwrap_or_else(|| make::ty(&name.text()));
 
+    // change from a record to a tuple field list
     let tuple_field = make::tuple_field(None, ty);
-    let replacement = make::variant(
-        name,
-        Some(ast::FieldList::TupleFieldList(make::tuple_field_list(iter::once(tuple_field)))),
-    )
-    .clone_for_update();
-    ted::replace(variant.syntax(), replacement.syntax());
+    let field_list = make::tuple_field_list(iter::once(tuple_field)).clone_for_update();
+    ted::replace(variant.field_list()?.syntax(), field_list.syntax());
+
+    // remove any ws after the name
+    if let Some(ws) = name
+        .syntax()
+        .siblings_with_tokens(syntax::Direction::Next)
+        .find_map(|tok| tok.into_token().filter(|tok| tok.kind() == WHITESPACE))
+    {
+        ted::remove(SyntaxElement::Token(ws));
+    }
+
     Some(())
+}
+
+// Note: this also detaches whitespace after comments,
+// since `SyntaxNode::splice_children` (and by extension `ted::insert_all_raw`)
+// detaches nodes. If we only took the comments, we'd leave behind the old whitespace.
+fn take_all_comments(node: &SyntaxNode) -> Vec<SyntaxElement> {
+    let mut remove_next_ws = false;
+    node.children_with_tokens()
+        .filter_map(move |child| match child.kind() {
+            COMMENT => {
+                remove_next_ws = true;
+                child.detach();
+                Some(child)
+            }
+            WHITESPACE if remove_next_ws => {
+                remove_next_ws = false;
+                child.detach();
+                Some(make::tokens::single_newline().into())
+            }
+            _ => {
+                remove_next_ws = false;
+                None
+            }
+        })
+        .collect()
 }
 
 fn apply_references(
@@ -480,10 +497,14 @@ enum En<T> { Var(Var<T>) }"#,
     fn test_extract_struct_carries_over_attributes() {
         check_assist(
             extract_struct_from_enum_variant,
-            r#"#[derive(Debug)]
+            r#"
+#[derive(Debug)]
 #[derive(Clone)]
 enum Enum { Variant{ field: u32$0 } }"#,
-            r#"#[derive(Debug)]#[derive(Clone)] struct Variant{ field: u32 }
+            r#"
+#[derive(Debug)]
+#[derive(Clone)]
+struct Variant{ field: u32 }
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -614,7 +635,7 @@ enum A { One(One) }"#,
     }
 
     #[test]
-    fn test_extract_struct_keep_comments_and_attrs_on_variant_struct() {
+    fn test_extract_struct_move_struct_variant_comments() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"
@@ -631,19 +652,19 @@ enum A {
 /* comment */
 // other
 /// comment
-#[attr]
 struct One{
     a: u32
 }
 
 enum A {
+    #[attr]
     One(One)
 }"#,
         );
     }
 
     #[test]
-    fn test_extract_struct_keep_comments_and_attrs_on_variant_tuple() {
+    fn test_extract_struct_move_tuple_variant_comments() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"
@@ -658,10 +679,10 @@ enum A {
 /* comment */
 // other
 /// comment
-#[attr]
 struct One(u32, u32);
 
 enum A {
+    #[attr]
     One(One)
 }"#,
         );

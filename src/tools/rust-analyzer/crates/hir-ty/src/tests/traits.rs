@@ -3833,3 +3833,95 @@ fn test() {
 "#,
     )
 }
+
+#[test]
+fn dyn_multiple_auto_traits_in_different_order() {
+    check_no_mismatches(
+        r#"
+auto trait Send {}
+auto trait Sync {}
+
+fn f(t: &(dyn Sync + Send)) {}
+fn g(t: &(dyn Send + Sync)) {
+    f(t);
+}
+        "#,
+    );
+
+    check_no_mismatches(
+        r#"
+auto trait Send {}
+auto trait Sync {}
+trait T {}
+
+fn f(t: &(dyn T + Send + Sync)) {}
+fn g(t: &(dyn Sync + T + Send)) {
+    f(t);
+}
+        "#,
+    );
+
+    check_infer_with_mismatches(
+        r#"
+auto trait Send {}
+auto trait Sync {}
+trait T1 {}
+trait T2 {}
+
+fn f(t: &(dyn T1 + T2 + Send + Sync)) {}
+fn g(t: &(dyn Sync + T2 + T1 + Send)) {
+    f(t);
+}
+        "#,
+        expect![[r#"
+            68..69 't': &{unknown}
+            101..103 '{}': ()
+            109..110 't': &{unknown}
+            142..155 '{     f(t); }': ()
+            148..149 'f': fn f(&{unknown})
+            148..152 'f(t)': ()
+            150..151 't': &{unknown}
+        "#]],
+    );
+
+    check_no_mismatches(
+        r#"
+auto trait Send {}
+auto trait Sync {}
+trait T {
+    type Proj: Send + Sync;
+}
+
+fn f(t: &(dyn T<Proj = ()>  + Send + Sync)) {}
+fn g(t: &(dyn Sync + T<Proj = ()> + Send)) {
+    f(t);
+}
+        "#,
+    );
+}
+
+#[test]
+fn dyn_duplicate_auto_trait() {
+    check_no_mismatches(
+        r#"
+auto trait Send {}
+
+fn f(t: &(dyn Send + Send)) {}
+fn g(t: &(dyn Send)) {
+    f(t);
+}
+        "#,
+    );
+
+    check_no_mismatches(
+        r#"
+auto trait Send {}
+trait T {}
+
+fn f(t: &(dyn T + Send + Send)) {}
+fn g(t: &(dyn T + Send)) {
+    f(t);
+}
+        "#,
+    );
+}

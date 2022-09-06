@@ -336,6 +336,7 @@ pub mod known {
         test,
         test_case,
         recursion_limit,
+        feature,
         // Safe intrinsics
         abort,
         add_with_overflow,
