@@ -1498,9 +1498,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::OpaqueTy(..) => {
                 self.encode_explicit_item_bounds(def_id);
             }
-            hir::ItemKind::ImplTraitPlaceholder(..) => {
-                self.encode_explicit_item_bounds(def_id);
-            }
             hir::ItemKind::Enum(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());

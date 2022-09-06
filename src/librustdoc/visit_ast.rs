@@ -362,7 +362,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::OpaqueTy(..)
-            | hir::ItemKind::ImplTraitPlaceholder(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),

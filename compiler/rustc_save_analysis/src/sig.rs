@@ -316,11 +316,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
-            hir::TyKind::OpaqueDef(item_id, _) => {
-                let item = scx.tcx.hir().item(item_id);
-                item.make(offset, Some(item_id.hir_id()), scx)
-            }
-            hir::TyKind::ImplTraitInTrait(item_id) => {
+            hir::TyKind::OpaqueDef(item_id, _, _) => {
                 let item = scx.tcx.hir().item(item_id);
                 item.make(offset, Some(item_id.hir_id()), scx)
             }
@@ -565,8 +561,13 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::ForeignMod { .. } => Err("extern mod"),
             hir::ItemKind::GlobalAsm(_) => Err("global asm"),
             hir::ItemKind::ExternCrate(_) => Err("extern crate"),
-            hir::ItemKind::OpaqueTy(..) => Err("opaque type"),
-            hir::ItemKind::ImplTraitPlaceholder(..) => Err("opaque type in trait"),
+            hir::ItemKind::OpaqueTy(ref opaque) => {
+                if opaque.in_trait {
+                    Err("opaque type in trait")
+                } else {
+                    Err("opaque type")
+                }
+            }
             // FIXME should implement this (e.g., pub use).
             hir::ItemKind::Use(..) => Err("import"),
         }

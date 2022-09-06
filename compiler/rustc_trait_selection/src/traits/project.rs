@@ -2125,7 +2125,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     let tcx = selcx.tcx();
     let mut obligations = data.nested;
 
-    let trait_fn_def_id = tcx.parent(obligation.predicate.item_def_id);
+    let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
     let Ok(leaf_def) = assoc_def(selcx, data.impl_def_id, trait_fn_def_id) else {
         return Progress { term: tcx.ty_error().into(), obligations };
     };
