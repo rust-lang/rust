@@ -558,6 +558,7 @@ where
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for T {
     /// Returns the argument unchanged.
+    #[inline(always)]
     fn from(t: T) -> T {
         t
     }
