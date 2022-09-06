@@ -911,11 +911,6 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes>,
-    /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
-    /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
-    /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
-    /// field from the original parameter 'a to the new parameter 'a1.
-    generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
     /// Lifetime parameters that lowering will have to introduce.
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
@@ -1278,7 +1273,6 @@ impl<'a> Resolver<'a> {
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
-            generics_def_id_map: Vec::new(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             reexport_map: FxHashMap::default(),
@@ -1445,7 +1439,6 @@ impl<'a> Resolver<'a> {
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
-            generics_def_id_map: self.generics_def_id_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             node_id_to_def_id: self.node_id_to_def_id,
@@ -1490,7 +1483,6 @@ impl<'a> Resolver<'a> {
             import_res_map: self.import_res_map.clone(),
             label_res_map: self.label_res_map.clone(),
             lifetimes_res_map: self.lifetimes_res_map.clone(),
-            generics_def_id_map: self.generics_def_id_map.clone(),
             extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
             next_node_id: self.next_node_id.clone(),
             node_id_to_def_id: self.node_id_to_def_id.clone(),

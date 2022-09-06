@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
@@ -166,8 +167,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 terminator.kind
             ),
 
-            // Inline assembly can't be interpreted.
-            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
+            InlineAsm { template, ref operands, options, destination, .. } => {
+                M::eval_inline_asm(self, template, operands, options)?;
+                if options.contains(InlineAsmOptions::NORETURN) {
+                    throw_ub_format!("returned from noreturn inline assembly");
+                }
+                self.go_to_block(
+                    destination
+                        .expect("InlineAsm terminators without noreturn must have a destination"),
+                )
+            }
         }
 
         Ok(())
