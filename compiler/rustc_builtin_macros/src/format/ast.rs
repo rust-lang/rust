@@ -233,8 +233,8 @@ pub enum FormatAlignment {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FormatCount {
-    /// `{:0}` or `{:.0}`
+    /// `{:5}` or `{:.5}`
     Literal(usize),
-    /// `{:.*}`, `{:.0$}`, or `{:a$}`, etc.
+    /// `{:.*}`, `{:.5$}`, or `{:a$}`, etc.
     Argument(FormatArgPosition),
 }
