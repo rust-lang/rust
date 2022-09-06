@@ -181,6 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ty: _,
                 ref subpattern,
                 is_primary: _,
+                is_shorthand,
             } => {
                 if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.bindings.push(Binding {
@@ -188,6 +189,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source,
                         var_id: var,
                         binding_mode: mode,
+                        is_shorthand,
                     });
                 }
 

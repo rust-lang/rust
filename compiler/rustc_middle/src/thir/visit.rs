@@ -224,6 +224,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             var: _,
             ty: _,
             is_primary: _,
+            is_shorthand: _,
             name: _,
         } => visitor.visit_pat(&subpattern),
         Binding { .. } | Wild => {}
