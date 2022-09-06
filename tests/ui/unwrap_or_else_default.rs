@@ -69,6 +69,9 @@ fn unwrap_or_else_default() {
 
     let with_default_type: Option<Vec<u64>> = None;
     with_default_type.unwrap_or_else(Vec::new);
+
+    let empty_string = None::<String>;
+    empty_string.unwrap_or_else(|| "".to_string());
 }
 
 fn main() {}
