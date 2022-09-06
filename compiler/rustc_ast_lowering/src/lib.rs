@@ -1352,13 +1352,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Disallowed(
                         position @ (ImplTraitPosition::TraitReturn | ImplTraitPosition::ImplReturn),
                     ) => {
-                        self.tcx.sess.create_feature_err(
-                            MisplacedImplTrait {
-                                span: t.span,
-                                position: DiagnosticArgFromDisplay(&position),
-                            },
-                            sym::return_position_impl_trait_in_trait,
-                        ).emit();
+                        self.tcx
+                            .sess
+                            .create_feature_err(
+                                MisplacedImplTrait {
+                                    span: t.span,
+                                    position: DiagnosticArgFromDisplay(&position),
+                                },
+                                sym::return_position_impl_trait_in_trait,
+                            )
+                            .emit();
                         hir::TyKind::Err
                     }
                     ImplTraitContext::Disallowed(position) => {
