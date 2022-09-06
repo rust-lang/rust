@@ -12062,16 +12062,18 @@ public:
         Value *diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
         ++structidx;
 
-        size_t size = 1;
-        if (orig->getArgOperand(i)->getType()->isSized())
-          size =
-              (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                   orig->getArgOperand(i)->getType()) +
-               7) /
-              8;
+        if (!gutils->isConstantValue(orig->getArgOperand(i))) {
+          size_t size = 1;
+          if (orig->getArgOperand(i)->getType()->isSized())
+            size = (gutils->newFunc->getParent()
+                        ->getDataLayout()
+                        .getTypeSizeInBits(orig->getArgOperand(i)->getType()) +
+                    7) /
+                   8;
 
-        addToDiffe(orig->getArgOperand(i), diffeadd, Builder2,
-                   TR.addingType(size, orig->getArgOperand(i)));
+          addToDiffe(orig->getArgOperand(i), diffeadd, Builder2,
+                     TR.addingType(size, orig->getArgOperand(i)));
+        }
       }
     }
 
