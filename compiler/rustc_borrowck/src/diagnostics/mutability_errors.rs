@@ -305,8 +305,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
                             binding_mode: BindingAnnotation(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
-                            opt_match_place: _,
-                            pat_span: _,
+                            ..
                         })) => {
                             if suggest {
                                 err.span_note(sp, "the binding is already a mutable borrow");
@@ -729,6 +728,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span,
+                introductions: _,
             })) => pat_span,
             _ => local_decl.source_info.span,
         };

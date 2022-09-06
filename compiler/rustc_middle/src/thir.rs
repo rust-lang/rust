@@ -738,6 +738,7 @@ pub enum PatKind<'tcx> {
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
         is_primary: bool,
+        is_shorthand: bool,
     },
 
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with

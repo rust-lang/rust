@@ -999,6 +999,8 @@ pub struct VarBindingForm<'tcx> {
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
+    /// For each introduction place, record here the span and whether this was a shorthand pattern.
+    pub introductions: Vec<(Span, /* is_shorthand */ bool)>,
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable)]
@@ -1208,9 +1210,7 @@ impl<'tcx> LocalDecl<'tcx> {
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: BindingAnnotation(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
+                    ..
                 }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
             )
         )
@@ -1225,9 +1225,7 @@ impl<'tcx> LocalDecl<'tcx> {
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
                     binding_mode: BindingAnnotation(ByRef::No, _),
-                    opt_ty_info: _,
-                    opt_match_place: _,
-                    pat_span: _,
+                    ..
                 }) | BindingForm::ImplicitSelf(_),
             )
         )

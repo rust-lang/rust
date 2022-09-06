@@ -204,6 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         block,
                                         node,
                                         span,
+                                        false,
                                         OutsideGuard,
                                         true,
                                     );
@@ -290,7 +291,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, node, span, _, _| {
-                                this.storage_live_binding(block, node, span, OutsideGuard, true);
+                                this.storage_live_binding(
+                                    block,
+                                    node,
+                                    span,
+                                    false,
+                                    OutsideGuard,
+                                    true,
+                                );
                                 this.schedule_drop_for_binding(node, span, OutsideGuard);
                             },
                         )

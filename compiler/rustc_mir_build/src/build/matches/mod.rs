@@ -627,8 +627,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 subpattern: None,
                 ..
             } => {
-                let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
+                let place = self.storage_live_binding(
+                    block,
+                    var,
+                    irrefutable_pat.span,
+                    false,
+                    OutsideGuard,
+                    true,
+                );
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -661,8 +667,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
-                let place =
-                    self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
+                let place = self.storage_live_binding(
+                    block,
+                    var,
+                    irrefutable_pat.span,
+                    false,
+                    OutsideGuard,
+                    true,
+                );
                 unpack!(block = self.expr_into_dest(place, block, initializer_id));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
@@ -855,6 +867,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         var: LocalVarId,
         span: Span,
+        is_shorthand: bool,
         for_guard: ForGuard,
         schedule_drop: bool,
     ) -> Place<'tcx> {
@@ -867,6 +880,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && schedule_drop
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        }
+        let local_info = self.local_decls[local_id].local_info.as_mut().assert_crate_local();
+        if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
+            var_info.introductions.push((span, is_shorthand));
         }
         Place::from(local_id)
     }
@@ -1149,6 +1166,7 @@ struct Binding<'tcx> {
     source: Place<'tcx>,
     var_id: LocalVarId,
     binding_mode: BindingAnnotation,
+    is_shorthand: bool,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -2332,6 +2350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 binding.var_id,
                 binding.span,
+                binding.is_shorthand,
                 RefWithinGuard,
                 schedule_drops,
             );
@@ -2345,6 +2364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         binding.var_id,
                         binding.span,
+                        binding.is_shorthand,
                         OutsideGuard,
                         schedule_drops,
                     );
@@ -2384,6 +2404,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     binding.var_id,
                     binding.span,
+                    binding.is_shorthand,
                     OutsideGuard,
                     schedule_drops,
                 )
@@ -2437,6 +2458,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_ty_info: None,
                     opt_match_place,
                     pat_span,
+                    introductions: Vec::new(),
                 },
             )))),
         };

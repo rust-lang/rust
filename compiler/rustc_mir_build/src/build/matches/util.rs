@@ -154,12 +154,13 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
-            PatKind::Binding { mode, var, ref subpattern, .. } => {
+            PatKind::Binding { mode, var, ref subpattern, is_shorthand, .. } => {
                 let binding = place.map(|source| super::Binding {
                     span: pattern.span,
                     source,
                     var_id: var,
                     binding_mode: mode,
+                    is_shorthand,
                 });
 
                 if let Some(subpattern) = subpattern.as_ref() {
