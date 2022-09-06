@@ -18,6 +18,12 @@ pub static WEAK_ITEMS_REFS: LazyLock<FxIndexMap<Symbol, LangItem>> = LazyLock::n
     map
 });
 
+pub static WEAK_ITEMS_SYMBOLS: LazyLock<FxIndexMap<LangItem, Symbol>> = LazyLock::new(|| {
+    let mut map = FxIndexMap::default();
+    $(map.insert(LangItem::$item, sym::$sym);)*
+    map
+});
+
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol>
 {
     lang_items::extract(attrs).and_then(|(name, _)| {

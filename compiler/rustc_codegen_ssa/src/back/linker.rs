@@ -183,8 +183,6 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
     fn subsystem(&mut self, subsystem: &str);
-    fn group_start(&mut self);
-    fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
     fn add_no_exec(&mut self) {}
@@ -730,18 +728,6 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
     }
 
-    fn group_start(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--start-group");
-        }
-    }
-
-    fn group_end(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--end-group");
-        }
-    }
-
     fn linker_plugin_lto(&mut self) {
         match self.sess.opts.cg.linker_plugin_lto {
             LinkerPluginLto::Disabled => {
@@ -1019,10 +1005,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    // MSVC doesn't need group indicators
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {
         // Do nothing
     }
@@ -1164,10 +1146,6 @@ impl<'a> Linker for EmLinker<'a> {
     fn subsystem(&mut self, _subsystem: &str) {
         // noop
     }
-
-    // Appears not necessary on Emscripten
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
@@ -1344,10 +1322,6 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    // Not needed for now with LLD
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {
         // Do nothing for now
     }
@@ -1474,14 +1448,6 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn reset_per_library_state(&mut self) {
         self.hint_static(); // Reset to default before returning the composed command line.
-    }
-
-    fn group_start(&mut self) {
-        self.cmd.arg("--start-group");
-    }
-
-    fn group_end(&mut self) {
-        self.cmd.arg("--end-group");
     }
 
     fn linker_plugin_lto(&mut self) {}
@@ -1664,10 +1630,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {}
 }
 
@@ -1776,10 +1738,6 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn subsystem(&mut self, _subsystem: &str) {}
-
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {}
 }

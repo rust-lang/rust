@@ -25,7 +25,6 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
-use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -152,8 +151,6 @@ pub struct CrateInfo {
     pub used_libraries: Vec<NativeLib>,
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
-    pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
