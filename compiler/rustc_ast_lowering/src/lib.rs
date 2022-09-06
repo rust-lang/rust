@@ -1692,10 +1692,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             output,
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
-                use BindingMode::{ByRef, ByValue};
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
-                    PatKind::Ident(ByValue(Mutability::Mut) | ByRef(Mutability::Mut), ..)
+                    PatKind::Ident(hir::BindingAnnotation(_, Mutability::Mut), ..)
                 );
 
                 match arg.ty.kind {
@@ -2360,11 +2359,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, hir::HirId) {
-        self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
+        self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::NONE)
     }
 
     fn pat_ident_mut(&mut self, span: Span, ident: Ident) -> (hir::Pat<'hir>, hir::HirId) {
-        self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::Unannotated)
+        self.pat_ident_binding_mode_mut(span, ident, hir::BindingAnnotation::NONE)
     }
 
     fn pat_ident_binding_mode(

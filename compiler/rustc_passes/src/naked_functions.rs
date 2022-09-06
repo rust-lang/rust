@@ -76,7 +76,7 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
     for param in params {
         match param.pat.kind {
             hir::PatKind::Wild
-            | hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, _, None) => {}
+            | hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, _, None) => {}
             _ => {
                 tcx.sess
                     .struct_span_err(

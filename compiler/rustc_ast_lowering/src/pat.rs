@@ -24,7 +24,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let node = loop {
                 match pattern.kind {
                     PatKind::Wild => break hir::PatKind::Wild,
-                    PatKind::Ident(ref binding_mode, ident, ref sub) => {
+                    PatKind::Ident(binding_mode, ident, ref sub) => {
                         let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
                         break self.lower_pat_ident(pattern, binding_mode, ident, lower_sub);
                     }
@@ -176,9 +176,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut prev_rest_span = None;
 
         // Lowers `$bm $ident @ ..` to `$bm $ident @ _`.
-        let lower_rest_sub = |this: &mut Self, pat, bm, ident, sub| {
+        let lower_rest_sub = |this: &mut Self, pat, ann, ident, sub| {
             let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
-            let node = this.lower_pat_ident(pat, bm, ident, lower_sub);
+            let node = this.lower_pat_ident(pat, ann, ident, lower_sub);
             this.pat_with_node_id_of(pat, node)
         };
 
@@ -194,9 +194,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 // Found a sub-slice pattern `$binding_mode $ident @ ..`.
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
-                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Ident(ann, ident, Some(ref sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
-                    slice = Some(self.arena.alloc(lower_rest_sub(self, pat, bm, ident, sub)));
+                    slice = Some(self.arena.alloc(lower_rest_sub(self, pat, ann, ident, sub)));
                     break;
                 }
                 // It was not a subslice pattern so lower it normally.
@@ -209,9 +209,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // There was a previous subslice pattern; make sure we don't allow more.
             let rest_span = match pat.kind {
                 PatKind::Rest => Some(pat.span),
-                PatKind::Ident(ref bm, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Ident(ann, ident, Some(ref sub)) if sub.is_rest() => {
                     // #69103: Lower into `binding @ _` as above to avoid ICEs.
-                    after.push(lower_rest_sub(self, pat, bm, ident, sub));
+                    after.push(lower_rest_sub(self, pat, ann, ident, sub));
                     Some(sub.span)
                 }
                 _ => None,
@@ -235,7 +235,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_pat_ident(
         &mut self,
         p: &Pat,
-        binding_mode: &BindingMode,
+        annotation: BindingAnnotation,
         ident: Ident,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
@@ -248,7 +248,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
 
                 hir::PatKind::Binding(
-                    self.lower_binding_mode(binding_mode),
+                    annotation,
                     self.lower_node_id(canonical_id),
                     self.lower_ident(ident),
                     lower_sub(self),
@@ -266,15 +266,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
             ))
             }
-        }
-    }
-
-    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
-        match *b {
-            BindingMode::ByValue(Mutability::Not) => hir::BindingAnnotation::Unannotated,
-            BindingMode::ByRef(Mutability::Not) => hir::BindingAnnotation::Ref,
-            BindingMode::ByValue(Mutability::Mut) => hir::BindingAnnotation::Mutable,
-            BindingMode::ByRef(Mutability::Mut) => hir::BindingAnnotation::RefMut,
         }
     }
 

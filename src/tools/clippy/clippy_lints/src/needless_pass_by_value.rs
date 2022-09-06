@@ -8,7 +8,9 @@ use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{
+    BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
+};
 use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -188,13 +190,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
-                if let PatKind::Binding(mode, canonical_id, ..) = arg.pat.kind;
+                if let PatKind::Binding(BindingAnnotation(_, Mutability::Not), canonical_id, ..) = arg.pat.kind;
                 if !moved_vars.contains(&canonical_id);
                 then {
-                    if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
-                        continue;
-                    }
-
                     // Dereference suggestion
                     let sugg = |diag: &mut Diagnostic| {
                         if let ty::Adt(def, ..) = ty.kind() {

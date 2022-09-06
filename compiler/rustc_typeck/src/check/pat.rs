@@ -569,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Determine the binding mode...
         let bm = match ba {
-            hir::BindingAnnotation::Unannotated => def_bm,
+            hir::BindingAnnotation::NONE => def_bm,
             _ => BindingMode::convert(ba),
         };
         // ...and store it in a side table:
@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ba: hir::BindingAnnotation,
     ) {
         match (expected.kind(), actual.kind(), ba) {
-            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::Unannotated)
+            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
                 if self.can_eq(self.param_env, *inner_ty, actual).is_ok() =>
             {
                 err.span_suggestion_verbose(
@@ -665,7 +665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::Ref)
+            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
                 if self.can_eq(self.param_env, expected, *inner_ty).is_ok() =>
             {
                 err.span_suggestion_verbose(

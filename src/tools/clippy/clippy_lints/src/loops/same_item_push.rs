@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 use std::iter::Iterator;
@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
                             if_chain! {
                                 if let Node::Pat(pat) = node;
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                                if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                                if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
                                 let parent_node = cx.tcx.hir().get_parent_node(hir_id);
                                 if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
                                 if let Some(init) = parent_let_expr.init;

@@ -128,7 +128,7 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
         if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
 
         // Find id of the local we found in the block
-        if let PatKind::Binding(BindingAnnotation::Unannotated, local_hir_id, _ident, None) = local.pat.kind;
+        if let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind;
 
         // If those two are the same hir id
         if res_pat.hir_id == local_hir_id;

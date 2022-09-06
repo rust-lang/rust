@@ -594,7 +594,7 @@ impl Pat {
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
-            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
+            PatKind::Ident(BindingAnnotation::NONE, ident, None) => {
                 TyKind::Path(None, Path::from_ident(*ident))
             }
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
@@ -681,10 +681,43 @@ pub struct PatField {
     pub is_placeholder: bool,
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy)]
-pub enum BindingMode {
-    ByRef(Mutability),
-    ByValue(Mutability),
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub enum ByRef {
+    Yes,
+    No,
+}
+
+impl From<bool> for ByRef {
+    fn from(b: bool) -> ByRef {
+        match b {
+            false => ByRef::No,
+            true => ByRef::Yes,
+        }
+    }
+}
+
+/// Explicit binding annotations given in the HIR for a binding. Note
+/// that this is not the final binding *mode* that we infer after type
+/// inference.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub struct BindingAnnotation(pub ByRef, pub Mutability);
+
+impl BindingAnnotation {
+    pub const NONE: Self = Self(ByRef::No, Mutability::Not);
+    pub const REF: Self = Self(ByRef::Yes, Mutability::Not);
+    pub const MUT: Self = Self(ByRef::No, Mutability::Mut);
+    pub const REF_MUT: Self = Self(ByRef::Yes, Mutability::Mut);
+
+    pub fn prefix_str(self) -> &'static str {
+        match self {
+            Self::NONE => "",
+            Self::REF => "ref ",
+            Self::MUT => "mut ",
+            Self::REF_MUT => "ref mut ",
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -713,7 +746,7 @@ pub enum PatKind {
     /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
     /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
     /// during name resolution.
-    Ident(BindingMode, Ident, Option<P<Pat>>),
+    Ident(BindingAnnotation, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
@@ -2228,7 +2261,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.kind {
+        if let PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), ident, _) = self.pat.kind {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -2258,23 +2291,10 @@ impl Param {
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
-        let param = |mutbl, ty| Param {
-            attrs,
-            pat: P(Pat {
-                id: DUMMY_NODE_ID,
-                kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
-                span,
-                tokens: None,
-            }),
-            span,
-            ty,
-            id: DUMMY_NODE_ID,
-            is_placeholder: false,
-        };
-        match eself.node {
-            SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
-            SelfKind::Value(mutbl) => param(mutbl, infer_ty),
-            SelfKind::Region(lt, mutbl) => param(
+        let (mutbl, ty) = match eself.node {
+            SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
+            SelfKind::Value(mutbl) => (mutbl, infer_ty),
+            SelfKind::Region(lt, mutbl) => (
                 Mutability::Not,
                 P(Ty {
                     id: DUMMY_NODE_ID,
@@ -2283,6 +2303,19 @@ impl Param {
                     tokens: None,
                 }),
             ),
+        };
+        Param {
+            attrs,
+            pat: P(Pat {
+                id: DUMMY_NODE_ID,
+                kind: PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), eself_ident, None),
+                span,
+                tokens: None,
+            }),
+            span,
+            ty,
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
 }

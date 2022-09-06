@@ -1083,12 +1083,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
                 let (ident, is_simple_parameter) = match parameter.pat.kind {
-                    hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                        _,
-                        ident,
-                        _,
-                    ) => (ident, true),
+                    hir::PatKind::Binding(hir::BindingAnnotation(ByRef::No, _), _, ident, _) => {
+                        (ident, true)
+                    }
                     // For `ref mut` or wildcard arguments, we can't reuse the binding, but
                     // we can keep the same name for the parameter.
                     // This lets rustdoc render it correctly in documentation.
@@ -1153,7 +1150,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let (move_pat, move_id) = this.pat_ident_binding_mode(
                         desugared_span,
                         ident,
-                        hir::BindingAnnotation::Mutable,
+                        hir::BindingAnnotation::MUT,
                     );
                     let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(

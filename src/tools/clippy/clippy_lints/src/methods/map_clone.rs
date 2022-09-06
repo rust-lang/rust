@@ -33,13 +33,13 @@ pub(super) fn check<'tcx>(
             let closure_expr = peel_blocks(&closure_body.value);
             match closure_body.params[0].pat.kind {
                 hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
-                    hir::BindingAnnotation::Unannotated, .., name, None
+                    hir::BindingAnnotation::NONE, .., name, None
                 ) = inner.kind {
                     if ident_eq(name, closure_expr) {
                         lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                     }
                 },
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
+                hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
                     match closure_expr.kind {
                         hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                             if ident_eq(name, inner) {

@@ -7,7 +7,7 @@ use crate::LangItem;
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
-pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
+pub use rustc_ast::{BindingAnnotation, BorrowKind, ByRef, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -1042,30 +1042,6 @@ pub struct PatField<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub is_shorthand: bool,
     pub span: Span,
-}
-
-/// Explicit binding annotations given in the HIR for a binding. Note
-/// that this is not the final binding *mode* that we infer after type
-/// inference.
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
-pub enum BindingAnnotation {
-    /// No binding annotation given: this means that the final binding mode
-    /// will depend on whether we have skipped through a `&` reference
-    /// when matching. For example, the `x` in `Some(x)` will have binding
-    /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
-    /// ultimately be inferred to be by-reference.
-    ///
-    /// Note that implicit reference skipping is not implemented yet (#42640).
-    Unannotated,
-
-    /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
-    Mutable,
-
-    /// Annotated as `ref`, like `ref x`
-    Ref,
-
-    /// Annotated as `ref mut x`.
-    RefMut,
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]

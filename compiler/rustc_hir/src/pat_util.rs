@@ -1,6 +1,6 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
-use crate::hir::{self, HirId, PatKind};
+use crate::hir::{self, BindingAnnotation, ByRef, HirId, PatKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::Ident;
@@ -93,12 +93,7 @@ impl hir::Pat<'_> {
 
     pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
-            PatKind::Binding(
-                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                _,
-                ident,
-                None,
-            ) => Some(ident),
+            PatKind::Binding(BindingAnnotation(ByRef::No, _), _, ident, None) => Some(ident),
             _ => None,
         }
     }
@@ -135,11 +130,11 @@ impl hir::Pat<'_> {
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| match annotation {
-            hir::BindingAnnotation::Ref => match result {
+            hir::BindingAnnotation::REF => match result {
                 None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
                 _ => {}
             },
-            hir::BindingAnnotation::RefMut => result = Some(hir::Mutability::Mut),
+            hir::BindingAnnotation::REF_MUT => result = Some(hir::Mutability::Mut),
             _ => {}
         });
         result

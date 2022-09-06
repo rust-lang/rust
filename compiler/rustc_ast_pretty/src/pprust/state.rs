@@ -11,8 +11,8 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{attr, Term};
+use rustc_ast::{self as ast, BlockCheckMode, Mutability, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{attr, BindingAnnotation, ByRef, Term};
 use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -1399,16 +1399,12 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.word("_"),
-            PatKind::Ident(binding_mode, ident, ref sub) => {
-                match binding_mode {
-                    ast::BindingMode::ByRef(mutbl) => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(mutbl, false);
-                    }
-                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
-                        self.word_nbsp("mut");
-                    }
+            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, ref sub) => {
+                if by_ref == ByRef::Yes {
+                    self.word_nbsp("ref");
+                }
+                if mutbl == Mutability::Mut {
+                    self.word_nbsp("mut");
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
@@ -1487,12 +1483,10 @@ impl<'a> State<'a> {
             }
             PatKind::Ref(ref inner, mutbl) => {
                 self.word("&");
-                if mutbl == ast::Mutability::Mut {
+                if mutbl == Mutability::Mut {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
-                    inner.kind
-                {
+                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();

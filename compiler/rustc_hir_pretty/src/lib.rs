@@ -9,7 +9,9 @@ use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::LifetimeParamKind;
-use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node, Term};
+use rustc_hir::{
+    BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Mutability, Node, Term,
+};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
@@ -1743,20 +1745,12 @@ impl<'a> State<'a> {
         // is that it doesn't matter
         match pat.kind {
             PatKind::Wild => self.word("_"),
-            PatKind::Binding(binding_mode, _, ident, sub) => {
-                match binding_mode {
-                    hir::BindingAnnotation::Ref => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Not, false);
-                    }
-                    hir::BindingAnnotation::RefMut => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Mut, false);
-                    }
-                    hir::BindingAnnotation::Unannotated => {}
-                    hir::BindingAnnotation::Mutable => {
-                        self.word_nbsp("mut");
-                    }
+            PatKind::Binding(BindingAnnotation(by_ref, mutbl), _, ident, sub) => {
+                if by_ref == ByRef::Yes {
+                    self.word_nbsp("ref");
+                }
+                if mutbl == Mutability::Mut {
+                    self.word_nbsp("mut");
                 }
                 self.print_ident(ident);
                 if let Some(p) = sub {

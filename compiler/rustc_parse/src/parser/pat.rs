@@ -4,8 +4,8 @@ use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{
-    self as ast, AttrVec, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat, PatField, PatKind,
-    Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
+    PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Ref) {
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingMode::ByRef(mutbl))?
+            self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl))?
         } else if self.eat_keyword(kw::Box) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
             // they are dealt with later in resolve.
-            self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
+            self.parse_pat_ident(BindingAnnotation::NONE)?
         } else if self.is_start_of_pat_with_path() {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
@@ -578,7 +578,8 @@ impl<'a> Parser<'a> {
         let mut pat = self.parse_pat_no_top_alt(Some("identifier"))?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
-        if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind {
+        if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
+        {
             // Don't recurse into the subpattern.
             // `mut` on the outer binding doesn't affect the inner bindings.
             *m = Mutability::Mut;
@@ -604,7 +605,7 @@ impl<'a> Parser<'a> {
             )
             .emit();
 
-        self.parse_pat_ident(BindingMode::ByRef(Mutability::Mut))
+        self.parse_pat_ident(BindingAnnotation::REF_MUT)
     }
 
     /// Turn all by-value immutable bindings in a pattern into mutable bindings.
@@ -613,7 +614,8 @@ impl<'a> Parser<'a> {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind
+                if let PatKind::Ident(BindingAnnotation(ByRef::No, m @ Mutability::Not), ..) =
+                    &mut pat.kind
                 {
                     self.0 = true;
                     *m = Mutability::Mut;
@@ -838,7 +840,7 @@ impl<'a> Parser<'a> {
     /// Parses `ident` or `ident @ pat`.
     /// Used by the copy foo and ref foo patterns to give a good
     /// error message when parsing mistakes like `ref foo(a, b)`.
-    fn parse_pat_ident(&mut self, binding_mode: BindingMode) -> PResult<'a, PatKind> {
+    fn parse_pat_ident(&mut self, binding_annotation: BindingAnnotation) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat_no_top_alt(Some("binding pattern"))?)
@@ -856,7 +858,7 @@ impl<'a> Parser<'a> {
                 .struct_span_err(self.prev_token.span, "expected identifier, found enum pattern"));
         }
 
-        Ok(PatKind::Ident(binding_mode, ident, sub))
+        Ok(PatKind::Ident(binding_annotation, ident, sub))
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
@@ -936,11 +938,7 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            Ok(PatKind::Ident(
-                BindingMode::ByValue(Mutability::Not),
-                Ident::new(kw::Box, box_span),
-                sub,
-            ))
+            Ok(PatKind::Ident(BindingAnnotation::NONE, Ident::new(kw::Box, box_span), sub))
         } else {
             let pat = self.parse_pat_with_range_pat(false, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
@@ -1117,14 +1115,12 @@ impl<'a> Parser<'a> {
             let fieldname = self.parse_field_name()?;
             hi = self.prev_token.span;
 
-            let bind_type = match (is_ref, is_mut) {
-                (true, true) => BindingMode::ByRef(Mutability::Mut),
-                (true, false) => BindingMode::ByRef(Mutability::Not),
-                (false, true) => BindingMode::ByValue(Mutability::Mut),
-                (false, false) => BindingMode::ByValue(Mutability::Not),
+            let mutability = match is_mut {
+                false => Mutability::Not,
+                true => Mutability::Mut,
             };
-
-            let fieldpat = self.mk_pat_ident(boxed_span.to(hi), bind_type, fieldname);
+            let ann = BindingAnnotation(ByRef::from(is_ref), mutability);
+            let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
             let subpat =
                 if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };
             (subpat, fieldname, true)
@@ -1141,8 +1137,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_pat_ident(&self, span: Span, bm: BindingMode, ident: Ident) -> P<Pat> {
-        self.mk_pat(span, PatKind::Ident(bm, ident, None))
+    pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingAnnotation, ident: Ident) -> P<Pat> {
+        self.mk_pat(span, PatKind::Ident(ann, ident, None))
     }
 
     pub(super) fn mk_pat(&self, span: Span, kind: PatKind) -> P<Pat> {

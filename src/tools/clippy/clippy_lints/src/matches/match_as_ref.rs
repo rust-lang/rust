@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lang_ctor, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, LangItem, PatKind, QPath};
+use rustc_hir::{Arm, BindingAnnotation, ByRef, Expr, ExprKind, LangItem, Mutability, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
@@ -10,18 +10,17 @@ use super::MATCH_AS_REF;
 
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        let arm_ref: Option<BindingAnnotation> = if is_none_arm(cx, &arms[0]) {
+        let arm_ref_mut = if is_none_arm(cx, &arms[0]) {
             is_ref_some_arm(cx, &arms[1])
         } else if is_none_arm(cx, &arms[1]) {
             is_ref_some_arm(cx, &arms[0])
         } else {
             None
         };
-        if let Some(rb) = arm_ref {
-            let suggestion = if rb == BindingAnnotation::Ref {
-                "as_ref"
-            } else {
-                "as_mut"
+        if let Some(rb) = arm_ref_mut {
+            let suggestion = match rb {
+                Mutability::Not => "as_ref",
+                Mutability::Mut => "as_mut",
             };
 
             let output_ty = cx.typeck_results().expr_ty(expr);
@@ -66,19 +65,18 @@ fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotation> {
+fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<Mutability> {
     if_chain! {
         if let PatKind::TupleStruct(ref qpath, [first_pat, ..], _) = arm.pat.kind;
         if is_lang_ctor(cx, qpath, LangItem::OptionSome);
-        if let PatKind::Binding(rb, .., ident, _) = first_pat.kind;
-        if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
+        if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., ident, _) = first_pat.kind;
         if let ExprKind::Call(e, [arg]) = peel_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
         if is_lang_ctor(cx, some_path, LangItem::OptionSome);
         if let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
-            return Some(rb)
+            return Some(mutabl)
         }
     }
     None

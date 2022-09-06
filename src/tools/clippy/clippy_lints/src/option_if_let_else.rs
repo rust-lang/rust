@@ -130,7 +130,7 @@ fn try_get_option_occurence<'tcx>(
             .filter_map(|(id, &c)| none_captures.get(id).map(|&c2| (c, c2)))
             .all(|(x, y)| x.is_imm_ref() && y.is_imm_ref());
         then {
-            let capture_mut = if bind_annotation == BindingAnnotation::Mutable { "mut " } else { "" };
+            let capture_mut = if bind_annotation == BindingAnnotation::MUT { "mut " } else { "" };
             let some_body = peel_blocks(if_then);
             let none_body = peel_blocks(if_else);
             let method_sugg = if eager_or_lazy::switch_to_eager_eval(cx, none_body) { "map_or" } else { "map_or_else" };
@@ -138,7 +138,7 @@ fn try_get_option_occurence<'tcx>(
             let (as_ref, as_mut) = match &expr.kind {
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
-                _ => (bind_annotation == BindingAnnotation::Ref, bind_annotation == BindingAnnotation::RefMut),
+                _ => (bind_annotation == BindingAnnotation::REF, bind_annotation == BindingAnnotation::REF_MUT),
             };
 
             // Check if captures the closure will need conflict with borrows made in the scrutinee.

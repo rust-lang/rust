@@ -774,7 +774,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) => {
+                hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, ident, None) => {
                     Some(ident.name)
                 }
                 _ => {

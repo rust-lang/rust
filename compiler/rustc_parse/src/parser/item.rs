@@ -8,7 +8,7 @@ use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
-use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
+use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
@@ -2322,7 +2322,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let ident = Ident::new(kw::Empty, this.prev_token.span);
-                        let bm = BindingMode::ByValue(Mutability::Not);
+                        let bm = BindingAnnotation::NONE;
                         let pat = this.mk_pat_ident(ty.span, bm, ident);
                         (pat, ty)
                     }

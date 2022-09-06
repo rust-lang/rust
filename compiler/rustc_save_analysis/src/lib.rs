@@ -866,23 +866,12 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
             hir::PatKind::TupleStruct(ref path, ..) | hir::PatKind::Path(ref path) => {
                 self.collected_paths.push((p.hir_id, path));
             }
-            hir::PatKind::Binding(bm, _, ident, _) => {
+            hir::PatKind::Binding(hir::BindingAnnotation(_, mutbl), _, ident, _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
                     ident, p.span, ident.span
                 );
-                let immut = match bm {
-                    // Even if the ref is mut, you can't change the ref, only
-                    // the data pointed at, so showing the initialising expression
-                    // is still worthwhile.
-                    hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Ref => {
-                        hir::Mutability::Not
-                    }
-                    hir::BindingAnnotation::Mutable | hir::BindingAnnotation::RefMut => {
-                        hir::Mutability::Mut
-                    }
-                };
-                self.collected_idents.push((p.hir_id, ident, immut));
+                self.collected_idents.push((p.hir_id, ident, mutbl));
             }
             _ => {}
         }

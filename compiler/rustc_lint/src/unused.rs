@@ -751,7 +751,7 @@ impl UnusedParens {
         avoid_or: bool,
         avoid_mut: bool,
     ) {
-        use ast::{BindingMode, Mutability, PatKind};
+        use ast::{BindingAnnotation, PatKind};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -763,7 +763,9 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
+                PatKind::Ident(BindingAnnotation::MUT, ..) if avoid_mut => {
+                    return;
+                }
                 // Otherwise proceed with linting.
                 _ => {}
             }
