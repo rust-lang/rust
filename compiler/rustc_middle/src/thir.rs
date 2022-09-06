@@ -798,6 +798,7 @@ pub enum PatKind<'tcx> {
         /// (The same binding can occur multiple times in different branches of
         /// an or-pattern, but only one of them will be primary.)
         is_primary: bool,
+        is_shorthand: bool,
     },
 
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
