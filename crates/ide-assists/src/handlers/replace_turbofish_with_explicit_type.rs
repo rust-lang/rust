@@ -1,5 +1,6 @@
+use hir::HirDisplay;
 use syntax::{
-    ast::{Expr, GenericArg},
+    ast::{Expr, GenericArg, GenericArgList},
     ast::{LetStmt, Type::InferType},
     AstNode, TextRange,
 };
@@ -34,21 +35,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
     let initializer = let_stmt.initializer()?;
 
-    let generic_args = match &initializer {
-        Expr::MethodCallExpr(ce) => ce.generic_arg_list()?,
-        Expr::CallExpr(ce) => {
-            if let Expr::PathExpr(pe) = ce.expr()? {
-                pe.path()?.segment()?.generic_arg_list()?
-            } else {
-                cov_mark::hit!(not_applicable_if_non_path_function_call);
-                return None;
-            }
-        }
-        _ => {
-            cov_mark::hit!(not_applicable_if_non_function_call_initializer);
-            return None;
-        }
-    };
+    let generic_args = generic_arg_list(&initializer)?;
 
     // Find range of ::<_>
     let colon2 = generic_args.coloncolon_token()?;
@@ -65,7 +52,16 @@ pub(crate) fn replace_turbofish_with_explicit_type(
 
     // An improvement would be to check that this is correctly part of the return value of the
     // function call, or sub in the actual return type.
-    let turbofish_type = &turbofish_args[0];
+    let returned_type = match ctx.sema.type_of_expr(&initializer) {
+        Some(returned_type) if !returned_type.original.contains_unknown() => {
+            let module = ctx.sema.scope(let_stmt.syntax())?.module();
+            returned_type.original.display_source_code(ctx.db(), module.into()).ok()?
+        }
+        _ => {
+            cov_mark::hit!(fallback_to_turbofish_type_if_type_info_not_available);
+            turbofish_args[0].to_string()
+        }
+    };
 
     let initializer_start = initializer.syntax().text_range().start();
     if ctx.offset() > turbofish_range.end() || ctx.offset() < initializer_start {
@@ -83,7 +79,7 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             "Replace turbofish with explicit type",
             TextRange::new(initializer_start, turbofish_range.end()),
             |builder| {
-                builder.insert(ident_range.end(), format!(": {}", turbofish_type));
+                builder.insert(ident_range.end(), format!(": {}", returned_type));
                 builder.delete(turbofish_range);
             },
         );
@@ -98,13 +94,33 @@ pub(crate) fn replace_turbofish_with_explicit_type(
             "Replace `_` with turbofish type",
             turbofish_range,
             |builder| {
-                builder.replace(underscore_range, turbofish_type.to_string());
+                builder.replace(underscore_range, returned_type);
                 builder.delete(turbofish_range);
             },
         );
     }
 
     None
+}
+
+fn generic_arg_list(expr: &Expr) -> Option<GenericArgList> {
+    match expr {
+        Expr::MethodCallExpr(expr) => expr.generic_arg_list(),
+        Expr::CallExpr(expr) => {
+            if let Expr::PathExpr(pe) = expr.expr()? {
+                pe.path()?.segment()?.generic_arg_list()
+            } else {
+                cov_mark::hit!(not_applicable_if_non_path_function_call);
+                return None;
+            }
+        }
+        Expr::AwaitExpr(expr) => generic_arg_list(&expr.expr()?),
+        Expr::TryExpr(expr) => generic_arg_list(&expr.expr()?),
+        _ => {
+            cov_mark::hit!(not_applicable_if_non_function_call_initializer);
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -115,6 +131,7 @@ mod tests {
 
     #[test]
     fn replaces_turbofish_for_vec_string() {
+        cov_mark::check!(fallback_to_turbofish_type_if_type_info_not_available);
         check_assist(
             replace_turbofish_with_explicit_type,
             r#"
@@ -135,6 +152,7 @@ fn main() {
     #[test]
     fn replaces_method_calls() {
         // foo.make() is a method call which uses a different expr in the let initializer
+        cov_mark::check!(fallback_to_turbofish_type_if_type_info_not_available);
         check_assist(
             replace_turbofish_with_explicit_type,
             r#"
@@ -236,6 +254,110 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     let a = make$0::<Vec<String>, i32>();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replaces_turbofish_for_known_type() {
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a = make$0::<i32>();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a: i32 = make();
+}
+"#,
+        );
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+//- minicore: option
+fn make<T>() -> T {}
+fn main() {
+    let a = make$0::<Option<bool>>();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let a: Option<bool> = make();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replaces_turbofish_not_same_type() {
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+//- minicore: option
+fn make<T>() -> Option<T> {}
+fn main() {
+    let a = make$0::<u128>();
+}
+"#,
+            r#"
+fn make<T>() -> Option<T> {}
+fn main() {
+    let a: Option<u128> = make();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replaces_turbofish_for_type_with_defaulted_generic_param() {
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+struct HasDefault<T, U = i32>(T, U);
+fn make<T>() -> HasDefault<T> {}
+fn main() {
+    let a = make$0::<bool>();
+}
+"#,
+            r#"
+struct HasDefault<T, U = i32>(T, U);
+fn make<T>() -> HasDefault<T> {}
+fn main() {
+    let a: HasDefault<bool> = make();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replaces_turbofish_try_await() {
+        check_assist(
+            replace_turbofish_with_explicit_type,
+            r#"
+//- minicore: option, future
+struct Fut<T>(T);
+impl<T> core::future::Future for Fut<T> {
+    type Output = Option<T>;
+}
+fn make<T>() -> Fut<T> {}
+fn main() {
+    let a = make$0::<bool>().await?;
+}
+"#,
+            r#"
+struct Fut<T>(T);
+impl<T> core::future::Future for Fut<T> {
+    type Output = Option<T>;
+}
+fn make<T>() -> Fut<T> {}
+fn main() {
+    let a: bool = make().await?;
 }
 "#,
         );

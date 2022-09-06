@@ -14,6 +14,7 @@ mod chalk_db;
 mod chalk_ext;
 pub mod consteval;
 mod infer;
+mod inhabitedness;
 mod interner;
 mod lower;
 mod mapping;

@@ -65,6 +65,7 @@ impl ModDir {
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
+        let name = name.unescaped();
         let orig_file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = ArrayVec::<_, 2>::new();
@@ -73,12 +74,10 @@ impl ModDir {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
             }
             None if file_id.is_include_macro(db.upcast()) => {
-                let name = name.unescaped();
                 candidate_files.push(format!("{}.rs", name));
                 candidate_files.push(format!("{}/mod.rs", name));
             }
             None => {
-                let name = name.unescaped();
                 candidate_files.push(format!("{}{}.rs", self.dir_path.0, name));
                 candidate_files.push(format!("{}{}/mod.rs", self.dir_path.0, name));
             }
