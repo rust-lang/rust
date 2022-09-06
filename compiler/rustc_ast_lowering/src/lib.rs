@@ -312,7 +312,7 @@ impl std::fmt::Display for ImplTraitPosition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum FnDeclKind {
     Fn,
     Inherent,
@@ -1373,6 +1373,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         path
                     }
+                    ImplTraitContext::Disallowed(
+                        position @ (ImplTraitPosition::TraitReturn | ImplTraitPosition::ImplReturn),
+                    ) => {
+                        self.tcx.sess.create_feature_err(
+                            MisplacedImplTrait {
+                                span: t.span,
+                                position: DiagnosticArgFromDisplay(&position),
+                            },
+                            sym::return_position_impl_trait_in_trait,
+                        ).emit();
+                        hir::TyKind::Err
+                    }
                     ImplTraitContext::Disallowed(position) => {
                         self.tcx.sess.emit_err(MisplacedImplTrait {
                             span: t.span,
@@ -1717,13 +1729,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 _ => {
                     if !kind.impl_trait_return_allowed(self.tcx) {
-                        self.tcx
-                            .sess
-                            .create_feature_err(
-                                TraitFnAsync { fn_span, span },
-                                sym::return_position_impl_trait_in_trait,
-                            )
-                            .emit();
+                        if kind == FnDeclKind::Impl {
+                            self.tcx
+                                .sess
+                                .create_feature_err(
+                                    TraitFnAsync { fn_span, span },
+                                    sym::return_position_impl_trait_in_trait,
+                                )
+                                .emit();
+                        } else {
+                            self.tcx.sess.emit_err(TraitFnAsync { fn_span, span });
+                        }
                     }
                     self.lower_async_fn_ret_ty(
                         &decl.output,
