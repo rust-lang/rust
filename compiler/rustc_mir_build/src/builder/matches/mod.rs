@@ -600,6 +600,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -629,6 +630,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     var,
                     irrefutable_pat.span,
+                    false,
                     OutsideGuard,
                     ScheduleDrops::Yes,
                 );
@@ -821,6 +823,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         var: LocalVarId,
         span: Span,
+        is_shorthand: bool,
         for_guard: ForGuard,
         schedule_drop: ScheduleDrops,
     ) -> Place<'tcx> {
@@ -833,6 +836,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && matches!(schedule_drop, ScheduleDrops::Yes)
         {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
+        }
+        let local_info = self.local_decls[local_id].local_info.as_mut().unwrap_crate_local();
+        if let LocalInfo::User(BindingForm::Var(var_info)) = &mut **local_info {
+            var_info.introductions.push((span, is_shorthand));
         }
         Place::from(local_id)
     }
@@ -1230,6 +1237,7 @@ struct Binding<'tcx> {
     source: Place<'tcx>,
     var_id: LocalVarId,
     binding_mode: BindingMode,
+    is_shorthand: bool,
 }
 
 /// Indicates that the type of `source` must be a subtype of the
@@ -2693,6 +2701,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 binding.var_id,
                 binding.span,
+                binding.is_shorthand,
                 RefWithinGuard,
                 schedule_drops,
             );
@@ -2709,6 +2718,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         binding.var_id,
                         binding.span,
+                        binding.is_shorthand,
                         OutsideGuard,
                         schedule_drops,
                     );
@@ -2748,6 +2758,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     binding.var_id,
                     binding.span,
+                    binding.is_shorthand,
                     OutsideGuard,
                     schedule_drops,
                 ),
@@ -2801,6 +2812,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     opt_ty_info: None,
                     opt_match_place,
                     pat_span,
+                    introductions: Vec::new(),
                 },
             )))),
         };
