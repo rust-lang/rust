@@ -158,10 +158,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         None
     }
 
-    fn zst_to_backend(&self, _ty: Type<'gcc>) -> RValue<'gcc> {
-        self.const_undef(self.type_ix(0))
-    }
-
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, ty: Type<'gcc>) -> RValue<'gcc> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
