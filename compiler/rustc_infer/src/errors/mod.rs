@@ -147,55 +147,66 @@ pub enum SourceKindSubdiag<'a> {
     },
 }
 
-// Has to be implemented manually because multipart suggestions are not supported by the derive macro.
-// Would be a part of `SourceKindSubdiag` otherwise.
+#[derive(SessionSubdiagnostic)]
 pub enum SourceKindMultiSuggestion<'a> {
+    #[multipart_suggestion_verbose(
+        infer::source_kind_fully_qualified,
+        applicability = "has-placeholders"
+    )]
     FullyQualified {
+        #[suggestion_part(code = "{def_path}({adjustment}")]
+        span_lo: Span,
+        #[suggestion_part(code = "{successor_pos}")]
+        span_hi: Span,
+        def_path: String,
+        adjustment: &'a str,
+        successor_pos: &'a str,
+    },
+    #[multipart_suggestion_verbose(
+        infer::source_kind_closure_return,
+        applicability = "has-placeholders"
+    )]
+    ClosureReturn {
+        #[suggestion_part(code = "{start_span_code}")]
+        start_span: Span,
+        start_span_code: String,
+        #[suggestion_part(code = "}}")]
+        end_span: Option<Span>,
+    },
+}
+
+impl<'a> SourceKindMultiSuggestion<'a> {
+    pub fn new_fully_qualified(
         span: Span,
         def_path: String,
         adjustment: &'a str,
         successor: (&'a str, BytePos),
-    },
-    ClosureReturn {
+    ) -> Self {
+        Self::FullyQualified {
+            span_lo: span.shrink_to_lo(),
+            span_hi: span.shrink_to_hi().with_hi(successor.1),
+            def_path,
+            adjustment,
+            successor_pos: successor.0,
+        }
+    }
+
+    pub fn new_closure_return(
         ty_info: String,
         data: &'a FnRetTy<'a>,
         should_wrap_expr: Option<Span>,
-    },
-}
-
-impl AddSubdiagnostic for SourceKindMultiSuggestion<'_> {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
-        match self {
-            Self::FullyQualified { span, def_path, adjustment, successor } => {
-                let suggestion = vec![
-                    (span.shrink_to_lo(), format!("{def_path}({adjustment}")),
-                    (span.shrink_to_hi().with_hi(successor.1), successor.0.to_string()),
-                ];
-                diag.multipart_suggestion_verbose(
-                    fluent::infer::source_kind_fully_qualified,
-                    suggestion,
-                    rustc_errors::Applicability::HasPlaceholders,
-                );
+    ) -> Self {
+        let (arrow, post) = match data {
+            FnRetTy::DefaultReturn(_) => ("-> ", " "),
+            _ => ("", ""),
+        };
+        let (start_span, start_span_code, end_span) = match should_wrap_expr {
+            Some(end_span) => {
+                (data.span(), format!("{}{}{}{{ ", arrow, ty_info, post), Some(end_span))
             }
-            Self::ClosureReturn { ty_info, data, should_wrap_expr } => {
-                let (arrow, post) = match data {
-                    FnRetTy::DefaultReturn(_) => ("-> ", " "),
-                    _ => ("", ""),
-                };
-                let suggestion = match should_wrap_expr {
-                    Some(end_span) => vec![
-                        (data.span(), format!("{}{}{}{{ ", arrow, ty_info, post)),
-                        (end_span, " }".to_string()),
-                    ],
-                    None => vec![(data.span(), format!("{}{}{}", arrow, ty_info, post))],
-                };
-                diag.multipart_suggestion_verbose(
-                    fluent::infer::source_kind_closure_return,
-                    suggestion,
-                    rustc_errors::Applicability::HasPlaceholders,
-                );
-            }
-        }
+            None => (data.span(), format!("{}{}{}", arrow, ty_info, post), None),
+        };
+        Self::ClosureReturn { start_span, start_span_code, end_span }
     }
 }
 
