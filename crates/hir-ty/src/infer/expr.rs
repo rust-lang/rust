@@ -10,7 +10,10 @@ use chalk_ir::{
     cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
 };
 use hir_def::{
-    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, LabelId, Literal, Statement, UnaryOp},
+    expr::{
+        ArithOp, Array, BinaryOp, ClosureKind, CmpOp, Expr, ExprId, LabelId, Literal, Statement,
+        UnaryOp,
+    },
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
@@ -216,7 +219,7 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = Diverges::Maybe;
                 TyBuilder::unit()
             }
-            Expr::Closure { body, args, ret_type, arg_types, closure_kind: _ } => {
+            Expr::Closure { body, args, ret_type, arg_types, closure_kind } => {
                 assert_eq!(args.len(), arg_types.len());
 
                 let mut sig_tys = Vec::new();
@@ -244,20 +247,40 @@ impl<'a> InferenceContext<'a> {
                     ),
                 })
                 .intern(Interner);
-                let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
-                let closure_ty =
-                    TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
-                        .intern(Interner);
+
+                let (ty, resume_yield_tys) = if matches!(closure_kind, ClosureKind::Generator(_)) {
+                    // FIXME: report error when there are more than 1 parameter.
+                    let resume_ty = match sig_tys.first() {
+                        // When `sig_tys.len() == 1` the first type is the return type, not the
+                        // first parameter type.
+                        Some(ty) if sig_tys.len() > 1 => ty.clone(),
+                        _ => self.result.standard_types.unit.clone(),
+                    };
+                    let yield_ty = self.table.new_type_var();
+
+                    let subst = TyBuilder::subst_for_generator(self.db, self.owner)
+                        .push(resume_ty.clone())
+                        .push(yield_ty.clone())
+                        .push(ret_ty.clone())
+                        .build();
+
+                    let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
+                    let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
+
+                    (generator_ty, Some((resume_ty, yield_ty)))
+                } else {
+                    let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
+                    let closure_ty =
+                        TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
+                            .intern(Interner);
+
+                    (closure_ty, None)
+                };
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                self.deduce_closure_type_from_expectations(
-                    tgt_expr,
-                    &closure_ty,
-                    &sig_ty,
-                    expected,
-                );
+                self.deduce_closure_type_from_expectations(tgt_expr, &ty, &sig_ty, expected);
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
@@ -266,6 +289,8 @@ impl<'a> InferenceContext<'a> {
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
+                let prev_resume_yield_tys =
+                    mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
                 self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
                     this.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
@@ -273,8 +298,9 @@ impl<'a> InferenceContext<'a> {
 
                 self.diverges = prev_diverges;
                 self.return_ty = prev_ret_ty;
+                self.resume_yield_tys = prev_resume_yield_tys;
 
-                closure_ty
+                ty
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
@@ -423,11 +449,18 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Never.intern(Interner)
             }
             Expr::Yield { expr } => {
-                // FIXME: track yield type for coercion
-                if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::none());
+                if let Some((resume_ty, yield_ty)) = self.resume_yield_tys.clone() {
+                    if let Some(expr) = expr {
+                        self.infer_expr_coerce(*expr, &Expectation::has_type(yield_ty));
+                    } else {
+                        let unit = self.result.standard_types.unit.clone();
+                        let _ = self.coerce(Some(tgt_expr), &unit, &yield_ty);
+                    }
+                    resume_ty
+                } else {
+                    // FIXME: report error (yield expr in non-generator)
+                    TyKind::Error.intern(Interner)
                 }
-                TyKind::Never.intern(Interner)
             }
             Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);

@@ -103,6 +103,18 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     }
 }
 
+impl From<chalk_ir::GeneratorId<Interner>> for crate::db::InternedGeneratorId {
+    fn from(id: chalk_ir::GeneratorId<Interner>) -> Self {
+        Self::from_intern_id(id.0)
+    }
+}
+
+impl From<crate::db::InternedGeneratorId> for chalk_ir::GeneratorId<Interner> {
+    fn from(id: crate::db::InternedGeneratorId) -> Self {
+        chalk_ir::GeneratorId(id.as_intern_id())
+    }
+}
+
 pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
     chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
 }
