@@ -2013,21 +2013,24 @@ extern "rust-intrinsic" {
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
+    /// Returns `2` if the result is unknown.
+    /// Returns `1` if the pointers are guaranteed equal
+    /// Returns `0` if the pointers are guaranteed inequal
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
     /// it does not require an `unsafe` block.
     /// Therefore, implementations must not require the user to uphold
     /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(not(bootstrap))]
+    pub fn ptr_guaranteed_cmp<T>(ptr: *const T, other: *const T) -> u8;
+
+    #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
 
-    /// See documentation of `<*const T>::guaranteed_ne` for details.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
+    #[cfg(bootstrap)]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 
     /// Allocates a block of memory at compile time.
@@ -2211,6 +2214,16 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
     diff >= size
+}
+
+#[cfg(bootstrap)]
+pub const fn ptr_guaranteed_cmp(a: *const (), b: *const ()) -> u8 {
+    match (ptr_guaranteed_eq(a, b), ptr_guaranteed_ne(a, b)) {
+        (false, false) => 2,
+        (true, false) => 1,
+        (false, true) => 0,
+        (true, true) => unreachable!(),
+    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
