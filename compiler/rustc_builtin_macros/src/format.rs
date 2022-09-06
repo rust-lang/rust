@@ -45,14 +45,14 @@ use PositionUsedAs::*;
 /// If parsing succeeds, the return value is:
 ///
 /// ```text
-/// Some((fmtstr, parsed arguments))
+/// Ok((fmtstr, parsed arguments))
 /// ```
 fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<Expr>, Vec<(P<Expr>, FormatArgKind)>)> {
-    let mut args = Vec::<(P<Expr>, FormatArgKind)>::new();
+) -> PResult<'a, (P<Expr>, FormatArguments)> {
+    let mut args = FormatArguments::new();
 
     let mut p = ecx.new_parser_from_tts(tts);
 
@@ -81,7 +81,6 @@ fn parse_args<'a>(
     };
 
     let mut first = true;
-    let mut named = false;
 
     while p.token != token::Eof {
         if !p.eat(&token::Comma) {
@@ -113,40 +112,40 @@ fn parse_args<'a>(
         } // accept trailing commas
         match p.token.ident() {
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
-                named = true;
                 p.bump();
                 p.expect(&token::Eq)?;
-                let e = p.parse_expr()?;
-                if let Some(prev) =
-                    args.iter().rev().map_while(|a| a.1.ident()).find(|n| n.name == ident.name)
-                {
+                let expr = p.parse_expr()?;
+                if let Some((_, prev)) = args.by_name(ident.name) {
                     ecx.struct_span_err(
                         ident.span,
                         &format!("duplicate argument named `{}`", ident),
                     )
-                    .span_label(prev.span, "previously here")
+                    .span_label(prev.kind.ident().unwrap().span, "previously here")
                     .span_label(ident.span, "duplicate argument")
                     .emit();
                     continue;
                 }
-                args.push((e, FormatArgKind::Named(ident)));
+                args.add(FormatArgument { kind: FormatArgumentKind::Named(ident), expr });
             }
             _ => {
-                let e = p.parse_expr()?;
-                if named {
+                let expr = p.parse_expr()?;
+                if !args.named_args().is_empty() {
                     let mut err = ecx.struct_span_err(
-                        e.span,
+                        expr.span,
                         "positional arguments cannot follow named arguments",
                     );
-                    err.span_label(e.span, "positional arguments must be before named arguments");
-                    for arg in &args {
-                        if let Some(name) = arg.1.ident() {
-                            err.span_label(name.span.to(arg.0.span), "named argument");
+                    err.span_label(
+                        expr.span,
+                        "positional arguments must be before named arguments",
+                    );
+                    for arg in args.named_args() {
+                        if let Some(name) = arg.kind.ident() {
+                            err.span_label(name.span.to(arg.expr.span), "named argument");
                         }
                     }
                     err.emit();
                 }
-                args.push((e, FormatArgKind::Normal));
+                args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
             }
         }
     }
@@ -156,12 +155,9 @@ fn parse_args<'a>(
 pub fn make_format_args(
     ecx: &mut ExtCtxt<'_>,
     efmt: P<Expr>,
-    mut args: Vec<(P<Expr>, FormatArgKind)>,
+    mut args: FormatArguments,
     append_newline: bool,
 ) -> Result<FormatArgs, ()> {
-    let start_of_named_args =
-        args.iter().position(|arg| arg.1.ident().is_some()).unwrap_or(args.len());
-
     let msg = "format argument must be a string literal";
     let fmt_span = efmt.span;
     let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
@@ -172,9 +168,9 @@ pub fn make_format_args(
         Ok(fmt) => fmt,
         Err(err) => {
             if let Some((mut err, suggested)) = err {
-                let sugg_fmt = match args.len() {
+                let sugg_fmt = match args.explicit_args().len() {
                     0 => "{}".to_string(),
-                    _ => format!("{}{{}}", "{} ".repeat(args.len())),
+                    _ => format!("{}{{}}", "{} ".repeat(args.explicit_args().len())),
                 };
                 if !suggested {
                     err.span_suggestion(
@@ -243,14 +239,14 @@ pub fn make_format_args(
             let captured_arg_span =
                 fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
             if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
-                let span = match args[..start_of_named_args].last() {
-                    Some(arg) => arg.0.span,
+                let span = match args.unnamed_args().last() {
+                    Some(arg) => arg.expr.span,
                     None => fmt_span,
                 };
                 e.multipart_suggestion_verbose(
                     "consider using a positional formatting argument instead",
                     vec![
-                        (captured_arg_span, start_of_named_args.to_string()),
+                        (captured_arg_span, args.unnamed_args().len().to_string()),
                         (span.shrink_to_hi(), format!(", {}", arg)),
                     ],
                     Applicability::MachineApplicable,
@@ -267,8 +263,7 @@ pub fn make_format_args(
         })
     };
 
-    let num_explicit_args = args.len();
-    let mut used = vec![false; num_explicit_args];
+    let mut used = vec![false; args.explicit_args().len()];
     let mut invalid_refs = Vec::new();
     let mut numeric_refences_to_named_arg = Vec::new();
 
@@ -285,32 +280,24 @@ pub fn make_format_args(
      -> FormatArgPosition {
         let index = match arg {
             Index(index) => {
-                match args.get(index) {
-                    Some((_, FormatArgKind::Normal)) => {
-                        used[index] = true;
-                        Ok(index)
-                    }
-                    Some((_, FormatArgKind::Named(_))) => {
-                        used[index] = true;
+                if let Some(arg) = args.by_index(index) {
+                    used[index] = true;
+                    if arg.kind.ident().is_some() {
+                        // This was a named argument, but it was used as a positional argument.
                         numeric_refences_to_named_arg.push((index, span, used_as));
-                        Ok(index)
                     }
-                    Some((_, FormatArgKind::Captured(_))) | None => {
-                        // Doesn't exist as an explicit argument.
-                        invalid_refs.push((index, span, used_as, kind));
-                        Err(index)
-                    }
+                    Ok(index)
+                } else {
+                    // Doesn't exist as an explicit argument.
+                    invalid_refs.push((index, span, used_as, kind));
+                    Err(index)
                 }
             }
             Name(name, span) => {
                 let name = Symbol::intern(name);
-                if let Some(i) = args[start_of_named_args..]
-                    .iter()
-                    .position(|arg| arg.1.ident().is_some_and(|id| id.name == name))
-                {
-                    // Name found in `args`, so we resolve it to its index in that Vec.
-                    let index = start_of_named_args + i;
-                    if !matches!(args[index].1, FormatArgKind::Captured(_)) {
+                if let Some((index, _)) = args.by_name(name) {
+                    // Name found in `args`, so we resolve it to its index.
+                    if index < args.explicit_args().len() {
                         // Mark it as used, if it was an explicit argument.
                         used[index] = true;
                     }
@@ -319,7 +306,7 @@ pub fn make_format_args(
                     // Name not found in `args`, so we add it as an implicitly captured argument.
                     let span = span.unwrap_or(fmt_span);
                     let ident = Ident::new(name, span);
-                    let arg = if is_literal {
+                    let expr = if is_literal {
                         ecx.expr_ident(span, ident)
                     } else {
                         // For the moment capturing variables from format strings expanded from macros is
@@ -330,8 +317,7 @@ pub fn make_format_args(
                             .emit();
                         DummyResult::raw_expr(span, true)
                     };
-                    args.push((arg, FormatArgKind::Captured(ident)));
-                    Ok(args.len() - 1)
+                    Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
                 }
             }
         };
@@ -466,15 +452,7 @@ pub fn make_format_args(
     }
 
     if !invalid_refs.is_empty() {
-        report_invalid_references(
-            ecx,
-            &invalid_refs,
-            &template,
-            fmt_span,
-            num_explicit_args,
-            &args,
-            parser,
-        );
+        report_invalid_references(ecx, &invalid_refs, &template, fmt_span, &args, parser);
     }
 
     let unused = used
@@ -482,19 +460,19 @@ pub fn make_format_args(
         .enumerate()
         .filter(|&(_, used)| !used)
         .map(|(i, _)| {
-            let msg = if let FormatArgKind::Named(_) = args[i].1 {
+            let msg = if let FormatArgumentKind::Named(_) = args.explicit_args()[i].kind {
                 "named argument never used"
             } else {
                 "argument never used"
             };
-            (args[i].0.span, msg)
+            (args.explicit_args()[i].expr.span, msg)
         })
         .collect::<Vec<_>>();
 
     if !unused.is_empty() {
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
-        let detect_foreign_fmt = unused.len() > num_explicit_args / 2;
+        let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
         report_missing_placeholders(ecx, unused, detect_foreign_fmt, str_style, fmt_str, fmt_span);
     }
 
@@ -511,7 +489,7 @@ pub fn make_format_args(
                 }
                 Width => (span, span),
             };
-            let arg_name = args[index].1.ident().unwrap();
+            let arg_name = args.explicit_args()[index].kind.ident().unwrap();
             ecx.buffered_early_lint.push(BufferedEarlyLint {
                 span: arg_name.span.into(),
                 msg: format!("named argument `{}` is not used by name", arg_name.name).into(),
@@ -695,11 +673,10 @@ fn report_invalid_references(
     invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     template: &[FormatArgsPiece],
     fmt_span: Span,
-    num_explicit_args: usize,
-    args: &[(P<Expr>, FormatArgKind)],
+    args: &FormatArguments,
     parser: parse::Parser<'_>,
 ) {
-    let num_args_desc = match num_explicit_args {
+    let num_args_desc = match args.explicit_args().len() {
         0 => "no arguments were given".to_string(),
         1 => "there is 1 argument".to_string(),
         n => format!("there are {} arguments", n),
@@ -785,8 +762,8 @@ fn report_invalid_references(
                 num_args_desc,
             ),
         );
-        for (arg, _) in &args[..num_explicit_args] {
-            e.span_label(arg.span, "");
+        for arg in args.explicit_args() {
+            e.span_label(arg.expr.span, "");
         }
         // Point out `{:.*}` placeholders: those take an extra argument.
         let mut has_precision_star = false;

@@ -201,13 +201,15 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
         )
     });
 
+    let arguments = fmt.arguments.into_vec();
+
     // If the args array contains exactly all the original arguments once,
     // in order, we can use a simple array instead of a `match` construction.
     // However, if there's a yield point in any argument except the first one,
     // we don't do this, because an ArgumentV1 cannot be kept across yield points.
-    let use_simple_array = argmap.len() == fmt.arguments.len()
+    let use_simple_array = argmap.len() == arguments.len()
         && argmap.iter().enumerate().all(|(i, &(j, _))| i == j)
-        && fmt.arguments.iter().skip(1).all(|(arg, _)| !may_contain_yield_point(arg));
+        && arguments.iter().skip(1).all(|arg| !may_contain_yield_point(&arg.expr));
 
     let args = if use_simple_array {
         // Generate:
@@ -218,12 +220,12 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
         //     ]
         ecx.expr_array_ref(
             macsp,
-            fmt.arguments
+            arguments
                 .into_iter()
                 .zip(argmap)
-                .map(|((arg, _), (_, ty))| {
-                    let sp = arg.span.with_ctxt(macsp.ctxt());
-                    make_argument(ecx, sp, ecx.expr_addr_of(sp, arg), ty)
+                .map(|(arg, (_, ty))| {
+                    let sp = arg.expr.span.with_ctxt(macsp.ctxt());
+                    make_argument(ecx, sp, ecx.expr_addr_of(sp, arg.expr), ty)
                 })
                 .collect(),
         )
@@ -240,8 +242,8 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
         let args = argmap
             .iter()
             .map(|&(arg_index, ty)| {
-                if let Some((arg, _)) = fmt.arguments.get(arg_index) {
-                    let sp = arg.span.with_ctxt(macsp.ctxt());
+                if let Some(arg) = arguments.get(arg_index) {
+                    let sp = arg.expr.span.with_ctxt(macsp.ctxt());
                     make_argument(
                         ecx,
                         sp,
@@ -263,9 +265,11 @@ pub fn expand_parsed_format_args(ecx: &mut ExtCtxt<'_>, fmt: FormatArgs) -> P<as
                 macsp,
                 ecx.expr_tuple(
                     macsp,
-                    fmt.arguments
+                    arguments
                         .into_iter()
-                        .map(|(arg, _)| ecx.expr_addr_of(arg.span.with_ctxt(macsp.ctxt()), arg))
+                        .map(|arg| {
+                            ecx.expr_addr_of(arg.expr.span.with_ctxt(macsp.ctxt()), arg.expr)
+                        })
                         .collect(),
                 ),
                 vec![ecx.arm(macsp, ecx.pat_ident(macsp, args_ident), ecx.expr_array(macsp, args))],

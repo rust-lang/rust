@@ -1,5 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::Expr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
@@ -42,17 +43,97 @@ use rustc_span::Span;
 pub struct FormatArgs {
     pub span: Span,
     pub template: Vec<FormatArgsPiece>,
-    pub arguments: Vec<(P<Expr>, FormatArgKind)>,
+    pub arguments: FormatArguments,
 }
 
+/// A piece of a format template string.
+///
+/// E.g. "hello" or "{name}".
 #[derive(Clone, Debug)]
 pub enum FormatArgsPiece {
     Literal(Symbol),
     Placeholder(FormatPlaceholder),
 }
 
+/// The arguments to format_args!().
+///
+/// E.g. `1, 2, name="ferris", n=3`,
+/// but also implicit captured arguments like `x` in `format_args!("{x}")`.
 #[derive(Clone, Debug)]
-pub enum FormatArgKind {
+pub struct FormatArguments {
+    arguments: Vec<FormatArgument>,
+    num_unnamed_args: usize,
+    num_explicit_args: usize,
+    names: FxHashMap<Symbol, usize>,
+}
+
+impl FormatArguments {
+    pub fn new() -> Self {
+        Self {
+            arguments: Vec::new(),
+            names: FxHashMap::default(),
+            num_unnamed_args: 0,
+            num_explicit_args: 0,
+        }
+    }
+
+    pub fn add(&mut self, arg: FormatArgument) -> usize {
+        let index = self.arguments.len();
+        if let Some(name) = arg.kind.ident() {
+            self.names.insert(name.name, index);
+        } else if self.names.is_empty() {
+            // Only count the unnamed args before the first named arg.
+            // (Any later ones are errors.)
+            self.num_unnamed_args += 1;
+        }
+        if !matches!(arg.kind, FormatArgumentKind::Captured(..)) {
+            // This is an explicit argument.
+            // Make sure that all arguments so far are explcit.
+            assert_eq!(
+                self.num_explicit_args,
+                self.arguments.len(),
+                "captured arguments must be added last"
+            );
+            self.num_explicit_args += 1;
+        }
+        self.arguments.push(arg);
+        index
+    }
+
+    pub fn by_name(&self, name: Symbol) -> Option<(usize, &FormatArgument)> {
+        let i = *self.names.get(&name)?;
+        Some((i, &self.arguments[i]))
+    }
+
+    pub fn by_index(&self, i: usize) -> Option<&FormatArgument> {
+        (i < self.num_explicit_args).then(|| &self.arguments[i])
+    }
+
+    pub fn unnamed_args(&self) -> &[FormatArgument] {
+        &self.arguments[..self.num_unnamed_args]
+    }
+
+    pub fn named_args(&self) -> &[FormatArgument] {
+        &self.arguments[self.num_unnamed_args..self.num_explicit_args]
+    }
+
+    pub fn explicit_args(&self) -> &[FormatArgument] {
+        &self.arguments[..self.num_explicit_args]
+    }
+
+    pub fn into_vec(self) -> Vec<FormatArgument> {
+        self.arguments
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FormatArgument {
+    pub kind: FormatArgumentKind,
+    pub expr: P<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub enum FormatArgumentKind {
     /// `format_args(…, arg)`
     Normal,
     /// `format_args(…, arg = 1)`
@@ -61,7 +142,7 @@ pub enum FormatArgKind {
     Captured(Ident),
 }
 
-impl FormatArgKind {
+impl FormatArgumentKind {
     pub fn ident(&self) -> Option<Ident> {
         match self {
             &Self::Normal => None,
