@@ -4,7 +4,7 @@ enum T { A, B }
 
 fn main() {
     let x = T::A;
-    match x { T::B => { } } //~ ERROR non-exhaustive patterns: `A` not covered
+    match x { T::B => { } } //~ ERROR non-exhaustive patterns: `T::A` not covered
     match true { //~ ERROR non-exhaustive patterns: `false` not covered
       true => {}
     }
@@ -15,11 +15,11 @@ fn main() {
                       //  and `(_, _, 5_i32..=i32::MAX)` not covered
       (_, _, 4) => {}
     }
-    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` and `(B, B)` not covered
+    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(T::A, T::A)` and `(T::B, T::B)` not covered
       (T::A, T::B) => {}
       (T::B, T::A) => {}
     }
-    match T::A { //~ ERROR non-exhaustive patterns: `B` not covered
+    match T::A { //~ ERROR non-exhaustive patterns: `T::B` not covered
       T::A => {}
     }
     // This is exhaustive, though the algorithm got it wrong at one point

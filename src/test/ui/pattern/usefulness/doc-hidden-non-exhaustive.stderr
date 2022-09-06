@@ -16,11 +16,11 @@ LL ~         HiddenEnum::B => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `B` not covered
+error[E0004]: non-exhaustive patterns: `HiddenEnum::B` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:21:11
    |
 LL |     match HiddenEnum::A {
-   |           ^^^^^^^^^^^^^ pattern `B` not covered
+   |           ^^^^^^^^^^^^^ pattern `HiddenEnum::B` not covered
    |
 note: `HiddenEnum` defined here
   --> $DIR/auxiliary/hidden.rs:3:5
@@ -34,14 +34,14 @@ LL |     B,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         HiddenEnum::C => {}
-LL +         B => todo!()
+LL +         HiddenEnum::B => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `B` and `_` not covered
+error[E0004]: non-exhaustive patterns: `HiddenEnum::B` and `_` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:27:11
    |
 LL |     match HiddenEnum::A {
-   |           ^^^^^^^^^^^^^ patterns `B` and `_` not covered
+   |           ^^^^^^^^^^^^^ patterns `HiddenEnum::B` and `_` not covered
    |
 note: `HiddenEnum` defined here
   --> $DIR/auxiliary/hidden.rs:3:5
@@ -55,14 +55,14 @@ LL |     B,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         HiddenEnum::A => {}
-LL +         B | _ => todo!()
+LL +         HiddenEnum::B | _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
+error[E0004]: non-exhaustive patterns: `Some(HiddenEnum::B)` and `Some(_)` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:32:11
    |
 LL |     match None {
-   |           ^^^^ patterns `Some(B)` and `Some(_)` not covered
+   |           ^^^^ patterns `Some(HiddenEnum::B)` and `Some(_)` not covered
    |
 note: `Option<HiddenEnum>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
@@ -76,14 +76,14 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         Some(HiddenEnum::A) => {}
-LL +         Some(B) | Some(_) => todo!()
+LL +         Some(HiddenEnum::B) | Some(_) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `C` not covered
+error[E0004]: non-exhaustive patterns: `InCrate::C` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:38:11
    |
 LL |     match InCrate::A {
-   |           ^^^^^^^^^^ pattern `C` not covered
+   |           ^^^^^^^^^^ pattern `InCrate::C` not covered
    |
 note: `InCrate` defined here
   --> $DIR/doc-hidden-non-exhaustive.rs:11:5
@@ -97,7 +97,7 @@ LL |     C,
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         InCrate::B => {}
-LL +         C => todo!()
+LL +         InCrate::C => todo!()
    |
 
 error: aborting due to 5 previous errors
