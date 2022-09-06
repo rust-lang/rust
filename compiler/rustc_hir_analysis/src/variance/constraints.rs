@@ -7,7 +7,7 @@ use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Subst, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use super::terms::VarianceTerm::*;
 use super::terms::*;

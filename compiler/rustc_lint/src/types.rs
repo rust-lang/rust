@@ -9,7 +9,7 @@ use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, Subst, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_span::source_map;
 use rustc_span::symbol::sym;

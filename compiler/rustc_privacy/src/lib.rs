@@ -28,7 +28,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst, Node as ACNode};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind, Subst};
+use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;

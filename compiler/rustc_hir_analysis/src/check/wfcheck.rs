@@ -14,8 +14,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, AdtKind, DefIdTree, GenericParamDefKind, SubstsRef, ToPredicate, Ty, TyCtxt,
+    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
@@ -238,6 +238,51 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         }
         hir::ItemKind::TraitAlias(..) => {
             check_trait(tcx, item);
+        }
+        hir::ItemKind::TyAlias { .. } => {
+            struct TyAliasPeeler<'t> {
+                tcx: TyCtxt<'t>,
+                visited: FxHashSet<(DefId, SubstsRef<'t>)>,
+            }
+
+            impl<'t> ty::TypeFolder<'t> for TyAliasPeeler<'t> {
+                fn tcx<'a>(&'a self) -> TyCtxt<'t> {
+                    self.tcx
+                }
+
+                fn fold_ty(&mut self, t: Ty<'t>) -> Ty<'t> {
+                    use crate::ty::fold::{TypeFoldable, TypeSuperFoldable};
+                    use crate::ty::visit::TypeVisitable;
+
+                    match *t.kind() {
+                        ty::TyAlias(def_id, substs) => {
+                            if !self.visited.insert((def_id, substs)) {
+                                let def_span = self.tcx.def_span(def_id);
+                                self.tcx
+                                    .sess
+                                    .struct_span_err(
+                                        def_span,
+                                        "cycle detected when expanding type alias",
+                                    )
+                                    .emit();
+                                return t;
+                            }
+                            let binder_ty = self.tcx.bound_type_of(def_id);
+                            let ty = binder_ty.subst(self.tcx, substs);
+                            ty.fold_with(self)
+                        }
+                        _ if !t.has_ty_alias() => t,
+                        _ => t.super_fold_with(self),
+                    }
+                }
+            }
+
+            let ty = tcx.bound_type_of(item.def_id.to_def_id()).0;
+            if let ty::TyAlias(def_id, substs) = *ty.kind() {
+                let binder_ty = tcx.bound_type_of(def_id);
+                let ty = binder_ty.subst(tcx, substs);
+                ty.fold_with(&mut TyAliasPeeler { tcx, visited: FxHashSet::default() });
+            }
         }
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => {}

@@ -13,7 +13,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;

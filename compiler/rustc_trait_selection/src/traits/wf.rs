@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::walk::TypeWalker;
-use rustc_middle::ty::{self, ParamEnv, Subst, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 
 use std::iter;
@@ -506,9 +506,9 @@ impl<'tcx> WfPredicates<'tcx> {
                         cause,
                         depth,
                         param_env,
-                        ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                            ty::OutlivesPredicate(rty, r),
-                        ))
+                        ty::Binder::dummy(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                            rty, r,
+                        )))
                         .to_predicate(self.tcx()),
                     ));
                 }
@@ -606,8 +606,7 @@ impl<'tcx> WfPredicates<'tcx> {
                             cause.clone(),
                             depth,
                             param_env,
-                            ty::Binder::dummy(ty::PredicateKind::ObjectSafe(did))
-                                .to_predicate(tcx),
+                            ty::Binder::dummy(ty::PredicateKind::ObjectSafe(did)).to_predicate(tcx),
                         )
                     }));
                 }
