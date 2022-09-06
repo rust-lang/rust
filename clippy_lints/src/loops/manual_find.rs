@@ -106,7 +106,7 @@ fn get_binding(pat: &Pat<'_>) -> Option<HirId> {
             hir_id = None;
             return;
         }
-        if let BindingAnnotation::Unannotated = annotation {
+        if let BindingAnnotation::NONE = annotation {
             hir_id = Some(id);
         }
     });

@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
+use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, adjustment::Adjust};
 use rustc_span::symbol::{sym, Symbol};
@@ -101,12 +101,7 @@ pub(super) fn check(
                 _ => false,
             },
             // local binding capturing a reference
-            Some(Node::Local(l))
-                if matches!(
-                    l.pat.kind,
-                    PatKind::Binding(BindingAnnotation::Ref | BindingAnnotation::RefMut, ..)
-                ) =>
-            {
+            Some(Node::Local(l)) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..)) => {
                 return;
             },
             _ => false,

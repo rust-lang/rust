@@ -165,7 +165,7 @@ fn check<'tcx>(
                 }
 
                 // `ref` and `ref mut` annotations were handled earlier.
-                let annotation = if matches!(annotation, BindingAnnotation::Mutable) {
+                let annotation = if matches!(annotation, BindingAnnotation::MUT) {
                     "mut "
                 } else {
                     ""

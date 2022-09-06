@@ -192,7 +192,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     let hir = cx.tcx.hir();
     if_chain! {
         if let Some(Node::Pat(pat)) = hir.find(hir_id);
-        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
+        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
         let parent = hir.get_parent_node(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
         then {

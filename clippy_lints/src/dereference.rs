@@ -503,7 +503,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        if let PatKind::Binding(BindingAnnotation::Ref, id, name, _) = pat.kind {
+        if let PatKind::Binding(BindingAnnotation::REF, id, name, _) = pat.kind {
             if let Some(opt_prev_pat) = self.ref_locals.get_mut(&id) {
                 // This binding id has been seen before. Add this pattern to the list of changes.
                 if let Some(prev_pat) = opt_prev_pat {
