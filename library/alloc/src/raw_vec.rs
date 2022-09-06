@@ -396,16 +396,30 @@ impl<T, A: Allocator> RawVec<T, A> {
         // closely aligned to a power of two. For bigger `T`s, use a standard capacity doubling.
         // This check is completely static, so compiler should have no problem keeping only one
         // version at the time for each `T`.
-        let cap = if 2 * mem::size_of::<usize>() < mem::size_of::<T>() {
+        //
+        // Beyond 256, any savings on alignment are dwarfed by the possibility that the app
+        // just needs 2^n sized allocation in the first place.
+        let cap = if 2 * mem::size_of::<usize>() < mem::size_of::<T>() || self.cap >= 256 {
             // This guarantees exponential growth. The doubling cannot overflow
             // because `cap <= isize::MAX` and the type of `cap` is `usize`.
             let cap = cmp::max(self.cap * 2, required_cap);
             cmp::max(Self::MIN_NON_ZERO_CAP, cap)
+        } else if (self.cap & 128) != 0 {
+            // with exponential growth every container will have to go through `[128..=255]` at least once,
+            // let's align it to 2^n, so that it can just double as 2^n from now on.
+            if self.cap < 192 {
+                256
+            } else {
+                // big enough to just go straight to 512
+                512
+            }
         } else {
             // Size of allocator's per-allocation overhead we expect
-            // FIXME: maybe two pointers to be on the safe side? It could potentially
-            // be platform-dependent.
-            const ALLOC_OVERHEAD_SIZE: usize = mem::size_of::<usize>();
+            const ALLOC_OVERHEAD_SIZE: usize = {
+                // FIXME: maybe two pointers to be on the safe side? It could potentially
+                // be platform-dependent.
+                mem::size_of::<usize>()
+            };
 
             // By minimum we increase the cap by 1/2, which combined with rounding up
             // to the next bin should result in rougly doubling (increase between x1.5, and x2.5).
