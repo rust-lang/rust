@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 19;
+pub const FORMAT_VERSION: u32 = 20;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -308,9 +308,36 @@ pub struct Enum {
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "variant_kind", content = "variant_inner")]
 pub enum Variant {
+    /// A variant with no parentheses, and possible discriminant.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     PlainVariant,
+    ///     PlainWithDiscriminant = 1,
+    /// }
+    /// ```
     Plain(Option<Discriminant>),
-    Tuple(Vec<Type>),
-    Struct(Vec<Id>),
+    /// A variant with unnamed fields.
+    ///
+    /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`
+    /// instead of being ommited, because order matters.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     TupleVariant(i32),
+    ///     EmptyTupleVariant(),
+    /// }
+    /// ```
+    Tuple(Vec<Option<Id>>),
+    /// A variant with named fields.
+    ///
+    /// ```rust
+    /// enum Demo {
+    ///     StructVariant { x: i32 },
+    ///     EmptyStructVariant {},
+    /// }
+    /// ```
+    Struct { fields: Vec<Id>, fields_stripped: bool },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
