@@ -403,7 +403,7 @@ impl File {
                     mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                    reparse_tag = attr_tag.ReparseTag;
+                    attr.reparse_tag = attr_tag.ReparseTag;
                 }
             }
             Ok(attr)
