@@ -1,0 +1,29 @@
+error: struct fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:2:13
+   |
+LL |     foo: i32;
+   |             ^ help: replace `;` with `,`
+
+error: union fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:7:13
+   |
+LL |     foo: i32;
+   |             ^ help: replace `;` with `,`
+
+error: struct fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:12:19
+   |
+LL |     Qux { foo: i32; }
+   |                   ^ help: replace `;` with `,`
+
+error: unions cannot have zero fields
+  --> $DIR/recover-field-semi.rs:6:1
+   |
+LL | / union Bar {
+LL | |     foo: i32;
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 4 previous errors
+
