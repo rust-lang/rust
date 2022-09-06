@@ -144,7 +144,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn extract_callable_info(
+    /// Extracts information about a callable type for diagnostics. This is a
+    /// heuristic -- it doesn't necessarily mean that a type is always callable,
+    /// because the callable type must also be well-formed to be called.
+    pub(in super::super) fn extract_callable_info(
         &self,
         expr: &Expr<'_>,
         found: Ty<'tcx>,
@@ -1130,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-enum DefIdOrName {
+pub enum DefIdOrName {
     DefId(DefId),
     Name(&'static str),
 }
