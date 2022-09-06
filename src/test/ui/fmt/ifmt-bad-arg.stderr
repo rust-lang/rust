@@ -257,13 +257,11 @@ LL |     println!("{:.*}");
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
-error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/ifmt-bad-arg.rs:97:15
+error: invalid reference to positional argument 0 (no arguments were given)
+  --> $DIR/ifmt-bad-arg.rs:97:16
    |
 LL |     println!("{:.0$}");
-   |               ^^---^
-   |                 |
-   |                 this precision flag expects an `usize` argument at position 0, but no arguments were given
+   |                ^^^^
    |
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
