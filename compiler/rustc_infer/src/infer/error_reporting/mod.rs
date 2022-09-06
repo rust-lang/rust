@@ -2314,7 +2314,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         generic_param_scope: LocalDefId,
         span: Span,
-        origin: Option<SubregionOrigin<'tcx>>,
+        mut origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
@@ -2348,6 +2348,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 } else {
                     None
                 }
+            }
+            GenericKind::Opaque(def_id, _substs) => {
+                // Avoid emitting a `... so that the type` message at the error site.
+                // It would be out of order for return position impl trait
+                origin = None;
+                // Make sure the lifetime suggestion is on the RPIT instead of proposing
+                // to add a bound for opaque types (which isn't possible)
+                Some((self.tcx.def_span(def_id).shrink_to_hi(), true))
             }
             _ => None,
         };
