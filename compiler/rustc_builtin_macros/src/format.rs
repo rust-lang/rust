@@ -448,7 +448,6 @@ pub fn make_format_args(
 
     if !unfinished_literal.is_empty() {
         template.push(FormatArgsPiece::Literal(Symbol::intern(&unfinished_literal)));
-        drop(unfinished_literal);
     }
 
     if !invalid_refs.is_empty() {
