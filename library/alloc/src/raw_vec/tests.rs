@@ -66,7 +66,8 @@ fn grow_amortized_power_of_two_bins() {
         v.reserve(0, 7);
         assert_eq!(cap_for::<u32>(64), v.capacity());
         v.reserve(7, 90);
-        assert_eq!(cap_for::<u32>(512), v.capacity());
+        // above the limit where we still try to align to bin size
+        assert_eq!(128, v.capacity());
     }
 
     {
