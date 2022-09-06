@@ -66,6 +66,7 @@ pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 pub type LPWSABUF = *mut WSABUF;
 pub type LPWSAOVERLAPPED = *mut c_void;
 pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE = *mut c_void;
+pub type BCRYPT_ALG_HANDLE = LPVOID;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PLARGE_INTEGER = *mut c_longlong;
@@ -278,6 +279,7 @@ pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
 pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
 pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = 0xC0000002_u32 as _;
+pub const STATUS_NOT_SUPPORTED: NTSTATUS = 0xC00000BB_u32 as _;
 
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
@@ -285,7 +287,8 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-pub const BCRYPT_RNG_ALG_HANDLE: usize = 0x81;
+// "RNG\0"
+pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 
 #[repr(C)]
 pub struct UNICODE_STRING {
@@ -1229,11 +1232,18 @@ extern "system" {
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
     pub fn BCryptGenRandom(
-        hAlgorithm: LPVOID,
+        hAlgorithm: BCRYPT_ALG_HANDLE,
         pBuffer: *mut u8,
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
+    pub fn BCryptOpenAlgorithmProvider(
+        phalgorithm: *mut BCRYPT_ALG_HANDLE,
+        pszAlgId: LPCWSTR,
+        pszimplementation: LPCWSTR,
+        dwflags: ULONG,
+    ) -> NTSTATUS;
+    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,
