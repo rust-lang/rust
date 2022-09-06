@@ -1459,7 +1459,7 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {
-        if let Some(attr) = tcx.get_attr(def_id.to_def_id(), sym::repr) {
+        if let Some(attr) = tcx.get_attrs(def_id.to_def_id(), sym::repr).next() {
             struct_span_err!(
                 tcx.sess,
                 attr.span,

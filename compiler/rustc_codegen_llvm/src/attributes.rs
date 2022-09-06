@@ -386,7 +386,8 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     ) {
         let span = cx
             .tcx
-            .get_attr(instance.def_id(), sym::target_feature)
+            .get_attrs(instance.def_id(), sym::target_feature)
+            .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         let msg = format!(
             "the target features {} must all be either enabled or disabled together",
