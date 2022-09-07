@@ -199,8 +199,7 @@ pub fn check(
         if channel != "nightly" && since == Version::CurrentPlaceholder {
             tidy_error!(
                 bad,
-                "The placeholder use of {kind} feature `{feature_name}` is not allowed on the {} channel",
-                version::VERSION_PLACEHOLDER
+                "The placeholder use of {kind} feature `{feature_name}` is not allowed on the {channel} channel",
             );
         }
     }
