@@ -1507,7 +1507,6 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
                 // Search for a suitable place to put it
                 let new_i = guard.find_insert_slot(hash);
-                let new_i_p = guard.bucket_ptr(new_i, size_of);
 
                 // Probing works by scanning through all of the control
                 // bytes in groups, which may not be aligned to the group
@@ -1518,6 +1517,8 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     guard.set_ctrl_h2(i, hash);
                     continue 'outer;
                 }
+
+                let new_i_p = guard.bucket_ptr(new_i, size_of);
 
                 // We are moving the current item to a new position. Write
                 // our H2 to the control byte of the new position.
