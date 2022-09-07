@@ -609,11 +609,6 @@ h2.location a {
 	text-align: center;
 }
 
-#results > table {
-	width: 100%;
-	table-layout: fixed;
-}
-
 .content > .example-wrap pre.line-numbers {
 	position: relative;
 	-webkit-user-select: none;
@@ -768,10 +763,6 @@ pre, .rustdoc.source .example-wrap {
 .content .item-info {
 	position: relative;
 	margin-left: 24px;
-}
-
-.sub-variant > div > .item-info {
-	margin-top: initial;
 }
 
 .content .impl-items .docblock, .content .impl-items .item-info {

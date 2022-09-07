@@ -422,19 +422,6 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, "}}");
             }
-            Expr::MacroStmts { statements, tail } => {
-                w!(self, "{{ // macro statements");
-                self.indented(|p| {
-                    for stmt in statements.iter() {
-                        p.print_stmt(stmt);
-                    }
-                    if let Some(tail) = tail {
-                        p.print_expr(*tail);
-                    }
-                });
-                self.newline();
-                w!(self, "}}");
-            }
         }
     }
 

@@ -1045,18 +1045,16 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                                 &name,
                             ),
                         });
-                    } else {
-                        if matches!(
-                            meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent
-                        ) || int_type_of_word(meta_item.name_or_empty()).is_some()
-                        {
-                            recognised = true;
-                            sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
-                                span: meta_item.span,
-                                name: meta_item.name_or_empty().to_ident_string(),
-                            });
-                        }
+                    } else if matches!(
+                        meta_item.name_or_empty(),
+                        sym::C | sym::simd | sym::transparent
+                    ) || int_type_of_word(meta_item.name_or_empty()).is_some()
+                    {
+                        recognised = true;
+                        sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
+                            span: meta_item.span,
+                            name: meta_item.name_or_empty().to_ident_string(),
+                        });
                     }
                 } else if let MetaItemKind::List(_) = meta_item.kind {
                     if meta_item.has_name(sym::align) {

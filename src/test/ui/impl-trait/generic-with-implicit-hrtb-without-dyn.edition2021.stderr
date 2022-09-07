@@ -1,0 +1,22 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |                        ^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL - fn ice() -> impl AsRef<Fn(&())> {
+LL + fn ice() -> impl AsRef<dyn Fn(&())> {
+   |
+
+error[E0277]: the trait bound `(): AsRef<(dyn for<'r> Fn(&'r ()) + 'static)>` is not satisfied
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:13
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |             ^^^^^^^^^^^^^^^^^^^ the trait `AsRef<(dyn for<'r> Fn(&'r ()) + 'static)>` is not implemented for `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0782.
+For more information about an error, try `rustc --explain E0277`.
