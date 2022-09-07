@@ -1,4 +1,4 @@
-// This previously compiled, but broke with #101478.
+// This previously compiled, but was intentionally changed in #101478.
 //
 // See that PR for more details.
 trait MyTrait: Copy {
@@ -19,5 +19,7 @@ const fn output<T: MyTrait>(_: T) -> usize {
 
 fn main() {
     let x = [0u8; output(yeet())];
+    //~^ ERROR unable to use constant with a hidden value in the type system
     println!("{:?}", x);
+    //~^ ERROR unable to use constant with a hidden value in the type system
 }

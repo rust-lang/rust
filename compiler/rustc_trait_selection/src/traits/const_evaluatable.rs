@@ -186,9 +186,9 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
         match concrete {
             Err(ErrorHandled::TooGeneric) => {
-                Err(NotConstEvaluatable::Error(infcx.tcx.sess.delay_span_bug(
+                Err(NotConstEvaluatable::Error(infcx.tcx.sess.span_err(
                     span,
-                    format!("Missing value for constant, but no error reported?"),
+                    format!("unable to use constant with a hidden value in the type system"),
                 )))
             }
             Err(ErrorHandled::Linted) => {
@@ -237,11 +237,13 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
             Err(ErrorHandled::TooGeneric) => Err(if uv.has_infer_types_or_consts() {
                 NotConstEvaluatable::MentionsInfer
-                } else if uv.has_param_types_or_consts() {
+            } else if uv.has_param_types_or_consts() {
                 NotConstEvaluatable::MentionsParam
             } else {
-                let guar = infcx.tcx.sess.delay_span_bug(span, format!("Missing value for constant, but no error reported?"));
-                NotConstEvaluatable::Error(guar)
+                NotConstEvaluatable::Error(infcx.tcx.sess.span_err(
+                    span,
+                    format!("unable to use constant with a hidden value in the type system"),
+                ))
             }),
             Err(ErrorHandled::Linted) => {
                 let reported =

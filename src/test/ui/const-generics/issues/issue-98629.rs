@@ -4,12 +4,13 @@ trait Trait {
     const N: usize;
 }
 
+// FIXME: We should mention that `N` is missing
 impl const Trait for i32 {}
-//~^ ERROR not all trait items implemented, missing: `N`
 
 fn f()
 where
     [(); <i32 as Trait>::N]:,
+    //~^ ERROR unable to use constant with a hidden value in the type system
 {}
 
 fn main() {}

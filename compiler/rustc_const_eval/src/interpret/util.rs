@@ -13,7 +13,7 @@ where
     T: TypeVisitable<'tcx>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
-    if !ty.needs_subst() {
+    if !(ty.needs_subst() || ty.has_opaque_types())  {
         return Ok(());
     }
 
@@ -31,7 +31,7 @@ where
             }
 
             match *ty.kind() {
-                ty::Param(_) => ControlFlow::Break(FoundParam),
+                ty::Param(_) | ty::Opaque(..) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)
                 | ty::FnDef(def_id, substs) => {

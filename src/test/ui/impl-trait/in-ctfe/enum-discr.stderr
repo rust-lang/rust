@@ -1,8 +1,8 @@
 error: unable to use constant with a hidden value in the type system
-  --> $DIR/issue-98629.rs:11:5
+  --> $DIR/enum-discr.rs:22:11
    |
-LL |     [(); <i32 as Trait>::N]:,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     Bar = output(yeet()),
+   |           ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

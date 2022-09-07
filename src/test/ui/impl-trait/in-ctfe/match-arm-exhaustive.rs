@@ -1,4 +1,4 @@
-// This previously compiled, but broke with #101478.
+// This previously compiled, but was intentionally changed in #101478.
 //
 // See that PR for more details.
 trait MyTrait: Copy {
@@ -20,6 +20,8 @@ const CT: u8 = output(yeet());
 fn main() {
     match 0 {
         CT => (),
+        //~^ ERROR constant pattern depends on a generic parameter
+        //~| ERROR constant pattern depends on a generic parameter
         1.. => (),
     }
 }

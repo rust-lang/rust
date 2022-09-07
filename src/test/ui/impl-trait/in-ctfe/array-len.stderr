@@ -1,0 +1,16 @@
+error: unable to use constant with a hidden value in the type system
+  --> $DIR/array-len.rs:21:19
+   |
+LL |     let x = [0u8; output(yeet())];
+   |                   ^^^^^^^^^^^^^^
+
+error: unable to use constant with a hidden value in the type system
+  --> $DIR/array-len.rs:23:22
+   |
+LL |     println!("{:?}", x);
+   |                      ^
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
