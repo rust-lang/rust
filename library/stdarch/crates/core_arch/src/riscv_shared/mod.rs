@@ -1,4 +1,7 @@
 //! Shared RISC-V intrinsics
+mod p;
+
+pub use p::*;
 
 use crate::arch::asm;
 
@@ -469,6 +472,17 @@ pub unsafe fn hinval_gvma_vmid(vmid: usize) {
     asm!(".insn r 0x73, 0, 0x33, x0, x0, {}", in(reg) vmid, options(nostack))
 }
 
+/// Invalidate hypervisor translation cache for all virtual machines and guest physical addresses
+///
+/// This instruction invalidates any address-translation cache entries that an
+/// `HFENCE.GVMA` instruction with the same values of `gaddr` and `vmid` would invalidate.
+///
+/// This fence specifies all guest physical addresses and all virtual machines.
+#[inline]
+pub unsafe fn hinval_gvma_all() {
+    asm!(".insn r 0x73, 0, 0x33, x0, x0, x0", options(nostack))
+}
+
 /// Reads the floating-point control and status register `fcsr`
 ///
 /// Register `fcsr` is a 32-bit read/write register that selects the dynamic rounding mode
@@ -574,17 +588,6 @@ pub fn fsflags(value: u32) -> u32 {
     original
 }
 
-/// Invalidate hypervisor translation cache for all virtual machines and guest physical addresses
-///
-/// This instruction invalidates any address-translation cache entries that an
-/// `HFENCE.GVMA` instruction with the same values of `gaddr` and `vmid` would invalidate.
-///
-/// This fence specifies all guest physical addresses and all virtual machines.
-#[inline]
-pub unsafe fn hinval_gvma_all() {
-    asm!(".insn r 0x73, 0, 0x33, x0, x0, x0", options(nostack))
-}
-
 /// `P0` transformation function as is used in the SM3 hash algorithm
 ///
 /// This function is included in `Zksh` extension. It's defined as:
@@ -602,12 +605,10 @@ pub unsafe fn hinval_gvma_all() {
 /// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
 /// this instruction must always be independent from the data it operates on.
 #[inline]
+#[target_feature(enable = "zksh")]
 pub fn sm3p0(x: u32) -> u32 {
     let ans: u32;
-    unsafe {
-        // asm!("sm3p0 {}, {}", out(reg) ans, in(reg) x, options(nomem, nostack))
-        asm!(".insn i 0x13, 0x1, {}, {}, 0x108", out(reg) ans, in(reg) x, options(nomem, nostack))
-    };
+    unsafe { asm!("sm3p0 {}, {}", lateout(reg) ans, in(reg) x, options(pure, nomem, nostack)) };
     ans
 }
 
@@ -634,12 +635,10 @@ pub fn sm3p0(x: u32) -> u32 {
 /// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
 /// this instruction must always be independent from the data it operates on.
 #[inline]
+#[target_feature(enable = "zksh")]
 pub fn sm3p1(x: u32) -> u32 {
     let ans: u32;
-    unsafe {
-        // asm!("sm3p1 {}, {}", out(reg) ans, in(reg) x, options(nomem, nostack))
-        asm!(".insn i 0x13, 0x1, {}, {}, 0x109", out(reg) ans, in(reg) x, options(nomem, nostack))
-    };
+    unsafe { asm!("sm3p1 {}, {}", lateout(reg) ans, in(reg) x, options(pure, nomem, nostack)) };
     ans
 }
 
@@ -674,33 +673,28 @@ pub fn sm3p1(x: u32) -> u32 {
 /// It can be implemented by `sm4ed` instruction like:
 ///
 /// ```no_run
+/// # #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+/// # fn round_function(x0: u32, x1: u32, x2: u32, x3: u32, rk: u32) -> u32 {
+/// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ed;
+/// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ed;
 /// let a = x1 ^ x2 ^ x3 ^ rk;
 /// let c0 = sm4ed::<0>(x0, a);
 /// let c1 = sm4ed::<1>(c0, a); // c1 represents c[0..=1], etc.
 /// let c2 = sm4ed::<2>(c1, a);
 /// let c3 = sm4ed::<3>(c2, a);
 /// return c3; // c3 represents c[0..=3]
+/// # }
 /// ```
 ///
 /// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
 /// this instruction must always be independent from the data it operates on.
+#[inline]
+#[target_feature(enable = "zksed")]
 pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
     static_assert!(BS: u8 where BS <= 3);
     let ans: u32;
-    match BS {
-        0 => unsafe {
-            asm!(".insn r 0x33, 0, 0x18, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
-        },
-        1 => unsafe {
-            asm!(".insn r 0x33, 0, 0x38, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
-        },
-        2 => unsafe {
-            asm!(".insn r 0x33, 0, 0x58, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
-        },
-        3 => unsafe {
-            asm!(".insn r 0x33, 0, 0x78, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
-        },
-        _ => unreachable!(),
+    unsafe {
+        asm!("sm4ed {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) a, const BS, options(pure, nomem, nostack))
     };
     ans
 }
@@ -739,33 +733,28 @@ pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
 /// Hence, the key schedule operation can be implemented by `sm4ks` instruction like:
 ///
 /// ```no_run
+/// # #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
+/// # fn key_schedule(k0: u32, k1: u32, k2: u32, k3: u32, ck_i: u32) -> u32 {
+/// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ks;
+/// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ks;
 /// let k = k1 ^ k2 ^ k3 ^ ck_i;
 /// let c0 = sm4ks::<0>(k0, k);
 /// let c1 = sm4ks::<1>(c0, k); // c1 represents c[0..=1], etc.
 /// let c2 = sm4ks::<2>(c1, k);
 /// let c3 = sm4ks::<3>(c2, k);
 /// return c3; // c3 represents c[0..=3]
+/// # }
 /// ```
 ///
 /// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
 /// this instruction must always be independent from the data it operates on.
+#[inline]
+#[target_feature(enable = "zksed")]
 pub fn sm4ks<const BS: u8>(x: u32, k: u32) -> u32 {
     static_assert!(BS: u8 where BS <= 3);
     let ans: u32;
-    match BS {
-        0 => unsafe {
-            asm!(".insn r 0x33, 0, 0x1A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
-        },
-        1 => unsafe {
-            asm!(".insn r 0x33, 0, 0x3A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
-        },
-        2 => unsafe {
-            asm!(".insn r 0x33, 0, 0x5A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
-        },
-        3 => unsafe {
-            asm!(".insn r 0x33, 0, 0x7A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
-        },
-        _ => unreachable!(),
+    unsafe {
+        asm!("sm4ks {}, {}, {}, {}", lateout(reg) ans, in(reg) x, in(reg) k, const BS, options(pure, nomem, nostack))
     };
     ans
 }

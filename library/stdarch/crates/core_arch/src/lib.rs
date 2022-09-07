@@ -19,6 +19,7 @@
     doc_cfg,
     tbm_target_feature,
     sse4a_target_feature,
+    riscv_target_feature,
     arm_target_feature,
     cmpxchg16b_target_feature,
     avx512_target_feature,
