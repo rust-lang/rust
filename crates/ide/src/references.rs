@@ -116,19 +116,10 @@ pub(crate) fn find_all_refs(
 
 fn retain_import_usages(usages: &mut UsageSearchResult, sema: &Semantics<'_, RootDatabase>) {
     for (file_id, refs) in &mut usages.references {
-        refs.retain(|x| {
-            let file_sema = sema.parse(file_id.clone()).syntax().clone();
-
-            let maybe_node = file_sema.child_or_token_at_range(x.range.clone());
-
-            if let Some(node) = maybe_node {
-                let res = match node {
-                    syntax::NodeOrToken::Node(x) => !matches!(x.kind(), USE),
-                    syntax::NodeOrToken::Token(_) => true,
-                };
-                res
-            } else {
-                true
+        refs.retain(|it| {
+            match if.name.as_name_ref() {
+                Some(name_ref) => name_ref.syntax().ancestors().any(|it| !matches(it.kind(), USE)),
+                None => true,
             }
         });
     }
