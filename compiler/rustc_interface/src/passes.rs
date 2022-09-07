@@ -573,12 +573,23 @@ fn write_out_deps(
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
-        let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
-            let path = PathBuf::from(path_sym.as_str());
+
+        let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
             escape_dep_filename(&file.prefer_local().to_string())
-        });
+        };
+
+        let extra_tracked_files =
+            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
         files.extend(extra_tracked_files);
+
+        // We also need to track used PGO profile files
+        if let Some(ref profile_instr) = sess.opts.cg.profile_use {
+            files.push(normalize_path(profile_instr.as_path().to_path_buf()));
+        }
+        if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
+            files.push(normalize_path(profile_sample.as_path().to_path_buf()));
+        }
 
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
