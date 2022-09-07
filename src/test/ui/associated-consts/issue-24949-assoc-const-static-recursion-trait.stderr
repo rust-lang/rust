@@ -13,7 +13,7 @@ note: ...which requires const-evaluating + checking `TRAIT_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:7:1
    |
 LL | const TRAIT_REF_BAR: u32 = <GlobalTraitRef>::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 11:28>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
    |

@@ -27,14 +27,8 @@ LL |             demand_y(x, y, p)
 note: no external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:38:1
    |
-LL | / fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
-LL | |     establish_relationships(
-LL | |         cell_a,
-LL | |         cell_b,
-...  |
-LL | |     );
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 

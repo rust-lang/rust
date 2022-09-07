@@ -15,11 +15,8 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
 note: no external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:22:1
    |
-LL | / fn generic<T>(value: T) {
-LL | |     let cell = Cell::new(&());
-LL | |     twice(cell, value, |a, b| invoke(a, b));
-LL | | }
-   | |_^
+LL | fn generic<T>(value: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: generic::<T>
 
@@ -41,11 +38,8 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
 note: no external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:28:1
    |
-LL | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
-LL | |     twice(cell, value, |a, b| invoke(a, b));
-LL | |
-LL | | }
-   | |_^
+LL | fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: generic_fail::<T>
 

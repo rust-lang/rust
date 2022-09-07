@@ -73,11 +73,29 @@ macro_rules! thir_with_elements {
     }
 }
 
+pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
+
 thir_with_elements! {
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
+    params: ParamId => Param<'tcx> => "p{}",
+}
+
+/// Description of a type-checked function parameter.
+#[derive(Clone, Debug, HashStable)]
+pub struct Param<'tcx> {
+    /// The pattern that appears in the parameter list, or None for implicit parameters.
+    pub pat: Option<Box<Pat<'tcx>>>,
+    /// The possibly inferred type.
+    pub ty: Ty<'tcx>,
+    /// Span of the explicitly provided type, or None if inferred for closures.
+    pub ty_span: Option<Span>,
+    /// Whether this param is `self`, and how it is bound.
+    pub self_kind: Option<hir::ImplicitSelfKind>,
+    /// HirId for lints.
+    pub hir_id: Option<hir::HirId>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -547,6 +565,15 @@ pub struct Pat<'tcx> {
 impl<'tcx> Pat<'tcx> {
     pub fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
         Pat { ty, span: DUMMY_SP, kind: PatKind::Wild }
+    }
+
+    pub fn simple_ident(&self) -> Option<Symbol> {
+        match self.kind {
+            PatKind::Binding { name, mode: BindingMode::ByValue, subpattern: None, .. } => {
+                Some(name)
+            }
+            _ => None,
+        }
     }
 }
 
