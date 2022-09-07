@@ -13,7 +13,7 @@ where
     T: TypeVisitable<'tcx>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
-    if !(ty.needs_subst() || ty.has_opaque_types())  {
+    if !(ty.needs_subst() || ty.has_opaque_types()) {
         return Ok(());
     }
 

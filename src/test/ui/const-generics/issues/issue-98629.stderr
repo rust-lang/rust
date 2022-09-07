@@ -1,8 +1,12 @@
-error: unable to use constant with a hidden value in the type system
-  --> $DIR/issue-98629.rs:11:5
+error[E0046]: not all trait items implemented, missing: `N`
+  --> $DIR/issue-98629.rs:7:1
    |
-LL |     [(); <i32 as Trait>::N]:,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const N: usize;
+   |     -------------- `N` from trait
+...
+LL | impl const Trait for i32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ missing `N` in implementation
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0046`.
