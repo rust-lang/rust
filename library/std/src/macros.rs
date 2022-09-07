@@ -49,6 +49,9 @@ macro_rules! panic {
 ///
 /// Panics if writing to `io::stdout()` fails.
 ///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
+///
 /// # Examples
 ///
 /// ```
@@ -107,6 +110,9 @@ macro_rules! print {
 ///
 /// Panics if writing to [`io::stdout`] fails.
 ///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
+///
 /// [`io::stdout`]: crate::io::stdout
 ///
 /// # Examples
@@ -147,6 +153,9 @@ macro_rules! println {
 ///
 /// Panics if writing to `io::stderr` fails.
 ///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
+///
 /// # Examples
 ///
 /// ```
@@ -178,6 +187,9 @@ macro_rules! eprint {
 /// # Panics
 ///
 /// Panics if writing to `io::stderr` fails.
+///
+/// Writing to non-blocking stdout can cause an error, which will lead
+/// this macro to panic.
 ///
 /// # Examples
 ///

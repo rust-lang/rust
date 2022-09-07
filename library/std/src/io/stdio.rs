@@ -992,6 +992,9 @@ pub fn set_output_capture(sink: Option<LocalStream>) -> Option<LocalStream> {
 /// the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
+///
+/// Writing to non-blocking stdout/stderr can cause an error, which will lead
+/// this function to panic.
 fn print_to<T>(args: fmt::Arguments<'_>, global_s: fn() -> T, label: &str)
 where
     T: Write,
