@@ -304,11 +304,19 @@ impl FromWithTcx<clean::Struct> for Struct {
     fn from_tcx(struct_: clean::Struct, tcx: TyCtxt<'_>) -> Self {
         let fields_stripped = struct_.has_stripped_entries();
         let clean::Struct { struct_type, generics, fields } = struct_;
+
+        let kind = match struct_type {
+            CtorKind::Fn => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            CtorKind::Const => {
+                assert!(fields.is_empty());
+                StructKind::Unit
+            }
+            CtorKind::Fictive => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
+        };
+
         Struct {
-            struct_type: from_ctor_kind(struct_type),
+            kind,
             generics: generics.into_tcx(tcx),
-            fields_stripped,
-            fields: ids(fields, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -324,14 +332,6 @@ impl FromWithTcx<clean::Union> for Union {
             fields: ids(fields, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
-    }
-}
-
-pub(crate) fn from_ctor_kind(struct_type: CtorKind) -> StructType {
-    match struct_type {
-        CtorKind::Fictive => StructType::Plain,
-        CtorKind::Fn => StructType::Tuple,
-        CtorKind::Const => StructType::Unit,
     }
 }
 
@@ -640,20 +640,6 @@ impl FromWithTcx<clean::Enum> for Enum {
             variants_stripped,
             variants: ids(variants, tcx),
             impls: Vec::new(), // Added in JsonRenderer::item
-        }
-    }
-}
-
-impl FromWithTcx<clean::VariantStruct> for Struct {
-    fn from_tcx(struct_: clean::VariantStruct, tcx: TyCtxt<'_>) -> Self {
-        let fields_stripped = struct_.has_stripped_entries();
-        let clean::VariantStruct { struct_type, fields } = struct_;
-        Struct {
-            struct_type: from_ctor_kind(struct_type),
-            generics: Generics { params: vec![], where_predicates: vec![] },
-            fields_stripped,
-            fields: ids(fields, tcx),
-            impls: Vec::new(),
         }
     }
 }
