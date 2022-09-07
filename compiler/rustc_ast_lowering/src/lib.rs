@@ -660,6 +660,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// actually used in the HIR, as that would trigger an assertion in the
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
+    #[instrument(level = "debug", skip(self), ret)]
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
@@ -693,6 +694,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Generate a new `HirId` without a backing `NodeId`.
+    #[instrument(level = "debug", skip(self), ret)]
     fn next_id(&mut self) -> hir::HirId {
         let owner = self.current_hir_id_owner;
         let local_id = self.item_local_id_counter;
@@ -1382,7 +1384,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// added explicitly in the HIR). But this includes all the lifetimes, and we only want to
     /// capture the lifetimes that are referenced in the bounds. Therefore, we add *extra* lifetime parameters
     /// for the lifetimes that get captured (`'x`, in our example above) and reference those.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn lower_opaque_impl_trait(
         &mut self,
         span: Span,
@@ -2148,6 +2150,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::MutTy { ty: self.lower_ty(&mt.ty, itctx), mutbl: mt.mutbl }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn lower_param_bounds(
         &mut self,
         bounds: &[GenericBound],
@@ -2165,6 +2168,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx))
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn lower_generic_and_bounds(
         &mut self,
         node_id: NodeId,

@@ -573,6 +573,7 @@ fn get_new_lifetime_name<'tcx>(
 
 /// Returns the predicates defined on `item_def_id` of the form
 /// `X: Foo` where `X` is the type parameter `def_id`.
+#[instrument(level = "trace", skip(tcx))]
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
     (item_def_id, def_id, assoc_name): (DefId, LocalDefId, Ident),
@@ -679,7 +680,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
-        debug!(?param_def_id);
+        trace!(?param_def_id);
         ast_generics
             .predicates
             .iter()
@@ -708,9 +709,8 @@ impl<'tcx> ItemCtxt<'tcx> {
             .collect()
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
-        debug!("bound_defines_assoc_item(b={:?}, assoc_name={:?})", b, assoc_name);
-
         match b {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
@@ -2105,10 +2105,9 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
 
 /// Returns a list of user-specified type predicates for the definition with ID `def_id`.
 /// N.B., this does not include any implied/inferred constraints.
+#[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
-
-    debug!("explicit_predicates_of(def_id={:?})", def_id);
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
@@ -2224,6 +2223,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         + has_own_self as u32
         + early_bound_lifetimes_from_generics(tcx, ast_generics).count() as u32;
 
+    trace!(?predicates);
+    trace!(?ast_generics);
+
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
     for param in ast_generics.params {
@@ -2244,7 +2246,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     Some((param.hir_id, ast_generics.predicates)),
                     param.span,
                 );
+                trace!(?bounds);
                 predicates.extend(bounds.predicates(tcx, param_ty));
+                trace!(?predicates);
             }
             GenericParamKind::Const { .. } => {
                 // Bounds on const parameters are currently not possible.
@@ -2253,6 +2257,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         }
     }
 
+    trace!(?predicates);
     // Add in the bounds that appear in the where-clause.
     for predicate in ast_generics.predicates {
         match predicate {
@@ -2338,12 +2343,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         );
     }
 
-    let result = ty::GenericPredicates {
+    ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
-    };
-    debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
-    result
+    }
 }
 
 fn const_evaluatable_predicates_of<'tcx>(
