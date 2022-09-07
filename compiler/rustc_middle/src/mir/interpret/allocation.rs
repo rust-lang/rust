@@ -87,9 +87,27 @@ pub trait AllocBytes: Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + O
     fn add_ptr(&mut self, to_add: usize) -> *mut u8;
     fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &Self);
     fn hash_head_tail<H: hash::Hasher>(&self, _byte_count: usize, _state: &mut H, _max_bytes_to_hash: usize) {}
+    fn adjust_to_align(self, _align: Align) -> Self {
+        self
+    }
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
+    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>>;
 }
 
 impl AllocBytes for Box<[u8]> {
+
+    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>> {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
+            handle_alloc_fail()
+        })?;
+        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
+        let bytes = unsafe { bytes.assume_init() };
+        Ok(bytes)
+    }
+
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
+        Box::<[u8]>::from(slice.into())
+    }
     
     /// The length of the bytes.
     fn get_len(&self) -> usize {
@@ -306,7 +324,7 @@ impl AllocRange {
 }
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
-impl<Prov> Allocation<Prov, ()> {
+impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation initialized by the given bytes
     // TODO! ellen make this generic for bytes
     pub fn from_bytes<'a>(
@@ -314,18 +332,8 @@ impl<Prov> Allocation<Prov, ()> {
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let slice: Cow<'a, [u8]> = slice.into();
-        let size = Size::from_bytes(slice.len());
-        let align_usize: usize = align.bytes().try_into().unwrap();
-        let layout = std::alloc::Layout::from_size_align(slice.len(), align_usize).unwrap();
-        let bytes = unsafe {
-            let buf = std::alloc::alloc(layout);
-            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(std::slice::from_raw_parts_mut(buf as *mut MaybeUninit<u8>, slice.len()));
-            MaybeUninit::write_slice(&mut boxed, &slice);
-            boxed.assume_init()
-        };
-        
-        assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
+        let bytes = Bytes::from_bytes(slice, align);
+        let size = Size::from_bytes(bytes.get_len());
         
         Self {
             bytes,
@@ -365,29 +373,23 @@ impl<Prov> Allocation<Prov, ()> {
     ///
     /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let align_usize: usize = align.bytes().try_into().unwrap();
-        let layout = std::alloc::Layout::from_size_align(size.bytes_usize(), align_usize).unwrap();
-        let vec_align = unsafe {
-            // https://doc.rust-lang.org/nightly/std/alloc/trait.GlobalAlloc.html#tymethod.alloc
-            // std::alloc::alloc returns null to indicate an allocation failure: 
-            // "Returning a null pointer indicates that either memory is exhausted 
-            // or layout does not meet this allocator’s size or alignment constraints."
-            let buf = std::alloc::alloc(layout);
-            // Handle allocation failure.
-            if buf.is_null() {
-                if panic_on_fail {
-                    panic!("Allocation::uninit called with panic_on_fail had allocation failure")
-                }
-                ty::tls::with(|tcx| {
-                    tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
-                });
-                Err(InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted))?
-            } 
-            Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())
+        let handle_alloc_fail = || -> InterpError<'tcx> {
+            // This results in an error that can happen non-deterministically, since the memory
+            // available to the compiler can change between runs. Normally queries are always
+            // deterministic. However, we can be non-deterministic here because all uses of const
+            // evaluation (including ConstProp!) will make compilation fail (via hard error
+            // or ICE) upon encountering a `MemoryExhausted` error.
+            if panic_on_fail {
+                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
+            }
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+            });
+            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         };
         
-        let bytes = vec_align.into_boxed_slice();
-        assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
+        let bytes = Bytes::uninit(size, align, handle_alloc_fail)?;
+
         Ok(Allocation {
             bytes: bytes,
             relocations: Relocations::new(),
@@ -399,7 +401,7 @@ impl<Prov> Allocation<Prov, ()> {
     }
 }
 
-impl Allocation {
+impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
     /// Adjust allocation from the ones in tcx to a custom Machine instance
     /// with a different Provenance and Extra type.
     // TODO! ellen make this generic for Bytes
@@ -408,32 +410,23 @@ impl Allocation {
         cx: &impl HasDataLayout,
         extra: Extra,
         mut adjust_ptr: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Prov>, Err>,
-    ) -> Result<Allocation<Prov, Extra>, Err> {
+    ) -> Result<Allocation<Prov, Extra, Bytes>, Err> {
         // Compute new pointer provenance, which also adjusts the bytes.
         // Realign the pointer
+        let mut bytes = self.bytes.adjust_to_align(self.align);
 
-        let align_usize: usize = self.align.bytes().try_into().unwrap();
-        let layout = std::alloc::Layout::from_size_align(self.bytes.get_len(), align_usize).unwrap();
-        let mut bytes = unsafe {
-            let buf = std::alloc::alloc(layout);
-            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(std::slice::from_raw_parts_mut(buf as *mut MaybeUninit<u8>, self.bytes.get_len()));
-            AllocBytes::write_maybe_uninit_slice(&mut boxed, &self.bytes);
-            boxed.assume_init()
-        };
-        assert!(bytes.as_ptr() as usize % align_usize == 0);
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;
         for &(offset, alloc_id) in self.relocations.iter() {
             let idx = offset.bytes_usize();
-            let ptr_bytes = &mut bytes[idx..idx + ptr_size];
+            let ptr_bytes = bytes.get_slice_from_range_mut(idx..idx + ptr_size);//&mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
                 adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_relocations.push((offset, ptr_prov));
         }
-        assert!(bytes.as_ptr() as u64 % self.align.bytes() == 0);
         
         // Create allocation.
         Ok(Allocation {
