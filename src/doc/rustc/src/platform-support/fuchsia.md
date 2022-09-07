@@ -422,6 +422,7 @@ Next, we'll build a package manifest as defined by our manifest:
 
 ```sh
 ${SDK_PATH}/tools/${ARCH}/pm \
+    -api-level $(${SDK_PATH}/tools/${ARCH}/ffx version -v | grep "api-level" | head -1 |  awk -F ' ' '{print $2}') \
     -o pkg/hello_fuchsia_manifest \
     -m pkg/hello_fuchsia.manifest \
     build \
