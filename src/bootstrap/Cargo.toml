@@ -67,6 +67,7 @@ features = [
     "psapi",
     "impl-default",
     "timezoneapi",
+    "winbase",
 ]
 
 [dev-dependencies]
