@@ -274,7 +274,7 @@ fn check_other_call_arg<'tcx>(
                         .subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
                     && get_associated_type(cx, receiver_ty, deref_trait_id, "Target")
-                        .map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
+                        .map_or(false, |ty| ty::TermKind::Ty(ty) == normalized_ty.unpack())
             } else {
                 false
             }

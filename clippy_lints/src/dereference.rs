@@ -1175,7 +1175,7 @@ fn replace_types<'tcx>(
         if replaced.insert(param_ty.index) {
             for projection_predicate in projection_predicates {
                 if projection_predicate.projection_ty.self_ty() == param_ty.to_ty(cx.tcx)
-                    && let ty::Term::Ty(term_ty) = projection_predicate.term
+                    && let Some(term_ty) = projection_predicate.term.ty()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
                     let item_def_id = projection_predicate.projection_ty.item_def_id;
