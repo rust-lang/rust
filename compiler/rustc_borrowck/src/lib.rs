@@ -26,8 +26,8 @@ use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
-    PlaceRef, VarDebugInfoContents,
+    traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
+    Place, PlaceElem, PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -591,22 +591,19 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-                ..
-            }) => {
-                span_bug!(
+            StatementKind::Intrinsic(box ref kind) => match kind {
+                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state),
+                NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
                 )
             }
-            StatementKind::Nop
+            // Only relevant for mir typeck
+            StatementKind::AscribeUserType(..)
+            // Doesn't have any language semantics
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..)
-            | StatementKind::Retag { .. }
-            | StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
-                // to borrow check.
-            }
+            // Does not actually affect borrowck
+            | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
@@ -616,7 +613,10 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+            StatementKind::Nop
+            | StatementKind::Retag { .. }
+            | StatementKind::Deinit(..)
+            | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
         }

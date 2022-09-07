@@ -499,7 +499,7 @@ impl UsedLocals {
 impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
-            StatementKind::CopyNonOverlapping(..)
+            StatementKind::Intrinsic(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)

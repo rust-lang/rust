@@ -7,9 +7,10 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, Local, Location,
-    MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, RuntimePhase, Rvalue,
-    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping,
+    Local, Location, MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef,
+    ProjectionElem, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
+    TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::Subst;
@@ -636,11 +637,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+                let ty = op.ty(&self.body.local_decls, self.tcx);
+                if !ty.is_bool() {
+                    self.fail(
+                        location,
+                        format!("`assume` argument must be `bool`, but got: `{}`", ty),
+                    );
+                }
+            }
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+                CopyNonOverlapping { src, dst, count },
+            )) => {
                 let src_ty = src.ty(&self.body.local_decls, self.tcx);
                 let op_src_ty = if let Some(src_deref) = src_ty.builtin_deref(true) {
                     src_deref.ty

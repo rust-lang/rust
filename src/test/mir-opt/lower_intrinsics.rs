@@ -1,7 +1,7 @@
 // unit-test: LowerIntrinsics
 // ignore-wasm32 compiled with panic=abort by default
 
-#![feature(core_intrinsics)]
+#![feature(core_intrinsics, intrinsics)]
 #![crate_type = "lib"]
 
 // EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
@@ -50,4 +50,25 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&0);
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
+}
+
+extern "rust-intrinsic" {
+    // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+}
+
+// EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
+pub fn f_copy_nonoverlapping() {
+    let src = ();
+    let mut dst = ();
+    unsafe {
+        copy_nonoverlapping(&src as *const _ as *const i32, &mut dst as *mut _ as *mut i32, 0);
+    }
+}
+
+// EMIT_MIR lower_intrinsics.assume.LowerIntrinsics.diff
+pub fn assume() {
+    unsafe {
+        std::intrinsics::assume(true);
+    }
 }

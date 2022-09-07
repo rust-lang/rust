@@ -114,13 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 M::retag(self, *kind, &dest)?;
             }
 
-            // Call CopyNonOverlapping
-            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { src, dst, count }) => {
-                let src = self.eval_operand(src, None)?;
-                let dst = self.eval_operand(dst, None)?;
-                let count = self.eval_operand(count, None)?;
-                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)?;
-            }
+            Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
             // Statements we do not track.
             AscribeUserType(..) => {}

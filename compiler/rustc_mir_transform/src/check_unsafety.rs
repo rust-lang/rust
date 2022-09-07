@@ -105,7 +105,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 // safe (at least as emitted during MIR construction)
             }
 
-            StatementKind::CopyNonOverlapping(..) => unreachable!(),
+            // Move to above list once mir construction uses it.
+            StatementKind::Intrinsic(..) => unreachable!(),
         }
         self.super_statement(statement, location);
     }

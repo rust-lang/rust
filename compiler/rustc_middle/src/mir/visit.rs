@@ -425,14 +425,15 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
-                    StatementKind::CopyNonOverlapping(box crate::mir::CopyNonOverlapping{
-                        src,
-                        dst,
-                        count,
-                    }) => {
-                      self.visit_operand(src, location);
-                      self.visit_operand(dst, location);
-                      self.visit_operand(count, location)
+                    StatementKind::Intrinsic(box ref $($mutability)? intrinsic) => {
+                        match intrinsic {
+                            NonDivergingIntrinsic::Assume(op) => self.visit_operand(op, location),
+                            NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
+                                self.visit_operand(src, location);
+                                self.visit_operand(dst, location);
+                                self.visit_operand(count, location);
+                            }
+                        }
                     }
                     StatementKind::Nop => {}
                 }

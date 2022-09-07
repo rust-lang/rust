@@ -77,10 +77,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
-            sym::assume => {
-                bx.assume(args[0].immediate());
-                return;
-            }
             sym::abort => {
                 bx.abort();
                 return;

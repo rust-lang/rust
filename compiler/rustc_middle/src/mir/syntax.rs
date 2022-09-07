@@ -327,6 +327,34 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
+    /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
+    /// This avoids adding a new block and a terminator for simple intrinsics.
+    Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
+
+    /// No-op. Useful for deleting instructions without affecting statement indices.
+    Nop,
+}
+
+#[derive(
+    Clone,
+    TyEncodable,
+    TyDecodable,
+    Debug,
+    PartialEq,
+    Hash,
+    HashStable,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum NonDivergingIntrinsic<'tcx> {
+    /// Denotes a call to the intrinsic function `assume`.
+    ///
+    /// The operand must be a boolean. Optimizers may use the value of the boolean to backtrack its
+    /// computation to infer information about other variables. So if the boolean came from a
+    /// `x < y` operation, subsequent operations on `x` and `y` could elide various bound checks.
+    /// If the argument is `false`, this operation is equivalent to `TerminatorKind::Unreachable`.
+    Assume(Operand<'tcx>),
+
     /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///
     /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
@@ -340,10 +368,18 @@ pub enum StatementKind<'tcx> {
     ///
     /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
     /// I vaguely remember Ralf saying somewhere that he thought it should not be.
-    CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
+    CopyNonOverlapping(CopyNonOverlapping<'tcx>),
+}
 
-    /// No-op. Useful for deleting instructions without affecting statement indices.
-    Nop,
+impl std::fmt::Display for NonDivergingIntrinsic<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Assume(op) => write!(f, "assume({op:?})"),
+            Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
+                write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
+            }
+        }
+    }
 }
 
 /// Describes what kind of retag is to be performed.
