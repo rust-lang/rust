@@ -8,7 +8,6 @@ use std::hash::Hash;
 use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
-use std::mem::MaybeUninit;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
@@ -24,76 +23,33 @@ use super::{
 };
 use crate::ty;
 
-/// Representation of a section of memory, starting at a particular
-/// address and of a specified length.
-/// This is how we represent bytes in an `Allocation` that can't be 
-/// owned, since they belong to a foreign process -- in particular, we
-/// use this to store pointers to C memory passed back from C FFI calls 
-/// in Miri.
-// TODO! ellen move this into Miri
-// #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-// #[derive(TyEncodable, TyDecodable)]
-// pub struct AddrAllocBytes {
-//     /// Address of the beginning of the bytes.
-//     pub addr: u64,
-//     /// Size of the type of the data being stored in these bytes.
-//     pub type_size: usize,
-//     /// Length of the bytes, in multiples of `type_size`; 
-//     /// it's in a `RefCell` since it can change depending on how it's used
-//     /// in the program. UNSAFE
-//     pub len: std::cell::RefCell<usize>,
-// }
-
-// impl AddrAllocBytes {
-//     /// Length of the bytes.
-//     pub fn total_len(&self) -> usize {
-//         self.type_size * *self.len.borrow()
-//     }
-// }
-
-// // Satisfy the `Hash` and `HashStable` trait requirements; can't be automatically derived.
-// impl hash::Hash for AddrAllocBytes {
-//     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-//         self.addr.hash(state);
-//         self.type_size.hash(state);
-//     }
-// }   
-// impl<CTX> HashStable<CTX> for AddrAllocBytes {
-//     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-//         self.addr.hash_stable(hcx, hasher);
-//         self.type_size.hash_stable(hcx, hasher);
-//     }
-// }
-
-/// Types that can be used to represent the `bytes field of an `Allocation`. 
-// #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-// #[derive(TyEncodable, TyDecodable)]
-// #[derive(HashStable)]
-// pub enum AllocBytes {
-//     /// Owned, boxed slice of [u8].
-//     Boxed(Box<[u8]>),
-//     /// Address, size of the type stored, and length of the allocation.
-//     /// This is used for representing pointers to bytes that belong to a 
-//     /// foreign process (such as pointers into C memory, passed back to Rust
-//     /// through an FFI call).
-//     Addr(AddrAllocBytes),
-// }
-
+/// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + Ord + core::hash::Hash {
+    /// The length of the bytes.
     fn get_len(&self) -> usize;
-    fn get_addr(&self) -> u64;
+    /// The address of the bytes.
+    fn expose_addr(&self) -> u64;
+    /// Get a slice of the bytes corresponding to a specified range.
     fn get_slice_from_range(&self, range: Range<usize>) -> &[u8];
+    /// Mutable slice of the bytes corresponding to a specified range.
     fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8];
+    /// Add to the pointer of the head of the bytes, and return a mutable pointer to this location.
     fn add_ptr(&mut self, to_add: usize) -> *mut u8;
-    fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &Self);
+    /// Hash the head and tail of the bytes.
+    /// This is required to statisfy the `Hash` trait.
     fn hash_head_tail<H: hash::Hasher>(&self, _byte_count: usize, _state: &mut H, _max_bytes_to_hash: usize) {}
+    /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
     fn adjust_to_align(self, _align: Align) -> Self {
         self
     }
+    /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
+    /// Create an uninitialized `AllocBytes` of the specified size and alignment; 
+    /// call the callback error handler if there is an error in allocating the memory.
     fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>>;
 }
 
+// Default `bytes` for `Allocation` is a `Box<[u8]>`.
 impl AllocBytes for Box<[u8]> {
 
     fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>> {
@@ -115,7 +71,7 @@ impl AllocBytes for Box<[u8]> {
     }
 
     /// The real address of the bytes.
-    fn get_addr(&self) -> u64 {
+    fn expose_addr(&self) -> u64 {
         self.as_ptr() as u64
     }
 
@@ -132,12 +88,6 @@ impl AllocBytes for Box<[u8]> {
     /// Pointer addition to the base address of the bytes.
     fn add_ptr(&mut self, to_add: usize) -> *mut u8 {
         self.as_mut_ptr().wrapping_add(to_add)
-    }
-
-    /// Write an `AllocBytes` to a boxed slice of `MaybeUninit` -- this serves to initialize 
-    /// the elements in `boxed`, for the length of the `AllocBytes` passed in.
-    fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &Self) {
-        MaybeUninit::write_slice(boxed, &to_write);
     }
 
     fn hash_head_tail<H: hash::Hasher>(&self, _byte_count: usize, _state: &mut H, _max_bytes_to_hash: usize) {
@@ -345,25 +295,6 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         }
     }
 
-    // pub fn from_raw_addr(
-    //     addr: u64,
-    //     type_size: usize,
-    //     len: usize,
-    //     align: Align,
-    //     mutability: Mutability,
-    // ) -> Self {
-    //     let addr_alloc_bytes = AddrAllocBytes { addr, type_size, len: std::cell::RefCell::new(len)};
-    //     let size = Size::from_bytes(addr_alloc_bytes.total_len());
-    //     Self {
-    //         bytes: AllocBytes::Addr(addr_alloc_bytes),
-    //         relocations: Relocations::new(),
-    //         init_mask: InitMask::new(size, true),
-    //         align,
-    //         mutability,
-    //         extra: (),
-    //     }
-    // }
-
     pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
@@ -473,7 +404,7 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// Get the pointer of the [u8] of bytes.
     pub fn expose_base_addr(&self) -> usize {
-        self.bytes.get_addr().try_into().unwrap()
+        self.bytes.expose_addr().try_into().unwrap()
     }
 
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
