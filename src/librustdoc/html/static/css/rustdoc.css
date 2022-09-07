@@ -2035,11 +2035,6 @@ in storage.js plus the media query with (min-width: 701px)
 		height: 73px;
 	}
 
-	#main-content > table td {
-		word-break: break-word;
-		width: 50%;
-	}
-
 	#crate-search {
 		border-radius: 4px;
 	}
