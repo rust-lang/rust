@@ -304,6 +304,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
 pub const fn size_of<T>() -> usize {
@@ -454,6 +455,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline(always)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
 #[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
 pub const fn align_of<T>() -> usize {
     intrinsics::min_align_of::<T>()
