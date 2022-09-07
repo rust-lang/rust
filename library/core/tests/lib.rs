@@ -3,6 +3,7 @@
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(bench_black_box)]
+#![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_assume)]
 #![feature(const_black_box)]
