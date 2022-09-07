@@ -1,6 +1,7 @@
 // check-pass
 // compile-flags: -Zhir-stats
 // only-x86_64
+// ignore-stage1
 
 // The aim here is to include at least one of every different type of top-level
 // AST/HIR node reported by `-Zhir-stats`.

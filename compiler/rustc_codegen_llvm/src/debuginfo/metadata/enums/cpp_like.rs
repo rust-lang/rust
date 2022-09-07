@@ -99,7 +99,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 /// compiler versions.
 ///
 /// Niche-tag enums have one special variant, usually called the
-/// "dataful variant". This variant has a field that
+/// "untagged variant". This variant has a field that
 /// doubles as the tag of the enum. The variant is active when the value of
 /// that field is within a pre-defined range. Therefore the variant struct
 /// has a `DISCR_BEGIN` and `DISCR_END` field instead of `DISCR_EXACT` in
@@ -249,7 +249,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                     None,
                 ),
                 Variants::Multiple {
-                    tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+                    tag_encoding: TagEncoding::Niche { untagged_variant, .. },
                     ref variants,
                     tag_field,
                     ..
@@ -260,7 +260,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                     enum_type_di_node,
                     variants.indices(),
                     tag_field,
-                    Some(dataful_variant),
+                    Some(untagged_variant),
                 ),
             }
         },
@@ -391,7 +391,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
     enum_type_di_node: &'ll DIType,
     variant_indices: impl Iterator<Item = VariantIdx> + Clone,
     tag_field: usize,
-    dataful_variant_index: Option<VariantIdx>,
+    untagged_variant_index: Option<VariantIdx>,
 ) -> SmallVec<&'ll DIType> {
     let tag_base_type = super::tag_base_type(cx, enum_type_and_layout);
 
@@ -436,7 +436,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
         variant_names_type_di_node,
         tag_base_type,
         tag_field,
-        dataful_variant_index,
+        untagged_variant_index,
     )
 }
 
@@ -472,7 +472,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
     enum_or_generator_type_and_layout: TyAndLayout<'tcx>,
     enum_or_generator_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
-    dataful_variant_index: Option<VariantIdx>,
+    untagged_variant_index: Option<VariantIdx>,
     variant_struct_type_di_node: &'ll DIType,
     variant_names_type_di_node: &'ll DIType,
     tag_base_type_di_node: &'ll DIType,
@@ -517,7 +517,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     }
                 }
                 DiscrResult::Range(min, max) => {
-                    assert_eq!(Some(variant_index), dataful_variant_index);
+                    assert_eq!(Some(variant_index), untagged_variant_index);
                     if is_128_bits {
                         DiscrKind::Range128(min, max)
                     } else {
@@ -757,7 +757,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
     discr_type_di_node: &'ll DIType,
     tag_base_type: Ty<'tcx>,
     tag_field: usize,
-    dataful_variant_index: Option<VariantIdx>,
+    untagged_variant_index: Option<VariantIdx>,
 ) -> SmallVec<&'ll DIType> {
     let tag_base_type_di_node = type_di_node(cx, tag_base_type);
     let mut unions_fields = SmallVec::with_capacity(variant_field_infos.len() + 1);
@@ -776,7 +776,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
             enum_type_and_layout,
             enum_type_di_node,
             variant_member_info.variant_index,
-            dataful_variant_index,
+            untagged_variant_index,
             variant_member_info.variant_struct_type_di_node,
             discr_type_di_node,
             tag_base_type_di_node,

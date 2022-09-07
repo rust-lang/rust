@@ -817,7 +817,7 @@ where
             }
             abi::Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
                 tag: tag_layout,
                 tag_field,
                 ..
@@ -825,7 +825,7 @@ where
                 // No need to validate that the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
-                if variant_index != dataful_variant {
+                if variant_index != untagged_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index
                         .as_u32()
@@ -890,6 +890,8 @@ mod size_asserts {
     static_assert_size!(MemPlaceMeta, 24);
     static_assert_size!(MemPlace, 40);
     static_assert_size!(MPlaceTy<'_>, 64);
-    static_assert_size!(Place, 48);
-    static_assert_size!(PlaceTy<'_>, 72);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Place, 40);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(PlaceTy<'_>, 64);
 }

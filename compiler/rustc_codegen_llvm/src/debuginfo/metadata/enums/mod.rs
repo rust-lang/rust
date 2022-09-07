@@ -417,7 +417,7 @@ impl DiscrResult {
 /// Returns the discriminant value corresponding to the variant index.
 ///
 /// Will return `None` if there is less than two variants (because then the enum won't have)
-/// a tag, and if this is the dataful variant of a niche-layout enum (because then there is no
+/// a tag, and if this is the untagged variant of a niche-layout enum (because then there is no
 /// single discriminant value).
 fn compute_discriminant_value<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -430,11 +430,11 @@ fn compute_discriminant_value<'ll, 'tcx>(
             enum_type_and_layout.ty.discriminant_for_variant(cx.tcx, variant_index).unwrap().val,
         ),
         &Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, dataful_variant },
+            tag_encoding: TagEncoding::Niche { ref niche_variants, niche_start, untagged_variant },
             tag,
             ..
         } => {
-            if variant_index == dataful_variant {
+            if variant_index == untagged_variant {
                 let valid_range = enum_type_and_layout
                     .for_variant(cx, variant_index)
                     .largest_niche
