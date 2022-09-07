@@ -412,9 +412,6 @@ macro_rules! define_queries {
         impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             rustc_query_description! { $name }
 
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<'tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                = should_ever_cache_on_disk!([$($modifiers)*]);
-
             type Cache = query_storage::$name<'tcx>;
 
             #[inline(always)]
@@ -445,7 +442,7 @@ macro_rules! define_queries {
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     compute,
-                    try_load_from_disk: if cache_on_disk { Self::TRY_LOAD_FROM_DISK } else { None },
+                    try_load_from_disk: if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None },
                 }
             }
 

@@ -29,8 +29,7 @@ pub struct QueryVTable<CTX: QueryContext, K, V> {
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
     pub handle_cycle_error: HandleCycleError,
-    // NOTE: this is not quite the same as `Q::TRY_LOAD_FROM_DISK`; it can also be `None` if
-    // `cache_on_disk` returned false for this key.
+    // NOTE: this is also `None` if `cache_on_disk()` returns false, not just if it's unsupported by the query
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 
@@ -48,8 +47,6 @@ impl<CTX: QueryContext, K, V> QueryVTable<CTX, K, V> {
 }
 
 pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
-    const TRY_LOAD_FROM_DISK: Option<fn(CTX, SerializedDepNodeIndex) -> Option<Self::Value>>;
-
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     fn describe(tcx: CTX, key: Self::Key) -> String;

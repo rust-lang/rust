@@ -34,7 +34,6 @@ pub use rustc_query_system::query::{deadlock, QueryContext};
 mod keys;
 use keys::Key;
 
-use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 pub use rustc_query_system::query::QueryConfig;
 pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};
 
