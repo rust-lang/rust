@@ -144,8 +144,9 @@ impl DepKind {
 
 macro_rules! define_dep_nodes {
     (
-        $( $( #[$attr:meta] )* $variant:ident, )+
-    ) => (
+     $($(#[$attr:meta])*
+        [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,)*) => {
+
         #[macro_export]
         macro_rules! make_dep_kind_array {
             ($mod:ident) => {[ $($mod::$variant()),* ]};
@@ -173,17 +174,17 @@ macro_rules! define_dep_nodes {
                 pub const $variant: &str = stringify!($variant);
             )*
         }
-    );
+    };
 }
 
-rustc_query_names!(define_dep_nodes![
+rustc_query_append!(define_dep_nodes![
     /// We use this for most things when incr. comp. is turned off.
-    Null,
+    [] fn Null() -> (),
     /// We use this to create a forever-red node.
-    Red,
-    TraitSelect,
-    CompileCodegenUnit,
-    CompileMonoItem,
+    [] fn Red() -> (),
+    [] fn TraitSelect() -> (),
+    [] fn CompileCodegenUnit() -> (),
+    [] fn CompileMonoItem() -> (),
 ]);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.

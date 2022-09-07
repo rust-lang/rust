@@ -328,7 +328,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
-    let mut all_names = quote! {};
     let mut cached_queries = quote! {};
 
     for query in queries.0 {
@@ -384,6 +383,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         if let Some(remap_env_constness) = &modifiers.remap_env_constness {
             attributes.push(quote! { (#remap_env_constness) });
         }
+        // Pass on the const modifier
+        if modifiers.cache.is_some() {
+            attributes.push(quote! { (cache) });
+        }
 
         // This uses the span of the query definition for the commas,
         // which can be important if we later encounter any ambiguity
@@ -400,38 +403,20 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             [#attribute_stream] fn #name(#arg) #result,
         });
 
-        all_names.extend(quote! {
-            #(#doc_comments)*
-            #name,
-        });
-
         add_query_description_impl(&query, &mut query_description_stream);
     }
 
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ($macro:ident!) => {
+            ($macro:ident! $( [$($other:tt)*] )?) => {
                 $macro! {
+                    $( $($other)* )?
                     #query_stream
                 }
             }
         }
-        #[macro_export]
-        macro_rules! rustc_query_names {
-            ($macro:ident! $( [$($other:tt)*] )?) => {
-                $macro!(
-                    $( $($other)* )?
-                    #all_names
-                );
-            }
-        }
-        #[macro_export]
-        macro_rules! rustc_cached_queries {
-            ($macro:ident!) => {
-                $macro!(#cached_queries);
-            }
-        }
+
         #[macro_export]
         macro_rules! rustc_query_description {
             #query_description_stream
