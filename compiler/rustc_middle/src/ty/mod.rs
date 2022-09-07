@@ -41,6 +41,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
@@ -50,6 +51,9 @@ pub use vtable::*;
 
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::mem;
+use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
 use std::{fmt, str};
 
@@ -459,15 +463,6 @@ pub(crate) struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-// `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
-
-// We are actually storing a stable hash cache next to the type, so let's
-// also check the full size
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(WithStableHash<TyS<'_>>, 56);
-
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
@@ -523,10 +518,6 @@ pub(crate) struct PredicateS<'tcx> {
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
-
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateS<'_>, 56);
 
 /// Use this rather than `PredicateS`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -911,39 +902,119 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
-pub enum Term<'tcx> {
-    Ty(Ty<'tcx>),
-    Const(Const<'tcx>),
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Term<'tcx> {
+    ptr: NonZeroUsize,
+    marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
 
 impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
     fn from(ty: Ty<'tcx>) -> Self {
-        Term::Ty(ty)
+        TermKind::Ty(ty).pack()
     }
 }
 
 impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
     fn from(c: Const<'tcx>) -> Self {
-        Term::Const(c)
+        TermKind::Const(c).pack()
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.unpack().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(self.unpack().try_fold_with(folder)?.pack())
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for Term<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.unpack().visit_with(visitor)
+    }
+}
+
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Term<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.unpack().encode(e)
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let res: TermKind<'tcx> = Decodable::decode(d);
+        res.pack()
     }
 }
 
 impl<'tcx> Term<'tcx> {
+    #[inline]
+    pub fn unpack(self) -> TermKind<'tcx> {
+        let ptr = self.ptr.get();
+        // SAFETY: use of `Interned::new_unchecked` here is ok because these
+        // pointers were originally created from `Interned` types in `pack()`,
+        // and this is just going in the other direction.
+        unsafe {
+            match ptr & TAG_MASK {
+                TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
+                ))),
+                CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                ))),
+                _ => core::intrinsics::unreachable(),
+            }
+        }
+    }
+
     pub fn ty(&self) -> Option<Ty<'tcx>> {
-        if let Term::Ty(ty) = self { Some(*ty) } else { None }
+        if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
     }
 
     pub fn ct(&self) -> Option<Const<'tcx>> {
-        if let Term::Const(c) = self { Some(*c) } else { None }
+        if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
-        match self {
-            Term::Ty(ty) => ty.into(),
-            Term::Const(c) => c.into(),
+        match self.unpack() {
+            TermKind::Ty(ty) => ty.into(),
+            TermKind::Const(c) => c.into(),
         }
+    }
+}
+
+const TAG_MASK: usize = 0b11;
+const TYPE_TAG: usize = 0b00;
+const CONST_TAG: usize = 0b01;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
+pub enum TermKind<'tcx> {
+    Ty(Ty<'tcx>),
+    Const(Const<'tcx>),
+}
+
+impl<'tcx> TermKind<'tcx> {
+    #[inline]
+    fn pack(self) -> Term<'tcx> {
+        let (tag, ptr) = match self {
+            TermKind::Ty(ty) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
+            }
+            TermKind::Const(ct) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+            }
+        };
+
+        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
     }
 }
 
@@ -2530,4 +2601,15 @@ pub struct FoundRelationships {
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(PredicateS<'_>, 48);
+    static_assert_size!(TyS<'_>, 40);
+    static_assert_size!(WithStableHash<TyS<'_>>, 56);
 }

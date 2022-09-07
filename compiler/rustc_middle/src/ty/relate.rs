@@ -6,7 +6,7 @@
 
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -803,15 +803,15 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::Term<'tcx> {
+impl<'tcx> Relate<'tcx> for Term<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
-        Ok(match (a, b) {
-            (Term::Ty(a), Term::Ty(b)) => relation.relate(a, b)?.into(),
-            (Term::Const(a), Term::Const(b)) => relation.relate(a, b)?.into(),
+        Ok(match (a.unpack(), b.unpack()) {
+            (TermKind::Ty(a), TermKind::Ty(b)) => relation.relate(a, b)?.into(),
+            (TermKind::Const(a), TermKind::Const(b)) => relation.relate(a, b)?.into(),
             _ => return Err(TypeError::Mismatch),
         })
     }

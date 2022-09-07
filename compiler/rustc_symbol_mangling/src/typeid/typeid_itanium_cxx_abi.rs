@@ -13,7 +13,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
     self, Binder, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind,
-    Term, Ty, TyCtxt, UintTy,
+    TermKind, Ty, TyCtxt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
@@ -243,13 +243,9 @@ fn encode_predicate<'tcx>(
             let name = encode_ty_name(tcx, projection.item_def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_substs(tcx, projection.substs, dict, options));
-            match projection.term {
-                Term::Ty(ty) => {
-                    s.push_str(&encode_ty(tcx, ty, dict, options));
-                }
-                Term::Const(c) => {
-                    s.push_str(&encode_const(tcx, c, dict, options));
-                }
+            match projection.term.unpack() {
+                TermKind::Ty(ty) => s.push_str(&encode_ty(tcx, ty, dict, options)),
+                TermKind::Const(c) => s.push_str(&encode_const(tcx, c, dict, options)),
             }
         }
         ty::ExistentialPredicate::AutoTrait(def_id) => {

@@ -552,7 +552,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     )
                     .ok()
                     .flatten()
-                    .unwrap_or_else(|| ty::Term::Ty(ty.super_fold_with(self)))
+                    .unwrap_or_else(|| ty.super_fold_with(self).into())
                 };
                 // For cases like #95134 we would like to catch overflows early
                 // otherwise they slip away away and cause ICE.

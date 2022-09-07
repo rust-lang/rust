@@ -21,7 +21,7 @@ use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
-    self, AssocKind, DefIdTree, GenericParamDefKind, ProjectionPredicate, ProjectionTy, Term,
+    self, AssocKind, DefIdTree, GenericParamDefKind, ProjectionPredicate, ProjectionTy,
     ToPredicate, Ty, TypeVisitable,
 };
 use rustc_span::symbol::Ident;
@@ -349,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             opt_output_ty.zip(opt_output_assoc_item).map(|(output_ty, output_assoc_item)| {
                 ty::Binder::dummy(ty::PredicateKind::Projection(ProjectionPredicate {
                     projection_ty: ProjectionTy { substs, item_def_id: output_assoc_item.def_id },
-                    term: Term::Ty(output_ty),
+                    term: output_ty.into(),
                 }))
                 .to_predicate(self.tcx)
             });
