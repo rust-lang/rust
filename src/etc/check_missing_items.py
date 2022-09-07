@@ -132,9 +132,11 @@ while work_list:
         work_list |= set(item["inner"]["items"]) - visited
     elif item["kind"] == "struct":
         check_generics(item["inner"]["generics"])
-        work_list |= (
-            set(item["inner"]["fields"]) | set(item["inner"]["impls"])
-        ) - visited
+        work_list |= set(item["inner"]["impls"]) - visited
+        if "tuple" in item["inner"]["kind"]:
+            work_list |= set(filter(None, item["inner"]["kind"]["tuple"])) - visited
+        elif "plain" in item["inner"]["kind"]:
+            work_list |= set(item["inner"]["kind"]["plain"]["fields"]) - visited
     elif item["kind"] == "struct_field":
         check_type(item["inner"])
     elif item["kind"] == "enum":

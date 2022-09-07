@@ -1,5 +1,4 @@
-// @has "$.index[*][?(@.name=='Unit')].visibility" \"public\"
-// @has "$.index[*][?(@.name=='Unit')].kind" \"struct\"
-// @has "$.index[*][?(@.name=='Unit')].inner.struct_type" \"unit\"
-// @has "$.index[*][?(@.name=='Unit')].inner.fields" []
+// @is "$.index[*][?(@.name=='Unit')].visibility" \"public\"
+// @is "$.index[*][?(@.name=='Unit')].kind" \"struct\"
+// @is "$.index[*][?(@.name=='Unit')].inner.kind" \"unit\"
 pub struct Unit;
