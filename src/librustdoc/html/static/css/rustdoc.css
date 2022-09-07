@@ -699,9 +699,6 @@ pre, .rustdoc.source .example-wrap {
 #main-content {
 	position: relative;
 }
-#main-content > .since {
-	top: inherit;
-}
 
 .content table {
 	border-spacing: 0 5px;
