@@ -103,7 +103,7 @@ fn run_passes_inner<'tcx>(
         let name = pass.name();
 
         // Gather information about what we should be doing for this pass
-        let overriden =
+        let overridden =
             overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(|(_name, polarity)| {
                 trace!(
                     pass = %name,
@@ -112,7 +112,7 @@ fn run_passes_inner<'tcx>(
                 );
                 *polarity
             });
-        let is_enabled = overriden.unwrap_or_else(|| pass.is_enabled(&tcx.sess));
+        let is_enabled = overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess));
         let new_phase = pass.phase_change();
         let dump_enabled = (is_enabled && pass.is_mir_dump_enabled()) || new_phase.is_some();
         let validate = (validate && is_enabled)
