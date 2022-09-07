@@ -54,6 +54,7 @@ pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
+    exclude_imports: bool,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
@@ -79,7 +80,9 @@ pub(crate) fn find_all_refs(
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
 
-            retain_import_usages(&mut usages);
+            if exclude_imports {
+                filter_import_references(&mut usages);
+            }
 
             let references = usages
                 .into_iter()
@@ -114,7 +117,7 @@ pub(crate) fn find_all_refs(
     }
 }
 
-fn retain_import_usages(usages: &mut UsageSearchResult) {
+fn filter_import_references(usages: &mut UsageSearchResult) {
     // todo use this https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs#L432
 
     for (_file_id, refs) in &mut usages.references {
@@ -1109,7 +1112,7 @@ impl Foo {
 
     fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, search_scope, false).unwrap().unwrap();
 
         let mut actual = String::new();
         for refs in refs {

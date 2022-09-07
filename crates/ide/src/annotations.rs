@@ -158,6 +158,7 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
                 &Semantics::new(db),
                 FilePosition { file_id, offset: annotation.range.start() },
                 None,
+                false,
             )
             .map(|result| {
                 result

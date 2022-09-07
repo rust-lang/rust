@@ -220,6 +220,9 @@ config_data! {
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
 
+        /// Exclude imports in "Find All References"
+        findAllRefs_excludeImports: bool = "false",
+
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -1145,6 +1148,10 @@ impl Config {
             )),
             snippets: self.snippets.clone(),
         }
+    }
+
+    pub fn find_all_refs_exclude_imports(&self) -> bool {
+        self.data.findAllRefs_excludeImports
     }
 
     pub fn snippet_cap(&self) -> bool {

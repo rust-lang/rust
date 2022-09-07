@@ -839,6 +839,11 @@
                     "type": "integer",
                     "minimum": 0
                 },
+                "rust-analyzer.findAllRefs.excludeImports": {
+                    "markdownDescription": "Exclude imports from Find All References results",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.closureReturnTypeHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for return types of closures.",
                     "default": "never",
