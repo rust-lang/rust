@@ -600,8 +600,9 @@ impl<'tcx> SaveContext<'tcx> {
                 if seg.res != Res::Err {
                     seg.res
                 } else {
+                    // Avoid infinite recursion!
                     let parent_node = self.tcx.hir().get_parent_node(hir_id);
-                    self.get_path_res(parent_node)
+                    if parent_node != hir_id { self.get_path_res(parent_node) } else { Res::Err }
                 }
             }
 
