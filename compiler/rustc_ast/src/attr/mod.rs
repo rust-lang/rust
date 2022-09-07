@@ -232,6 +232,8 @@ impl AttrItem {
 }
 
 impl Attribute {
+    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
+    /// So `#[doc = "doc"]` will return `false`.
     pub fn is_doc_comment(&self) -> bool {
         match self.kind {
             AttrKind::Normal(..) => false,
