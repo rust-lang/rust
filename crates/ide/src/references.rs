@@ -115,12 +115,32 @@ pub(crate) fn find_all_refs(
 }
 
 fn retain_import_usages(usages: &mut UsageSearchResult, sema: &Semantics<'_, RootDatabase>) {
-    for (file_id, refs) in &mut usages.references {
+    // todo use this https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs#L432
+
+    for (_file_id, refs) in &mut usages.references {
         refs.retain(|it| {
-            match if.name.as_name_ref() {
-                Some(name_ref) => name_ref.syntax().ancestors().any(|it| !matches(it.kind(), USE)),
+            match it.name.as_name_ref() {
+                Some(name_ref) => name_ref.syntax().ancestors().any(|it_ref| {
+                    dbg!(&it_ref);
+                    !matches!(it_ref.kind(), USE)
+                }),
                 None => true,
             }
+
+            // this works:
+            // let file_sema = sema.parse(file_id.clone()).syntax().clone();
+
+            // let maybe_node = file_sema.child_or_token_at_range(it.range.clone());
+
+            // if let Some(node) = maybe_node {
+            //     let res = match node {
+            //         syntax::NodeOrToken::Node(x) => !matches!(x.kind(), USE),
+            //         syntax::NodeOrToken::Token(_) => true,
+            //     };
+            //     res
+            // } else {
+            //     true
+            // }
         });
     }
 }
