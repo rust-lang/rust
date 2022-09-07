@@ -2697,6 +2697,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         result_ty
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn impl_trait_ty_to_ty(
         &self,
         def_id: DefId,
@@ -2745,9 +2746,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
 
-        let ty = tcx.mk_opaque(def_id, substs);
-        debug!("impl_trait_ty_to_ty: {}", ty);
-        ty
+        tcx.mk_opaque(def_id, substs)
     }
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {

@@ -1977,6 +1977,9 @@ impl<'a> Parser<'a> {
         open_delim_span: Span,
     ) -> PResult<'a, ()> {
         if self.token.kind == token::Comma {
+            if !self.sess.source_map().is_multiline(prev_span.until(self.token.span)) {
+                return Ok(());
+            }
             let mut snapshot = self.create_snapshot_for_diagnostic();
             snapshot.bump();
             match snapshot.parse_seq_to_before_end(

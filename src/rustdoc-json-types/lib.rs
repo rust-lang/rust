@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 20;
+pub const FORMAT_VERSION: u32 = 21;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -289,11 +289,37 @@ pub struct Union {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Struct {
-    pub struct_type: StructType,
+    pub kind: StructKind,
     pub generics: Generics,
-    pub fields_stripped: bool,
-    pub fields: Vec<Id>,
     pub impls: Vec<Id>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StructKind {
+    /// A struct with no fields and no parentheses.
+    ///
+    /// ```rust
+    /// pub struct Unit;
+    /// ```
+    Unit,
+    /// A struct with unnamed fields.
+    ///
+    /// ```rust
+    /// pub struct TupleStruct(i32);
+    /// pub struct EmptyTupleStruct();
+    /// ```
+    ///
+    /// All [`Id`]'s will point to [`ItemEnum::StructField`]. Private and
+    /// `#[doc(hidden)]` fields will be given as `None`
+    Tuple(Vec<Option<Id>>),
+    /// A struct with nammed fields.
+    ///
+    /// ```rust
+    /// pub struct PlainStruct { x: i32 }
+    /// pub struct EmptyPlainStruct {}
+    /// ```
+    Plain { fields: Vec<Id>, fields_stripped: bool },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -355,14 +381,6 @@ pub struct Discriminant {
     /// JSON's poor support for large integers, and the fact that it would need
     /// to store from [`i128::MIN`] to [`u128::MAX`].
     pub value: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StructType {
-    Plain,
-    Tuple,
-    Unit,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

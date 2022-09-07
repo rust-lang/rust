@@ -8,5 +8,5 @@ fn main() {
     assert_eq!(split, 1);
 }
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // EMIT_MIR issue_73223.main.SimplifyArmIdentity.diff

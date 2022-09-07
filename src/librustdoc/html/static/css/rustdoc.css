@@ -699,9 +699,6 @@ pre, .rustdoc.source .example-wrap {
 #main-content {
 	position: relative;
 }
-#main-content > .since {
-	top: inherit;
-}
 
 .content table {
 	border-spacing: 0 5px;
@@ -745,11 +742,6 @@ pre, .rustdoc.source .example-wrap {
 .content .where.fmt-newline {
 	display: block;
 	font-size: 0.875rem;
-}
-
-.content .methods > div:not(.notable-traits):not(.method) {
-	margin-left: 40px;
-	margin-bottom: 15px;
 }
 
 .item-info {
@@ -1751,7 +1743,6 @@ in storage.js plus the media query with (min-width: 701px)
 		padding-top: 0px;
 	}
 
-	.rustdoc,
 	.main-heading {
 		flex-direction: column;
 	}
@@ -2036,11 +2027,6 @@ in storage.js plus the media query with (min-width: 701px)
 @media (max-width: 464px) {
 	#titles, #titles > button {
 		height: 73px;
-	}
-
-	#main-content > table td {
-		word-break: break-word;
-		width: 50%;
 	}
 
 	#crate-search {

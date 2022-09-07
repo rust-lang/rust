@@ -1,5 +1,5 @@
 error: expected one of `.`, `?`, `]`, or an operator, found `,`
-  --> $DIR/do-not-suggest-suggest-semicolon-before-array.rs:5:5
+  --> $DIR/do-not-suggest-semicolon-before-array.rs:5:5
    |
 LL |     [1, 3)
    |     ^ ^ help: `]` may belong here

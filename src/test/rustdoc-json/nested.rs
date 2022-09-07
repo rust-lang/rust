@@ -17,7 +17,7 @@ pub mod l1 {
     pub mod l3 {
 
         // @is "$.index[*][?(@.name=='L4')].kind" \"struct\"
-        // @is "$.index[*][?(@.name=='L4')].inner.struct_type" \"unit\"
+        // @is "$.index[*][?(@.name=='L4')].inner.kind" \"unit\"
         // @set l4_id = "$.index[*][?(@.name=='L4')].id"
         // @ismany "$.index[*][?(@.name=='l3')].inner.items[*]" $l4_id
         pub struct L4;
