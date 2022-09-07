@@ -2,12 +2,12 @@
 
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
+use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -19,6 +19,7 @@ pub trait QueryConfig {
     type Stored: Clone;
 }
 
+#[derive(Copy, Clone)]
 pub struct QueryVTable<CTX: QueryContext, K, V> {
     pub anon: bool,
     pub dep_kind: CTX::DepKind,
@@ -28,7 +29,7 @@ pub struct QueryVTable<CTX: QueryContext, K, V> {
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
+    pub handle_cycle_error: HandleCycleError,
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 

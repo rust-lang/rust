@@ -18,6 +18,7 @@ use rustc_query_system::query::{
     force_query, QueryConfig, QueryContext, QueryDescription, QueryJobId, QueryMap,
     QuerySideEffects, QueryStackFrame,
 };
+use rustc_query_system::Value;
 use std::any::Any;
 use std::num::NonZeroU64;
 use thin_vec::ThinVec;
@@ -174,21 +175,17 @@ impl<'tcx> QueryCtxt<'tcx> {
 }
 
 macro_rules! handle_cycle_error {
-    ([][$tcx: expr, $error:expr]) => {{
-        $error.emit();
-        Value::from_cycle_error($tcx)
+    ([]) => {{
+        rustc_query_system::HandleCycleError::Error
     }};
-    ([(fatal_cycle) $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $error.emit();
-        $tcx.sess.abort_if_errors();
-        unreachable!()
+    ([(fatal_cycle) $($rest:tt)*]) => {{
+        rustc_query_system::HandleCycleError::Fatal
     }};
-    ([(cycle_delay_bug) $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $error.delay_as_bug();
-        Value::from_cycle_error($tcx)
+    ([(cycle_delay_bug) $($rest:tt)*]) => {{
+        rustc_query_system::HandleCycleError::DelayBug
     }};
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        handle_cycle_error!([$($modifiers)*][$($args)*])
+    ([$other:tt $($modifiers:tt)*]) => {
+        handle_cycle_error!([$($modifiers)*])
     };
 }
 
@@ -320,6 +317,7 @@ fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
     Q: QueryDescription<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
+    Q::Value: Value<TyCtxt<'tcx>>,
 {
     if let Some(key) = Q::Key::recover(tcx, &dep_node) {
         #[cfg(debug_assertions)]
@@ -418,7 +416,7 @@ macro_rules! define_queries {
                     depth_limit: depth_limit!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
-                    handle_cycle_error: |tcx, mut error| handle_cycle_error!([$($modifiers)*][tcx, error]),
+                    handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
                     compute,
                     cache_on_disk,
                     try_load_from_disk: Self::TRY_LOAD_FROM_DISK,

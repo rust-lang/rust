@@ -96,6 +96,7 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+mod values;
 
 pub mod util {
     pub mod bug;
