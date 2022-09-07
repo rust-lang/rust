@@ -1,7 +1,7 @@
-use rustc_errors::{fluent, ErrorGuaranteed, Handler};
+use rustc_errors::{fluent, ErrorGuaranteed, Handler, SessionDiagnostic};
 use rustc_macros::SessionDiagnostic;
 use rustc_middle::ty::{PolyTraitRef, Ty, Unevaluated};
-use rustc_session::{Limit, SessionDiagnostic};
+use rustc_session::Limit;
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]

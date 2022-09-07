@@ -13,6 +13,15 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 
+/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
+#[rustc_diagnostic_item = "SessionDiagnostic"]
+pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
+    /// Write out as a diagnostic out of `Handler`.
+    #[must_use]
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
+}
+
 /// Used for emitting structured error messages and other diagnostic information.
 ///
 /// If there is some state in a downstream crate you would like to

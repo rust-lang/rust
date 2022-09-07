@@ -1,11 +1,11 @@
 use std::num::IntErrorKind;
 
 use rustc_ast as ast;
+use rustc_errors::SessionDiagnostic;
 use rustc_errors::{
     error_code, fluent, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler,
 };
 use rustc_macros::SessionDiagnostic;
-use rustc_session::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
 
 use crate::UnsupportedLiteralReason;

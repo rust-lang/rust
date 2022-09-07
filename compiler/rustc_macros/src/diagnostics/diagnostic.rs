@@ -82,7 +82,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
 
         structure.gen_impl(quote! {
             gen impl<'__session_diagnostic_sess, G>
-                    rustc_session::SessionDiagnostic<'__session_diagnostic_sess, G>
+                    rustc_errors::SessionDiagnostic<'__session_diagnostic_sess, G>
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {

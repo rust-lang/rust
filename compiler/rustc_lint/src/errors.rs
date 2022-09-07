@@ -1,6 +1,6 @@
-use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed, Handler};
+use rustc_errors::{fluent, AddSubdiagnostic, ErrorGuaranteed, Handler, SessionDiagnostic};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_session::{lint::Level, SessionDiagnostic};
+use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic)]

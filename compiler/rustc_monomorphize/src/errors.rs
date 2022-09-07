@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_errors::SessionDiagnostic;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic};
-use rustc_session::SessionDiagnostic;
 use rustc_span::Span;
 
 #[derive(SessionDiagnostic)]

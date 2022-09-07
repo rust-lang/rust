@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rustc_errors::{error_code, ErrorGuaranteed};
+use rustc_errors::{error_code, ErrorGuaranteed, SessionDiagnostic};
 use rustc_macros::SessionDiagnostic;
-use rustc_session::{config, SessionDiagnostic};
+use rustc_session::config;
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
