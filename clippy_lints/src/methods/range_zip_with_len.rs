@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
         if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
-        if let ExprKind::MethodCall(len_path, [len_recv], _) = end.kind;
+        if let ExprKind::MethodCall(len_path, len_recv, [], _) = end.kind;
         if len_path.ident.name == sym::len;
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = recv.kind;

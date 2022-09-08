@@ -30,16 +30,16 @@ pub(super) fn check<'tcx>(
         if let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind;
         then {
             let closure_body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(closure_body.value);
             match closure_body.params[0].pat.kind {
                 hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
-                    hir::BindingAnnotation::Unannotated, .., name, None
+                    hir::BindingAnnotation::NONE, .., name, None
                 ) = inner.kind {
                     if ident_eq(name, closure_expr) {
                         lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                     }
                 },
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
+                hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
                     match closure_expr.kind {
                         hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                             if ident_eq(name, inner) {
@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
                                 }
                             }
                         },
-                        hir::ExprKind::MethodCall(method, [obj], _) => if_chain! {
+                        hir::ExprKind::MethodCall(method, obj, [], _) => if_chain! {
                             if ident_eq(name, obj) && method.ident.name == sym::clone;
                             if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
                             if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);

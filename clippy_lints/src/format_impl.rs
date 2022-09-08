@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatImpl {
 fn check_to_string_in_display(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         // Get the hir_id of the object we are calling the method on
-        if let ExprKind::MethodCall(path, [ref self_arg, ..], _) = expr.kind;
+        if let ExprKind::MethodCall(path, self_arg, ..) = expr.kind;
         // Is the method to_string() ?
         if path.ident.name == sym::to_string;
         // Is the method a part of the ToString trait? (i.e. not to_string() implemented

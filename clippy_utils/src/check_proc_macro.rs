@@ -118,9 +118,9 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
         ExprKind::Lit(ref lit) => lit_search_pat(&lit.node),
         ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
-        ExprKind::Call(e, []) | ExprKind::MethodCall(_, [e], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
+        ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
         ExprKind::Call(first, [.., last])
-        | ExprKind::MethodCall(_, [first, .., last], _)
+        | ExprKind::MethodCall(_, first, [.., last], _)
         | ExprKind::Binary(_, first, last)
         | ExprKind::Tup([first, .., last])
         | ExprKind::Assign(first, last, _)
@@ -140,7 +140,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ExprKind::Match(e, _, MatchSource::AwaitDesugar) | ExprKind::Yield(e, YieldSource::Await { .. }) => {
             (expr_search_pat(tcx, e).0, Pat::Str("await"))
         },
-        ExprKind::Closure(&Closure { body, .. }) => (Pat::Str(""), expr_search_pat(tcx, &tcx.hir().body(body).value).1),
+        ExprKind::Closure(&Closure { body, .. }) => (Pat::Str(""), expr_search_pat(tcx, tcx.hir().body(body).value).1),
         ExprKind::Block(
             Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
@@ -254,7 +254,7 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     let (start_pat, end_pat) = match kind {
         FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
-        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
+        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
     };
     let start_pat = match tcx.hir().get(hir_id) {
         Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {

@@ -126,7 +126,7 @@ fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symb
 fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
     if_chain! {
         if !value.span.from_expansion();
-        if let ExprKind::MethodCall(_, [receiver], _) = value.kind;
+        if let ExprKind::MethodCall(_, receiver, [], _) = value.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id);
         if is_diag_trait_item(cx, method_def_id, sym::ToString);
         let receiver_ty = cx.typeck_results().expr_ty(receiver);

@@ -16,9 +16,9 @@ pub(super) fn check(
     expr: &hir::Expr<'_>,
     method_span: Span,
     method_name: Symbol,
-    args: &[hir::Expr<'_>],
+    receiver: &hir::Expr<'_>,
 ) {
-    let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
+    let self_ty = cx.typeck_results().expr_ty_adjusted(receiver);
     if_chain! {
         if let ty::Ref(..) = self_ty.kind();
         if method_name == sym::into_iter;

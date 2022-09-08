@@ -526,7 +526,7 @@ impl SimpleFormatArgs {
         str_lit_span: Span,
         fmt_span: Span,
     ) {
-        use rustc_parse_format::{ArgumentImplicitlyIs, ArgumentIs, CountIsParam};
+        use rustc_parse_format::{ArgumentImplicitlyIs, ArgumentIs, CountIsParam, CountIsStar};
 
         let snippet = snippet_opt(cx, fmt_span);
 
@@ -540,7 +540,7 @@ impl SimpleFormatArgs {
             self.push_to_complex(span, n);
         };
 
-        if let (CountIsParam(n), Some(span)) = (arg.format.precision, arg.format.precision_span) {
+        if let (CountIsParam(n) | CountIsStar(n), Some(span)) = (arg.format.precision, arg.format.precision_span) {
             // We need to do this hack as precision spans should be converted from .* to .foo$
             let hack = if snippet.as_ref().and_then(|s| s.find('*')).is_some() {
                 0

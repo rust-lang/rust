@@ -56,12 +56,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
 
         if_chain! {
             // Check the method name is `for_each`.
-            if let ExprKind::MethodCall(method_name, [for_each_recv, for_each_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind;
             if method_name.ident.name == Symbol::intern("for_each");
             // Check `for_each` is an associated function of `Iterator`.
             if is_trait_method(cx, expr, sym::Iterator);
             // Checks the receiver of `for_each` is also a method call.
-            if let ExprKind::MethodCall(_, [iter_recv], _) = for_each_recv.kind;
+            if let ExprKind::MethodCall(_, iter_recv, [], _) = for_each_recv.kind;
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
             if matches!(
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             if let ExprKind::Block(..) = body.value.kind;
             then {
                 let mut ret_collector = RetCollector::default();
-                ret_collector.visit_expr(&body.value);
+                ret_collector.visit_expr(body.value);
 
                 // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
                 if ret_collector.ret_in_loop {

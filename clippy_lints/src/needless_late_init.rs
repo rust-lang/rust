@@ -373,7 +373,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
             if let Local {
                 init: None,
                 pat: &Pat {
-                    kind: PatKind::Binding(BindingAnnotation::Unannotated, binding_id, _, None),
+                    kind: PatKind::Binding(BindingAnnotation::NONE, binding_id, _, None),
                     ..
                 },
                 source: LocalSource::Normal,

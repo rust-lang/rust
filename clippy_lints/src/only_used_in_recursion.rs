@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, ConstKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -296,13 +297,13 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             }
                             return;
                         },
-                        ExprKind::MethodCall(_, args, _)
+                        ExprKind::MethodCall(_, receiver, args, _)
                             if typeck.type_dependent_def_id(parent.hir_id).map_or(false, |id| {
                                 id == param.fn_id
                                     && has_matching_substs(param.fn_kind, typeck.node_substs(parent.hir_id))
                             }) =>
                         {
-                            if let Some(idx) = args.iter().position(|arg| arg.hir_id == child_id) {
+                            if let Some(idx) = iter::once(receiver).chain(args).position(|arg| arg.hir_id == child_id) {
                                 param.uses.push(Usage::new(span, idx));
                             }
                             return;

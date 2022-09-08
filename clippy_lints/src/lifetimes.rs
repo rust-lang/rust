@@ -276,7 +276,7 @@ fn could_use_elision<'tcx>(
         let mut checker = BodyLifetimeChecker {
             lifetimes_used_in_body: false,
         };
-        checker.visit_expr(&body.value);
+        checker.visit_expr(body.value);
         if checker.lifetimes_used_in_body {
             return false;
         }

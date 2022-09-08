@@ -5,13 +5,13 @@ if_chain! {
     if let Some(init) = local.init;
     if let ExprKind::Lit(ref lit) = init.kind;
     if let LitKind::Int(42, LitIntType::Signed(IntTy::I32)) = lit.node;
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind;
     if name.as_str() == "x";
     if let StmtKind::Local(local1) = block.stmts[1].kind;
     if let Some(init1) = local1.init;
     if let ExprKind::Lit(ref lit1) = init1.kind;
     if let LitKind::Float(_, LitFloatType::Suffixed(FloatTy::F32)) = lit1.node;
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local1.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local1.pat.kind;
     if name1.as_str() == "_t";
     if let StmtKind::Semi(e) = block.stmts[2].kind;
     if let ExprKind::Unary(UnOp::Neg, inner) = e.kind;
@@ -31,7 +31,7 @@ if_chain! {
     if let ExprKind::Path(ref qpath) = func.kind;
     if match_qpath(qpath, &["String", "new"]);
     if args.is_empty();
-    if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local.pat.kind;
+    if let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = local.pat.kind;
     if name.as_str() == "expr";
     if let Some(trailing_expr) = block.expr;
     if let ExprKind::Call(func1, args1) = trailing_expr.kind;

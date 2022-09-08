@@ -2,6 +2,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
+#![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -191,7 +192,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     let hir = cx.tcx.hir();
     if_chain! {
         if let Some(Node::Pat(pat)) = hir.find(hir_id);
-        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
+        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
         let parent = hir.get_parent_node(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
         then {
@@ -336,7 +337,7 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         .map_or(&[][..], |a| a.args)
         .iter()
         .filter_map(|a| match a {
-            hir::GenericArg::Type(ty) => Some(ty),
+            hir::GenericArg::Type(ty) => Some(*ty),
             _ => None,
         })
 }
@@ -1030,26 +1031,26 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
     v.allow_closure.then_some(v.captures)
 }
 
+/// Arguments of a method: the receiver and all the additional arguments.
+pub type MethodArguments<'tcx> = Vec<(&'tcx Expr<'tcx>, &'tcx [Expr<'tcx>])>;
+
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
-pub fn method_calls<'tcx>(
-    expr: &'tcx Expr<'tcx>,
-    max_depth: usize,
-) -> (Vec<Symbol>, Vec<&'tcx [Expr<'tcx>]>, Vec<Span>) {
+pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symbol>, MethodArguments<'tcx>, Vec<Span>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
     let mut spans = Vec::with_capacity(max_depth);
 
     let mut current = expr;
     for _ in 0..max_depth {
-        if let ExprKind::MethodCall(path, args, _) = &current.kind {
-            if args.iter().any(|e| e.span.from_expansion()) {
+        if let ExprKind::MethodCall(path, receiver, args, _) = &current.kind {
+            if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                 break;
             }
             method_names.push(path.ident.name);
-            arg_lists.push(&**args);
+            arg_lists.push((*receiver, &**args));
             spans.push(path.ident.span);
-            current = &args[0];
+            current = receiver;
         } else {
             break;
         }
@@ -1064,18 +1065,18 @@ pub fn method_calls<'tcx>(
 /// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<&'a [Expr<'a>]>> {
+pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
-        if let ExprKind::MethodCall(path, args, _) = current.kind {
+        if let ExprKind::MethodCall(path, receiver, args, _) = current.kind {
             if path.ident.name.as_str() == *method_name {
-                if args.iter().any(|e| e.span.from_expansion()) {
+                if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                     return None;
                 }
-                matched.push(args); // build up `matched` backwards
-                current = &args[0]; // go to parent expression
+                matched.push((receiver, args)); // build up `matched` backwards
+                current = receiver; // go to parent expression
             } else {
                 return None;
             }
@@ -1238,8 +1239,10 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                                     ty_is_fn_once_param(cx.tcx, ty.skip_binder(), predicates).then_some(())
                                 })
                             },
-                            ExprKind::MethodCall(_, args, _) => {
-                                let i = args.iter().position(|arg| arg.hir_id == id)?;
+                            ExprKind::MethodCall(_, receiver, args, _) => {
+                                let i = std::iter::once(receiver)
+                                    .chain(args.iter())
+                                    .position(|arg| arg.hir_id == id)?;
                                 let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
                                 let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
                                 ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
@@ -1811,7 +1814,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
             }
         };
 
-        let mut expr = &func.value;
+        let mut expr = func.value;
         loop {
             match expr.kind {
                 #[rustfmt::skip]

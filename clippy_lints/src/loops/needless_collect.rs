@@ -25,11 +25,11 @@ pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
 }
 fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(method, args, _) = expr.kind;
-        if let ExprKind::MethodCall(chain_method, _, _) = args[0].kind;
-        if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
+        if let ExprKind::MethodCall(method, receiver, args, _) = expr.kind;
+        if let ExprKind::MethodCall(chain_method, ..) = receiver.kind;
+        if chain_method.ident.name == sym!(collect) && is_trait_method(cx, receiver, sym::Iterator);
         then {
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(receiver);
             let mut applicability = Applicability::MaybeIncorrect;
             let is_empty_sugg = "next().is_none()".to_string();
             let method_name = method.ident.name.as_str();
@@ -41,7 +41,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     "len" => "count()".to_string(),
                     "is_empty" => is_empty_sugg,
                     "contains" => {
-                        let contains_arg = snippet_with_applicability(cx, args[1].span, "??", &mut applicability);
+                        let contains_arg = snippet_with_applicability(cx, args[0].span, "??", &mut applicability);
                         let (arg, pred) = contains_arg
                             .strip_prefix('&')
                             .map_or(("&x", &*contains_arg), |s| ("x", s));
@@ -80,7 +80,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let StmtKind::Local(local) = stmt.kind;
                 if let PatKind::Binding(_, id, ..) = local.pat.kind;
                 if let Some(init_expr) = local.init;
-                if let ExprKind::MethodCall(method_name, &[ref iter_source], ..) = init_expr.kind;
+                if let ExprKind::MethodCall(method_name, iter_source, [], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
                 let ty = cx.typeck_results().expr_ty(init_expr);
                 if is_type_diagnostic_item(cx, ty, sym::Vec) ||
@@ -203,7 +203,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
-        if let ExprKind::MethodCall(method_name, [recv, args @ ..], _) = &expr.kind {
+        if let ExprKind::MethodCall(method_name, recv, [args @ ..], _) = &expr.kind {
             if method_name.ident.name == sym!(collect) && is_trait_method(self.cx, expr, sym::Iterator) {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);

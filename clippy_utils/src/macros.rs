@@ -646,7 +646,7 @@ impl<'tcx> Count<'tcx> {
                 span,
                 values,
             )?),
-            rpf::Count::CountIsParam(_) => {
+            rpf::Count::CountIsParam(_) | rpf::Count::CountIsStar(_) => {
                 Self::Param(FormatParam::new(FormatParamKind::Numbered, position?, inner?, values)?)
             },
             rpf::Count::CountImplied => Self::Implied,

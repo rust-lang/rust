@@ -35,7 +35,7 @@ fn is_full_range(cx: &LateContext<'_>, container: &Expr<'_>, range: Range<'_>) -
         && range.end.map_or(true, |e| {
             if range.limits == RangeLimits::HalfOpen
                 && let ExprKind::Path(QPath::Resolved(None, container_path)) = container.kind
-                && let ExprKind::MethodCall(name, [self_arg], _) = e.kind
+                && let ExprKind::MethodCall(name, self_arg, [], _) = e.kind
                 && name.ident.name == sym::len
                 && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
             {
