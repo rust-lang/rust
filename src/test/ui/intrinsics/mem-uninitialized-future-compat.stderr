@@ -1,5 +1,5 @@
 error: the type `T` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:13:5
+  --> $DIR/mem-uninitialized-future-compat.rs:26:5
    |
 LL |     std::mem::uninitialized::<T>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | #![deny(mem_uninitialized)]
    = note: type might not be allowed to be left uninitialized
 
 error: the type `[T; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:16:5
+  --> $DIR/mem-uninitialized-future-compat.rs:29:5
    |
 LL |     std::mem::uninitialized::<[T; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     std::mem::uninitialized::<[T; N]>();
    = note: type might not be allowed to be left uninitialized
 
 error: the type `[char; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:19:5
+  --> $DIR/mem-uninitialized-future-compat.rs:32:5
    |
 LL |     std::mem::uninitialized::<[char; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     std::mem::uninitialized::<[char; N]>();
    = note: characters must be a valid Unicode codepoint
 
 error: the type `[UninitStruct; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:22:5
+  --> $DIR/mem-uninitialized-future-compat.rs:35:5
    |
 LL |     std::mem::uninitialized::<[UninitStruct; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,8 +55,40 @@ note: characters must be a valid Unicode codepoint (in this struct field)
 LL |     b: char,
    |     ^^^^^^^
 
+error: the type `std::result::Result<T, !>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:38:5
+   |
+LL |     std::mem::uninitialized::<Result<T, !>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `OneVariantWith<T>` is generic, and might not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:41:5
+   |
+LL |     std::mem::uninitialized::<OneVariantWith<T>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: type might not be allowed to be left uninitialized (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
+
 error: the type `&u32` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:31:9
+  --> $DIR/mem-uninitialized-future-compat.rs:50:9
    |
 LL |         std::mem::uninitialized::<&'static u32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +100,7 @@ LL |         std::mem::uninitialized::<&'static u32>();
    = note: references must be non-null
 
 error: the type `std::boxed::Box<u32>` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:34:9
+  --> $DIR/mem-uninitialized-future-compat.rs:53:9
    |
 LL |         std::mem::uninitialized::<Box<u32>>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +112,7 @@ LL |         std::mem::uninitialized::<Box<u32>>();
    = note: `Box` must be non-null
 
 error: the type `fn()` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:37:9
+  --> $DIR/mem-uninitialized-future-compat.rs:56:9
    |
 LL |         std::mem::uninitialized::<fn()>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +124,7 @@ LL |         std::mem::uninitialized::<fn()>();
    = note: function pointers must be non-null
 
 error: the type `!` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:40:9
+  --> $DIR/mem-uninitialized-future-compat.rs:59:9
    |
 LL |         std::mem::uninitialized::<!>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -104,7 +136,7 @@ LL |         std::mem::uninitialized::<!>();
    = note: the `!` type has no valid value
 
 error: the type `*mut dyn std::io::Write` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:43:9
+  --> $DIR/mem-uninitialized-future-compat.rs:62:9
    |
 LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,7 +148,7 @@ LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    = note: the vtable of a wide raw pointer must be non-null
 
 error: the type `bool` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:46:9
+  --> $DIR/mem-uninitialized-future-compat.rs:65:9
    |
 LL |         std::mem::uninitialized::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -128,7 +160,7 @@ LL |         std::mem::uninitialized::<bool>();
    = note: booleans must be either `true` or `false`
 
 error: the type `char` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:49:9
+  --> $DIR/mem-uninitialized-future-compat.rs:68:9
    |
 LL |         std::mem::uninitialized::<char>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -140,7 +172,7 @@ LL |         std::mem::uninitialized::<char>();
    = note: characters must be a valid Unicode codepoint
 
 error: the type `UninitStruct` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:52:9
+  --> $DIR/mem-uninitialized-future-compat.rs:71:9
    |
 LL |         std::mem::uninitialized::<UninitStruct>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +188,7 @@ LL |     b: char,
    |     ^^^^^^^
 
 error: the type `[UninitStruct; 16]` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:55:9
+  --> $DIR/mem-uninitialized-future-compat.rs:74:9
    |
 LL |         std::mem::uninitialized::<[UninitStruct; 16]>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -172,7 +204,7 @@ LL |     b: char,
    |     ^^^^^^^
 
 error: the type `(u32, char)` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:58:9
+  --> $DIR/mem-uninitialized-future-compat.rs:77:9
    |
 LL |         std::mem::uninitialized::<(u32, char)>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -183,11 +215,107 @@ LL |         std::mem::uninitialized::<(u32, char)>();
    = note: for more information, see FIXME: fill this in
    = note: characters must be a valid Unicode codepoint
 
-error: aborting due to 14 previous errors
+error: the type `TwoVariant` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:80:9
+   |
+LL |         std::mem::uninitialized::<TwoVariant>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/mem-uninitialized-future-compat.rs:16:1
+   |
+LL | enum TwoVariant {
+   | ^^^^^^^^^^^^^^^
+
+error: the type `std::result::Result<!, !>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:83:9
+   |
+LL |         std::mem::uninitialized::<Result<!, !>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `std::result::Result<!, u32>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:86:9
+   |
+LL |         std::mem::uninitialized::<Result<!, u32>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `std::option::Option<!>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:89:9
+   |
+LL |         std::mem::uninitialized::<Option<!>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the type `OneVariantWith<char>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:92:9
+   |
+LL |         std::mem::uninitialized::<OneVariantWith<char>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
+
+error: the type `OneVariantWith<!>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:95:9
+   |
+LL |         std::mem::uninitialized::<OneVariantWith<!>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: for more information, see FIXME: fill this in
+note: the `!` type has no valid value (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
+
+error: aborting due to 22 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
 error: the type `T` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:13:5
+  --> $DIR/mem-uninitialized-future-compat.rs:26:5
    |
 LL |     std::mem::uninitialized::<T>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -205,7 +333,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `[T; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:16:5
+  --> $DIR/mem-uninitialized-future-compat.rs:29:5
    |
 LL |     std::mem::uninitialized::<[T; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -223,7 +351,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `[char; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:19:5
+  --> $DIR/mem-uninitialized-future-compat.rs:32:5
    |
 LL |     std::mem::uninitialized::<[char; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -241,7 +369,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `[UninitStruct; N]` is generic, and might not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:22:5
+  --> $DIR/mem-uninitialized-future-compat.rs:35:5
    |
 LL |     std::mem::uninitialized::<[UninitStruct; N]>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -262,8 +390,52 @@ LL |     b: char,
    |     ^^^^^^^
 
 Future breakage diagnostic:
+error: the type `std::result::Result<T, !>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:38:5
+   |
+LL |     std::mem::uninitialized::<Result<T, !>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: the type `OneVariantWith<T>` is generic, and might not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:41:5
+   |
+LL |     std::mem::uninitialized::<OneVariantWith<T>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     this code causes undefined behavior when executed
+   |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: type might not be allowed to be left uninitialized (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
+
+Future breakage diagnostic:
 error: the type `&u32` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:31:9
+  --> $DIR/mem-uninitialized-future-compat.rs:50:9
    |
 LL |         std::mem::uninitialized::<&'static u32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -281,7 +453,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `std::boxed::Box<u32>` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:34:9
+  --> $DIR/mem-uninitialized-future-compat.rs:53:9
    |
 LL |         std::mem::uninitialized::<Box<u32>>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -299,7 +471,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `fn()` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:37:9
+  --> $DIR/mem-uninitialized-future-compat.rs:56:9
    |
 LL |         std::mem::uninitialized::<fn()>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -317,7 +489,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `!` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:40:9
+  --> $DIR/mem-uninitialized-future-compat.rs:59:9
    |
 LL |         std::mem::uninitialized::<!>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -335,7 +507,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `*mut dyn std::io::Write` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:43:9
+  --> $DIR/mem-uninitialized-future-compat.rs:62:9
    |
 LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -353,7 +525,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `bool` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:46:9
+  --> $DIR/mem-uninitialized-future-compat.rs:65:9
    |
 LL |         std::mem::uninitialized::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -371,7 +543,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `char` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:49:9
+  --> $DIR/mem-uninitialized-future-compat.rs:68:9
    |
 LL |         std::mem::uninitialized::<char>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -389,7 +561,7 @@ LL | #![deny(mem_uninitialized)]
 
 Future breakage diagnostic:
 error: the type `UninitStruct` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:52:9
+  --> $DIR/mem-uninitialized-future-compat.rs:71:9
    |
 LL |         std::mem::uninitialized::<UninitStruct>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -411,7 +583,7 @@ LL |     b: char,
 
 Future breakage diagnostic:
 error: the type `[UninitStruct; 16]` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:55:9
+  --> $DIR/mem-uninitialized-future-compat.rs:74:9
    |
 LL |         std::mem::uninitialized::<[UninitStruct; 16]>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -433,7 +605,7 @@ LL |     b: char,
 
 Future breakage diagnostic:
 error: the type `(u32, char)` does not permit being left uninitialized
-  --> $DIR/mem-uninitialized-future-compat.rs:58:9
+  --> $DIR/mem-uninitialized-future-compat.rs:77:9
    |
 LL |         std::mem::uninitialized::<(u32, char)>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -448,4 +620,136 @@ LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
    = note: for more information, see FIXME: fill this in
    = note: characters must be a valid Unicode codepoint
+
+Future breakage diagnostic:
+error: the type `TwoVariant` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:80:9
+   |
+LL |         std::mem::uninitialized::<TwoVariant>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/mem-uninitialized-future-compat.rs:16:1
+   |
+LL | enum TwoVariant {
+   | ^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: the type `std::result::Result<!, !>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:83:9
+   |
+LL |         std::mem::uninitialized::<Result<!, !>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: the type `std::result::Result<!, u32>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:86:9
+   |
+LL |         std::mem::uninitialized::<Result<!, u32>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: the type `std::option::Option<!>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:89:9
+   |
+LL |         std::mem::uninitialized::<Option<!>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   | ^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: the type `OneVariantWith<char>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:92:9
+   |
+LL |         std::mem::uninitialized::<OneVariantWith<char>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: characters must be a valid Unicode codepoint (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
+
+Future breakage diagnostic:
+error: the type `OneVariantWith<!>` does not permit being left uninitialized
+  --> $DIR/mem-uninitialized-future-compat.rs:95:9
+   |
+LL |         std::mem::uninitialized::<OneVariantWith<!>>();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         this code causes undefined behavior when executed
+   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/mem-uninitialized-future-compat.rs:2:9
+   |
+LL | #![deny(mem_uninitialized)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: the `!` type has no valid value (in this enum field)
+  --> $DIR/mem-uninitialized-future-compat.rs:22:11
+   |
+LL |     Hello(T),
+   |           ^
 

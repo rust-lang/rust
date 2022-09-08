@@ -2366,7 +2366,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         #[derive(Debug, Copy, Clone, PartialEq)]
         enum InitKind {
             Zeroed,
-            Uninit { is_mem_uninit: bool },
+            /// `is_mem_uninit` is true *only* if this is a call to `mem::uninitialized()`, not if
+            /// this is a `MaybeUninit::uninit().assume_init()`.
+            ///
+            /// This lets us avoid duplicate errors being shown, for code that matches the
+            /// mem_uninitialized FCW.
+            Uninit {
+                is_mem_uninit: bool,
+            },
         }
 
         impl InitKind {
