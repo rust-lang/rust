@@ -60,7 +60,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ExprKind::Call(f, self.lower_exprs(args))
                     }
                 }
-                ExprKind::MethodCall(ref seg, ref receiver, ref args, span) => {
+                ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, span }) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -160,22 +160,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
                     self.lower_expr_await(dot_await_span, expr)
                 }
-                ExprKind::Closure(
+                ExprKind::Closure(box Closure {
                     ref binder,
                     capture_clause,
                     asyncness,
                     movability,
-                    ref decl,
+                    ref fn_decl,
                     ref body,
                     fn_decl_span,
-                ) => {
+                }) => {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
                             binder,
                             capture_clause,
                             e.id,
                             closure_id,
-                            decl,
+                            fn_decl,
                             body,
                             fn_decl_span,
                         )
@@ -185,7 +185,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             capture_clause,
                             e.id,
                             movability,
-                            decl,
+                            fn_decl,
                             body,
                             fn_decl_span,
                         )
@@ -1040,7 +1040,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_tuple_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
@@ -1062,7 +1062,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_unit_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {

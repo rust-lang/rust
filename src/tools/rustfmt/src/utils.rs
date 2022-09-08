@@ -479,9 +479,9 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()

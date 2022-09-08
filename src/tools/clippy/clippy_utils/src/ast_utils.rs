@@ -75,11 +75,11 @@ pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
         && over(&l.attrs, &r.attrs, eq_attr)
 }
 
-pub fn eq_qself(l: &QSelf, r: &QSelf) -> bool {
+pub fn eq_qself(l: &P<QSelf>, r: &P<QSelf>) -> bool {
     l.position == r.position && eq_ty(&l.ty, &r.ty)
 }
 
-pub fn eq_maybe_qself(l: &Option<QSelf>, r: &Option<QSelf>) -> bool {
+pub fn eq_maybe_qself(l: &Option<P<QSelf>>, r: &Option<P<QSelf>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => eq_qself(l, r),
         (None, None) => true,
@@ -147,8 +147,11 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Array(l), Array(r)) | (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
         (Call(lc, la), Call(rc, ra)) => eq_expr(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
-        (MethodCall(lc, ls, la, _), MethodCall(rc, rs, ra, _)) => {
-            eq_path_seg(lc, rc) && eq_expr(ls, rs) && over(la, ra, |l, r| eq_expr(l, r))
+        (
+            MethodCall(box ast::MethodCall { seg: ls, receiver: lr, args: la, .. }),
+            MethodCall(box ast::MethodCall { seg: rs, receiver: rr, args: ra, .. })
+        ) => {
+            eq_path_seg(ls, rs) && eq_expr(lr, rr) && over(la, ra, |l, r| eq_expr(l, r))
         },
         (Binary(lo, ll, lr), Binary(ro, rl, rr)) => lo.node == ro.node && eq_expr(ll, rl) && eq_expr(lr, rr),
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
@@ -170,7 +173,26 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
-        (Closure(lb, lc, la, lm, lf, le, _), Closure(rb, rc, ra, rm, rf, re, _)) => {
+        (
+            Closure(box ast::Closure {
+                binder: lb,
+                capture_clause: lc,
+                asyncness: la,
+                movability: lm,
+                fn_decl: lf,
+                body: le,
+                ..
+            }),
+            Closure(box ast::Closure {
+                binder: rb,
+                capture_clause: rc,
+                asyncness: ra,
+                movability: rm,
+                fn_decl: rf,
+                body: re,
+                ..
+            })
+        ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
                 && la.is_async() == ra.is_async()

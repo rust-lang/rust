@@ -19,7 +19,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
-        qself: &Option<QSelf>,
+        qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
         itctx: &ImplTraitContext,

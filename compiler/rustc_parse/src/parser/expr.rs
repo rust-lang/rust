@@ -832,7 +832,7 @@ impl<'a> Parser<'a> {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "`?`",
                     ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_, _, _, _) => "a method call",
+                    ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_) => "`.await`",
                     ExprKind::Err => return Ok(with_postfix),
@@ -1253,24 +1253,32 @@ impl<'a> Parser<'a> {
         }
 
         let fn_span_lo = self.token.span;
-        let mut segment = self.parse_path_segment(PathStyle::Expr, None)?;
-        self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(Delimiter::Parenthesis)]);
-        self.check_turbofish_missing_angle_brackets(&mut segment);
+        let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
+        self.check_trailing_angle_brackets(&seg, &[&token::OpenDelim(Delimiter::Parenthesis)]);
+        self.check_turbofish_missing_angle_brackets(&mut seg);
 
         if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Method call `expr.f()`
             let args = self.parse_paren_expr_seq()?;
             let fn_span = fn_span_lo.to(self.prev_token.span);
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, self_arg, args, fn_span)))
+            Ok(self.mk_expr(
+                span,
+                ExprKind::MethodCall(Box::new(ast::MethodCall {
+                    seg,
+                    receiver: self_arg,
+                    args,
+                    span: fn_span,
+                })),
+            ))
         } else {
             // Field access `expr.f`
-            if let Some(args) = segment.args {
+            if let Some(args) = seg.args {
                 self.sess.emit_err(FieldExpressionWithGeneric(args.span()));
             }
 
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::Field(self_arg, segment.ident)))
+            Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
 
@@ -1489,7 +1497,7 @@ impl<'a> Parser<'a> {
             });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) &&
-            let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path) {
+            let Some(expr) = self.maybe_parse_struct_expr(&qself, &path) {
                 if qself.is_some() {
                     self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
                 }
@@ -2065,9 +2073,9 @@ impl<'a> Parser<'a> {
         };
 
         let capture_clause = self.parse_capture_clause()?;
-        let decl = self.parse_fn_block_decl()?;
+        let fn_decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
-        let mut body = match decl.output {
+        let mut body = match fn_decl.output {
             FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
@@ -2097,15 +2105,15 @@ impl<'a> Parser<'a> {
 
         let closure = self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(
+            ExprKind::Closure(Box::new(ast::Closure {
                 binder,
                 capture_clause,
                 asyncness,
                 movability,
-                decl,
+                fn_decl,
                 body,
-                lo.to(decl_hi),
-            ),
+                fn_decl_span: lo.to(decl_hi),
+            })),
         );
 
         // Disable recovery for closure body
@@ -2813,7 +2821,7 @@ impl<'a> Parser<'a> {
 
     fn maybe_parse_struct_expr(
         &mut self,
-        qself: Option<&ast::QSelf>,
+        qself: &Option<P<ast::QSelf>>,
         path: &ast::Path,
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
@@ -2821,7 +2829,7 @@ impl<'a> Parser<'a> {
             if let Err(err) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
                 return Some(Err(err));
             }
-            let expr = self.parse_struct_expr(qself.cloned(), path.clone(), true);
+            let expr = self.parse_struct_expr(qself.clone(), path.clone(), true);
             if let (Ok(expr), false) = (&expr, struct_allowed) {
                 // This is a struct literal, but we don't can't accept them here.
                 self.error_struct_lit_not_allowed_here(path.span, expr.span);
@@ -2956,7 +2964,7 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     pub(super) fn parse_struct_expr(
         &mut self,
-        qself: Option<ast::QSelf>,
+        qself: Option<P<ast::QSelf>>,
         pth: ast::Path,
         recover: bool,
     ) -> PResult<'a, P<Expr>> {

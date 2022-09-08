@@ -188,7 +188,7 @@ pub trait MutVisitor: Sized {
         noop_visit_path(p, self);
     }
 
-    fn visit_qself(&mut self, qs: &mut Option<QSelf>) {
+    fn visit_qself(&mut self, qs: &mut Option<P<QSelf>>) {
         noop_visit_qself(qs, self);
     }
 
@@ -523,8 +523,9 @@ pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path
     visit_lazy_tts(tokens, vis);
 }
 
-pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<QSelf>, vis: &mut T) {
-    visit_opt(qself, |QSelf { ty, path_span, position: _ }| {
+pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<P<QSelf>>, vis: &mut T) {
+    visit_opt(qself, |qself| {
+        let QSelf { ty, path_span, position: _ } = &mut **qself;
         vis.visit_ty(ty);
         vis.visit_span(path_span);
     })
@@ -1297,12 +1298,17 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(f);
             visit_exprs(args, vis);
         }
-        ExprKind::MethodCall(PathSegment { ident, id, args }, receiver, exprs, span) => {
+        ExprKind::MethodCall(box MethodCall {
+            seg: PathSegment { ident, id, args: seg_args },
+            receiver,
+            args: call_args,
+            span,
+        }) => {
             vis.visit_ident(ident);
             vis.visit_id(id);
-            visit_opt(args, |args| vis.visit_generic_args(args));
+            visit_opt(seg_args, |args| vis.visit_generic_args(args));
             vis.visit_expr(receiver);
-            visit_exprs(exprs, vis);
+            visit_exprs(call_args, vis);
             vis.visit_span(span);
         }
         ExprKind::Binary(_binop, lhs, rhs) => {
@@ -1347,12 +1353,20 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(expr);
             arms.flat_map_in_place(|arm| vis.flat_map_arm(arm));
         }
-        ExprKind::Closure(binder, _capture_by, asyncness, _movability, decl, body, span) => {
+        ExprKind::Closure(box Closure {
+            binder,
+            capture_clause: _,
+            asyncness,
+            movability: _,
+            fn_decl,
+            body,
+            fn_decl_span,
+        }) => {
             vis.visit_closure_binder(binder);
             vis.visit_asyncness(asyncness);
-            vis.visit_fn_decl(decl);
+            vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
-            vis.visit_span(span);
+            vis.visit_span(fn_decl_span);
         }
         ExprKind::Block(blk, label) => {
             vis.visit_block(blk);

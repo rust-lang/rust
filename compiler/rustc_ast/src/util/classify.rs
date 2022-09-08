@@ -36,13 +36,15 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | Binary(_, _, e)
             | Box(e)
             | Break(_, Some(e))
-            | Closure(.., e, _)
             | Let(_, e, _)
             | Range(_, Some(e), _)
             | Ret(Some(e))
             | Unary(_, e)
             | Yield(Some(e)) => {
                 expr = e;
+            }
+            Closure(closure) => {
+                expr = &closure.body;
             }
             Async(..) | Block(..) | ForLoop(..) | If(..) | Loop(..) | Match(..) | Struct(..)
             | TryBlock(..) | While(..) => break Some(expr),

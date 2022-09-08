@@ -116,7 +116,7 @@ pub(crate) fn format_expr(
             rewrite_struct_lit(
                 context,
                 path,
-                qself.as_ref(),
+                qself,
                 fields,
                 rest,
                 &expr.attrs,
@@ -169,7 +169,7 @@ pub(crate) fn format_expr(
             rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself.as_ref(), path, shape)
+            rewrite_path(context, PathContext::Expr, qself, path, shape)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
             rewrite_assignment(context, lhs, rhs, None, shape)
@@ -203,16 +203,16 @@ pub(crate) fn format_expr(
                 Some("yield".to_string())
             }
         }
-        ast::ExprKind::Closure(
-            ref binder,
-            capture,
-            ref is_async,
-            movability,
-            ref fn_decl,
-            ref body,
-            _,
-        ) => closures::rewrite_closure(
-            binder, capture, is_async, movability, fn_decl, body, expr.span, context, shape,
+        ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
+            &cl.binder,
+            cl.capture_clause,
+            &cl.asyncness,
+            cl.movability,
+            &cl.fn_decl,
+            &cl.body,
+            expr.span,
+            context,
+            shape,
         ),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
@@ -1533,7 +1533,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],

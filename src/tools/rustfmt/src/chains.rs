@@ -145,8 +145,8 @@ impl ChainItemKind {
 
     fn from_ast(context: &RewriteContext<'_>, expr: &ast::Expr) -> (ChainItemKind, Span) {
         let (kind, span) = match expr.kind {
-            ast::ExprKind::MethodCall(ref segment, ref receiver, ref expressions, _) => {
-                let types = if let Some(ref generic_args) = segment.args {
+            ast::ExprKind::MethodCall(ref call) => {
+                let types = if let Some(ref generic_args) = call.seg.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                         data.args
                             .iter()
@@ -163,8 +163,8 @@ impl ChainItemKind {
                 } else {
                     vec![]
                 };
-                let span = mk_sp(receiver.span.hi(), expr.span.hi());
-                let kind = ChainItemKind::MethodCall(segment.clone(), types, expressions.clone());
+                let span = mk_sp(call.receiver.span.hi(), expr.span.hi());
+                let kind = ChainItemKind::MethodCall(call.seg.clone(), types, call.args.clone());
                 (kind, span)
             }
             ast::ExprKind::Field(ref nested, field) => {
@@ -400,9 +400,7 @@ impl Chain {
     // is a try! macro, we'll convert it to shorthand when the option is set.
     fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<ast::Expr> {
         match expr.kind {
-            ast::ExprKind::MethodCall(_, ref receiver, _, _) => {
-                Some(Self::convert_try(&receiver, context))
-            }
+            ast::ExprKind::MethodCall(ref call) => Some(Self::convert_try(&call.receiver, context)),
             ast::ExprKind::Field(ref subexpr, _)
             | ast::ExprKind::Try(ref subexpr)
             | ast::ExprKind::Await(ref subexpr) => Some(Self::convert_try(subexpr, context)),

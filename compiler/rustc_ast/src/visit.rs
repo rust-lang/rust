@@ -795,10 +795,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _span) => {
-            visitor.visit_path_segment(segment);
+        ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, span: _ }) => {
+            visitor.visit_path_segment(seg);
             visitor.visit_expr(receiver);
-            walk_list!(visitor, visit_expr, arguments);
+            walk_list!(visitor, visit_expr, args);
         }
         ExprKind::Binary(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(left_expression);
@@ -839,8 +839,16 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(ref binder, _, _, _, ref decl, ref body, _decl_span) => {
-            visitor.visit_fn(FnKind::Closure(binder, decl, body), expression.span, expression.id)
+        ExprKind::Closure(box Closure {
+            ref binder,
+            capture_clause: _,
+            asyncness: _,
+            movability: _,
+            ref fn_decl,
+            ref body,
+            fn_decl_span: _,
+        }) => {
+            visitor.visit_fn(FnKind::Closure(binder, fn_decl, body), expression.span, expression.id)
         }
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);

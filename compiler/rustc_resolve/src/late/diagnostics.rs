@@ -8,7 +8,7 @@ use crate::{PathResult, PathSource, Segment};
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
 use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
-    NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
+    MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
@@ -840,11 +840,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             };
 
         // Confirm that the target is an associated type.
-        let (ty, position, path) = if let ast::TyKind::Path(
-            Some(ast::QSelf { ty, position, .. }),
-            path,
-        ) = &bounded_ty.kind
-        {
+        let (ty, position, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
             // use this to verify that ident is a type param.
             let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
                 return false;
@@ -856,7 +852,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             {
                 return false;
             }
-            (ty, position, path)
+            (&qself.ty, qself.position, path)
         } else {
             return false;
         };
@@ -893,12 +889,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                     .source_map()
                                     .span_to_snippet(ty.span) // Account for `<&'a T as Foo>::Bar`.
                                     .unwrap_or_else(|_| constrain_ident.to_string()),
-                                path.segments[..*position]
+                                path.segments[..position]
                                     .iter()
                                     .map(|segment| path_segment_to_string(segment))
                                     .collect::<Vec<_>>()
                                     .join("::"),
-                                path.segments[*position..]
+                                path.segments[position..]
                                     .iter()
                                     .map(|segment| path_segment_to_string(segment))
                                     .collect::<Vec<_>>()
@@ -1017,7 +1013,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
             let (lhs_span, rhs_span) = match &expr.kind {
                 ExprKind::Field(base, ident) => (base.span, ident.span),
-                ExprKind::MethodCall(_, receiver, _, span) => (receiver.span, *span),
+                ExprKind::MethodCall(box MethodCall { receiver, span, .. }) => {
+                    (receiver.span, *span)
+                }
                 _ => return false,
             };
 
