@@ -2940,8 +2940,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // though we can easily give a hint that ought to be
                 // relevant.
                 err.note(
-                    "lifetimes appearing in an associated type are not considered constrained",
+                    "lifetimes appearing in an associated or opaque type are not considered constrained",
                 );
+                err.note("consider introducing a named lifetime parameter");
             }
 
             err.emit();
