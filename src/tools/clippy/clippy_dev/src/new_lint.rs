@@ -120,15 +120,17 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
 
     let new_lint = if enable_msrv {
         format!(
-            "store.register_{lint_pass}_pass(move || Box::new({module_name}::{camel_name}::new(msrv)));\n    ",
+            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(msrv)));\n    ",
             lint_pass = lint.pass,
+            ctor_arg = if lint.pass == "late" { "_" } else { "" },
             module_name = lint.name,
             camel_name = to_camel_case(lint.name),
         )
     } else {
         format!(
-            "store.register_{lint_pass}_pass(|| Box::new({module_name}::{camel_name}));\n    ",
+            "store.register_{lint_pass}_pass(|{ctor_arg}| Box::new({module_name}::{camel_name}));\n    ",
             lint_pass = lint.pass,
+            ctor_arg = if lint.pass == "late" { "_" } else { "" },
             module_name = lint.name,
             camel_name = to_camel_case(lint.name),
         )
