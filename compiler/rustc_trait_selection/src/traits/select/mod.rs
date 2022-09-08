@@ -462,15 +462,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
-                        Some(Ok(InferOk { mut obligations, .. })) => {
+                        Ok(Ok(InferOk { mut obligations, .. })) => {
                             self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
                             self.evaluate_predicates_recursively(
                                 previous_stack,
                                 obligations.into_iter(),
                             )
                         }
-                        Some(Err(_)) => Ok(EvaluatedToErr),
-                        None => Ok(EvaluatedToAmbig),
+                        Ok(Err(_)) => Ok(EvaluatedToErr),
+                        Err(..) => Ok(EvaluatedToAmbig),
                     }
                 }
 
@@ -478,15 +478,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let p = bound_predicate.rebind(p);
                     // Does this code ever run?
                     match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
-                        Some(Ok(InferOk { mut obligations, .. })) => {
+                        Ok(Ok(InferOk { mut obligations, .. })) => {
                             self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
                             self.evaluate_predicates_recursively(
                                 previous_stack,
                                 obligations.into_iter(),
                             )
                         }
-                        Some(Err(_)) => Ok(EvaluatedToErr),
-                        None => Ok(EvaluatedToAmbig),
+                        Ok(Err(_)) => Ok(EvaluatedToErr),
+                        Err(..) => Ok(EvaluatedToAmbig),
                     }
                 }
 

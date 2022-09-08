@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolyCoercePredicate<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
+    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
         let subtype_predicate = predicate.map_bound(|p| ty::SubtypePredicate {
             a_is_expected: false, // when coercing from `a` to `b`, `b` is expected
             a: p.a,
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolySubtypePredicate<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
+    ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
         // Check for two unresolved inference variables, in which case we can
         // make no progress. This is partly a micro-optimization, but it's
         // also an opportunity to "sub-unify" the variables. This isn't
@@ -1055,12 +1055,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                 self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
-                return None;
+                return Err((a_vid, b_vid));
             }
             _ => {}
         }
 
-        Some(self.commit_if_ok(|_snapshot| {
+        Ok(self.commit_if_ok(|_snapshot| {
             let ty::SubtypePredicate { a_is_expected, a, b } =
                 self.replace_bound_vars_with_placeholders(predicate);
 
@@ -1848,7 +1848,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a type, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`).
-    pub fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
+    fn maybe_from_ty(ty: Ty<'tcx>) -> Option<Self> {
         match *ty.kind() {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
@@ -1859,7 +1859,7 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
+    fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
