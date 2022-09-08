@@ -47,7 +47,7 @@ impl RawWaker {
     /// Get the `data` pointer used to create this `RawWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
     pub fn data(&self) -> *const () {
         self.data
     }
@@ -55,7 +55,7 @@ impl RawWaker {
     /// Get the `vtable` pointer used to create this `RawWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.vtable
     }
@@ -318,7 +318,7 @@ impl Waker {
     /// Get a reference to the underlying [`RawWaker`].
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[stable(feature = "waker_getters", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_raw(&self) -> &RawWaker {
         &self.waker
     }
