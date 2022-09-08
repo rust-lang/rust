@@ -1,14 +1,16 @@
-error[E0282]: type annotations needed
-  --> $DIR/issue-69455.rs:29:20
+error[E0284]: type annotations needed
+  --> $DIR/issue-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `new_display`
+   |                          ----           ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
+   |                          |
+   |                          type must be known at this point
    |
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: cannot satisfy `<u64 as Test<_>>::Output == _`
 help: consider specifying the generic argument
    |
-LL |     println!("{}", 23u64.test(xs.iter().sum())::<T>);
-   |                                               +++++
+LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
+   |                                            +++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-69455.rs:29:41
@@ -33,5 +35,5 @@ LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0282, E0283.
-For more information about an error, try `rustc --explain E0282`.
+Some errors have detailed explanations: E0283, E0284.
+For more information about an error, try `rustc --explain E0283`.

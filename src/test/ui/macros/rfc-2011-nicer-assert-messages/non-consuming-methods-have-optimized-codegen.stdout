@@ -25,8 +25,17 @@ fn arbitrary_consuming_method_for_demonstration_purposes() {
 
 
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem as usize\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem as usize\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -41,8 +50,17 @@ fn addr_of() {
         if ::core::intrinsics::unlikely(!&*__local_bind0) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: &elem\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: &elem\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -57,8 +75,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 == 1)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem == 1\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem == 1\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -70,8 +97,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 >= 1)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem >= 1\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem >= 1\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -83,8 +119,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 > 0)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem > 0\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem > 0\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -96,8 +141,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 < 3)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem < 3\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem < 3\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -109,8 +163,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 <= 3)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem <= 3\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem <= 3\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -122,8 +185,17 @@ fn binary() {
         if ::core::intrinsics::unlikely(!(*__local_bind0 != 3)) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: elem != 3\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: elem != 3\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };
@@ -138,8 +210,17 @@ fn unary() {
         if ::core::intrinsics::unlikely(!**__local_bind0) {
                 (&::core::asserting::Wrapper(__local_bind0)).try_capture(&mut __capture0);
                 {
-                    ::std::rt::panic_fmt(::core::fmt::Arguments::new_v1(&["Assertion failed: *elem\nWith captures:\n  elem = ",
-                                        "\n"], &[::core::fmt::ArgumentV1::new_debug(&__capture0)]))
+                    ::std::rt::panic_fmt(::core::fmt::Arguments::new(&match (&__capture0,)
+                                    {
+                                    _args =>
+                                        |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                            {
+                                                f.write_str("Assertion failed: *elem\nWith captures:\n  elem = ")?;
+                                                ::core::fmt::Debug::fmt(_args.0, f)?;
+                                                f.write_str("\n")?;
+                                                ::core::result::Result::Ok(())
+                                            },
+                                }))
                 }
             }
     };

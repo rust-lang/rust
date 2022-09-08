@@ -17,8 +17,14 @@ LL | bug!();
 
 error: unexpected expression: `{
                let res =
-                   ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
-                           &[::core::fmt::ArgumentV1::new_display(&"u8")]));
+                   ::alloc::fmt::format(::core::fmt::Arguments::new(&match (&"u8",) {
+                                   _args =>
+                                       |f: &mut ::core::fmt::Formatter<'_>| -> ::core::fmt::Result
+                                           {
+                                               ::core::fmt::Display::fmt(_args.0, f)?;
+                                               ::core::result::Result::Ok(())
+                                           },
+                               }));
                res
            }.as_str()`
   --> $DIR/key-value-expansion.rs:48:23

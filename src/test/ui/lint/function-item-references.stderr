@@ -11,6 +11,54 @@ LL | #![warn(function_item_references)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:142:41
+   |
+LL |         std::mem::transmute::<_, usize>(&foo);
+   |                                         ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:144:50
+   |
+LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
+   |                                                  ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:144:50
+   |
+LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
+   |                                                  ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:147:41
+   |
+LL |         std::mem::transmute::<_, usize>(&take_generic_ref::<u32>);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_ref` to obtain a function pointer: `take_generic_ref::<u32> as fn(_)`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:156:15
+   |
+LL |     print_ptr(&bar);
+   |               ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:158:24
+   |
+LL |     bound_by_ptr_trait(&bar);
+   |                        ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:160:30
+   |
+LL |     bound_by_ptr_trait_tuple((&foo, &bar));
+   |                              ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
+
+warning: taking a reference to a function item does not give a function pointer
+  --> $DIR/function-item-references.rs:160:30
+   |
+LL |     bound_by_ptr_trait_tuple((&foo, &bar));
+   |                              ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
+
+warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:81:22
    |
 LL |     println!("{:p}", &foo);
@@ -153,54 +201,6 @@ warning: taking a reference to a function item does not give a function pointer
    |
 LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
    |                                            ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:142:41
-   |
-LL |         std::mem::transmute::<_, usize>(&foo);
-   |                                         ^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:144:50
-   |
-LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
-   |                                                  ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:144:50
-   |
-LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
-   |                                                  ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:147:41
-   |
-LL |         std::mem::transmute::<_, usize>(&take_generic_ref::<u32>);
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_ref` to obtain a function pointer: `take_generic_ref::<u32> as fn(_)`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:156:15
-   |
-LL |     print_ptr(&bar);
-   |               ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:158:24
-   |
-LL |     bound_by_ptr_trait(&bar);
-   |                        ^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:160:30
-   |
-LL |     bound_by_ptr_trait_tuple((&foo, &bar));
-   |                              ^^^^^^^^^^^^ help: cast `bar` to obtain a function pointer: `bar as fn(_) -> _`
-
-warning: taking a reference to a function item does not give a function pointer
-  --> $DIR/function-item-references.rs:160:30
-   |
-LL |     bound_by_ptr_trait_tuple((&foo, &bar));
-   |                              ^^^^^^^^^^^^ help: cast `foo` to obtain a function pointer: `foo as fn() -> _`
 
 warning: 33 warnings emitted
 
