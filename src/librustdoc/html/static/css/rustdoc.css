@@ -197,10 +197,6 @@ h4.code-header {
 	position: relative;
 }
 
-div.impl-items > div {
-	padding-left: 0;
-}
-
 h1, h2, h3, h4, h5, h6,
 .sidebar,
 .mobile-topbar,
@@ -212,7 +208,6 @@ a.source,
 span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
-div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
 #help-button > button,
