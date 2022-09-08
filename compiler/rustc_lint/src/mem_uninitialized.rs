@@ -40,7 +40,7 @@ declare_lint! {
     Warn,
     "use of mem::uninitialized",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "FIXME: fill this in",
+        reference: "issue #101570 <https://github.com/rust-lang/rust/issues/101570>",
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
         explain_reason: false,
     };

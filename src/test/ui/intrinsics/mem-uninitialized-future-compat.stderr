@@ -12,7 +12,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: type might not be allowed to be left uninitialized
 
 error: the type `[T; N]` is generic, and might not permit being left uninitialized
@@ -24,7 +24,7 @@ LL |     std::mem::uninitialized::<[T; N]>();
    |     this code causes undefined behavior when executed
    |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: type might not be allowed to be left uninitialized
 
 error: the type `[char; N]` is generic, and might not permit being left uninitialized
@@ -36,7 +36,7 @@ LL |     std::mem::uninitialized::<[char; N]>();
    |     this code causes undefined behavior when executed
    |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 error: the type `[UninitStruct; N]` is generic, and might not permit being left uninitialized
@@ -48,7 +48,7 @@ LL |     std::mem::uninitialized::<[UninitStruct; N]>();
    |     this code causes undefined behavior when executed
    |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -64,7 +64,7 @@ LL |     std::mem::uninitialized::<Result<T, !>>();
    |     this code causes undefined behavior when executed
    |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -80,7 +80,7 @@ LL |     std::mem::uninitialized::<OneVariantWith<T>>();
    |     this code causes undefined behavior when executed
    |     help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: type might not be allowed to be left uninitialized (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |
@@ -96,7 +96,7 @@ LL |         std::mem::uninitialized::<&'static u32>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: references must be non-null
 
 error: the type `std::boxed::Box<u32>` does not permit being left uninitialized
@@ -108,7 +108,7 @@ LL |         std::mem::uninitialized::<Box<u32>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: `Box` must be non-null
 
 error: the type `fn()` does not permit being left uninitialized
@@ -120,7 +120,7 @@ LL |         std::mem::uninitialized::<fn()>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: function pointers must be non-null
 
 error: the type `!` does not permit being left uninitialized
@@ -132,7 +132,7 @@ LL |         std::mem::uninitialized::<!>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the `!` type has no valid value
 
 error: the type `*mut dyn std::io::Write` does not permit being left uninitialized
@@ -144,7 +144,7 @@ LL |         std::mem::uninitialized::<*mut dyn std::io::Write>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the vtable of a wide raw pointer must be non-null
 
 error: the type `bool` does not permit being left uninitialized
@@ -156,7 +156,7 @@ LL |         std::mem::uninitialized::<bool>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: booleans must be either `true` or `false`
 
 error: the type `char` does not permit being left uninitialized
@@ -168,7 +168,7 @@ LL |         std::mem::uninitialized::<char>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 error: the type `UninitStruct` does not permit being left uninitialized
@@ -180,7 +180,7 @@ LL |         std::mem::uninitialized::<UninitStruct>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -196,7 +196,7 @@ LL |         std::mem::uninitialized::<[UninitStruct; 16]>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -212,7 +212,7 @@ LL |         std::mem::uninitialized::<(u32, char)>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 error: the type `TwoVariant` does not permit being left uninitialized
@@ -224,7 +224,7 @@ LL |         std::mem::uninitialized::<TwoVariant>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/mem-uninitialized-future-compat.rs:16:1
    |
@@ -240,7 +240,7 @@ LL |         std::mem::uninitialized::<Result<!, !>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -256,7 +256,7 @@ LL |         std::mem::uninitialized::<Result<!, u32>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -272,7 +272,7 @@ LL |         std::mem::uninitialized::<Option<!>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
@@ -288,7 +288,7 @@ LL |         std::mem::uninitialized::<OneVariantWith<char>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |
@@ -304,7 +304,7 @@ LL |         std::mem::uninitialized::<OneVariantWith<!>>();
    |         this code causes undefined behavior when executed
    |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
    |
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: the `!` type has no valid value (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |
@@ -328,7 +328,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: type might not be allowed to be left uninitialized
 
 Future breakage diagnostic:
@@ -346,7 +346,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: type might not be allowed to be left uninitialized
 
 Future breakage diagnostic:
@@ -364,7 +364,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 Future breakage diagnostic:
@@ -382,7 +382,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -404,7 +404,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -426,7 +426,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: type might not be allowed to be left uninitialized (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |
@@ -448,7 +448,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: references must be non-null
 
 Future breakage diagnostic:
@@ -466,7 +466,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: `Box` must be non-null
 
 Future breakage diagnostic:
@@ -484,7 +484,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
@@ -502,7 +502,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
@@ -520,7 +520,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the vtable of a wide raw pointer must be non-null
 
 Future breakage diagnostic:
@@ -538,7 +538,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
@@ -556,7 +556,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 Future breakage diagnostic:
@@ -574,7 +574,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -596,7 +596,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this struct field)
   --> $DIR/mem-uninitialized-future-compat.rs:9:5
    |
@@ -618,7 +618,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: characters must be a valid Unicode codepoint
 
 Future breakage diagnostic:
@@ -636,7 +636,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/mem-uninitialized-future-compat.rs:16:1
    |
@@ -658,7 +658,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -680,7 +680,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
@@ -702,7 +702,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
@@ -724,7 +724,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: characters must be a valid Unicode codepoint (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |
@@ -746,7 +746,7 @@ note: the lint level is defined here
    |
 LL | #![deny(mem_uninitialized)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: the `!` type has no valid value (in this enum field)
   --> $DIR/mem-uninitialized-future-compat.rs:22:11
    |

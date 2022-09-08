@@ -13,7 +13,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the `!` type has no valid value
 
 Future breakage diagnostic:
@@ -31,7 +31,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: the `!` type has no valid value (in this struct field)
   --> $DIR/panic-uninitialized-zeroed.rs:24:5
    |
@@ -53,7 +53,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: enums with no variants have no valid value
 
 Future breakage diagnostic:
@@ -71,7 +71,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: the `!` type has no valid value (in this struct field)
   --> $DIR/panic-uninitialized-zeroed.rs:24:5
    |
@@ -93,7 +93,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: enums with no variants have no valid value
 
 Future breakage diagnostic:
@@ -111,7 +111,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: function pointers must be non-null
 
 Future breakage diagnostic:
@@ -129,7 +129,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: the vtable of a wide raw pointer must be non-null
 
 Future breakage diagnostic:
@@ -147,7 +147,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: `std::ptr::NonNull<u32>` must be non-null
 
 Future breakage diagnostic:
@@ -165,7 +165,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:33:1
    |
@@ -187,7 +187,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:53:1
    |
@@ -209,7 +209,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:53:1
    |
@@ -231,7 +231,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:41:1
    |
@@ -253,7 +253,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: booleans must be either `true` or `false`
 
 Future breakage diagnostic:
@@ -271,7 +271,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:48:1
    |
@@ -293,7 +293,7 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
 note: enums have to be initialized to a variant
   --> $DIR/panic-uninitialized-zeroed.rs:48:1
    |
@@ -315,6 +315,6 @@ note: the lint level is defined here
    |
 LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
    |                                     ^^^^^^^^^^^^^^^^^
-   = note: for more information, see FIXME: fill this in
+   = note: for more information, see issue #101570 <https://github.com/rust-lang/rust/issues/101570>
    = note: `std::ptr::NonNull<()>` must be non-null
 
