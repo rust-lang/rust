@@ -41,6 +41,9 @@ pub struct OpenOptions {
     mode: i32,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
+
 pub struct FilePermissions(!);
 
 pub struct FileType(!);
@@ -108,6 +111,11 @@ impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
 }
 
 impl FileType {
@@ -342,6 +350,10 @@ impl File {
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        Err(Error::from_raw_os_error(22))
+    }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
         Err(Error::from_raw_os_error(22))
     }
 }
