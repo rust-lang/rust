@@ -149,12 +149,6 @@ impl<'tcx> TypeVisitable<'tcx> for PlaceElem<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for Field {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
-        ControlFlow::CONTINUE
-    }
-}
-
 impl<'tcx> TypeVisitable<'tcx> for GeneratorSavedLocal {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE

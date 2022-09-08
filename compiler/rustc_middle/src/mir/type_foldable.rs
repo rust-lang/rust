@@ -192,12 +192,6 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Field {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
