@@ -330,12 +330,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
+                        //
+                        // FIXME: This is not correct for `#[manually_drop]` in general, only when the struct is
+                        // a smart pointer whose pointee is at the same address, and whose pointee implements `Drop`.
+                        // Instead of checking for `#[manually_drop]`, this should likely be a more restricted check
+                        // for such types, or else union really should special-case and only permit `ManuallyDrop`, and
+                        // not `#[manually_drop]` types in general.
                         if inside_union
                             && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
                         {
                             let mut err = self.tcx.sess.struct_span_err(
                                 expr.span,
-                                "not automatically applying `DerefMut` on `ManuallyDrop` union field",
+                                "not automatically applying `DerefMut` on manually dropped union field",
                             );
                             err.help(
                                 "writing to this reference calls the destructor for the old value",

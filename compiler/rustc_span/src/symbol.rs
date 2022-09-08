@@ -902,6 +902,7 @@ symbols! {
         main,
         managed_boxes,
         manually_drop,
+        manually_drop_attr,
         map,
         marker,
         marker_trait_attr,
