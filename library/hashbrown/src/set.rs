@@ -1143,7 +1143,7 @@ where
     ///
     /// # Note
     ///
-    /// Calling the function safe, but using raw hash table API's may require
+    /// Calling this function is safe, but using the raw hash table API may require
     /// unsafe functions or blocks.
     ///
     /// `RawTable` API gives the lowest level of control under the set that can be useful
