@@ -1,0 +1,26 @@
+### What it does
+Checks for casts of a function pointer to a numeric type not wide enough to
+store address.
+
+### Why is this bad?
+Such a cast discards some bits of the function's address. If this is intended, it would be more
+clearly expressed by casting to usize first, then casting the usize to the intended type (with
+a comment) to perform the truncation.
+
+### Example
+```
+fn fn1() -> i16 {
+    1
+};
+let _ = fn1 as i32;
+```
+
+Use instead:
+```
+// Cast to usize first, then comment with the reason for the truncation
+fn fn1() -> i16 {
+    1
+};
+let fn_ptr = fn1 as usize;
+let fn_ptr_truncated = fn_ptr as i32;
+```

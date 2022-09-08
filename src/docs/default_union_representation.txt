@@ -1,0 +1,36 @@
+### What it does
+Displays a warning when a union is declared with the default representation (without a `#[repr(C)]` attribute).
+
+### Why is this bad?
+Unions in Rust have unspecified layout by default, despite many people thinking that they
+lay out each field at the start of the union (like C does). That is, there are no guarantees
+about the offset of the fields for unions with multiple non-ZST fields without an explicitly
+specified layout. These cases may lead to undefined behavior in unsafe blocks.
+
+### Example
+```
+union Foo {
+    a: i32,
+    b: u32,
+}
+
+fn main() {
+    let _x: u32 = unsafe {
+        Foo { a: 0_i32 }.b // Undefined behavior: `b` is allowed to be padding
+    };
+}
+```
+Use instead:
+```
+#[repr(C)]
+union Foo {
+    a: i32,
+    b: u32,
+}
+
+fn main() {
+    let _x: u32 = unsafe {
+        Foo { a: 0_i32 }.b // Now defined behavior, this is just an i32 -> u32 transmute
+    };
+}
+```

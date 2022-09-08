@@ -1,0 +1,15 @@
+### What it does
+Checks that common macros are used with consistent bracing.
+
+### Why is this bad?
+This is mostly a consistency lint although using () or []
+doesn't give you a semicolon in item position, which can be unexpected.
+
+### Example
+```
+vec!{1, 2, 3};
+```
+Use instead:
+```
+vec![1, 2, 3];
+```

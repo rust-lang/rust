@@ -3583,7 +3583,7 @@ Released 2018-09-13
 [`almost_complete_letter_range`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_letter_range
 [`almost_swapped`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_swapped
 [`approx_constant`]: https://rust-lang.github.io/rust-clippy/master/index.html#approx_constant
-[`arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic
+[`arithmetic_side_effects`]: https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
 [`as_conversions`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_conversions
 [`as_underscore`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_underscore
 [`assertions_on_constants`]: https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_constants
@@ -3603,6 +3603,7 @@ Released 2018-09-13
 [`blocks_in_if_conditions`]: https://rust-lang.github.io/rust-clippy/master/index.html#blocks_in_if_conditions
 [`bool_assert_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_assert_comparison
 [`bool_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_comparison
+[`bool_to_int_with_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_to_int_with_if
 [`borrow_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_as_ptr
 [`borrow_deref_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_deref_ref
 [`borrow_interior_mutable_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const

@@ -1031,12 +1031,12 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
     v.allow_closure.then_some(v.captures)
 }
 
+/// Arguments of a method: the receiver and all the additional arguments.
+pub type MethodArguments<'tcx> = Vec<(&'tcx Expr<'tcx>, &'tcx [Expr<'tcx>])>;
+
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
-pub fn method_calls<'tcx>(
-    expr: &'tcx Expr<'tcx>,
-    max_depth: usize,
-) -> (Vec<Symbol>, Vec<(&'tcx Expr<'tcx>, &'tcx [Expr<'tcx>])>, Vec<Span>) {
+pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symbol>, MethodArguments<'tcx>, Vec<Span>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
     let mut spans = Vec::with_capacity(max_depth);

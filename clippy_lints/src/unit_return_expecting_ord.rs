@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
             let args = std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>();
             for (i, trait_name) in arg_indices {
                 if i < args.len() {
-                    match check_arg(cx, &args[i]) {
+                    match check_arg(cx, args[i]) {
                         Some((span, None)) => {
                             span_lint(
                                 cx,

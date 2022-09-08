@@ -1,21 +1,25 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
+use crate::rustc_middle::ty::Subst;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{
-    get_associated_type, get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, peel_mid_ty_refs,
-};
-use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
+use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::visitors::find_all_ret_expressions;
+use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
+use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
+use rustc_middle::ty::EarlyBinder;
+use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
+use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
+use rustc_typeck::check::{FnCtxt, Inherited};
 use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
@@ -34,7 +38,7 @@ pub fn check<'tcx>(
         then {
             if is_cloned_or_copied(cx, method_name, method_def_id) {
                 unnecessary_iter_cloned::check(cx, expr, method_name, receiver);
-            } else if is_to_owned_like(cx, method_name, method_def_id) {
+            } else if is_to_owned_like(cx, expr, method_name, method_def_id) {
                 // At this point, we know the call is of a `to_owned`-like function. The functions
                 // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
                 // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
@@ -246,17 +250,12 @@ fn check_other_call_arg<'tcx>(
 ) -> bool {
     if_chain! {
         if let Some((maybe_call, maybe_arg)) = skip_addr_of_ancestors(cx, expr);
-        if let Some((callee_def_id, call_substs, call_receiver, call_args)) = get_callee_substs_and_args(cx, maybe_call);
+        if let Some((callee_def_id, _, recv, call_args)) = get_callee_substs_and_args(cx, maybe_call);
         let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
-        let index = if let Some(call_receiver) = call_receiver {
-            std::iter::once(call_receiver).chain(call_args.iter()).position(|arg| arg.hir_id == maybe_arg.hir_id)
-        } else {
-            call_args.iter().position(|arg| arg.hir_id == maybe_arg.hir_id)
-        };
-        if let Some(i) = index;
+        if let Some(i) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == maybe_arg.hir_id);
         if let Some(input) = fn_sig.inputs().get(i);
         let (input, n_refs) = peel_mid_ty_refs(*input);
-        if let (trait_predicates, projection_predicates) = get_input_traits_and_projections(cx, callee_def_id, input);
+        if let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input);
         if let Some(sized_def_id) = cx.tcx.lang_items().sized_trait();
         if let [trait_predicate] = trait_predicates
             .iter()
@@ -264,52 +263,13 @@ fn check_other_call_arg<'tcx>(
             .collect::<Vec<_>>()[..];
         if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
         if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
+        if trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id;
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        // If the callee has type parameters, they could appear in `projection_predicate.ty` or the
-        // types of `trait_predicate.trait_ref.substs`.
-        if if trait_predicate.def_id() == deref_trait_id {
-            if let [projection_predicate] = projection_predicates[..] {
-                let normalized_ty =
-                    cx.tcx
-                        .subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
-                implements_trait(cx, receiver_ty, deref_trait_id, &[])
-                    && get_associated_type(cx, receiver_ty, deref_trait_id, "Target")
-                        .map_or(false, |ty| ty::TermKind::Ty(ty) == normalized_ty.unpack())
-            } else {
-                false
-            }
-        } else if trait_predicate.def_id() == as_ref_trait_id {
-            let composed_substs = compose_substs(
-                cx,
-                &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
-                call_substs,
-            );
-            // if `expr` is a `String` and generic target is [u8], skip
-            // (https://github.com/rust-lang/rust-clippy/issues/9317).
-            if let [subst] = composed_substs[..]
-                && let GenericArgKind::Type(arg_ty) = subst.unpack()
-                && arg_ty.is_slice()
-                && let inner_ty = arg_ty.builtin_index().unwrap()
-                && let ty::Uint(ty::UintTy::U8) = inner_ty.kind()
-                && let self_ty = cx.typeck_results().expr_ty(expr).peel_refs()
-                && is_type_diagnostic_item(cx, self_ty, sym::String) {
-                false
-            } else {
-                implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
-            }
-        } else {
-            false
-        };
+        if can_change_type(cx, maybe_arg, receiver_ty);
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
         if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
         let n_refs = max(n_refs, if is_copy(cx, receiver_ty) { 0 } else { 1 });
-        // If the trait is `AsRef` and the input type variable `T` occurs in the output type, then
-        // `T` must not be instantiated with a reference
-        // (https://github.com/rust-lang/rust-clippy/issues/8507).
-        if (n_refs == 0 && !receiver_ty.is_ref())
-            || trait_predicate.def_id() != as_ref_trait_id
-            || !fn_sig.output().contains(input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -359,11 +319,11 @@ fn get_callee_substs_and_args<'tcx>(
         }
     }
     if_chain! {
-        if let ExprKind::MethodCall(_, receiver, args, _) = expr.kind;
+        if let ExprKind::MethodCall(_, recv, args, _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         then {
             let substs = cx.typeck_results().node_substs(expr.hir_id);
-            return Some((method_def_id, substs, Some(receiver), args));
+            return Some((method_def_id, substs, Some(recv), args));
         }
     }
     None
@@ -395,22 +355,103 @@ fn get_input_traits_and_projections<'tcx>(
     (trait_predicates, projection_predicates)
 }
 
-/// Composes two substitutions by applying the latter to the types of the former.
-fn compose_substs<'tcx>(
-    cx: &LateContext<'tcx>,
-    left: &[GenericArg<'tcx>],
-    right: SubstsRef<'tcx>,
-) -> Vec<GenericArg<'tcx>> {
-    left.iter()
-        .map(|arg| {
-            if let GenericArgKind::Type(arg_ty) = arg.unpack() {
-                let normalized_ty = cx.tcx.subst_and_normalize_erasing_regions(right, cx.param_env, arg_ty);
-                GenericArg::from(normalized_ty)
-            } else {
-                *arg
+fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
+    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+        match node {
+            Node::Stmt(_) => return true,
+            Node::Block(..) => continue,
+            Node::Item(item) => {
+                if let ItemKind::Fn(_, _, body_id) = &item.kind
+                && let output_ty = return_ty(cx, item.hir_id())
+                && let local_def_id = cx.tcx.hir().local_def_id(item.hir_id())
+                && Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
+                    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.hir_id());
+                    fn_ctxt.can_coerce(ty, output_ty)
+                }) {
+                    if has_lifetime(output_ty) && has_lifetime(ty) {
+                        return false;
+                    }
+                    let body = cx.tcx.hir().body(*body_id);
+                    let body_expr = &body.value;
+                    let mut count = 0;
+                    return find_all_ret_expressions(cx, body_expr, |_| { count += 1; count <= 1 });
+                }
             }
-        })
-        .collect()
+            Node::Expr(parent_expr) => {
+                if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
+                {
+                    let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
+                    if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
+                        && let Some(param_ty) = fn_sig.inputs().get(arg_index)
+                        && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
+                    {
+                        if fn_sig
+                            .inputs()
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _)| *i != arg_index)
+                            .any(|(_, ty)| ty.contains(*param_ty))
+                        {
+                            return false;
+                        }
+
+                        let mut trait_predicates = cx.tcx.param_env(callee_def_id)
+                            .caller_bounds().iter().filter(|predicate| {
+                            if let PredicateKind::Trait(trait_predicate) =  predicate.kind().skip_binder()
+                                && trait_predicate.trait_ref.self_ty() == *param_ty {
+                                    true
+                                } else {
+                                false
+                            }
+                        });
+
+                        let new_subst = cx.tcx.mk_substs(
+                            call_substs.iter()
+                                .enumerate()
+                                .map(|(i, t)|
+                                     if i == (*param_index as usize) {
+                                         GenericArg::from(ty)
+                                     } else {
+                                         t
+                                     }));
+
+                        if trait_predicates.any(|predicate| {
+                            let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
+                            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+                            !cx.tcx
+                                .infer_ctxt()
+                                .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+                        }) {
+                            return false;
+                        }
+
+                        let output_ty = fn_sig.output();
+                        if output_ty.contains(*param_ty) {
+                            if let Ok(new_ty)  = cx.tcx.try_subst_and_normalize_erasing_regions(
+                                new_subst, cx.param_env, output_ty) {
+                                expr = parent_expr;
+                                ty = new_ty;
+                                continue;
+                            }
+                            return false;
+                        }
+
+                        return true;
+                    }
+                } else if let ExprKind::Block(..) = parent_expr.kind {
+                    continue;
+                }
+                return false;
+            },
+            _ => return false,
+        }
+    }
+
+    false
+}
+
+fn has_lifetime(ty: Ty<'_>) -> bool {
+    ty.walk().any(|t| matches!(t.unpack(), GenericArgKind::Lifetime(_)))
 }
 
 /// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
@@ -421,10 +462,10 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
-fn is_to_owned_like(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
+fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
     is_clone_like(cx, method_name.as_str(), method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
-        || is_to_string(cx, method_name, method_def_id)
+        || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)
 }
 
 /// Returns true if the named method is `Cow::into_owned`.
@@ -432,7 +473,27 @@ fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: D
     method_name.as_str() == "into_owned" && is_diag_item_method(cx, method_def_id, sym::Cow)
 }
 
-/// Returns true if the named method is `ToString::to_string`.
-fn is_to_string(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    method_name == sym::to_string && is_diag_trait_item(cx, method_def_id, sym::ToString)
+/// Returns true if the named method is `ToString::to_string` and it's called on a type that
+/// is string-like i.e. implements `AsRef<str>` or `Deref<str>`.
+fn is_to_string_on_string_like<'a>(
+    cx: &LateContext<'_>,
+    call_expr: &'a Expr<'a>,
+    method_name: Symbol,
+    method_def_id: DefId,
+) -> bool {
+    if method_name != sym::to_string || !is_diag_trait_item(cx, method_def_id, sym::ToString) {
+        return false;
+    }
+
+    if let Some(substs) = cx.typeck_results().node_substs_opt(call_expr.hir_id)
+        && let [generic_arg] = substs.as_slice()
+        && let GenericArgKind::Type(ty) = generic_arg.unpack()
+        && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+        && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
+        && (implements_trait(cx, ty, deref_trait_id, &[cx.tcx.types.str_.into()]) ||
+            implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
+            true
+        } else {
+            false
+        }
 }

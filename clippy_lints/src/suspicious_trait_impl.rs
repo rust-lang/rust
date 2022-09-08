@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
             ]
                 .iter()
                 .find(|&(ts, _)| ts.iter().any(|&t| Ok(trait_id) == cx.tcx.lang_items().require(t)));
-            if count_binops(&body.value) == 1;
+            if count_binops(body.value) == 1;
             then {
                 span_lint(
                     cx,

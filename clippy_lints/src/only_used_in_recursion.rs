@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, ConstKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -234,11 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             })) => (
                 def_id.to_def_id(),
                 FnKind::TraitFn,
-                if sig.decl.implicit_self.has_implicit_self() {
-                    1
-                } else {
-                    0
-                },
+                usize::from(sig.decl.implicit_self.has_implicit_self()),
             ),
             Some(Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
@@ -253,11 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     (
                         trait_item_id,
                         FnKind::ImplTraitFn(cx.tcx.erase_regions(trait_ref.substs) as *const _ as usize),
-                        if sig.decl.implicit_self.has_implicit_self() {
-                            1
-                        } else {
-                            0
-                        },
+                        usize::from(sig.decl.implicit_self.has_implicit_self()),
                     )
                 } else {
                     (def_id.to_def_id(), FnKind::Fn, 0)
@@ -310,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                                     && has_matching_substs(param.fn_kind, typeck.node_substs(parent.hir_id))
                             }) =>
                         {
-                            if let Some(idx) = std::iter::once(receiver).chain(args.iter()).position(|arg| arg.hir_id == child_id) {
+                            if let Some(idx) = iter::once(receiver).chain(args).position(|arg| arg.hir_id == child_id) {
                                 param.uses.push(Usage::new(span, idx));
                             }
                             return;

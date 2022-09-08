@@ -31,7 +31,7 @@ pub(super) fn check(
             // Extract the body of the closure passed to fold
             if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind;
             let closure_body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`
             if let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind;

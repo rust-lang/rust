@@ -1,0 +1,16 @@
+### What it does
+Checks for C-like enumerations that are
+`repr(isize/usize)` and have values that don't fit into an `i32`.
+
+### Why is this bad?
+This will truncate the variant value on 32 bit
+architectures, but works fine on 64 bit.
+
+### Example
+```
+#[repr(usize)]
+enum NonPortable {
+    X = 0x1_0000_0000,
+    Y = 0,
+}
+```

@@ -1,0 +1,24 @@
+### What it does
+Checks for explicit `deref()` or `deref_mut()` method calls.
+
+### Why is this bad?
+Dereferencing by `&*x` or `&mut *x` is clearer and more concise,
+when not part of a method chain.
+
+### Example
+```
+use std::ops::Deref;
+let a: &mut String = &mut String::from("foo");
+let b: &str = a.deref();
+```
+
+Use instead:
+```
+let a: &mut String = &mut String::from("foo");
+let b = &*a;
+```
+
+This lint excludes:
+```
+let _ = d.unwrap().deref();
+```

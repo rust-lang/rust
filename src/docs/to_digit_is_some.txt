@@ -1,0 +1,15 @@
+### What it does
+Checks for `.to_digit(..).is_some()` on `char`s.
+
+### Why is this bad?
+This is a convoluted way of checking if a `char` is a digit. It's
+more straight forward to use the dedicated `is_digit` method.
+
+### Example
+```
+let is_digit = c.to_digit(radix).is_some();
+```
+can be written as:
+```
+let is_digit = c.is_digit(radix);
+```

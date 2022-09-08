@@ -356,7 +356,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             after_loop: false,
             used_iter: false,
         };
-        v.visit_expr(&cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
+        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
         v.used_iter
     }
 }
