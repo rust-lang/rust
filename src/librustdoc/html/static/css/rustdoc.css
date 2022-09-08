@@ -1444,9 +1444,7 @@ pre.rust {
 	border-radius: 2px;
 	cursor: pointer;
 }
-#settings-menu {
-	padding: 0;
-}
+
 #settings-menu > a, #help-button > button {
 	padding: 5px;
 	height: 100%;
