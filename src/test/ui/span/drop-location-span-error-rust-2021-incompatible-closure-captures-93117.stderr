@@ -85,8 +85,8 @@ LL | trait C{async fn new(val: T) {}
 LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
    |                                           ------------------------------- the found opaque type
    |
-   = note: expected associated type `<Self as C>::new::{opaque#0}`
-                  found opaque type `impl Future<Output = ()>`
+   = note: expected associated type `impl Future<Output = ()>` (trait associated opaque type at <$DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:30>)
+                  found opaque type `impl Future<Output = ()>` (opaque type at <$SRC_DIR/core/src/future/mod.rs:LL:COL>)
 
 warning: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:30
