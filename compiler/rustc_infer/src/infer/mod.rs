@@ -106,6 +106,9 @@ pub struct InferCtxtInner<'tcx> {
     /// Map from const parameter variable to the kind of const it represents.
     const_unification_storage: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
 
+    /// Map from effect parameter variable to the kind of effect it represents.
+    effect_unification_storage: ut::UnificationTableStorage<ty::EffectVid<'tcx>>,
+
     /// Map from integral variable to the kind of integer it represents.
     int_unification_storage: ut::UnificationTableStorage<ty::IntVid>,
 
@@ -165,6 +168,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             type_variable_storage: type_variable::TypeVariableStorage::new(),
             undo_log: InferCtxtUndoLogs::default(),
             const_unification_storage: ut::UnificationTableStorage::new(),
+            effect_unification_storage: ut::UnificationTableStorage::new(),
             int_unification_storage: ut::UnificationTableStorage::new(),
             float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraint_storage: Some(RegionConstraintStorage::new()),
@@ -230,6 +234,19 @@ impl<'tcx> InferCtxtInner<'tcx> {
         >,
     > {
         self.const_unification_storage.with_log(&mut self.undo_log)
+    }
+
+    #[inline]
+    fn effect_unification_table(
+        &mut self,
+    ) -> ut::UnificationTable<
+        ut::InPlace<
+            ty::EffectVid<'tcx>,
+            &mut ut::UnificationStorage<ty::EffectVid<'tcx>>,
+            &mut InferCtxtUndoLogs<'tcx>,
+        >,
+    > {
+        self.effect_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]

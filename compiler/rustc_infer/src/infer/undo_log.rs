@@ -22,6 +22,7 @@ pub(crate) enum UndoLog<'tcx> {
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
+    EffectUnificationTable(sv::UndoLog<ut::Delegate<ty::EffectVid<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
@@ -57,6 +58,7 @@ impl_from! {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
 
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
+    EffectUnificationTable(sv::UndoLog<ut::Delegate<ty::EffectVid<'tcx>>>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -69,6 +71,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::OpaqueTypes(key, idx) => self.opaque_type_storage.remove(key, idx),
             UndoLog::TypeVariables(undo) => self.type_variable_storage.reverse(undo),
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),
+            UndoLog::EffectUnificationTable(undo) => self.effect_unification_storage.reverse(undo),
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),
             UndoLog::FloatUnificationTable(undo) => self.float_unification_storage.reverse(undo),
             UndoLog::RegionConstraintCollector(undo) => {

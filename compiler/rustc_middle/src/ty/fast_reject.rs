@@ -350,4 +350,37 @@ impl DeepRejectCtxt {
             }
         }
     }
+
+    pub fn effects_may_unify(self, obligation: ty::Effect<'_>, impl_: ty::Effect<'_>) -> bool {
+        match impl_.val {
+            ty::EffectValue::Param { .. } | ty::EffectValue::Err(_) => {
+                return true;
+            }
+            ty::EffectValue::Rigid { .. } => {}
+            ty::EffectValue::Infer(_)
+            | ty::EffectValue::Bound(..)
+            | ty::EffectValue::Placeholder(_) => {
+                bug!("unexpected impl arg: {:?}", impl_)
+            }
+        }
+
+        match obligation.val {
+            ty::EffectValue::Param { .. } => match self.treat_obligation_params {
+                TreatParams::AsPlaceholder => false,
+                TreatParams::AsInfer => true,
+            },
+
+            ty::EffectValue::Err(_) => true,
+            ty::EffectValue::Rigid { on: obl } => match impl_.val {
+                ty::EffectValue::Rigid { on: impl_ } => obl == impl_,
+                _ => true,
+            },
+
+            ty::EffectValue::Infer(_) => true,
+
+            ty::EffectValue::Bound(..) | ty::EffectValue::Placeholder(_) => {
+                bug!("unexpected obl const: {:?}", obligation)
+            }
+        }
+    }
 }

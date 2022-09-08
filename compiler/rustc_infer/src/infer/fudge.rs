@@ -1,5 +1,6 @@
+use rustc_middle::infer::unify_key::EffectVariableOrigin;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
+use rustc_middle::ty::{self, ConstVid, EffectVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
@@ -35,9 +36,23 @@ fn const_vars_since_snapshot<'tcx>(
     )
 }
 
+fn effect_vars_since_snapshot<'tcx>(
+    table: &mut UnificationTable<'_, 'tcx, EffectVid<'tcx>>,
+    snapshot_var_len: usize,
+) -> (Range<EffectVid<'tcx>>, Vec<EffectVariableOrigin>) {
+    let range = vars_since_snapshot(table, snapshot_var_len);
+    (
+        range.start..range.end,
+        (range.start.index..range.end.index)
+            .map(|index| table.probe_value(EffectVid::from_index(index)).origin)
+            .collect(),
+    )
+}
+
 struct VariableLengths {
     type_var_len: usize,
     const_var_len: usize,
+    effect_var_len: usize,
     int_var_len: usize,
     float_var_len: usize,
     region_constraints_len: usize,
@@ -49,6 +64,7 @@ impl<'tcx> InferCtxt<'tcx> {
         VariableLengths {
             type_var_len: inner.type_variables().num_vars(),
             const_var_len: inner.const_unification_table().len(),
+            effect_var_len: inner.effect_unification_table().len(),
             int_var_len: inner.int_unification_table().len(),
             float_var_len: inner.float_unification_table().len(),
             region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
@@ -130,6 +146,10 @@ impl<'tcx> InferCtxt<'tcx> {
                         &mut inner.const_unification_table(),
                         variable_lengths.const_var_len,
                     );
+                    let effect_vars = effect_vars_since_snapshot(
+                        &mut inner.effect_unification_table(),
+                        variable_lengths.effect_var_len,
+                    );
 
                     let fudger = InferenceFudger {
                         infcx: self,
@@ -138,6 +158,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         float_vars,
                         region_vars,
                         const_vars,
+                        effect_vars,
                     };
 
                     Ok((fudger, value))
@@ -158,6 +179,7 @@ impl<'tcx> InferCtxt<'tcx> {
             && fudger.float_vars.is_empty()
             && fudger.region_vars.0.is_empty()
             && fudger.const_vars.0.is_empty()
+            && fudger.effect_vars.0.is_empty()
         {
             Ok(value)
         } else {
@@ -173,6 +195,7 @@ pub struct InferenceFudger<'a, 'tcx> {
     float_vars: Range<FloatVid>,
     region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
     const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
+    effect_vars: (Range<EffectVid<'tcx>>, Vec<EffectVariableOrigin>),
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {

@@ -160,3 +160,91 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
         })
     }
 }
+
+// Generic effects.
+
+#[derive(Copy, Clone, Debug)]
+pub struct EffectVariableOrigin {
+    pub kind: EffectVariableOriginKind,
+    pub span: Span,
+}
+
+/// Reasons to create a effect inference variable
+#[derive(Copy, Clone, Debug)]
+pub enum EffectVariableOriginKind {
+    MiscVariable,
+    EffectInference,
+    EffectParameterDefinition(Symbol, DefId),
+    SubstitutionPlaceholder,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum EffectVariableValue<'tcx> {
+    Known { value: ty::Effect<'tcx> },
+    Unknown { universe: ty::UniverseIndex },
+}
+
+impl<'tcx> EffectVariableValue<'tcx> {
+    /// If this value is known, returns the effect it is known to be.
+    /// Otherwise, `None`.
+    pub fn known(&self) -> Option<ty::Effect<'tcx>> {
+        match *self {
+            EffectVariableValue::Unknown { .. } => None,
+            EffectVariableValue::Known { value } => Some(value),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct EffectVarValue<'tcx> {
+    pub origin: EffectVariableOrigin,
+    pub val: EffectVariableValue<'tcx>,
+}
+
+impl<'tcx> UnifyKey for ty::EffectVid<'tcx> {
+    type Value = EffectVarValue<'tcx>;
+    #[inline]
+    fn index(&self) -> u32 {
+        self.index
+    }
+    #[inline]
+    fn from_index(i: u32) -> Self {
+        ty::EffectVid { index: i, phantom: PhantomData }
+    }
+    fn tag() -> &'static str {
+        "EffectVid"
+    }
+}
+
+impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
+    type Error = NoError;
+
+    fn unify_values(&value1: &Self, &value2: &Self) -> Result<Self, Self::Error> {
+        Ok(match (value1.val, value2.val) {
+            (EffectVariableValue::Known { .. }, EffectVariableValue::Known { .. }) => {
+                bug!("equating two effect variables, both of which have known values")
+            }
+
+            // If one side is known, prefer that one.
+            (EffectVariableValue::Known { .. }, EffectVariableValue::Unknown { .. }) => value1,
+            (EffectVariableValue::Unknown { .. }, EffectVariableValue::Known { .. }) => value2,
+
+            // If both sides are *unknown*, it hardly matters, does it?
+            (
+                EffectVariableValue::Unknown { universe: universe1 },
+                EffectVariableValue::Unknown { universe: universe2 },
+            ) => {
+                // If we unify two unbound variables, ?T and ?U, then whatever
+                // value they wind up taking (which must be the same value) must
+                // be nameable by both universes. Therefore, the resulting
+                // universe is the minimum of the two universes, because that is
+                // the one which contains the fewest names in scope.
+                let universe = cmp::min(universe1, universe2);
+                EffectVarValue {
+                    val: EffectVariableValue::Unknown { universe },
+                    origin: value1.origin,
+                }
+            }
+        })
+    }
+}
