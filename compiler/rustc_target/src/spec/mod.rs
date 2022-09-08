@@ -1379,6 +1379,8 @@ pub struct TargetOptions {
     pub is_like_msvc: bool,
     /// Whether a target toolchain is like WASM.
     pub is_like_wasm: bool,
+    /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
+    pub is_like_android: bool,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -1671,6 +1673,7 @@ impl Default for TargetOptions {
             is_like_windows: false,
             is_like_msvc: false,
             is_like_wasm: false,
+            is_like_android: false,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -2318,6 +2321,7 @@ impl Target {
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
+        key!(is_like_android, bool);
         key!(default_dwarf_version, u32);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -2568,6 +2572,7 @@ impl ToJson for Target {
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
+        target_option_val!(is_like_android);
         target_option_val!(default_dwarf_version);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
