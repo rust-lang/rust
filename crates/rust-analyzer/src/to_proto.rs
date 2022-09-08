@@ -9,8 +9,9 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
-    InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity,
-    SignatureHelp, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    InlayHintLabel, InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable,
+    Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange,
+    TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -426,9 +427,16 @@ pub(crate) fn inlay_hint(
     snap: &GlobalStateSnapshot,
     line_index: &LineIndex,
     render_colons: bool,
-    inlay_hint: InlayHint,
-) -> lsp_types::InlayHint {
-    lsp_types::InlayHint {
+    mut inlay_hint: InlayHint,
+) -> Result<lsp_types::InlayHint> {
+    match inlay_hint.kind {
+        InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
+        InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
+        InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
+        _ => {}
+    }
+
+    Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
             InlayKind::ParameterHint
@@ -459,14 +467,8 @@ pub(crate) fn inlay_hint(
             | InlayKind::ImplicitReborrowHint
             | InlayKind::TypeHint
             | InlayKind::ClosingBraceHint => false,
-            InlayKind::BindingModeHint => inlay_hint.label != "&",
+            InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
-        }),
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
-            _ => inlay_hint.label.clone(),
         }),
         kind: match inlay_hint.kind {
             InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
@@ -506,9 +508,36 @@ pub(crate) fn inlay_hint(
         })(),
         tooltip: Some(match inlay_hint.tooltip {
             Some(ide::InlayTooltip::String(s)) => lsp_types::InlayHintTooltip::String(s),
-            _ => lsp_types::InlayHintTooltip::String(inlay_hint.label),
+            _ => lsp_types::InlayHintTooltip::String(inlay_hint.label.to_string()),
         }),
-    }
+        label: inlay_hint_label(snap, inlay_hint.label)?,
+    })
+}
+
+fn inlay_hint_label(
+    snap: &GlobalStateSnapshot,
+    label: InlayHintLabel,
+) -> Result<lsp_types::InlayHintLabel> {
+    Ok(match label.as_simple_str() {
+        Some(s) => lsp_types::InlayHintLabel::String(s.into()),
+        None => lsp_types::InlayHintLabel::LabelParts(
+            label
+                .parts
+                .into_iter()
+                .map(|part| {
+                    Ok(lsp_types::InlayHintLabelPart {
+                        value: part.text,
+                        tooltip: None,
+                        location: part
+                            .linked_location
+                            .map(|range| location(snap, range))
+                            .transpose()?,
+                        command: None,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?,
+        ),
+    })
 }
 
 static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);

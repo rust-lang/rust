@@ -1362,7 +1362,7 @@ pub(crate) fn handle_inlay_hints(
             .map(|it| {
                 to_proto::inlay_hint(&snap, &line_index, inlay_hints_config.render_colons, it)
             })
-            .collect(),
+            .collect::<Result<Vec<_>>>()?,
     ))
 }
 
