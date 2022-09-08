@@ -1032,3 +1032,214 @@ pub(crate) struct StructLiteralBodyWithoutPathSugg {
     #[suggestion_part(code = " }}")]
     pub after: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parser::unmatched_angle_brackets)]
+pub(crate) struct UnmatchedAngleBrackets {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    pub num_extra_brackets: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::generic_parameters_without_angle_brackets)]
+pub(crate) struct GenericParamsWithoutAngleBrackets {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: GenericParamsWithoutAngleBracketsSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct GenericParamsWithoutAngleBracketsSugg {
+    #[suggestion_part(code = "<")]
+    pub left: Span,
+    #[suggestion_part(code = ">")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::comparison_operators_cannot_be_chained)]
+pub(crate) struct ComparisonOperatorsCannotBeChained {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[suggestion_verbose(
+        parser::sugg_turbofish_syntax,
+        code = "::",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggest_turbofish: Option<Span>,
+    #[help(parser::sugg_turbofish_syntax)]
+    #[help(parser::sugg_parentheses_for_function_args)]
+    pub help_turbofish: Option<()>,
+    #[subdiagnostic]
+    pub chaining_sugg: Option<ComparisonOperatorsCannotBeChainedSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ComparisonOperatorsCannotBeChainedSugg {
+    #[suggestion_verbose(
+        parser::sugg_split_comparison,
+        code = " && {middle_term}",
+        applicability = "maybe-incorrect"
+    )]
+    SplitComparison {
+        #[primary_span]
+        span: Span,
+        middle_term: String,
+    },
+    #[multipart_suggestion(parser::sugg_parenthesize, applicability = "maybe-incorrect")]
+    Parenthesize {
+        #[suggestion_part(code = "(")]
+        left: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::question_mark_in_type)]
+pub(crate) struct QuestionMarkInType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: QuestionMarkInTypeSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct QuestionMarkInTypeSugg {
+    #[suggestion_part(code = "Option<")]
+    pub left: Span,
+    #[suggestion_part(code = ">")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::unexpected_parentheses_in_for_head)]
+pub(crate) struct ParenthesesInForHead {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: ParenthesesInForHeadSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct ParenthesesInForHeadSugg {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::doc_comment_on_param_type)]
+pub(crate) struct DocCommentOnParamType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::attribute_on_param_type)]
+pub(crate) struct AttributeOnParamType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::pattern_method_param_without_body, code = "E0642")]
+pub(crate) struct PatternMethodParamWithoutBody {
+    #[primary_span]
+    #[suggestion(code = "_", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::self_param_not_first)]
+pub(crate) struct SelfParamNotFirst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::const_generic_without_braces)]
+pub(crate) struct ConstGenericWithoutBraces {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: ConstGenericWithoutBracesSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+pub(crate) struct ConstGenericWithoutBracesSugg {
+    #[suggestion_part(code = "{{ ")]
+    pub left: Span,
+    #[suggestion_part(code = " }}")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::unexpected_const_param_declaration)]
+pub(crate) struct UnexpectedConstParamDeclaration {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<UnexpectedConstParamDeclarationSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnexpectedConstParamDeclarationSugg {
+    #[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+    AddParam {
+        #[suggestion_part(code = "<{snippet}>")]
+        impl_generics: Span,
+        #[suggestion_part(code = "{ident}")]
+        incorrect_decl: Span,
+        snippet: String,
+        ident: String,
+    },
+    #[multipart_suggestion(parser::suggestion, applicability = "machine-applicable")]
+    AppendParam {
+        #[suggestion_part(code = ", {snippet}")]
+        impl_generics_end: Span,
+        #[suggestion_part(code = "{ident}")]
+        incorrect_decl: Span,
+        snippet: String,
+        ident: String,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::unexpected_const_in_generic_param)]
+pub(crate) struct UnexpectedConstInGenericParam {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion_verbose(code = "", applicability = "maybe-incorrect")]
+    pub to_remove: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::async_move_order_incorrect)]
+pub(crate) struct AsyncMoveOrderIncorrect {
+    #[primary_span]
+    #[suggestion_verbose(code = "async move", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parser::double_colon_in_bound)]
+pub(crate) struct DoubleColonInBound {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = ": ", applicability = "machine-applicable")]
+    pub between: Span,
+}

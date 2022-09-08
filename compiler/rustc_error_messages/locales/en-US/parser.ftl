@@ -316,3 +316,56 @@ parser_expected_semi_found_str = expected `;`, found `{$token_str}`
 parser_sugg_change_this_to_semi = change this to `;`
 parser_sugg_add_semi = add `;` here
 parser_label_unexpected_token = unexpected token
+
+parser_unmatched_angle_brackets = {$num_extra_brackets ->
+        [one] unmatched angle bracket
+       *[other] unmatched angle brackets
+    }
+    .suggestion = {$num_extra_brackets ->
+            [one] remove extra angle bracket
+           *[other] remove extra angle brackets
+        }
+
+parser_generic_parameters_without_angle_brackets = generic parameters without surrounding angle brackets
+    .suggestion = surround the type parameters with angle brackets
+
+parser_comparison_operators_cannot_be_chained = comparison operators cannot be chained
+    .sugg_parentheses_for_function_args = or use `(...)` if you meant to specify fn arguments
+    .sugg_split_comparison = split the comparison into two
+    .sugg_parenthesize = parenthesize the comparison
+parser_sugg_turbofish_syntax = use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+
+parser_question_mark_in_type = invalid `?` in type
+    .label = `?` is only allowed on expressions, not types
+    .suggestion = if you meant to express that the type might not contain a value, use the `Option` wrapper type
+
+parser_unexpected_parentheses_in_for_head = unexpected parentheses surrounding `for` loop head
+    .suggestion = remove parentheses in `for` loop
+
+parser_doc_comment_on_param_type = documentation comments cannot be applied to a function parameter's type
+    .label = doc comments are not allowed here
+
+parser_attribute_on_param_type = attributes cannot be applied to a function parameter's type
+    .label = attributes are not allowed here
+
+parser_pattern_method_param_without_body = patterns aren't allowed in methods without bodies
+    .suggestion = give this argument a name or use an underscore to ignore it
+
+parser_self_param_not_first = unexpected `self` parameter in function
+    .label = must be the first parameter of an associated function
+
+parser_const_generic_without_braces = expressions must be enclosed in braces to be used as const generic arguments
+    .suggestion = enclose the `const` expression in braces
+
+parser_unexpected_const_param_declaration = unexpected `const` parameter declaration
+    .label = expected a `const` expression, not a parameter declaration
+    .suggestion = `const` parameters must be declared for the `impl`
+
+parser_unexpected_const_in_generic_param = expected lifetime, type, or constant, found keyword `const`
+    .suggestion = the `const` keyword is only needed in the definition of the type
+
+parser_async_move_order_incorrect = the order of `move` and `async` is incorrect
+    .suggestion = try switching the order
+
+parser_double_colon_in_bound = expected `:` followed by trait or lifetime
+    .suggestion = use single colon

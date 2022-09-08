@@ -6,25 +6,26 @@ use super::{
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
 use crate::errors::{
-    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, BinaryFloatLiteralNotSupported,
-    BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct, ComparisonInterpretedAsGeneric,
-    ComparisonOrShiftInterpretedAsGenericSugg, DoCatchSyntaxRemoved, DotDotDot, EqFieldInit,
-    ExpectedElseBlock, ExpectedExpressionFoundLet, FieldExpressionWithGeneric,
-    FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt, HexadecimalFloatLiteralNotSupported,
-    IfExpressionMissingCondition, IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub,
-    IntLiteralTooLarge, InvalidBlockMacroSegment, InvalidComparisonOperator,
-    InvalidComparisonOperatorSub, InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth,
-    InvalidIntLiteralWidth, InvalidInterpolatedExpression, InvalidLiteralSuffix,
-    InvalidLiteralSuffixOnTupleIndex, InvalidLogicalOperator, InvalidLogicalOperatorSub,
-    InvalidNumLiteralBasePrefix, InvalidNumLiteralSuffix, LabeledLoopInBreak,
-    LeadingPlusNotSupported, LeftArrowOperator, LifetimeInBorrowExpression,
-    MacroInvocationWithQualifiedPath, MalformedLoopLabel, MatchArmBodyWithoutBraces,
-    MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm, MissingInInForLoop,
-    MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall, NotAsNegationOperator,
-    NotAsNegationOperatorSub, OctalFloatLiteralNotSupported, OuterAttributeNotAllowedOnIfElse,
-    ParenthesesWithStructFields, RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric,
-    StructLiteralNotAllowedHere, StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator,
-    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
+    ArrayBracketsInsteadOfSpaces, ArrayBracketsInsteadOfSpacesSugg, AsyncMoveOrderIncorrect,
+    BinaryFloatLiteralNotSupported, BracesForStructLiteral, CatchAfterTry, CommaAfterBaseStruct,
+    ComparisonInterpretedAsGeneric, ComparisonOrShiftInterpretedAsGenericSugg,
+    DoCatchSyntaxRemoved, DotDotDot, EqFieldInit, ExpectedElseBlock, ExpectedExpressionFoundLet,
+    FieldExpressionWithGeneric, FloatLiteralRequiresIntegerPart, FoundExprWouldBeStmt,
+    HexadecimalFloatLiteralNotSupported, IfExpressionMissingCondition,
+    IfExpressionMissingThenBlock, IfExpressionMissingThenBlockSub, IntLiteralTooLarge,
+    InvalidBlockMacroSegment, InvalidComparisonOperator, InvalidComparisonOperatorSub,
+    InvalidFloatLiteralSuffix, InvalidFloatLiteralWidth, InvalidIntLiteralWidth,
+    InvalidInterpolatedExpression, InvalidLiteralSuffix, InvalidLiteralSuffixOnTupleIndex,
+    InvalidLogicalOperator, InvalidLogicalOperatorSub, InvalidNumLiteralBasePrefix,
+    InvalidNumLiteralSuffix, LabeledLoopInBreak, LeadingPlusNotSupported, LeftArrowOperator,
+    LifetimeInBorrowExpression, MacroInvocationWithQualifiedPath, MalformedLoopLabel,
+    MatchArmBodyWithoutBraces, MatchArmBodyWithoutBracesSugg, MissingCommaAfterMatchArm,
+    MissingInInForLoop, MissingInInForLoopSub, MissingSemicolonBeforeArray, NoFieldsForFnCall,
+    NotAsNegationOperator, NotAsNegationOperatorSub, OctalFloatLiteralNotSupported,
+    OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
+    RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
+    StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
+    UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
@@ -2087,7 +2088,8 @@ impl<'a> Parser<'a> {
             // Check for `move async` and recover
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
-                Err(self.incorrect_move_async_order_found(move_async_span))
+                Err(AsyncMoveOrderIncorrect { span: move_async_span }
+                    .into_diagnostic(&self.sess.span_diagnostic))
             } else {
                 Ok(CaptureBy::Value)
             }
