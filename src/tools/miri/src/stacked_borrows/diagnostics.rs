@@ -82,7 +82,7 @@ impl fmt::Display for InvalidationCause {
             InvalidationCause::Access(kind) => write!(f, "{}", kind),
             InvalidationCause::Retag(perm, kind) =>
                 if *kind == RetagCause::FnEntry {
-                    write!(f, "{:?} FnEntry retag", perm)
+                    write!(f, "{:?} FnEntry retag inside this call", perm)
                 } else {
                     write!(f, "{:?} retag", perm)
                 },
@@ -275,7 +275,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let (range, cause) = match &self.operation {
             Operation::Retag(RetagOp { cause, range, permission, .. }) => {
                 if *cause == RetagCause::FnEntry {
-                    span = self.current_span.get_parent();
+                    span = self.current_span.get_caller();
                 }
                 (*range, InvalidationCause::Retag(permission.unwrap(), *cause))
             }
