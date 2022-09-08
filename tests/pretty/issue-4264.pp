@@ -34,10 +34,11 @@ fn bar() ({
                     ((::alloc::fmt::format as
                             for<'a> fn(Arguments<'a>) -> String {format})(((<#[lang = "format_arguments"]>::new_v1
                                 as
-                                fn(&[&'static str], &[ArgumentV1<'_>]) -> Arguments<'_> {Arguments::<'_>::new_v1})((&([("test"
+                                fn(&[&'static str], &[core::fmt::ArgumentV1<'_>]) -> Arguments<'_> {Arguments::<'_>::new_v1})((&([("test"
                                             as &str)] as [&str; 1]) as &[&str; 1]),
-                            (&([] as [ArgumentV1<'_>; 0]) as &[ArgumentV1<'_>; 0])) as
-                            Arguments<'_>)) as String);
+                            (&([] as [core::fmt::ArgumentV1<'_>; 0]) as
+                                &[core::fmt::ArgumentV1<'_>; 0])) as Arguments<'_>)) as
+                        String);
                 (res as String)
             } as String);
     } as ())
