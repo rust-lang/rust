@@ -15,6 +15,7 @@ use rustc_data_structures::graph::implementation::{
 use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReErased, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
@@ -195,6 +196,36 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
+    /// Gets the LUb of a given region and the empty region
+    fn lub_empty(&self, a_region: Region<'tcx>) -> Result<Region<'tcx>, PlaceholderRegion> {
+        match *a_region {
+            ReLateBound(..) | ReErased => {
+                bug!("cannot relate region: {:?}", a_region);
+            }
+
+            ReVar(v_id) => {
+                span_bug!(
+                    self.var_infos[v_id].origin.span(),
+                    "lub invoked with non-concrete regions: {:?}",
+                    a_region,
+                );
+            }
+
+            ReStatic => {
+                // nothing lives longer than `'static`
+                Ok(self.tcx().lifetimes.re_static)
+            }
+
+            ReEarlyBound(_) | ReFree(_) => {
+                // All empty regions are less than early-bound, free,
+                // and scope regions.
+                Ok(a_region)
+            }
+
+            RePlaceholder(placeholder) => Err(placeholder),
+        }
+    }
+
     fn expansion(&self, var_values: &mut LexicalRegionResolutions<'tcx>) {
         // In the first pass, we expand region vids according to constraints we
         // have previously found. In the second pass, we loop through the region
@@ -237,40 +268,15 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                 true
                             }
                             VarValue::Value(cur_region) => {
-                                let lub = match *cur_region {
-                                    ReLateBound(..) | ReErased => {
-                                        bug!("cannot relate region: {:?}", cur_region);
-                                    }
-
-                                    ReVar(v_id) => {
-                                        span_bug!(
-                                            self.var_infos[v_id].origin.span(),
-                                            "lub_concrete_regions invoked with non-concrete regions: {:?}",
-                                            cur_region,
-                                        );
-                                    }
-
-                                    ReStatic => {
-                                        // nothing lives longer than `'static`
-                                        self.tcx().lifetimes.re_static
-                                    }
-
-                                    ReEarlyBound(_) | ReFree(_) => {
-                                        // All empty regions are less than early-bound, free,
-                                        // and scope regions.
+                                let lub = match self.lub_empty(cur_region) {
+                                    Ok(r) => r,
+                                    // If the empty and placeholder regions are in the same universe,
+                                    // then the LUB is the Placeholder region (which is the cur_region).
+                                    // If they are not in the same universe, the LUB is the Static lifetime.
+                                    Err(placeholder) if a_universe == placeholder.universe => {
                                         cur_region
                                     }
-
-                                    RePlaceholder(placeholder) => {
-                                        // If the empty and placeholder regions are in the same universe,
-                                        // then the LUB is the Placeholder region (which is the cur_region).
-                                        // If they are not in the same universe, the LUB is the Static lifetime.
-                                        if a_universe == placeholder.universe {
-                                            cur_region
-                                        } else {
-                                            self.tcx().lifetimes.re_static
-                                        }
-                                    }
+                                    Err(_) => self.tcx().lifetimes.re_static,
                                 };
 
                                 if lub == cur_region {
@@ -368,40 +374,15 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         match *b_data {
             VarValue::Empty(empty_ui) => {
-                let lub = match *a_region {
-                    ReLateBound(..) | ReErased => {
-                        bug!("cannot relate region: {:?}", a_region);
+                let lub = match self.lub_empty(a_region) {
+                    Ok(r) => r,
+                    // If this empty region is from a universe that can
+                    // name the placeholder, then the placeholder is
+                    // larger; otherwise, the only ancestor is `'static`.
+                    Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
+                        self.tcx().mk_region(RePlaceholder(placeholder))
                     }
-
-                    ReVar(v_id) => {
-                        span_bug!(
-                            self.var_infos[v_id].origin.span(),
-                            "expand_node invoked with non-concrete regions: {:?}",
-                            a_region,
-                        );
-                    }
-
-                    ReStatic => {
-                        // nothing lives longer than `'static`
-                        self.tcx().lifetimes.re_static
-                    }
-
-                    ReEarlyBound(_) | ReFree(_) => {
-                        // All empty regions are less than early-bound, free,
-                        // and scope regions.
-                        a_region
-                    }
-
-                    RePlaceholder(placeholder) => {
-                        // If this empty region is from a universe that can
-                        // name the placeholder, then the placeholder is
-                        // larger; otherwise, the only ancestor is `'static`.
-                        if empty_ui.can_name(placeholder.universe) {
-                            self.tcx().mk_region(RePlaceholder(placeholder))
-                        } else {
-                            self.tcx().lifetimes.re_static
-                        }
-                    }
+                    Err(_) => self.tcx().lifetimes.re_static,
                 };
 
                 debug!("Expanding value of {:?} from empty lifetime to {:?}", b_vid, lub);
