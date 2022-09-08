@@ -3015,8 +3015,7 @@ dependencies = [
 [[package]]
 name = "rustc-hash"
 version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+source = "git+https://github.com/lqd/rustc-hash/?branch=experiment-b#b5c68e4f94e953e634015db0caba0aacf9de7bb0"
 
 [[package]]
 name = "rustc-main"
