@@ -328,9 +328,8 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-twice.rs:21:34
    |
 LL |     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
-   |                      ------------^^^^^^^^^----
-   |                      |           |           |
-   |                      |           |           value moved here
+   |                      ---------   ^^^^^^^^^   - value moved here
+   |                      |           |
    |                      |           value borrowed here after move
    |                      move occurs because value has type `U`, which does not implement the `Copy` trait
 
