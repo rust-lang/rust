@@ -34,7 +34,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, LifetimeRes, PartialRes};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
@@ -1118,12 +1118,16 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
 
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
+    fn opt_parent_index(self, id: DefId) -> Option<DefIndex> {
         match id.as_local() {
-            Some(id) => self.definitions.def_key(id).parent,
+            Some(id) => self.opt_local_parent_index(id),
             None => self.cstore().def_key(id).parent,
         }
-        .map(|index| DefId { index, ..id })
+    }
+
+    #[inline]
+    fn opt_local_parent_index(self, id: LocalDefId) -> Option<DefIndex> {
+        self.definitions.def_key(id).parent
     }
 }
 

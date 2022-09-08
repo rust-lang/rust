@@ -36,7 +36,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
@@ -312,38 +312,61 @@ pub struct ClosureSizeProfileData<'tcx> {
 }
 
 pub trait DefIdTree: Copy {
-    fn opt_parent(self, id: DefId) -> Option<DefId>;
+    fn opt_parent_index(self, id: DefId) -> Option<DefIndex>;
+    fn opt_local_parent_index(self, id: LocalDefId) -> Option<DefIndex>;
+
+    #[inline]
+    fn opt_parent(self, id: DefId) -> Option<DefId> {
+        self.opt_parent_index(id).map(|index| DefId { index, krate: id.krate })
+    }
 
     #[inline]
     #[track_caller]
     fn parent(self, id: DefId) -> DefId {
-        match self.opt_parent(id) {
-            Some(id) => id,
+        match self.opt_parent_index(id) {
+            Some(index) => DefId { index, krate: id.krate },
             // not `unwrap_or_else` to avoid breaking caller tracking
             None => bug!("{id:?} doesn't have a parent"),
         }
     }
 
     #[inline]
-    #[track_caller]
     fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
-        self.opt_parent(id.to_def_id()).map(DefId::expect_local)
+        self.opt_local_parent_index(id).map(|local_def_index| LocalDefId { local_def_index })
     }
 
     #[inline]
     #[track_caller]
     fn local_parent(self, id: LocalDefId) -> LocalDefId {
-        self.parent(id.to_def_id()).expect_local()
+        match self.opt_local_parent_index(id) {
+            Some(local_def_index) => LocalDefId { local_def_index },
+            // not `unwrap_or_else` to avoid breaking caller tracking
+            None => bug!("{id:?} doesn't have a parent"),
+        }
+    }
+
+    fn local_is_descendant_of(self, mut descendant: LocalDefId, ancestor: LocalDefId) -> bool {
+        while descendant != ancestor {
+            match self.opt_local_parent_index(descendant) {
+                Some(parent) => descendant.local_def_index = parent,
+                None => return false,
+            }
+        }
+        true
     }
 
     fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
         if descendant.krate != ancestor.krate {
             return false;
+        } else if let (Some(descendant), Some(ancestor)) =
+            (descendant.as_local(), ancestor.as_local())
+        {
+            return self.local_is_descendant_of(descendant, ancestor);
         }
 
         while descendant != ancestor {
-            match self.opt_parent(descendant) {
-                Some(parent) => descendant = parent,
+            match self.opt_parent_index(descendant) {
+                Some(parent) => descendant.index = parent,
                 None => return false,
             }
         }
@@ -353,8 +376,16 @@ pub trait DefIdTree: Copy {
 
 impl<'tcx> DefIdTree for TyCtxt<'tcx> {
     #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        self.def_key(id).parent.map(|index| DefId { index, ..id })
+    fn opt_parent_index(self, id: DefId) -> Option<DefIndex> {
+        match id.as_local() {
+            Some(id) => self.opt_local_parent_index(id),
+            None => self.cstore_untracked().def_key(id).parent,
+        }
+    }
+
+    #[inline]
+    fn opt_local_parent_index(self, id: LocalDefId) -> Option<DefIndex> {
+        self.definitions_untracked().def_key(id).parent
     }
 }
 
