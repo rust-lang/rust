@@ -24,7 +24,7 @@ impl<B: Add + Add<Output = B>> Add for C<B> {
 
 struct D<B>(B);
 
-impl<B: std::ops::Add<Output=B>> Add for D<B> {
+impl<B: std::ops::Add<Output = B>> Add for D<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
