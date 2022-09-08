@@ -141,7 +141,7 @@ pub enum TokenKind {
     Unknown,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocStyle {
     Outer,
     Inner,

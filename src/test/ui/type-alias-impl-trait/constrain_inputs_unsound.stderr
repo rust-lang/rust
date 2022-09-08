@@ -1,0 +1,9 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/constrain_inputs_unsound.rs:23:58
+   |
+LL |     type MalformedTy = dyn for<'a> Callable<Gal<&'a ()>, Output = &'a str>;
+   |                                                          ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0582`.

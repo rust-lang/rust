@@ -4,7 +4,8 @@ error[E0582]: binding for associated type `Output` references an anonymous lifet
 LL | fn foo(x: impl Fn(<S as T<'_>>::A) -> <S as T<'_>>::A) {}
    |                                       ^^^^^^^^^^^^^^^
    |
-   = note: lifetimes appearing in an associated type are not considered constrained
+   = note: lifetimes appearing in an associated or opaque type are not considered constrained
+   = note: consider introducing a named lifetime parameter
 
 error: aborting due to previous error
 

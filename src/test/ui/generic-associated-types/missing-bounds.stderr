@@ -66,8 +66,8 @@ LL |         Self(self.0 + rhs.0)
    |
 help: consider restricting type parameter `B`
    |
-LL | impl<B: std::ops::Add<Output=B>> Add for D<B> {
-   |       +++++++++++++++++++++++++
+LL | impl<B: std::ops::Add<Output = B>> Add for D<B> {
+   |       +++++++++++++++++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/missing-bounds.rs:42:14

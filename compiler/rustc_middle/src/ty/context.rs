@@ -1252,7 +1252,7 @@ impl<'tcx> TyCtxt<'tcx> {
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
-            s.fatal(&err);
+            s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(

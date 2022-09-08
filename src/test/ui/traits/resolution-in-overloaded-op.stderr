@@ -8,8 +8,8 @@ LL |     a * b
    |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
-LL | fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 where &T: Mul<f64> {
-   |                                                  ++++++++++++++++++
+LL | fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 where &T: Mul<f64, Output = f64> {
+   |                                                  ++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

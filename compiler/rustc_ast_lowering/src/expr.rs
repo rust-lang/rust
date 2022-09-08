@@ -849,21 +849,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
-        // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
+        self.lower_lifetime_binder(closure_id, generic_params, |lctx, bound_generic_params| {
+            // Lower outside new scope to preserve `is_in_loop_condition`.
+            let fn_decl = lctx.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
-        let c = self.arena.alloc(hir::Closure {
-            binder: binder_clause,
-            capture_clause,
-            bound_generic_params,
-            fn_decl,
-            body: body_id,
-            fn_decl_span: self.lower_span(fn_decl_span),
-            movability: generator_option,
-        });
+            let c = lctx.arena.alloc(hir::Closure {
+                binder: binder_clause,
+                capture_clause,
+                bound_generic_params,
+                fn_decl,
+                body: body_id,
+                fn_decl_span: lctx.lower_span(fn_decl_span),
+                movability: generator_option,
+            });
 
-        hir::ExprKind::Closure(c)
+            hir::ExprKind::Closure(c)
+        })
     }
 
     fn generator_movability_for_fn(
@@ -950,23 +951,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
+        self.lower_lifetime_binder(closure_id, generic_params, |lctx, bound_generic_params| {
+            // We need to lower the declaration outside the new scope, because we
+            // have to conserve the state of being inside a loop condition for the
+            // closure argument types.
+            let fn_decl = lctx.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
-        // We need to lower the declaration outside the new scope, because we
-        // have to conserve the state of being inside a loop condition for the
-        // closure argument types.
-        let fn_decl = self.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
-
-        let c = self.arena.alloc(hir::Closure {
-            binder: binder_clause,
-            capture_clause,
-            bound_generic_params,
-            fn_decl,
-            body,
-            fn_decl_span: self.lower_span(fn_decl_span),
-            movability: None,
-        });
-        hir::ExprKind::Closure(c)
+            let c = lctx.arena.alloc(hir::Closure {
+                binder: binder_clause,
+                capture_clause,
+                bound_generic_params,
+                fn_decl,
+                body,
+                fn_decl_span: lctx.lower_span(fn_decl_span),
+                movability: None,
+            });
+            hir::ExprKind::Closure(c)
+        })
     }
 
     /// Destructure the LHS of complex assignments.
