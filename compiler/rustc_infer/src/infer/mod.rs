@@ -1835,7 +1835,9 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
     /// Tries to extract an inference variable from a type or a constant, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_generic_arg(arg: GenericArg<'tcx>) -> Option<Self> {
+    pub fn maybe_from_generic_arg(
+        arg: GenericArg<'tcx>,
+    ) -> impl IntoIterator<Item = TyOrConstInferVar<'tcx>> {
         match arg.unpack() {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),

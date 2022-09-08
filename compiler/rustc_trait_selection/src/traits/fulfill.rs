@@ -414,7 +414,9 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     ) {
                         None => {
                             pending_obligation.stalled_on =
-                                vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
+                                TyOrConstInferVar::maybe_from_generic_arg(arg)
+                                    .into_iter()
+                                    .collect();
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(os)),
@@ -481,7 +483,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             pending_obligation.stalled_on.extend(
                                 uv.substs
                                     .iter()
-                                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                                    .flat_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
@@ -513,31 +515,30 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
                     let stalled_on = &mut pending_obligation.stalled_on;
 
-                    let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match self.selcx.infcx().try_const_eval_resolve(
-                                obligation.param_env,
-                                unevaluated,
-                                c.ty(),
-                                Some(obligation.cause.span),
-                            ) {
-                                Ok(val) => Ok(val),
-                                Err(e) => match e {
-                                    ErrorHandled::TooGeneric => {
-                                        stalled_on.extend(
-                                            unevaluated.substs.iter().filter_map(
+                    let mut evaluate =
+                        |c: Const<'tcx>| {
+                            if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                                match self.selcx.infcx().try_const_eval_resolve(
+                                    obligation.param_env,
+                                    unevaluated,
+                                    c.ty(),
+                                    Some(obligation.cause.span),
+                                ) {
+                                    Ok(val) => Ok(val),
+                                    Err(e) => match e {
+                                        ErrorHandled::TooGeneric => {
+                                            stalled_on.extend(unevaluated.substs.iter().flat_map(
                                                 TyOrConstInferVar::maybe_from_generic_arg,
-                                            ),
-                                        );
-                                        Err(ErrorHandled::TooGeneric)
-                                    }
-                                    _ => Err(e),
-                                },
+                                            ));
+                                            Err(ErrorHandled::TooGeneric)
+                                        }
+                                        _ => Err(e),
+                                    },
+                                }
+                            } else {
+                                Ok(c)
                             }
-                        } else {
-                            Ok(c)
-                        }
-                    };
+                        };
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
@@ -735,7 +736,7 @@ fn substs_infer_vars<'a, 'tcx>(
             }
             walker.visited.into_iter()
         })
-        .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+        .flat_map(TyOrConstInferVar::maybe_from_generic_arg)
 }
 
 fn to_fulfillment_error<'tcx>(
