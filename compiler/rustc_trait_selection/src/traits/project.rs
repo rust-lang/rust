@@ -635,13 +635,18 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if self.selcx.tcx().lazy_normalization() || !self.eager_inference_replacement {
+        let tcx = self.selcx.tcx();
+        if tcx.lazy_normalization() {
             constant
         } else {
             let constant = constant.super_fold_with(self);
-            debug!(?constant);
-            debug!("self.param_env: {:?}", self.param_env);
-            constant.eval(self.selcx.tcx(), self.param_env)
+            debug!(?constant, ?self.param_env);
+            with_replaced_escaping_bound_vars(
+                self.selcx.infcx(),
+                &mut self.universes,
+                constant,
+                |constant| constant.eval(tcx, self.param_env),
+            )
         }
     }
 
@@ -669,6 +674,41 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // The `UniverseIndex` of the binding levels above us. These are optional, since we are lazy:
     // we don't actually create a universe until we see a bound var we have to replace.
     universe_indices: &'me mut Vec<Option<ty::UniverseIndex>>,
+}
+
+/// Executes `f` on `value` after replacing all escaping bound variables with placeholders
+/// and then replaces these placeholders with the original bound variables in the result.
+///
+/// In most places, bound variables should be replaced right when entering a binder, making
+/// this function unnecessary. However, normalization currently does not do that, so we have
+/// to do this lazily.
+///
+/// You should not add any additional uses of this function, at least not without first
+/// discussing it with t-types.
+///
+/// FIXME(@lcnr): We may even consider experimenting with eagerly replacing bound vars during
+/// normalization as well, at which point this function will be unnecessary and can be removed.
+pub fn with_replaced_escaping_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>, R: TypeFoldable<'tcx>>(
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,
+    value: T,
+    f: impl FnOnce(T) -> R,
+) -> R {
+    if value.has_escaping_bound_vars() {
+        let (value, mapped_regions, mapped_types, mapped_consts) =
+            BoundVarReplacer::replace_bound_vars(infcx, universe_indices, value);
+        let result = f(value);
+        PlaceholderReplacer::replace_placeholders(
+            infcx,
+            mapped_regions,
+            mapped_types,
+            mapped_consts,
+            universe_indices,
+            result,
+        )
+    } else {
+        f(value)
+    }
 }
 
 impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {

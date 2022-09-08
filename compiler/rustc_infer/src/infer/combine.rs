@@ -486,7 +486,7 @@ struct Generalizer<'cx, 'tcx> {
 
     param_env: ty::ParamEnv<'tcx>,
 
-    cache: SsoHashMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
+    cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 /// Result from a generalization operation. This includes
@@ -593,8 +593,8 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        if let Some(result) = self.cache.get(&t) {
-            return result.clone();
+        if let Some(&result) = self.cache.get(&t) {
+            return Ok(result);
         }
         debug!("generalize: t={:?}", t);
 
@@ -664,10 +664,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 Ok(t)
             }
             _ => relate::super_relate_tys(self, t, t),
-        };
+        }?;
 
-        self.cache.insert(t, result.clone());
-        return result;
+        self.cache.insert(t, result);
+        Ok(result)
     }
 
     fn regions(
@@ -743,9 +743,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,
@@ -967,9 +965,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,

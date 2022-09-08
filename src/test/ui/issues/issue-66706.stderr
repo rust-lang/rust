@@ -7,13 +7,13 @@ LL |     [0; [|_: _ &_| ()].len()]
    |               help: missing `,`
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-66706.rs:9:20
+  --> $DIR/issue-66706.rs:8:20
    |
 LL |     [0; [|f @ &ref _| {} ; 0 ].len() ];
    |                    ^ expected identifier, found reserved identifier
 
 error: expected `,`, found `&`
-  --> $DIR/issue-66706.rs:14:17
+  --> $DIR/issue-66706.rs:13:17
    |
 LL |     [0; [|&_: _ &_| {}; 0 ].len()]
    |                -^ expected `,`
@@ -21,7 +21,7 @@ LL |     [0; [|&_: _ &_| {}; 0 ].len()]
    |                help: missing `,`
 
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-66706.rs:20:26
+  --> $DIR/issue-66706.rs:18:26
    |
 LL |     [0; match [|f @ &ref _| () ] {} ]
    |                          ^ expected identifier, found reserved identifier
@@ -32,31 +32,6 @@ error[E0282]: type annotations needed
 LL |     [0; [|_: _ &_| ()].len()]
    |           ^ cannot infer type
 
-error[E0308]: mismatched types
-  --> $DIR/issue-66706.rs:2:5
-   |
-LL | fn a() {
-   |        - help: try adding a return type: `-> [i32; _]`
-LL |     [0; [|_: _ &_| ()].len()]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
+error: aborting due to 5 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/issue-66706.rs:14:5
-   |
-LL | fn c() {
-   |        - help: try adding a return type: `-> [i32; _]`
-LL |     [0; [|&_: _ &_| {}; 0 ].len()]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
-
-error[E0308]: mismatched types
-  --> $DIR/issue-66706.rs:20:5
-   |
-LL | fn d() {
-   |        - help: try adding a return type: `-> [i32; _]`
-LL |     [0; match [|f @ &ref _| () ] {} ]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
-
-error: aborting due to 8 previous errors
-
-Some errors have detailed explanations: E0282, E0308.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0282`.

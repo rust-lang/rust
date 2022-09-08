@@ -180,6 +180,7 @@ impl<'tcx> ConstKind<'tcx> {
         param_env: ParamEnv<'tcx>,
         eval_mode: EvalMode,
     ) -> Option<Result<EvalResult<'tcx>, ErrorGuaranteed>> {
+        assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
