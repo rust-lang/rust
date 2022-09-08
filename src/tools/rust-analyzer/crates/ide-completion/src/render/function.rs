@@ -52,10 +52,10 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!("{}.{}", receiver, &name).into(),
-            format!("{}.{}", receiver.escaped(), name.escaped()).into(),
+            format!("{}.{}", receiver.unescaped(), name.unescaped()).into(),
+            format!("{}.{}", receiver, name).into(),
         ),
-        _ => (name.to_smol_str(), name.escaped().to_smol_str()),
+        _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
@@ -79,22 +79,24 @@ fn render(
         ..ctx.completion_relevance()
     });
 
-    if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-        match func_kind {
-            FuncKind::Function(path_ctx) => {
-                item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
-            }
-            FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-                item.ref_match(ref_match, receiver.syntax().text_range().start());
-            }
-            _ => (),
+    match func_kind {
+        FuncKind::Function(path_ctx) => {
+            super::path_ref_match(completion, path_ctx, &ret_type, &mut item);
         }
+        FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
+            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
+                if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
+                    item.ref_match(ref_match, original_expr.syntax().text_range().start());
+                }
+            }
+        }
+        _ => (),
     }
 
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
         .detail(detail(db, func))
-        .lookup_by(name.to_smol_str());
+        .lookup_by(name.unescaped().to_smol_str());
 
     match ctx.completion.config.snippet_cap {
         Some(cap) => {

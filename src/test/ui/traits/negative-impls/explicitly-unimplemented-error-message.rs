@@ -1,5 +1,5 @@
 // This tests issue #79683: note in the error message that the trait is
-// explicitely unimplemented instead of suggesting to implement it.
+// explicitly unimplemented instead of suggesting to implement it.
 
 #![feature(negative_impls)]
 

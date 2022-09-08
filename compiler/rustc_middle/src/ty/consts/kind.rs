@@ -20,6 +20,12 @@ pub struct Unevaluated<'tcx, P = Option<Promoted>> {
     pub promoted: P,
 }
 
+impl rustc_errors::IntoDiagnosticArg for Unevaluated<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        format!("{:?}", self).into_diagnostic_arg()
+    }
+}
+
 impl<'tcx> Unevaluated<'tcx> {
     #[inline]
     pub fn shrink(self) -> Unevaluated<'tcx, ()> {
@@ -174,6 +180,7 @@ impl<'tcx> ConstKind<'tcx> {
         param_env: ParamEnv<'tcx>,
         eval_mode: EvalMode,
     ) -> Option<Result<EvalResult<'tcx>, ErrorGuaranteed>> {
+        assert!(!self.has_escaping_bound_vars(), "escaping vars in {self:?}");
         if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 

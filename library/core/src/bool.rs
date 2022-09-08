@@ -6,6 +6,12 @@ impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
     /// or `None` otherwise.
     ///
+    /// Arguments passed to `then_some` are eagerly evaluated; if you are
+    /// passing the result of a function call, it is recommended to use
+    /// [`then`], which is lazily evaluated.
+    ///
+    /// [`then`]: bool::then
+    ///
     /// # Examples
     ///
     /// ```

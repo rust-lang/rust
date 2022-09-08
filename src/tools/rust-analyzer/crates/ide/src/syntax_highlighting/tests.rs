@@ -4,7 +4,18 @@ use expect_test::{expect_file, ExpectFile};
 use ide_db::SymbolKind;
 use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
 
-use crate::{fixture, FileRange, HlTag, TextRange};
+use crate::{fixture, FileRange, HighlightConfig, HlTag, TextRange};
+
+const HL_CONFIG: HighlightConfig = HighlightConfig {
+    strings: true,
+    punctuation: true,
+    specialize_punctuation: true,
+    specialize_operator: true,
+    operator: true,
+    inject_doc_comment: true,
+    macro_bang: true,
+    syntactic_name_ref_highlighting: false,
+};
 
 #[test]
 fn attributes() {
@@ -613,7 +624,7 @@ struct Foo {
     bar: bool,
 }
 
-/// This is an impl with a code block.
+/// This is an impl of [`Foo`] with a code block.
 ///
 /// ```
 /// fn foo() {
@@ -915,6 +926,52 @@ fn main() {
 }
 
 #[test]
+fn test_mod_hl_injection() {
+    check_highlighting(
+        r##"
+//- /foo.rs
+//! [Struct]
+//! This is an intra doc injection test for modules
+//! [Struct]
+//! This is an intra doc injection test for modules
+
+pub struct Struct;
+//- /lib.rs crate:foo
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+mod foo;
+"##,
+        expect_file!["./test_data/highlight_module_docs_inline.html"],
+        false,
+    );
+    check_highlighting(
+        r##"
+//- /lib.rs crate:foo
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+mod foo;
+//- /foo.rs
+//! [Struct]
+//! This is an intra doc injection test for modules
+//! [Struct]
+//! This is an intra doc injection test for modules
+
+pub struct Struct;
+"##,
+        expect_file!["./test_data/highlight_module_docs_outline.html"],
+        false,
+    );
+}
+
+#[test]
+#[cfg_attr(
+    not(all(unix, target_pointer_width = "64")),
+    ignore = "depends on `DefaultHasher` outputs"
+)]
 fn test_rainbow_highlighting() {
     check_highlighting(
         r#"
@@ -950,7 +1007,10 @@ struct Foo {
 
     // The "x"
     let highlights = &analysis
-        .highlight_range(FileRange { file_id, range: TextRange::at(45.into(), 1.into()) })
+        .highlight_range(
+            HL_CONFIG,
+            FileRange { file_id, range: TextRange::at(45.into(), 1.into()) },
+        )
         .unwrap();
 
     assert_eq!(&highlights[0].highlight.to_string(), "field.declaration.public");
@@ -965,7 +1025,7 @@ macro_rules! test {}
 }"#
         .trim(),
     );
-    let _ = analysis.highlight(file_id).unwrap();
+    let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
 }
 
 /// Highlights the code given by the `ra_fixture` argument, renders the
@@ -989,7 +1049,7 @@ fn benchmark_syntax_highlighting_long_struct() {
     let hash = {
         let _pt = bench("syntax highlighting long struct");
         analysis
-            .highlight(file_id)
+            .highlight(HL_CONFIG, file_id)
             .unwrap()
             .iter()
             .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
@@ -1015,7 +1075,7 @@ fn syntax_highlighting_not_quadratic() {
             let time = Instant::now();
 
             let hash = analysis
-                .highlight(file_id)
+                .highlight(HL_CONFIG, file_id)
                 .unwrap()
                 .iter()
                 .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
@@ -1040,7 +1100,7 @@ fn benchmark_syntax_highlighting_parser() {
     let hash = {
         let _pt = bench("syntax highlighting parser");
         analysis
-            .highlight(file_id)
+            .highlight(HL_CONFIG, file_id)
             .unwrap()
             .iter()
             .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))

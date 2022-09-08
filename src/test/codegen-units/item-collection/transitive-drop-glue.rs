@@ -6,9 +6,9 @@
 #![feature(start)]
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<Root> - shim(Some(Root)) @@ transitive_drop_glue-cgu.0[Internal]
-struct Root(Intermediate);
+struct Root(#[allow(unused_tuple_struct_fields)] Intermediate);
 //~ MONO_ITEM fn std::ptr::drop_in_place::<Intermediate> - shim(Some(Intermediate)) @@ transitive_drop_glue-cgu.0[Internal]
-struct Intermediate(Leaf);
+struct Intermediate(#[allow(unused_tuple_struct_fields)] Leaf);
 //~ MONO_ITEM fn std::ptr::drop_in_place::<Leaf> - shim(Some(Leaf)) @@ transitive_drop_glue-cgu.0[Internal]
 struct Leaf;
 
@@ -17,9 +17,9 @@ impl Drop for Leaf {
     fn drop(&mut self) {}
 }
 
-struct RootGen<T>(IntermediateGen<T>);
-struct IntermediateGen<T>(LeafGen<T>);
-struct LeafGen<T>(T);
+struct RootGen<T>(#[allow(unused_tuple_struct_fields)] IntermediateGen<T>);
+struct IntermediateGen<T>(#[allow(unused_tuple_struct_fields)] LeafGen<T>);
+struct LeafGen<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl<T> Drop for LeafGen<T> {
     fn drop(&mut self) {}

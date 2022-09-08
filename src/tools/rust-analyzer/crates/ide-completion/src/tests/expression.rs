@@ -1,7 +1,7 @@
 //! Completion tests for expressions.
 use expect_test::{expect, Expect};
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{}{}", BASE_ITEMS_FIXTURE, ra_fixture));
@@ -44,7 +44,6 @@ fn baz() {
             st Record
             st Tuple
             st Unit
-            tt Trait
             un Union
             ev TupleV(…)     TupleV(u32)
             bt u32
@@ -137,7 +136,6 @@ impl Unit {
             st Record
             st Tuple
             st Unit
-            tt Trait
             tp TypeParam
             un Union
             ev TupleV(…)    TupleV(u32)
@@ -651,5 +649,60 @@ fn main() {
         expect![[r"
             fn bar(…) fn(impl Trait<U>)
         "]],
+    );
+}
+
+#[test]
+fn complete_record_expr_path() {
+    check(
+        r#"
+struct Zulu;
+impl Zulu {
+    fn test() -> Self { }
+}
+fn boi(val: Zulu) { }
+fn main() {
+    boi(Zulu:: $0 {});
+}
+"#,
+        expect![[r#"
+            fn test() fn() -> Zulu
+        "#]],
+    );
+}
+
+#[test]
+fn return_unit_block() {
+    cov_mark::check!(return_unit_block);
+    check_edit("return", r#"fn f() { if true { $0 } }"#, r#"fn f() { if true { return; } }"#);
+}
+
+#[test]
+fn return_unit_no_block() {
+    cov_mark::check!(return_unit_no_block);
+    check_edit(
+        "return",
+        r#"fn f() { match () { () => $0 } }"#,
+        r#"fn f() { match () { () => return } }"#,
+    );
+}
+
+#[test]
+fn return_value_block() {
+    cov_mark::check!(return_value_block);
+    check_edit(
+        "return",
+        r#"fn f() -> i32 { if true { $0 } }"#,
+        r#"fn f() -> i32 { if true { return $0; } }"#,
+    );
+}
+
+#[test]
+fn return_value_no_block() {
+    cov_mark::check!(return_value_no_block);
+    check_edit(
+        "return",
+        r#"fn f() -> i32 { match () { () => $0 } }"#,
+        r#"fn f() -> i32 { match () { () => return $0 } }"#,
     );
 }

@@ -170,7 +170,6 @@ use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread_parker::Parker;
@@ -193,21 +192,31 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-// The types used by the thread_local! macro to access TLS keys. Note that there
-// are two types, the "OS" type and the "fast" type. The OS thread local key
-// type is accessed via platform-specific API calls and is slow, while the fast
+// Select the type used by the thread_local! macro to access TLS keys. There
+// are three types: "static", "fast", "OS". The "OS" thread local key
+// type is accessed via platform-specific API calls and is slow, while the "fast"
 // key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. Note that the OS TLS type is always available: on macOS
-// the standard library is compiled with support for older platform versions
-// where fast TLS was not available; end-user code is compiled with fast TLS
-// where available, but both are needed.
+// by the elf linker. "static" is for single-threaded platforms where a global
+// static is sufficient.
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(target_thread_local)]
+#[cfg(not(test))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(target_thread_local)]
+#[cfg(test)] // when building for tests, use real std's key
+pub use realstd::thread::__FastLocalKeyInner;
+
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(target_thread_local)]
+#[cfg(test)]
+pub use self::local::fast::Key as __FastLocalKeyInnerUnused; // we import this anyway to silence 'unused' warnings
+
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[doc(hidden)]
+#[cfg(not(target_thread_local))]
 pub use self::local::os::Key as __OsLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
@@ -1033,24 +1042,48 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // It is UB to attempt to acquire this mutex reentrantly!
-        static GUARD: mutex::StaticMutex = mutex::StaticMutex::new();
-        static mut COUNTER: u64 = 1;
+        #[cold]
+        fn exhausted() -> ! {
+            panic!("failed to generate unique thread ID: bitspace exhausted")
+        }
 
-        unsafe {
-            let guard = GUARD.lock();
+        cfg_if::cfg_if! {
+            if #[cfg(target_has_atomic = "64")] {
+                use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
-            // If we somehow use up all our bits, panic so that we're not
-            // covering up subtle bugs of IDs being reused.
-            if COUNTER == u64::MAX {
-                drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
-                panic!("failed to generate unique thread ID: bitspace exhausted");
+                static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+                let mut last = COUNTER.load(Relaxed);
+                loop {
+                    let Some(id) = last.checked_add(1) else {
+                        exhausted();
+                    };
+
+                    match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
+                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
+                        Err(id) => last = id,
+                    }
+                }
+            } else {
+                use crate::sys_common::mutex::StaticMutex;
+
+                // It is UB to attempt to acquire this mutex reentrantly!
+                static GUARD: StaticMutex = StaticMutex::new();
+                static mut COUNTER: u64 = 0;
+
+                unsafe {
+                    let guard = GUARD.lock();
+
+                    let Some(id) = COUNTER.checked_add(1) else {
+                        drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
+                        exhausted();
+                    };
+
+                    COUNTER = id;
+                    drop(guard);
+                    ThreadId(NonZeroU64::new(id).unwrap())
+                }
             }
-
-            let id = COUNTER;
-            COUNTER += 1;
-
-            ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
 

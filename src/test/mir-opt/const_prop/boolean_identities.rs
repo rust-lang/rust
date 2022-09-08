@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // compile-flags: -O -Zmir-opt-level=4
 
 // EMIT_MIR boolean_identities.test.ConstProp.diff

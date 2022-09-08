@@ -7,7 +7,7 @@ use std::marker::Send;
 pub struct WaitToken;
 impl !Send for WaitToken {}
 
-pub struct Test<T>(T);
+pub struct Test<T>(#[allow(unused_tuple_struct_fields)] T);
 unsafe impl<T: 'static> Send for Test<T> {}
 
 pub fn spawn<F>(_: F) -> () where F: FnOnce(), F: Send + 'static {}

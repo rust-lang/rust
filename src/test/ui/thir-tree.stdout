@@ -1,6 +1,17 @@
 DefId(0:3 ~ thir_tree[8f1d]::main):
 Thir {
     arms: [],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(1),
+            opt_destruction_scope: None,
+            span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+    ],
     exprs: [
         Expr {
             ty: (),
@@ -9,15 +20,7 @@ Thir {
             ),
             span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
             kind: Block {
-                body: Block {
-                    targeted_by_break: false,
-                    region_scope: Node(1),
-                    opt_destruction_scope: None,
-                    span: $DIR/thir-tree.rs:4:15: 4:17 (#0),
-                    stmts: [],
-                    expr: None,
-                    safety_mode: Safe,
-                },
+                block: b0,
             },
         },
         Expr {

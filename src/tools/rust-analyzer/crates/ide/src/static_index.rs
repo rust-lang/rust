@@ -130,8 +130,11 @@ impl StaticIndex<'_> {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(x) => Some(x),
         });
-        let hover_config =
-            HoverConfig { links_in_hover: true, documentation: Some(HoverDocFormat::Markdown) };
+        let hover_config = HoverConfig {
+            links_in_hover: true,
+            documentation: Some(HoverDocFormat::Markdown),
+            keywords: true,
+        };
         let tokens = tokens.filter(|token| {
             matches!(
                 token.kind(),
@@ -204,7 +207,7 @@ impl StaticIndex<'_> {
 
 fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Definition> {
     for token in sema.descend_into_macros(token) {
-        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {
             return Some(x);
         } else {

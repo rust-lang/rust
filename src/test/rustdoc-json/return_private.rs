@@ -8,8 +8,8 @@ mod secret {
     pub struct Secret;
 }
 
-// @is return_private.json "$.index[*][?(@.name=='get_secret')].kind" \"function\"
-// @is return_private.json "$.index[*][?(@.name=='get_secret')].inner.decl.output.inner.name" \"secret::Secret\"
+// @is "$.index[*][?(@.name=='get_secret')].kind" \"function\"
+// @is "$.index[*][?(@.name=='get_secret')].inner.decl.output.inner.name" \"secret::Secret\"
 pub fn get_secret() -> secret::Secret {
     secret::Secret
 }

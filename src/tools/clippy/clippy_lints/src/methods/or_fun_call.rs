@@ -20,6 +20,7 @@ pub(super) fn check<'tcx>(
     expr: &hir::Expr<'_>,
     method_span: Span,
     name: &str,
+    receiver: &'tcx hir::Expr<'_>,
     args: &'tcx [hir::Expr<'_>],
 ) {
     /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
@@ -144,7 +145,7 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    if let [self_arg, arg] = args {
+    if let [arg] = args {
         let inner_arg = if let hir::ExprKind::Block(
             hir::Block {
                 stmts: [],
@@ -163,11 +164,11 @@ pub(super) fn check<'tcx>(
                 let or_has_args = !or_args.is_empty();
                 if !check_unwrap_or_default(cx, name, fun, arg, or_has_args, expr.span, method_span) {
                     let fun_span = if or_has_args { None } else { Some(fun.span) };
-                    check_general_case(cx, name, method_span, self_arg, arg, expr.span, fun_span);
+                    check_general_case(cx, name, method_span, receiver, arg, expr.span, fun_span);
                 }
             },
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
-                check_general_case(cx, name, method_span, self_arg, arg, expr.span, None);
+                check_general_case(cx, name, method_span, receiver, arg, expr.span, None);
             },
             _ => (),
         }

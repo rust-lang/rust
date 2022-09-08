@@ -212,9 +212,27 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             return;
         }
         match expr.kind {
-            Call(_, args) | MethodCall(_, args, _) => {
+            Call(_, args) => {
                 let mut tys = DefIdSet::default();
                 for arg in args {
+                    if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
+                        && is_mutable_ty(
+                            self.cx,
+                            self.cx.tcx.typeck(arg.hir_id.owner).expr_ty(arg),
+                            arg.span,
+                            &mut tys,
+                        )
+                        && is_mutated_static(arg)
+                    {
+                        self.mutates_static = true;
+                        return;
+                    }
+                    tys.clear();
+                }
+            },
+            MethodCall(_, receiver, args, _) => {
+                let mut tys = DefIdSet::default();
+                for arg in std::iter::once(receiver).chain(args.iter()) {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
                             self.cx,

@@ -8,7 +8,7 @@ pub use self::ValuePairs::*;
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
-use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
+use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -32,7 +32,7 @@ pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::fmt;
@@ -316,12 +316,12 @@ pub struct InferCtxt<'a, 'tcx> {
     ///
     /// Don't read this flag directly, call `is_tainted_by_errors()`
     /// and `set_tainted_by_errors()`.
-    tainted_by_errors_flag: Cell<bool>,
+    tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 
     /// Track how many errors were reported when this infcx is created.
     /// If the number of errors increases, that's also a sign (line
     /// `tainted_by_errors`) to avoid reporting certain kinds of errors.
-    // FIXME(matthewjasper) Merge into `tainted_by_errors_flag`
+    // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
 
     /// This flag is true while there is an active snapshot.
@@ -337,6 +337,9 @@ pub struct InferCtxt<'a, 'tcx> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<ty::UniverseIndex>,
+
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -350,12 +353,11 @@ pub enum ValuePairs<'tcx> {
 
 impl<'tcx> ValuePairs<'tcx> {
     pub fn ty(&self) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
-        if let ValuePairs::Terms(ExpectedFound {
-            expected: ty::Term::Ty(expected),
-            found: ty::Term::Ty(found),
-        }) = self
+        if let ValuePairs::Terms(ExpectedFound { expected, found }) = self
+            && let Some(expected) = expected.ty()
+            && let Some(found) = found.ty()
         {
-            Some((*expected, *found))
+            Some((expected, found))
         } else {
             None
         }
@@ -504,7 +506,7 @@ pub enum FixupError<'tcx> {
 }
 
 /// See the `region_obligations` field for more information.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
@@ -540,6 +542,8 @@ pub struct InferCtxtBuilder<'tcx> {
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -553,6 +557,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             fresh_typeck_results: None,
+            normalize_fn_sig_for_diagnostic: None,
         }
     }
 }
@@ -579,6 +584,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn ignoring_regions(mut self) -> Self {
         self.considering_regions = false;
+        self
+    }
+
+    pub fn with_normalize_fn_sig_for_diagnostic(
+        mut self,
+        fun: Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>,
+    ) -> Self {
+        self.normalize_fn_sig_for_diagnostic = Some(fun);
         self
     }
 
@@ -611,6 +624,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             defining_use_anchor,
             considering_regions,
             ref fresh_typeck_results,
+            ref normalize_fn_sig_for_diagnostic,
         } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
@@ -624,11 +638,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
             reported_closure_mismatch: Default::default(),
-            tainted_by_errors_flag: Cell::new(false),
+            tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),
             skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         })
     }
 }
@@ -645,9 +662,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(infcx, obligation);
-        }
+        fulfill_cx.register_predicate_obligations(infcx, obligations);
         value
     }
 }
@@ -840,18 +855,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.in_snapshot.set(was_in_snapshot);
 
         self.inner.borrow_mut().commit(undo_snapshot);
-    }
-
-    /// Executes `f` and commit the bindings.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn commit_unconditionally<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
     }
 
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
@@ -1241,23 +1244,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn is_tainted_by_errors(&self) -> bool {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
-             tainted_by_errors_flag={})",
+             tainted_by_errors={})",
             self.tcx.sess.err_count(),
             self.err_count_on_creation,
-            self.tainted_by_errors_flag.get()
+            self.tainted_by_errors.get().is_some()
         );
 
         if self.tcx.sess.err_count() > self.err_count_on_creation {
             return true; // errors reported since this infcx was made
         }
-        self.tainted_by_errors_flag.get()
+        self.tainted_by_errors.get().is_some()
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
     /// observe an error from a prior pass.
     pub fn set_tainted_by_errors(&self) {
         debug!("set_tainted_by_errors()");
-        self.tainted_by_errors_flag.set(true)
+        self.tainted_by_errors.set(Some(
+            self.tcx.sess.delay_span_bug(DUMMY_SP, "`InferCtxt` incorrectly tainted by errors"),
+        ));
     }
 
     pub fn skip_region_resolution(&self) {
@@ -1327,7 +1332,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     ///
     /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferrably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
     /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,
@@ -1541,8 +1546,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let trace = TypeTrace::types(cause, true, expected, actual);
-        self.report_and_explain_type_error(trace, &err)
+        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
     }
 
     pub fn report_mismatched_consts(
@@ -1552,8 +1556,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let trace = TypeTrace::consts(cause, true, expected, actual);
-        self.report_and_explain_type_error(trace, &err)
+        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 
     pub fn replace_bound_vars_with_fresh_vars<T>(
@@ -1951,6 +1954,18 @@ impl<'tcx> TypeTrace<'tcx> {
         }
     }
 
+    pub fn poly_trait_refs(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: ty::PolyTraitRef<'tcx>,
+        b: ty::PolyTraitRef<'tcx>,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+
     pub fn consts(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
@@ -2029,16 +2044,6 @@ impl RegionVariableOrigin {
     }
 }
 
-impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "RegionObligation(sub_region={:?}, sup_type={:?})",
-            self.sub_region, self.sup_type
-        )
-    }
-}
-
 /// Replaces substs that reference param or infer variables with suitable
 /// placeholders. This function is meant to remove these param and infer
 /// substs when they're not actually needed to evaluate a constant.
@@ -2069,7 +2074,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     ty,
                     kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                        name: ty::BoundVar::from_usize(idx),
                     }),
                 })
                 .into()

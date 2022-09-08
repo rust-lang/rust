@@ -372,7 +372,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                 debug!(
                     "canonical: region var found with vid {:?}, \
                      opportunistically resolved to {:?}",
-                    vid, r
+                    vid, resolved_vid
                 );
                 let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
                 self.canonicalize_mode.canonicalize_free_region(self, r)
@@ -511,7 +511,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
-                    CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderConst(placeholder) },
+                    CanonicalVarInfo {
+                        kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()),
+                    },
                     ct,
                 );
             }
@@ -695,11 +697,14 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                             ..placeholder
                         })
                     }
-                    CanonicalVarKind::PlaceholderConst(placeholder) => {
-                        CanonicalVarKind::PlaceholderConst(ty::Placeholder {
-                            universe: reverse_universe_map[&placeholder.universe],
-                            ..placeholder
-                        })
+                    CanonicalVarKind::PlaceholderConst(placeholder, t) => {
+                        CanonicalVarKind::PlaceholderConst(
+                            ty::Placeholder {
+                                universe: reverse_universe_map[&placeholder.universe],
+                                ..placeholder
+                            },
+                            t,
+                        )
                     }
                 },
             })

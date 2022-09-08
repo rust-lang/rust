@@ -900,7 +900,7 @@ mod impls {
 
     macro_rules! maybe_tuple_doc {
         ($a:ident @ #[$meta:meta] $item:item) => {
-            #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+            #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long."]
             #[$meta]
             $item

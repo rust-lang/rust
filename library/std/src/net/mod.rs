@@ -41,7 +41,7 @@ mod ip;
 mod parser;
 mod tcp;
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 mod udp;
 
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.

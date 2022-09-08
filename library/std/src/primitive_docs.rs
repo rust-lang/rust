@@ -801,11 +801,53 @@ mod prim_array {}
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
 /// ```
+///
+/// ## Trait Implementations
+///
+/// Some traits are implemented for slices if the element type implements
+/// that trait. This includes [`Eq`], [`Hash`] and [`Ord`].
+///
+/// ## Iteration
+///
+/// The slices implement `IntoIterator`. The iterator yields references to the
+/// slice elements.
+///
+/// ```
+/// let numbers: &[i32] = &[0, 1, 2];
+/// for n in numbers {
+///     println!("{n} is a number!");
+/// }
+/// ```
+///
+/// The mutable slice yields mutable references to the elements:
+///
+/// ```
+/// let mut scores: &mut [i32] = &mut [7, 8, 9];
+/// for score in scores {
+///     *score += 1;
+/// }
+/// ```
+///
+/// This iterator yields mutable references to the slice's elements, so while
+/// the element type of the slice is `i32`, the element type of the iterator is
+/// `&mut i32`.
+///
+/// * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
+///   iterators.
+/// * Further methods that return iterators are [`.split`], [`.splitn`],
+///   [`.chunks`], [`.windows`] and more.
+///
+/// [`Hash`]: core::hash::Hash
+/// [`.iter`]: slice::iter
+/// [`.iter_mut`]: slice::iter_mut
+/// [`.split`]: slice::split
+/// [`.splitn`]: slice::splitn
+/// [`.chunks`]: slice::chunks
+/// [`.windows`]: slice::windows
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice {}
 
 #[doc(primitive = "str")]
-//
 /// String slices.
 ///
 /// *[See also the `std::str` module](crate::str).*
@@ -816,19 +858,22 @@ mod prim_slice {}
 ///
 /// String slices are always valid UTF-8.
 ///
-/// # Examples
+/// # Basic Usage
 ///
 /// String literals are string slices:
 ///
 /// ```
-/// let hello = "Hello, world!";
-///
-/// // with an explicit type annotation
-/// let hello: &'static str = "Hello, world!";
+/// let hello_world = "Hello, World!";
 /// ```
 ///
-/// They are `'static` because they're stored directly in the final binary, and
-/// so will be valid for the `'static` duration.
+/// Here we have declared a string slice initialized with a string literal.
+/// String literals have a static lifetime, which means the string `hello_world`
+/// is guaranteed to be valid for the duration of the entire program.
+/// We can explicitly specify `hello_world`'s lifetime as well:
+///
+/// ```
+/// let hello_world: &'static str = "Hello, world!";
+/// ```
 ///
 /// # Representation
 ///
@@ -996,7 +1041,7 @@ impl<T> (T,) {}
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Clone> Clone for (T,) {
     fn clone(&self) -> Self {
@@ -1007,7 +1052,7 @@ impl<T: Clone> Clone for (T,) {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Copy> Copy for (T,) {
     // empty
@@ -1178,7 +1223,7 @@ mod prim_usize {}
 #[doc(alias = "&")]
 #[doc(alias = "&mut")]
 //
-/// References, both shared and mutable.
+/// References, `&T` and `&mut T`.
 ///
 /// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
 /// operators on a value, or by using a [`ref`](../std/keyword.ref.html) or
@@ -1484,13 +1529,12 @@ mod prim_fn {}
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
-#[cfg(not(bootstrap))]
 impl<Ret, T> fn(T) -> Ret {}
 
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on function pointers with any number of arguments.
 impl<Ret, T> Clone for fn(T) -> Ret {
     fn clone(&self) -> Self {
@@ -1501,7 +1545,7 @@ impl<Ret, T> Clone for fn(T) -> Ret {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on function pointers with any number of arguments.
 impl<Ret, T> Copy for fn(T) -> Ret {
     // empty

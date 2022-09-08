@@ -22,6 +22,7 @@ use crate::ty::{
     FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
     ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    Visibility,
 };
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -874,7 +875,7 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
-    pub user_ty: CanonicalUserType<'tcx>,
+    pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
 }
@@ -1089,7 +1090,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
-    query_kinds: &'tcx [DepKindStruct],
+    query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1246,7 +1247,7 @@ impl<'tcx> TyCtxt<'tcx> {
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
-        query_kinds: &'tcx [DepKindStruct],
+        query_kinds: &'tcx [DepKindStruct<'tcx>],
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1296,7 +1297,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub(crate) fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
+    pub(crate) fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct<'tcx> {
         &self.query_kinds[k as usize]
     }
 
@@ -1498,17 +1499,17 @@ impl<'tcx> TyCtxt<'tcx> {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.iter_local_def_id()
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.def_path_table()
@@ -1517,10 +1518,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_path_hash_to_def_index_map(
         self,
     ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
-        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new onces
+        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
         definitions.def_path_hash_to_def_index_map()
@@ -1668,8 +1669,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Checks if the bound region is in Impl Item.
     pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
-        let container_id =
-            self.associated_item(suitable_region_binding_scope.to_def_id()).container.id();
+        let container_id = self.parent(suitable_region_binding_scope.to_def_id());
         if self.impl_trait_ref(container_id).is_some() {
             // For now, we do not try to target impls of traits. This is
             // because this message is going to suggest that the user
@@ -1728,6 +1728,11 @@ impl<'tcx> TyCtxt<'tcx> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits_in_crate(cnum).iter().copied())
+    }
+
+    #[inline]
+    pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
+        self.visibility(def_id.to_def_id()).expect_local()
     }
 }
 
@@ -1830,9 +1835,9 @@ pub mod tls {
     use crate::dep_graph::TaskDepsRef;
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
-    use rustc_data_structures::thin_vec::ThinVec;
     use rustc_errors::Diagnostic;
     use std::mem;
+    use thin_vec::ThinVec;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;
@@ -1858,8 +1863,8 @@ pub mod tls {
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
         pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
 
-        /// Used to prevent layout from recursing too deeply.
-        pub layout_depth: usize,
+        /// Used to prevent queries from calling too deeply.
+        pub query_depth: usize,
 
         /// The current dep graph task. This is used to add dependencies to queries
         /// when executing them.
@@ -1873,7 +1878,7 @@ pub mod tls {
                 tcx,
                 query: None,
                 diagnostics: None,
-                layout_depth: 0,
+                query_depth: 0,
                 task_deps: TaskDepsRef::Ignore,
             }
         }

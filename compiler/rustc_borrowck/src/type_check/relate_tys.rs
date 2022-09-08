@@ -38,6 +38,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         .relate(a, b)?;
         Ok(())
     }
+
+    /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
+    pub(super) fn eq_substs(
+        &mut self,
+        a: ty::SubstsRef<'tcx>,
+        b: ty::SubstsRef<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory<'tcx>,
+    ) -> Fallible<()> {
+        TypeRelating::new(
+            self.infcx,
+            NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::other()),
+            ty::Variance::Invariant,
+        )
+        .relate(a, b)?;
+        Ok(())
+    }
 }
 
 struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {

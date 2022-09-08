@@ -1,0 +1,42 @@
+error: this `to_owned` call clones the std::borrow::Cow<str> itself and does not cause the std::borrow::Cow<str> contents to become owned
+  --> $DIR/suspicious_to_owned.rs:16:13
+   |
+LL |     let _ = cow.to_owned();
+   |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
+   |
+   = note: `-D clippy::suspicious-to-owned` implied by `-D warnings`
+
+error: this `to_owned` call clones the std::borrow::Cow<[char; 3]> itself and does not cause the std::borrow::Cow<[char; 3]> contents to become owned
+  --> $DIR/suspicious_to_owned.rs:26:13
+   |
+LL |     let _ = cow.to_owned();
+   |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
+
+error: this `to_owned` call clones the std::borrow::Cow<std::vec::Vec<char>> itself and does not cause the std::borrow::Cow<std::vec::Vec<char>> contents to become owned
+  --> $DIR/suspicious_to_owned.rs:36:13
+   |
+LL |     let _ = cow.to_owned();
+   |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
+
+error: this `to_owned` call clones the std::borrow::Cow<str> itself and does not cause the std::borrow::Cow<str> contents to become owned
+  --> $DIR/suspicious_to_owned.rs:46:13
+   |
+LL |     let _ = cow.to_owned();
+   |             ^^^^^^^^^^^^^^ help: consider using, depending on intent: `cow.clone()` or `cow.into_owned()`
+
+error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
+  --> $DIR/suspicious_to_owned.rs:60:13
+   |
+LL |     let _ = String::from(moo).to_owned();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::from(moo).clone()`
+   |
+   = note: `-D clippy::implicit-clone` implied by `-D warnings`
+
+error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
+  --> $DIR/suspicious_to_owned.rs:61:13
+   |
+LL |     let _ = moos_vec.to_owned();
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `moos_vec.clone()`
+
+error: aborting due to 6 previous errors
+

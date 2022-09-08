@@ -20,19 +20,20 @@
 // cdb-check:    [<Raw View>]     [Type: core::cell::UnsafeCell<i32>]
 
 //
-// cdb-command:dx lock,d
-// cdb-check:lock,d           : Ok [Type: enum$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> >, 0, 1, Poisoned> > >]
-// cdb-check:    [variant]        : Ok
+// cdb-command:dx _lock,d
+// cdb-check:_lock,d          : Ok [Type: enum2$<core::result::Result<std::sync::mutex::MutexGuard<i32>,enum2$<std::sync::poison::TryLockError<std::sync::mutex::MutexGuard<i32> > > > >]
 // cdb-check:    [...] __0              [Type: std::sync::mutex::MutexGuard<i32>]
 
 use std::sync::Mutex;
 
-#[allow(unused_variables)]
-fn main()
-{
+fn main() {
     let m = Mutex::new(0);
-    let lock = m.try_lock();
+    let _lock = m.try_lock();
+
+    println!("this line avoids an `Ambiguous symbol error` while setting the breakpoint");
+
     zzz(); // #break
 }
 
+#[inline(never)]
 fn zzz() {}

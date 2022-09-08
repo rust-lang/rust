@@ -20,8 +20,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
-    ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
+    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    EmissionGuarantee, ErrorGuaranteed, FluentBundle, Handler, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -31,7 +31,7 @@ use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
-    SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+    DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
 use std::cell::{self, RefCell};
@@ -107,6 +107,12 @@ impl Mul<usize> for Limit {
 
     fn mul(self, rhs: usize) -> Self::Output {
         Limit::new(self.0 * rhs)
+    }
+}
+
+impl rustc_errors::IntoDiagnosticArg for Limit {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
     }
 }
 
@@ -214,9 +220,9 @@ pub struct PerfStats {
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
 #[rustc_diagnostic_item = "SessionDiagnostic"]
 pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `sess`.
+    /// Write out as a diagnostic out of `Handler`.
     #[must_use]
-    fn into_diagnostic(self, sess: &'a ParseSess) -> DiagnosticBuilder<'a, T>;
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, T>;
 }
 
 impl Session {
@@ -467,6 +473,9 @@ impl Session {
         feature: Symbol,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.parse_sess.create_err(err);
+        if err.code.is_none() {
+            err.code = std::option::Option::Some(error_code!(E0658));
+        }
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }
@@ -481,6 +490,15 @@ impl Session {
     }
     pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
         self.parse_sess.emit_warning(warning)
+    }
+    pub fn create_fatal<'a>(
+        &'a self,
+        fatal: impl SessionDiagnostic<'a, !>,
+    ) -> DiagnosticBuilder<'a, !> {
+        self.parse_sess.create_fatal(fatal)
+    }
+    pub fn emit_fatal<'a>(&'a self, fatal: impl SessionDiagnostic<'a, !>) -> ! {
+        self.parse_sess.emit_fatal(fatal)
     }
     #[inline]
     pub fn err_count(&self) -> usize {
@@ -638,7 +656,7 @@ impl Session {
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
         // JUSTIFICATION: necessary use of crate_types directly (see FIXME below)
-        #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+        #[allow(rustc::bad_opt_access)]
         if found_positive || found_negative {
             found_positive
         } else if crate_type == Some(CrateType::ProcMacro)
@@ -661,8 +679,9 @@ impl Session {
             )
     }
 
+    /// Returns `true` if the target can use the current split debuginfo configuration.
     pub fn target_can_use_split_dwarf(&self) -> bool {
-        !self.target.is_like_windows && !self.target.is_like_osx
+        self.target.debuginfo_kind == DebuginfoKind::Dwarf
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
@@ -894,7 +913,7 @@ impl Session {
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
-#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#[allow(rustc::bad_opt_access)]
 impl Session {
     pub fn verbose(&self) -> bool {
         self.opts.unstable_opts.verbose
@@ -1174,7 +1193,7 @@ impl Session {
 }
 
 // JUSTIFICATION: part of session construction
-#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#[allow(rustc::bad_opt_access)]
 fn default_emitter(
     sopts: &config::Options,
     registry: rustc_errors::registry::Registry,
@@ -1260,7 +1279,7 @@ pub enum DiagnosticOutput {
 }
 
 // JUSTIFICATION: literally session construction
-#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#[allow(rustc::bad_opt_access)]
 pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
@@ -1437,7 +1456,7 @@ pub fn build_session(
 /// If it is useful to have a Session available already for validating a commandline argument, you
 /// can do so here.
 // JUSTIFICATION: needs to access args to validate them
-#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#[allow(rustc::bad_opt_access)]
 fn validate_commandline_args_with_session_available(sess: &Session) {
     // Since we don't know if code in an rlib will be linked to statically or
     // dynamically downstream, rustc generates `__imp_` symbols that help linkers
@@ -1542,6 +1561,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if dwarf_version > 5 {
             sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
         }
+    }
+
+    if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
+        && !sess.opts.unstable_opts.unstable_options
+    {
+        sess.err(&format!(
+            "`-Csplit-debuginfo={}` is unstable on this platform",
+            sess.split_debuginfo()
+        ));
     }
 }
 

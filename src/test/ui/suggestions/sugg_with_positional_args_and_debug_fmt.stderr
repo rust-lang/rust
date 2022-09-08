@@ -1,0 +1,21 @@
+error: named argument `world` is not used by name
+  --> $DIR/sugg_with_positional_args_and_debug_fmt.rs:6:28
+   |
+LL |     println!("hello {:?}", world = "world");
+   |                     ----   ^^^^^ this named argument is referred to by position in formatting string
+   |                     |
+   |                     this formatting argument uses named argument `world` by position
+   |
+note: the lint level is defined here
+  --> $DIR/sugg_with_positional_args_and_debug_fmt.rs:3:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(named_arguments_used_positionally)]` implied by `#[deny(warnings)]`
+help: use the named argument by name to avoid ambiguity
+   |
+LL |     println!("hello {world:?}", world = "world");
+   |                      +++++
+
+error: aborting due to previous error
+

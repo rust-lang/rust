@@ -2,16 +2,15 @@
 
 use hir::{db::HirDatabase, Documentation, HasAttrs, StructKind};
 use ide_db::SymbolKind;
-use syntax::AstNode;
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem},
     render::{
-        compute_ref_match, compute_type_match,
+        compute_type_match,
         variant::{
-            format_literal_label, render_record_lit, render_tuple_lit, visible_fields,
-            RenderedLiteral,
+            format_literal_label, format_literal_lookup, render_record_lit, render_tuple_lit,
+            visible_fields, RenderedLiteral,
         },
         RenderContext,
     },
@@ -73,7 +72,7 @@ fn render(
         None => (name.clone().into(), name.into(), false),
     };
     let (qualified_name, escaped_qualified_name) =
-        (qualified_name.to_string(), qualified_name.escaped().to_string());
+        (qualified_name.unescaped().to_string(), qualified_name.to_string());
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
@@ -97,13 +96,20 @@ fn render(
     if !should_add_parens {
         kind = StructKind::Unit;
     }
+    let label = format_literal_label(&qualified_name, kind);
+    let lookup = if qualified {
+        format_literal_lookup(&short_qualified_name.to_string(), kind)
+    } else {
+        format_literal_lookup(&qualified_name, kind)
+    };
 
     let mut item = CompletionItem::new(
         CompletionItemKind::SymbolKind(thing.symbol_kind()),
         ctx.source_range(),
-        format_literal_label(&qualified_name, kind),
+        label,
     );
 
+    item.lookup_by(lookup);
     item.detail(rendered.detail);
 
     match snippet_cap {
@@ -111,9 +117,6 @@ fn render(
         None => item.insert_text(rendered.literal),
     };
 
-    if qualified {
-        item.lookup_by(format_literal_label(&short_qualified_name.to_string(), kind));
-    }
     item.set_documentation(thing.docs(db)).set_deprecated(thing.is_deprecated(&ctx));
 
     let ty = thing.ty(db);
@@ -121,9 +124,8 @@ fn render(
         type_match: compute_type_match(ctx.completion, &ty),
         ..ctx.completion_relevance()
     });
-    if let Some(ref_match) = compute_ref_match(completion, &ty) {
-        item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
-    }
+
+    super::path_ref_match(completion, path_ctx, &ty, &mut item);
 
     if let Some(import_to_add) = ctx.import_to_add {
         item.add_import(import_to_add);

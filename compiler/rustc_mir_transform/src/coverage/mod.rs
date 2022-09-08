@@ -80,7 +80,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
-        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+        match mir_body.basic_blocks[mir::START_BLOCK].terminator().kind {
             TerminatorKind::Unreachable => {
                 trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
                 return;
@@ -541,7 +541,7 @@ fn fn_sig_and_body<'tcx>(
     // to HIR for it.
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
+    (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
 }
 
 fn get_body_span<'tcx>(

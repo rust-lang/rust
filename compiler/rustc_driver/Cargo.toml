@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
-tracing = { version = "0.1.28" }
+tracing = { version = "0.1.35" }
 serde_json = "1.0.59"
 rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }
@@ -19,6 +19,7 @@ rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }

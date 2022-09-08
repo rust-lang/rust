@@ -4,9 +4,9 @@ error[E0401]: can't use generic parameters from outer function
 LL | fn foo<T>() {
    |        - type parameter from outer function
 LL |     fn bar(b: T) { }
-   |        ---    ^ use of generic parameter from outer function
-   |        |
-   |        help: try using a local generic parameter instead: `bar<T>`
+   |           -   ^ use of generic parameter from outer function
+   |           |
+   |           help: try using a local generic parameter instead: `<T>`
 
 error: aborting due to previous error
 

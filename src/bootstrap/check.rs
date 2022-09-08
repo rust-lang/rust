@@ -140,7 +140,13 @@ impl Step for Std {
             cargo_subcommand(builder.kind),
         );
 
-        cargo.arg("--all-targets");
+        // If we're not in stage 0, tests and examples will fail to compile
+        // from `core` definitions being loaded from two different `libcore`
+        // .rmeta and .rlib files.
+        if compiler.stage == 0 {
+            cargo.arg("--all-targets");
+        }
+
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo
@@ -451,7 +457,7 @@ tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InT
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
 tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
-tool_check_step!(Rls, "src/tools/rls", SourceType::Submodule);
+tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);

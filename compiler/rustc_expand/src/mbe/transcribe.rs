@@ -1,4 +1,8 @@
 use crate::base::ExtCtxt;
+use crate::errors::{
+    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
+    NoSyntaxVarsExprRepeat, VarStillRepeating,
+};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
@@ -165,11 +169,7 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, delimited) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx.struct_span_err(
-                            seq.span(), /* blame macro writer */
-                            "attempted to repeat an expression containing no syntax variables \
-                             matched as repeating at this depth",
-                        ));
+                        return Err(cx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
                     LockstepIterSize::Contradiction(msg) => {
@@ -177,7 +177,7 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.struct_span_err(seq.span(), &msg));
+                        return Err(cx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -193,10 +193,7 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx.struct_span_err(
-                                    sp.entire(),
-                                    "this must repeat at least once",
-                                ));
+                                return Err(cx.create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repetitions so far). `len`
@@ -239,10 +236,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.struct_span_err(
-                                sp, /* blame the macro writer */
-                                &format!("variable '{}' is still repeating at this depth", ident),
-                            ));
+                            return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
                         }
                     }
                 } else {
@@ -448,10 +442,7 @@ fn count_repetitions<'a>(
         match matched {
             MatchedTokenTree(_) | MatchedNonterminal(_) => {
                 if declared_lhs_depth == 0 {
-                    return Err(cx.struct_span_err(
-                        sp.entire(),
-                        "`count` can not be placed inside the inner-most repetition",
-                    ));
+                    return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
                 }
                 match depth_opt {
                     None => Ok(1),
@@ -499,12 +490,7 @@ where
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| {
-        cx.struct_span_err(
-            span,
-            &format!("variable `{}` is not recognized in meta-variable expression", key),
-        )
-    })
+    interp.get(&key).ok_or_else(|| cx.create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For

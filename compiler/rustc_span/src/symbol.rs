@@ -157,6 +157,7 @@ symbols! {
         BTreeSet,
         BinaryHeap,
         Borrow,
+        BorrowMut,
         Break,
         C,
         CStr,
@@ -222,6 +223,7 @@ symbols! {
         LinkedList,
         LintPass,
         Mutex,
+        MutexGuard,
         N,
         NonZeroI128,
         NonZeroI16,
@@ -270,6 +272,8 @@ symbols! {
         Rust,
         RustcDecodable,
         RustcEncodable,
+        RwLockReadGuard,
+        RwLockWriteGuard,
         Send,
         SeqCst,
         SessionDiagnostic,
@@ -280,6 +284,7 @@ symbols! {
         StructuralPartialEq,
         SubdiagnosticMessage,
         Sync,
+        T,
         Target,
         ToOwned,
         ToString,
@@ -334,6 +339,7 @@ symbols! {
         alias,
         align,
         align_offset,
+        alignment,
         alignstack,
         all,
         alloc,
@@ -504,7 +510,6 @@ symbols! {
         const_deallocate,
         const_eval_limit,
         const_eval_select,
-        const_eval_select_ct,
         const_evaluatable_checked,
         const_extern_fn,
         const_fn,
@@ -656,7 +661,6 @@ symbols! {
         emit_struct,
         emit_struct_field,
         enable,
-        enclosing_scope,
         encode,
         end,
         env,
@@ -802,6 +806,7 @@ symbols! {
         impl_trait_in_bindings,
         implied_by,
         import,
+        import_name_type,
         import_shadowing,
         imported_main,
         in_band_lifetimes,
@@ -817,6 +822,7 @@ symbols! {
         infer_outlives_requirements,
         infer_static_outlives_requirements,
         inherent_associated_types,
+        inherit,
         inlateout,
         inline,
         inline_const,
@@ -859,6 +865,7 @@ symbols! {
         lib,
         libc,
         lifetime,
+        lifetimes,
         likely,
         line,
         line_macro,
@@ -1056,6 +1063,7 @@ symbols! {
         panic_unwind,
         panicking,
         param_attrs,
+        parent_label,
         partial_cmp,
         partial_ord,
         passes,
@@ -1112,12 +1120,14 @@ symbols! {
         ptr,
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,
+        ptr_mask,
         ptr_null,
         ptr_null_mut,
         ptr_offset_from,
         ptr_offset_from_unsigned,
         pub_macro_rules,
         pub_restricted,
+        public,
         pure,
         pushpop_unsafe,
         qreg,
@@ -1170,6 +1180,7 @@ symbols! {
         repr_packed,
         repr_simd,
         repr_transparent,
+        require,
         residual,
         result,
         rhs,
@@ -1200,6 +1211,7 @@ symbols! {
         rust_eh_unregister_frames,
         rust_oom,
         rustc,
+        rustc_access_level,
         rustc_allocator,
         rustc_allocator_nounwind,
         rustc_allocator_zeroed,
@@ -1217,6 +1229,7 @@ symbols! {
         rustc_conversion_suggestion,
         rustc_deallocator,
         rustc_def_path,
+        rustc_default_body_unstable,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
@@ -1282,6 +1295,7 @@ symbols! {
         rustfmt,
         rvalue_static_promotion,
         s,
+        safety,
         sanitize,
         sanitizer_runtime,
         saturating_add,
@@ -1295,6 +1309,8 @@ symbols! {
         should_panic,
         shr,
         shr_assign,
+        sig_dfl,
+        sig_ign,
         simd,
         simd_add,
         simd_and,
@@ -1464,6 +1480,8 @@ symbols! {
         trait_alias,
         trait_upcasting,
         transmute,
+        transmute_opts,
+        transmute_trait,
         transparent,
         transparent_enums,
         transparent_unions,
@@ -1512,6 +1530,7 @@ symbols! {
         unit,
         universal_impl_trait,
         unix,
+        unix_sigpipe,
         unlikely,
         unmarked_api,
         unpin,
@@ -1557,6 +1576,7 @@ symbols! {
         va_list,
         va_start,
         val,
+        validity,
         values,
         var,
         variant_count,
@@ -1800,6 +1820,11 @@ impl Symbol {
         Symbol(SymbolIndex::from_u32(n))
     }
 
+    /// for use in Decoder only
+    pub fn new_from_decoded(n: u32) -> Self {
+        Self::new(n)
+    }
+
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
@@ -1849,14 +1874,14 @@ impl fmt::Display for Symbol {
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
-    fn encode(&self, s: &mut S) {
+    default fn encode(&self, s: &mut S) {
         s.emit_str(self.as_str());
     }
 }
 
 impl<D: Decoder> Decodable<D> for Symbol {
     #[inline]
-    fn decode(d: &mut D) -> Symbol {
+    default fn decode(d: &mut D) -> Symbol {
         Symbol::intern(&d.read_str())
     }
 }
@@ -2023,6 +2048,11 @@ impl Symbol {
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
+    }
+
+    /// Is this symbol was interned in compiler's `symbols!` macro
+    pub fn is_preinterned(self) -> bool {
+        self.as_u32() < PREINTERNED_SYMBOLS_COUNT
     }
 }
 

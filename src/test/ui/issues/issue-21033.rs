@@ -4,7 +4,6 @@
 // pretty-expanded FIXME #23616
 
 #![feature(box_patterns)]
-#![feature(box_syntax)]
 
 enum E {
     StructVar { boxed: Box<i32> }
@@ -13,7 +12,7 @@ enum E {
 fn main() {
 
     // Test matching each shorthand notation for field patterns.
-    let mut a = E::StructVar { boxed: box 3 };
+    let mut a = E::StructVar { boxed: Box::new(3) };
     match a {
         E::StructVar { box boxed } => { }
     }
@@ -38,7 +37,7 @@ fn main() {
 
     // Test matching non shorthand notation. Recreate a since last test
     // moved `boxed`
-    let mut a = E::StructVar { boxed: box 3 };
+    let mut a = E::StructVar { boxed: Box::new(3) };
     match a {
         E::StructVar { boxed: box ref mut num } => { }
     }

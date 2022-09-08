@@ -124,13 +124,24 @@ impl RawAttrs {
 
     pub(crate) fn merge(&self, other: Self) -> Self {
         // FIXME: This needs to fixup `AttrId`s
-        match (&self.entries, &other.entries) {
+        match (&self.entries, other.entries) {
             (None, None) => Self::EMPTY,
-            (Some(entries), None) | (None, Some(entries)) => {
-                Self { entries: Some(entries.clone()) }
-            }
+            (None, entries @ Some(_)) => Self { entries },
+            (Some(entries), None) => Self { entries: Some(entries.clone()) },
             (Some(a), Some(b)) => {
-                Self { entries: Some(a.iter().chain(b.iter()).cloned().collect()) }
+                let last_ast_index = a.last().map_or(0, |it| it.id.ast_index + 1);
+                Self {
+                    entries: Some(
+                        a.iter()
+                            .cloned()
+                            .chain(b.iter().map(|it| {
+                                let mut it = it.clone();
+                                it.id.ast_index += last_ast_index;
+                                it
+                            }))
+                            .collect(),
+                    ),
+                }
             }
         }
     }

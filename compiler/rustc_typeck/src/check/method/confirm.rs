@@ -238,7 +238,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> SubstsRef<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
-                let impl_def_id = pick.item.container.id();
+                let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
                     self.tcx.impl_trait_ref(impl_def_id).is_none(),
                     "impl {:?} is not an inherent impl",
@@ -248,7 +248,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             probe::ObjectPick => {
-                let trait_def_id = pick.item.container.id();
+                let trait_def_id = pick.item.container_id(self.tcx);
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
@@ -273,7 +273,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
 
             probe::TraitPick => {
-                let trait_def_id = pick.item.container.id();
+                let trait_def_id = pick.item.container_id(self.tcx);
 
                 // Make a trait reference `$0 : Trait<$1...$n>`
                 // consisting entirely of type variables. Later on in
@@ -491,7 +491,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // so we just call `predicates_for_generics` directly to avoid redoing work.
         // `self.add_required_obligations(self.span, def_id, &all_substs);`
         for obligation in traits::predicates_for_generics(
-            traits::ObligationCause::new(self.span, self.body_id, traits::ItemObligation(def_id)),
+            |idx, span| {
+                let code = if span.is_dummy() {
+                    ObligationCauseCode::ExprItemObligation(def_id, self.call_expr.hir_id, idx)
+                } else {
+                    ObligationCauseCode::ExprBindingObligation(
+                        def_id,
+                        span,
+                        self.call_expr.hir_id,
+                        idx,
+                    )
+                };
+                traits::ObligationCause::new(self.span, self.body_id, code)
+            },
             self.param_env,
             method_predicates,
         ) {
@@ -540,15 +552,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
-        match pick.item.container {
-            ty::TraitContainer(trait_def_id) => callee::check_legal_trait_for_method_call(
+        if let Some(trait_def_id) = pick.item.trait_container(self.tcx) {
+            callee::check_legal_trait_for_method_call(
                 self.tcx,
                 self.span,
                 Some(self.self_expr.span),
                 self.call_expr.span,
                 trait_def_id,
-            ),
-            ty::ImplContainer(..) => {}
+            )
         }
     }
 

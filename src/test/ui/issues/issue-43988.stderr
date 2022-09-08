@@ -31,12 +31,16 @@ error[E0552]: unrecognized representation hint
    |
 LL |     #[repr(nothing)]
    |            ^^^^^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
 error[E0552]: unrecognized representation hint
   --> $DIR/issue-43988.rs:18:12
    |
 LL |     #[repr(something_not_real)]
    |            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:30:5

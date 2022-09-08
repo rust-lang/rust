@@ -12,7 +12,7 @@ use trait_superkinds_in_metadata::RequiresCopy;
 use std::marker;
 
 #[derive(Copy, Clone)]
-struct X<T>(T);
+struct X<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl<T:Sync> RequiresShare for X<T> { }
 

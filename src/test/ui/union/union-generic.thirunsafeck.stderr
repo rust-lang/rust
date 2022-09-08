@@ -11,10 +11,10 @@ LL | union U<T: Copy> {
    |            ^^^^ required by this bound in `U`
 
 error[E0277]: the trait bound `Rc<u32>: Copy` is not satisfied
-  --> $DIR/union-generic.rs:13:13
+  --> $DIR/union-generic.rs:13:17
    |
 LL |     let u = U::<Rc<u32>> { a: Default::default() };
-   |             ^^^^^^^^^^^^ the trait `Copy` is not implemented for `Rc<u32>`
+   |                 ^^^^^^^ the trait `Copy` is not implemented for `Rc<u32>`
    |
 note: required by a bound in `U`
   --> $DIR/union-generic.rs:6:12

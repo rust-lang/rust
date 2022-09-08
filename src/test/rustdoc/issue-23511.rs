@@ -6,7 +6,7 @@ pub mod str {
     #![doc(primitive = "str")]
 
     impl str {
-        // @has search-index.js foo
+        // @hasraw search-index.js foo
         #[rustc_allow_incoherent_impl]
         pub fn foo(&self) {}
     }

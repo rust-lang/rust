@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `isize: HasState` is not satisfied
-  --> $DIR/issue-18611.rs:1:18
+  --> $DIR/issue-18611.rs:1:1
    |
-LL | fn add_state(op: <isize as HasState>::State) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasState` is not implemented for `isize`
+LL | / fn add_state(op: <isize as HasState>::State) {
+LL | |
+LL | | }
+   | |_^ the trait `HasState` is not implemented for `isize`
 
 error: aborting due to previous error
 

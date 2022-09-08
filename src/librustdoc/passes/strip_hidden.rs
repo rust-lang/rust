@@ -17,6 +17,7 @@ pub(crate) const STRIP_HIDDEN: Pass = Pass {
 /// Strip items marked `#[doc(hidden)]`
 pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let mut retained = ItemIdSet::default();
+    let is_json_output = cx.output_format.is_json() && !cx.show_coverage;
 
     // strip all #[doc(hidden)] items
     let krate = {
@@ -25,7 +26,12 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     };
 
     // strip all impls referencing stripped items
-    let mut stripper = ImplStripper { retained: &retained, cache: &cx.cache };
+    let mut stripper = ImplStripper {
+        retained: &retained,
+        cache: &cx.cache,
+        is_json_output,
+        document_private: cx.render_options.document_private,
+    };
     stripper.fold_crate(krate)
 }
 

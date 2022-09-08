@@ -30,7 +30,8 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
@@ -71,6 +72,18 @@ pub enum TypeError<'tcx> {
     IntrinsicCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
     TargetFeatureCast(DefId),
+}
+
+impl TypeError<'_> {
+    pub fn involves_regions(self) -> bool {
+        match self {
+            TypeError::RegionsDoesNotOutlive(_, _)
+            | TypeError::RegionsInsufficientlyPolymorphic(_, _)
+            | TypeError::RegionsOverlyPolymorphic(_, _)
+            | TypeError::RegionsPlaceholderMismatch => true,
+            _ => false,
+        }
+    }
 }
 
 /// Explains the source of a type err in a short, human readable way. This is meant to be placed
@@ -211,7 +224,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'tcx> TypeError<'tcx> {
-    pub fn must_include_note(&self) -> bool {
+    pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
@@ -263,10 +276,23 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
-            ty::RawPtr(_) => "*-ptr".into(),
+            ty::RawPtr(tymut) => {
+                let tymut_string = match tymut.mutbl {
+                    hir::Mutability::Mut => tymut.to_string(),
+                    hir::Mutability::Not => format!("const {}", tymut.ty),
+                };
+
+                if tymut_string != "_" && (tymut.ty.is_simple_text() || tymut_string.len() < "const raw pointer".len()) {
+                    format!("`*{}`", tymut_string).into()
+                } else {
+                    // Unknown type name, it's long or has type arguments
+                    "raw pointer".into()
+                }
+            },
             ty::Ref(_, ty, mutbl) => {
                 let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
+
                 if tymut_string != "_"
                     && (ty.is_simple_text() || tymut_string.len() < "mutable reference".len())
                 {
@@ -347,7 +373,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(
         self,
         diag: &mut Diagnostic,
-        err: &TypeError<'tcx>,
+        err: TypeError<'tcx>,
         cause: &ObligationCause<'tcx>,
         sp: Span,
         body_owner_def_id: DefId,
@@ -568,7 +594,7 @@ impl<T> Trait<T> for X {
             }
             TargetFeatureCast(def_id) => {
                 let target_spans =
-                    self.get_attrs(*def_id, sym::target_feature).map(|attr| attr.span);
+                    self.get_attrs(def_id, sym::target_feature).map(|attr| attr.span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
@@ -640,7 +666,7 @@ impl<T> Trait<T> for X {
         self,
         diag: &mut Diagnostic,
         proj_ty: &ty::ProjectionTy<'tcx>,
-        values: &ExpectedFound<Ty<'tcx>>,
+        values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
         cause_code: &ObligationCauseCode<'_>,
     ) {
@@ -673,7 +699,7 @@ impl<T> Trait<T> for X {
             // the associated type or calling a method that returns the associated type".
             let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
                 diag,
-                assoc.container.id(),
+                assoc.container_id(self),
                 current_method_ident,
                 proj_ty.item_def_id,
                 values.expected,
@@ -844,7 +870,8 @@ fn foo(&self) -> Self::T { String::new() }
                         hir::AssocItemKind::Type => {
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } = item.defaultness
+                            if let hir::Defaultness::Default { has_value: true } =
+                                self.impl_defaultness(item.id.def_id)
                             {
                                 if self.type_of(item.id.def_id) == found {
                                     diag.span_label(

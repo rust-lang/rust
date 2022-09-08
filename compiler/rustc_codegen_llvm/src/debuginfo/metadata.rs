@@ -42,7 +42,6 @@ use rustc_span::{self, FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;
-use tracing::debug;
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;
@@ -51,7 +50,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::ptr;
-use tracing::instrument;
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -114,6 +112,7 @@ macro_rules! return_if_di_node_created_in_meantime {
 }
 
 /// Extract size and alignment from a TyAndLayout.
+#[inline]
 fn size_and_align_of<'tcx>(ty_and_layout: TyAndLayout<'tcx>) -> (Size, Align) {
     (ty_and_layout.size, ty_and_layout.align.abi)
 }
@@ -1499,24 +1498,18 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
         // If there is not LTO and the visibility in public, we have to assume that the vtable can
         // be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
         (Lto::No | Lto::ThinLocal, Visibility::Public, _)
-        | (Lto::No, Visibility::Restricted(_) | Visibility::Invisible, false) => {
-            VCallVisibility::Public
-        }
+        | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
         // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
         // all known by the `LinkageUnit`.
         // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
         // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
         (Lto::Fat | Lto::Thin, Visibility::Public, _)
-        | (
-            Lto::ThinLocal | Lto::Thin | Lto::Fat,
-            Visibility::Restricted(_) | Visibility::Invisible,
-            false,
-        ) => VCallVisibility::LinkageUnit,
+        | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
+            VCallVisibility::LinkageUnit
+        }
         // If there is only one CGU, private vtables can only be seen by that CGU/translation unit
         // and therefore we know of all usages of functions in the vtable.
-        (_, Visibility::Restricted(_) | Visibility::Invisible, true) => {
-            VCallVisibility::TranslationUnit
-        }
+        (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);

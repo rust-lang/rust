@@ -81,10 +81,29 @@ impl NativeLib {
     }
 }
 
+/// Different ways that the PE Format can decorate a symbol name.
+/// From <https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-name-type>
+#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq, Eq)]
+pub enum PeImportNameType {
+    /// IMPORT_ORDINAL
+    /// Uses the ordinal (i.e., a number) rather than the name.
+    Ordinal(u16),
+    /// Same as IMPORT_NAME
+    /// Name is decorated with all prefixes and suffixes.
+    Decorated,
+    /// Same as IMPORT_NAME_NOPREFIX
+    /// Prefix (e.g., the leading `_` or `@`) is skipped, but suffix is kept.
+    NoPrefix,
+    /// Same as IMPORT_NAME_UNDECORATE
+    /// Prefix (e.g., the leading `_` or `@`) and suffix (the first `@` and all
+    /// trailing characters) are skipped.
+    Undecorated,
+}
+
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct DllImport {
     pub name: Symbol,
-    pub ordinal: Option<u16>,
+    pub import_name_type: Option<PeImportNameType>,
     /// Calling convention for the function.
     ///
     /// On x86_64, this is always `DllCallingConvention::C`; on i686, it can be any
@@ -92,6 +111,18 @@ pub struct DllImport {
     pub calling_convention: DllCallingConvention,
     /// Span of import's "extern" declaration; used for diagnostics.
     pub span: Span,
+    /// Is this for a function (rather than a static variable).
+    pub is_fn: bool,
+}
+
+impl DllImport {
+    pub fn ordinal(&self) -> Option<u16> {
+        if let Some(PeImportNameType::Ordinal(ordinal)) = self.import_name_type {
+            Some(ordinal)
+        } else {
+            None
+        }
+    }
 }
 
 /// Calling convention for a function defined in an external library.

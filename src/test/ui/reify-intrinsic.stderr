@@ -23,6 +23,9 @@ LL |         std::intrinsics::unlikely,
    |
    = note: expected fn item `extern "rust-intrinsic" fn(_) -> _ {likely}`
               found fn item `extern "rust-intrinsic" fn(_) -> _ {unlikely}`
+   = note: different `fn` items always have unique types, even if their signatures are the same
+   = help: change the expected type to be function pointer `extern "rust-intrinsic" fn(bool) -> bool`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `likely as extern "rust-intrinsic" fn(bool) -> bool`
 
 error: aborting due to 3 previous errors
 

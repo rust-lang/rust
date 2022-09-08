@@ -196,10 +196,7 @@ impl GlobalState {
         }
 
         if let Err(error) = self.fetch_build_data_error() {
-            self.show_and_log_error(
-                "rust-analyzer failed to run build scripts".to_string(),
-                Some(error),
-            );
+            self.show_and_log_error("failed to run build scripts".to_string(), Some(error));
         }
 
         let workspaces = self
@@ -222,6 +219,7 @@ impl GlobalState {
                     cfg_overrides,
 
                     build_scripts: _,
+                    toolchain: _,
                 } => Some((cargo, sysroot, rustc, rustc_cfg, cfg_overrides)),
                 _ => None,
             };
@@ -303,8 +301,12 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
+        let standalone_server_name =
+            format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
+
         if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
+                tracing::info!("Spawning proc-macro servers");
                 self.proc_macro_clients = self
                     .workspaces
                     .iter()
@@ -313,22 +315,20 @@ impl GlobalState {
                         let mut path = path.clone();
 
                         if let ProjectWorkspace::Cargo { sysroot, .. } = ws {
-                            tracing::info!("Found a cargo workspace...");
+                            tracing::debug!("Found a cargo workspace...");
                             if let Some(sysroot) = sysroot.as_ref() {
-                                tracing::info!("Found a cargo workspace with a sysroot...");
-                                let server_path = sysroot
-                                    .root()
-                                    .join("libexec")
-                                    .join("rust-analyzer-proc-macro-srv");
+                                tracing::debug!("Found a cargo workspace with a sysroot...");
+                                let server_path =
+                                    sysroot.root().join("libexec").join(&standalone_server_name);
                                 if std::fs::metadata(&server_path).is_ok() {
-                                    tracing::info!(
+                                    tracing::debug!(
                                         "And the server exists at {}",
                                         server_path.display()
                                     );
                                     path = server_path;
                                     args = vec![];
                                 } else {
-                                    tracing::info!(
+                                    tracing::debug!(
                                         "And the server does not exist at {}",
                                         server_path.display()
                                     );
@@ -336,14 +336,10 @@ impl GlobalState {
                             }
                         }
 
-                        tracing::info!(
-                            "Using proc-macro server at {} with args {:?}",
-                            path.display(),
-                            args
-                        );
+                        tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
                         ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
                             let error = format!(
-                                "Failed to run proc_macro_srv from path {}, error: {:?}",
+                                "Failed to run proc-macro server from path {}, error: {:?}",
                                 path.display(),
                                 err
                             );
@@ -351,8 +347,8 @@ impl GlobalState {
                             error
                         })
                     })
-                    .collect();
-            }
+                    .collect()
+            };
         }
 
         let watch = match files_config.watcher {
@@ -389,7 +385,10 @@ impl GlobalState {
 
             let mut crate_graph = CrateGraph::default();
             for (idx, ws) in self.workspaces.iter().enumerate() {
-                let proc_macro_client = self.proc_macro_clients[idx].as_ref();
+                let proc_macro_client = match self.proc_macro_clients.get(idx) {
+                    Some(res) => res.as_ref().map_err(|e| &**e),
+                    None => Err("Proc macros are disabled"),
+                };
                 let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
                     load_proc_macro(
                         proc_macro_client,
@@ -454,7 +453,7 @@ impl GlobalState {
             Some(it) => it,
             None => {
                 self.flycheck = Vec::new();
-                self.diagnostics.clear_check();
+                self.diagnostics.clear_check_all();
                 return;
             }
         };
@@ -573,7 +572,7 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    server: Result<&ProcMacroServer, &String>,
+    server: Result<&ProcMacroServer, &str>,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
@@ -617,7 +616,10 @@ pub(crate) fn load_proc_macro(
         };
         let expander: Arc<dyn ProcMacroExpander> =
             if dummy_replace.iter().any(|replace| &**replace == name) {
-                Arc::new(DummyExpander)
+                match kind {
+                    ProcMacroKind::Attr => Arc::new(IdentityExpander),
+                    _ => Arc::new(EmptyExpander),
+                }
             } else {
                 Arc::new(Expander(expander))
             };
@@ -643,11 +645,11 @@ pub(crate) fn load_proc_macro(
         }
     }
 
-    /// Dummy identity expander, used for proc-macros that are deliberately ignored by the user.
+    /// Dummy identity expander, used for attribute proc-macros that are deliberately ignored by the user.
     #[derive(Debug)]
-    struct DummyExpander;
+    struct IdentityExpander;
 
-    impl ProcMacroExpander for DummyExpander {
+    impl ProcMacroExpander for IdentityExpander {
         fn expand(
             &self,
             subtree: &tt::Subtree,
@@ -657,27 +659,46 @@ pub(crate) fn load_proc_macro(
             Ok(subtree.clone())
         }
     }
+
+    /// Empty expander, used for proc-macros that are deliberately ignored by the user.
+    #[derive(Debug)]
+    struct EmptyExpander;
+
+    impl ProcMacroExpander for EmptyExpander {
+        fn expand(
+            &self,
+            _: &tt::Subtree,
+            _: Option<&tt::Subtree>,
+            _: &Env,
+        ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+            Ok(tt::Subtree::default())
+        }
+    }
 }
 
 pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind) -> bool {
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
-    let file_name = path.file_name().unwrap_or_default();
 
-    if file_name == "Cargo.toml" || file_name == "Cargo.lock" {
+    let file_name = match path.file_name().unwrap_or_default().to_str() {
+        Some(it) => it,
+        None => return false,
+    };
+
+    if let "Cargo.toml" | "Cargo.lock" = file_name {
         return true;
     }
     if change_kind == ChangeKind::Modify {
         return false;
     }
+
+    // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
-        if (file_name == "config.toml" || file_name == "config")
-            && path.parent().map(|parent| parent.as_ref().ends_with(".cargo")) == Some(true)
-        {
-            return true;
-        }
-        return false;
+        let is_cargo_config = matches!(file_name, "config.toml" | "config")
+            && path.parent().map(|parent| parent.as_ref().ends_with(".cargo")).unwrap_or(false);
+        return is_cargo_config;
     }
+
     if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_ref().ends_with(it)) {
         return true;
     }

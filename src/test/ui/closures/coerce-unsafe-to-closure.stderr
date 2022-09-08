@@ -6,7 +6,7 @@ LL |     let x: Option<&[u8]> = Some("foo").map(std::mem::transmute);
    |                                        |
    |                                        required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<(&str,)>` is not implemented for `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+   = help: the trait `FnOnce<(&str,)>` is not implemented for fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL

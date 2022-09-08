@@ -169,14 +169,10 @@ impl<'tcx> FieldDef {
         param_env: ty::ParamEnv<'tcx>,
     ) -> DefIdForest<'tcx> {
         let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx, param_env);
-        // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
-        // `Visibility::Invisible` so we need to override `self.vis` if we're
-        // dealing with an enum.
         if is_enum {
             data_uninhabitedness()
         } else {
             match self.vis {
-                Visibility::Invisible => DefIdForest::empty(),
                 Visibility::Restricted(from) => {
                     let forest = DefIdForest::from_id(from);
                     let iter = Some(forest).into_iter().chain(Some(data_uninhabitedness()));

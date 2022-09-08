@@ -17,7 +17,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     ///
     /// This is implemented by first entering a new universe.
     /// We then replace all bound variables in `sup` with placeholders,
-    /// and all bound variables in `sup` with inference vars.
+    /// and all bound variables in `sub` with inference vars.
     /// We can then just relate the two resulting types as normal.
     ///
     /// Note: this is a subtle algorithm. For a full explanation, please see
@@ -69,7 +69,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// For more details visit the relevant sections of the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
@@ -97,16 +97,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.tcx.mk_const(ty::ConstS {
                     kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: next_universe,
-                        name: ty::BoundConst { var: bound_var, ty },
+                        name: bound_var,
                     }),
                     ty,
                 })
             },
         };
 
-        let result = self.tcx.replace_bound_vars_uncached(binder, delegate);
-        debug!(?next_universe, ?result);
-        result
+        debug!(?next_universe);
+        self.tcx.replace_bound_vars_uncached(binder, delegate)
     }
 
     /// See [RegionConstraintCollector::leak_check][1].

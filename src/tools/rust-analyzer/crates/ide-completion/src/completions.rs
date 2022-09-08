@@ -400,7 +400,7 @@ impl Completions {
     ) {
         if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
             cov_mark::hit!(enum_variant_pattern_path);
-            self.add_variant_pat(ctx, pat_ctx, variant, local_name);
+            self.add_variant_pat(ctx, pat_ctx, Some(path_ctx), variant, local_name);
             return;
         }
 
@@ -484,12 +484,14 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
+        path_ctx: Option<&PathCompletionCtx>,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
+            path_ctx,
             variant,
             local_name.clone(),
             None,
@@ -504,7 +506,14 @@ impl Completions {
         path: hir::ModPath,
     ) {
         let path = Some(&path);
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), pattern_ctx, variant, None, path));
+        self.add_opt(render_variant_pat(
+            RenderContext::new(ctx),
+            pattern_ctx,
+            None,
+            variant,
+            None,
+            path,
+        ));
     }
 
     pub(crate) fn add_struct_pat(
@@ -608,7 +617,6 @@ pub(super) fn complete_name_ref(
 
                     dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
                     item_list::complete_item_list_in_expr(acc, ctx, path_ctx, expr_ctx);
-                    record::complete_record_expr_func_update(acc, ctx, path_ctx, expr_ctx);
                     snippet::complete_expr_snippet(acc, ctx, path_ctx, expr_ctx);
                 }
                 PathKind::Type { location } => {

@@ -674,7 +674,60 @@ fn bar() -> Bar {
         expect![[r#"
                 fn foo() (as Foo) fn() -> Self
             "#]],
-    )
+    );
+}
+
+#[test]
+fn type_anchor_type() {
+    check(
+        r#"
+trait Foo {
+    fn foo() -> Self;
+}
+struct Bar;
+impl Bar {
+    fn bar() {}
+}
+impl Foo for Bar {
+    fn foo() -> {
+        Bar
+    }
+}
+fn bar() -> Bar {
+    <Bar>::$0
+}
+"#,
+        expect![[r#"
+            fn bar()          fn()
+            fn foo() (as Foo) fn() -> Self
+        "#]],
+    );
+}
+
+#[test]
+fn type_anchor_type_trait() {
+    check(
+        r#"
+trait Foo {
+    fn foo() -> Self;
+}
+struct Bar;
+impl Bar {
+    fn bar() {}
+}
+impl Foo for Bar {
+    fn foo() -> {
+        Bar
+    }
+}
+fn bar() -> Bar {
+    <Bar as Foo>::$0
+}
+"#,
+        expect![[r#"
+            fn foo() (as Foo) fn() -> Self
+        "#]],
+    );
 }
 
 #[test]

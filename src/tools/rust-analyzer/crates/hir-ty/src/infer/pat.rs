@@ -14,8 +14,9 @@ use crate::{
     consteval::intern_const_scalar,
     infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
     lower::lower_to_chalk_mutability,
-    static_lifetime, ConcreteConst, ConstValue, Interner, Substitution, Ty, TyBuilder, TyExt,
-    TyKind,
+    primitive::UintTy,
+    static_lifetime, ConcreteConst, ConstValue, Interner, Scalar, Substitution, Ty, TyBuilder,
+    TyExt, TyKind,
 };
 
 use super::PatLike;
@@ -294,7 +295,29 @@ impl<'a> InferenceContext<'a> {
                 let start_ty = self.infer_expr(*start, &Expectation::has_type(expected.clone()));
                 self.infer_expr(*end, &Expectation::has_type(start_ty))
             }
-            Pat::Lit(expr) => self.infer_expr(*expr, &Expectation::has_type(expected.clone())),
+            &Pat::Lit(expr) => {
+                // FIXME: using `Option` here is a workaround until we can use if-let chains in stable.
+                let mut pat_ty = None;
+
+                // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
+                if let Expr::Literal(Literal::ByteString(_)) = self.body[expr] {
+                    if let Some((inner, ..)) = expected.as_reference() {
+                        let inner = self.resolve_ty_shallow(inner);
+                        if matches!(inner.kind(Interner), TyKind::Slice(_)) {
+                            let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
+                            let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
+                            let ty = TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty)
+                                .intern(Interner);
+                            self.write_expr_ty(expr, ty.clone());
+                            pat_ty = Some(ty);
+                        }
+                    }
+                }
+
+                pat_ty.unwrap_or_else(|| {
+                    self.infer_expr(expr, &Expectation::has_type(expected.clone()))
+                })
+            }
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
                     let (inner_ty, alloc_ty) = match expected.as_adt() {
@@ -343,7 +366,9 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
         Pat::Path(..) => true,
         Pat::ConstBlock(..) => true,
-        Pat::Lit(expr) => !matches!(body[*expr], Expr::Literal(Literal::String(..))),
+        Pat::Lit(expr) => {
+            !matches!(body[*expr], Expr::Literal(Literal::String(..) | Literal::ByteString(..)))
+        }
         Pat::Bind {
             mode: BindingAnnotation::Mutable | BindingAnnotation::Unannotated,
             subpat: Some(subpat),

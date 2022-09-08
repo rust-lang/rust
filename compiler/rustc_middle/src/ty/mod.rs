@@ -15,6 +15,7 @@ pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
+use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::AccessLevels;
 use crate::mir::{Body, GeneratorLayout};
@@ -40,6 +41,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
+use rustc_serialize::{Decodable, Encodable};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
@@ -48,7 +50,10 @@ pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::mem;
+use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
 use std::{fmt, str};
 
@@ -124,6 +129,7 @@ mod erase_regions;
 mod generics;
 mod impls_ty;
 mod instance;
+mod layout_sanity_check;
 mod list;
 mod parameterized;
 mod rvalue_scopes;
@@ -257,13 +263,11 @@ impl fmt::Display for ImplPolarity {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
-pub enum Visibility {
+pub enum Visibility<Id = LocalDefId> {
     /// Visible everywhere (including in other crates).
     Public,
     /// Visible only in the given crate-local module.
-    Restricted(DefId),
-    /// Not visible anywhere in the local crate. This is the visibility of private external items.
-    Invisible,
+    Restricted(Id),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
@@ -354,31 +358,45 @@ impl<'tcx> DefIdTree for TyCtxt<'tcx> {
     }
 }
 
-impl Visibility {
-    /// Returns `true` if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
-        let restriction = match self {
-            // Public items are visible everywhere.
-            Visibility::Public => return true,
-            // Private items from other crates are visible nowhere.
-            Visibility::Invisible => return false,
-            // Restricted items are visible in an arbitrary local module.
-            Visibility::Restricted(other) if other.krate != module.krate => return false,
-            Visibility::Restricted(module) => module,
-        };
+impl<Id> Visibility<Id> {
+    pub fn is_public(self) -> bool {
+        matches!(self, Visibility::Public)
+    }
 
-        tree.is_descendant_of(module, restriction)
+    pub fn map_id<OutId>(self, f: impl FnOnce(Id) -> OutId) -> Visibility<OutId> {
+        match self {
+            Visibility::Public => Visibility::Public,
+            Visibility::Restricted(id) => Visibility::Restricted(f(id)),
+        }
+    }
+}
+
+impl<Id: Into<DefId>> Visibility<Id> {
+    pub fn to_def_id(self) -> Visibility<DefId> {
+        self.map_id(Into::into)
+    }
+
+    /// Returns `true` if an item with this visibility is accessible from the given module.
+    pub fn is_accessible_from(self, module: impl Into<DefId>, tree: impl DefIdTree) -> bool {
+        match self {
+            // Public items are visible everywhere.
+            Visibility::Public => true,
+            Visibility::Restricted(id) => tree.is_descendant_of(module.into(), id.into()),
+        }
     }
 
     /// Returns `true` if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
-        let vis_restriction = match vis {
-            Visibility::Public => return self == Visibility::Public,
-            Visibility::Invisible => return true,
-            Visibility::Restricted(module) => module,
-        };
+    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tree: impl DefIdTree) -> bool {
+        match vis {
+            Visibility::Public => self.is_public(),
+            Visibility::Restricted(id) => self.is_accessible_from(id, tree),
+        }
+    }
+}
 
-        self.is_accessible_from(vis_restriction, tree)
+impl Visibility<DefId> {
+    pub fn expect_local(self) -> Visibility {
+        self.map_id(|id| id.expect_local())
     }
 
     // Returns `true` if this item is visible anywhere in the local crate.
@@ -386,12 +404,7 @@ impl Visibility {
         match self {
             Visibility::Public => true,
             Visibility::Restricted(def_id) => def_id.is_local(),
-            Visibility::Invisible => false,
         }
-    }
-
-    pub fn is_public(self) -> bool {
-        matches!(self, Visibility::Public)
     }
 }
 
@@ -463,15 +476,6 @@ pub(crate) struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-// `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
-
-// We are actually storing a stable hash cache next to the type, so let's
-// also check the full size
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(WithStableHash<TyS<'_>>, 56);
-
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
@@ -528,10 +532,6 @@ pub(crate) struct PredicateS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateS<'_>, 56);
-
 /// Use this rather than `PredicateS`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
@@ -587,6 +587,29 @@ impl<'tcx> Predicate<'tcx> {
             })));
         }
         self
+    }
+
+    /// Whether this projection can be soundly normalized.
+    ///
+    /// Wf predicates must not be normalized, as normalization
+    /// can remove required bounds which would cause us to
+    /// unsoundly accept some programs. See #91068.
+    #[inline]
+    pub fn allow_normalization(self) -> bool {
+        match self.kind().skip_binder() {
+            PredicateKind::WellFormed(_) => false,
+            PredicateKind::Trait(_)
+            | PredicateKind::RegionOutlives(_)
+            | PredicateKind::TypeOutlives(_)
+            | PredicateKind::Projection(_)
+            | PredicateKind::ObjectSafe(_)
+            | PredicateKind::ClosureKind(_, _, _)
+            | PredicateKind::Subtype(_)
+            | PredicateKind::Coerce(_)
+            | PredicateKind::ConstEvaluatable(_)
+            | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::TypeWellFormedFromEnv(_) => true,
+        }
     }
 }
 
@@ -892,39 +915,119 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
-pub enum Term<'tcx> {
-    Ty(Ty<'tcx>),
-    Const(Const<'tcx>),
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Term<'tcx> {
+    ptr: NonZeroUsize,
+    marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
 
 impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
     fn from(ty: Ty<'tcx>) -> Self {
-        Term::Ty(ty)
+        TermKind::Ty(ty).pack()
     }
 }
 
 impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
     fn from(c: Const<'tcx>) -> Self {
-        Term::Const(c)
+        TermKind::Const(c).pack()
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.unpack().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(self.unpack().try_fold_with(folder)?.pack())
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for Term<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.unpack().visit_with(visitor)
+    }
+}
+
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Term<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.unpack().encode(e)
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let res: TermKind<'tcx> = Decodable::decode(d);
+        res.pack()
     }
 }
 
 impl<'tcx> Term<'tcx> {
+    #[inline]
+    pub fn unpack(self) -> TermKind<'tcx> {
+        let ptr = self.ptr.get();
+        // SAFETY: use of `Interned::new_unchecked` here is ok because these
+        // pointers were originally created from `Interned` types in `pack()`,
+        // and this is just going in the other direction.
+        unsafe {
+            match ptr & TAG_MASK {
+                TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
+                ))),
+                CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                ))),
+                _ => core::intrinsics::unreachable(),
+            }
+        }
+    }
+
     pub fn ty(&self) -> Option<Ty<'tcx>> {
-        if let Term::Ty(ty) = self { Some(*ty) } else { None }
+        if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
     }
 
     pub fn ct(&self) -> Option<Const<'tcx>> {
-        if let Term::Const(c) = self { Some(*c) } else { None }
+        if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
-        match self {
-            Term::Ty(ty) => ty.into(),
-            Term::Const(c) => c.into(),
+        match self.unpack() {
+            TermKind::Ty(ty) => ty.into(),
+            TermKind::Const(c) => c.into(),
         }
+    }
+}
+
+const TAG_MASK: usize = 0b11;
+const TYPE_TAG: usize = 0b00;
+const CONST_TAG: usize = 0b01;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
+pub enum TermKind<'tcx> {
+    Ty(Ty<'tcx>),
+    Const(Const<'tcx>),
+}
+
+impl<'tcx> TermKind<'tcx> {
+    #[inline]
+    fn pack(self) -> Term<'tcx> {
+        let (tag, ptr) = match self {
+            TermKind::Ty(ty) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
+            }
+            TermKind::Const(ct) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+            }
+        };
+
+        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
     }
 }
 
@@ -1161,20 +1264,17 @@ pub struct OpaqueHiddenType<'tcx> {
 impl<'tcx> OpaqueHiddenType<'tcx> {
     pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) {
         // Found different concrete types for the opaque type.
-        let mut err = tcx.sess.struct_span_err(
-            other.span,
-            "concrete type differs from previous defining opaque type use",
-        );
-        err.span_label(other.span, format!("expected `{}`, got `{}`", self.ty, other.ty));
-        if self.span == other.span {
-            err.span_label(
-                self.span,
-                "this expression supplies two conflicting concrete types for the same opaque type",
-            );
+        let sub_diag = if self.span == other.span {
+            TypeMismatchReason::ConflictType { span: self.span }
         } else {
-            err.span_note(self.span, "previous use here");
-        }
-        err.emit();
+            TypeMismatchReason::PreviousUse { span: self.span }
+        };
+        tcx.sess.emit_err(OpaqueHiddenTypeMismatch {
+            self_ty: self.ty,
+            other_ty: other.ty,
+            other_span: other.span,
+            sub: sub_diag,
+        });
     }
 }
 
@@ -1200,7 +1300,7 @@ pub struct BoundConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
+pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
 /// A `DefId` which, in case it is a const argument, is potentially bundled with
 /// the `DefId` of the generic parameter it instantiates.
@@ -1704,6 +1804,59 @@ impl VariantDef {
     }
 }
 
+impl PartialEq for VariantDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `VariantDef` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self {
+            def_id: lhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = &self;
+
+        let Self {
+            def_id: rhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = other;
+
+        lhs_def_id == rhs_def_id
+    }
+}
+
+impl Eq for VariantDef {}
+
+impl Hash for VariantDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `Hash` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `VariantDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { def_id, ctor_def_id: _, name: _, discr: _, fields: _, ctor_kind: _, flags: _ } =
+            &self;
+
+        def_id.hash(s)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
@@ -1721,7 +1874,43 @@ pub enum VariantDiscr {
 pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
-    pub vis: Visibility,
+    pub vis: Visibility<DefId>,
+}
+
+impl PartialEq for FieldDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `PartialEq` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
+
+        let Self { did: rhs_did, name: _, vis: _ } = other;
+
+        lhs_did == rhs_did
+    }
+}
+
+impl Eq for FieldDef {}
+
+impl Hash for FieldDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `Hash` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did, name: _, vis: _ } = &self;
+
+        did.hash(s)
+    }
 }
 
 bitflags! {
@@ -1945,7 +2134,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
+            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
@@ -2162,7 +2351,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn get_attr(self, did: DefId, attr: Symbol) -> Option<&'tcx ast::Attribute> {
-        self.get_attrs(did, attr).next()
+        if cfg!(debug_assertions) && !rustc_feature::is_valid_for_get_attr(attr) {
+            bug!("get_attr: unexpected called with DefId `{:?}`, attr `{:?}`", did, attr);
+        } else {
+            self.get_attrs(did, attr).next()
+        }
     }
 
     /// Determines whether an item is annotated with an attribute.
@@ -2191,13 +2384,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
+    /// If the given `DefId` describes an item belonging to a trait,
+    /// returns the `DefId` of the trait that the trait item belongs to;
+    /// otherwise, returns `None`.
+    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Trait | DefKind::TraitAlias = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
+    }
+
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        self.opt_associated_item(def_id).and_then(|trait_item| match trait_item.container {
-            TraitContainer(_) => None,
-            ImplContainer(def_id) => Some(def_id),
-        })
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Impl = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
     }
 
     /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.
@@ -2405,4 +2614,15 @@ pub struct FoundRelationships {
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(PredicateS<'_>, 48);
+    static_assert_size!(TyS<'_>, 40);
+    static_assert_size!(WithStableHash<TyS<'_>>, 56);
 }

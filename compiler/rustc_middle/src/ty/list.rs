@@ -65,6 +65,10 @@ impl<T> List<T> {
     pub fn len(&self) -> usize {
         self.len
     }
+
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
 }
 
 impl<T: Copy> List<T> {

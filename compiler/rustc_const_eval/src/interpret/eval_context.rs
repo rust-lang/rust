@@ -21,7 +21,7 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, ScalarMaybeUninit, StackPopJump,
+    Scalar, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -187,9 +187,6 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
 
 impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
-    ///
-    /// Note: This may only be invoked from the `Machine::access_local` hook and not from
-    /// anywhere else. You may be invalidating machine invariants if you do!
     #[inline]
     pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
@@ -782,7 +779,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
+                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
                 Err(_) => true,
             }
         );
@@ -991,16 +988,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(fmt, " {:?}", val)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val {
+                        if let Scalar::Ptr(ptr, _size) = val {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(fmt, " ({:?}, {:?})", val1, val2)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val1 {
+                        if let Scalar::Ptr(ptr, _size) = val1 {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val2 {
+                        if let Scalar::Ptr(ptr, _size) = val2 {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }

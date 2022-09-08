@@ -1,6 +1,5 @@
 use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
@@ -19,7 +18,6 @@ use crate::errors::UnconstrainedOpaqueType;
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
 /// This should be called using the query `tcx.opt_const_param_of`.
-#[instrument(level = "debug", skip(tcx))]
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     use hir::*;
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
@@ -79,7 +77,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         args.args
                             .iter()
                             .filter(|arg| arg.is_ty_or_const())
-                            .position(|arg| arg.id() == hir_id)
+                            .position(|arg| arg.hir_id() == hir_id)
                     })
                     .unwrap_or_else(|| {
                         bug!("no arg matching AnonConst in segment");
@@ -112,7 +110,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     args.args
                         .iter()
                         .filter(|arg| arg.is_ty_or_const())
-                        .position(|arg| arg.id() == hir_id)
+                        .position(|arg| arg.hir_id() == hir_id)
                 })
                 .unwrap_or_else(|| {
                     bug!("no arg matching AnonConst in segment");
@@ -166,7 +164,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 args.args
                 .iter()
                 .filter(|arg| arg.is_ty_or_const())
-                .position(|arg| arg.id() == hir_id)
+                .position(|arg| arg.hir_id() == hir_id)
                 .map(|index| (index, seg)).or_else(|| args.bindings
                     .iter()
                     .filter_map(TypeBinding::opt_const)
@@ -180,15 +178,12 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 return None;
             };
 
-            // Try to use the segment resolution if it is valid, otherwise we
-            // default to the path resolution.
-            let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-            let generics = match tcx.res_generics_def_id(res) {
+            let generics = match tcx.res_generics_def_id(segment.res) {
                 Some(def_id) => tcx.generics_of(def_id),
                 None => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(def_id),
-                        &format!("unexpected anon const res {:?} in path: {:?}", res, path),
+                        &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );
                     return None;
                 }
@@ -229,7 +224,7 @@ fn get_path_containing_arg_in_pat<'hir>(
             .iter()
             .filter_map(|seg| seg.args)
             .flat_map(|args| args.args)
-            .any(|arg| arg.id() == arg_id)
+            .any(|arg| arg.hir_id() == arg_id)
     };
     let mut arg_path = None;
     pat.walk(|pat| match pat.kind {
@@ -801,6 +796,9 @@ fn infer_placeholder_type<'a>(
     match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
         Some(mut err) => {
             if !ty.references_error() {
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)
+                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
                 // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
@@ -816,7 +814,7 @@ fn infer_placeholder_type<'a>(
                     err.span_suggestion(
                         span,
                         &format!("provide a type for the {item}", item = kind),
-                        format!("{}: {}", item_ident, sugg_ty),
+                        format!("{colon} {sugg_ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {

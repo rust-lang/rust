@@ -1,4 +1,4 @@
-use crate::{spec::cvs, spec::TargetOptions};
+use crate::spec::{cvs, TargetOptions};
 use std::borrow::Cow;
 
 use Arch::*;
@@ -15,6 +15,18 @@ pub enum Arch {
     X86_64_macabi,
     Arm64_macabi,
     Arm64_sim,
+}
+
+fn target_arch_name(arch: Arch) -> &'static str {
+    match arch {
+        Armv7 => "armv7",
+        Armv7k => "armv7k",
+        Armv7s => "armv7s",
+        Arm64 | Arm64_macabi | Arm64_sim => "arm64",
+        Arm64_32 => "arm64_32",
+        I386 => "i386",
+        X86_64 | X86_64_macabi => "x86_64",
+    }
 }
 
 fn target_abi(arch: Arch) -> &'static str {
@@ -53,9 +65,8 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
     TargetOptions {
         abi: target_abi(arch).into(),
         cpu: target_cpu(arch).into(),
-        dynamic_linking: false,
         link_env_remove: link_env_remove(arch),
         has_thread_local: false,
-        ..super::apple_base::opts(os)
+        ..super::apple_base::opts(os, target_arch_name(arch), target_abi(arch))
     }
 }

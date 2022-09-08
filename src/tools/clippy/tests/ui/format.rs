@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![allow(
+    unused_tuple_struct_fields,
     clippy::print_literal,
     clippy::redundant_clone,
     clippy::to_string_in_format_args,
@@ -34,7 +35,7 @@ fn main() {
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
-    let arg: String = "".to_owned();
+    let arg = String::new();
     format!("{}", arg);
     format!("{:?}", arg); // Don't warn about debug.
     format!("{:8}", arg);

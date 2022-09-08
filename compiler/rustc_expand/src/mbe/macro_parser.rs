@@ -430,7 +430,7 @@ impl TtParser {
                     }
                 }
                 MatcherLoc::Delimited => {
-                    // Entering the delimeter is trivial.
+                    // Entering the delimiter is trivial.
                     mp.idx += 1;
                     self.cur_mps.push(mp);
                 }

@@ -1,6 +1,7 @@
 // run-pass
 
 #[derive(Debug)]
+#[allow(unused_tuple_struct_fields)]
 struct Pair<T, V> (T, V);
 
 impl Pair<

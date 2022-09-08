@@ -333,7 +333,8 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
 fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
     sema.descend_into_macros(token)
         .into_iter()
-        .filter_map(|token| IdentClass::classify_token(sema, &token).map(IdentClass::definitions))
+        .filter_map(|token| IdentClass::classify_token(sema, &token))
+        .map(IdentClass::definitions_no_ops)
         .flatten()
         .collect()
 }

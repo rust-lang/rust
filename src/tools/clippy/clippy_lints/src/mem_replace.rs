@@ -163,8 +163,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
     }
 
     if_chain! {
-        if let ExprKind::Call(repl_func, repl_args) = src.kind;
-        if repl_args.is_empty();
+        if let ExprKind::Call(repl_func, []) = src.kind;
         if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
         if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
         then {
@@ -246,11 +245,10 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Check that `expr` is a call to `mem::replace()`
-            if let ExprKind::Call(func, func_args) = expr.kind;
+            if let ExprKind::Call(func, [dest, src]) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::mem_replace, def_id);
-            if let [dest, src] = func_args;
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);

@@ -544,10 +544,15 @@ fn get_fn_inputs_and_outputs<'tcx>(
             (true, _) => (Some(impl_self), &func.generics),
             (_, true) => (Some(impl_self), impl_generics),
             (false, false) => {
-                let mut params = func.generics.params.clone();
-                params.extend(impl_generics.params.clone());
-                let mut where_predicates = func.generics.where_predicates.clone();
-                where_predicates.extend(impl_generics.where_predicates.clone());
+                let params =
+                    func.generics.params.iter().chain(&impl_generics.params).cloned().collect();
+                let where_predicates = func
+                    .generics
+                    .where_predicates
+                    .iter()
+                    .chain(&impl_generics.where_predicates)
+                    .cloned()
+                    .collect();
                 combined_generics = clean::Generics { params, where_predicates };
                 (Some(impl_self), &combined_generics)
             }

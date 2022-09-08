@@ -1,5 +1,5 @@
 error[E0423]: expected value, found enum `A`
-  --> $DIR/issue-73427.rs:29:5
+  --> $DIR/issue-73427.rs:33:5
    |
 LL |     A.foo();
    |     ^
@@ -23,7 +23,7 @@ LL |     (A::Tuple()).foo();
    |     ~~~~~~~~~~~~
 LL |     A::Unit.foo();
    |     ~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |     (A::StructWithFields { /* fields */ }).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -31,7 +31,7 @@ LL |     (A::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found enum `B`
-  --> $DIR/issue-73427.rs:31:5
+  --> $DIR/issue-73427.rs:35:5
    |
 LL |     B.foo();
    |     ^
@@ -52,7 +52,7 @@ LL |     (B::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found enum `C`
-  --> $DIR/issue-73427.rs:33:5
+  --> $DIR/issue-73427.rs:37:5
    |
 LL |     C.foo();
    |     ^
@@ -70,7 +70,7 @@ help: you might have meant to use the following enum variant
    |
 LL |     C::Unit.foo();
    |     ~~~~~~~
-help: the following enum variants are available
+help: alternatively, the following enum variants are also available
    |
 LL |     (C::StructWithFields { /* fields */ }).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,7 +78,7 @@ LL |     (C::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0423]: expected value, found enum `D`
-  --> $DIR/issue-73427.rs:35:5
+  --> $DIR/issue-73427.rs:39:5
    |
 LL |     D.foo();
    |     ^
@@ -95,13 +95,37 @@ help: you might have meant to use the following enum variant
    |
 LL |     D::Unit.foo();
    |     ~~~~~~~
-help: the following enum variant is available
+help: alternatively, the following enum variant is available
    |
 LL |     (D::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+error[E0423]: expected value, found enum `E`
+  --> $DIR/issue-73427.rs:41:5
+   |
+LL |     E.foo();
+   |     ^
+   |
+note: the enum is defined here
+  --> $DIR/issue-73427.rs:25:1
+   |
+LL | / enum E {
+LL | |     TupleWithFields(()),
+LL | | }
+   | |_^
+help: the following enum variant is available
+   |
+LL |     (E::TupleWithFields(/* fields */)).foo();
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: consider importing one of these items instead
+   |
+LL | use std::f32::consts::E;
+   |
+LL | use std::f64::consts::E;
+   |
+
 error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
-  --> $DIR/issue-73427.rs:40:13
+  --> $DIR/issue-73427.rs:46:13
    |
 LL |     let x = A(3);
    |             ^
@@ -126,7 +150,7 @@ LL |     let x = A::TupleWithFields(3);
    |             ~~~~~~~~~~~~~~~~~~
 
 error[E0532]: expected tuple struct or tuple variant, found enum `A`
-  --> $DIR/issue-73427.rs:42:12
+  --> $DIR/issue-73427.rs:48:12
    |
 LL |     if let A(3) = x { }
    |            ^
@@ -150,7 +174,7 @@ LL |     if let A::Tuple(3) = x { }
 LL |     if let A::TupleWithFields(3) = x { }
    |            ~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0423, E0532.
 For more information about an error, try `rustc --explain E0423`.

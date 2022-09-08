@@ -22,8 +22,8 @@ LL | |     });
    | |______^
 help: consider adding an explicit lifetime bound...
    |
-LL | fn func<T: Test + 'a>(foo: &Foo, t: T) {
-   |                 ++++
+LL | fn func<'a, T: Test + 'a>(foo: &Foo, t: T) {
+   |         +++         ++++
 
 error: aborting due to previous error
 

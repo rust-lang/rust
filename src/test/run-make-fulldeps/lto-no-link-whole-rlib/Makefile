@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(call NATIVE_STATICLIB,foo) $(call NATIVE_STATICLIB,bar)
 	$(RUSTC) lib1.rs

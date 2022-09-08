@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `(): AsRef<(dyn for<'r> Fn(&'r ()) + 'static)>` is not satisfied
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:13
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |             ^^^^^^^^^^^^^^^^^^^ the trait `AsRef<(dyn for<'r> Fn(&'r ()) + 'static)>` is not implemented for `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

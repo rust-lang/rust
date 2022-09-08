@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -53,7 +54,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
 #[derive(Clone, Copy)]
 enum ItemLike<'tcx> {
     Item(&'tcx Item<'tcx>),
-    ForeignItem(&'tcx ForeignItem<'tcx>),
+    ForeignItem,
 }
 
 struct CheckAttrVisitor<'tcx> {
@@ -146,6 +147,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::stable
                 | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
+                sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 _ => true,
             };
             is_valid &= attr_is_valid;
@@ -171,6 +173,7 @@ impl CheckAttrVisitor<'_> {
                 sym::no_implicit_prelude => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
                 }
+                sym::rustc_object_lifetime_default => self.check_object_lifetime_default(hir_id),
                 _ => {}
             }
 
@@ -209,7 +212,14 @@ impl CheckAttrVisitor<'_> {
         }
 
         // FIXME(@lcnr): this doesn't belong here.
-        if matches!(target, Target::Closure | Target::Fn | Target::Method(_) | Target::ForeignFn) {
+        if matches!(
+            target,
+            Target::Closure
+                | Target::Fn
+                | Target::Method(_)
+                | Target::ForeignFn
+                | Target::ForeignStatic
+        ) {
             self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
@@ -398,6 +408,25 @@ impl CheckAttrVisitor<'_> {
                     defn_span: span,
                 });
                 false
+            }
+        }
+    }
+
+    /// Debugging aid for `object_lifetime_default` query.
+    fn check_object_lifetime_default(&self, hir_id: HirId) {
+        let tcx = self.tcx;
+        if let Some(generics) = tcx.hir().get_generics(tcx.hir().local_def_id(hir_id)) {
+            for p in generics.params {
+                let hir::GenericParamKind::Type { .. } = p.kind else { continue };
+                let param_id = tcx.hir().local_def_id(p.hir_id);
+                let default = tcx.object_lifetime_default(param_id);
+                let repr = match default {
+                    ObjectLifetimeDefault::Empty => "BaseDefault".to_owned(),
+                    ObjectLifetimeDefault::Static => "'static".to_owned(),
+                    ObjectLifetimeDefault::Param(def_id) => tcx.item_name(def_id).to_string(),
+                    ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
+                };
+                tcx.sess.span_err(p.span, &repr);
             }
         }
     }
@@ -596,8 +625,6 @@ impl CheckAttrVisitor<'_> {
 
         let span = meta.span();
         if let Some(location) = match target {
-            Target::Impl => Some("implementation block"),
-            Target::ForeignMod => Some("extern block"),
             Target::AssocTy => {
                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
                 let containing_item = self.tcx.hir().expect_item(parent_hir_id);
@@ -619,7 +646,36 @@ impl CheckAttrVisitor<'_> {
             }
             // we check the validity of params elsewhere
             Target::Param => return false,
-            _ => None,
+            Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::ForeignMod
+            | Target::Closure
+            | Target::Impl => Some(target.name()),
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Fn
+            | Target::Mod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::OpaqueTy
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Method(..)
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(..)
+            | Target::MacroDef
+            | Target::PatField
+            | Target::ExprField => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;
@@ -1595,6 +1651,7 @@ impl CheckAttrVisitor<'_> {
                         E0552,
                         "unrecognized representation hint"
                     )
+                    .help("valid reprs are `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`")
                     .emit();
 
                     continue;
@@ -1861,6 +1918,16 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
+    fn check_link_ordinal(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
+        match target {
+            Target::ForeignFn | Target::ForeignStatic => true,
+            _ => {
+                self.tcx.sess.emit_err(errors::LinkOrdinal { attr_span: attr.span });
+                false
+            }
+        }
+    }
+
     fn check_deprecated(&self, hir_id: HirId, attr: &Attribute, _span: Span, target: Target) {
         match target {
             Target::Closure | Target::Expression | Target::Statement | Target::Arm => {
@@ -1995,12 +2062,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
-        self.check_attributes(
-            f_item.hir_id(),
-            f_item.span,
-            target,
-            Some(ItemLike::ForeignItem(f_item)),
-        );
+        self.check_attributes(f_item.hir_id(), f_item.span, target, Some(ItemLike::ForeignItem));
         intravisit::walk_foreign_item(self, f_item)
     }
 
@@ -2028,20 +2090,25 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_expr(self, expr)
     }
 
-    fn visit_variant(
-        &mut self,
-        variant: &'tcx hir::Variant<'tcx>,
-        generics: &'tcx hir::Generics<'tcx>,
-        item_id: HirId,
-    ) {
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::ExprField, None);
+        intravisit::walk_expr_field(self, field)
+    }
+
+    fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
         self.check_attributes(variant.id, variant.span, Target::Variant, None);
-        intravisit::walk_variant(self, variant, generics, item_id)
+        intravisit::walk_variant(self, variant)
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         self.check_attributes(param.hir_id, param.span, Target::Param, None);
 
         intravisit::walk_param(self, param);
+    }
+
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::PatField, None);
+        intravisit::walk_pat_field(self, field);
     }
 }
 
@@ -2072,6 +2139,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::automatically_derived,
         sym::start,
         sym::rustc_main,
+        sym::unix_sigpipe,
         sym::derive,
         sym::test,
         sym::test_case,

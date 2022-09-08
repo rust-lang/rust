@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "windows")]
 fn main() -> () {
     let foo = true && false || true;
     let _: *const () = 0;

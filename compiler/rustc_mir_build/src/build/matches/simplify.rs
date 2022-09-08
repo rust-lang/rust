@@ -67,7 +67,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
-            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
                 &*match_pairs
             {
                 existing_bindings.extend_from_slice(&new_bindings);
@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // late as possible.
                 candidate
                     .match_pairs
-                    .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
                 debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
@@ -127,10 +127,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
         place: PlaceBuilder<'tcx>,
-        pats: &'pat [Pat<'tcx>],
+        pats: &'pat [Box<Pat<'tcx>>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
-            .map(|pat| {
+            .map(|box pat| {
                 let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
                 self.simplify_candidate(&mut candidate);
                 candidate
@@ -149,7 +149,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.tcx;
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance },
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::Range(PatRange { lo, hi, end }) => {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
                 let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
@@ -254,7 +254,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &mut candidate.match_pairs,
                         &match_pair.place,
                         prefix,
-                        slice.as_ref(),
+                        slice,
                         suffix,
                     );
                     Ok(())
@@ -294,7 +294,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &mut candidate.match_pairs,
                     &match_pair.place,
                     prefix,
-                    slice.as_ref(),
+                    slice,
                     suffix,
                 );
                 Ok(())

@@ -164,9 +164,7 @@ impl Slice {
     }
 
     pub fn to_owned(&self) -> Buf {
-        let mut buf = Wtf8Buf::with_capacity(self.inner.len());
-        buf.push_wtf8(&self.inner);
-        Buf { inner: buf }
+        Buf { inner: self.inner.to_owned() }
     }
 
     pub fn clone_into(&self, buf: &mut Buf) {

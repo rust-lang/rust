@@ -508,6 +508,7 @@ impl fmt::Debug for Align {
 
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
+    pub const MAX: Align = Align { pow2: 29 };
 
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, String> {
@@ -540,7 +541,7 @@ impl Align {
         if bytes != 1 {
             return Err(not_power_of_2(align));
         }
-        if pow2 > 29 {
+        if pow2 > Self::MAX.pow2 {
             return Err(too_large(align));
         }
 
@@ -1129,7 +1130,7 @@ pub enum TagEncoding {
 
     /// Niche (values invalid for a type) encoding the discriminant:
     /// Discriminant and variant index coincide.
-    /// The variant `dataful_variant` contains a niche at an arbitrary
+    /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
     /// `(d - niche_variants.start).wrapping_add(niche_start)`.
@@ -1138,7 +1139,7 @@ pub enum TagEncoding {
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     Niche {
-        dataful_variant: VariantIdx,
+        untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
     },

@@ -53,10 +53,10 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             def_id, returned_local
         );
 
-        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body(body);
+        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body_preserves_cfg(body);
 
         // Clean up the `NOP`s we inserted for statements made useless by our renaming.
-        for block_data in body.basic_blocks_mut() {
+        for block_data in body.basic_blocks.as_mut_preserves_cfg() {
             block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
         }
 
@@ -89,7 +89,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
     }
 
     let mut copied_to_return_place = None;
-    for block in body.basic_blocks().indices() {
+    for block in body.basic_blocks.indices() {
         // Look for blocks with a `Return` terminator.
         if !matches!(body[block].terminator().kind, mir::TerminatorKind::Return) {
             continue;
@@ -122,7 +122,7 @@ fn find_local_assigned_to_return_place(
     body: &mut mir::Body<'_>,
 ) -> Option<Local> {
     let mut block = start;
-    let mut seen = HybridBitSet::new_empty(body.basic_blocks().len());
+    let mut seen = HybridBitSet::new_empty(body.basic_blocks.len());
 
     // Iterate as long as `block` has exactly one predecessor that we have not yet visited.
     while seen.insert(block) {

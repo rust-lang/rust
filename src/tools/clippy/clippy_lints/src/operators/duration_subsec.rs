@@ -17,7 +17,7 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if op == BinOpKind::Div
-        && let ExprKind::MethodCall(method_path, [self_arg], _) = left.kind
+        && let ExprKind::MethodCall(method_path, self_arg, [], _) = left.kind
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_arg).peel_refs(), sym::Duration)
         && let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right)
     {

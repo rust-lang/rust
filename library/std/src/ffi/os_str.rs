@@ -290,7 +290,8 @@ impl OsString {
     /// in the given `OsString`. The string may reserve more space to speculatively avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional` if it returns `Ok(())`.
-    /// Does nothing if capacity is already sufficient.
+    /// Does nothing if capacity is already sufficient. This method preserves
+    /// the contents even if an error occurs.
     ///
     /// See the main `OsString` documentation information about encoding and capacity units.
     ///

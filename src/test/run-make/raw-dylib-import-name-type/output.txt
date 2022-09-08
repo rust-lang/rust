@@ -1,0 +1,12 @@
+cdecl_fn_undecorated(1)
+cdecl_fn_noprefix(2)
+cdecl_fn_decorated(3)
+stdcall_fn_undecorated(4)
+stdcall_fn_noprefix(5)
+stdcall_fn_decorated(6)
+fastcall_fn_undecorated(7)
+fastcall_fn_noprefix(8)
+fastcall_fn_decorated(9)
+extern_variable_undecorated value: 42
+extern_variable_noprefix value: 43
+extern_variable_decorated value: 44

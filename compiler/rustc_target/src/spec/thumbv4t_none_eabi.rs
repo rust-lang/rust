@@ -47,7 +47,9 @@ pub fn target() -> Target {
             asm_args: cvs!["-mthumb-interwork", "-march=armv4t", "-mlittle-endian",],
 
             // minimum extra features, these cannot be disabled via -C
-            features: "+soft-float,+strict-align".into(),
+            // Also force-enable 32-bit atomics, which allows the use of atomic load/store only.
+            // The resulting atomics are ABI incompatible with atomics backed by libatomic.
+            features: "+soft-float,+strict-align,+atomics-32".into(),
 
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

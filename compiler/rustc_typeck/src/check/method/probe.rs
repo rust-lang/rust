@@ -253,7 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
-    #[instrument(level = "debug", skip(self, scope_expr_id))]
+    #[instrument(level = "debug", skip(self))]
     pub fn probe_for_return_type(
         &self,
         span: Span,
@@ -262,10 +262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
     ) -> Vec<ty::AssocItem> {
-        debug!(
-            "probe(self_ty={:?}, return_type={}, scope_expr_id={})",
-            self_ty, return_type, scope_expr_id
-        );
         let method_names = self
             .probe_op(
                 span,
@@ -299,7 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect()
     }
 
-    #[instrument(level = "debug", skip(self, scope_expr_id))]
+    #[instrument(level = "debug", skip(self))]
     pub fn probe_for_name(
         &self,
         span: Span,
@@ -310,10 +306,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         scope_expr_id: hir::HirId,
         scope: ProbeScope,
     ) -> PickResult<'tcx> {
-        debug!(
-            "probe(self_ty={:?}, item_name={}, scope_expr_id={})",
-            self_ty, item_name, scope_expr_id
-        );
         self.probe_op(
             span,
             mode,
@@ -592,9 +584,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, item.container.id(), self.body_id).1;
-            item.vis.is_accessible_from(def_scope, self.tcx)
+            let def_scope = self
+                .tcx
+                .adjust_ident_and_get_scope(name, item.container_id(self.tcx), self.body_id)
+                .1;
+            item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
         };
@@ -1025,7 +1019,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.assemble_extension_candidates_for_all_traits();
 
         let out_of_scope_traits = match self.pick_core() {
-            Some(Ok(p)) => vec![p.item.container.id()],
+            Some(Ok(p)) => vec![p.item.container_id(self.tcx)],
             //Some(Ok(p)) => p.iter().map(|p| p.item.container().id()).collect(),
             Some(Err(MethodError::Ambiguity(v))) => v
                 .into_iter()
@@ -1387,7 +1381,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             self.tcx.def_path_str(stable_pick.item.def_id),
                         ));
                     }
-                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer(def_id)) => {
+                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer) => {
+                        let def_id = stable_pick.item.container_id(self.tcx);
                         diag.span_suggestion(
                             self.span,
                             "use the fully qualified path to the associated const",
@@ -1429,9 +1424,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate(..) => CandidateSource::Impl(candidate.item.container.id()),
+            InherentImplCandidate(..) => {
+                CandidateSource::Impl(candidate.item.container_id(self.tcx))
+            }
             ObjectCandidate | WhereClauseCandidate(_) => {
-                CandidateSource::Trait(candidate.item.container.id())
+                CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
                 let _ = self
@@ -1444,7 +1441,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // to that impl.
                         CandidateSource::Impl(impl_data.impl_def_id)
                     }
-                    _ => CandidateSource::Trait(candidate.item.container.id()),
+                    _ => CandidateSource::Trait(candidate.item.container_id(self.tcx)),
                 }
             }),
         }
@@ -1502,15 +1499,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
 
                     // Check whether the impl imposes obligations we have to worry about.
-                    let impl_def_id = probe.item.container.id();
+                    let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds = self.tcx.predicates_of(impl_def_id);
                     let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
                     let traits::Normalized { value: impl_bounds, obligations: norm_obligations } =
                         traits::normalize(selcx, self.param_env, cause.clone(), impl_bounds);
 
                     // Convert the bounds into obligations.
-                    let impl_obligations =
-                        traits::predicates_for_generics(cause, self.param_env, impl_bounds);
+                    let impl_obligations = traits::predicates_for_generics(
+                        move |_, _| cause.clone(),
+                        self.param_env,
+                        impl_bounds,
+                    );
 
                     let candidate_obligations = impl_obligations
                         .chain(norm_obligations.into_iter())
@@ -1653,12 +1653,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         probes: &[(&Candidate<'tcx>, ProbeResult)],
     ) -> Option<Pick<'tcx>> {
         // Do all probes correspond to the same trait?
-        let container = probes[0].0.item.container;
-        if let ty::ImplContainer(_) = container {
-            return None;
-        }
-        if probes[1..].iter().any(|&(p, _)| p.item.container != container) {
-            return None;
+        let container = probes[0].0.item.trait_container(self.tcx)?;
+        for (p, _) in &probes[1..] {
+            let p_container = p.item.trait_container(self.tcx)?;
+            if p_container != container {
+                return None;
+            }
         }
 
         // FIXME: check the return type here somehow.

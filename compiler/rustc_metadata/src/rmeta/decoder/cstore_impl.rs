@@ -76,9 +76,9 @@ impl ProcessQueryValue<'_, Option<DeprecationEntry>> for Option<Deprecation> {
 }
 
 macro_rules! provide_one {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 $cdata
                     .root
                     .tables
@@ -89,9 +89,9 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
         provide_one! {
-            <$lt> $tcx, $def_id, $other, $cdata, $name => {
+            $tcx, $def_id, $other, $cdata, $name => {
                 // We don't decode `table_direct`, since it's not a Lazy, but an actual value
                 $cdata
                     .root
@@ -102,11 +102,11 @@ macro_rules! provide_one {
             }
         }
     };
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
-        fn $name<$lt>(
-            $tcx: TyCtxt<$lt>,
-            def_id_arg: ty::query::query_keys::$name<$lt>,
-        ) -> ty::query::query_values::$name<$lt> {
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => $compute:block) => {
+        fn $name<'tcx>(
+            $tcx: TyCtxt<'tcx>,
+            def_id_arg: ty::query::query_keys::$name<'tcx>,
+        ) -> ty::query::query_values::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -130,11 +130,11 @@ macro_rules! provide_one {
 }
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => { $($compute:tt)* })*) => {
         pub fn provide_extern(providers: &mut ExternProviders) {
             $(provide_one! {
-                <$lt> $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
+                $tcx, $def_id, $other, $cdata, $name => { $($compute)* }
             })*
 
             *providers = ExternProviders {
@@ -187,7 +187,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
     }
 }
 
-provide! { <'tcx> tcx, def_id, other, cdata,
+provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table }
     explicit_predicates_of => { table }
     generics_of => { table }
@@ -199,6 +199,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     codegen_fn_attrs => { table }
     impl_trait_ref => { table }
     const_param_default => { table }
+    object_lifetime_default => { table }
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
@@ -207,8 +208,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     def_ident_span => { table }
     lookup_stability => { table }
     lookup_const_stability => { table }
+    lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
-    visibility => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }
@@ -223,6 +224,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
 
+    visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
@@ -231,11 +233,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     associated_item_def_ids => {
         tcx.arena.alloc_from_iter(cdata.get_associated_item_def_ids(def_id.index, tcx.sess))
     }
-    associated_item => { cdata.get_associated_item(def_id.index) }
+    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
-    trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
 
@@ -341,7 +342,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| {
+        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
+        native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
@@ -355,7 +357,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .foreign_items
                         .contains(&id)
                 })
-                .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -484,7 +485,7 @@ impl CStore {
     pub fn struct_field_visibilities_untracked(
         &self,
         def: DefId,
-    ) -> impl Iterator<Item = Visibility> + '_ {
+    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
@@ -492,7 +493,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
     }
 
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility {
+    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
@@ -534,8 +535,8 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index)
+    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
+        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
@@ -676,6 +677,9 @@ impl CrateStore for CStore {
     }
 
     fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
-        self.get_crate_data(cnum).imported_source_files(sess);
+        let cdata = self.get_crate_data(cnum);
+        for file_index in 0..cdata.root.source_map.size() {
+            cdata.imported_source_file(file_index as u32, sess);
+        }
     }
 }

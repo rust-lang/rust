@@ -65,7 +65,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
     let mut tainted = false;
 
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         if block.is_cleanup {
             continue;
         }

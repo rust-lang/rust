@@ -1,5 +1,5 @@
 use super::method::MethodCallee;
-use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use super::{DefIdOrName, Expectation, FnCtxt, TupleArgumentsFlag};
 use crate::type_error_struct;
 
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
@@ -24,7 +24,8 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::autoderef::Autoderef;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use std::iter;
 
@@ -471,7 +472,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 if !self.maybe_suggest_bad_array_definition(&mut err, call_expr, callee_expr) {
-                    err.span_label(call_expr.span, "call expression requires function");
+                    if let Some((maybe_def, output_ty, _)) = self.extract_callable_info(callee_expr, callee_ty)
+                        && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
+                    {
+                        let descr = match maybe_def {
+                            DefIdOrName::DefId(def_id) => self.tcx.def_kind(def_id).descr(def_id),
+                            DefIdOrName::Name(name) => name,
+                        };
+                        err.span_label(
+                            callee_expr.span,
+                            format!("this {descr} returns an unsized value `{output_ty}`, so it cannot be called")
+                        );
+                        if let DefIdOrName::DefId(def_id) = maybe_def
+                            && let Some(def_span) = self.tcx.hir().span_if_local(def_id)
+                        {
+                            err.span_label(def_span, "the callable type is defined here");
+                        }
+                    } else {
+                        err.span_label(call_expr.span, "call expression requires function");
+                    }
                 }
 
                 if let Some(span) = self.tcx.hir().res_span(def) {

@@ -5,7 +5,7 @@
 #![feature(c_unwind)]
 
 // Make sure these all do *not* get the attribute.
-// We disable optimizations to prevent LLVM from infering the attribute.
+// We disable optimizations to prevent LLVM from inferring the attribute.
 // CHECK-NOT: nounwind
 
 // "C" ABI

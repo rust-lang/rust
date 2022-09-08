@@ -17,7 +17,6 @@ use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use tracing::debug;
 
 mod drop_ranges;
 
@@ -409,8 +408,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
-            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
-            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+            let parent_expr = self
+                .fcx
+                .tcx
+                .hir()
+                .parent_iter(expr.hir_id)
+                .find(|(_, node)| matches!(node, hir::Node::Expr(_)))
+                .map(|(id, _)| id);
+            debug!("parent_expr: {:?}", parent_expr);
+            match parent_expr {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
                 None => {
                     self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
@@ -457,7 +463,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 }
 
 #[derive(Default)]
-pub struct SuspendCheckData<'a, 'tcx> {
+struct SuspendCheckData<'a, 'tcx> {
     expr: Option<&'tcx Expr<'tcx>>,
     source_span: Span,
     yield_span: Span,
@@ -472,7 +478,7 @@ pub struct SuspendCheckData<'a, 'tcx> {
 //
 // Note that this technique was chosen over things like a `Suspend` marker trait
 // as it is simpler and has precedent in the compiler
-pub fn check_must_not_suspend_ty<'tcx>(
+fn check_must_not_suspend_ty<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     hir_id: HirId,
@@ -488,6 +494,8 @@ pub fn check_must_not_suspend_ty<'tcx>(
     }
 
     let plural_suffix = pluralize!(data.plural_len);
+
+    debug!("Checking must_not_suspend for {}", ty);
 
     match *ty.kind() {
         ty::Adt(..) if ty.is_box() => {
@@ -579,6 +587,12 @@ pub fn check_must_not_suspend_ty<'tcx>(
                     ..data
                 },
             )
+        }
+        // If drop tracking is enabled, we want to look through references, since the referrent
+        // may not be considered live across the await point.
+        ty::Ref(_region, ty, _mutability) if fcx.sess().opts.unstable_opts.drop_tracking => {
+            let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
+            check_must_not_suspend_ty(fcx, ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
         _ => false,
     }

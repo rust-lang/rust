@@ -7,7 +7,7 @@ basic `variable = value` mapping eg.
 
 ```toml
 avoid-breaking-exported-api = false
-blacklisted-names = ["toto", "tata", "titi"]
+disallowed-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
 

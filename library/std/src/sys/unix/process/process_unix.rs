@@ -453,7 +453,9 @@ impl Command {
                     // successfully launch the program, but erroneously return
                     // ENOENT when used with posix_spawn_file_actions_addchdir_np
                     // which was introduced in macOS 10.15.
-                    return Ok(None);
+                    if self.get_program_kind() == ProgramKind::Relative {
+                        return Ok(None);
+                    }
                 }
                 match posix_spawn_file_actions_addchdir_np.get() {
                     Some(f) => Some((f, cwd)),

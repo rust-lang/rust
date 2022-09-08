@@ -15,5 +15,13 @@ LL |     #[link_ordinal(72436)]
    |
    = note: the value may not exceed `u16::MAX`
 
-error: aborting due to previous error; 1 warning emitted
+error: ordinal value in `link_ordinal` is too large: `72436`
+  --> $DIR/link-ordinal-too-large.rs:9:5
+   |
+LL |     #[link_ordinal(72436)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the value may not exceed `u16::MAX`
+
+error: aborting due to 2 previous errors; 1 warning emitted
 

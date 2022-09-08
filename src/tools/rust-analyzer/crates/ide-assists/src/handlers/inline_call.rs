@@ -7,13 +7,13 @@ use ide_db::{
     imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
     search::{FileReference, SearchScope},
-    syntax_helpers::node_ext::expr_as_name_ref,
+    syntax_helpers::{insert_whitespace_into_node::insert_ws_into, node_ext::expr_as_name_ref},
     RootDatabase,
 };
 use itertools::{izip, Itertools};
 use syntax::{
     ast::{self, edit_in_place::Indent, HasArgList, PathExpr},
-    ted, AstNode,
+    ted, AstNode, NodeOrToken, SyntaxKind,
 };
 
 use crate::{
@@ -301,7 +301,27 @@ fn inline(
     params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
     CallInfo { node, arguments, generic_arg_list }: &CallInfo,
 ) -> ast::Expr {
-    let body = fn_body.clone_for_update();
+    let body = if sema.hir_file_for(fn_body.syntax()).is_macro() {
+        cov_mark::hit!(inline_call_defined_in_macro);
+        if let Some(body) = ast::BlockExpr::cast(insert_ws_into(fn_body.syntax().clone())) {
+            body
+        } else {
+            fn_body.clone_for_update()
+        }
+    } else {
+        fn_body.clone_for_update()
+    };
+    if let Some(imp) = body.syntax().ancestors().find_map(ast::Impl::cast) {
+        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
+            if let Some(t) = imp.self_ty() {
+                body.syntax()
+                    .descendants_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+                    .for_each(|tok| ted::replace(tok, t.syntax()));
+            }
+        }
+    }
     let usages_for_locals = |local| {
         Definition::Local(local)
             .usages(sema)
@@ -336,6 +356,7 @@ fn inline(
             }
         })
         .collect();
+
     if function.self_param(sema.db).is_some() {
         let this = || make::name_ref("this").syntax().clone_for_update();
         if let Some(self_local) = params[0].2.as_local(sema.db) {
@@ -1143,6 +1164,91 @@ fn bar() -> u32 {
         let x = 0;
         x
     }) + foo()
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_defined_in_macro() {
+        cov_mark::check!(inline_call_defined_in_macro);
+        check_assist(
+            inline_call,
+            r#"
+macro_rules! define_foo {
+    () => { fn foo() -> u32 {
+        let x = 0;
+        x
+    } };
+}
+define_foo!();
+fn bar() -> u32 {
+    foo$0()
+}
+"#,
+            r#"
+macro_rules! define_foo {
+    () => { fn foo() -> u32 {
+        let x = 0;
+        x
+    } };
+}
+define_foo!();
+fn bar() -> u32 {
+    {
+      let x = 0;
+      x
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type() {
+        check_assist(
+            inline_call,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(114514) }
+}
+fn main() {
+    A::f$0();
+}
+"#,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(114514) }
+}
+fn main() {
+    A(114514);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type_but_within_same_impl() {
+        check_assist(
+            inline_call,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(1919810) }
+    fn main() {
+        Self::f$0();
+    }
+}
+"#,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(1919810) }
+    fn main() {
+        Self(1919810);
+    }
 }
 "#,
         )

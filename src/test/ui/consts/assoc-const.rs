@@ -6,7 +6,7 @@ trait Nat {
 }
 
 struct Zero;
-struct Succ<N>(N);
+struct Succ<N>(#[allow(unused_tuple_struct_fields)] N);
 
 impl Nat for Zero {
     const VALUE: usize = 0;

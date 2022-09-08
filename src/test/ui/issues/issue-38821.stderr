@@ -4,7 +4,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
 LL | #[derive(Debug, Copy, Clone)]
    |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
-note: required because of the requirements on the impl of `IntoNullable` for `<Col as Expression>::SqlType`
+note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
    |
 LL | impl<T: NotNull> IntoNullable for T {

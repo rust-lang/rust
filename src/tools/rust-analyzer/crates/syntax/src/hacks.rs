@@ -1,4 +1,4 @@
-//! Things which exist to solve practial issues, but which shouldn't exist.
+//! Things which exist to solve practical issues, but which shouldn't exist.
 //!
 //! Please avoid adding new usages of the functions in this module
 

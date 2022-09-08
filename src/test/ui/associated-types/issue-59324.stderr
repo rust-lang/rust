@@ -20,7 +20,7 @@ LL | |
 LL | |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
 ...  |
-LL | |
+LL | |     ) -> Self::AssocType;
 LL | | }
    | |_^ the trait `Foo` is not implemented for `Bug`
    |
@@ -34,6 +34,7 @@ error[E0277]: the trait bound `Bug: Foo` is not satisfied
    |
 LL | /     fn get_service(
 LL | |
+LL | |
 LL | |         &self,
 LL | |     ) -> Self::AssocType;
    | |_________________________^ the trait `Foo` is not implemented for `Bug`
@@ -44,16 +45,20 @@ LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:23:29
+  --> $DIR/issue-59324.rs:23:1
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
-   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:19:10
+  --> $DIR/issue-59324.rs:16:5
    |
-LL |     ) -> Self::AssocType;
-   |          ^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
+LL | /     fn get_service(
+LL | |
+LL | |
+LL | |         &self,
+LL | |     ) -> Self::AssocType;
+   | |_________________________^ the trait `Foo` is not implemented for `Bug`
    |
 help: consider further restricting this bound
    |

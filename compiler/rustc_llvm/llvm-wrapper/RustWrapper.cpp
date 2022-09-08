@@ -413,18 +413,12 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
                            LLVMValueRef Old, LLVMValueRef Source,
                            LLVMAtomicOrdering Order,
                            LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
-#if LLVM_VERSION_GE(13,0)
   // Rust probably knows the alignment of the target value and should be able to
   // specify something more precise than MaybeAlign here. See also
   // https://reviews.llvm.org/D97224 which may be a useful reference.
   AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
       unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
       fromRust(FailureOrder));
-#else
-  AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
-      unwrap(Target), unwrap(Old), unwrap(Source), fromRust(Order),
-      fromRust(FailureOrder));
-#endif
   ACXI->setWeak(Weak);
   return wrap(ACXI);
 }
@@ -472,19 +466,11 @@ LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
                   char *Constraints, size_t ConstraintsLen,
                   LLVMBool HasSideEffects, LLVMBool IsAlignStack,
                   LLVMRustAsmDialect Dialect, LLVMBool CanThrow) {
-#if LLVM_VERSION_GE(13, 0)
   return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
                              StringRef(AsmString, AsmStringLen),
                              StringRef(Constraints, ConstraintsLen),
                              HasSideEffects, IsAlignStack,
                              fromRust(Dialect), CanThrow));
-#else
-  return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
-                             StringRef(AsmString, AsmStringLen),
-                             StringRef(Constraints, ConstraintsLen),
-                             HasSideEffects, IsAlignStack,
-                             fromRust(Dialect)));
-#endif
 }
 
 extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
@@ -924,6 +910,30 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
                                                fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
+    LLVMRustDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    const char *Name,
+    size_t NameLen,
+    LLVMMetadataRef File,
+    unsigned LineNo,
+    LLVMMetadataRef Ty,
+    LLVMRustDIFlags Flags,
+    LLVMValueRef val,
+    uint32_t AlignInBits
+) {
+  return wrap(Builder->createStaticMemberType(
+    unwrapDI<DIDescriptor>(Scope),
+    StringRef(Name, NameLen),
+    unwrapDI<DIFile>(File),
+    LineNo,
+    unwrapDI<DIType>(Ty),
+    fromRust(Flags),
+    unwrap<llvm::ConstantInt>(val),
+    AlignInBits
+  ));
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
     LLVMMetadataRef File, unsigned Line, unsigned Col) {
@@ -1250,10 +1260,8 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
     return LLVMRustDiagnosticKind::Linker;
   case DK_Unsupported:
     return LLVMRustDiagnosticKind::Unsupported;
-#if LLVM_VERSION_GE(13, 0)
   case DK_SrcMgr:
     return LLVMRustDiagnosticKind::SrcMgr;
-#endif
   default:
     return (Kind >= DK_FirstRemark && Kind <= DK_LastRemark)
                ? LLVMRustDiagnosticKind::OptimizationRemarkOther
@@ -1311,9 +1319,14 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMBFloatTypeKind;
   case Type::X86_AMXTyID:
     return LLVMX86_AMXTypeKind;
-#if LLVM_VERSION_GE(15, 0)
+#if LLVM_VERSION_GE(15, 0) && LLVM_VERSION_LT(16, 0)
   case Type::DXILPointerTyID:
     report_fatal_error("Rust does not support DirectX typed pointers.");
+    break;
+#endif
+#if LLVM_VERSION_GE(16, 0)
+  case Type::TypedPointerTyID:
+    report_fatal_error("Rust does not support typed pointers.");
     break;
 #endif
   }
@@ -1322,30 +1335,11 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 
-#if LLVM_VERSION_LT(13, 0)
-using LLVMInlineAsmDiagHandlerTy = LLVMContext::InlineAsmDiagHandlerTy;
-#else
-using LLVMInlineAsmDiagHandlerTy = void*;
-#endif
-
-extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
-    LLVMContextRef C, LLVMInlineAsmDiagHandlerTy H, void *CX) {
-  // Diagnostic handlers were unified in LLVM change 5de2d189e6ad, so starting
-  // with LLVM 13 this function is gone.
-#if LLVM_VERSION_LT(13, 0)
-  unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
-#endif
-}
-
 extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(
     LLVMDiagnosticInfoRef DI, unsigned *Cookie) {
-#if LLVM_VERSION_GE(13, 0)
   llvm::DiagnosticInfoSrcMgr *SM = static_cast<llvm::DiagnosticInfoSrcMgr *>(unwrap(DI));
   *Cookie = SM->getLocCookie();
   return wrap(&SM->getSMDiag());
-#else
-  report_fatal_error("Shouldn't get called on older versions");
-#endif
 }
 
 extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,

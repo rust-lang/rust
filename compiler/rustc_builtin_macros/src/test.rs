@@ -1,7 +1,6 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
-
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
@@ -11,8 +10,8 @@ use rustc_expand::base::*;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-
 use std::iter;
+use thin_vec::thin_vec;
 
 // #[test_case] is used by custom test authors to mark tests
 // When building for test, it needs to make the item public and gensym the name
@@ -219,7 +218,7 @@ pub fn expand_test_or_bench(
     let mut test_const = cx.item(
         sp,
         Ident::new(item.ident.name, sp),
-        vec![
+        thin_vec![
             // #[cfg(test)]
             cx.attribute(attr::mk_list_item(
                 Ident::new(sym::cfg, attr_sp),
@@ -334,9 +333,9 @@ pub fn expand_test_or_bench(
     });
 
     // extern crate test
-    let test_extern = cx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None));
+    let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
 
-    tracing::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     if is_stmt {
         vec![

@@ -4,7 +4,7 @@
 
 use std::thread;
 
-struct Foo(i32);
+struct Foo(#[allow(unused_tuple_struct_fields)] i32);
 
 impl Drop for Foo {
     fn drop(&mut self) {

@@ -10,6 +10,10 @@ xflags::xflags! {
     src "./src/cli/flags.rs"
 
     /// LSP server for the Rust programming language.
+    ///
+    /// Subcommands and their flags do not provide any stability guarantees and may be removed or
+    /// changed without notice. Top-level flags that are not are marked as [Unstable] provide
+    /// backwards-compatibility and may be relied on.
     cmd rust-analyzer {
         /// Verbosity level, can be repeated multiple times.
         repeated -v, --verbose
@@ -21,7 +25,7 @@ xflags::xflags! {
         /// Flush log records to the file immediately.
         optional --no-log-buffering
 
-        /// Wait until a debugger is attached to (requires debug build).
+        /// [Unstable] Wait until a debugger is attached to (requires debug build).
         optional --wait-dbg
 
         default cmd lsp-server {
@@ -108,6 +112,10 @@ xflags::xflags! {
         cmd lsif
             required path: PathBuf
         {}
+
+        cmd scip
+            required path: PathBuf
+        {}
     }
 }
 
@@ -136,6 +144,7 @@ pub enum RustAnalyzerCmd {
     Search(Search),
     ProcMacro(ProcMacro),
     Lsif(Lsif),
+    Scip(Scip),
 }
 
 #[derive(Debug)]
@@ -200,6 +209,11 @@ pub struct ProcMacro;
 
 #[derive(Debug)]
 pub struct Lsif {
+    pub path: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct Scip {
     pub path: PathBuf,
 }
 

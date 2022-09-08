@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # rust-lang/rust#70924: Test that if we add rust-src component in between two
 # incremental compiles, the compiler does not ICE on the second.

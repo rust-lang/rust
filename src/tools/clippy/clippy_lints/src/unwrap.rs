@@ -154,13 +154,13 @@ fn collect_unwrap_info<'tcx>(
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
     } else {
         if_chain! {
-            if let ExprKind::MethodCall(method_name, args, _) = &expr.kind;
-            if let Some(local_id) = path_to_local(&args[0]);
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind;
+            if let Some(local_id) = path_to_local(receiver);
+            let ty = cx.typeck_results().expr_ty(receiver);
             let name = method_name.ident.as_str();
             if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
             then {
-                assert!(args.len() == 1);
+                assert!(args.len() == 0);
                 let unwrappable = match name {
                     "is_some" | "is_ok" => true,
                     "is_err" | "is_none" => false,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let ExprKind::MethodCall(method_name, [self_arg, ..], _) = expr.kind;
+                if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind;
                 if let Some(id) = path_to_local(self_arg);
                 if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);

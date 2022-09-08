@@ -16,6 +16,8 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 
+use crate::session_diagnostics::ConstNotUsedTraitAlias;
+
 use super::RegionInferenceContext;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -58,7 +60,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Calling `universal_upper_bound` for such a region gives `fr_fn_body`,
     /// which has no `external_name` in which case we use `'empty` as the
     /// region to pass to `infer_opaque_definition_from_instantiation`.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "debug", skip(self, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -639,17 +641,10 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                self.span,
-                                &format!(
-                                    "const parameter `{}` is part of concrete type but not \
-                                          used in parameter list for the `impl Trait` type alias",
-                                    ct
-                                ),
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(ConstNotUsedTraitAlias {
+                            ct: ct.to_string(),
+                            span: self.span,
+                        });
 
                         self.tcx().const_error(ct.ty())
                     }

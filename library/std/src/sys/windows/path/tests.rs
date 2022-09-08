@@ -115,7 +115,7 @@ fn test_parse_prefix_verbatim_device() {
     assert_eq!(prefix, parse_prefix(r"\\?/C:\windows\system32\notepad.exe"));
 }
 
-// See #93586 for more infomation.
+// See #93586 for more information.
 #[test]
 fn test_windows_prefix_components() {
     use crate::path::Path;

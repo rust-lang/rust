@@ -1,3 +1,211 @@
+Version 1.63.0 (2022-08-11)
+==========================
+
+Language
+--------
+- [Remove migrate borrowck mode for pre-NLL errors.][95565]
+- [Modify MIR building to drop repeat expressions with length zero.][95953]
+- [Remove label/lifetime shadowing warnings.][96296]
+- [Allow explicit generic arguments in the presence of `impl Trait` args.][96868]
+- [Make `cenum_impl_drop_cast` warnings deny-by-default.][97652]
+- [Prevent unwinding when `-C panic=abort` is used regardless of declared ABI.][96959]
+- [lub: don't bail out due to empty binders.][97867]
+
+Compiler
+--------
+- [Stabilize the `bundle` native library modifier,][95818] also removing the
+  deprecated `static-nobundle` linking kind.
+- [Add Apple WatchOS compile targets\*.][95243]
+- [Add a Windows application manifest to rustc-main.][96737]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+- [Implement `Copy`, `Clone`, `PartialEq` and `Eq` for `core::fmt::Alignment`.][94530]
+- [Extend `ptr::null` and `null_mut` to all thin (including extern) types.][94954]
+- [`impl Read and Write for VecDeque<u8>`.][95632]
+- [STD support for the Nintendo 3DS.][95897]
+- [Use rounding in float to Duration conversion methods.][96051]
+- [Make write/print macros eagerly drop temporaries.][96455]
+- [Implement internal traits that enable `[OsStr]::join`.][96881]
+- [Implement `Hash` for `core::alloc::Layout`.][97034]
+- [Add capacity documentation for `OsString`.][97202]
+- [Put a bound on collection misbehavior.][97316]
+- [Make `std::mem::needs_drop` accept `?Sized`.][97675]
+- [`impl Termination for Infallible` and then make the `Result` impls of `Termination` more generic.][97803]
+- [Document Rust's stance on `/proc/self/mem`.][97837]
+
+Stabilized APIs
+---------------
+
+- [`array::from_fn`]
+- [`Box::into_pin`]
+- [`BinaryHeap::try_reserve`]
+- [`BinaryHeap::try_reserve_exact`]
+- [`OsString::try_reserve`]
+- [`OsString::try_reserve_exact`]
+- [`PathBuf::try_reserve`]
+- [`PathBuf::try_reserve_exact`]
+- [`Path::try_exists`]
+- [`Ref::filter_map`]
+- [`RefMut::filter_map`]
+- [`NonNull::<[T]>::len`][`NonNull::<slice>::len`]
+- [`ToOwned::clone_into`]
+- [`Ipv6Addr::to_ipv4_mapped`]
+- [`unix::io::AsFd`]
+- [`unix::io::BorrowedFd<'fd>`]
+- [`unix::io::OwnedFd`]
+- [`windows::io::AsHandle`]
+- [`windows::io::BorrowedHandle<'handle>`]
+- [`windows::io::OwnedHandle`]
+- [`windows::io::HandleOrInvalid`]
+- [`windows::io::HandleOrNull`]
+- [`windows::io::InvalidHandleError`]
+- [`windows::io::NullHandleError`]
+- [`windows::io::AsSocket`]
+- [`windows::io::BorrowedSocket<'handle>`]
+- [`windows::io::OwnedSocket`]
+- [`thread::scope`]
+- [`thread::Scope`]
+- [`thread::ScopedJoinHandle`]
+
+These APIs are now usable in const contexts:
+
+- [`array::from_ref`]
+- [`slice::from_ref`]
+- [`intrinsics::copy`]
+- [`intrinsics::copy_nonoverlapping`]
+- [`<*const T>::copy_to`]
+- [`<*const T>::copy_to_nonoverlapping`]
+- [`<*mut T>::copy_to`]
+- [`<*mut T>::copy_to_nonoverlapping`]
+- [`<*mut T>::copy_from`]
+- [`<*mut T>::copy_from_nonoverlapping`]
+- [`str::from_utf8`]
+- [`Utf8Error::error_len`]
+- [`Utf8Error::valid_up_to`]
+- [`Condvar::new`]
+- [`Mutex::new`]
+- [`RwLock::new`]
+
+Cargo
+-----
+- [Stabilize the `--config path` command-line argument.][cargo/10755]
+- [Expose rust-version in the environment as `CARGO_PKG_RUST_VERSION`.][cargo/10713]
+
+Compatibility Notes
+-------------------
+
+- [`#[link]` attributes are now checked more strictly,][96885] which may introduce
+  errors for invalid attribute arguments that were previously ignored.
+- [Rounding is now used when converting a float to a `Duration`.][96051] The converted
+  duration can differ slightly from what it was.
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Prepare Rust for LLVM opaque pointers.][94214]
+
+[94214]: https://github.com/rust-lang/rust/pull/94214/
+[94530]: https://github.com/rust-lang/rust/pull/94530/
+[94954]: https://github.com/rust-lang/rust/pull/94954/
+[95243]: https://github.com/rust-lang/rust/pull/95243/
+[95565]: https://github.com/rust-lang/rust/pull/95565/
+[95632]: https://github.com/rust-lang/rust/pull/95632/
+[95818]: https://github.com/rust-lang/rust/pull/95818/
+[95897]: https://github.com/rust-lang/rust/pull/95897/
+[95953]: https://github.com/rust-lang/rust/pull/95953/
+[96051]: https://github.com/rust-lang/rust/pull/96051/
+[96296]: https://github.com/rust-lang/rust/pull/96296/
+[96455]: https://github.com/rust-lang/rust/pull/96455/
+[96737]: https://github.com/rust-lang/rust/pull/96737/
+[96868]: https://github.com/rust-lang/rust/pull/96868/
+[96881]: https://github.com/rust-lang/rust/pull/96881/
+[96885]: https://github.com/rust-lang/rust/pull/96885/
+[96959]: https://github.com/rust-lang/rust/pull/96959/
+[97034]: https://github.com/rust-lang/rust/pull/97034/
+[97202]: https://github.com/rust-lang/rust/pull/97202/
+[97316]: https://github.com/rust-lang/rust/pull/97316/
+[97652]: https://github.com/rust-lang/rust/pull/97652/
+[97675]: https://github.com/rust-lang/rust/pull/97675/
+[97803]: https://github.com/rust-lang/rust/pull/97803/
+[97837]: https://github.com/rust-lang/rust/pull/97837/
+[97867]: https://github.com/rust-lang/rust/pull/97867/
+[cargo/10713]: https://github.com/rust-lang/cargo/pull/10713/
+[cargo/10755]: https://github.com/rust-lang/cargo/pull/10755/
+
+[`array::from_fn`]: https://doc.rust-lang.org/stable/std/array/fn.from_fn.html
+[`Box::into_pin`]: https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_pin
+[`BinaryHeap::try_reserve_exact`]: https://doc.rust-lang.org/stable/alloc/collections/binary_heap/struct.BinaryHeap.html#method.try_reserve_exact
+[`BinaryHeap::try_reserve`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.try_reserve
+[`OsString::try_reserve`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve
+[`OsString::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve_exact
+[`PathBuf::try_reserve`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve
+[`PathBuf::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve_exact
+[`Path::try_exists`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.try_exists
+[`Ref::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.Ref.html#method.filter_map
+[`RefMut::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.RefMut.html#method.filter_map
+[`NonNull::<slice>::len`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.len
+[`ToOwned::clone_into`]: https://doc.rust-lang.org/stable/std/borrow/trait.ToOwned.html#method.clone_into
+[`Ipv6Addr::to_ipv4_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4_mapped
+[`unix::io::AsFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/trait.AsFd.html
+[`unix::io::BorrowedFd<'fd>`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.BorrowedFd.html
+[`unix::io::OwnedFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.OwnedFd.html
+[`windows::io::AsHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsHandle.html
+[`windows::io::BorrowedHandle<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedHandle.html
+[`windows::io::OwnedHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedHandle.html
+[`windows::io::HandleOrInvalid`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrInvalid.html
+[`windows::io::HandleOrNull`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrNull.html
+[`windows::io::InvalidHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.InvalidHandleError.html
+[`windows::io::NullHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.NullHandleError.html
+[`windows::io::AsSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsSocket.html
+[`windows::io::BorrowedSocket<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedSocket.html
+[`windows::io::OwnedSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedSocket.html
+[`thread::scope`]: https://doc.rust-lang.org/stable/std/thread/fn.scope.html
+[`thread::Scope`]: https://doc.rust-lang.org/stable/std/thread/struct.Scope.html
+[`thread::ScopedJoinHandle`]: https://doc.rust-lang.org/stable/std/thread/struct.ScopedJoinHandle.html
+
+[`array::from_ref`]: https://doc.rust-lang.org/stable/std/array/fn.from_ref.html
+[`slice::from_ref`]: https://doc.rust-lang.org/stable/std/slice/fn.from_ref.html
+[`intrinsics::copy`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy.html
+[`intrinsics::copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy_nonoverlapping.html
+[`<*const T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to
+[`<*const T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping
+[`<*mut T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to-1
+[`<*mut T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping-1
+[`<*mut T>::copy_from`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from
+[`<*mut T>::copy_from_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from_nonoverlapping
+[`str::from_utf8`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html
+[`Utf8Error::error_len`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.error_len
+[`Utf8Error::valid_up_to`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.valid_up_to
+[`Condvar::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.new
+[`Mutex::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html#method.new
+[`RwLock::new`]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html#method.new
+
+Version 1.62.1 (2022-07-19)
+==========================
+
+Rust 1.62.1 addresses a few recent regressions in the compiler and standard
+library, and also mitigates a CPU vulnerability on Intel SGX.
+
+* [The compiler fixed unsound function coercions involving `impl Trait` return types.][98608]
+* [The compiler fixed an incremental compilation bug with `async fn` lifetimes.][98890]
+* [Windows added a fallback for overlapped I/O in synchronous reads and writes.][98950]
+* [The `x86_64-fortanix-unknown-sgx` target added a mitigation for the
+  MMIO stale data vulnerability][98126], advisory [INTEL-SA-00615].
+
+[98608]: https://github.com/rust-lang/rust/issues/98608
+[98890]: https://github.com/rust-lang/rust/issues/98890
+[98950]: https://github.com/rust-lang/rust/pull/98950
+[98126]: https://github.com/rust-lang/rust/pull/98126
+[INTEL-SA-00615]: https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00615.html
+
 Version 1.62.0 (2022-06-30)
 ==========================
 
@@ -1234,7 +1442,7 @@ Compatibility Notes
 - [Mixing Option and Result via `?` is no longer permitted in closures for inferred types.][86831]
 - [Previously unsound code is no longer permitted where different constructors in branches
   could require different lifetimes.][85574]
-- As previously mentioned the [`std::arch` instrinsics now uses stricter const checking][83278]
+- As previously mentioned the [`std::arch` intrinsics now uses stricter const checking][83278]
   than before and may reject some previously accepted code.
 - [`i128` multiplication on Cortex M0+ platforms currently unconditionally causes overflow
    when compiled with `codegen-units = 1`.][86063]
@@ -2312,7 +2520,7 @@ Compatibility Notes
 - [Fixed a regression parsing `{} && false` in tail expressions.][74650]
 - [Added changes to how proc-macros are expanded in `macro_rules!` that should
   help to preserve more span information.][73084] These changes may cause
-  compiliation errors if your macro was unhygenic or didn't correctly handle
+  compilation errors if your macro was unhygenic or didn't correctly handle
   `Delimiter::None`.
 - [Moved support for the CloudABI target to tier 3.][75568]
 - [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]

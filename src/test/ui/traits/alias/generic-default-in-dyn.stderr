@@ -1,0 +1,39 @@
+error[E0658]: trait aliases are experimental
+  --> $DIR/generic-default-in-dyn.rs:1:1
+   |
+LL | trait SendEqAlias<T> = PartialEq;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #41517 <https://github.com/rust-lang/rust/issues/41517> for more information
+   = help: add `#![feature(trait_alias)]` to the crate attributes to enable
+
+error[E0393]: the type parameter `Rhs` must be explicitly specified
+  --> $DIR/generic-default-in-dyn.rs:4:19
+   |
+LL | struct Foo<T>(dyn SendEqAlias<T>);
+   |                   ^^^^^^^^^^^^^^ missing reference to `Rhs`
+   |
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+LL | pub trait PartialEq<Rhs: ?Sized = Self> {
+   | --------------------------------------- type parameter `Rhs` must be specified for this
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error[E0393]: the type parameter `Rhs` must be explicitly specified
+  --> $DIR/generic-default-in-dyn.rs:7:19
+   |
+LL | struct Bar<T>(dyn SendEqAlias<T>, T);
+   |                   ^^^^^^^^^^^^^^ missing reference to `Rhs`
+   |
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+LL | pub trait PartialEq<Rhs: ?Sized = Self> {
+   | --------------------------------------- type parameter `Rhs` must be specified for this
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0393, E0658.
+For more information about an error, try `rustc --explain E0393`.

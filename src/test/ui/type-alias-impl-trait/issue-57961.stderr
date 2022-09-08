@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<std::vec::IntoIter<u32> as Iterator>::Item == X`
+error[E0271]: expected `std::vec::IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
   --> $DIR/issue-57961.rs:10:16
    |
 LL | type X = impl Sized;

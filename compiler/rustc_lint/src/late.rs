@@ -24,13 +24,11 @@ use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
-use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use std::any::Any;
 use std::cell::Cell;
 use std::slice;
-use tracing::debug;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
@@ -194,14 +192,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         self.context.cached_typeck_results.set(old_cached_typeck_results);
     }
 
-    fn visit_variant_data(
-        &mut self,
-        s: &'tcx hir::VariantData<'tcx>,
-        _: Symbol,
-        _: &'tcx hir::Generics<'tcx>,
-        _: hir::HirId,
-        _: Span,
-    ) {
+    fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
         lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
     }
@@ -213,15 +204,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         })
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics<'tcx>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
         self.with_lint_attrs(v.id, |cx| {
             lint_callback!(cx, check_variant, v);
-            hir_visit::walk_variant(cx, v, g, item_id);
+            hir_visit::walk_variant(cx, v);
         })
     }
 

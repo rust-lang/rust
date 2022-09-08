@@ -295,7 +295,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Attempts to satisfy the obligation. If successful, this will affect the surrounding
     /// type environment by performing unification.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn select(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -325,10 +325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(SelectionError::Overflow(OverflowError::Canonical))
             }
             Err(e) => Err(e),
-            Ok(candidate) => {
-                debug!(?candidate, "confirmed");
-                Ok(Some(candidate))
-            }
+            Ok(candidate) => Ok(Some(candidate)),
         }
     }
 
@@ -435,6 +432,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         level = "debug",
         skip(self, previous_stack),
         fields(previous_stack = ?previous_stack.head())
+        ret,
     )]
     fn evaluate_predicate_recursively<'o>(
         &mut self,
@@ -450,7 +448,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => self.check_recursion_limit(&obligation, &obligation)?,
         }
 
-        let result = ensure_sufficient_stack(|| {
+        ensure_sufficient_stack(|| {
             let bound_predicate = obligation.predicate.kind();
             match bound_predicate.skip_binder() {
                 ty::PredicateKind::Trait(t) => {
@@ -760,14 +758,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
             }
-        });
-
-        debug!("finished: {:?} from {:?}", result, obligation);
-
-        result
+        })
     }
 
-    #[instrument(skip(self, previous_stack), level = "debug")]
+    #[instrument(skip(self, previous_stack), level = "debug", ret)]
     fn evaluate_trait_predicate_recursively<'o>(
         &mut self,
         previous_stack: TraitObligationStackList<'o, 'tcx>,
@@ -798,12 +792,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If a trait predicate is in the (local or global) evaluation cache,
         // then we know it holds without cycles.
         if let Some(result) = self.check_evaluation_cache(param_env, fresh_trait_pred) {
-            debug!(?result, "CACHE HIT");
+            debug!("CACHE HIT");
             return Ok(result);
         }
 
         if let Some(result) = stack.cache().get_provisional(fresh_trait_pred) {
-            debug!(?result, "PROVISIONAL CACHE HIT");
+            debug!("PROVISIONAL CACHE HIT");
             stack.update_reached_depth(result.reached_depth);
             return Ok(result.result);
         }
@@ -826,11 +820,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
-            debug!(?result, "CACHE MISS");
+            debug!("CACHE MISS");
             self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
             stack.cache().on_completion(stack.dfn);
         } else {
-            debug!(?result, "PROVISIONAL");
+            debug!("PROVISIONAL");
             debug!(
                 "caching provisionally because {:?} \
                  is a cycle participant (at depth {}, reached depth {})",
@@ -1023,7 +1017,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(
         level = "debug",
         skip(self, stack),
-        fields(depth = stack.obligation.recursion_depth)
+        fields(depth = stack.obligation.recursion_depth),
+        ret
     )]
     fn evaluate_candidate<'o>(
         &mut self,
@@ -1056,7 +1051,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             result = result.max(EvaluatedToOkModuloRegions);
         }
 
-        debug!(?result);
         Ok(result)
     }
 
@@ -1265,11 +1259,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
+    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         debug!("is_knowable(intercrate={:?})", self.intercrate);
 
         if !self.intercrate || stack.obligation.polarity() == ty::ImplPolarity::Negative {
-            return None;
+            return Ok(());
         }
 
         let obligation = &stack.obligation;
@@ -1405,7 +1399,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// a projection, look at the bounds of `T::Bar`, see if we can find a
     /// `Baz` bound. We return indexes into the list returned by
     /// `tcx.item_bounds` for any applicable bounds.
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -1435,7 +1429,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // unnecessary ambiguity.
         let mut distinct_normalized_bounds = FxHashSet::default();
 
-        let matching_bounds = bounds
+        bounds
             .iter()
             .enumerate()
             .filter_map(|(idx, bound)| {
@@ -1462,10 +1456,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 None
             })
-            .collect();
-
-        debug!(?matching_bounds);
-        matching_bounds
+            .collect()
     }
 
     /// Equates the trait in `obligation` with trait bound. If the two traits
@@ -1629,6 +1620,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     when there are other valid candidates"
                 );
             }
+
+            // FIXME(@jswrenn): this should probably be more sophisticated
+            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
 
             // (*)
             (
@@ -1883,7 +1877,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(obligation.predicate.rebind({
-                    sized_crit.iter().map(|ty| EarlyBinder(*ty).subst(self.tcx(), substs)).collect()
+                    sized_crit
+                        .0
+                        .iter()
+                        .map(|ty| sized_crit.rebind(*ty).subst(self.tcx(), substs))
+                        .collect()
                 }))
             }
 
@@ -2081,30 +2079,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .flat_map(|ty| {
                 let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
 
-                self.infcx.commit_unconditionally(|_| {
-                    let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
-                    let Normalized { value: normalized_ty, mut obligations } =
-                        ensure_sufficient_stack(|| {
-                            project::normalize_with_depth(
-                                self,
-                                param_env,
-                                cause.clone(),
-                                recursion_depth,
-                                placeholder_ty,
-                            )
-                        });
-                    let placeholder_obligation = predicate_for_trait_def(
-                        self.tcx(),
-                        param_env,
-                        cause.clone(),
-                        trait_def_id,
-                        recursion_depth,
-                        normalized_ty,
-                        &[],
-                    );
-                    obligations.push(placeholder_obligation);
-                    obligations
-                })
+                let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
+                let Normalized { value: normalized_ty, mut obligations } =
+                    ensure_sufficient_stack(|| {
+                        project::normalize_with_depth(
+                            self,
+                            param_env,
+                            cause.clone(),
+                            recursion_depth,
+                            placeholder_ty,
+                        )
+                    });
+                let placeholder_obligation = predicate_for_trait_def(
+                    self.tcx(),
+                    param_env,
+                    cause.clone(),
+                    trait_def_id,
+                    recursion_depth,
+                    normalized_ty,
+                    &[],
+                );
+                obligations.push(placeholder_obligation);
+                obligations
             })
             .collect()
     }
@@ -2148,7 +2144,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn match_impl(
         &mut self,
         impl_def_id: DefId,
@@ -2189,17 +2185,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .at(&cause, obligation.param_env)
             .define_opaque_types(false)
             .eq(placeholder_obligation_trait_ref, impl_trait_ref)
-            .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{}`", e))?;
+            .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{e}`"))?;
         nested_obligations.extend(obligations);
 
         if !self.intercrate
             && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
         {
-            debug!("match_impl: reservation impls only apply in intercrate mode");
+            debug!("reservation impls only apply in intercrate mode");
             return Err(());
         }
 
-        debug!(?impl_substs, ?nested_obligations, "match_impl: success");
         Ok(Normalized { value: impl_substs, obligations: nested_obligations })
     }
 
@@ -2330,7 +2325,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// impl or trait. The obligations are substituted and fully
     /// normalized. This is used when confirming an impl or default
     /// impl.
-    #[tracing::instrument(level = "debug", skip(self, cause, param_env))]
+    #[instrument(level = "debug", skip(self, cause, param_env))]
     fn impl_or_trait_obligations(
         &mut self,
         cause: &ObligationCause<'tcx>,
@@ -2356,11 +2351,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.predicates_of(def_id);
+        let predicates = tcx.bound_predicates_of(def_id);
         debug!(?predicates);
-        assert_eq!(predicates.parent, None);
-        let mut obligations = Vec::with_capacity(predicates.predicates.len());
-        for (predicate, span) in predicates.predicates {
+        assert_eq!(predicates.0.parent, None);
+        let mut obligations = Vec::with_capacity(predicates.0.predicates.len());
+        for (predicate, span) in predicates.0.predicates {
             let span = *span;
             let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
@@ -2374,7 +2369,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                EarlyBinder(*predicate).subst(tcx, substs),
+                predicates.rebind(*predicate).subst(tcx, substs),
                 &mut obligations,
             );
             obligations.push(Obligation { cause, recursion_depth, param_env, predicate });

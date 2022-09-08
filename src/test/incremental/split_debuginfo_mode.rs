@@ -6,10 +6,10 @@
 // only-x86_64-unknown-linux-gnu
 // revisions:rpass1 rpass2 rpass3 rpass4
 
-// [rpass1]compile-flags: -Zquery-dep-graph -Zunstable-options -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on
-// [rpass2]compile-flags: -Zquery-dep-graph -Zunstable-options -Csplit-debuginfo=packed -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on
-// [rpass3]compile-flags: -Zquery-dep-graph -Zunstable-options -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split -Zsplit-dwarf-inlining=on
-// [rpass4]compile-flags: -Zquery-dep-graph -Zunstable-options -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split -Zsplit-dwarf-inlining=off
+// [rpass1]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=unpacked -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on
+// [rpass2]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=single -Zsplit-dwarf-inlining=on
+// [rpass3]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split -Zsplit-dwarf-inlining=on
+// [rpass4]compile-flags: -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split -Zsplit-dwarf-inlining=off
 
 #![feature(rustc_attrs)]
 // For rpass2 we change -Csplit-debuginfo and thus expect every CGU to be recompiled

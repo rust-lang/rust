@@ -1,4 +1,6 @@
-use rustc_ast::ast::{self, BindingMode, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{
+    self, BindingAnnotation, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax,
+};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
@@ -99,10 +101,10 @@ impl Rewrite for Pat {
                 write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
-            PatKind::Ident(binding_mode, ident, ref sub_pat) => {
-                let (prefix, mutability) = match binding_mode {
-                    BindingMode::ByRef(mutability) => ("ref", mutability),
-                    BindingMode::ByValue(mutability) => ("", mutability),
+            PatKind::Ident(BindingAnnotation(by_ref, mutability), ident, ref sub_pat) => {
+                let prefix = match by_ref {
+                    ByRef::Yes => "ref",
+                    ByRef::No => "",
                 };
                 let mut_infix = format_mutability(mutability).trim();
                 let id_str = rewrite_ident(context, ident);

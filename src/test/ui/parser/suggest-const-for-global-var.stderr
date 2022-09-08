@@ -1,0 +1,8 @@
+error: expected item, found keyword `let`
+  --> $DIR/suggest-const-for-global-var.rs:1:1
+   |
+LL | let X: i32 = 12;
+   | ^^^ consider using `const` or `static` instead of `let` for global variables
+
+error: aborting due to previous error
+

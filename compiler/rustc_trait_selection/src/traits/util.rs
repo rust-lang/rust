@@ -6,12 +6,10 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, EarlyBinder, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
-
-use std::iter;
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -200,8 +198,8 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let subject = selcx.tcx().impl_subject(impl_def_id);
-    let subject = EarlyBinder(subject).subst(selcx.tcx(), impl_substs);
+    let subject = selcx.tcx().bound_impl_subject(impl_def_id);
+    let subject = subject.subst(selcx.tcx(), impl_substs);
     let Normalized { value: subject, obligations: normalization_obligations1 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
 
@@ -210,34 +208,13 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
     let impl_obligations =
-        predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
+        super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
 
     let impl_obligations = impl_obligations
         .chain(normalization_obligations1.into_iter())
         .chain(normalization_obligations2.into_iter());
 
     (subject, impl_obligations)
-}
-
-pub fn predicates_for_generics<'tcx>(
-    cause: ObligationCause<'tcx>,
-    recursion_depth: usize,
-    param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: ty::InstantiatedPredicates<'tcx>,
-) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
-
-    iter::zip(generic_bounds.predicates, generic_bounds.spans).map(move |(predicate, span)| {
-        let cause = match *cause.code() {
-            traits::ItemObligation(def_id) if !span.is_dummy() => traits::ObligationCause::new(
-                cause.span,
-                cause.body_id,
-                traits::BindingObligation(def_id, span),
-            ),
-            _ => cause.clone(),
-        };
-        Obligation { cause, recursion_depth, param_env, predicate }
-    })
 }
 
 pub fn predicate_for_trait_ref<'tcx>(
@@ -358,7 +335,8 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
-    assoc_item.defaultness.is_final() && tcx.impl_defaultness(assoc_item.container.id()).is_final()
+    assoc_item.defaultness(tcx).is_final()
+        && tcx.impl_defaultness(assoc_item.container_id(tcx)).is_final()
 }
 
 pub enum TupleArgumentsFlag {

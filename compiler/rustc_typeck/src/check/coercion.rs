@@ -38,10 +38,12 @@
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
 use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::Expr;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
@@ -86,6 +88,19 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 }
 
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
+
+struct CollectRetsVisitor<'tcx> {
+    ret_exprs: Vec<&'tcx hir::Expr<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if let hir::ExprKind::Ret(_) = expr.kind {
+            self.ret_exprs.push(expr);
+        }
+        intravisit::walk_expr(self, expr);
+    }
+}
 
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
@@ -737,7 +752,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
-        self.commit_unconditionally(|snapshot| {
+        self.commit_if_ok(|snapshot| {
             let result = if let ty::FnPtr(fn_ty_b) = b.kind()
                 && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
                     (fn_ty_a.unsafety(), fn_ty_b.unsafety())
@@ -1464,23 +1479,29 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
             }
             Err(coercion_error) => {
+                // Mark that we've failed to coerce the types here to suppress
+                // any superfluous errors we might encounter while trying to
+                // emit or provide suggestions on how to fix the initial error.
+                fcx.set_tainted_by_errors();
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
                     // since it is implied by the syntax.
                     // (Note: not all force-units work this way.)"
-                    (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
+                    (expression_ty, self.merged_ty())
                 } else {
                     // Otherwise, the "expected" type for error
                     // reporting is the current unification type,
                     // which is basically the LUB of the expressions
                     // we've seen so far (combined with the expected
                     // type)
-                    (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
+                    (self.merged_ty(), expression_ty)
                 };
+                let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
 
                 let mut err;
                 let mut unsized_return = false;
+                let mut visitor = CollectRetsVisitor { ret_exprs: vec![] };
                 match *cause.code() {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
@@ -1505,6 +1526,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_unsized(fcx, blk_id);
+                        }
+                        if let Some(expression) = expression
+                            && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
+                              intravisit::walk_block(& mut visitor, loop_blk);
                         }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
@@ -1551,11 +1576,46 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     );
                 }
 
+                if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
+                    self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
+                }
                 err.emit_unless(unsized_return);
 
                 self.final_ty = Some(fcx.tcx.ty_error());
             }
         }
+    }
+    fn note_unreachable_loop_return(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,
+    ) {
+        let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
+        let mut span: MultiSpan = vec![loop_span].into();
+        span.push_span_label(loop_span, "this might have zero elements to iterate on");
+        const MAXITER: usize = 3;
+        let iter = ret_exprs.iter().take(MAXITER);
+        for ret_expr in iter {
+            span.push_span_label(
+                ret_expr.span,
+                "if the loop doesn't execute, this value would never get returned",
+            );
+        }
+        err.span_note(
+            span,
+            "the function expects a value to always be returned, but loops might run zero times",
+        );
+        if MAXITER < ret_exprs.len() {
+            err.note(&format!(
+                "if the loop doesn't execute, {} other values would never get returned",
+                ret_exprs.len() - MAXITER
+            ));
+        }
+        err.help(
+            "return a value for the case when the loop has zero elements to iterate on, or \
+           consider changing the return type to account for that possibility",
+        );
     }
 
     fn report_return_mismatched_types<'a>(
@@ -1648,9 +1708,30 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             );
         }
 
-        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
+        let ret_coercion_span = fcx.ret_coercion_span.get();
+
+        if let Some(sp) = ret_coercion_span
+            // If the closure has an explicit return type annotation, or if
+            // the closure's return type has been inferred from outside
+            // requirements (such as an Fn* trait bound), then a type error
+            // may occur at the first return expression we see in the closure
+            // (if it conflicts with the declared return type). Skip adding a
+            // note in this case, since it would be incorrect.
+            && !fcx.return_type_pre_known
+        {
+            err.span_note(
+                sp,
+                &format!(
+                    "return type inferred to be `{}` here",
+                    expected
+                ),
+            );
+        }
+
+        if let (Some(sp), Some(fn_output)) = (ret_coercion_span, fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
+
         err
     }
 

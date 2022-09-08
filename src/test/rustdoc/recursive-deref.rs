@@ -51,7 +51,7 @@ impl G {
 
 // @has recursive_deref/struct.D.html '//h3[@class="code-header in-band"]' 'impl Deref for D'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
-// @!has '-' '//*[@id="deref-methods-G"]'
+// @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for D {
     type Target = E;
 
@@ -62,7 +62,7 @@ impl Deref for D {
 
 // @has recursive_deref/struct.E.html '//h3[@class="code-header in-band"]' 'impl Deref for E'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
-// @!has '-' '//*[@id="deref-methods-G"]'
+// @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for E {
     type Target = F;
 
@@ -73,7 +73,7 @@ impl Deref for E {
 
 // @has recursive_deref/struct.F.html '//h3[@class="code-header in-band"]' 'impl Deref for F'
 // We also check that `G::g` method isn't rendered because there is no `self` argument.
-// @!has '-' '//*[@id="deref-methods-G"]'
+// @!has '-' '//*[@id="deref-methods-G"]' ''
 impl Deref for F {
     type Target = G;
 
@@ -101,7 +101,7 @@ impl I {
 }
 
 // @has recursive_deref/struct.H.html '//h3[@class="code-header in-band"]' 'impl Deref for H'
-// @!has '-' '//*[@id="deref-methods-I"]'
+// @!has '-' '//*[@id="deref-methods-I"]' ''
 impl Deref for H {
     type Target = I;
 

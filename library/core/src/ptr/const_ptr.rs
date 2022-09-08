@@ -95,8 +95,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }
@@ -154,7 +154,7 @@ impl<T: ?Sized> *const T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -249,7 +249,7 @@ impl<T: ?Sized> *const T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -559,6 +559,21 @@ impl<T: ?Sized> *const T {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *const T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
+        from_raw_parts::<T>(this, metadata(self))
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
@@ -641,7 +656,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -740,9 +755,12 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        let this = self;
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
-        unsafe { assert_unsafe_precondition!(self >= origin) };
+        unsafe {
+            assert_unsafe_precondition!([T](this: *const T, origin: *const T) => this >= origin)
+        };
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
@@ -1267,20 +1285,21 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     assert!(*u16_ptr == u16::from_ne_bytes([5, 6]) || *u16_ptr == u16::from_ne_bytes([6, 7]));
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -1336,11 +1355,8 @@ impl<T: ?Sized> *const T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 

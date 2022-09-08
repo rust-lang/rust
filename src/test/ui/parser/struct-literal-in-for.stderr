@@ -24,7 +24,7 @@ LL | |     }.hi() {
    | |__________^ `bool` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `bool`
-   = note: required because of the requirements on the impl of `IntoIterator` for `bool`
+   = note: required for `bool` to implement `IntoIterator`
 
 error: aborting due to 2 previous errors
 

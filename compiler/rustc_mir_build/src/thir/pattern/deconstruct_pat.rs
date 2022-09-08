@@ -71,9 +71,9 @@ use std::ops::RangeInclusive;
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
-        if let PatKind::Or { pats } = pat.kind.as_ref() {
-            for pat in pats {
-                expand(pat, vec);
+        if let PatKind::Or { pats } = &pat.kind {
+            for pat in pats.iter() {
+                expand(&pat, vec);
             }
         } else {
             vec.push(pat)
@@ -252,16 +252,20 @@ impl IntRange {
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
         } else {
-            PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
+            PatKind::Range(Box::new(PatRange {
+                lo: lo_const,
+                hi: hi_const,
+                end: RangeEnd::Included,
+            }))
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
+        Pat { ty, span: DUMMY_SP, kind }
     }
 
     /// Lint on likely incorrect range patterns (#63987)
     pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
         column_count: usize,
         hir_id: HirId,
@@ -617,7 +621,7 @@ impl SplitVarLenSlice {
             // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output
             // here.
-            Some(_) => (0..0), // empty range
+            Some(_) => 0..0, // empty range
             // We cover all arities in the range `(self.arity..infinity)`. We split that range into
             // two: lengths smaller than `max_slice.arity()` are treated independently as
             // fixed-lengths slices, and lengths above are captured by `max_slice`.
@@ -696,7 +700,7 @@ impl<'tcx> Constructor<'tcx> {
     /// `EvalResult::Deny { .. }`.
     ///
     /// This means that the variant has a stdlib unstable feature marking it.
-    pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    pub(super) fn is_unstable_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
             let variant_def_id = adt.variant(*idx).def_id;
             // Filter variants that depend on a disabled unstable feature.
@@ -710,7 +714,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
     /// attribute from a type not local to the current crate.
-    pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    pub(super) fn is_doc_hidden_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
             let variant_def_id = adt.variants()[*idx].def_id;
             return pcx.cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
@@ -731,7 +735,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(super) fn arity(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> usize {
+    pub(super) fn arity(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> usize {
         match self {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Tuple(fs) => fs.len(),
@@ -775,7 +779,7 @@ impl<'tcx> Constructor<'tcx> {
     /// matrix, unless all of them are.
     pub(super) fn split<'a>(
         &self,
-        pcx: PatCtxt<'_, '_, 'tcx>,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
     ) -> SmallVec<[Self; 1]>
     where
@@ -811,7 +815,7 @@ impl<'tcx> Constructor<'tcx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+    pub(super) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
@@ -865,7 +869,7 @@ impl<'tcx> Constructor<'tcx> {
     /// assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         used_ctors: &[Constructor<'tcx>],
     ) -> bool {
         if used_ctors.is_empty() {
@@ -918,7 +922,7 @@ pub(super) struct SplitWildcard<'tcx> {
 }
 
 impl<'tcx> SplitWildcard<'tcx> {
-    pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
+    pub(super) fn new<'p>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
         debug!("SplitWildcard::new({:?})", pcx.ty);
         let cx = pcx.cx;
         let make_range = |start, end| {
@@ -1044,7 +1048,7 @@ impl<'tcx> SplitWildcard<'tcx> {
     /// do what you want.
     pub(super) fn split<'a>(
         &mut self,
-        pcx: PatCtxt<'_, '_, 'tcx>,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
     ) where
         'tcx: 'a,
@@ -1056,21 +1060,21 @@ impl<'tcx> SplitWildcard<'tcx> {
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.
-    fn any_missing(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    fn any_missing(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         self.iter_missing(pcx).next().is_some()
     }
 
     /// Iterate over the constructors for this type that are not present in the matrix.
     pub(super) fn iter_missing<'a, 'p>(
         &'a self,
-        pcx: PatCtxt<'a, 'p, 'tcx>,
+        pcx: &'a PatCtxt<'a, 'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
         self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+    fn into_ctors(self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
@@ -1202,35 +1206,32 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
     /// Creates a new list of wildcard fields for a given constructor. The result must have a
     /// length of `constructor.arity()`.
-    pub(super) fn wildcards(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        ty: Ty<'tcx>,
-        constructor: &Constructor<'tcx>,
-    ) -> Self {
+    #[instrument(level = "trace")]
+    pub(super) fn wildcards(pcx: &PatCtxt<'_, 'p, 'tcx>, constructor: &Constructor<'tcx>) -> Self {
         let ret = match constructor {
-            Single | Variant(_) => match ty.kind() {
-                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter()),
-                ty::Ref(_, rty, _) => Fields::wildcards_from_tys(cx, once(*rty)),
+            Single | Variant(_) => match pcx.ty.kind() {
+                ty::Tuple(fs) => Fields::wildcards_from_tys(pcx.cx, fs.iter()),
+                ty::Ref(_, rty, _) => Fields::wildcards_from_tys(pcx.cx, once(*rty)),
                 ty::Adt(adt, substs) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
-                        Fields::wildcards_from_tys(cx, once(substs.type_at(0)))
+                        Fields::wildcards_from_tys(pcx.cx, once(substs.type_at(0)))
                     } else {
                         let variant = &adt.variant(constructor.variant_index_for_adt(*adt));
-                        let tys = Fields::list_variant_nonhidden_fields(cx, ty, variant)
+                        let tys = Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant)
                             .map(|(_, ty)| ty);
-                        Fields::wildcards_from_tys(cx, tys)
+                        Fields::wildcards_from_tys(pcx.cx, tys)
                     }
                 }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
+                _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx),
             },
-            Slice(slice) => match *ty.kind() {
+            Slice(slice) => match *pcx.ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
-                    Fields::wildcards_from_tys(cx, (0..arity).map(|_| ty))
+                    Fields::wildcards_from_tys(pcx.cx, (0..arity).map(|_| ty))
                 }
-                _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
+                _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
             Str(..)
             | FloatRange(..)
@@ -1243,7 +1244,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 bug!("called `Fields::wildcards` on an `Or` ctor")
             }
         };
-        debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
+        debug!(?ret);
         ret
     }
 
@@ -1285,8 +1286,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(super) fn wild_from_ctor(pcx: PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
-        let fields = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
+    pub(super) fn wild_from_ctor(pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
+        let fields = Fields::wildcards(pcx, &ctor);
         DeconstructedPat::new(ctor, fields, pcx.ty, DUMMY_SP)
     }
 
@@ -1300,7 +1301,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         let mkpat = |pat| DeconstructedPat::from_pat(cx, pat);
         let ctor;
         let fields;
-        match pat.kind.as_ref() {
+        match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. } => return mkpat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return mkpat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
@@ -1345,9 +1346,9 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         fields = Fields::singleton(cx, pat);
                     }
                     ty::Adt(adt, _) => {
-                        ctor = match pat.kind.as_ref() {
+                        ctor = match pat.kind {
                             PatKind::Leaf { .. } => Single,
-                            PatKind::Variant { variant_index, .. } => Variant(*variant_index),
+                            PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
                         let variant = &adt.variant(ctor.variant_index_for_adt(*adt));
@@ -1405,7 +1406,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
             }
-            &PatKind::Range(PatRange { lo, hi, end }) => {
+            &PatKind::Range(box PatRange { lo, hi, end }) => {
                 let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
@@ -1432,7 +1433,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     FixedLen(prefix.len() + suffix.len())
                 };
                 ctor = Slice(Slice::new(array_len, kind));
-                fields = Fields::from_iter(cx, prefix.iter().chain(suffix).map(mkpat));
+                fields =
+                    Fields::from_iter(cx, prefix.iter().chain(suffix.iter()).map(|p| mkpat(&*p)));
             }
             PatKind::Or { .. } => {
                 ctor = Or;
@@ -1445,15 +1447,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
 
     pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'p, 'tcx>) -> Pat<'tcx> {
         let is_wildcard = |pat: &Pat<'_>| {
-            matches!(*pat.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
+            matches!(pat.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
         };
-        let mut subpatterns = self.iter_fields().map(|p| p.to_pat(cx));
-        let pat = match &self.ctor {
+        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_pat(cx)));
+        let kind = match &self.ctor {
             Single | Variant(_) => match self.ty.kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
                         .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .map(|(i, pattern)| FieldPat { field: Field::new(i), pattern })
                         .collect(),
                 },
                 ty::Adt(adt_def, _) if adt_def.is_box() => {
@@ -1488,7 +1490,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     FixedLen(_) => PatKind::Slice {
                         prefix: subpatterns.collect(),
                         slice: None,
-                        suffix: vec![],
+                        suffix: Box::new([]),
                     },
                     VarLen(prefix, _) => {
                         let mut subpatterns = subpatterns.peekable();
@@ -1507,14 +1509,18 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                                 subpatterns.next();
                             }
                         }
-                        let suffix: Vec<_> = subpatterns.collect();
+                        let suffix: Box<[_]> = subpatterns.collect();
                         let wild = Pat::wildcard_from_ty(self.ty);
-                        PatKind::Slice { prefix, slice: Some(wild), suffix }
+                        PatKind::Slice {
+                            prefix: prefix.into_boxed_slice(),
+                            slice: Some(Box::new(wild)),
+                            suffix,
+                        }
                     }
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            &FloatRange(lo, hi, end) => PatKind::Range(Box::new(PatRange { lo, hi, end })),
             IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive => PatKind::Wild,
             Missing { .. } => bug!(
@@ -1526,7 +1532,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
         };
 
-        Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(pat) }
+        Pat { ty: self.ty, span: DUMMY_SP, kind }
     }
 
     pub(super) fn is_or_pat(&self) -> bool {
@@ -1553,13 +1559,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(super) fn specialize<'a>(
         &'a self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         other_ctor: &Constructor<'tcx>,
     ) -> SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]> {
         match (&self.ctor, other_ctor) {
             (Wildcard, _) => {
                 // We return a wildcard for each field of `other_ctor`.
-                Fields::wildcards(cx, self.ty, other_ctor).iter_patterns().collect()
+                Fields::wildcards(pcx, other_ctor).iter_patterns().collect()
             }
             (Slice(self_slice), Slice(other_slice))
                 if self_slice.arity() != other_slice.arity() =>
@@ -1578,7 +1584,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                         let prefix = &self.fields.fields[..prefix];
                         let suffix = &self.fields.fields[self_slice.arity() - suffix..];
                         let wildcard: &_ =
-                            cx.pattern_arena.alloc(DeconstructedPat::wildcard(inner_ty));
+                            pcx.cx.pattern_arena.alloc(DeconstructedPat::wildcard(inner_ty));
                         let extra_wildcards = other_slice.arity() - self_slice.arity();
                         let extra_wildcards = (0..extra_wildcards).map(|_| wildcard);
                         prefix.iter().chain(extra_wildcards).chain(suffix).collect()

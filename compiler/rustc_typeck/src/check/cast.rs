@@ -32,21 +32,20 @@ use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
+use hir::def_id::LOCAL_CRATE;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 
 /// Reifies a cast check to be checked once we have full type information for
@@ -96,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(reported);
         }
 
-        if self.type_is_known_to_be_sized_modulo_regions(t, span) {
+        if self.type_is_sized_modulo_regions(self.param_env, t, span) {
             return Ok(Some(PointerKind::Thin));
         }
 
@@ -173,6 +172,7 @@ pub enum CastError {
     /// or "a length". If this argument is None, then the metadata is unknown, for example,
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToFatCast(Option<&'static str>),
+    ForeignNonExhaustiveAdt,
 }
 
 impl From<ErrorGuaranteed> for CastError {
@@ -591,6 +591,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 }
                 err.emit();
             }
+            CastError::ForeignNonExhaustiveAdt => {
+                make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                )
+                .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
+                .emit();
+            }
         }
     }
 
@@ -692,7 +703,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
-        if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span)
+        if !fcx.type_is_sized_modulo_regions(fcx.param_env, self.cast_ty, self.span)
             && !self.cast_ty.has_infer_types()
         {
             self.report_cast_to_unsized_type(fcx);
@@ -788,6 +799,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             _ => return Err(CastError::NonScalar),
         };
+
+        if let ty::Adt(adt_def, _) = *self.expr_ty.kind() {
+            if adt_def.did().krate != LOCAL_CRATE {
+                if adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive) {
+                    return Err(CastError::ForeignNonExhaustiveAdt);
+                }
+            }
+        }
 
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
@@ -1061,12 +1080,5 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             },
         );
-    }
-}
-
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn type_is_known_to_be_sized_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
-        traits::type_known_to_meet_bound_modulo_regions(self, self.param_env, ty, lang_item, span)
     }
 }

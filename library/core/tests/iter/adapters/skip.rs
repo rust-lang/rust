@@ -201,3 +201,34 @@ fn test_skip_non_fused() {
     // advance it further. `Unfuse` tests that this doesn't happen by panicking in that scenario.
     let _ = non_fused.skip(20).next();
 }
+
+#[test]
+fn test_skip_non_fused_nth_overflow() {
+    let non_fused = Unfuse::new(0..10);
+
+    // Ensures that calling skip and `nth` where the sum would overflow does not fail for non-fused
+    // iterators.
+    let _ = non_fused.skip(20).nth(usize::MAX);
+}
+
+#[test]
+fn test_skip_overflow_wrapping() {
+    // Test to ensure even on overflowing on `skip+nth` the correct amount of elements are yielded.
+    struct WrappingIterator(usize);
+
+    impl Iterator for WrappingIterator {
+        type Item = usize;
+
+        fn next(&mut self) -> core::option::Option<Self::Item> {
+            <Self as Iterator>::nth(self, 0)
+        }
+
+        fn nth(&mut self, nth: usize) -> core::option::Option<Self::Item> {
+            self.0 = self.0.wrapping_add(nth.wrapping_add(1));
+            Some(self.0)
+        }
+    }
+
+    let wrap = WrappingIterator(0);
+    assert_eq!(wrap.skip(20).nth(usize::MAX), Some(20));
+}

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 // This tests the various kinds of assignments there are. Polonius used to generate `killed`
-// facts only on simple assigments, but not projections, incorrectly causing errors to be emitted
+// facts only on simple assignments, but not projections, incorrectly causing errors to be emitted
 // for code accepted by NLL. They are all variations from example code in the NLL RFC.
 
 // check-pass

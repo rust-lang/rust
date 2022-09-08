@@ -1,6 +1,7 @@
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
+mod array_chunks;
 mod by_ref_sized;
 mod chain;
 mod cloned;
@@ -31,6 +32,9 @@ pub use self::{
     flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
+
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::array_chunks::ArrayChunks;
 
 #[unstable(feature = "std_internals", issue = "none")]
 pub use self::by_ref_sized::ByRefSized;

@@ -1,5 +1,4 @@
 // Code generation of atomic operations.
-// min-llvm-version: 13.0
 // compile-flags: -O
 #![crate_type = "lib"]
 

@@ -418,7 +418,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             .expect("failed to find `impl_lint_pass` terminator");
 
         impl_lint_pass_end += impl_lint_pass_start;
-        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(&lint_name_upper) {
+        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(lint_name_upper) {
             let mut lint_name_end = impl_lint_pass_start + (lint_name_pos + lint_name_upper.len());
             for c in content[lint_name_end..impl_lint_pass_end].chars() {
                 // Remove trailing whitespace
@@ -451,7 +451,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 }
 
                 let mut content =
-                    fs::read_to_string(&path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+                    fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
 
                 eprintln!(
                     "warn: you will have to manually remove any code related to `{}` from `{}`",
@@ -836,7 +836,7 @@ pub(crate) struct LintDeclSearchResult<'a> {
 fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -899,7 +899,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
 fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -946,7 +946,7 @@ fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
     for line in contents.lines() {
         let mut offset = 0usize;
         let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len;
+            let range = offset..offset + t.len as usize;
             offset = range.end;
 
             LintDeclSearchResult {

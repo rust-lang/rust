@@ -62,7 +62,7 @@ pub struct PrivStruct {
 }
 
 // @has 'toggle_item_contents/enum.Enum.html'
-// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]' ''
 pub enum Enum {
     A, B, C,
     D {
@@ -72,7 +72,7 @@ pub enum Enum {
 }
 
 // @has 'toggle_item_contents/enum.EnumStructVariant.html'
-// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]' ''
 pub enum EnumStructVariant {
     A, B, C,
     D {

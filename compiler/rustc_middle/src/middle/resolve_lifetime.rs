@@ -10,7 +10,7 @@ use rustc_macros::HashStable;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum Region {
     Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
+    EarlyBound(/* lifetime decl */ DefId),
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
     Free(DefId, /* lifetime decl */ DefId),
 }
@@ -35,7 +35,13 @@ impl<T: PartialEq> Set1<T> {
     }
 }
 
-pub type ObjectLifetimeDefault = Set1<Region>;
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub enum ObjectLifetimeDefault {
+    Empty,
+    Static,
+    Ambiguous,
+    Param(DefId),
+}
 
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.

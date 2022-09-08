@@ -46,7 +46,7 @@ pub(crate) trait DocFolder: Sized {
                     let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                     VariantItem(Variant::Tuple(fields))
                 }
-                Variant::CLike => VariantItem(Variant::CLike),
+                Variant::CLike(disr) => VariantItem(Variant::CLike(disr)),
             },
             ExternCrateItem { src: _ }
             | ImportItem(_)

@@ -175,7 +175,7 @@ fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<
             let p_ty = cx.typeck_results().pat_ty(p);
             collect_pat_paths(acc, cx, p, p_ty);
         }),
-        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::Unannotated, .., None) | PatKind::Path(_) => {
+        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::NONE, .., None) | PatKind::Path(_) => {
             acc.push(ty);
         },
         _ => {},
@@ -200,6 +200,8 @@ fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>,
             // We don't actually know the position and the presence of the `..` (dotdot) operator
             // in the arms, so we need to evaluate the correct offsets here in order to iterate in
             // both arms at the same time.
+            let left_pos = left_pos.as_opt_usize();
+            let right_pos = right_pos.as_opt_usize();
             let len = max(
                 left_in.len() + {
                     if left_pos.is_some() { 1 } else { 0 }

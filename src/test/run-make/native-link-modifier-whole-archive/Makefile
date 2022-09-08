@@ -1,23 +1,36 @@
 # ignore-cross-compile -- compiling C++ code does not work well when cross-compiling
 
-# This test case makes sure that native libraries are linked with --whole-archive semantics
-# when the `-bundle,+whole-archive` modifiers are applied to them.
+# This test case makes sure that native libraries are linked with appropriate semantics
+# when the `[+-]bundle,[+-]whole-archive` modifiers are applied to them.
 #
 # The test works by checking that the resulting executables produce the expected output,
 # part of which is emitted by otherwise unreferenced C code. If +whole-archive didn't work
 # that code would never make it into the final executable and we'd thus be missing some
 # of the output.
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
-all: $(TMPDIR)/$(call BIN,directly_linked) $(TMPDIR)/$(call BIN,indirectly_linked) $(TMPDIR)/$(call BIN,indirectly_linked_via_attr)
+all: $(TMPDIR)/$(call BIN,directly_linked) \
+     $(TMPDIR)/$(call BIN,directly_linked_test_plus_whole_archive) \
+     $(TMPDIR)/$(call BIN,directly_linked_test_minus_whole_archive) \
+     $(TMPDIR)/$(call BIN,indirectly_linked) \
+     $(TMPDIR)/$(call BIN,indirectly_linked_via_attr)
 	$(call RUN,directly_linked) | $(CGREP) 'static-initializer.directly_linked.'
+	$(call RUN,directly_linked_test_plus_whole_archive) --nocapture | $(CGREP) 'static-initializer.'
+	$(call RUN,directly_linked_test_minus_whole_archive) --nocapture | $(CGREP) -v 'static-initializer.'
 	$(call RUN,indirectly_linked) | $(CGREP) 'static-initializer.indirectly_linked.'
 	$(call RUN,indirectly_linked_via_attr) | $(CGREP) 'static-initializer.native_lib_in_src.'
 
 # Native lib linked directly into executable
 $(TMPDIR)/$(call BIN,directly_linked): $(call NATIVE_STATICLIB,c_static_lib_with_constructor)
 	$(RUSTC) directly_linked.rs -l static:+whole-archive=c_static_lib_with_constructor
+
+# Native lib linked into test executable, +whole-archive
+$(TMPDIR)/$(call BIN,directly_linked_test_plus_whole_archive): $(call NATIVE_STATICLIB,c_static_lib_with_constructor)
+	$(RUSTC) directly_linked_test_plus_whole_archive.rs --test -l static:+whole-archive=c_static_lib_with_constructor
+# Native lib linked into test executable, -whole-archive
+$(TMPDIR)/$(call BIN,directly_linked_test_minus_whole_archive): $(call NATIVE_STATICLIB,c_static_lib_with_constructor)
+	$(RUSTC) directly_linked_test_minus_whole_archive.rs --test -l static:-whole-archive=c_static_lib_with_constructor
 
 # Native lib linked into RLIB via `-l static:-bundle,+whole-archive`, RLIB linked into executable
 $(TMPDIR)/$(call BIN,indirectly_linked): $(TMPDIR)/librlib_with_cmdline_native_lib.rlib

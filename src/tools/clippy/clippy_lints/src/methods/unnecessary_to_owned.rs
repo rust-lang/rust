@@ -3,11 +3,10 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{
-    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+    get_associated_type, get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, peel_mid_ty_refs,
 };
-use clippy_utils::{meets_msrv, msrvs};
-
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -25,12 +24,13 @@ pub fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
-    args: &'tcx [Expr<'tcx>],
+    receiver: &'tcx Expr<'_>,
+    args: &'tcx [Expr<'_>],
     msrv: Option<RustcVersion>,
 ) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-        if let [receiver] = args;
+        if args.is_empty();
         then {
             if is_cloned_or_copied(cx, method_name, method_def_id) {
                 unnecessary_iter_cloned::check(cx, expr, method_name, receiver);
@@ -246,9 +246,14 @@ fn check_other_call_arg<'tcx>(
 ) -> bool {
     if_chain! {
         if let Some((maybe_call, maybe_arg)) = skip_addr_of_ancestors(cx, expr);
-        if let Some((callee_def_id, call_substs, call_args)) = get_callee_substs_and_args(cx, maybe_call);
+        if let Some((callee_def_id, call_substs, call_receiver, call_args)) = get_callee_substs_and_args(cx, maybe_call);
         let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
-        if let Some(i) = call_args.iter().position(|arg| arg.hir_id == maybe_arg.hir_id);
+        let index = if let Some(call_receiver) = call_receiver {
+            std::iter::once(call_receiver).chain(call_args.iter()).position(|arg| arg.hir_id == maybe_arg.hir_id)
+        } else {
+            call_args.iter().position(|arg| arg.hir_id == maybe_arg.hir_id)
+        };
+        if let Some(i) = index;
         if let Some(input) = fn_sig.inputs().get(i);
         let (input, n_refs) = peel_mid_ty_refs(*input);
         if let (trait_predicates, projection_predicates) = get_input_traits_and_projections(cx, callee_def_id, input);
@@ -269,7 +274,7 @@ fn check_other_call_arg<'tcx>(
                         .subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
                     && get_associated_type(cx, receiver_ty, deref_trait_id, "Target")
-                        .map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
+                        .map_or(false, |ty| ty::TermKind::Ty(ty) == normalized_ty.unpack())
             } else {
                 false
             }
@@ -279,7 +284,19 @@ fn check_other_call_arg<'tcx>(
                 &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
                 call_substs,
             );
-            implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            // if `expr` is a `String` and generic target is [u8], skip
+            // (https://github.com/rust-lang/rust-clippy/issues/9317).
+            if let [subst] = composed_substs[..]
+                && let GenericArgKind::Type(arg_ty) = subst.unpack()
+                && arg_ty.is_slice()
+                && let inner_ty = arg_ty.builtin_index().unwrap()
+                && let ty::Uint(ty::UintTy::U8) = inner_ty.kind()
+                && let self_ty = cx.typeck_results().expr_ty(expr).peel_refs()
+                && is_type_diagnostic_item(cx, self_ty, sym::String) {
+                false
+            } else {
+                implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            }
         } else {
             false
         };
@@ -292,7 +309,7 @@ fn check_other_call_arg<'tcx>(
         // (https://github.com/rust-lang/rust-clippy/issues/8507).
         if (n_refs == 0 && !receiver_ty.is_ref())
             || trait_predicate.def_id() != as_ref_trait_id
-            || !contains_ty(fn_sig.output(), input);
+            || !fn_sig.output().contains(input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -331,22 +348,22 @@ fn skip_addr_of_ancestors<'tcx>(
 fn get_callee_substs_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, SubstsRef<'tcx>, &'tcx [Expr<'tcx>])> {
+) -> Option<(DefId, SubstsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if_chain! {
         if let ExprKind::Call(callee, args) = expr.kind;
         let callee_ty = cx.typeck_results().expr_ty(callee);
         if let ty::FnDef(callee_def_id, _) = callee_ty.kind();
         then {
             let substs = cx.typeck_results().node_substs(callee.hir_id);
-            return Some((*callee_def_id, substs, args));
+            return Some((*callee_def_id, substs, None, args));
         }
     }
     if_chain! {
-        if let ExprKind::MethodCall(_, args, _) = expr.kind;
+        if let ExprKind::MethodCall(_, receiver, args, _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         then {
             let substs = cx.typeck_results().node_substs(expr.hir_id);
-            return Some((method_def_id, substs, args));
+            return Some((method_def_id, substs, Some(receiver), args));
         }
     }
     None
@@ -360,25 +377,15 @@ fn get_input_traits_and_projections<'tcx>(
 ) -> (Vec<TraitPredicate<'tcx>>, Vec<ProjectionPredicate<'tcx>>) {
     let mut trait_predicates = Vec::new();
     let mut projection_predicates = Vec::new();
-    for (predicate, _) in cx.tcx.predicates_of(callee_def_id).predicates.iter() {
-        // `substs` should have 1 + n elements. The first is the type on the left hand side of an
-        // `as`. The remaining n are trait parameters.
-        let is_input_substs = |substs: SubstsRef<'tcx>| {
-            if_chain! {
-                if let Some(arg) = substs.iter().next();
-                if let GenericArgKind::Type(arg_ty) = arg.unpack();
-                if arg_ty == input;
-                then { true } else { false }
-            }
-        };
+    for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
             PredicateKind::Trait(trait_predicate) => {
-                if is_input_substs(trait_predicate.trait_ref.substs) {
+                if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
             },
             PredicateKind::Projection(projection_predicate) => {
-                if is_input_substs(projection_predicate.projection_ty.substs) {
+                if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
             },

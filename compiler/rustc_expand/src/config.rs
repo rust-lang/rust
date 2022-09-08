@@ -215,7 +215,7 @@ pub fn features(
     let features = match strip_unconfigured.configure_krate_attrs(krate.attrs) {
         None => {
             // The entire crate is unconfigured.
-            krate.attrs = Vec::new();
+            krate.attrs = ast::AttrVec::new();
             krate.items = Vec::new();
             Features::default()
         }
@@ -265,7 +265,7 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    fn configure_krate_attrs(&self, mut attrs: Vec<ast::Attribute>) -> Option<Vec<ast::Attribute>> {
+    fn configure_krate_attrs(&self, mut attrs: ast::AttrVec) -> Option<ast::AttrVec> {
         attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
         if self.in_cfg(&attrs) { Some(attrs) } else { None }
     }
@@ -292,9 +292,7 @@ impl<'a> StripUnconfigured<'a> {
             .iter()
             .flat_map(|(tree, spacing)| match tree.clone() {
                 AttrAnnotatedTokenTree::Attributes(mut data) => {
-                    let mut attrs: Vec<_> = std::mem::take(&mut data.attrs).into();
-                    attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-                    data.attrs = attrs.into();
+                    data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
 
                     if self.in_cfg(&data.attrs) {
                         data.tokens = LazyTokenStream::new(

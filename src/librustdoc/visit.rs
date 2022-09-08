@@ -20,7 +20,7 @@ pub(crate) trait DocVisitor: Sized {
             VariantItem(i) => match i {
                 Variant::Struct(j) => j.fields.iter().for_each(|x| self.visit_item(x)),
                 Variant::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
-                Variant::CLike => {}
+                Variant::CLike(_) => {}
             },
             ExternCrateItem { src: _ }
             | ImportItem(_)

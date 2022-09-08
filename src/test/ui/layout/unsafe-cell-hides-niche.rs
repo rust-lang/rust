@@ -14,10 +14,10 @@ use std::mem::size_of;
 use std::num::NonZeroU32 as N32;
 use std::sync::{Mutex, RwLock};
 
-struct Wrapper<T>(T);
+struct Wrapper<T>(#[allow(unused_tuple_struct_fields)] T);
 
 #[repr(transparent)]
-struct Transparent<T>(T);
+struct Transparent<T>(#[allow(unused_tuple_struct_fields)] T);
 
 struct NoNiche<T>(UnsafeCell<T>);
 

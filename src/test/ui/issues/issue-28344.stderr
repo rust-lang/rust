@@ -25,7 +25,7 @@ LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                         ^^^^^
    |                         |
    |                         function or associated item not found in `dyn BitXor<_>`
-   |                         help: there is an associated function with a similar name: `bitxor`
+   |                         help: there is a method with a similar name: `bitxor`
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-28344.rs:10:13
@@ -53,7 +53,7 @@ LL |     let g = BitXor::bitor;
    |                     ^^^^^
    |                     |
    |                     function or associated item not found in `dyn BitXor<_>`
-   |                     help: there is an associated function with a similar name: `bitxor`
+   |                     help: there is a method with a similar name: `bitxor`
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 

@@ -6,7 +6,7 @@ LL |     let _ = Pin::new(Apple) == Rc::pin(Apple);
    |
    = note: expected struct `Apple`
               found struct `Rc<Apple>`
-   = note: required because of the requirements on the impl of `PartialEq<Pin<Rc<Apple>>>` for `Pin<Apple>`
+   = note: required for `Pin<Apple>` to implement `PartialEq<Pin<Rc<Apple>>>`
 
 error: aborting due to previous error
 

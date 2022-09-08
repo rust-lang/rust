@@ -10,26 +10,25 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
-    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Mutability, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
+    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingAnnotation, Block,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
+    Path, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
 
 use crate::parser;
-use tracing::{debug, trace};
 
 const TURBOFISH_SUGGESTION_STR: &str =
     "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments";
@@ -38,7 +37,7 @@ const TURBOFISH_SUGGESTION_STR: &str =
 pub(super) fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        kind: PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None),
+        kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
         span: ident.span,
         tokens: None,
     });
@@ -228,13 +227,13 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
+    fn emit(self, err: &mut Diagnostic) {
         err.multipart_suggestion(&self.msg, self.patches, self.applicability);
     }
 
     /// Overrides individual messages and applicabilities.
-    fn emit_many<G: EmissionGuarantee>(
-        err: &mut DiagnosticBuilder<'_, G>,
+    fn emit_many(
+        err: &mut Diagnostic,
         msg: &str,
         applicability: Applicability,
         suggestions: impl Iterator<Item = Self>,
@@ -244,7 +243,7 @@ impl MultiSugg {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_report_ambiguous_plus)]
+#[diag(parser::maybe_report_ambiguous_plus)]
 struct AmbiguousPlus {
     pub sum_ty: String,
     #[primary_span]
@@ -253,7 +252,7 @@ struct AmbiguousPlus {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
+#[diag(parser::maybe_recover_from_bad_type_plus, code = "E0178")]
 struct BadTypePlus {
     pub ty: String,
     #[primary_span]
@@ -287,7 +286,7 @@ pub enum BadTypePlusSub {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::maybe_recover_from_bad_qpath_stage_2)]
+#[diag(parser::maybe_recover_from_bad_qpath_stage_2)]
 struct BadQPathStage2 {
     #[primary_span]
     #[suggestion(applicability = "maybe-incorrect")]
@@ -296,7 +295,7 @@ struct BadQPathStage2 {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_semicolon)]
+#[diag(parser::incorrect_semicolon)]
 struct IncorrectSemicolon<'a> {
     #[primary_span]
     #[suggestion_short(applicability = "machine-applicable")]
@@ -307,7 +306,7 @@ struct IncorrectSemicolon<'a> {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_use_of_await)]
+#[diag(parser::incorrect_use_of_await)]
 struct IncorrectUseOfAwait {
     #[primary_span]
     #[suggestion(parser::parentheses_suggestion, applicability = "machine-applicable")]
@@ -315,7 +314,7 @@ struct IncorrectUseOfAwait {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::incorrect_use_of_await)]
+#[diag(parser::incorrect_use_of_await)]
 struct IncorrectAwait {
     #[primary_span]
     span: Span,
@@ -326,12 +325,392 @@ struct IncorrectAwait {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(parser::in_in_typo)]
+#[diag(parser::in_in_typo)]
 struct InInTypo {
     #[primary_span]
     span: Span,
     #[suggestion(applicability = "machine-applicable")]
     sugg_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_variable_declaration)]
+pub struct InvalidVariableDeclaration {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: InvalidVariableDeclarationSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum InvalidVariableDeclarationSub {
+    #[suggestion(
+        parser::switch_mut_let_order,
+        applicability = "maybe-incorrect",
+        code = "let mut"
+    )]
+    SwitchMutLetOrder(#[primary_span] Span),
+    #[suggestion(
+        parser::missing_let_before_mut,
+        applicability = "machine-applicable",
+        code = "let mut"
+    )]
+    MissingLet(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_auto, applicability = "machine-applicable", code = "let")]
+    UseLetNotAuto(#[primary_span] Span),
+    #[suggestion(parser::use_let_not_var, applicability = "machine-applicable", code = "let")]
+    UseLetNotVar(#[primary_span] Span),
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_comparison_operator)]
+pub(crate) struct InvalidComparisonOperator {
+    #[primary_span]
+    pub span: Span,
+    pub invalid: String,
+    #[subdiagnostic]
+    pub sub: InvalidComparisonOperatorSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum InvalidComparisonOperatorSub {
+    #[suggestion_short(
+        parser::use_instead,
+        applicability = "machine-applicable",
+        code = "{correct}"
+    )]
+    Correctable {
+        #[primary_span]
+        span: Span,
+        invalid: String,
+        correct: String,
+    },
+    #[label(parser::spaceship_operator_invalid)]
+    Spaceship(#[primary_span] Span),
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_logical_operator)]
+#[note]
+pub(crate) struct InvalidLogicalOperator {
+    #[primary_span]
+    pub span: Span,
+    pub incorrect: String,
+    #[subdiagnostic]
+    pub sub: InvalidLogicalOperatorSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum InvalidLogicalOperatorSub {
+    #[suggestion_short(
+        parser::use_amp_amp_for_conjunction,
+        applicability = "machine-applicable",
+        code = "&&"
+    )]
+    Conjunction(#[primary_span] Span),
+    #[suggestion_short(
+        parser::use_pipe_pipe_for_disjunction,
+        applicability = "machine-applicable",
+        code = "||"
+    )]
+    Disjunction(#[primary_span] Span),
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::tilde_is_not_unary_operator)]
+pub(crate) struct TildeAsUnaryOperator(
+    #[primary_span]
+    #[suggestion_short(applicability = "machine-applicable", code = "!")]
+    pub Span,
+);
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::unexpected_token_after_not)]
+pub(crate) struct NotAsNegationOperator {
+    #[primary_span]
+    pub negated: Span,
+    pub negated_desc: String,
+    #[suggestion_short(applicability = "machine-applicable", code = "!")]
+    pub not: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::malformed_loop_label)]
+pub(crate) struct MalformedLoopLabel {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "{correct_label}")]
+    pub span: Span,
+    pub correct_label: Ident,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::lifetime_in_borrow_expression)]
+pub(crate) struct LifetimeInBorrowExpression {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    #[label]
+    pub lifetime_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::field_expression_with_generic)]
+pub(crate) struct FieldExpressionWithGeneric(#[primary_span] pub Span);
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::macro_invocation_with_qualified_path)]
+pub(crate) struct MacroInvocationWithQualifiedPath(#[primary_span] pub Span);
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::unexpected_token_after_label)]
+pub(crate) struct UnexpectedTokenAfterLabel(
+    #[primary_span]
+    #[label(parser::unexpected_token_after_label)]
+    pub Span,
+);
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::require_colon_after_labeled_expression)]
+#[note]
+pub(crate) struct RequireColonAfterLabeledExpression {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub label: Span,
+    #[suggestion_short(applicability = "machine-applicable", code = ": ")]
+    pub label_end: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::do_catch_syntax_removed)]
+#[note]
+pub(crate) struct DoCatchSyntaxRemoved {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "try")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::float_literal_requires_integer_part)]
+pub(crate) struct FloatLiteralRequiresIntegerPart {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "{correct}")]
+    pub span: Span,
+    pub correct: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_int_literal_width)]
+#[help]
+pub(crate) struct InvalidIntLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_num_literal_base_prefix)]
+#[note]
+pub(crate) struct InvalidNumLiteralBasePrefix {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "{fixed}")]
+    pub span: Span,
+    pub fixed: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_num_literal_suffix)]
+#[help]
+pub(crate) struct InvalidNumLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_float_literal_width)]
+#[help]
+pub(crate) struct InvalidFloatLiteralWidth {
+    #[primary_span]
+    pub span: Span,
+    pub width: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_float_literal_suffix)]
+#[help]
+pub(crate) struct InvalidFloatLiteralSuffix {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub suffix: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::int_literal_too_large)]
+pub(crate) struct IntLiteralTooLarge {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::missing_semicolon_before_array)]
+pub(crate) struct MissingSemicolonBeforeArray {
+    #[primary_span]
+    pub open_delim: Span,
+    #[suggestion_verbose(applicability = "maybe-incorrect", code = ";")]
+    pub semicolon: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::invalid_block_macro_segment)]
+pub(crate) struct InvalidBlockMacroSegment {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub context: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::if_expression_missing_then_block)]
+pub(crate) struct IfExpressionMissingThenBlock {
+    #[primary_span]
+    pub if_span: Span,
+    #[subdiagnostic]
+    pub sub: IfExpressionMissingThenBlockSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum IfExpressionMissingThenBlockSub {
+    #[help(parser::condition_possibly_unfinished)]
+    UnfinishedCondition(#[primary_span] Span),
+    #[help(parser::add_then_block)]
+    AddThenBlock(#[primary_span] Span),
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::if_expression_missing_condition)]
+pub(crate) struct IfExpressionMissingCondition {
+    #[primary_span]
+    #[label(parser::condition_label)]
+    pub if_span: Span,
+    #[label(parser::block_label)]
+    pub block_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::expected_expression_found_let)]
+pub(crate) struct ExpectedExpressionFoundLet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::expected_else_block)]
+pub(crate) struct ExpectedElseBlock {
+    #[primary_span]
+    pub first_tok_span: Span,
+    pub first_tok: String,
+    #[label]
+    pub else_span: Span,
+    #[suggestion(applicability = "maybe-incorrect", code = "if ")]
+    pub condition_start: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::outer_attribute_not_allowed_on_if_else)]
+pub(crate) struct OuterAttributeNotAllowedOnIfElse {
+    #[primary_span]
+    pub last: Span,
+
+    #[label(parser::branch_label)]
+    pub branch_span: Span,
+
+    #[label(parser::ctx_label)]
+    pub ctx_span: Span,
+    pub ctx: String,
+
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub attributes: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::missing_in_in_for_loop)]
+pub(crate) struct MissingInInForLoop {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: MissingInInForLoopSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum MissingInInForLoopSub {
+    // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
+    #[suggestion_short(parser::use_in_not_of, applicability = "maybe-incorrect", code = "in")]
+    InNotOf(#[primary_span] Span),
+    #[suggestion_short(parser::add_in, applicability = "maybe-incorrect", code = " in ")]
+    AddIn(#[primary_span] Span),
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::missing_comma_after_match_arm)]
+pub(crate) struct MissingCommaAfterMatchArm {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = ",")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::catch_after_try)]
+#[help]
+pub(crate) struct CatchAfterTry {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::comma_after_base_struct)]
+#[note]
+pub(crate) struct CommaAfterBaseStruct {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion_short(applicability = "machine-applicable", code = "")]
+    pub comma: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::eq_field_init)]
+pub(crate) struct EqFieldInit {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(applicability = "machine-applicable", code = ":")]
+    pub eq: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::dotdotdot)]
+pub(crate) struct DotDotDot {
+    #[primary_span]
+    #[suggestion(parser::suggest_exclusive_range, applicability = "maybe-incorrect", code = "..")]
+    #[suggestion(parser::suggest_inclusive_range, applicability = "maybe-incorrect", code = "..=")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::left_arrow_operator)]
+pub(crate) struct LeftArrowOperator {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "< -")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(parser::remove_let)]
+pub(crate) struct RemoveLet {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
 }
 
 // SnapshotParser is used to create a snapshot of the parser
@@ -387,7 +766,7 @@ impl<'a> Parser<'a> {
     /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
-        self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
+        self.unclosed_delims.extend(snapshot.unclosed_delims);
     }
 
     pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
@@ -555,12 +934,15 @@ impl<'a> Parser<'a> {
                 return Ok(true);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
-                    || (t.can_begin_expr() && t != &token::Semi && t != &token::Pound)
+                    || ((t.can_begin_expr() || t.can_begin_item())
+                        && t != &token::Semi
+                        && t != &token::Pound)
                     // Avoid triggering with too many trailing `#` in raw string.
                     || (sm.is_multiline(
-                        self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo())
+                        self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo()),
                     ) && t == &token::Pound)
-            }) {
+            }) && !expected.contains(&TokenType::Token(token::Comma))
+            {
                 // Missing semicolon typo. This is triggered if the next token could either start a
                 // new statement or is a block close. For example:
                 //
@@ -589,7 +971,7 @@ impl<'a> Parser<'a> {
             )
         } else if expected.is_empty() {
             (
-                format!("unexpected token: {}", actual),
+                format!("unexpected token: {actual}"),
                 (self.prev_token.span, "unexpected token after this".to_string()),
             )
         } else {
@@ -602,14 +984,27 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
-            if symbol.as_str() == "public" {
+            if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
                 err.span_suggestion_short(
                     self.prev_token.span,
-                    "write `pub` instead of `public` to make the item public",
-                    "pub",
+                    &format!("write `fn` instead of `{symbol}` to declare a function"),
+                    "fn",
                     appl,
                 );
             }
+        }
+
+        // `pub` may be used for an item or `pub(crate)`
+        if self.prev_token.is_ident_named(sym::public)
+            && (self.token.can_begin_item()
+                || self.token.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
+        {
+            err.span_suggestion_short(
+                self.prev_token.span,
+                "write `pub` instead of `public` to make the item public",
+                "pub",
+                appl,
+            );
         }
 
         // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
@@ -733,7 +1128,7 @@ impl<'a> Parser<'a> {
             let mut snapshot = self.create_snapshot_for_diagnostic();
             let path =
                 Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
-            let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
+            let struct_expr = snapshot.parse_struct_expr(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {
@@ -1187,8 +1582,7 @@ impl<'a> Parser<'a> {
             outer_op.node,
         );
 
-        let mk_err_expr =
-            |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
+        let mk_err_expr = |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err)));
 
         match inner_op.kind {
             ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
@@ -1496,7 +1890,7 @@ impl<'a> Parser<'a> {
         MultiSugg {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
             patches: vec![
-                (pre_span, format!("{{ let {} = ", tmp_var)),
+                (pre_span, format!("{{ let {tmp_var} = ")),
                 (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
             ],
             applicability: Applicability::HasPlaceholders,
@@ -1646,7 +2040,6 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         await_sp: Span,
-        attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
@@ -1661,7 +2054,7 @@ impl<'a> Parser<'a> {
             ExprKind::Try(_) => ExprKind::Err,
             _ => ExprKind::Await(expr),
         };
-        let expr = self.mk_expr(lo.to(sp), kind, attrs);
+        let expr = self.mk_expr(lo.to(sp), kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -1679,7 +2072,7 @@ impl<'a> Parser<'a> {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default, AttrVec::new())
+            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)
         } else {
             self.parse_expr()
         }
@@ -1822,7 +2215,7 @@ impl<'a> Parser<'a> {
                 err.emit();
                 // Recover from parse error, callers expect the closing delim to be consumed.
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
-                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err, AttrVec::new())
+                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
             }
         }
     }
@@ -2333,7 +2726,7 @@ impl<'a> Parser<'a> {
 
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
         let snapshot = self.create_snapshot_for_diagnostic();
-        let param = match self.parse_const_param(vec![]) {
+        let param = match self.parse_const_param(AttrVec::new()) {
             Ok(param) => param,
             Err(err) => {
                 err.cancel();
@@ -2576,7 +2969,7 @@ impl<'a> Parser<'a> {
                                 }
                                 _ => {}
                             },
-                            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
+                            PatKind::Ident(BindingAnnotation::NONE, ident, None) => {
                                 match &first_pat.kind {
                                     PatKind::Ident(_, old_ident, _) => {
                                         let path = PatKind::Path(

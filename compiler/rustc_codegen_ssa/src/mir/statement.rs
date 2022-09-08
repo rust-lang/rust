@@ -1,4 +1,5 @@
 use rustc_middle::mir;
+use rustc_middle::mir::NonDivergingIntrinsic;
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -73,11 +74,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(&mut bx, coverage.clone(), statement.source_info.scope);
                 bx
             }
-            mir::StatementKind::CopyNonOverlapping(box mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
+                let op_val = self.codegen_operand(&mut bx, op);
+                bx.assume(op_val.immediate());
+                bx
+            }
+            mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+                mir::CopyNonOverlapping { ref count, ref src, ref dst },
+            )) => {
                 let dst_val = self.codegen_operand(&mut bx, dst);
                 let src_val = self.codegen_operand(&mut bx, src);
                 let count = self.codegen_operand(&mut bx, count).immediate();

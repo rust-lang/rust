@@ -3,8 +3,8 @@
 // ignore-cross-compile
 
 // @has issue_27104/index.html
-// @!has - 'extern crate std'
-// @!has - 'use std::prelude::'
+// @!hasraw - 'extern crate std'
+// @!hasraw - 'use std::prelude::'
 
-// @has - 'pub extern crate empty'
+// @hasraw - 'pub extern crate empty'
 pub extern crate empty;

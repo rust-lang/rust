@@ -19,7 +19,7 @@ impl Message {
         // we don't want the first letter after "error: ", "help: " ... to be capitalized
         // also no punctuation (except for "?" ?) at the end of a line
         static REGEX_SET: LazyLock<RegexSet> = LazyLock::new(|| {
-            RegexSet::new(&[
+            RegexSet::new([
                 r"error: [A-Z]",
                 r"help: [A-Z]",
                 r"warning: [A-Z]",
@@ -37,7 +37,7 @@ impl Message {
         // sometimes the first character is capitalized and it is legal (like in "C-like enum variants") or
         // we want to ask a question ending in "?"
         static EXCEPTIONS_SET: LazyLock<RegexSet> = LazyLock::new(|| {
-            RegexSet::new(&[
+            RegexSet::new([
                 r"\.\.\.$",
                 r".*C-like enum variant discriminant is not portable to 32-bit targets",
                 r".*Intel x86 assembly syntax used",

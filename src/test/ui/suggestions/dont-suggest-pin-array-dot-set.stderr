@@ -2,7 +2,7 @@ error[E0599]: no method named `set` found for array `[u8; 1]` in the current sco
   --> $DIR/dont-suggest-pin-array-dot-set.rs:14:7
    |
 LL |     a.set(0, 3);
-   |       ^^^ help: there is an associated function with a similar name: `get`
+   |       ^^^ help: there is a method with a similar name: `get`
 
 error: aborting due to previous error
 

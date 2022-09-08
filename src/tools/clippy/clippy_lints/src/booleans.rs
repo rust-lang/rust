@@ -64,7 +64,7 @@ declare_clippy_lint! {
     /// if a {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub LOGIC_BUG,
+    pub OVERLY_COMPLEX_BOOL_EXPR,
     correctness,
     "boolean expressions that contain terminals which can be eliminated"
 }
@@ -72,7 +72,7 @@ declare_clippy_lint! {
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
-declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
+declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(
@@ -270,8 +270,8 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                 ))
             })
         },
-        ExprKind::MethodCall(path, args, _) if args.len() == 1 => {
-            let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
+        ExprKind::MethodCall(path, receiver, [], _) => {
+            let type_of_receiver = cx.typeck_results().expr_ty(receiver);
             if !is_type_diagnostic_item(cx, type_of_receiver, sym::Option)
                 && !is_type_diagnostic_item(cx, type_of_receiver, sym::Result)
             {
@@ -285,7 +285,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                     let path: &str = path.ident.name.as_str();
                     a == path
                 })
-                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, args[0].span)?, neg_method)))
+                .and_then(|(_, neg_method)| Some(format!("{}.{}()", snippet_opt(cx, receiver.span)?, neg_method)))
         },
         _ => None,
     }
@@ -396,7 +396,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
                         span_lint_hir_and_then(
                             self.cx,
-                            LOGIC_BUG,
+                            OVERLY_COMPLEX_BOOL_EXPR,
                             e.hir_id,
                             e.span,
                             "this boolean expression contains a logic bug",

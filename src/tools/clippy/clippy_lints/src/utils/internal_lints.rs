@@ -496,12 +496,14 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     cx,
                 };
                 let body_id = cx.tcx.hir().body_owned_by(
-                    impl_item_refs
-                        .iter()
-                        .find(|iiref| iiref.ident.as_str() == "get_lints")
-                        .expect("LintPass needs to implement get_lints")
-                        .id
-                        .hir_id(),
+                    cx.tcx.hir().local_def_id(
+                        impl_item_refs
+                            .iter()
+                            .find(|iiref| iiref.ident.as_str() == "get_lints")
+                            .expect("LintPass needs to implement get_lints")
+                            .id
+                            .hir_id(),
+                    ),
                 );
                 collector.visit_expr(&cx.tcx.hir().body(body_id).value);
             }
@@ -569,7 +571,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
                 item.span,
                 "this item has an invalid `clippy::version` attribute",
                 None,
-                "please use a valid sematic version, see `doc/adding_lints.md`",
+                "please use a valid semantic version, see `doc/adding_lints.md`",
             );
         }
     } else {
@@ -591,8 +593,8 @@ fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Opt
     attrs.iter().find_map(|attr| {
         if_chain! {
             // Identify attribute
-            if let ast::AttrKind::Normal(ref attr_kind, _) = &attr.kind;
-            if let [tool_name, attr_name] = &attr_kind.path.segments[..];
+            if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind;
+            if let [tool_name, attr_name] = &attr_kind.item.path.segments[..];
             if tool_name.ident.name == sym::clippy;
             if attr_name.ident.name == sym::version;
             if let Some(version) = attr.value_str();
@@ -685,7 +687,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
             let args = arg_lists[1];
             if args.len() == 1;
-            let self_arg = &args[0];
+            let self_arg = &args.0;
             let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
             then {

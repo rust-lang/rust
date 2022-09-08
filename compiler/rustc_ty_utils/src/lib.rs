@@ -10,6 +10,8 @@
 #![feature(never_type)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -21,6 +23,8 @@ use rustc_middle::ty::query::Providers;
 mod assoc;
 mod common_traits;
 mod consts;
+mod errors;
+mod implied_bounds;
 pub mod instance;
 mod needs_drop;
 pub mod representability;
@@ -30,6 +34,7 @@ pub fn provide(providers: &mut Providers) {
     assoc::provide(providers);
     common_traits::provide(providers);
     consts::provide(providers);
+    implied_bounds::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);
     instance::provide(providers);

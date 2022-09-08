@@ -1222,7 +1222,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs, None);
+        let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
@@ -1289,14 +1289,9 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'hir hir::Variant<'_>,
-        g: &'hir hir::Generics<'_>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
         self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
-            intravisit::walk_variant(this, v, g, item_id);
+            intravisit::walk_variant(this, v);
         });
     }
 

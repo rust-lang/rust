@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `C(QA)` not covered
+error[E0004]: non-exhaustive patterns: `P::C(PC::QA)` not covered
   --> $DIR/issue-40221.rs:11:11
    |
 LL |     match proto {
-   |           ^^^^^ pattern `C(QA)` not covered
+   |           ^^^^^ pattern `P::C(PC::QA)` not covered
    |
 note: `P` defined here
   --> $DIR/issue-40221.rs:2:5
@@ -15,7 +15,7 @@ LL |     C(PC),
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         P::C(PC::Q) => (),
-LL ~         C(QA) => todo!(),
+LL ~         P::C(PC::QA) => todo!(),
    |
 
 error: aborting due to previous error

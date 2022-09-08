@@ -451,7 +451,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
         if let GenericDefId::TraitId(id) = *self {
             let trait_ref = id.lookup(db).source(db).value;
             let idx = idx_iter.next().unwrap();
-            params.insert(idx, Either::Right(trait_ref))
+            params.insert(idx, Either::Right(trait_ref));
         }
 
         if let Some(generic_params_list) = generic_params_list {

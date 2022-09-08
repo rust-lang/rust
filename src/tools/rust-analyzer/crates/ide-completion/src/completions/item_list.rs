@@ -66,7 +66,7 @@ pub(crate) fn complete_item_list(
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer | Qualified::No | Qualified::With { .. } => {}
+        Qualified::TypeAnchor { .. } | Qualified::No | Qualified::With { .. } => {}
     }
 }
 

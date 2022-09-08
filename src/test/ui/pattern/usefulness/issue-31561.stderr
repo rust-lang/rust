@@ -1,8 +1,8 @@
-error[E0005]: refutable pattern in local binding: `Bar` and `Baz` not covered
+error[E0005]: refutable pattern in local binding: `Thing::Bar` and `Thing::Baz` not covered
   --> $DIR/issue-31561.rs:8:9
    |
 LL |     let Thing::Foo(y) = Thing::Foo(1);
-   |         ^^^^^^^^^^^^^ patterns `Bar` and `Baz` not covered
+   |         ^^^^^^^^^^^^^ patterns `Thing::Bar` and `Thing::Baz` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html

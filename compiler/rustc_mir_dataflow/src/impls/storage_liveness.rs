@@ -142,7 +142,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             | StatementKind::FakeRead(..)
             | StatementKind::Nop
             | StatementKind::Retag(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::StorageLive(..) => {}
         }
     }

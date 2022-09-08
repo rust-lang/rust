@@ -1,4 +1,5 @@
 #![recursion_limit="1024"]
+#![allow(dead_code)]
 
 pub struct S0<T>(T,T);
 pub struct S1<T>(Option<Box<S0<S0<T>>>>,Option<Box<S0<S0<T>>>>);

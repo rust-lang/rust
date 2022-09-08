@@ -95,12 +95,14 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
     let mut removed_pat: FxHashSet<hir::HirId> = FxHashSet::default();
     let mut slices: FxIndexMap<hir::HirId, SliceLintInformation> = FxIndexMap::default();
     pat.walk_always(|pat| {
-        if let hir::PatKind::Binding(binding, value_hir_id, ident, sub_pat) = pat.kind {
-            // We'll just ignore mut and ref mut for simplicity sake right now
-            if let hir::BindingAnnotation::Mutable | hir::BindingAnnotation::RefMut = binding {
-                return;
-            }
-
+        // We'll just ignore mut and ref mut for simplicity sake right now
+        if let hir::PatKind::Binding(
+            hir::BindingAnnotation(by_ref, hir::Mutability::Not),
+            value_hir_id,
+            ident,
+            sub_pat,
+        ) = pat.kind
+        {
             // This block catches bindings with sub patterns. It would be hard to build a correct suggestion
             // for them and it's likely that the user knows what they are doing in such a case.
             if removed_pat.contains(&value_hir_id) {
@@ -116,7 +118,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
             if let ty::Slice(inner_ty) | ty::Array(inner_ty, _) = bound_ty.peel_refs().kind() {
                 // The values need to use the `ref` keyword if they can't be copied.
                 // This will need to be adjusted if the lint want to support mutable access in the future
-                let src_is_ref = bound_ty.is_ref() && binding != hir::BindingAnnotation::Ref;
+                let src_is_ref = bound_ty.is_ref() && by_ref != hir::ByRef::Yes;
                 let needs_ref = !(src_is_ref || is_copy(cx, *inner_ty));
 
                 let slice_info = slices

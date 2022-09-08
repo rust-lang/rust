@@ -13,7 +13,7 @@ impl Tag {
 
 fn main() {
     match Tag::ExifIFDPointer {
-    //~^ ERROR: non-exhaustive patterns: `Tag(Exif, _)` not covered
+    //~^ ERROR: non-exhaustive patterns: `Tag(Context::Exif, _)` not covered
         Tag::ExifIFDPointer => {}
     }
 }

@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
     interpret::{ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar},
-    BinOp,
+    BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -79,9 +79,9 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ty::Projection(_)
             | ty::Opaque(_, _)
             | ty::Param(_)
-            | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_) => throw_inval!(TooGeneric),
+            ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -184,7 +184,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bitreverse => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let val = self.read_scalar(&args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?;
                 let bits = val.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(scalar) => scalar.primitive(),
@@ -256,7 +256,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val = r.to_scalar()?.to_bits(layout.size)?;
+                    let r_val = r.to_scalar().to_bits(layout.size)?;
                     if let sym::unchecked_shl | sym::unchecked_shr = intrinsic_name {
                         throw_ub_format!("overflowing shift by {} in `{}`", r_val, intrinsic_name);
                     } else {
@@ -269,9 +269,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val = self.read_scalar(&args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?;
                 let val_bits = val.to_bits(layout.size)?;
-                let raw_shift = self.read_scalar(&args[1])?.check_init()?;
+                let raw_shift = self.read_scalar(&args[1])?;
                 let raw_shift_bits = raw_shift.to_bits(layout.size)?;
                 let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
@@ -320,7 +320,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (a_offset, b_offset) =
                     match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                         (Err(a), Err(b)) => {
-                            // Neither poiner points to an allocation.
+                            // Neither pointer points to an allocation.
                             // If these are inequal or null, this *will* fail the deref check below.
                             (a, b)
                         }
@@ -506,12 +506,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // These just return their argument
                 self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
             }
-            sym::assume => {
-                let cond = self.read_scalar(&args[0])?.check_init()?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` intrinsic called with `false`");
-                }
-            }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
@@ -534,6 +528,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("{:?}", self.dump_place(**dest));
         self.go_to_block(ret);
         Ok(true)
+    }
+
+    pub(super) fn emulate_nondiverging_intrinsic(
+        &mut self,
+        intrinsic: &NonDivergingIntrinsic<'tcx>,
+    ) -> InterpResult<'tcx> {
+        match intrinsic {
+            NonDivergingIntrinsic::Assume(op) => {
+                let op = self.eval_operand(op, None)?;
+                let cond = self.read_scalar(&op)?.to_bool()?;
+                if !cond {
+                    throw_ub_format!("`assume` called with `false`");
+                }
+                Ok(())
+            }
+            NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
+                count,
+                src,
+                dst,
+            }) => {
+                let src = self.eval_operand(src, None)?;
+                let dst = self.eval_operand(dst, None)?;
+                let count = self.eval_operand(count, None)?;
+                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)
+            }
+        }
     }
 
     pub fn exact_div(
@@ -570,7 +590,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // term since the sign of the second term can be inferred from this and
                 // the fact that the operation has overflowed (if either is 0 no
                 // overflow can occur)
-                let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                let first_term: u128 = l.to_scalar().to_bits(l.layout.size)?;
                 let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
                 if first_term_positive {
                     // Negative overflow not possible since the positive first term
@@ -687,10 +707,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
         assert!(!layout.is_unsized());
 
-        let lhs = self.read_pointer(lhs)?;
-        let rhs = self.read_pointer(rhs)?;
-        let lhs_bytes = self.read_bytes_ptr(lhs, layout.size)?;
-        let rhs_bytes = self.read_bytes_ptr(rhs, layout.size)?;
+        let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
+                         op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+                         size|
+         -> InterpResult<'tcx, &[u8]> {
+            let ptr = this.read_pointer(op)?;
+            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size, Align::ONE)? else {
+                // zero-sized access
+                return Ok(&[]);
+            };
+            if alloc_ref.has_provenance() {
+                throw_ub_format!("`raw_eq` on bytes with provenance");
+            }
+            alloc_ref.get_bytes_strip_provenance()
+        };
+
+        let lhs_bytes = get_bytes(self, lhs, layout.size)?;
+        let rhs_bytes = get_bytes(self, rhs, layout.size)?;
         Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

@@ -6,7 +6,7 @@
 
 #![allow(unused_variables)]
 
-enum option<T> { some(Box<T>), none, }
+enum option<T> { some(#[allow(unused_tuple_struct_fields)] Box<T>), none, }
 
 pub fn main() {
     let mut a: option<isize> = option::some::<isize>(Box::new(10));

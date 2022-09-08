@@ -23,6 +23,7 @@ fn main() {
         //~| ERROR mismatched types
         //~| ERROR variable `c` is not bound in all patterns
         //~| HELP if you meant to match on unit variant `E::A`, use the full path in the pattern
+        //~| HELP consider removing `ref`
     }
 
     let z = (10, 20);

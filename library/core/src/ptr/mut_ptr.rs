@@ -100,8 +100,8 @@ impl<T: ?Sized> *mut T {
     /// coercion.
     ///
     /// [`cast_mut`]: #method.cast_mut
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
@@ -160,7 +160,7 @@ impl<T: ?Sized> *mut T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -255,7 +255,7 @@ impl<T: ?Sized> *mut T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -575,6 +575,21 @@ impl<T: ?Sized> *mut T {
         )
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *mut T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask) as *mut ();
+        from_raw_parts_mut::<T>(this, metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a unique reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_mut`]
     /// must be used instead.
@@ -824,7 +839,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -1545,20 +1560,23 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let mut x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_mut_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     *u16_ptr = 0;
+    ///
+    ///     assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -1614,11 +1632,8 @@ impl<T: ?Sized> *mut T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 

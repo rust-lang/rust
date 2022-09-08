@@ -6,7 +6,7 @@
 // run-fail
 // error-pattern: MemorySanitizer: use-of-uninitialized-value
 // error-pattern: Uninitialized value was created by an allocation
-// error-pattern: in the stack frame of function 'main'
+// error-pattern: in the stack frame
 //
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.
@@ -14,6 +14,7 @@
 #![feature(core_intrinsics)]
 #![feature(start)]
 #![feature(bench_black_box)]
+#![allow(invalid_value)]
 
 use std::hint::black_box;
 use std::mem::MaybeUninit;

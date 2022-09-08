@@ -9,11 +9,11 @@ LL | impl Drop for u32 {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
   --> $DIR/E0117.rs:1:15
    |
 LL | impl Drop for u32 {}
-   |               ^^^ must be a struct, enum, or union
+   |               ^^^ must be a struct, enum, or union in the current crate
 
 error: aborting due to 2 previous errors
 

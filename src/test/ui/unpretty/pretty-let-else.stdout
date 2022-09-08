@@ -1,0 +1,18 @@
+// compile-flags: -Zunpretty=hir
+// check-pass
+
+#![feature(let_else)]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+
+fn foo(x:
+        Option<u32>) {
+        let Some(_) = x else
+            {
+
+            { ::std::rt::begin_panic("explicit panic") }
+        };
+    }
+fn main() { }

@@ -391,7 +391,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     /// Preconditions:
     ///
     /// - `for_vid` is a "root vid"
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     fn generalize(
         &self,
         ty: Ty<'tcx>,
@@ -435,15 +435,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             cache: SsoHashMap::new(),
         };
 
-        let ty = match generalize.relate(ty, ty) {
-            Ok(ty) => ty,
-            Err(e) => {
-                debug!(?e, "failure");
-                return Err(e);
-            }
-        };
+        let ty = generalize.relate(ty, ty)?;
         let needs_wf = generalize.needs_wf;
-        trace!(?ty, ?needs_wf, "success");
         Ok(Generalization { ty, needs_wf })
     }
 
@@ -493,12 +486,13 @@ struct Generalizer<'cx, 'tcx> {
 
     param_env: ty::ParamEnv<'tcx>,
 
-    cache: SsoHashMap<Ty<'tcx>, RelateResult<'tcx, Ty<'tcx>>>,
+    cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
 }
 
 /// Result from a generalization operation. This includes
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
+#[derive(Debug)]
 struct Generalization<'tcx> {
     ty: Ty<'tcx>,
 
@@ -599,8 +593,8 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tys(&mut self, t: Ty<'tcx>, t2: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         assert_eq!(t, t2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        if let Some(result) = self.cache.get(&t) {
-            return result.clone();
+        if let Some(&result) = self.cache.get(&t) {
+            return Ok(result);
         }
         debug!("generalize: t={:?}", t);
 
@@ -670,10 +664,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 Ok(t)
             }
             _ => relate::super_relate_tys(self, t, t),
-        };
+        }?;
 
-        self.cache.insert(t, result.clone());
-        return result;
+        self.cache.insert(t, result);
+        Ok(result)
     }
 
     fn regions(
@@ -749,9 +743,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,
@@ -856,10 +848,9 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug_assert_eq!(t, _t);
-        debug!("ConstInferUnifier: t={:?}", t);
 
         match t.kind() {
             &ty::Infer(ty::TyVar(vid)) => {
@@ -883,12 +874,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                             .borrow_mut()
                             .type_variables()
                             .new_var(self.for_universe, origin);
-                        let u = self.tcx().mk_ty_var(new_var_id);
-                        debug!(
-                            "ConstInferUnifier: replacing original vid={:?} with new={:?}",
-                            vid, u
-                        );
-                        Ok(u)
+                        Ok(self.tcx().mk_ty_var(new_var_id))
                     }
                 }
             }
@@ -932,14 +918,13 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn consts(
         &mut self,
         c: ty::Const<'tcx>,
         _c: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug_assert_eq!(c, _c);
-        debug!("ConstInferUnifier: c={:?}", c);
 
         match c.kind() {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
@@ -980,9 +965,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 assert_eq!(promoted, None);
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,

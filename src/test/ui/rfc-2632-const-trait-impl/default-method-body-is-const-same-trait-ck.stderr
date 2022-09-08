@@ -1,14 +1,16 @@
 error[E0277]: the trait bound `(): ~const Tr` is not satisfied
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:9
    |
 LL |         ().a()
-   |            ^ the trait `~const Tr` is not implemented for `()`
+   |         ^^ - required by a bound introduced by this call
+   |         |
+   |         the trait `~const Tr` is not implemented for `()`
    |
 note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:9
    |
 LL |         ().a()
-   |            ^
+   |         ^^
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | pub trait Tr where (): ~const Tr {

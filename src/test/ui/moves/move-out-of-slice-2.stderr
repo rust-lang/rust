@@ -14,7 +14,7 @@ LL |     match *a {
    |           ^^ cannot move out of here
 LL |
 LL |         [a @ ..] => {}
-   |          ------
+   |          -
    |          |
    |          data moved here
    |          move occurs because `a` has type `[A]`, which does not implement the `Copy` trait
@@ -26,7 +26,7 @@ LL |     match *b {
    |           ^^ cannot move out of here
 LL |
 LL |         [_, _, b @ .., _] => {}
-   |                ------
+   |                -
    |                |
    |                data moved here
    |                move occurs because `b` has type `[A]`, which does not implement the `Copy` trait
@@ -38,7 +38,7 @@ LL |     match *c {
    |           ^^ cannot move out of here
 LL |
 LL |         [c @ ..] => {}
-   |          ------
+   |          -
    |          |
    |          data moved here
    |          move occurs because `c` has type `[C]`, which does not implement the `Copy` trait
@@ -50,7 +50,7 @@ LL |     match *d {
    |           ^^ cannot move out of here
 LL |
 LL |         [_, _, d @ .., _] => {}
-   |                ------
+   |                -
    |                |
    |                data moved here
    |                move occurs because `d` has type `[C]`, which does not implement the `Copy` trait

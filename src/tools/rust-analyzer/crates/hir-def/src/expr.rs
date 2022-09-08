@@ -12,6 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
+use std::fmt;
+
 use hir_expand::name::Name;
 use la_arena::{Idx, RawIdx};
 
@@ -52,8 +54,8 @@ impl FloatTypeWrapper {
     }
 }
 
-impl std::fmt::Display for FloatTypeWrapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for FloatTypeWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", f64::from_bits(self.0))
     }
 }
@@ -204,10 +206,6 @@ pub enum Expr {
     Unsafe {
         body: ExprId,
     },
-    MacroStmts {
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Array(Array),
     Literal(Literal),
     Underscore,
@@ -261,7 +259,7 @@ impl Expr {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
-            Expr::MacroStmts { tail, statements } | Expr::Block { statements, tail, .. } => {
+            Expr::Block { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, .. } => {

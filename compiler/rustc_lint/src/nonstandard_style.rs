@@ -22,8 +22,8 @@ pub fn method_context(cx: &LateContext<'_>, id: hir::HirId) -> MethodLateContext
     let def_id = cx.tcx.hir().local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
-        ty::TraitContainer(..) => MethodLateContext::TraitAutoImpl,
-        ty::ImplContainer(cid) => match cx.tcx.impl_trait_ref(cid) {
+        ty::TraitContainer => MethodLateContext::TraitAutoImpl,
+        ty::ImplContainer => match cx.tcx.impl_trait_ref(item.container_id(cx.tcx)) {
             Some(_) => MethodLateContext::TraitImpl,
             None => MethodLateContext::PlainImpl,
         },
@@ -437,19 +437,14 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         if let PatKind::Binding(_, hid, ident, _) = p.kind {
-            if let hir::Node::Pat(parent_pat) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
+            if let hir::Node::PatField(field) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
             {
-                if let PatKind::Struct(_, field_pats, _) = &parent_pat.kind {
-                    if field_pats
-                        .iter()
-                        .any(|field| !field.is_shorthand && field.pat.hir_id == p.hir_id)
-                    {
-                        // Only check if a new name has been introduced, to avoid warning
-                        // on both the struct definition and this pattern.
-                        self.check_snake_case(cx, "variable", &ident);
-                    }
-                    return;
+                if !field.is_shorthand {
+                    // Only check if a new name has been introduced, to avoid warning
+                    // on both the struct definition and this pattern.
+                    self.check_snake_case(cx, "variable", &ident);
                 }
+                return;
             }
             self.check_snake_case(cx, "variable", &ident);
         }

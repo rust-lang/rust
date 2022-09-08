@@ -120,8 +120,9 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Repeat(e, _)
         | ExprKind::DropTemps(e) => never_loop_expr(e, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(let_expr.init, main_loop_id),
-        ExprKind::Array(es) | ExprKind::MethodCall(_, es, _) | ExprKind::Tup(es) => {
-            never_loop_expr_all(&mut es.iter(), main_loop_id)
+        ExprKind::Array(es) | ExprKind::Tup(es) => never_loop_expr_all(&mut es.iter(), main_loop_id),
+        ExprKind::MethodCall(_, receiver, es, _) => {
+            never_loop_expr_all(&mut std::iter::once(receiver).chain(es.iter()), main_loop_id)
         },
         ExprKind::Struct(_, fields, base) => {
             let fields = never_loop_expr_all(&mut fields.iter().map(|f| f.expr), main_loop_id);
@@ -178,9 +179,9 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
                     never_loop_expr(expr, main_loop_id)
                 },
-                InlineAsmOperand::Out { expr, .. } => never_loop_expr_all(&mut expr.iter(), main_loop_id),
+                InlineAsmOperand::Out { expr, .. } => never_loop_expr_all(&mut expr.iter().copied(), main_loop_id),
                 InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                    never_loop_expr_all(&mut once(in_expr).chain(out_expr.iter()), main_loop_id)
+                    never_loop_expr_all(&mut once(*in_expr).chain(out_expr.iter().copied()), main_loop_id)
                 },
                 InlineAsmOperand::Const { .. }
                 | InlineAsmOperand::SymFn { .. }

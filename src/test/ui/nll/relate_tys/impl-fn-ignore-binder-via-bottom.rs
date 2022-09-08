@@ -30,4 +30,5 @@ fn main() {
     let _x = <fn(&())>::make_f();
     //~^ ERROR implementation of `Y` is not general enough
     //~| ERROR implementation of `Y` is not general enough
+    //~| ERROR implementation of `Y` is not general enough
 }

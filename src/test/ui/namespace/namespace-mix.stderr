@@ -218,7 +218,7 @@ error[E0277]: the trait bound `fn() -> c::TS {c::TS}: Impossible` is not satisfi
   --> $DIR/namespace-mix.rs:56:11
    |
 LL |     check(m3::TS);
-   |     ----- ^^^^^^ the trait `Impossible` is not implemented for `fn() -> c::TS {c::TS}`
+   |     ----- ^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> c::TS {c::TS}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -274,7 +274,7 @@ error[E0277]: the trait bound `fn() -> namespace_mix::c::TS {namespace_mix::c::T
   --> $DIR/namespace-mix.rs:62:11
    |
 LL |     check(xm3::TS);
-   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
+   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -526,7 +526,7 @@ error[E0277]: the trait bound `fn() -> c::E {c::E::TV}: Impossible` is not satis
   --> $DIR/namespace-mix.rs:122:11
    |
 LL |     check(m9::TV);
-   |     ----- ^^^^^^ the trait `Impossible` is not implemented for `fn() -> c::E {c::E::TV}`
+   |     ----- ^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> c::E {c::E::TV}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -582,7 +582,7 @@ error[E0277]: the trait bound `fn() -> namespace_mix::c::E {namespace_mix::xm7::
   --> $DIR/namespace-mix.rs:128:11
    |
 LL |     check(xm9::TV);
-   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}`
+   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}`
    |     |
    |     required by a bound introduced by this call
    |

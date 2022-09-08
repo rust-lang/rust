@@ -82,7 +82,7 @@ There's **"Run Extension (Debug Build)"** launch configuration for this in VS Co
 In general, I use one of the following workflows for fixing bugs and implementing features:
 
 If the problem concerns only internal parts of rust-analyzer (i.e. I don't need to touch the `rust-analyzer` crate or TypeScript code), there is a unit-test for it.
-So, I use **Rust Analyzer: Run** action in VS Code to run this single test, and then just do printf-driven development/debugging.
+So, I use **rust-analyzer: Run** action in VS Code to run this single test, and then just do printf-driven development/debugging.
 As a sanity check after I'm done, I use `cargo xtask install --server` and **Reload Window** action in VS Code to verify that the thing works as I expect.
 
 If the problem concerns only the VS Code extension, I use **Run Installed Extension** launch configuration from `launch.json`.
@@ -152,11 +152,11 @@ To log all communication between the server and the client, there are two choice
 
 There are also several VS Code commands which might be of interest:
 
-* `Rust Analyzer: Status` shows some memory-usage statistics.
+* `rust-analyzer: Status` shows some memory-usage statistics.
 
-* `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
+* `rust-analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 
-* `Rust Analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
+* `rust-analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
 
   You can hover over syntax nodes in the opened text file to see the appropriate
   rust code that it refers to and the rust editor will also highlight the proper
@@ -210,7 +210,8 @@ Release process is handled by `release`, `dist` and `promote` xtasks, `release` 
 ./rust-rust-analyzer  # Note the name!
 ```
 
-Additionally, it assumes that the remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
+The remote for `rust-analyzer` must be called `upstream` (I use `origin` to point to my fork).
+In addition, for `xtask promote` (see below), `rust-rust-analyzer` must have a `rust-analyzer` remote pointing to this repository on GitHub.
 
 `release` calls the GitHub API calls to scrape pull request comments and categorize them in the changelog.
 This step uses the `curl` and `jq` applications, which need to be available in `PATH`.
@@ -225,13 +226,13 @@ Release steps:
    * push it to `upstream`. This triggers GitHub Actions which:
      * runs `cargo xtask dist` to package binaries and VS Code extension
      * makes a GitHub release
-     * pushes VS Code extension to the marketplace
+     * publishes the VS Code extension to the marketplace
    * call the GitHub API for PR details
    * create a new changelog in `rust-analyzer.github.io`
 3. While the release is in progress, fill in the changelog
 4. Commit & push the changelog
 5. Tweet
-6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
+6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's subtree.
    Self-approve the PR.
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.

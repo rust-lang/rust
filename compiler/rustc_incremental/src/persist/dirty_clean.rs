@@ -80,7 +80,7 @@ const BASE_STRUCT: &[&str] =
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
 
-const EXTRA_TRAIT: &[&str] = &[label_strs::trait_of_item];
+const EXTRA_TRAIT: &[&str] = &[];
 
 // Fully Built Labels
 

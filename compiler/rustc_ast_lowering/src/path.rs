@@ -1,11 +1,11 @@
 use crate::ImplTraitPosition;
 
+use super::errors::{GenericTypeWithParentheses, UseAngleBrackets};
 use super::ResolverAstLoweringExt;
 use super::{GenericArgsCtor, LifetimeRes, ParenthesizedGenericArgs};
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::{self as ast, *};
-use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
@@ -13,7 +13,6 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::smallvec;
-use tracing::debug;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
@@ -23,7 +22,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         qself: &Option<QSelf>,
         p: &Path,
         param_mode: ParamMode,
-        itctx: ImplTraitContext,
+        itctx: &mut ImplTraitContext,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
@@ -157,7 +156,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     segment,
                     param_mode,
                     ParenthesizedGenericArgs::Err,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 )
             })),
             span: self.lower_span(p.span),
@@ -181,11 +180,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment: &PathSegment,
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
-        itctx: ImplTraitContext,
+        itctx: &mut ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {
                 GenericArgs::AngleBracketed(ref data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
@@ -193,10 +191,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Err => {
-                        let mut err = struct_span_err!(self.tcx.sess, data.span, E0214, "{}", msg);
-                        err.span_label(data.span, "only `Fn` traits may use parentheses");
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
-                        if !data.inputs.is_empty() {
+                        let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
                             let open_param = data.inputs_span.shrink_to_lo().to(data
                                 .inputs
@@ -212,16 +208,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 .span
                                 .shrink_to_hi()
                                 .to(data.inputs_span.shrink_to_hi());
-                            err.multipart_suggestion(
-                                &format!("use angle brackets instead",),
-                                vec![
-                                    (open_param, String::from("<")),
-                                    (close_param, String::from(">")),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err.emit();
+
+                            Some(UseAngleBrackets { open_param, close_param })
+                        } else {
+                            None
+                        };
+                        self.tcx.sess.emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),
@@ -258,16 +250,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let res = self.expect_full_res(segment.id);
-        let id = self.lower_node_id(segment.id);
+        let hir_id = self.lower_node_id(segment.id);
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
-            segment.ident, segment.id, id,
+            segment.ident, segment.id, hir_id,
         );
 
         hir::PathSegment {
             ident: self.lower_ident(segment.ident),
-            hir_id: Some(id),
-            res: Some(self.lower_res(res)),
+            hir_id,
+            res: self.lower_res(res),
             infer_args,
             args: if generic_args.is_empty() && generic_args.span.is_empty() {
                 None
@@ -324,7 +316,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
-        itctx: ImplTraitContext,
+        itctx: &mut ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         let has_non_lt_args = data.args.iter().any(|arg| match arg {
             AngleBracketedArg::Arg(ast::GenericArg::Lifetime(_))
@@ -358,15 +350,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
+            self.lower_ty_direct(
+                ty,
+                &mut ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
+            )
         }));
         let output_ty = match output {
-            FnRetTy::Ty(ty) => {
-                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
-            }
+            FnRetTy::Ty(ty) => self
+                .lower_ty(&ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
-        let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
+        let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
         let binding = self.output_ty_binding(output_ty.span, output_ty);
         (
             GenericArgsCtor {

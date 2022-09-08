@@ -571,7 +571,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                 Some((Node::Stmt(_), _)) => (),
                 Some((Node::Local(l), _)) => {
                     // Only trace simple bindings. e.g `let x = y;`
-                    if let PatKind::Binding(BindingAnnotation::Unannotated, id, _, None) = l.pat.kind {
+                    if let PatKind::Binding(BindingAnnotation::NONE, id, _, None) = l.pat.kind {
                         self.bindings.insert(id, args_idx);
                     } else {
                         set_skip_flag();
@@ -591,8 +591,11 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             set_skip_flag();
                         }
                     },
-                    ExprKind::MethodCall(name, expr_args @ [self_arg, ..], _) => {
-                        let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
+                    ExprKind::MethodCall(name, self_arg, expr_args, _) => {
+                        let i = std::iter::once(self_arg)
+                            .chain(expr_args.iter())
+                            .position(|arg| arg.hir_id == child_id)
+                            .unwrap_or(0);
                         if i == 0 {
                             // Check if the method can be renamed.
                             let name = name.ident.as_str();
@@ -644,7 +647,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             .filter_map(|(i, arg)| {
                 let param = &body.params[arg.idx];
                 match param.pat.kind {
-                    PatKind::Binding(BindingAnnotation::Unannotated, id, _, None)
+                    PatKind::Binding(BindingAnnotation::NONE, id, _, None)
                         if !is_lint_allowed(cx, PTR_ARG, param.hir_id) =>
                     {
                         Some((id, i))

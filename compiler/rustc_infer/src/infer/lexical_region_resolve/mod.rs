@@ -333,9 +333,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///
     /// Neither `a` nor `b` may be an inference variable (hence the
     /// term "concrete regions").
-    #[instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self), ret)]
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
-        let r = match (*a, *b) {
+        match (*a, *b) {
             (ReLateBound(..), _) | (_, ReLateBound(..)) | (ReErased, _) | (_, ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
             }
@@ -399,11 +399,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     self.tcx().lifetimes.re_static
                 }
             }
-        };
-
-        debug!("lub_concrete_regions({:?}, {:?}) = {:?}", a, b, r);
-
-        r
+        }
     }
 
     /// After expansion is complete, go and check upper bounds (i.e.,

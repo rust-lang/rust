@@ -5,7 +5,7 @@ LL | fn foo() -> impl T<O=()> { S }
    |    --- consider calling this function
 ...
 LL |     bar(foo);
-   |     --- ^^^ the trait `T` is not implemented for `fn() -> impl T<O = ()> {foo}`
+   |     --- ^^^ the trait `T` is not implemented for fn item `fn() -> impl T<O = ()> {foo}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -25,7 +25,7 @@ error[E0277]: the trait bound `[closure@$DIR/fn-ctor-passed-as-arg-where-it-shou
 LL |     let closure = || S;
    |                   -- consider calling this closure
 LL |     bar(closure);
-   |     --- ^^^^^^^ the trait `T` is not implemented for `[closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21]`
+   |     --- ^^^^^^^ the trait `T` is not implemented for closure `[closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21]`
    |     |
    |     required by a bound introduced by this call
    |

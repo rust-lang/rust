@@ -13,6 +13,7 @@ mod fulfill;
 pub mod misc;
 mod object_safety;
 mod on_unimplemented;
+pub mod outlives_bounds;
 mod project;
 pub mod query;
 pub(crate) mod relationships;
@@ -22,6 +23,7 @@ mod structural_match;
 mod util;
 pub mod wf;
 
+use crate::errors::DumpVTableEntries;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
@@ -30,10 +32,14 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
+use rustc_middle::ty::{
+    self, DefIdTree, GenericParamDefKind, Subst, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
+    VtblEntry,
+};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
@@ -113,11 +119,21 @@ pub enum TraitQueryMode {
 
 /// Creates predicate obligations from the generic bounds.
 pub fn predicates_for_generics<'tcx>(
-    cause: ObligationCause<'tcx>,
+    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    util::predicates_for_generics(cause, 0, param_env, generic_bounds)
+    let generic_bounds = generic_bounds;
+    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
+
+    std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
+        move |(idx, (predicate, span))| Obligation {
+            cause: cause(idx, span),
+            recursion_depth: 0,
+            param_env: param_env,
+            predicate,
+        },
+    )
 }
 
 /// Determines whether the type `ty` is known to meet `bound` and
@@ -161,22 +177,20 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let mut fulfill_cx = FulfillmentContext::new();
-
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
         let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
 
-        fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
+        // The handling of regions in this area of the code is terrible,
+        // see issue #29149. We should be able to improve on this with
+        // NLL.
+        let errors = fully_solve_bound(infcx, cause, param_env, ty, def_id);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        match &errors[..] {
             [] => {
                 debug!(
                     "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
@@ -222,15 +236,13 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let fulfill_cx = FulfillmentContext::new();
-        let predicates =
-            match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
-                Ok(predicates) => predicates,
-                Err(errors) => {
-                    let reported = infcx.report_fulfillment_errors(&errors, None, false);
-                    return Err(reported);
-                }
-            };
+        let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
+            Ok(predicates) => predicates,
+            Err(errors) => {
+                let reported = infcx.report_fulfillment_errors(&errors, None, false);
+                return Err(reported);
+            }
+        };
 
         debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
@@ -381,9 +393,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     )
 }
 
+/// Normalize a type and process all resulting obligations, returning any errors
 pub fn fully_normalize<'a, 'tcx, T>(
     infcx: &InferCtxt<'a, 'tcx>,
-    mut fulfill_cx: FulfillmentContext<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     value: T,
@@ -399,8 +411,10 @@ where
         "fully_normalize: normalized_value={:?} obligations={:?}",
         normalized_value, obligations
     );
+
+    let mut fulfill_cx = FulfillmentContext::new();
     for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
+        fulfill_cx.register_predicate_obligation(infcx, obligation);
     }
 
     debug!("fully_normalize: select_all_or_error start");
@@ -414,6 +428,43 @@ where
     Ok(resolved_value)
 }
 
+/// Process an obligation (and any nested obligations that come from it) to
+/// completion, returning any errors
+pub fn fully_solve_obligation<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligation: PredicateObligation<'tcx>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligation(infcx, obligation);
+    engine.select_all_or_error(infcx)
+}
+
+/// Process a set of obligations (and any nested obligations that come from them)
+/// to completion
+pub fn fully_solve_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligations(infcx, obligations);
+    engine.select_all_or_error(infcx)
+}
+
+/// Process a bound (and any nested obligations that come from it) to completion.
+/// This is a convenience function for traits that have no generic arguments, such
+/// as auto traits, and builtin traits like Copy or Sized.
+pub fn fully_solve_bound<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    bound: DefId,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_bound(infcx, param_env, ty, bound, cause);
+    engine.select_all_or_error(infcx)
+}
+
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
 /// returns true, then either normalize encountered an error or one of the predicates did not
 /// hold. Used when creating vtables to check for unsatisfiable methods.
@@ -424,24 +475,14 @@ pub fn impossible_predicates<'tcx>(
     debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        // HACK: Set tainted by errors to gracefully exit in case of overflow.
-        infcx.set_tainted_by_errors();
-
         let param_env = ty::ParamEnv::reveal_all();
-        let mut selcx = SelectionContext::new(&infcx);
-        let mut fulfill_cx = FulfillmentContext::new();
-        let cause = ObligationCause::dummy();
-        let Normalized { value: predicates, obligations } =
-            normalize(&mut selcx, param_env, cause.clone(), predicates);
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+        let ocx = ObligationCtxt::new(&infcx);
+        let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
         for predicate in predicates {
-            let obligation = Obligation::new(cause.clone(), param_env, predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+            let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+            ocx.register_obligation(obligation);
         }
-
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
 
         // Clean up after ourselves
         let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
@@ -472,6 +513,84 @@ fn subst_and_check_impossible_predicates<'tcx>(
 
     debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
     result
+}
+
+/// Checks whether a trait's method is impossible to call on a given impl.
+///
+/// This only considers predicates that reference the impl's generics, and not
+/// those that reference the method's generics.
+fn is_impossible_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (impl_def_id, trait_item_def_id): (DefId, DefId),
+) -> bool {
+    struct ReferencesOnlyParentGenerics<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        generics: &'tcx ty::Generics,
+        trait_item_def_id: DefId,
+    }
+    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+        type BreakTy = ();
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            // If this is a parameter from the trait item's own generics, then bail
+            if let ty::Param(param) = t.kind()
+                && let param_def_id = self.generics.type_param(param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            t.super_visit_with(self)
+        }
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ReEarlyBound(param) = r.kind()
+                && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            r.super_visit_with(self)
+        }
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ConstKind::Param(param) = ct.kind()
+                && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            ct.super_visit_with(self)
+        }
+    }
+
+    let generics = tcx.generics_of(trait_item_def_id);
+    let predicates = tcx.predicates_of(trait_item_def_id);
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_def_id).expect("expected impl to correspond to trait");
+    let param_env = tcx.param_env(impl_def_id);
+
+    let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
+    let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
+        if pred.visit_with(&mut visitor).is_continue() {
+            Some(Obligation::new(
+                ObligationCause::dummy_with_span(*span),
+                param_env,
+                ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
+            ))
+        } else {
+            None
+        }
+    });
+
+    tcx.infer_ctxt().ignoring_regions().enter(|ref infcx| {
+        for obligation in predicates_for_trait {
+            // Ignore overflow error, to be conservative.
+            if let Ok(result) = infcx.evaluate_obligation(&obligation)
+                && !result.may_apply()
+            {
+                return true;
+            }
+        }
+
+        false
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -645,8 +764,11 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    let msg = format!("vtable entries for `{}`: {:#?}", trait_ref, entries);
-    tcx.sess.struct_span_err(sp, &msg).emit();
+    tcx.sess.emit_err(DumpVTableEntries {
+        span: sp,
+        trait_ref,
+        entries: format!("{:#?}", entries),
+    });
 }
 
 fn own_existential_vtable_entries<'tcx>(
@@ -854,6 +976,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
+        is_impossible_method,
         try_unify_abstract_consts: |tcx, param_env_and| {
             let (param_env, (a, b)) = param_env_and.into_parts();
             const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)

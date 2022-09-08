@@ -192,7 +192,7 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
     match output.kind {
         TyKind::Tup(tys) if tys.is_empty() => {
             let sugg = "remove the return type";
-            Some((sugg, "".into()))
+            Some((sugg, String::new()))
         },
         _ => {
             let sugg = "return the output of the future directly";

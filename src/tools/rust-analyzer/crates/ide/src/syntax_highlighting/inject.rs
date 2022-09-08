@@ -5,7 +5,8 @@ use std::mem;
 use either::Either;
 use hir::{InFile, Semantics};
 use ide_db::{
-    active_parameter::ActiveParameter, defs::Definition, rust_doc::is_rust_fence, SymbolKind,
+    active_parameter::ActiveParameter, base_db::FileId, defs::Definition, rust_doc::is_rust_fence,
+    SymbolKind,
 };
 use syntax::{
     ast::{self, AstNode, IsString, QuoteOffsets},
@@ -14,13 +15,14 @@ use syntax::{
 
 use crate::{
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    syntax_highlighting::{highlights::Highlights, injector::Injector},
+    syntax_highlighting::{highlights::Highlights, injector::Injector, HighlightConfig},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
 pub(super) fn ra_fixture(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
+    config: HighlightConfig,
     literal: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
@@ -62,7 +64,13 @@ pub(super) fn ra_fixture(
 
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
-    for mut hl_range in analysis.highlight(tmp_file_id).unwrap() {
+    for mut hl_range in analysis
+        .highlight(
+            HighlightConfig { syntactic_name_ref_highlighting: false, ..config },
+            tmp_file_id,
+        )
+        .unwrap()
+    {
         for range in inj.map_range_up(hl_range.range) {
             if let Some(range) = literal.map_range_up(range) {
                 hl_range.range = range;
@@ -81,16 +89,19 @@ pub(super) fn ra_fixture(
 const RUSTDOC_FENCE_LENGTH: usize = 3;
 const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
-/// Injection of syntax highlighting of doctests.
+/// Injection of syntax highlighting of doctests and intra doc links.
 pub(super) fn doc_comment(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
-    InFile { file_id: src_file_id, value: node }: InFile<&SyntaxNode>,
+    config: HighlightConfig,
+    src_file_id: FileId,
+    node: &SyntaxNode,
 ) {
     let (attributes, def) = match doc_attributes(sema, node) {
         Some(it) => it,
         None => return,
     };
+    let src_file_id = src_file_id.into();
 
     // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = attributes.docs_with_rangemap(sema.db) {
@@ -203,7 +214,14 @@ pub(super) fn doc_comment(
 
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
-    if let Ok(ranges) = analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)) {
+    if let Ok(ranges) = analysis.with_db(|db| {
+        super::highlight(
+            db,
+            HighlightConfig { syntactic_name_ref_highlighting: true, ..config },
+            tmp_file_id,
+            None,
+        )
+    }) {
         for HlRange { range, highlight, binding_hash } in ranges {
             for range in inj.map_range_up(range) {
                 hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });

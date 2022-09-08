@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test that we don't run into an assertion when using a Rust dylib dependency
 # while compiling with full LTO.

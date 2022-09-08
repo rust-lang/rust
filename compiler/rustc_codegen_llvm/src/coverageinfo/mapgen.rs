@@ -16,8 +16,6 @@ use rustc_middle::ty::TyCtxt;
 
 use std::ffi::CString;
 
-use tracing::debug;
-
 /// Generates and exports the Coverage Map.
 ///
 /// Rust Coverage Map generation supports LLVM Coverage Mapping Format versions

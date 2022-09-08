@@ -107,45 +107,24 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> (Type<'gcc>, Vec<Type<'gcc>>, bool, FxHashSet<usize>) {
         let mut on_stack_param_indices = FxHashSet::default();
-        let args_capacity: usize = self.args.iter().map(|arg|
-            if arg.pad.is_some() {
-                1
-            }
-            else {
-                0
-            } +
-            if let PassMode::Pair(_, _) = arg.mode {
-                2
-            } else {
-                1
-            }
-        ).sum();
+
+        // This capacity calculation is approximate.
         let mut argument_tys = Vec::with_capacity(
-            if let PassMode::Indirect { .. } = self.ret.mode {
-                1
-            }
-            else {
-                0
-            } + args_capacity,
+            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 }
         );
 
         let return_ty =
             match self.ret.mode {
                 PassMode::Ignore => cx.type_void(),
                 PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
-                PassMode::Cast(cast) => cast.gcc_type(cx),
+                PassMode::Cast(ref cast, _) => cast.gcc_type(cx),
                 PassMode::Indirect { .. } => {
                     argument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                     cx.type_void()
                 }
             };
 
-        for arg in &self.args {
-            // add padding
-            if let Some(ty) = arg.pad {
-                argument_tys.push(ty.gcc_type(cx));
-            }
-
+        for arg in self.args.iter() {
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_gcc_type(cx),
@@ -157,7 +136,13 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Indirect { extra_attrs: Some(_), .. } => {
                     unimplemented!();
                 }
-                PassMode::Cast(cast) => cast.gcc_type(cx),
+                PassMode::Cast(ref cast, pad_i32) => {
+                    // add padding
+                    if pad_i32 {
+                        argument_tys.push(Reg::i32().gcc_type(cx));
+                    }
+                    cast.gcc_type(cx)
+                }
                 PassMode::Indirect { extra_attrs: None, on_stack: true, .. } => {
                     on_stack_param_indices.insert(argument_tys.len());
                     arg.memory_ty(cx)

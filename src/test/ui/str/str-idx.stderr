@@ -8,7 +8,7 @@ LL |     let _: u8 = s[4];
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
    = help: the trait `SliceIndex<[T]>` is implemented for `usize`
-   = note: required because of the requirements on the impl of `Index<{integer}>` for `str`
+   = note: required for `str` to implement `Index<{integer}>`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
   --> $DIR/str-idx.rs:4:19
@@ -53,7 +53,7 @@ LL |     let _: u8 = s['c'];
    |                   ^^^ string indices are ranges of `usize`
    |
    = help: the trait `SliceIndex<str>` is not implemented for `char`
-   = note: required because of the requirements on the impl of `Index<char>` for `str`
+   = note: required for `str` to implement `Index<char>`
 
 error: aborting due to 4 previous errors
 

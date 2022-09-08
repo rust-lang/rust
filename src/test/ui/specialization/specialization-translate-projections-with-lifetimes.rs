@@ -14,7 +14,7 @@ impl<'a> WithAssoc for &'a () {
     type Item = &'a u32;
 }
 
-struct Cloned<I>(I);
+struct Cloned<I>(#[allow(unused_tuple_struct_fields)] I);
 
 impl<'a, I, T: 'a> Iterator for Cloned<I>
     where I: WithAssoc<Item=&'a T>, T: Clone

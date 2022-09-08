@@ -348,8 +348,7 @@ function loadCss(cssFileName) {
 
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        removeClass(sidebar, "shown");
+        hideSidebar();
         handleHashes(ev);
     }
 
@@ -501,6 +500,10 @@ function loadCss(cssFileName) {
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
         const inlined_types = new Set();
 
+        const TEXT_IDX = 0;
+        const SYNTHETIC_IDX = 1;
+        const TYPES_IDX = 2;
+
         if (synthetic_implementors) {
             // This `inlined_types` variable is used to avoid having the same implementation
             // showing up twice. For example "String" in the "Sync" doc page.
@@ -525,9 +528,9 @@ function loadCss(cssFileName) {
         // We don't want to include impls from this JS file, when the HTML already has them.
         // The current crate should always be ignored. Other crates that should also be
         // ignored are included in the attribute `data-ignore-extern-crates`.
-        const ignoreExternCrates = document
-            .querySelector("script[data-ignore-extern-crates]")
-            .getAttribute("data-ignore-extern-crates");
+        const script = document
+            .querySelector("script[data-ignore-extern-crates]");
+        const ignoreExternCrates = script ? script.getAttribute("data-ignore-extern-crates") : "";
         for (const lib of libs) {
             if (lib === window.currentCrate || ignoreExternCrates.indexOf(lib) !== -1) {
                 continue;
@@ -536,10 +539,12 @@ function loadCss(cssFileName) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct.synthetic ? synthetic_implementors : implementors;
+                const list = struct[SYNTHETIC_IDX] ? synthetic_implementors : implementors;
 
-                if (struct.synthetic) {
-                    for (const struct_type of struct.types) {
+                // The types list is only used for synthetic impls.
+                // If this changes, `main.js` and `write_shared.rs` both need changed.
+                if (struct[SYNTHETIC_IDX]) {
+                    for (const struct_type of struct[TYPES_IDX]) {
                         if (inlined_types.has(struct_type)) {
                             continue struct_loop;
                         }
@@ -548,7 +553,7 @@ function loadCss(cssFileName) {
                 }
 
                 const code = document.createElement("h3");
-                code.innerHTML = struct.text;
+                code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
                 addClass(code, "in-band");
 
@@ -728,10 +733,49 @@ function loadCss(cssFileName) {
         });
     }());
 
+    let oldSidebarScrollPosition = null;
+
+    function showSidebar() {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+            // This is to keep the scroll position on mobile.
+            oldSidebarScrollPosition = window.scrollY;
+            document.body.style.width = `${document.body.offsetWidth}px`;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldSidebarScrollPosition}px`;
+            document.querySelector(".mobile-topbar").style.top = `${oldSidebarScrollPosition}px`;
+            document.querySelector(".mobile-topbar").style.position = "relative";
+        } else {
+            oldSidebarScrollPosition = null;
+        }
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
     function hideSidebar() {
+        if (oldSidebarScrollPosition !== null) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.width = "";
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.querySelector(".mobile-topbar").style.top = "";
+            document.querySelector(".mobile-topbar").style.position = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldSidebarScrollPosition`.
+            window.scrollTo(0, oldSidebarScrollPosition);
+            oldSidebarScrollPosition = null;
+        }
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
+
+    window.addEventListener("resize", () => {
+        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+            oldSidebarScrollPosition !== null) {
+            // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
+            // we need to switch away from mobile mode and make the main content area scrollable.
+            hideSidebar();
+        }
+    });
 
     function handleClick(id, f) {
         const elem = document.getElementById(id);
@@ -775,9 +819,9 @@ function loadCss(cssFileName) {
         sidebar_menu_toggle.addEventListener("click", () => {
             const sidebar = document.getElementsByClassName("sidebar")[0];
             if (!hasClass(sidebar, "shown")) {
-                addClass(sidebar, "shown");
+                showSidebar();
             } else {
-                removeClass(sidebar, "shown");
+                hideSidebar();
             }
         });
     }
@@ -816,7 +860,7 @@ function loadCss(cssFileName) {
              <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, \
              and <code>const</code>.",
             "Search functions by type signature (e.g., <code>vec -&gt; usize</code> or \
-             <code>* -&gt; vec</code>)",
+             <code>-&gt; vec</code>)",
             "Search multiple things at once by splitting your query with comma (e.g., \
              <code>str,u8</code> or <code>String,struct:Vec,test</code>)",
             "You can look for items with an exact name by putting double quotes around \

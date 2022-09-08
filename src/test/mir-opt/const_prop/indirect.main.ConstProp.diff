@@ -18,14 +18,14 @@
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
 +         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:+1:13: +1:25
 +         _3 = const (3_u8, false);        // scope 0 at $DIR/indirect.rs:+1:13: +1:29
-+         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:+1:13: +1:29
       }
   
       bb1: {
 -         _1 = move (_3.0: u8);            // scope 0 at $DIR/indirect.rs:+1:13: +1:29
 +         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:+1:13: +1:29
           StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:+1:28: +1:29
-          nop;                             // scope 0 at $DIR/indirect.rs:+0:11: +2:2
+          _0 = const ();                   // scope 0 at $DIR/indirect.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/indirect.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/indirect.rs:+2:2: +2:2
       }

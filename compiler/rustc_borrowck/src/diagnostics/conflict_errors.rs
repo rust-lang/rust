@@ -16,9 +16,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{
-    self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
-};
+use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -260,7 +258,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
-            if is_loop_move & !in_pattern {
+            // Same for if we're in a loop, see #101119.
+            if is_loop_move & !in_pattern && !matches!(use_spans, UseSpans::ClosureUse { .. }) {
                 if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                     // We have a `&mut` ref, we need to reborrow on each iteration (#62112).
                     err.span_suggestion_verbose(
@@ -453,7 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_borrow_fn_like(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         ty: Ty<'tcx>,
         move_sites: &[MoveSite],
         value_name: &str,
@@ -461,23 +460,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |predicates: &[(ty::Predicate<'tcx>, Span)], substs| {
-            predicates.iter().find_map(|(pred, _)| {
-                let pred = if let Some(substs) = substs {
-                    EarlyBinder(*pred).subst(tcx, substs).kind().skip_binder()
-                } else {
-                    pred.kind().skip_binder()
-                };
-                if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
+        let find_fn_kind_from_did =
+            |predicates: ty::EarlyBinder<&[(ty::Predicate<'tcx>, Span)]>, substs| {
+                predicates.0.iter().find_map(|(pred, _)| {
+                    let pred = if let Some(substs) = substs {
+                        predicates.rebind(*pred).subst(tcx, substs).kind().skip_binder()
+                    } else {
+                        pred.kind().skip_binder()
+                    };
+                    if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
                     if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
                         return Some(hir::Mutability::Not);
                     } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
                         return Some(hir::Mutability::Mut);
                     }
                 }
-                None
-            })
-        };
+                    None
+                })
+            };
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
@@ -485,11 +485,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // borrowed variants in a function body when we see a move error.
         let borrow_level = match ty.kind() {
             ty::Param(_) => find_fn_kind_from_did(
-                tcx.explicit_predicates_of(self.mir_def_id().to_def_id()).predicates,
+                tcx.bound_explicit_predicates_of(self.mir_def_id().to_def_id())
+                    .map_bound(|p| p.predicates),
                 None,
             ),
             ty::Opaque(did, substs) => {
-                find_fn_kind_from_did(tcx.explicit_item_bounds(*did), Some(*substs))
+                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*did), Some(*substs))
             }
             ty::Closure(_, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
@@ -526,12 +527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_adding_copy_bounds(
-        &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) {
+    fn suggest_adding_copy_bounds(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
@@ -1124,6 +1120,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// short a lifetime. (But sometimes it is more useful to report
     /// it as a more direct conflict between the execution of a
     /// `Drop::drop` with an aliasing borrow.)
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -1131,13 +1128,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         place_span: (Place<'tcx>, Span),
         kind: Option<WriteKind>,
     ) {
-        debug!(
-            "report_borrowed_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, borrow, place_span, kind
-        );
-
         let drop_span = place_span.1;
         let root_place =
             self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
@@ -1194,10 +1184,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let kind_place = kind.filter(|_| place_desc.is_some()).map(|k| (k, place_span.0));
         let explanation = self.explain_why_borrow_contains_point(location, &borrow, kind_place);
 
-        debug!(
-            "report_borrowed_value_does_not_live_long_enough(place_desc: {:?}, explanation: {:?})",
-            place_desc, explanation
-        );
+        debug!(?place_desc, ?explanation);
+
         let err = match (place_desc, explanation) {
             // If the outlives constraint comes from inside the closure,
             // for example:
@@ -1469,6 +1457,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn report_temporary_value_does_not_live_long_enough(
         &mut self,
         location: Location,
@@ -1478,13 +1467,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        debug!(
-            "report_temporary_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}\
-             )",
-            location, borrow, drop_span, proper_span
-        );
-
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
@@ -2736,7 +2718,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     e.span,
                                     format!(
-                                        "if the `for` loop runs 0 times, {} is not initialized ",
+                                        "if the `for` loop runs 0 times, {} is not initialized",
                                         self.name
                                     ),
                                 ));

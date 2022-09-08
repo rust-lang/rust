@@ -6,7 +6,7 @@ use rustc_ast::tokenstream::{self, Spacing::*, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, MultiSpan, PResult};
+use rustc_errors::{MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -15,7 +15,7 @@ use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 
 use pm::bridge::{
-    server, DelimSpan, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
 };
 use pm::{Delimiter, Level, LineColumn};
 use std::ops::Bound;
@@ -368,8 +368,6 @@ impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type SourceFile = Lrc<SourceFile>;
-    type MultiSpan = Vec<Span>;
-    type Diagnostic = Diagnostic;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -436,6 +434,21 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             span: self.call_site,
         })
     }
+
+    fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
+        let mut diag =
+            rustc_errors::Diagnostic::new(diagnostic.level.to_internal(), diagnostic.message);
+        diag.set_span(MultiSpan::from_spans(diagnostic.spans));
+        for child in diagnostic.children {
+            diag.sub(
+                child.level.to_internal(),
+                child.message,
+                MultiSpan::from_spans(child.spans),
+                None,
+            );
+        }
+        self.sess().span_diagnostic.emit_diagnostic(&mut diag);
+    }
 }
 
 impl server::TokenStream for Rustc<'_, '_> {
@@ -486,20 +499,26 @@ impl server::TokenStream for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
-            ast::ExprKind::Lit(l) if l.token.kind == token::Bool => Ok(
-                tokenstream::TokenStream::token_alone(token::Ident(l.token.symbol, false), l.span),
-            ),
+            ast::ExprKind::Lit(l) if l.token_lit.kind == token::Bool => {
+                Ok(tokenstream::TokenStream::token_alone(
+                    token::Ident(l.token_lit.symbol, false),
+                    l.span,
+                ))
+            }
             ast::ExprKind::Lit(l) => {
-                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token), l.span))
+                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token_lit), l.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
-                ast::ExprKind::Lit(l) => match l.token {
+                ast::ExprKind::Lit(l) => match l.token_lit {
                     token::Lit { kind: token::Integer | token::Float, .. } => {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
                             tokenstream::TokenTree::token_alone(token::BinOp(token::Minus), e.span),
-                            tokenstream::TokenTree::token_alone(token::Literal(l.token), l.span),
+                            tokenstream::TokenTree::token_alone(
+                                token::Literal(l.token_lit),
+                                l.span,
+                            ),
                         ]))
                     }
                     _ => Err(()),
@@ -574,38 +593,6 @@ impl server::SourceFile for Rustc<'_, '_> {
 
     fn is_real(&mut self, file: &Self::SourceFile) -> bool {
         file.is_real_file()
-    }
-}
-
-impl server::MultiSpan for Rustc<'_, '_> {
-    fn new(&mut self) -> Self::MultiSpan {
-        vec![]
-    }
-
-    fn push(&mut self, spans: &mut Self::MultiSpan, span: Self::Span) {
-        spans.push(span)
-    }
-}
-
-impl server::Diagnostic for Rustc<'_, '_> {
-    fn new(&mut self, level: Level, msg: &str, spans: Self::MultiSpan) -> Self::Diagnostic {
-        let mut diag = Diagnostic::new(level.to_internal(), msg);
-        diag.set_span(MultiSpan::from_spans(spans));
-        diag
-    }
-
-    fn sub(
-        &mut self,
-        diag: &mut Self::Diagnostic,
-        level: Level,
-        msg: &str,
-        spans: Self::MultiSpan,
-    ) {
-        diag.sub(level.to_internal(), msg, MultiSpan::from_spans(spans), None);
-    }
-
-    fn emit(&mut self, mut diag: Self::Diagnostic) {
-        self.sess().span_diagnostic.emit_diagnostic(&mut diag);
     }
 }
 

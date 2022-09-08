@@ -77,18 +77,12 @@ impl flags::Promote {
         cmd!(sh, "git switch master").run()?;
         cmd!(sh, "git fetch upstream").run()?;
         cmd!(sh, "git reset --hard upstream/master").run()?;
-        cmd!(sh, "git submodule update --recursive").run()?;
 
         let date = date_iso(sh)?;
         let branch = format!("rust-analyzer-{date}");
         cmd!(sh, "git switch -c {branch}").run()?;
-        {
-            let _dir = sh.push_dir("src/tools/rust-analyzer");
-            cmd!(sh, "git fetch origin").run()?;
-            cmd!(sh, "git reset --hard origin/release").run()?;
-        }
-        cmd!(sh, "git add src/tools/rust-analyzer").run()?;
-        cmd!(sh, "git commit -m':arrow_up: rust-analyzer'").run()?;
+        cmd!(sh, "git subtree pull -m ':arrow_up: rust-analyzer' -P src/tools/rust-analyzer rust-analyzer release").run()?;
+
         if !self.dry_run {
             cmd!(sh, "git push -u origin {branch}").run()?;
             cmd!(

@@ -233,7 +233,8 @@ fn add_type_alias_impl(
     type_alias: hir::TypeAlias,
 ) {
     let alias_name = type_alias.name(ctx.db);
-    let (alias_name, escaped_name) = (alias_name.to_smol_str(), alias_name.escaped().to_smol_str());
+    let (alias_name, escaped_name) =
+        (alias_name.unescaped().to_smol_str(), alias_name.to_smol_str());
 
     let label = format!("type {} =", alias_name);
     let replacement = format!("type {} = ", escaped_name);

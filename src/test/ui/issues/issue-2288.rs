@@ -1,8 +1,6 @@
 // run-pass
 #![allow(non_camel_case_types)]
 
-#![feature(box_syntax)]
-
 trait clam<A> {
   fn chowder(&self, y: A);
 }
@@ -30,6 +28,6 @@ fn f<A>(x: Box<dyn clam<A>>, a: A) {
 pub fn main() {
 
   let c = foo(42);
-  let d: Box<dyn clam<isize>> = box c as Box<dyn clam<isize>>;
+  let d: Box<dyn clam<isize>> = Box::new(c) as Box<dyn clam<isize>>;
   f(d, c.x);
 }

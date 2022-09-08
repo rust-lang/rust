@@ -294,6 +294,17 @@ impl DefCollector<'_> {
                     continue;
                 }
 
+                if *attr_name == hir_expand::name![feature] {
+                    let features =
+                        attr.parse_path_comma_token_tree().into_iter().flatten().filter_map(
+                            |feat| match feat.segments() {
+                                [name] => Some(name.to_smol_str()),
+                                _ => None,
+                            },
+                        );
+                    self.def_map.unstable_features.extend(features);
+                }
+
                 let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
                     || *attr_name == hir_expand::name![register_tool];
                 if !attr_is_register_like {
@@ -501,10 +512,9 @@ impl DefCollector<'_> {
             Edition::Edition2021 => name![rust_2021],
         };
 
-        let path_kind = if self.def_map.edition == Edition::Edition2015 {
-            PathKind::Plain
-        } else {
-            PathKind::Abs
+        let path_kind = match self.def_map.edition {
+            Edition::Edition2015 => PathKind::Plain,
+            _ => PathKind::Abs,
         };
         let path =
             ModPath::from_segments(path_kind, [krate.clone(), name![prelude], edition].into_iter());
@@ -524,7 +534,6 @@ impl DefCollector<'_> {
             match per_ns.types {
                 Some((ModuleDefId::ModuleId(m), _)) => {
                     self.def_map.prelude = Some(m);
-                    return;
                 }
                 types => {
                     tracing::debug!(
@@ -839,7 +848,10 @@ impl DefCollector<'_> {
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                if import.is_extern_crate && module_id == self.def_map.root {
+                if import.is_extern_crate
+                    && self.def_map.block.is_none()
+                    && module_id == self.def_map.root
+                {
                     if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
                     {
                         self.def_map.extern_prelude.insert(name.clone(), def);
@@ -1055,7 +1067,7 @@ impl DefCollector<'_> {
         };
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
-            let resolver2 = |path| {
+            let resolver = |path| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
                     ResolveMode::Other,
@@ -1068,7 +1080,7 @@ impl DefCollector<'_> {
                     .take_macros()
                     .map(|it| (it, macro_id_to_def_id(self.db, it)))
             };
-            let resolver = |path| resolver2(path).map(|(_, it)| it);
+            let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
 
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
@@ -1077,7 +1089,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
-                        &resolver,
+                        &resolver_def_id,
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
@@ -1093,7 +1105,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver2,
+                        &resolver,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1158,7 +1170,7 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = match resolver(path.clone()) {
+                    let def = match resolver_def_id(path.clone()) {
                         Some(def) if def.is_attribute() => def,
                         _ => return true,
                     };
@@ -1292,7 +1304,8 @@ impl DefCollector<'_> {
             true
         });
         // Attribute resolution can add unresolved macro invocations, so concatenate the lists.
-        self.unresolved_macros.extend(macros);
+        macros.extend(mem::take(&mut self.unresolved_macros));
+        self.unresolved_macros = macros;
 
         for (module_id, depth, container, macro_call_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, depth, container);

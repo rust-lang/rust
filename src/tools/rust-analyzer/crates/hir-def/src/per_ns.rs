@@ -43,6 +43,10 @@ impl PerNs {
         self.types.is_none() && self.values.is_none() && self.macros.is_none()
     }
 
+    pub fn is_full(&self) -> bool {
+        self.types.is_some() && self.values.is_some() && self.macros.is_some()
+    }
+
     pub fn take_types(self) -> Option<ModuleDefId> {
         self.types.map(|it| it.0)
     }
@@ -81,6 +85,14 @@ impl PerNs {
             types: self.types.or(other.types),
             values: self.values.or(other.values),
             macros: self.macros.or(other.macros),
+        }
+    }
+
+    pub fn or_else(self, f: impl FnOnce() -> PerNs) -> PerNs {
+        if self.is_full() {
+            self
+        } else {
+            self.or(f())
         }
     }
 

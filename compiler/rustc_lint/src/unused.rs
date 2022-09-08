@@ -11,7 +11,7 @@ use rustc_middle::ty::adjustment;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -268,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 },
                 ty::Closure(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_closure)
                             .set_arg("count", plural_len)
@@ -281,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Generator(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        // FIXME(davidtwco): this isn't properly translatable becauses of the
+                        // FIXME(davidtwco): this isn't properly translatable because of the
                         // pre/post strings
                         lint.build(fluent::lint::unused_generator)
                             .set_arg("count", plural_len)
@@ -310,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         ) -> bool {
             if let Some(attr) = cx.tcx.get_attr(def_id, sym::must_use) {
                 cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                    // FIXME(davidtwco): this isn't properly translatable becauses of the pre/post
+                    // FIXME(davidtwco): this isn't properly translatable because of the pre/post
                     // strings
                     let mut err = lint.build(fluent::lint::unused_def);
                     err.set_arg("pre", descr_pre_path);
@@ -396,6 +396,7 @@ enum UnusedDelimsCtx {
     LetScrutineeExpr,
     ArrayLenExpr,
     AnonConst,
+    MatchArmExpr,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -414,6 +415,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::BlockRetValue => "block return value",
             UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
+            UnusedDelimsCtx::MatchArmExpr => "match arm expression",
         }
     }
 }
@@ -502,23 +504,23 @@ trait UnusedDelimLint {
             ast::ExprKind::Block(ref block, None) if block.stmts.len() > 0 => {
                 let start = block.stmts[0].span;
                 let end = block.stmts[block.stmts.len() - 1].span;
-                if value.span.from_expansion() || start.from_expansion() || end.from_expansion() {
-                    (
-                        value.span.with_hi(value.span.lo() + BytePos(1)),
-                        value.span.with_lo(value.span.hi() - BytePos(1)),
-                    )
+                if let Some(start) = start.find_ancestor_inside(value.span)
+                    && let Some(end) = end.find_ancestor_inside(value.span)
+                {
+                    Some((
+                        value.span.with_hi(start.lo()),
+                        value.span.with_lo(end.hi()),
+                    ))
                 } else {
-                    (value.span.with_hi(start.lo()), value.span.with_lo(end.hi()))
+                    None
                 }
             }
             ast::ExprKind::Paren(ref expr) => {
-                if value.span.from_expansion() || expr.span.from_expansion() {
-                    (
-                        value.span.with_hi(value.span.lo() + BytePos(1)),
-                        value.span.with_lo(value.span.hi() - BytePos(1)),
-                    )
+                let expr_span = expr.span.find_ancestor_inside(value.span);
+                if let Some(expr_span) = expr_span {
+                    Some((value.span.with_hi(expr_span.lo()), value.span.with_lo(expr_span.hi())))
                 } else {
-                    (value.span.with_hi(expr.span.lo()), value.span.with_lo(expr.span.hi()))
+                    None
                 }
             }
             _ => return,
@@ -527,36 +529,38 @@ trait UnusedDelimLint {
             left_pos.map_or(false, |s| s >= value.span.lo()),
             right_pos.map_or(false, |s| s <= value.span.hi()),
         );
-        self.emit_unused_delims(cx, spans, ctx.into(), keep_space);
+        self.emit_unused_delims(cx, value.span, spans, ctx.into(), keep_space);
     }
 
     fn emit_unused_delims(
         &self,
         cx: &EarlyContext<'_>,
-        spans: (Span, Span),
+        value_span: Span,
+        spans: Option<(Span, Span)>,
         msg: &str,
         keep_space: (bool, bool),
     ) {
-        // FIXME(flip1995): Quick and dirty fix for #70814. This should be fixed in rustdoc
-        // properly.
-        if spans.0 == DUMMY_SP || spans.1 == DUMMY_SP {
-            return;
-        }
-
-        cx.struct_span_lint(self.lint(), MultiSpan::from(vec![spans.0, spans.1]), |lint| {
-            let replacement = vec![
-                (spans.0, if keep_space.0 { " ".into() } else { "".into() }),
-                (spans.1, if keep_space.1 { " ".into() } else { "".into() }),
-            ];
-            lint.build(fluent::lint::unused_delim)
-                .set_arg("delim", Self::DELIM_STR)
-                .set_arg("item", msg)
-                .multipart_suggestion(
+        let primary_span = if let Some((lo, hi)) = spans {
+            MultiSpan::from(vec![lo, hi])
+        } else {
+            MultiSpan::from(value_span)
+        };
+        cx.struct_span_lint(self.lint(), primary_span, |lint| {
+            let mut db = lint.build(fluent::lint::unused_delim);
+            db.set_arg("delim", Self::DELIM_STR);
+            db.set_arg("item", msg);
+            if let Some((lo, hi)) = spans {
+                let replacement = vec![
+                    (lo, if keep_space.0 { " ".into() } else { "".into() }),
+                    (hi, if keep_space.1 { " ".into() } else { "".into() }),
+                ];
+                db.multipart_suggestion(
                     fluent::lint::suggestion,
                     replacement,
                     Applicability::MachineApplicable,
-                )
-                .emit();
+                );
+            }
+            db.emit();
         });
     }
 
@@ -604,8 +608,7 @@ trait UnusedDelimLint {
             ref call_or_other => {
                 let (args_to_check, ctx) = match *call_or_other {
                     Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    // first "argument" is self (which sometimes needs delims)
-                    MethodCall(_, ref args, _) => (&args[1..], UnusedDelimsCtx::MethodArg),
+                    MethodCall(_, _, ref args, _) => (&args[..], UnusedDelimsCtx::MethodArg),
                     // actual catch-all arm
                     _ => {
                         return;
@@ -748,7 +751,7 @@ impl UnusedParens {
         avoid_or: bool,
         avoid_mut: bool,
     ) {
-        use ast::{BindingMode, Mutability, PatKind};
+        use ast::{BindingAnnotation, PatKind};
 
         if let PatKind::Paren(inner) = &value.kind {
             match inner.kind {
@@ -760,19 +763,18 @@ impl UnusedParens {
                 // Avoid `p0 | .. | pn` if we should.
                 PatKind::Or(..) if avoid_or => return,
                 // Avoid `mut x` and `mut x @ p` if we should:
-                PatKind::Ident(BindingMode::ByValue(Mutability::Mut), ..) if avoid_mut => return,
+                PatKind::Ident(BindingAnnotation::MUT, ..) if avoid_mut => {
+                    return;
+                }
                 // Otherwise proceed with linting.
                 _ => {}
             }
-            let spans = if value.span.from_expansion() || inner.span.from_expansion() {
-                (
-                    value.span.with_hi(value.span.lo() + BytePos(1)),
-                    value.span.with_lo(value.span.hi() - BytePos(1)),
-                )
+            let spans = if let Some(inner) = inner.span.find_ancestor_inside(value.span) {
+                Some((value.span.with_hi(inner.lo()), value.span.with_lo(inner.hi())))
             } else {
-                (value.span.with_hi(inner.span.lo()), value.span.with_lo(inner.span.hi()))
+                None
             };
-            self.emit_unused_delims(cx, spans, "pattern", (false, false));
+            self.emit_unused_delims(cx, value.span, spans, "pattern", (false, false));
         }
     }
 }
@@ -804,6 +806,18 @@ impl EarlyLintPass for UnusedParens {
                     <Self as UnusedDelimLint>::check_expr(self, cx, e);
                 }
                 return;
+            }
+            ExprKind::Match(ref _expr, ref arm) => {
+                for a in arm {
+                    self.check_unused_delims_expr(
+                        cx,
+                        &a.body,
+                        UnusedDelimsCtx::MatchArmExpr,
+                        false,
+                        None,
+                        None,
+                    );
+                }
             }
             _ => {}
         }
@@ -865,15 +879,12 @@ impl EarlyLintPass for UnusedParens {
                     );
                 }
                 _ => {
-                    let spans = if ty.span.from_expansion() || r.span.from_expansion() {
-                        (
-                            ty.span.with_hi(ty.span.lo() + BytePos(1)),
-                            ty.span.with_lo(ty.span.hi() - BytePos(1)),
-                        )
+                    let spans = if let Some(r) = r.span.find_ancestor_inside(ty.span) {
+                        Some((ty.span.with_hi(r.lo()), ty.span.with_lo(r.hi())))
                     } else {
-                        (ty.span.with_hi(r.span.lo()), ty.span.with_lo(r.span.hi()))
+                        None
                     };
-                    self.emit_unused_delims(cx, spans, "type", (false, false));
+                    self.emit_unused_delims(cx, ty.span, spans, "type", (false, false));
                 }
             }
         }

@@ -1139,7 +1139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///   include the CFG anyhow.
     /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
     ///   a result `'y`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         debug!(r = %self.region_value_str(r));
 
@@ -1150,8 +1150,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
         }
-
-        debug!(?lub);
 
         lub
     }
@@ -1167,8 +1165,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Therefore, this method should only be used in diagnostic code,
     /// where displaying *some* named universal region is better than
     /// falling back to 'static.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!("approx_universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
+        debug!("{}", self.region_value_str(r));
 
         // Find the smallest universal region that contains all other
         // universal regions within `region`.
@@ -1177,7 +1176,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let static_r = self.universal_regions.fr_static;
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
-            debug!("approx_universal_upper_bound: ur={:?} lub={:?} new_lub={:?}", ur, lub, new_lub);
+            debug!(?ur, ?lub, ?new_lub);
             // The upper bound of two non-static regions is static: this
             // means we know nothing about the relationship between these
             // two regions. Pick a 'better' one to use when constructing
@@ -1201,7 +1200,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        debug!("approx_universal_upper_bound: r={:?} lub={:?}", r, lub);
+        debug!(?r, ?lub);
 
         lub
     }
@@ -1332,15 +1331,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     // Evaluate whether `sup_region: sub_region`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn eval_outlives(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
         debug!(
-            "eval_outlives: sup_region's value = {:?} universal={:?}",
+            "sup_region's value = {:?} universal={:?}",
             self.region_value_str(sup_region),
             self.universal_regions.is_universal_region(sup_region),
         );
         debug!(
-            "eval_outlives: sub_region's value = {:?} universal={:?}",
+            "sub_region's value = {:?} universal={:?}",
             self.region_value_str(sub_region),
             self.universal_regions.is_universal_region(sub_region),
         );
@@ -1353,7 +1352,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // true if `'sup` outlives static.
         if !self.universe_compatible(sub_region_scc, sup_region_scc) {
             debug!(
-                "eval_outlives: sub universe `{sub_region_scc:?}` is not nameable \
+                "sub universe `{sub_region_scc:?}` is not nameable \
                 by super `{sup_region_scc:?}`, promoting to static",
             );
 
@@ -1374,9 +1373,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
 
         if !universal_outlives {
-            debug!(
-                "eval_outlives: returning false because sub region contains a universal region not present in super"
-            );
+            debug!("sub region contains a universal region not present in super");
             return false;
         }
 
@@ -1385,15 +1382,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if self.universal_regions.is_universal_region(sup_region) {
             // Micro-opt: universal regions contain all points.
-            debug!(
-                "eval_outlives: returning true because super is universal and hence contains all points"
-            );
+            debug!("super is universal and hence contains all points");
             return true;
         }
 
-        let result = self.scc_values.contains_points(sup_region_scc, sub_region_scc);
-        debug!("returning {} because of comparison between points in sup/sub", result);
-        result
+        debug!("comparison between points in sup/sub");
+
+        self.scc_values.contains_points(sup_region_scc, sub_region_scc)
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -1970,7 +1965,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
@@ -2048,6 +2043,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// creating a constraint path that forces `R` to outlive
     /// `from_region`, and then finding the best choices within that
     /// path to blame.
+    #[instrument(level = "debug", skip(self, target_test))]
     pub(crate) fn best_blame_constraint(
         &self,
         body: &Body<'tcx>,
@@ -2055,16 +2051,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region_origin: NllRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> BlameConstraint<'tcx> {
-        debug!(
-            "best_blame_constraint(from_region={:?}, from_region_origin={:?})",
-            from_region, from_region_origin
-        );
-
         // Find all paths
         let (path, target_region) =
             self.find_constraint_paths_between_regions(from_region, target_test).unwrap();
         debug!(
-            "best_blame_constraint: path={:#?}",
+            "path={:#?}",
             path.iter()
                 .map(|c| format!(
                     "{:?} ({:?}: {:?})",
@@ -2116,7 +2107,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             })
             .collect();
-        debug!("best_blame_constraint: categorized_path={:#?}", categorized_path);
+        debug!("categorized_path={:#?}", categorized_path);
 
         // To find the best span to cite, we first try to look for the
         // final constraint that is interesting and where the `sup` is
@@ -2214,10 +2205,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let best_choice =
             if blame_source { range.rev().find(find_region) } else { range.find(find_region) };
 
-        debug!(
-            "best_blame_constraint: best_choice={:?} blame_source={}",
-            best_choice, blame_source
-        );
+        debug!(?best_choice, ?blame_source);
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
@@ -2254,7 +2242,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
         categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
-        debug!("best_blame_constraint: sorted_path={:#?}", categorized_path);
+        debug!("sorted_path={:#?}", categorized_path);
 
         categorized_path.remove(0)
     }

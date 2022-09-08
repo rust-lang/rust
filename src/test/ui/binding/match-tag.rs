@@ -3,7 +3,7 @@
 #![allow(non_camel_case_types)]
 
 
-
+#[allow(unused_tuple_struct_fields)]
 enum color {
     rgb(isize, isize, isize),
     rgba(isize, isize, isize, isize),

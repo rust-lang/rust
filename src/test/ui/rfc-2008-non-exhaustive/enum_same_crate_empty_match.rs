@@ -31,7 +31,7 @@ fn empty_non_exhaustive(x: EmptyNonExhaustiveEnum) {
 
 fn main() {
     match NonExhaustiveEnum::Unit {}
-    //~^ ERROR `Unit`, `Tuple(_)` and `Struct { .. }` not covered [E0004]
+    //~^ ERROR `NonExhaustiveEnum::Unit`, `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered [E0004]
     match NormalEnum::Unit {}
-    //~^ ERROR `Unit`, `Tuple(_)` and `Struct { .. }` not covered [E0004]
+    //~^ ERROR `NormalEnum::Unit`, `NormalEnum::Tuple(_)` and `NormalEnum::Struct { .. }` not covered [E0004]
 }

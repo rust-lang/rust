@@ -271,11 +271,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
 
                 for projection in data.projection_bounds() {
-                    match projection.skip_binder().term {
-                        ty::Term::Ty(ty) => {
+                    match projection.skip_binder().term.unpack() {
+                        ty::TermKind::Ty(ty) => {
                             self.add_constraints_from_ty(current, ty, self.invariant);
                         }
-                        ty::Term::Const(c) => {
+                        ty::TermKind::Const(c) => {
                             self.add_constraints_from_const(current, c, self.invariant)
                         }
                     }

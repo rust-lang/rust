@@ -420,10 +420,10 @@ declare_features! (
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
-    /// Allows `'a: { break 'a; }`.
-    (active, label_break_value, "1.28.0", Some(48594), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
+    /// Allows `if/while p && let q = r && ...` chains.
+    (active, let_chains, "1.37.0", Some(53667), None),
     /// Allows `let...else` statements.
     (active, let_else, "1.56.0", Some(87335), None),
     /// Allows `#[link(..., cfg(..))]`.
@@ -481,8 +481,6 @@ declare_features! (
     (incomplete, raw_dylib, "1.40.0", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
-    /// Allows using the `#[register_attr]` attribute.
-    (active, register_attr, "1.41.0", Some(66080), None),
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -521,6 +519,8 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
+    /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
+    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.

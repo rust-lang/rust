@@ -443,7 +443,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            bn TupleVariant(…) TupleVariant($1)$0
+            bn TupleVariant TupleVariant
         "#]],
     );
     check_empty(
@@ -458,7 +458,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            bn RecordVariant {…} RecordVariant { field$1 }$0
+            bn RecordVariant RecordVariant
         "#]],
     );
 }
@@ -467,7 +467,7 @@ fn foo() {
 fn completes_enum_variant_pat() {
     cov_mark::check!(enum_variant_pattern_path);
     check_edit(
-        "RecordVariant {…}",
+        "RecordVariant{}",
         r#"
 enum Enum {
     RecordVariant { field: u32 }

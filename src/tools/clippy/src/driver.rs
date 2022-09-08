@@ -95,7 +95,7 @@ struct ClippyCallbacks {
 
 impl rustc_driver::Callbacks for ClippyCallbacks {
     // JUSTIFICATION: necessary in clippy driver to set `mir_opt_level`
-    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+    #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();

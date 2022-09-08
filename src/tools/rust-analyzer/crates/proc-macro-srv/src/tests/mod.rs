@@ -19,7 +19,7 @@ fn test_derive_error() {
         expect![[r##"
             SUBTREE $
               IDENT   compile_error 4294967295
-              PUNCH   ! [alone] 4294967295
+              PUNCH   ! [joint] 4294967295
               SUBTREE () 4294967295
                 LITERAL "#[derive(DeriveError)] struct S ;" 4294967295
               PUNCH   ; [alone] 4294967295"##]],
@@ -109,7 +109,7 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 4294967295
               LITERAL 2_u32 4294967295
               PUNCH   , [alone] 4294967295
-              PUNCH   - [alone] 4294967295
+              PUNCH   - [joint] 4294967295
               LITERAL 4i64 4294967295
               PUNCH   , [alone] 4294967295
               LITERAL 3.14f32 4294967295
@@ -130,7 +130,7 @@ fn test_attr_macro() {
         expect![[r##"
             SUBTREE $
               IDENT   compile_error 4294967295
-              PUNCH   ! [alone] 4294967295
+              PUNCH   ! [joint] 4294967295
               SUBTREE () 4294967295
                 LITERAL "#[attr_error(some arguments)] mod m {}" 4294967295
               PUNCH   ; [alone] 4294967295"##]],

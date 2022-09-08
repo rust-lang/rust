@@ -12,12 +12,14 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
            disallowed-methods
+           disallowed-names
            disallowed-types
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           large-error-threshold
            literal-representation-threshold
            max-fn-params-bools
            max-include-file-size

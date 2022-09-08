@@ -1,3 +1,8 @@
+use crate::errors::{
+    CantEmitMIR, EmojiIdentifier, ErrorWritingDependencies, FerrisIdentifier,
+    GeneratedFileConflictsWithDirectory, InputFileWouldBeOverWritten, MixedBinCrate,
+    MixedProcMacroCrate, OutDirError, ProcMacroDocWithoutArg, TempsDirError,
+};
 use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
@@ -8,7 +13,7 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
+use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::StableCrateId;
 use rustc_hir::definitions::Definitions;
@@ -33,7 +38,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use tracing::{info, warn};
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -64,7 +68,7 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
 
     Ok(krate)
@@ -160,7 +164,7 @@ pub fn create_resolver(
     krate: &ast::Crate,
     crate_name: &str,
 ) -> BoxedResolver {
-    tracing::trace!("create_resolver");
+    trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
         Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
     })
@@ -274,7 +278,7 @@ pub fn configure_and_expand(
     crate_name: &str,
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
-    tracing::trace!("configure_and_expand");
+    trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
@@ -374,10 +378,10 @@ pub fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.err("cannot mix `bin` crate type with others");
+            sess.emit_err(MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.err("cannot mix `proc-macro` crate type with others");
+            sess.emit_err(MixedProcMacroCrate);
         }
     }
 
@@ -388,13 +392,7 @@ pub fn configure_and_expand(
     // However, we do emit a warning, to let such users know that they should
     // start passing '--crate-type proc-macro'
     if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
-        let mut msg = sess.diagnostic().struct_warn(
-            "Trying to document proc macro crate \
-             without passing '--crate-type proc-macro to rustdoc",
-        );
-
-        msg.warn("The generated documentation may be incorrect");
-        msg.emit();
+        sess.emit_warning(ProcMacroDocWithoutArg);
     } else {
         krate = sess.time("maybe_create_a_macro_crate", || {
             let is_test_crate = sess.opts.test;
@@ -417,7 +415,7 @@ pub fn configure_and_expand(
     }
 
     if sess.opts.unstable_opts.hir_stats {
-        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
+        hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS", "ast-stats-2");
     }
 
     resolver.resolve_crate(&krate);
@@ -443,23 +441,9 @@ pub fn configure_and_expand(
             spans.sort();
             if ident == sym::ferris {
                 let first_span = spans[0];
-                sess.diagnostic()
-                    .struct_span_err(
-                        MultiSpan::from(spans),
-                        "Ferris cannot be used as an identifier",
-                    )
-                    .span_suggestion(
-                        first_span,
-                        "try using their name instead",
-                        "ferris",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                sess.emit_err(FerrisIdentifier { spans, first_span });
             } else {
-                sess.diagnostic().span_err(
-                    MultiSpan::from(spans),
-                    &format!("identifiers cannot contain emoji: `{}`", ident),
-                );
+                sess.emit_err(EmojiIdentifier { spans, ident });
             }
         }
     });
@@ -589,12 +573,23 @@ fn write_out_deps(
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
-        let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
-            let path = PathBuf::from(path_sym.as_str());
+
+        let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
             escape_dep_filename(&file.prefer_local().to_string())
-        });
+        };
+
+        let extra_tracked_files =
+            file_depinfo.iter().map(|path_sym| normalize_path(PathBuf::from(path_sym.as_str())));
         files.extend(extra_tracked_files);
+
+        // We also need to track used PGO profile files
+        if let Some(ref profile_instr) = sess.opts.cg.profile_use {
+            files.push(normalize_path(profile_instr.as_path().to_path_buf()));
+        }
+        if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
+            files.push(normalize_path(profile_sample.as_path().to_path_buf()));
+        }
 
         if sess.binary_dep_depinfo() {
             if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
@@ -662,11 +657,9 @@ fn write_out_deps(
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
         }
-        Err(e) => sess.fatal(&format!(
-            "error writing dependencies to `{}`: {}",
-            deps_filename.display(),
-            e
-        )),
+        Err(error) => {
+            sess.emit_fatal(ErrorWritingDependencies { path: &deps_filename, error });
+        }
     }
 }
 
@@ -696,20 +689,12 @@ pub fn prepare_outputs(
     if let Some(ref input_path) = compiler.input_path {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                let reported = sess.err(&format!(
-                    "the input file \"{}\" would be overwritten by the generated \
-                        executable",
-                    input_path.display()
-                ));
+                let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
                 return Err(reported);
             }
-            if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                let reported = sess.err(&format!(
-                    "the generated executable for the input file \"{}\" conflicts with the \
-                        existing directory \"{}\"",
-                    input_path.display(),
-                    dir_path.display()
-                ));
+            if let Some(ref dir_path) = output_conflicts_with_dir(&output_paths) {
+                let reported =
+                    sess.emit_err(GeneratedFileConflictsWithDirectory { input_path, dir_path });
                 return Err(reported);
             }
         }
@@ -717,8 +702,7 @@ pub fn prepare_outputs(
 
     if let Some(ref dir) = compiler.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            let reported =
-                sess.err("failed to find or create the directory specified by `--temps-dir`");
+            let reported = sess.emit_err(TempsDirError);
             return Err(reported);
         }
     }
@@ -731,8 +715,7 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                let reported =
-                    sess.err("failed to find or create the directory specified by `--out-dir`");
+                let reported = sess.emit_err(OutDirError);
                 return Err(reported);
             }
         }
@@ -907,13 +890,13 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
-                sess.time("liveness_and_intrinsic_checking", || {
-                    tcx.hir().par_for_each_module(|module| {
+                sess.time("liveness_checking", || {
+                    tcx.hir().par_body_owners(|def_id| {
                         // this must run before MIR dump, because
                         // "not all control paths return a value" is reported here.
                         //
                         // maybe move the check to a MIR pass?
-                        tcx.ensure().check_mod_liveness(module);
+                        tcx.ensure().check_liveness(def_id.to_def_id());
                     });
                 });
             }
@@ -1015,8 +998,8 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(e) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
-            tcx.sess.err(&format!("could not emit MIR: {}", e));
+        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
+            tcx.sess.emit_err(CantEmitMIR { error });
             tcx.sess.abort_if_errors();
         }
     }

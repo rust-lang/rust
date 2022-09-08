@@ -1,5 +1,6 @@
 //run-rustfix
 #![warn(clippy::init_numbered_fields)]
+#![allow(unused_tuple_struct_fields)]
 
 #[derive(Default)]
 struct TupleStruct(u32, u32, u8);

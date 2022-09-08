@@ -27,7 +27,6 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
-#![feature(backtrace)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
@@ -41,7 +40,7 @@
 #![feature(extern_types)]
 #![feature(new_uninit)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
@@ -89,6 +88,7 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub(crate) mod error;
 pub mod hir;
 pub mod infer;
 pub mod lint;
@@ -98,6 +98,7 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+mod values;
 
 pub mod util {
     pub mod bug;

@@ -8,8 +8,6 @@
 
 */
 
-#![feature(box_syntax)]
-
 pub fn main() {}
 
 trait A {
@@ -19,4 +17,4 @@ trait A {
 impl<T: 'static> A for T {}
 
 fn owned2<T: 'static>(a: Box<T>) { a as Box<dyn A>; }
-fn owned3<T: 'static>(a: Box<T>) { box a as Box<dyn A>; }
+fn owned3<T: 'static>(a: Box<T>) { Box::new(a) as Box<dyn A>; }

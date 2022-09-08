@@ -96,15 +96,6 @@ fn test_unwrap_or() {
 }
 
 #[test]
-fn test_ok_or_err() {
-    let ok: Result<isize, isize> = Ok(100);
-    let err: Result<isize, isize> = Err(200);
-
-    assert_eq!(ok.into_ok_or_err(), 100);
-    assert_eq!(err.into_ok_or_err(), 200);
-}
-
-#[test]
 fn test_unwrap_or_else() {
     fn handler(msg: &'static str) -> isize {
         if msg == "I got this." { 50 } else { panic!("BadBad") }

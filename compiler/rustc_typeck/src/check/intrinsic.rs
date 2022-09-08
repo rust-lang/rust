@@ -69,6 +69,9 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         // to note that it's safe to call, since
         // safe extern fns are otherwise unprecedented.
         sym::abort
+        | sym::assert_inhabited
+        | sym::assert_zero_valid
+        | sym::assert_uninit_valid
         | sym::size_of
         | sym::min_align_of
         | sym::needs_drop
@@ -102,7 +105,8 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::type_name
         | sym::forget
         | sym::black_box
-        | sym::variant_count => hir::Unsafety::Normal,
+        | sym::variant_count
+        | sym::ptr_mask => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
 }
@@ -200,6 +204,15 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
+            sym::ptr_mask => (
+                1,
+                vec![
+                    tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+                    tcx.types.usize,
+                ],
+                tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
+            ),
+
             sym::copy | sym::copy_nonoverlapping => (
                 1,
                 vec![

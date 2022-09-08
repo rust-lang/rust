@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # This test ensures that rustc does not panic with `-o ""` option.
 

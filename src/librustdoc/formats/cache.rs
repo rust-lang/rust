@@ -227,7 +227,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let clean::TraitItem(ref t) = *item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| {
                 clean::TraitWithExtraInfo {
-                    trait_: t.clone(),
+                    trait_: *t.clone(),
                     is_notable: item.attrs.has_doc_flag(sym::notable_trait),
                 }
             });

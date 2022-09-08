@@ -4,6 +4,7 @@
 
 use std::mem;
 
+#[allow(unused_tuple_struct_fields)]
 enum ADT {
     First(u32, u32),
     Second(u64)

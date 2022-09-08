@@ -1,5 +1,5 @@
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:7:15
+  --> $DIR/bad-interpolated-block.rs:5:15
    |
 LL |         'lab: $b;
    |         ------^^
@@ -12,7 +12,7 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:8:16
+  --> $DIR/bad-interpolated-block.rs:6:16
    |
 LL |         unsafe $b;
    |         -------^^
@@ -25,7 +25,7 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:9:23
+  --> $DIR/bad-interpolated-block.rs:7:23
    |
 LL |         |x: u8| -> () $b;
    |                       ^^ the `block` fragment is within this context

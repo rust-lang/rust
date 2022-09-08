@@ -16,7 +16,7 @@ LL |         let f: F = async { 1 };
 LL |     }],
    |     - value is dropped here
 
-error[E0271]: type mismatch resolving `<impl Future<Output = ()> as Future>::Output == u8`
+error[E0271]: expected `impl Future<Output = ()>` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722.rs:9:30
    |
 LL |         fn concrete_use() -> F {

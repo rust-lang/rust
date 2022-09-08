@@ -793,7 +793,7 @@ impl Step for ErrorIndex {
         t!(fs::create_dir_all(&out));
         let mut index = tool::ErrorIndex::command(builder);
         index.arg("html");
-        index.arg(out.join("error-index.html"));
+        index.arg(out);
         index.arg(&builder.version);
 
         builder.run(&mut index);

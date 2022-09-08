@@ -1,26 +1,6 @@
-//! Unicode string slices.
+//! Utilities for the `str` primitive type.
 //!
 //! *[See also the `str` primitive type](str).*
-//!
-//! The `&str` type is one of the two main string types, the other being `String`.
-//! Unlike its `String` counterpart, its contents are borrowed.
-//!
-//! # Basic Usage
-//!
-//! A basic string declaration of `&str` type:
-//!
-//! ```
-//! let hello_world = "Hello, World!";
-//! ```
-//!
-//! Here we have declared a string literal, also known as a string slice.
-//! String literals have a static lifetime, which means the string `hello_world`
-//! is guaranteed to be valid for the duration of the entire program.
-//! We can explicitly specify `hello_world`'s lifetime as well:
-//!
-//! ```
-//! let hello_world: &'static str = "Hello, world!";
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
@@ -71,6 +51,8 @@ pub use core::str::{RSplit, Split};
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitTerminator, SplitTerminator};
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use core::str::{Utf8Chunk, Utf8Chunks};
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.

@@ -1,4 +1,4 @@
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
@@ -53,17 +53,20 @@ trivially_parameterized_over_tcx! {
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
     crate::middle::exported_symbols::SymbolExportInfo,
+    crate::middle::resolve_lifetime::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
+    ty::AssocItemContainer,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,
     ty::TraitDef,
-    ty::Visibility,
+    ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedTypeGen<DefId>,
     rustc_ast::Attribute,
     rustc_ast::MacArgs,
     rustc_attr::ConstStability,
+    rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
     rustc_attr::Stability,
     rustc_hir::Constness,

@@ -266,23 +266,23 @@ error: expected one of `,`, `.`, `?`, or an operator, found `FOO`
 LL | global_asm!("{}", const(reg) FOO);
    |                              ^^^ expected one of `,`, `.`, `?`, or an operator
 
-error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `FOO`
+error: expected one of `)`, `att_syntax`, or `raw`, found `FOO`
   --> $DIR/parse-error.rs:104:25
    |
 LL | global_asm!("", options(FOO));
-   |                         ^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
+   |                         ^^^ expected one of `)`, `att_syntax`, or `raw`
 
-error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `nomem`
+error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
   --> $DIR/parse-error.rs:106:25
    |
 LL | global_asm!("", options(nomem FOO));
-   |                         ^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
+   |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
-error: expected one of `)`, `att_syntax`, `may_unwind`, or `raw`, found `nomem`
+error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
   --> $DIR/parse-error.rs:108:25
    |
 LL | global_asm!("", options(nomem, FOO));
-   |                         ^^^^^ expected one of `)`, `att_syntax`, `may_unwind`, or `raw`
+   |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: arguments are not allowed after options
   --> $DIR/parse-error.rs:110:30

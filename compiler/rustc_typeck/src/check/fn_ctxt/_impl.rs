@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
     }
 
-    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug")]
+    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug", ret)]
     pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
         &self,
         mut ty: Ty<'tcx>,
@@ -107,10 +107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false, mutate_fulfillment_errors);
-        ty = self.resolve_vars_if_possible(ty);
-
-        debug!(?ty);
-        ty
+        self.resolve_vars_if_possible(ty)
     }
 
     pub(in super::super) fn record_deferred_call_resolution(
@@ -498,13 +495,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
+        let span = self.tcx.hir().span(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-        self.register_wf_obligation(
-            c.into(),
-            self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::WellFormed(None),
-        );
-        c
+        self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+        self.normalize_associated_types_in(span, c)
     }
 
     pub fn const_arg_to_const(
@@ -618,9 +612,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
-        let errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
+        let mut errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
 
         if !errors.is_empty() {
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
@@ -634,6 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
             self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -831,23 +827,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
-        self.add_required_obligations_with_code(
-            span,
-            def_id,
-            &substs,
-            match lang_item {
-                hir::LangItem::IntoFutureIntoFuture => {
-                    ObligationCauseCode::AwaitableExpr(expr_hir_id)
-                }
-                hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
-                    ObligationCauseCode::ForLoopIterator
-                }
-                hir::LangItem::TryTraitFromOutput
-                | hir::LangItem::TryTraitFromResidual
-                | hir::LangItem::TryTraitBranch => ObligationCauseCode::QuestionMark,
-                _ => traits::ItemObligation(def_id),
-            },
-        );
+
+        let code = match lang_item {
+            hir::LangItem::IntoFutureIntoFuture => {
+                Some(ObligationCauseCode::AwaitableExpr(expr_hir_id))
+            }
+            hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
+                Some(ObligationCauseCode::ForLoopIterator)
+            }
+            hir::LangItem::TryTraitFromOutput
+            | hir::LangItem::TryTraitFromResidual
+            | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
+            _ => None,
+        };
+        if let Some(code) = code {
+            self.add_required_obligations_with_code(span, def_id, substs, move |_, _| code.clone());
+        } else {
+            self.add_required_obligations_for_hir(span, def_id, substs, hir_id);
+        }
+
         (Res::Def(def_kind, def_id), ty)
     }
 
@@ -986,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if found != self.tcx.types.unit {
             return;
         }
-        if let ExprKind::MethodCall(path_segment, [rcvr, ..], _) = expr.kind {
+        if let ExprKind::MethodCall(path_segment, rcvr, ..) = expr.kind {
             if self
                 .typeck_results
                 .borrow()
@@ -1090,13 +1088,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
-                let container = tcx.associated_item(def_id).container;
-                debug!(?def_id, ?container);
+                let assoc_item = tcx.associated_item(def_id);
+                let container = assoc_item.container;
+                let container_id = assoc_item.container_id(tcx);
+                debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
+                    ty::TraitContainer => {
+                        callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
                     }
-                    ty::ImplContainer(impl_def_id) => {
+                    ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. It this came from an
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
                             let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
-                            user_self_ty = Some(UserSelfTy { impl_def_id, self_ty });
+                            user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
                 }
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
-        self.add_required_obligations(span, def_id, &substs);
+        self.add_required_obligations_for_hir(span, def_id, &substs, hir_id);
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
@@ -1394,32 +1394,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
-    pub(crate) fn add_required_obligations(
+    pub(crate) fn add_required_obligations_for_hir(
         &self,
         span: Span,
         def_id: DefId,
-        substs: &SubstsRef<'tcx>,
+        substs: SubstsRef<'tcx>,
+        hir_id: hir::HirId,
     ) {
-        self.add_required_obligations_with_code(
-            span,
-            def_id,
-            substs,
-            traits::ItemObligation(def_id),
-        )
+        self.add_required_obligations_with_code(span, def_id, substs, |idx, span| {
+            if span.is_dummy() {
+                ObligationCauseCode::ExprItemObligation(def_id, hir_id, idx)
+            } else {
+                ObligationCauseCode::ExprBindingObligation(def_id, span, hir_id, idx)
+            }
+        })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, span, def_id, substs))]
+    #[instrument(level = "debug", skip(self, code, span, def_id, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,
         def_id: DefId,
-        substs: &SubstsRef<'tcx>,
-        code: ObligationCauseCode<'tcx>,
+        substs: SubstsRef<'tcx>,
+        code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
         for obligation in traits::predicates_for_generics(
-            traits::ObligationCause::new(span, self.body_id, code),
+            |idx, predicate_span| {
+                traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
+            },
             self.param_env,
             bounds,
         ) {

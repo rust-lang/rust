@@ -55,7 +55,6 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb2: {
         StorageDead(_4);                 // scope 0 at $DIR/issue-59352.rs:+2:40: +2:41
-        StorageLive(_10);                // scope 0 at $DIR/issue-59352.rs:+2:26: +2:50
         _10 = discriminant(_3);          // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb8, otherwise: bb7]; // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
     }
@@ -73,11 +72,9 @@ fn num_to_digit(_1: char) -> u32 {
     bb5: {
         _6 = &_7;                        // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_8);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
-        StorageLive(_9);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         _9 = discriminant((*_6));        // scope 2 at $SRC_DIR/core/src/option.rs:LL:COL
         StorageLive(_12);                // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _12 = move _9;                   // scope 2 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageDead(_9);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_6);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_7);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_5);                 // scope 0 at $DIR/issue-59352.rs:+2:8: +2:23
@@ -102,7 +99,6 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb8: {
         _0 = move ((_3 as Some).0: u32); // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
-        StorageDead(_10);                // scope 0 at $DIR/issue-59352.rs:+2:26: +2:50
         StorageDead(_3);                 // scope 0 at $DIR/issue-59352.rs:+2:49: +2:50
         goto -> bb4;                     // scope 0 at $DIR/issue-59352.rs:+2:5: +2:63
     }

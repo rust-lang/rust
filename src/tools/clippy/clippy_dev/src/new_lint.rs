@@ -155,7 +155,7 @@ fn to_camel_case(name: &str) -> String {
     name.split('_')
         .map(|s| {
             if s.is_empty() {
-                String::from("")
+                String::new()
             } else {
                 [&s[0..1].to_uppercase(), &s[1..]].concat()
             }
@@ -438,7 +438,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
     let mut lint_context = None;
 
     let mut iter = rustc_lexer::tokenize(&file_contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {

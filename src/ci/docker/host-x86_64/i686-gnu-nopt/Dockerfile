@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-multilib \
   make \
@@ -19,9 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 RUN mkdir -p /config
 RUN echo "[rust]" > /config/nopt-std-config.toml

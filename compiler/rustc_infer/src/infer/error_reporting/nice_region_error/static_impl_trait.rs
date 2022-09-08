@@ -76,10 +76,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             "...is used and required to live as long as `'static` here \
                              because of an implicit lifetime bound on the {}",
                             match ctxt.assoc_item.container {
-                                AssocItemContainer::TraitContainer(id) =>
-                                    format!("`impl` of `{}`", tcx.def_path_str(id)),
-                                AssocItemContainer::ImplContainer(_) =>
-                                    "inherent `impl`".to_string(),
+                                AssocItemContainer::TraitContainer => {
+                                    let id = ctxt.assoc_item.container_id(tcx);
+                                    format!("`impl` of `{}`", tcx.def_path_str(id))
+                                }
+                                AssocItemContainer::ImplContainer => "inherent `impl`".to_string(),
                             },
                         ),
                     );
@@ -231,7 +232,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
             }
-            && let (&ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
+            && let (&ObligationCauseCode::ItemObligation(item_def_id) | &ObligationCauseCode::ExprItemObligation(item_def_id, ..), None) = (code, override_error_code)
         {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:

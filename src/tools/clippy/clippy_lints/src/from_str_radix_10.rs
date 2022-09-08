@@ -46,7 +46,7 @@ declare_lint_pass!(FromStrRadix10 => [FROM_STR_RADIX_10]);
 impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if_chain! {
-            if let ExprKind::Call(maybe_path, arguments) = &exp.kind;
+            if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind;
             if let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind;
 
             // check if the first part of the path is some integer primitive
@@ -60,20 +60,19 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             if pathseg.ident.name.as_str() == "from_str_radix";
 
             // check if the second argument is a primitive `10`
-            if arguments.len() == 2;
-            if let ExprKind::Lit(lit) = &arguments[1].kind;
+            if let ExprKind::Lit(lit) = &radix.kind;
             if let rustc_ast::ast::LitKind::Int(10, _) = lit.node;
 
             then {
-                let expr = if let ExprKind::AddrOf(_, _, expr) = &arguments[0].kind {
+                let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if is_ty_stringish(cx, ty) {
                         expr
                     } else {
-                        &arguments[0]
+                        &src
                     }
                 } else {
-                    &arguments[0]
+                    &src
                 };
 
                 let sugg = Sugg::hir_with_applicability(

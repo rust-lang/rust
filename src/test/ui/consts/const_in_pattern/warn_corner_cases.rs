@@ -15,7 +15,7 @@
 #![warn(indirect_structural_match)]
 
 #[derive(Copy, Clone, Debug)]
-struct NoDerive(u32);
+struct NoDerive(#[allow(unused_tuple_struct_fields)] u32);
 
 // This impl makes `NoDerive` irreflexive.
 impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }

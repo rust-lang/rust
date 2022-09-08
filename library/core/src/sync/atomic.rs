@@ -1554,8 +1554,8 @@ impl<T> AtomicPtr<T> {
     /// Offsets the pointer's address by adding `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_add`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_add(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_add`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_add(val)`.
     ///
     /// `fetch_byte_add` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -1565,8 +1565,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_add`]: pointer::wrapping_add
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_add`]: pointer::wrapping_byte_add
     ///
     /// # Examples
     ///
@@ -1584,23 +1583,15 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_add(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
+        unsafe { atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
     /// previous pointer.
     ///
-    /// This is equivalent to using [`wrapping_sub`] and [`cast`] to atomically
-    /// perform `ptr = ptr.cast::<u8>().wrapping_sub(val).cast::<T>()`.
+    /// This is equivalent to using [`wrapping_byte_sub`] to atomically
+    /// perform `ptr = ptr.wrapping_byte_sub(val)`.
     ///
     /// `fetch_byte_sub` takes an [`Ordering`] argument which describes the
     /// memory ordering of this operation. All ordering modes are possible. Note
@@ -1610,8 +1601,7 @@ impl<T> AtomicPtr<T> {
     /// **Note**: This method is only available on platforms that support atomic
     /// operations on [`AtomicPtr`].
     ///
-    /// [`wrapping_sub`]: pointer::wrapping_sub
-    /// [`cast`]: pointer::cast
+    /// [`wrapping_byte_sub`]: pointer::wrapping_byte_sub
     ///
     /// # Examples
     ///
@@ -1628,16 +1618,8 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_sub(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
+        unsafe { atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
@@ -1687,16 +1669,8 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_or(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
+        unsafe { atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "and" operation on the address of the current
@@ -1745,16 +1719,8 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_and(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
+        unsafe { atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "xor" operation on the address of the current
@@ -1801,16 +1767,8 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast()
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_xor(self.p.get().cast::<usize>(), val, order) as *mut T
-        }
+        unsafe { atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
     }
 }
 
@@ -3073,30 +3031,22 @@ unsafe fn atomic_compare_exchange<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Relaxed, Acquire) => intrinsics::atomic_cxchg_relaxed_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Relaxed, SeqCst) => intrinsics::atomic_cxchg_relaxed_seqcst(dst, old, new),
             (Acquire, Relaxed) => intrinsics::atomic_cxchg_acquire_relaxed(dst, old, new),
             (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Acquire, SeqCst) => intrinsics::atomic_cxchg_acquire_seqcst(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Release, Acquire) => intrinsics::atomic_cxchg_release_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Release, SeqCst) => intrinsics::atomic_cxchg_release_seqcst(dst, old, new),
             (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_relaxed(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (AcqRel, SeqCst) => intrinsics::atomic_cxchg_acqrel_seqcst(dst, old, new),
             (SeqCst, Relaxed) => intrinsics::atomic_cxchg_seqcst_relaxed(dst, old, new),
             (SeqCst, Acquire) => intrinsics::atomic_cxchg_seqcst_acquire(dst, old, new),
             (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
             (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
             (_, Release) => panic!("there is no such thing as a release failure ordering"),
-            #[cfg(bootstrap)]
-            _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
     if ok { Ok(val) } else { Err(val) }
@@ -3116,30 +3066,22 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Relaxed, Relaxed) => intrinsics::atomic_cxchgweak_relaxed_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Relaxed, Acquire) => intrinsics::atomic_cxchgweak_relaxed_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Relaxed, SeqCst) => intrinsics::atomic_cxchgweak_relaxed_seqcst(dst, old, new),
             (Acquire, Relaxed) => intrinsics::atomic_cxchgweak_acquire_relaxed(dst, old, new),
             (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acquire_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Acquire, SeqCst) => intrinsics::atomic_cxchgweak_acquire_seqcst(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchgweak_release_relaxed(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Release, Acquire) => intrinsics::atomic_cxchgweak_release_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (Release, SeqCst) => intrinsics::atomic_cxchgweak_release_seqcst(dst, old, new),
             (AcqRel, Relaxed) => intrinsics::atomic_cxchgweak_acqrel_relaxed(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchgweak_acqrel_acquire(dst, old, new),
-            #[cfg(not(bootstrap))]
             (AcqRel, SeqCst) => intrinsics::atomic_cxchgweak_acqrel_seqcst(dst, old, new),
             (SeqCst, Relaxed) => intrinsics::atomic_cxchgweak_seqcst_relaxed(dst, old, new),
             (SeqCst, Acquire) => intrinsics::atomic_cxchgweak_seqcst_acquire(dst, old, new),
             (SeqCst, SeqCst) => intrinsics::atomic_cxchgweak_seqcst_seqcst(dst, old, new),
             (_, AcqRel) => panic!("there is no such thing as an acquire-release failure ordering"),
             (_, Release) => panic!("there is no such thing as a release failure ordering"),
-            #[cfg(bootstrap)]
-            _ => panic!("a failure ordering can't be stronger than a success ordering"),
         }
     };
     if ok { Ok(val) } else { Err(val) }

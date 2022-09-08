@@ -1,5 +1,6 @@
-// only-cdb
 // compile-flags:-g
+
+// min-gdb-version: 8.1
 
 // Tests the visualizations for `NonZero{I,U}{8,16,32,64,128,size}`, `Wrapping<T>` and
 // `Atomic{Bool,I8,I16,I32,I64,Isize,U8,U16,U32,U64,Usize}` located in `libcore.natvis`.
@@ -152,6 +153,90 @@
 // cdb-command: dx a_usize
 // cdb-check:a_usize          : 0x400 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [<Raw View>]     [Type: core::sync::atomic::AtomicUsize]
+
+
+// === GDB TESTS ===================================================================================
+
+// gdb-command:run
+
+// gdb-command:print/d nz_i8
+// gdb-check:[...]$1 = 11
+
+// gdb-command:print nz_i16
+// gdb-check:[...]$2 = 22
+
+// gdb-command:print nz_i32
+// gdb-check:[...]$3 = 33
+
+// gdb-command:print nz_i64
+// gdb-check:[...]$4 = 44
+
+// gdb-command:print nz_i128
+// gdb-check:[...]$5 = 55
+
+// gdb-command:print nz_isize
+// gdb-check:[...]$6 = 66
+
+// gdb-command:print/d nz_u8
+// gdb-check:[...]$7 = 77
+
+// gdb-command:print nz_u16
+// gdb-check:[...]$8 = 88
+
+// gdb-command:print nz_u32
+// gdb-check:[...]$9 = 99
+
+// gdb-command:print nz_u64
+// gdb-check:[...]$10 = 100
+
+// gdb-command:print nz_u128
+// gdb-check:[...]$11 = 111
+
+// gdb-command:print nz_usize
+// gdb-check:[...]$12 = 122
+
+
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print/d nz_i8
+// lldb-check:[...]$0 = 11 { __0 = 11 }
+
+// lldb-command:print nz_i16
+// lldb-check:[...]$1 = 22 { __0 = 22 }
+
+// lldb-command:print nz_i32
+// lldb-check:[...]$2 = 33 { __0 = 33 }
+
+// lldb-command:print nz_i64
+// lldb-check:[...]$3 = 44 { __0 = 44 }
+
+// lldb-command:print nz_i128
+// lldb-check:[...]$4 = 55 { __0 = 55 }
+
+// lldb-command:print nz_isize
+// lldb-check:[...]$5 = 66 { __0 = 66 }
+
+// lldb-command:print/d nz_u8
+// lldb-check:[...]$6 = 77 { __0 = 77 }
+
+// lldb-command:print nz_u16
+// lldb-check:[...]$7 = 88 { __0 = 88 }
+
+// lldb-command:print nz_u32
+// lldb-check:[...]$8 = 99 { __0 = 99 }
+
+// lldb-command:print nz_u64
+// lldb-check:[...]$9 = 100 { __0 = 100 }
+
+// lldb-command:print nz_u128
+// lldb-check:[...]$10 = 111 { __0 = 111 }
+
+// lldb-command:print nz_usize
+// lldb-check:[...]$11 = 122 { __0 = 122 }
+
 
 use std::num::*;
 use std::sync::atomic::*;

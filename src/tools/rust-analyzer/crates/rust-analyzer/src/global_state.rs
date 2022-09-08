@@ -14,6 +14,7 @@ use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoWorkspace, ProjectWorkspace, Target, WorkspaceBuildScripts};
 use rustc_hash::FxHashMap;
+use stdx::hash::NoHashHashMap;
 use vfs::AnchoredPathBuf;
 
 use crate::{
@@ -67,7 +68,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_progress_n_total: usize,
@@ -113,8 +114,9 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) proc_macros_loaded: bool,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -157,7 +159,7 @@ impl GlobalState {
             flycheck_sender,
             flycheck_receiver,
 
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), NoHashHashMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
             vfs_progress_n_total: 0,
@@ -176,9 +178,9 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut fs_changes = Vec::new();
         // A file was added or deleted
         let mut has_structure_changes = false;
+        let mut workspace_structure_change = None;
 
         let (change, changed_files) = {
             let mut change = Change::new();
@@ -192,15 +194,14 @@ impl GlobalState {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        self.fetch_workspaces_queue
-                            .request_op(format!("vfs file change: {}", path.display()));
+                        workspace_structure_change = Some(path);
                     }
-                    fs_changes.push((path, file.change_kind));
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
                     }
                 }
 
+                // Clear native diagnostics when their file gets deleted
                 if !file.exists() {
                     self.diagnostics.clear_native_for(file.file_id);
                 }
@@ -226,14 +227,24 @@ impl GlobalState {
 
         self.analysis_host.apply_change(change);
 
-        let raw_database = &self.analysis_host.raw_database();
-        self.proc_macro_changed =
-            changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
-                let crates = raw_database.relevant_crates(file.file_id);
-                let crate_graph = raw_database.crate_graph();
+        {
+            let raw_database = self.analysis_host.raw_database();
+            // FIXME: ideally we should only trigger a workspace fetch for non-library changes
+            // but somethings going wrong with the source root business when we add a new local
+            // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
+            if let Some(path) = workspace_structure_change {
+                self.fetch_workspaces_queue
+                    .request_op(format!("workspace vfs file change: {}", path.display()));
+            }
+            self.proc_macro_changed =
+                changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
+                    let crates = raw_database.relevant_crates(file.file_id);
+                    let crate_graph = raw_database.crate_graph();
 
-                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-            });
+                    crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
+                });
+        }
+
         true
     }
 
@@ -246,6 +257,7 @@ impl GlobalState {
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
+            proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
         }
     }
 

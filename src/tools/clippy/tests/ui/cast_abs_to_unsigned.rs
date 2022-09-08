@@ -26,4 +26,6 @@ fn main() {
     let _ = a.abs() as u32;
     let _ = a.abs() as u64;
     let _ = a.abs() as u128;
+
+    let _ = (x as i64 - y as i64).abs() as u32;
 }

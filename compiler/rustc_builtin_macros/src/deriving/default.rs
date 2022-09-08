@@ -1,16 +1,14 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-
 use rustc_ast as ast;
-use rustc_ast::walk_list;
-use rustc_ast::EnumDef;
-use rustc_ast::VariantData;
+use rustc_ast::{walk_list, EnumDef, VariantData};
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::SmallVec;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_default(
     cx: &mut ExtCtxt<'_>,
@@ -22,10 +20,9 @@ pub fn expand_deriving_default(
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: Path::new(vec![kw::Default, sym::Default]),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

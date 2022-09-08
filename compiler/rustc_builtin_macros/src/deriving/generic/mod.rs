@@ -162,29 +162,27 @@
 pub use StaticFields::*;
 pub use SubstructureFields::*;
 
-use std::cell::RefCell;
-use std::iter;
-use std::vec;
-
+use crate::deriving;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, EnumDef, Expr, Generics, PatKind};
+use rustc_ast::{
+    self as ast, BindingAnnotation, ByRef, EnumDef, Expr, Generics, Mutability, PatKind,
+};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-
+use std::cell::RefCell;
+use std::iter;
+use std::vec;
+use thin_vec::thin_vec;
 use ty::{Bounds, Path, Ref, Self_, Ty};
-
-use crate::deriving;
 
 pub mod ty;
 
 pub struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
     pub span: Span,
-
-    pub attributes: Vec<ast::Attribute>,
 
     /// Path of the trait, including any type parameters
     pub path: Path,
@@ -219,7 +217,7 @@ pub struct MethodDef<'a> {
     /// Returns type
     pub ret_ty: Ty,
 
-    pub attributes: Vec<ast::Attribute>,
+    pub attributes: ast::AttrVec,
 
     /// Can we combine fieldless variants for enums into a single match arm?
     /// If true, indicates that the trait operation uses the enum tag in some
@@ -383,16 +381,11 @@ fn find_type_parameters(
         }
 
         // Place bound generic params on a stack, to extract them when a type is encountered.
-        fn visit_poly_trait_ref(
-            &mut self,
-            trait_ref: &'a ast::PolyTraitRef,
-            modifier: &'a ast::TraitBoundModifier,
-        ) {
+        fn visit_poly_trait_ref(&mut self, trait_ref: &'a ast::PolyTraitRef) {
             let stack_len = self.bound_generic_params_stack.len();
-            self.bound_generic_params_stack
-                .extend(trait_ref.bound_generic_params.clone().into_iter());
+            self.bound_generic_params_stack.extend(trait_ref.bound_generic_params.iter().cloned());
 
-            visit::walk_poly_trait_ref(self, trait_ref, modifier);
+            visit::walk_poly_trait_ref(self, trait_ref);
 
             self.bound_generic_params_stack.truncate(stack_len);
         }
@@ -568,7 +561,7 @@ impl<'a> TraitDef<'a> {
                     kind: ast::VisibilityKind::Inherited,
                     tokens: None,
                 },
-                attrs: Vec::new(),
+                attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
                     generics: Generics::default(),
@@ -609,7 +602,7 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, vec![], bounds, None)
+                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
             }
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
@@ -644,11 +637,7 @@ impl<'a> TraitDef<'a> {
                 }
                 ast::WherePredicate::EqPredicate(we) => {
                     let span = we.span.with_ctxt(ctxt);
-                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                        id: ast::DUMMY_NODE_ID,
-                        span,
-                        ..we.clone()
-                    })
+                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { span, ..we.clone() })
                 }
             }
         }));
@@ -726,15 +715,13 @@ impl<'a> TraitDef<'a> {
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
+        let attrs = thin_vec![attr];
         let opt_trait_ref = Some(trait_ref);
-
-        let mut a = vec![attr];
-        a.extend(self.attributes.iter().cloned());
 
         cx.item(
             self.span,
             Ident::empty(),
-            a,
+            attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 unsafety: ast::Unsafe::No,
                 polarity: ast::ImplPolarity::Positive,
@@ -1078,9 +1065,9 @@ impl<'a> MethodDef<'a> {
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let use_ref_pat = is_packed && !always_copy;
+            let by_ref = ByRef::from(is_packed && !always_copy);
             let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, use_ref_pat);
+                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, by_ref);
 
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
@@ -1262,13 +1249,13 @@ impl<'a> MethodDef<'a> {
 
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
-                let use_ref_pat = false; // because enums can't be repr(packed)
+                let by_ref = ByRef::No; // because enums can't be repr(packed)
                 let mut subpats: Vec<_> = trait_.create_struct_patterns(
                     cx,
                     variant_path,
                     &variant.data,
                     &prefixes,
-                    use_ref_pat,
+                    by_ref,
                 );
 
                 // `(VariantK, VariantK, ...)` or just `VariantK`.
@@ -1429,7 +1416,7 @@ impl<'a> TraitDef<'a> {
         struct_path: ast::Path,
         struct_def: &'a VariantData,
         prefixes: &[String],
-        use_ref_pat: bool,
+        by_ref: ByRef,
     ) -> Vec<P<ast::Pat>> {
         prefixes
             .iter()
@@ -1437,17 +1424,19 @@ impl<'a> TraitDef<'a> {
                 let pieces_iter =
                     struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
                         let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                        let binding_mode = if use_ref_pat {
-                            ast::BindingMode::ByRef(ast::Mutability::Not)
-                        } else {
-                            ast::BindingMode::ByValue(ast::Mutability::Not)
-                        };
                         let ident = self.mk_pattern_ident(prefix, i);
                         let path = ident.with_span_pos(sp);
                         (
                             sp,
                             struct_field.ident,
-                            cx.pat(path.span, PatKind::Ident(binding_mode, path, None)),
+                            cx.pat(
+                                path.span,
+                                PatKind::Ident(
+                                    BindingAnnotation(by_ref, Mutability::Not),
+                                    path,
+                                    None,
+                                ),
+                            ),
                         )
                     });
 
@@ -1635,21 +1624,5 @@ where
             }
         }
         StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
-    }
-}
-
-/// Returns `true` if the type has no value fields
-/// (for an enum, no variant has any fields)
-pub fn is_type_without_fields(item: &Annotatable) -> bool {
-    if let Annotatable::Item(ref item) = *item {
-        match item.kind {
-            ast::ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.data.fields().is_empty())
-            }
-            ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
-            _ => false,
-        }
-    } else {
-        false
     }
 }

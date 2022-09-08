@@ -20,7 +20,7 @@ impl RootDatabase {
     pub fn apply_change(&mut self, change: Change) {
         let _p = profile::span("RootDatabase::apply_change");
         self.request_cancellation();
-        tracing::info!("apply_change {:?}", change);
+        tracing::trace!("apply_change {:?}", change);
         if let Some(roots) = &change.roots {
             let mut local_roots = FxHashSet::default();
             let mut library_roots = FxHashSet::default();
@@ -45,7 +45,7 @@ impl RootDatabase {
     // |===
     // | Editor  | Action Name
     //
-    // | VS Code | **Rust Analyzer: Memory Usage (Clears Database)**
+    // | VS Code | **rust-analyzer: Memory Usage (Clears Database)**
     // |===
     // image::https://user-images.githubusercontent.com/48062697/113065592-08559f00-91b1-11eb-8c96-64b88068ec02.gif[]
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {

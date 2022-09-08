@@ -14,7 +14,7 @@ LL |     let (a, b) = copy(NoClone);
    |                  |
    |                  required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Magic` for `NoClone`
+note: required for `NoClone` to implement `Magic`
   --> $DIR/supertrait-auto-trait.rs:8:12
    |
 LL | auto trait Magic: Copy {}

@@ -65,6 +65,7 @@ impl ModDir {
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
+        let name = name.unescaped();
         let orig_file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = ArrayVec::<_, 2>::new();

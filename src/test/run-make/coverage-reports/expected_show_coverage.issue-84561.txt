@@ -2,12 +2,6 @@
     2|       |
     3|       |// expect-exit-status-101
     4|     21|#[derive(PartialEq, Eq)]
-  ------------------
-  | <issue_84561::Foo as core::cmp::PartialEq>::eq:
-  |    4|     21|#[derive(PartialEq, Eq)]
-  ------------------
-  | Unexecuted instantiation: <issue_84561::Foo as core::cmp::PartialEq>::ne
-  ------------------
     5|       |struct Foo(u32);
     6|      1|fn test3() {
     7|      1|    let is_true = std::env::args().len() == 1;

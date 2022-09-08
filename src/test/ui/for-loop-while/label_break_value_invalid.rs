@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(label_break_value)]
 
 fn lbv_macro_test_hygiene_respected() {
     macro_rules! mac2 {

@@ -1,4 +1,6 @@
 #![feature(min_specialization)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -7,7 +9,7 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_error_messages::MultiSpan;
+use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
@@ -39,7 +41,8 @@ macro_rules! pluralize {
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, Encodable, Decodable, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended, or maintains the exact meaning of the code.
     /// This suggestion should be automatically applied.
@@ -467,7 +470,19 @@ pub enum BuiltinLintDiagnostics {
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
     },
-    NamedArgumentUsedPositionally(Option<Span>, Span, String),
+    NamedArgumentUsedPositionally {
+        /// Span where the named argument is used by position and will be replaced with the named
+        /// argument name
+        position_sp_to_replace: Option<Span>,
+        /// Span where the named argument is used by position and is used for lint messages
+        position_sp_for_msg: Option<Span>,
+        /// Span where the named argument's name is (so we know where to put the warning message)
+        named_arg_sp: Span,
+        /// String containing the named arguments name
+        named_arg_name: String,
+        /// Indicates if the named argument is used as a width/precision for formatting
+        is_formatting_arg: bool,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -477,7 +492,7 @@ pub struct BufferedEarlyLint {
     pub span: MultiSpan,
 
     /// The lint message.
-    pub msg: String,
+    pub msg: DiagnosticMessage,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -506,11 +521,11 @@ impl LintBuffer {
         lint: &'static Lint,
         node_id: NodeId,
         span: MultiSpan,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         let lint_id = LintId::of(lint);
-        let msg = msg.to_string();
+        let msg = msg.into();
         self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, msg, diagnostic });
     }
 
@@ -523,7 +538,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
     }
@@ -533,7 +548,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)

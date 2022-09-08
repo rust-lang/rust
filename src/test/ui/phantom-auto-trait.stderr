@@ -6,7 +6,7 @@ LL |     is_zen(x)
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Zen` for `&T`
+note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |
 LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
@@ -35,7 +35,7 @@ LL |     is_zen(x)
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Zen` for `&T`
+note: required for `&T` to implement `Zen`
   --> $DIR/phantom-auto-trait.rs:10:24
    |
 LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}

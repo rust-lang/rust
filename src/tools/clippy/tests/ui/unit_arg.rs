@@ -1,3 +1,5 @@
+// aux-build: proc_macro_with_span.rs
+
 #![warn(clippy::unit_arg)]
 #![allow(
     clippy::no_effect,
@@ -8,9 +10,13 @@
     clippy::or_fun_call,
     clippy::needless_question_mark,
     clippy::self_named_constructors,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::never_loop
 )]
 
+extern crate proc_macro_with_span;
+
+use proc_macro_with_span::with_span;
 use std::fmt::Debug;
 
 fn foo<T: Debug>(t: T) {
@@ -126,6 +132,10 @@ fn returning_expr() -> Option<()> {
 }
 
 fn taking_multiple_units(a: (), b: ()) {}
+
+fn proc_macro() {
+    with_span!(span taking_multiple_units(unsafe { (); }, 'x: loop { break 'x (); }));
+}
 
 fn main() {
     bad();

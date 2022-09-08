@@ -25,11 +25,11 @@ impl G<usize> for ExternType {
 }
 
 // @has 'extern_type/foreigntype.ExternType.html'
-// @has 'extern_type/fn.links_to_extern_type.html' \
+// @hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.f"'
-// @has 'extern_type/fn.links_to_extern_type.html' \
+// @hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.test"'
-// @has 'extern_type/fn.links_to_extern_type.html' \
+// @hasraw 'extern_type/fn.links_to_extern_type.html' \
 // 'href="foreigntype.ExternType.html#method.g"'
 /// See also [ExternType::f]
 /// See also [ExternType::test]

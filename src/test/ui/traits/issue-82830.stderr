@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `P: Sized`
 LL |     t: MaybeBox<P>,
    |        ^^^^^^^^^^^
    |
-note: required because of the requirements on the impl of `A<P, Box<P>>` for `P`
+note: required for `P` to implement `A<P, Box<P>>`
   --> $DIR/issue-82830.rs:10:12
    |
 LL | impl<Y, N> A<Y, N> for P {

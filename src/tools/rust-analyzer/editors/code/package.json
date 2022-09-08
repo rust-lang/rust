@@ -99,142 +99,147 @@
             {
                 "command": "rust-analyzer.syntaxTree",
                 "title": "Show Syntax Tree",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.viewFileText",
                 "title": "View File Text (as seen by the server)",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.viewItemTree",
                 "title": "Debug ItemTree",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.viewCrateGraph",
                 "title": "View Crate Graph",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.viewFullCrateGraph",
                 "title": "View Crate Graph (Full)",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.expandMacro",
                 "title": "Expand macro recursively",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.matchingBrace",
                 "title": "Find matching brace",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.parentModule",
                 "title": "Locate parent module",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.joinLines",
                 "title": "Join lines",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.run",
                 "title": "Run",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.copyRunCommandLine",
                 "title": "Copy Run Command Line",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.debug",
                 "title": "Debug",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.newDebugConfig",
                 "title": "Generate launch configuration",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.analyzerStatus",
                 "title": "Status",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.memoryUsage",
                 "title": "Memory Usage (Clears Database)",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.shuffleCrateGraph",
                 "title": "Shuffle Crate Graph",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.reloadWorkspace",
                 "title": "Reload workspace",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.onEnter",
                 "title": "Enhanced enter key",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.ssr",
                 "title": "Structural Search Replace",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.serverVersion",
                 "title": "Show RA Version",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.toggleInlayHints",
                 "title": "Toggle inlay hints",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.openDocs",
                 "title": "Open docs under cursor",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.openCargoToml",
                 "title": "Open Cargo.toml",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.peekTests",
                 "title": "Peek related tests",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.moveItemUp",
                 "title": "Move item up",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
             },
             {
                 "command": "rust-analyzer.moveItemDown",
                 "title": "Move item down",
-                "category": "Rust Analyzer"
+                "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.cancelFlycheck",
+                "title": "Cancel running flychecks",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
@@ -256,7 +261,7 @@
         ],
         "configuration": {
             "type": "object",
-            "title": "Rust Analyzer",
+            "title": "rust-analyzer",
             "properties": {
                 "rust-analyzer.cargoRunner": {
                     "type": [
@@ -378,6 +383,11 @@
                 "rust-analyzer.restartServerOnConfigChange": {
                     "markdownDescription": "Whether to restart the server automatically when certain settings that require a restart are changed.",
                     "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.typing.continueCommentsOnNewline": {
+                    "markdownDescription": "Whether to prefix newlines after comments with the corresponding comment prefix.",
+                    "default": true,
                     "type": "boolean"
                 },
                 "$generated-start": {},
@@ -537,7 +547,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -748,6 +758,11 @@
                 },
                 "rust-analyzer.hover.documentation.enable": {
                     "markdownDescription": "Whether to show documentation on hover.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.hover.documentation.keywords.enable": {
+                    "markdownDescription": "Whether to show keyword hover popups. Only applies when\n`#rust-analyzer.hover.documentation.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -1066,6 +1081,36 @@
                 },
                 "rust-analyzer.rustfmt.rangeFormatting.enable": {
                     "markdownDescription": "Enables the use of rustfmt's unstable range formatting command for the\n`textDocument/rangeFormatting` request. The rustfmt option is unstable and only\navailable on a nightly build.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.doc.comment.inject.enable": {
+                    "markdownDescription": "Inject additional highlighting into doc comments.\n\nWhen enabled, rust-analyzer will highlight rust source in doc comments as well as intra\ndoc links.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.operator.enable": {
+                    "markdownDescription": "Use semantic tokens for operators.\n\nWhen disabled, rust-analyzer will emit semantic tokens only for operator tokens when\nthey are tagged with modifiers.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.operator.specialization.enable": {
+                    "markdownDescription": "Use specialized semantic tokens for operators.\n\nWhen enabled, rust-analyzer will emit special token types for operator tokens instead\nof the generic `operator` token type.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.enable": {
+                    "markdownDescription": "Use semantic tokens for punctuations.\n\nWhen disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when\nthey are tagged with modifiers or have a special role.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.separate.macro.bang": {
+                    "markdownDescription": "When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro\ncalls.",
+                    "default": false,
+                    "type": "boolean"
+                },
+                "rust-analyzer.semanticHighlighting.punctuation.specialization.enable": {
+                    "markdownDescription": "Use specialized semantic tokens for punctuations.\n\nWhen enabled, rust-analyzer will emit special token types for punctuation tokens instead\nof the generic `punctuation` token type.",
                     "default": false,
                     "type": "boolean"
                 },

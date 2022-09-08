@@ -8,7 +8,7 @@
 #![feature(dropck_eyepatch)]
 use std::cell::Cell;
 
-struct Concrete<'a>(u32, Cell<Option<&'a Concrete<'a>>>);
+struct Concrete<'a>(#[allow(unused_tuple_struct_fields)] u32, Cell<Option<&'a Concrete<'a>>>);
 
 struct Foo<T> { data: Vec<T> }
 

@@ -3,11 +3,17 @@
 // compile-flags: --test
 
 #![feature(async_closure)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(const_trait_impl)]
+#![feature(decl_macro)]
 #![feature(generators)]
 #![feature(half_open_range_patterns)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
+#![feature(trait_alias)]
+#![feature(try_blocks)]
+#![feature(type_ascription)]
 #![deny(unused_macros)]
 
 macro_rules! stringify_block {
@@ -865,8 +871,9 @@ fn test_vis() {
     assert_eq!(stringify_vis!(pub(crate)), "pub(crate) ");
     assert_eq!(stringify_vis!(pub(self)), "pub(self) ");
     assert_eq!(stringify_vis!(pub(super)), "pub(super) ");
-    assert_eq!(stringify_vis!(pub(in self)), "pub(self) ");
-    assert_eq!(stringify_vis!(pub(in super)), "pub(super) ");
+    assert_eq!(stringify_vis!(pub(in crate)), "pub(in crate) ");
+    assert_eq!(stringify_vis!(pub(in self)), "pub(in self) ");
+    assert_eq!(stringify_vis!(pub(in super)), "pub(in super) ");
     assert_eq!(stringify_vis!(pub(in path::to)), "pub(in path::to) ");
     assert_eq!(stringify_vis!(pub(in ::path::to)), "pub(in ::path::to) ");
     assert_eq!(stringify_vis!(pub(in self::path::to)), "pub(in self::path::to) ");

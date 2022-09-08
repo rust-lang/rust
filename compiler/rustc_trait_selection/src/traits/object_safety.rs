@@ -690,7 +690,7 @@ fn receiver_is_dispatchable<'tcx>(
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
             let substs =
-                InternalSubsts::for_item(tcx, method.container.assert_trait(), |param, _| {
+                InternalSubsts::for_item(tcx, method.trait_container(tcx).unwrap(), |param, _| {
                     if param.index == 0 {
                         unsized_self_ty.into()
                     } else {

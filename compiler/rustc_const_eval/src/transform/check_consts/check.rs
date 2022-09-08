@@ -135,7 +135,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         // qualifs for the return type.
         let return_block = ccx
             .body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .find(|(_, block)| matches!(block.terminator().kind, TerminatorKind::Return))
             .map(|(bb, _)| bb);
@@ -678,7 +678,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -772,7 +772,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             let mut nonconst_call_permission = false;
                             if let Some(callee_trait) = tcx.trait_of_item(callee)
                                 && tcx.has_attr(callee_trait, sym::const_trait)
-                                && Some(callee_trait) == tcx.trait_of_item(caller)
+                                && Some(callee_trait) == tcx.trait_of_item(caller.to_def_id())
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {

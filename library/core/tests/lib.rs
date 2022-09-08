@@ -14,6 +14,7 @@
 #![feature(const_maybe_uninit_assume_init_read)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_from_num)]
+#![feature(const_pointer_byte_offsets)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
@@ -61,6 +62,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(int_log)]
 #![feature(iter_advance_by)]
+#![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_intersperse)]
@@ -73,7 +75,7 @@
 #![feature(const_pin)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(result_into_ok_or_err)]
+#![feature(pointer_byte_offsets)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
@@ -96,6 +98,7 @@
 #![feature(waker_getters)]
 #![feature(slice_flatten)]
 #![feature(provide_any)]
+#![feature(utf8_chunks)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

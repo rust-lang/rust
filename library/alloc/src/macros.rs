@@ -107,6 +107,8 @@ macro_rules! vec {
 /// format!("test");
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
+/// let (x, y) = (1, 2);
+/// format!("{x} + {y} = 3");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -117,7 +117,7 @@ pub(crate) fn render_field(
 ) -> CompletionItem {
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(ctx.db());
-    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
+    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -283,8 +283,8 @@ fn render_resolution_path(
 
     let name = local_name.to_smol_str();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.escaped().is_escaped() {
-        item.insert_text(local_name.escaped().to_smol_str());
+    if local_name.is_escaped() {
+        item.insert_text(local_name.to_smol_str());
     }
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
@@ -306,7 +306,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", local_name.escaped()));
+                    .insert_snippet(cap, format!("{}<$0>", local_name));
             }
         }
     }
@@ -323,9 +323,7 @@ fn render_resolution_path(
             ..CompletionRelevance::default()
         });
 
-        if let Some(ref_match) = compute_ref_match(completion, &ty) {
-            item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
-        }
+        path_ref_match(completion, path_ctx, &ty, &mut item);
     };
     item
 }
@@ -342,7 +340,8 @@ fn render_resolution_simple_(
     let ctx = ctx.import_to_add(import_to_add);
     let kind = res_to_kind(resolution);
 
-    let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.to_smol_str());
+    let mut item =
+        CompletionItem::new(kind, ctx.source_range(), local_name.unescaped().to_smol_str());
     item.set_relevance(ctx.completion_relevance())
         .set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
@@ -450,6 +449,29 @@ fn compute_ref_match(
         };
     }
     None
+}
+
+fn path_ref_match(
+    completion: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx,
+    ty: &hir::Type,
+    item: &mut Builder,
+) {
+    if let Some(original_path) = &path_ctx.original_path {
+        // At least one char was typed by the user already, in that case look for the original path
+        if let Some(original_path) = completion.sema.original_ast_node(original_path.clone()) {
+            if let Some(ref_match) = compute_ref_match(completion, ty) {
+                item.ref_match(ref_match, original_path.syntax().text_range().start());
+            }
+        }
+    } else {
+        // completion requested on an empty identifier, there is no path here yet.
+        // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
+        // as long as nothing was typed yet
+        if let Some(ref_match) = compute_ref_match(completion, ty) {
+            item.ref_match(ref_match, completion.position.offset);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -564,6 +586,7 @@ fn main() { Foo::Fo$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
+                        lookup: "Foo{}",
                         detail: "Foo { x: i32, y: i32 }",
                     },
                 ]
@@ -590,6 +613,7 @@ fn main() { Foo::Fo$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
+                        lookup: "Foo()",
                         detail: "Foo(i32, i32)",
                     },
                 ]
@@ -706,7 +730,7 @@ fn main() { let _: m::Spam = S$0 }
                         kind: SymbolKind(
                             Variant,
                         ),
-                        lookup: "Spam::Bar(…)",
+                        lookup: "Spam::Bar()",
                         detail: "m::Spam::Bar(i32)",
                         relevance: CompletionRelevance {
                             exact_name_match: false,
@@ -1271,8 +1295,8 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
         check_relevance(
@@ -1288,8 +1312,8 @@ fn main() {
                 lc s [type+name+local]
                 st S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
         check_relevance(
@@ -1305,8 +1329,8 @@ fn main() {
                 lc ssss [type+local]
                 st S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
     }
@@ -1342,12 +1366,11 @@ fn main() {
                 lc &t [type+local]
                 st S []
                 st &S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1389,12 +1412,11 @@ fn main() {
                 lc &mut t [type+local]
                 st S []
                 st &mut S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1485,14 +1507,13 @@ fn main() {
             expect![[r#"
                 st S []
                 st &S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn bar() []
                 fn &bar() [type]
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1636,8 +1657,8 @@ fn foo() {
                 ev Foo::B [type_could_unify]
                 fn foo() []
                 en Foo []
-                fn baz() []
                 fn bar() []
+                fn baz() []
             "#]],
         );
     }
@@ -1727,9 +1748,9 @@ fn f() {
 }
 "#,
             expect![[r#"
-                md std []
                 st Buffer []
                 fn f() []
+                md std []
                 tt BufRead (use std::io::BufRead) [requires_import]
                 st BufReader (use std::io::BufReader) [requires_import]
                 st BufWriter (use std::io::BufWriter) [requires_import]

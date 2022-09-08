@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	$(AR) crus $(TMPDIR)/libfoo.a foo.rs

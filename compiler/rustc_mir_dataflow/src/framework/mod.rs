@@ -256,6 +256,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///     .iterate_to_fixpoint()
     ///     .into_results_cursor(body);
     /// ```
+    #[inline]
     fn into_engine<'mir>(
         self,
         tcx: TyCtxt<'tcx>,
@@ -413,7 +414,7 @@ where
     }
 
     /* Extension methods */
-
+    #[inline]
     fn into_engine<'mir>(
         self,
         tcx: TyCtxt<'tcx>,

@@ -43,7 +43,7 @@ impl flags::Diagnostics {
                 println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
                 for diagnostic in analysis
                     .diagnostics(
-                        &DiagnosticsConfig::default(),
+                        &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
                         file_id,
                     )
