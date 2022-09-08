@@ -796,7 +796,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     {
         let index = self.bucket_index(&bucket);
         let old_ctrl = *self.table.ctrl(index);
-        debug_assert!(is_full(old_ctrl));
+        debug_assert!(self.is_bucket_full(index));
         let old_growth_left = self.table.growth_left;
         let item = self.remove(bucket);
         if let Some(new_item) = f(item) {
@@ -926,6 +926,16 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[inline]
     pub fn buckets(&self) -> usize {
         self.table.bucket_mask + 1
+    }
+
+    /// Checks whether the bucket at `index` is full.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure `index` is less than the number of buckets.
+    #[inline]
+    pub unsafe fn is_bucket_full(&self, index: usize) -> bool {
+        self.table.is_bucket_full(index)
     }
 
     /// Returns an iterator over every element in the table. It is up to
@@ -1148,7 +1158,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     // table. This second scan is guaranteed to find an empty
                     // slot (due to the load factor) before hitting the trailing
                     // control bytes (containing EMPTY).
-                    if unlikely(is_full(*self.ctrl(result))) {
+                    if unlikely(self.is_bucket_full(result)) {
                         debug_assert!(self.bucket_mask < Group::WIDTH);
                         debug_assert_ne!(probe_seq.pos, 0);
                         return Group::load_aligned(self.ctrl(0))
@@ -1329,6 +1339,17 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.bucket_mask + 1
     }
 
+    /// Checks whether the bucket at `index` is full.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure `index` is less than the number of buckets.
+    #[inline]
+    unsafe fn is_bucket_full(&self, index: usize) -> bool {
+        debug_assert!(index < self.buckets());
+        is_full(*self.ctrl(index))
+    }
+
     #[inline]
     fn num_ctrl_bytes(&self) -> usize {
         self.bucket_mask + 1 + Group::WIDTH
@@ -1427,7 +1448,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
         // Copy all elements to the new table.
         for i in 0..self.buckets() {
-            if !is_full(*self.ctrl(i)) {
+            if !self.is_bucket_full(i) {
                 continue;
             }
 
@@ -1573,7 +1594,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     #[inline]
     unsafe fn erase(&mut self, index: usize) {
-        debug_assert!(is_full(*self.ctrl(index)));
+        debug_assert!(self.is_bucket_full(index));
         let index_before = index.wrapping_sub(Group::WIDTH) & self.bucket_mask;
         let empty_before = Group::load(self.ctrl(index_before)).match_empty();
         let empty_after = Group::load(self.ctrl(index)).match_empty();
@@ -1723,7 +1744,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         let mut guard = guard((0, &mut *self), |(index, self_)| {
             if mem::needs_drop::<T>() && !self_.is_empty() {
                 for i in 0..=*index {
-                    if is_full(*self_.table.ctrl(i)) {
+                    if self_.is_bucket_full(i) {
                         self_.bucket(i).drop();
                     }
                 }
