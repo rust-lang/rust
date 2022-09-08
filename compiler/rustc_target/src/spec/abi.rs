@@ -1,6 +1,8 @@
 use std::fmt;
 
 use rustc_macros::HashStable_Generic;
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 
 #[cfg(test)]
 mod tests;
@@ -92,6 +94,192 @@ pub fn lookup(name: &str) -> Option<Abi> {
 
 pub fn all_names() -> Vec<&'static str> {
     AbiDatas.iter().map(|d| d.name).collect()
+}
+
+pub fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
+    AbiDatas
+        .iter()
+        .map(|d| d.name)
+        .filter(|name| is_enabled(features, span, name).is_ok())
+        .collect()
+}
+
+pub enum AbiDisabled {
+    Unstable { feature: Symbol, explain: &'static str },
+    Unrecognized,
+}
+
+fn gate_feature_post(
+    features: &rustc_feature::Features,
+    feature: Symbol,
+    span: Span,
+    explain: &'static str,
+) -> Result<(), AbiDisabled> {
+    if !features.enabled(feature) && !span.allows_unstable(feature) {
+        Err(AbiDisabled::Unstable { feature, explain })
+    } else {
+        Ok(())
+    }
+}
+
+pub fn is_enabled(
+    features: &rustc_feature::Features,
+    span: Span,
+    name: &str,
+) -> Result<(), AbiDisabled> {
+    match name {
+        // Stable
+        "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
+        | "system" => Ok(()),
+        "rust-intrinsic" => {
+            gate_feature_post(features, sym::intrinsics, span, "intrinsics are subject to change")
+        }
+        "platform-intrinsic" => gate_feature_post(
+            features,
+            sym::platform_intrinsics,
+            span,
+            "platform intrinsics are experimental and possibly buggy",
+        ),
+        "vectorcall" => gate_feature_post(
+            features,
+            sym::abi_vectorcall,
+            span,
+            "vectorcall is experimental and subject to change",
+        ),
+        "thiscall" => gate_feature_post(
+            features,
+            sym::abi_thiscall,
+            span,
+            "thiscall is experimental and subject to change",
+        ),
+        "rust-call" => gate_feature_post(
+            features,
+            sym::unboxed_closures,
+            span,
+            "rust-call ABI is subject to change",
+        ),
+        "rust-cold" => gate_feature_post(
+            features,
+            sym::rust_cold_cc,
+            span,
+            "rust-cold is experimental and subject to change",
+        ),
+        "ptx-kernel" => gate_feature_post(
+            features,
+            sym::abi_ptx,
+            span,
+            "PTX ABIs are experimental and subject to change",
+        ),
+        "unadjusted" => gate_feature_post(
+            features,
+            sym::abi_unadjusted,
+            span,
+            "unadjusted ABI is an implementation detail and perma-unstable",
+        ),
+        "msp430-interrupt" => gate_feature_post(
+            features,
+            sym::abi_msp430_interrupt,
+            span,
+            "msp430-interrupt ABI is experimental and subject to change",
+        ),
+        "x86-interrupt" => gate_feature_post(
+            features,
+            sym::abi_x86_interrupt,
+            span,
+            "x86-interrupt ABI is experimental and subject to change",
+        ),
+        "amdgpu-kernel" => gate_feature_post(
+            features,
+            sym::abi_amdgpu_kernel,
+            span,
+            "amdgpu-kernel ABI is experimental and subject to change",
+        ),
+        "avr-interrupt" | "avr-non-blocking-interrupt" => gate_feature_post(
+            features,
+            sym::abi_avr_interrupt,
+            span,
+            "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
+        ),
+        "efiapi" => gate_feature_post(
+            features,
+            sym::abi_efiapi,
+            span,
+            "efiapi ABI is experimental and subject to change",
+        ),
+        "C-cmse-nonsecure-call" => gate_feature_post(
+            features,
+            sym::abi_c_cmse_nonsecure_call,
+            span,
+            "C-cmse-nonsecure-call ABI is experimental and subject to change",
+        ),
+        "C-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "C-unwind ABI is experimental and subject to change",
+        ),
+        "stdcall-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "stdcall-unwind ABI is experimental and subject to change",
+        ),
+        "system-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "system-unwind ABI is experimental and subject to change",
+        ),
+        "thiscall-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "thiscall-unwind ABI is experimental and subject to change",
+        ),
+        "cdecl-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "cdecl-unwind ABI is experimental and subject to change",
+        ),
+        "fastcall-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "fastcall-unwind ABI is experimental and subject to change",
+        ),
+        "vectorcall-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "vectorcall-unwind ABI is experimental and subject to change",
+        ),
+        "aapcs-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "aapcs-unwind ABI is experimental and subject to change",
+        ),
+        "win64-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "win64-unwind ABI is experimental and subject to change",
+        ),
+        "sysv64-unwind" => gate_feature_post(
+            features,
+            sym::c_unwind,
+            span,
+            "sysv64-unwind ABI is experimental and subject to change",
+        ),
+        "wasm" => gate_feature_post(
+            features,
+            sym::wasm_abi,
+            span,
+            "wasm ABI is experimental and subject to change",
+        ),
+        _ => Err(AbiDisabled::Unrecognized),
+    }
 }
 
 impl Abi {

@@ -3,13 +3,13 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::{struct_span_err, Applicability, StashKey};
-use rustc_feature::Features;
-use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_session::parse::{feature_err, feature_warn};
+use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
+use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_target::spec::abi;
 
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
@@ -84,210 +84,26 @@ impl<'a> PostExpansionVisitor<'a> {
             }
         }
 
-        match symbol_unescaped.as_str() {
-            // Stable
-            "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
-            | "system" => {}
-            "rust-intrinsic" => {
-                gate_feature_post!(&self, intrinsics, span, "intrinsics are subject to change");
-            }
-            "platform-intrinsic" => {
-                gate_feature_post!(
-                    &self,
-                    platform_intrinsics,
+        match abi::is_enabled(&self.features, span, symbol_unescaped.as_str()) {
+            Ok(()) => (),
+            Err(abi::AbiDisabled::Unstable { feature, explain }) => {
+                feature_err_issue(
+                    &self.sess.parse_sess,
+                    feature,
                     span,
-                    "platform intrinsics are experimental and possibly buggy"
-                );
+                    GateIssue::Language,
+                    explain,
+                )
+                .emit();
             }
-            "vectorcall" => {
-                gate_feature_post!(
-                    &self,
-                    abi_vectorcall,
-                    span,
-                    "vectorcall is experimental and subject to change"
-                );
-            }
-            "thiscall" => {
-                gate_feature_post!(
-                    &self,
-                    abi_thiscall,
-                    span,
-                    "thiscall is experimental and subject to change"
-                );
-            }
-            "rust-call" => {
-                gate_feature_post!(
-                    &self,
-                    unboxed_closures,
-                    span,
-                    "rust-call ABI is subject to change"
-                );
-            }
-            "rust-cold" => {
-                gate_feature_post!(
-                    &self,
-                    rust_cold_cc,
-                    span,
-                    "rust-cold is experimental and subject to change"
-                );
-            }
-            "ptx-kernel" => {
-                gate_feature_post!(
-                    &self,
-                    abi_ptx,
-                    span,
-                    "PTX ABIs are experimental and subject to change"
-                );
-            }
-            "unadjusted" => {
-                gate_feature_post!(
-                    &self,
-                    abi_unadjusted,
-                    span,
-                    "unadjusted ABI is an implementation detail and perma-unstable"
-                );
-            }
-            "msp430-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_msp430_interrupt,
-                    span,
-                    "msp430-interrupt ABI is experimental and subject to change"
-                );
-            }
-            "x86-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_x86_interrupt,
-                    span,
-                    "x86-interrupt ABI is experimental and subject to change"
-                );
-            }
-            "amdgpu-kernel" => {
-                gate_feature_post!(
-                    &self,
-                    abi_amdgpu_kernel,
-                    span,
-                    "amdgpu-kernel ABI is experimental and subject to change"
-                );
-            }
-            "avr-interrupt" | "avr-non-blocking-interrupt" => {
-                gate_feature_post!(
-                    &self,
-                    abi_avr_interrupt,
-                    span,
-                    "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change"
-                );
-            }
-            "efiapi" => {
-                gate_feature_post!(
-                    &self,
-                    abi_efiapi,
-                    span,
-                    "efiapi ABI is experimental and subject to change"
-                );
-            }
-            "C-cmse-nonsecure-call" => {
-                gate_feature_post!(
-                    &self,
-                    abi_c_cmse_nonsecure_call,
-                    span,
-                    "C-cmse-nonsecure-call ABI is experimental and subject to change"
-                );
-            }
-            "C-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "C-unwind ABI is experimental and subject to change"
-                );
-            }
-            "stdcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "stdcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "system-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "system-unwind ABI is experimental and subject to change"
-                );
-            }
-            "thiscall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "thiscall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "cdecl-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "cdecl-unwind ABI is experimental and subject to change"
-                );
-            }
-            "fastcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "fastcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "vectorcall-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "vectorcall-unwind ABI is experimental and subject to change"
-                );
-            }
-            "aapcs-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "aapcs-unwind ABI is experimental and subject to change"
-                );
-            }
-            "win64-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "win64-unwind ABI is experimental and subject to change"
-                );
-            }
-            "sysv64-unwind" => {
-                gate_feature_post!(
-                    &self,
-                    c_unwind,
-                    span,
-                    "sysv64-unwind ABI is experimental and subject to change"
-                );
-            }
-            "wasm" => {
-                gate_feature_post!(
-                    &self,
-                    wasm_abi,
-                    span,
-                    "wasm ABI is experimental and subject to change"
-                );
-            }
-            abi => {
+            Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
                     self.sess.parse_sess.span_diagnostic.delay_span_bug(
                         span,
-                        &format!("unrecognized ABI not caught in lowering: {}", abi),
+                        &format!(
+                            "unrecognized ABI not caught in lowering: {}",
+                            symbol_unescaped.as_str()
+                        ),
                     );
                 }
             }

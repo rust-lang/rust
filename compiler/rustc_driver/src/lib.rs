@@ -742,6 +742,11 @@ fn print_crate_info(
                     println!("{}", cfg);
                 }
             }
+            CallingConventions => {
+                let mut calling_conventions = rustc_target::spec::abi::all_names();
+                calling_conventions.sort_unstable();
+                println!("{}", calling_conventions.join("\n"));
+            }
             RelocationModels
             | CodeModels
             | TlsModels

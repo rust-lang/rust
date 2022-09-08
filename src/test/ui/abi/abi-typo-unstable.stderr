@@ -1,8 +1,8 @@
-error[E0703]: invalid ABI: found `路濫狼á́́`
-  --> $DIR/unicode.rs:5:8
+error[E0703]: invalid ABI: found `rust-intrinsec`
+  --> $DIR/abi-typo-unstable.rs:2:8
    |
-LL | extern "路濫狼á́́" fn foo() {}
-   |        ^^^^^^^^^ invalid ABI
+LL | extern "rust-intrinsec" fn rust_intrinsic() {}
+   |        ^^^^^^^^^^^^^^^^ invalid ABI
    |
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions.
 

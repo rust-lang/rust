@@ -4110,6 +4110,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_data_structures",
+ "rustc_feature",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",

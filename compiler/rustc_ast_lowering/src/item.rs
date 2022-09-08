@@ -1,4 +1,4 @@
-use super::errors::{InvalidAbi, MisplacedRelaxTraitBound};
+use super::errors::{InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
 use super::{Arena, AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
@@ -14,9 +14,10 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::{DefIdTree, ResolverAstLowering, TyCtxt};
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi;
 use smallvec::{smallvec, SmallVec};
 
@@ -1280,10 +1281,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn error_on_invalid_abi(&self, abi: StrLit) {
+        let abi_names = abi::enabled_names(self.tcx.features(), abi.span)
+            .iter()
+            .map(|s| Symbol::intern(s))
+            .collect::<Vec<_>>();
+        let suggested_name = find_best_match_for_name(&abi_names, abi.symbol_unescaped, None);
         self.tcx.sess.emit_err(InvalidAbi {
+            abi: abi.symbol_unescaped,
             span: abi.span,
-            abi: abi.symbol,
-            valid_abis: abi::all_names().join(", "),
+            suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {
+                span: abi.span,
+                suggestion: format!("\"{suggested_name}\""),
+            }),
+            command: "rustc --print=calling-conventions".to_string(),
         });
     }
 

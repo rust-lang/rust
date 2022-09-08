@@ -29,14 +29,28 @@ impl AddToDiagnostic for UseAngleBrackets {
 }
 
 #[derive(Diagnostic)]
-#[help]
 #[diag(ast_lowering::invalid_abi, code = "E0703")]
+#[note]
 pub struct InvalidAbi {
     #[primary_span]
     #[label]
     pub span: Span,
     pub abi: Symbol,
-    pub valid_abis: String,
+    pub command: String,
+    #[subdiagnostic]
+    pub suggestion: Option<InvalidAbiSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    ast_lowering::invalid_abi_suggestion,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub struct InvalidAbiSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub suggestion: String,
 }
 
 #[derive(Diagnostic, Clone, Copy)]

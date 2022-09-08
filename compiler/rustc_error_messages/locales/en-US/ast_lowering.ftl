@@ -7,7 +7,9 @@ ast_lowering_use_angle_brackets = use angle brackets instead
 ast_lowering_invalid_abi =
     invalid ABI: found `{$abi}`
     .label = invalid ABI
-    .help = valid ABIs: {$valid_abis}
+    .note = invoke `{$command}` for a full list of supported calling conventions.
+
+ast_lowering_invalid_abi_suggestion = did you mean
 
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
