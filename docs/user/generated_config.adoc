@@ -260,6 +260,11 @@ also need to add the folders to Code's `files.watcherExclude`.
 [[rust-analyzer.files.watcher]]rust-analyzer.files.watcher (default: `"client"`)::
 +
 --
+Find All References config.
+--
+[[rust-analyzer.findAllRefs.excludeImports]]rust-analyzer.findAllRefs.excludeImports (default: `false`)::
++
+--
 Controls file watching implementation.
 --
 [[rust-analyzer.highlightRelated.breakPoints.enable]]rust-analyzer.highlightRelated.breakPoints.enable (default: `true`)::

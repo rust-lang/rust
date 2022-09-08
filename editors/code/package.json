@@ -840,7 +840,7 @@
                     "minimum": 0
                 },
                 "rust-analyzer.findAllRefs.excludeImports": {
-                    "markdownDescription": "Exclude imports from Find All References results",
+                    "markdownDescription": "Exclude imports from find-all-references.",
                     "default": false,
                     "type": "boolean"
                 },
