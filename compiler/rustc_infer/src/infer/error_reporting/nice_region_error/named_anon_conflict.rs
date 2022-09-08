@@ -1,8 +1,11 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
-use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use crate::{
+    errors::ExplicitLifetimeRequired,
+    infer::error_reporting::nice_region_error::find_anon_type::find_anon_type,
+};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty;
 use rustc_span::symbol::kw;
 
@@ -87,30 +90,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None;
         }
 
-        let (error_var, span_label_var) = match param.pat.simple_ident() {
-            Some(simple_ident) => (
-                format!("the type of `{}`", simple_ident),
-                format!("the type of `{}`", simple_ident),
-            ),
-            None => ("parameter type".to_owned(), "type".to_owned()),
+        let simple_ident = param.pat.simple_ident();
+        let (ident_kind, simple_ident) = match simple_ident {
+            Some(ident) => ("ident", ident.to_string()),
+            None => ("param_type", String::new()),
         };
 
-        let mut diag = struct_span_err!(
-            self.tcx().sess,
-            span,
-            E0621,
-            "explicit lifetime required in {}",
-            error_var
-        );
+        let named = named.to_string();
 
-        diag.span_label(span, format!("lifetime `{}` required", named));
-        diag.span_suggestion(
-            new_ty_span,
-            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-            new_ty,
-            Applicability::Unspecified,
-        );
-
-        Some(diag)
+        let err =
+            ExplicitLifetimeRequired { span, ident_kind, simple_ident, named, new_ty_span, new_ty };
+        let err = self.tcx().sess.parse_sess.create_err(err);
+        Some(err)
     }
 }

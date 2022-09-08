@@ -357,8 +357,8 @@ impl AddToDiagnostic for LifetimeMismatchLabels {
 pub struct AddLifetimeParamsSuggestion<'a> {
     pub tcx: TyCtxt<'a>,
     pub sub: Region<'a>,
-    pub ty_sup: &'a Ty<'a>,
-    pub ty_sub: &'a Ty<'a>,
+    pub ty_sup: &'a hir::Ty<'a>,
+    pub ty_sub: &'a hir::Ty<'a>,
     pub add_note: bool,
 }
 
@@ -519,4 +519,24 @@ pub struct MismatchedStaticLifetime<'a> {
     pub does_not_outlive_static_from_impl: DoesNotOutliveStaticFromImpl,
     #[subdiagnostic]
     pub implicit_static_lifetimes: Vec<ImplicitStaticLifetimeSubdiag>,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::explicit_lifetime_required, code = "E0621")]
+pub struct ExplicitLifetimeRequired<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub ident_kind: &'static str,
+    pub simple_ident: String,
+    pub named: String,
+
+    #[suggestion(
+        infer::explicit_lifetime_required_sugg,
+        code = "{new_ty}",
+        applicability = "unspecified"
+    )]
+    pub new_ty_span: Span,
+    #[skip_arg]
+    pub new_ty: Ty<'a>,
 }

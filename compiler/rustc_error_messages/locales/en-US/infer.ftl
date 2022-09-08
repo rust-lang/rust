@@ -172,3 +172,14 @@ infer_msl_unmet_req = because this has an unmet lifetime requirement
 infer_msl_trait_note = this has an implicit `'static` lifetime requirement
 infer_msl_trait_sugg = consider relaxing the implicit `'static` requirement
 infer_suggest_add_let_for_letchains = consider adding `let`
+
+infer_explicit_lifetime_required = explicit lifetime required in {$ident_kind ->
+    [ident] the type of `{$simple_ident}`
+    *[param_type] parameter type
+}
+    .label = lifetime `{$named}` required
+
+infer_explicit_lifetime_required_sugg = add explicit lifetime `{$named}` to {$ident_kind ->
+    [ident] the type of `{$simple_ident}`
+    *[param_type] type
+}
