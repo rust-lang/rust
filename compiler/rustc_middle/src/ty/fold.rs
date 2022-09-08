@@ -162,6 +162,10 @@ pub trait FallibleTypeFolder<'tcx>: Sized {
         c.try_super_fold_with(self)
     }
 
+    fn try_fold_effect(&mut self, e: ty::Effect<'tcx>) -> Result<ty::Effect<'tcx>, Self::Error> {
+        e.try_super_fold_with(self)
+    }
+
     fn try_fold_predicate(
         &mut self,
         p: ty::Predicate<'tcx>,

@@ -61,6 +61,13 @@ where
                 _ => c.super_visit_with(self),
             }
         }
+
+        fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+            match e.val {
+                ty::EffectValue::Param { .. } => ControlFlow::Break(FoundParam),
+                _ => e.super_visit_with(self),
+            }
+        }
     }
 
     let mut vis = UsedParamsNeedSubstVisitor { tcx };

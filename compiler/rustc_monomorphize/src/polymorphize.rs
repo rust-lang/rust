@@ -321,6 +321,21 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         }
     }
 
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if !e.has_non_region_param() {
+            return ControlFlow::CONTINUE;
+        }
+
+        match e.val {
+            ty::EffectValue::Param { index } => {
+                debug!(?index);
+                self.unused_parameters.clear(index);
+                ControlFlow::CONTINUE
+            }
+            _ => e.super_visit_with(self),
+        }
+    }
+
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !ty.has_non_region_param() {
@@ -373,6 +388,23 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
                 }
             }
             _ => c.super_visit_with(self),
+        }
+    }
+
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if !e.has_non_region_param() {
+            return ControlFlow::CONTINUE;
+        }
+
+        match e.val {
+            ty::EffectValue::Param { index } => {
+                if self.unused_parameters.contains(index).unwrap_or(false) {
+                    ControlFlow::CONTINUE
+                } else {
+                    ControlFlow::BREAK
+                }
+            }
+            _ => e.super_visit_with(self),
         }
     }
 

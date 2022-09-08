@@ -158,6 +158,17 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
             _ => ct.super_visit_with(self),
         }
     }
+
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match e.val {
+            ty::EffectValue::Bound(debruijn, _) if debruijn >= self.outer_index => {
+                self.escaping =
+                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
+                ControlFlow::CONTINUE
+            }
+            _ => e.super_visit_with(self),
+        }
+    }
 }
 
 struct QueryNormalizer<'cx, 'tcx> {

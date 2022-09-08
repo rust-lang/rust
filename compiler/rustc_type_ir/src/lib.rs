@@ -177,6 +177,7 @@ bitflags! {
 
         const NEEDS_SUBST                 = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_RE_PARAM.bits
+                                          | TypeFlags::HAS_EFFECT_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits;
 
         /// Does this have `Infer`?
@@ -190,6 +191,7 @@ bitflags! {
         /// inference is required.
         const NEEDS_INFER                 = TypeFlags::HAS_TY_INFER.bits
                                           | TypeFlags::HAS_RE_INFER.bits
+                                          | TypeFlags::HAS_EFFECT_INFER.bits
                                           | TypeFlags::HAS_CT_INFER.bits;
 
         /// Does this have `Placeholder`?
@@ -207,10 +209,13 @@ bitflags! {
         /// that are local to a particular fn
         const HAS_FREE_LOCAL_NAMES        = TypeFlags::HAS_TY_PARAM.bits
                                           | TypeFlags::HAS_CT_PARAM.bits
+                                          | TypeFlags::HAS_EFFECT_PARAM.bits
                                           | TypeFlags::HAS_TY_INFER.bits
                                           | TypeFlags::HAS_CT_INFER.bits
+                                          | TypeFlags::HAS_EFFECT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          | TypeFlags::HAS_EFFECT_PLACEHOLDER.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,
@@ -220,6 +225,7 @@ bitflags! {
                                           // which is different from how types/const are freshened.
                                           | TypeFlags::HAS_TY_FRESH.bits
                                           | TypeFlags::HAS_CT_FRESH.bits
+                                          | TypeFlags::HAS_EFFECT_FRESH.bits
                                           | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have `Projection`?
@@ -265,6 +271,18 @@ bitflags! {
 
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 21;
+
+        /// Does this have `Effect::Param`?
+        const HAS_EFFECT_PARAM            = 1 << 22;
+
+        /// Does this have `InferEffect::Fresh`?
+        const HAS_EFFECT_FRESH            = 1 << 23;
+
+        /// Does this have `InferEffect::Var`?
+        const HAS_EFFECT_INFER            = 1 << 24;
+
+        /// Does this have `Effect::Placeholder`?
+        const HAS_EFFECT_PLACEHOLDER      = 1 << 25;
     }
 }
 

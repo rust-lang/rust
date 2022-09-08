@@ -93,6 +93,13 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
 
         c.super_visit_with(self)
     }
+
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::EffectValue::Param { index } = e.val {
+            self.parameters.push(Parameter(index));
+        }
+        ControlFlow::CONTINUE
+    }
 }
 
 pub fn identify_constrained_generic_params<'tcx>(

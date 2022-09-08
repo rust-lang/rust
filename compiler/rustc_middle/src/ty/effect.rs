@@ -30,6 +30,7 @@ pub struct EffectData<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy)]
 pub enum EffectValue<'tcx> {
     Rigid {
         on: bool,
@@ -52,7 +53,7 @@ pub enum EffectValue<'tcx> {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
-#[derive(Copy)]
+#[derive(Copy, TypeFoldable, TypeVisitable)]
 pub enum EffectKind {
     /// The opposite of `const`. This effect enables access to `static` variables, the file system,
     /// threads, networking, ...

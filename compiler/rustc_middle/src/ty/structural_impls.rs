@@ -843,3 +843,56 @@ impl<'tcx> TypeSuperVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
         self.substs.visit_with(visitor)
     }
 }
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Effect<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_effect(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for ty::Effect<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        visitor.visit_effect(*self)
+    }
+}
+
+impl<'tcx> TypeSuperFoldable<'tcx> for ty::Effect<'tcx> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let ty::EffectData { val, kind } = *self;
+        let val = val.try_fold_with(folder)?;
+        if val != self.val { Ok(folder.tcx().mk_effect(val, kind)) } else { Ok(self) }
+    }
+}
+
+impl<'tcx> TypeSuperVisitable<'tcx> for ty::Effect<'tcx> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        let ty::EffectData { val, kind } = &**self;
+        match kind {
+            ty::EffectKind::Host => {}
+        }
+        val.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::EffectValue<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for ty::EffectValue<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        match self {
+            ty::EffectValue::Rigid { on: _ }
+            | ty::EffectValue::Param { .. }
+            | ty::EffectValue::Infer(_)
+            | ty::EffectValue::Bound(_, _)
+            | ty::EffectValue::Placeholder(_)
+            | ty::EffectValue::Err(_) => {}
+        }
+        ControlFlow::CONTINUE
+    }
+}

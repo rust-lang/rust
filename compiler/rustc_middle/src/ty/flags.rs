@@ -2,6 +2,8 @@ use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, InferConst, Ty, TypeFlags};
 use std::slice;
 
+use super::InferEffect;
+
 #[derive(Debug)]
 pub struct FlagComputation {
     pub flags: TypeFlags,
@@ -31,6 +33,12 @@ impl FlagComputation {
     pub fn for_const(c: ty::Const<'_>) -> TypeFlags {
         let mut result = FlagComputation::new();
         result.add_const(c);
+        result.flags
+    }
+
+    pub fn for_effect(e: ty::Effect<'_>) -> TypeFlags {
+        let mut result = FlagComputation::new();
+        result.add_effect(e);
         result.flags
     }
 
@@ -295,6 +303,31 @@ impl FlagComputation {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_bound_var(debruijn);
+        }
+    }
+
+    fn add_effect(&mut self, e: ty::Effect<'_>) {
+        match e.val {
+            ty::EffectValue::Rigid { .. } => {}
+            ty::EffectValue::Param { .. } => {
+                self.add_flags(TypeFlags::HAS_EFFECT_PARAM);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            }
+            ty::EffectValue::Infer(infer) => {
+                match infer {
+                    InferEffect::Fresh(_) => self.add_flags(TypeFlags::HAS_EFFECT_FRESH),
+                    InferEffect::Var(_) => self.add_flags(TypeFlags::HAS_EFFECT_INFER),
+                }
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            }
+            ty::EffectValue::Bound(debruijn, _) => {
+                self.add_bound_var(debruijn);
+            }
+            ty::EffectValue::Placeholder(_) => {
+                self.add_flags(TypeFlags::HAS_EFFECT_PLACEHOLDER);
+                self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+            }
+            ty::EffectValue::Err(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }
 

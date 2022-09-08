@@ -217,6 +217,10 @@ pub trait TypeVisitor<'tcx>: Sized {
         c.super_visit_with(self)
     }
 
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        e.super_visit_with(self)
+    }
+
     fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
     }
@@ -542,6 +546,20 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         }
     }
 
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // we don't have a `visit_infer_effect` callback, so we have to
+        // hook in here to catch this case (annoying...), but
+        // otherwise we do want to remember to visit the rest of the
+        // effect, as it has types/regions embedded in a lot of other
+        // places.
+        match e.val {
+            ty::EffectValue::Bound(debruijn, _) if debruijn >= self.outer_index => {
+                ControlFlow::Break(FoundEscapingVars)
+            }
+            _ => e.super_visit_with(self),
+        }
+    }
+
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         if predicate.outer_exclusive_binder() > self.outer_index {
@@ -593,6 +611,16 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         trace!(r.flags=?flags);
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::CONTINUE
+        }
+    }
+
+    #[inline]
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let flags = FlagComputation::for_effect(e);
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
@@ -717,6 +745,16 @@ impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
         }
 
         c.super_visit_with(self)
+    }
+
+    fn visit_effect(&mut self, e: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if let ty::EffectValue::Placeholder(placeholder) = e.val {
+            self.max_universe = ty::UniverseIndex::from_u32(
+                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
+            );
+        }
+
+        e.super_visit_with(self)
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {

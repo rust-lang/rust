@@ -1425,6 +1425,13 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     }
                     c.super_visit_with(self)
                 }
+
+                fn visit_effect(&mut self, c: ty::Effect<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    if let ty::EffectValue::Param { index } = c.val {
+                        self.params.insert(index);
+                    }
+                    c.super_visit_with(self)
+                }
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
