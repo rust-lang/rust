@@ -1,4 +1,4 @@
-#![warn(clippy::arithmetic)]
+#![warn(clippy::arithmetic_side_effects)]
 
 use core::ops::Add;
 

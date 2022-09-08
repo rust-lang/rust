@@ -3,7 +3,7 @@
     clippy::match_same_arms
 )]
 
-use super::ARITHMETIC;
+use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_utils::{consts::constant_simple, diagnostics::span_lint};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -22,16 +22,16 @@ const HARD_CODED_ALLOWED: &[&str] = &[
 ];
 
 #[derive(Debug)]
-pub struct Arithmetic {
+pub struct ArithmeticSideEffects {
     allowed: FxHashSet<String>,
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     expr_span: Option<Span>,
 }
 
-impl_lint_pass!(Arithmetic => [ARITHMETIC]);
+impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
 
-impl Arithmetic {
+impl ArithmeticSideEffects {
     #[must_use]
     pub fn new(mut allowed: FxHashSet<String>) -> Self {
         allowed.extend(HARD_CODED_ALLOWED.iter().copied().map(String::from));
@@ -83,7 +83,7 @@ impl Arithmetic {
     }
 
     fn issue_lint(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        span_lint(cx, ARITHMETIC, expr.span, "arithmetic detected");
+        span_lint(cx, ARITHMETIC_SIDE_EFFECTS, expr.span, "arithmetic detected");
         self.expr_span = Some(expr.span);
     }
 
@@ -125,7 +125,7 @@ impl Arithmetic {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for Arithmetic {
+impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if self.expr_span.is_some() || self.const_span.map_or(false, |sp| sp.contains(expr.span)) {
             return;

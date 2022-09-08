@@ -21,7 +21,7 @@ mod ptr_eq;
 mod self_assignment;
 mod verbose_bit_mask;
 
-pub(crate) mod arithmetic;
+pub(crate) mod arithmetic_side_effects;
 
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -92,11 +92,11 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ### Allowed types
-    /// Custom allowed types can be specified through the "arithmetic-allowed" filter.
+    /// Custom allowed types can be specified through the "arithmetic-side-effects-allowed" filter.
     #[clippy::version = "1.64.0"]
-    pub ARITHMETIC,
+    pub ARITHMETIC_SIDE_EFFECTS,
     restriction,
-    "any arithmetic expression that could overflow or panic"
+    "any arithmetic expression that can cause side effects like overflows or panics"
 }
 
 declare_clippy_lint! {
@@ -789,7 +789,7 @@ pub struct Operators {
 }
 impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
-    ARITHMETIC,
+    ARITHMETIC_SIDE_EFFECTS,
     INTEGER_ARITHMETIC,
     FLOAT_ARITHMETIC,
     ASSIGN_OP_PATTERN,
