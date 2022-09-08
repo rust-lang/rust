@@ -298,9 +298,8 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:8:31
    |
 LL |         ref mut z @ &mut Some(ref a) => {
-   |         ----------------------^^^^^-
-   |         |                     |
-   |         |                     immutable borrow occurs here
+   |         ---------             ^^^^^ immutable borrow occurs here
+   |         |
    |         mutable borrow occurs here
 ...
 LL |             **z = None;
@@ -310,9 +309,8 @@ error[E0502]: cannot borrow value as mutable because it is also borrowed as immu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:46:9
    |
 LL |     let ref mut a @ ref b = u();
-   |         ^^^^^^^^^^^^-----
-   |         |           |
-   |         |           immutable borrow occurs here
+   |         ^^^^^^^^^   ----- immutable borrow occurs here
+   |         |
    |         mutable borrow occurs here
 ...
 LL |     drop(b);
@@ -322,9 +320,8 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:51:9
    |
 LL |     let ref a @ ref mut b = u();
-   |         ^^^^^^^^---------
-   |         |       |
-   |         |       mutable borrow occurs here
+   |         ^^^^^   --------- mutable borrow occurs here
+   |         |
    |         immutable borrow occurs here
 ...
 LL |     *b = u();
@@ -334,9 +331,8 @@ error[E0502]: cannot borrow value as mutable because it is also borrowed as immu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:20
    |
 LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
-   |         -----------^^^^^^^^^-
-   |         |          |
-   |         |          mutable borrow occurs here
+   |         -----      ^^^^^^^^^ mutable borrow occurs here
+   |         |
    |         immutable borrow occurs here
 ...
 LL |             drop(a);
@@ -346,9 +342,8 @@ error[E0502]: cannot borrow value as mutable because it is also borrowed as immu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:45
    |
 LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
-   |                                 ------------^^^^^^^^^-
-   |                                 |           |
-   |                                 |           mutable borrow occurs here
+   |                                 -----       ^^^^^^^^^ mutable borrow occurs here
+   |                                 |
    |                                 immutable borrow occurs here
 ...
 LL |             drop(a);
@@ -406,9 +401,8 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:117:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
-   |         ^^^^^^^^^---------^^^^^^^^^^^^
-   |         |        |
-   |         |        mutable borrow occurs here
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
    |         immutable borrow occurs here
 ...
 LL |     *b = U;
@@ -418,9 +412,8 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:123:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
-   |         ^^^^^^^^^---------^^^^^^^^^^^^
-   |         |        |
-   |         |        mutable borrow occurs here
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
    |         immutable borrow occurs here
 ...
 LL |     *b = U;
@@ -430,9 +423,8 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:129:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
-   |         ^^^^^^^^^---------^^^^^^^^^^^^
-   |         |        |
-   |         |        mutable borrow occurs here
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
    |         immutable borrow occurs here
 LL |
 LL |     *b = U;
@@ -442,7 +434,7 @@ error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30
    |
 LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
-   |                      --------^^^^^^^^^^^^-
+   |                      --------^^^^^^^^^----
    |                      |       |           |
    |                      |       |           value moved here
    |                      |       value borrowed here after move

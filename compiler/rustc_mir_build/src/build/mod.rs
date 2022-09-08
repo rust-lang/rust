@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             VarBindingForm {
                                 binding_mode,
                                 opt_ty_info,
-                                opt_match_place: Some((Some(place), span)),
+                                opt_match_place: Some((None, span)),
                                 pat_span: span,
                             },
                         )))))
