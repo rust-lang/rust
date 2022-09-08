@@ -3476,6 +3476,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3916,6 +3917,7 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "thin-vec",
  "tracing",
  "unicode-normalization",
  "unicode-width",
@@ -4051,6 +4053,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
