@@ -238,7 +238,6 @@ language_item_table! {
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     GeneratorState,          sym::generator_state,     gen_state,                  Target::Enum,           GenericRequirement::None;
     Generator,               sym::generator,           gen_trait,                  Target::Trait,          GenericRequirement::Minimum(1);
-    GeneratorReturn,         sym::generator_return,    generator_return,           Target::AssocTy,        GenericRequirement::None;
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
