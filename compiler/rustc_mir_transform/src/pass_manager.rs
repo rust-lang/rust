@@ -74,6 +74,7 @@ where
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
 /// validated at the end.
+#[inline(always)]
 pub fn run_passes_no_validate<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
@@ -82,6 +83,7 @@ pub fn run_passes_no_validate<'tcx>(
     run_passes_inner(tcx, body, passes, false);
 }
 
+#[inline(always)]
 pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
     run_passes_inner(tcx, body, passes, true);
 }
