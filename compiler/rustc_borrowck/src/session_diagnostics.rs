@@ -734,3 +734,104 @@ pub(crate) struct AssignBorrowErr<'a> {
     #[label(borrowck::borrow_here_label)]
     pub borrow_span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_move_out_of_interior_noncopy, code = "E0508")]
+pub(crate) struct InteriorNoncopyMoveErr<'a, 'b> {
+    pub ty: Ty<'a>,
+    pub type_name: &'b str,
+    #[primary_span]
+    #[label]
+    pub move_from_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_reborrow_already_uniquely_borrowed, code = "E0501")]
+pub(crate) struct UniquelyBorrowReborrowErr<'a> {
+    pub container_name: &'a str,
+    pub desc_new: &'a str,
+    pub opt_via: &'a str,
+    pub kind_new: &'a str,
+    pub old_opt_via: &'a str,
+    pub second_borrow_desc: &'a str,
+    #[primary_span]
+    #[label]
+    pub new_loan_span: Span,
+    #[label(borrowck::old_span_label)]
+    pub old_loan_span: Span,
+    #[label(borrowck::optional_label)]
+    pub previous_end_span: Option<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_uniquely_borrow_by_one_closure, code = "E0501")]
+pub(crate) struct ClosureUniquelyBorrowErr<'a> {
+    pub container_name: &'a str,
+    pub desc_new: &'a str,
+    pub opt_via: &'a str,
+    pub noun_old: &'a str,
+    pub old_opt_via: &'a str,
+    #[primary_span]
+    #[label]
+    pub new_loan_span: Span,
+    #[label(borrowck::old_span_label)]
+    pub old_loan_span: Span,
+    #[label(borrowck::optional_label)]
+    pub previous_end_span: Option<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::borrowed_data_escapes_closure, code = "E0521")]
+pub(crate) struct BorrowEscapeClosure<'a> {
+    pub escapes_from: &'a str,
+    #[primary_span]
+    pub escape_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_uniquely_borrow_by_two_closures, code = "E0524")]
+pub(crate) struct TwoClosuresUniquelyBorrowErr<'a> {
+    pub desc: &'a str,
+    #[subdiagnostic]
+    pub case: ClosureConstructLabel,
+    #[primary_span]
+    pub new_loan_span: Span,
+    #[label]
+    pub old_load_end_span: Option<Span>,
+    #[label(borrowck::new_span_label)]
+    pub diff_span: Option<Span>,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub(crate) enum ClosureConstructLabel {
+    #[label(borrowck::first_closure_constructed_here)]
+    First {
+        #[primary_span]
+        old_loan_span: Span,
+    },
+    #[label(borrowck::closures_constructed_here)]
+    Both {
+        #[primary_span]
+        old_loan_span: Span,
+    },
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_use_when_mutably_borrowed, code = "E0503")]
+pub(crate) struct UseMutBorrowErr<'a> {
+    pub desc: &'a str,
+    pub borrow_desc: &'a str,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(borrowck::borrow_span_label)]
+    pub borrow_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_move_when_borrowed, code = "E0505")]
+pub(crate) struct MoveBorrowedErr<'a> {
+    pub desc: &'a str,
+    #[primary_span]
+    pub span: Span,
+}

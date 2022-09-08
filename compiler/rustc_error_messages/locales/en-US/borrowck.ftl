@@ -305,3 +305,41 @@ borrowck_cannot_assign_to_borrowed =
     cannot assign to {$desc} because it is borrowed
     .label = assignment to borrowed {$desc} occurs here
     .borrow_here_label = borrow of {$desc} occurs here
+
+borrowck_cannot_move_out_of_interior_noncopy =
+    cannot move out of type `{$ty}`, a non-copy {$type_name}
+    .label = cannot move out of here
+
+borrowck_cannot_reborrow_already_uniquely_borrowed =
+    cannot borrow {$desc_new}{$opt_via} as {$kind_new} because previous closure requires unique access
+    .label = {$second_borrow_desc}borrow occurs here{$opt_via}
+    .old_span_label = {$container_name} construction occurs here{$old_opt_via}
+    .optional_label = borrow from closure ends here
+
+borrowck_cannot_uniquely_borrow_by_one_closure =
+    closure requires unique access to {$desc_new} but {$noun_old} is already borrowed{$old_opt_via}
+    .label = {$container_name} construction occurs here{$opt_via}
+    .old_span_label = borrow occurs here{$old_opt_via}
+    .optional_label = borrow ends here
+
+borrowck_borrowed_data_escapes_closure =
+    borrowed data escapes outside of {$escapes_from}
+
+borrowck_cannot_uniquely_borrow_by_two_closures =
+    two closures require unique access to {$desc} at the same time
+    .label = borrow from first closure ends here
+    .new_span_label = second closure is constructed here
+
+borrowck_first_closure_constructed_here =
+    first closure is constructed here
+
+borrowck_closures_constructed_here =
+    closures are constructed here in different iterations of loop
+
+borrowck_cannot_use_when_mutably_borrowed =
+    cannot use {$desc} because it was mutably borrowed
+    .label = use of borrowed {$borrow_desc}
+    .borrow_span_label = borrow of {$borrow_desc} occurs here
+
+borrowck_cannot_move_when_borrowed =
+    cannot move out of {$desc} because it is borrowed

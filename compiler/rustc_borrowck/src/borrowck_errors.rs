@@ -9,9 +9,11 @@ use rustc_span::Span;
 
 use crate::session_diagnostics::{
     ActMovedValueErr, AssignBorrowErr, AssignErr, BorrowAcrossDestructor,
-    BorrowAcrossGeneratorYield, ClosureVarOutliveErr, ImmuteArgAssign, ImmuteVarReassign,
-    InteriorDropMoveErr, MovedOutErr, MutateInImmute, PathShortLive, ReturnRefLocalErr,
-    TemporaryDroppedErr, ThreadLocalOutliveErr,
+    BorrowAcrossGeneratorYield, BorrowEscapeClosure, ClosureConstructLabel,
+    ClosureUniquelyBorrowErr, ClosureVarOutliveErr, ImmuteArgAssign, ImmuteVarReassign,
+    InteriorDropMoveErr, InteriorNoncopyMoveErr, MoveBorrowedErr, MovedOutErr, MutateInImmute,
+    PathShortLive, ReturnRefLocalErr, TemporaryDroppedErr, ThreadLocalOutliveErr,
+    TwoClosuresUniquelyBorrowErr, UniquelyBorrowReborrowErr, UseMutBorrowErr,
 };
 
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
@@ -20,7 +22,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0505, "cannot move out of {} because it is borrowed", desc,)
+        self.infcx.tcx.sess.create_err(MoveBorrowedErr { desc, span })
     }
 
     pub(crate) fn cannot_use_when_mutably_borrowed(
@@ -30,17 +32,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         borrow_desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0503,
-            "cannot use {} because it was mutably borrowed",
-            desc,
-        );
-
-        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_desc));
-        err.span_label(span, format!("use of borrowed {}", borrow_desc));
-        err
+        self.infcx.tcx.sess.create_err(UseMutBorrowErr { desc, borrow_desc, span, borrow_span })
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
@@ -52,6 +44,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_opt_via: &str,
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+        //FIXME: migrate later
         let via =
             |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
@@ -100,26 +93,22 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_loan_span: Span,
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            new_loan_span,
-            E0524,
-            "two closures require unique access to {} at the same time",
-            desc,
-        );
+        let case: ClosureConstructLabel;
+        let diff_span: Option<Span>;
         if old_loan_span == new_loan_span {
-            err.span_label(
-                old_loan_span,
-                "closures are constructed here in different iterations of loop",
-            );
+            case = ClosureConstructLabel::Both { old_loan_span };
+            diff_span = None;
         } else {
-            err.span_label(old_loan_span, "first closure is constructed here");
-            err.span_label(new_loan_span, "second closure is constructed here");
+            case = ClosureConstructLabel::First { old_loan_span };
+            diff_span = Some(new_loan_span);
         }
-        if let Some(old_load_end_span) = old_load_end_span {
-            err.span_label(old_load_end_span, "borrow from first closure ends here");
-        }
-        err
+        self.infcx.tcx.sess.create_err(TwoClosuresUniquelyBorrowErr {
+            desc,
+            case,
+            new_loan_span,
+            old_load_end_span,
+            diff_span,
+        })
     }
 
     pub(crate) fn cannot_uniquely_borrow_by_one_closure(
@@ -133,24 +122,16 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_opt_via: &str,
         previous_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            new_loan_span,
-            E0500,
-            "closure requires unique access to {} but {} is already borrowed{}",
+        self.infcx.tcx.sess.create_err(ClosureUniquelyBorrowErr {
+            container_name,
             desc_new,
+            opt_via,
             noun_old,
             old_opt_via,
-        );
-        err.span_label(
             new_loan_span,
-            format!("{} construction occurs here{}", container_name, opt_via),
-        );
-        err.span_label(old_loan_span, format!("borrow occurs here{}", old_opt_via));
-        if let Some(previous_end_span) = previous_end_span {
-            err.span_label(previous_end_span, "borrow ends here");
-        }
-        err
+            old_loan_span,
+            previous_end_span,
+        })
     }
 
     pub(crate) fn cannot_reborrow_already_uniquely_borrowed(
@@ -165,27 +146,17 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         previous_end_span: Option<Span>,
         second_borrow_desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            new_loan_span,
-            E0501,
-            "cannot borrow {}{} as {} because previous closure requires unique access",
+        self.infcx.tcx.sess.create_err(UniquelyBorrowReborrowErr {
+            container_name,
             desc_new,
             opt_via,
             kind_new,
-        );
-        err.span_label(
+            old_opt_via,
+            second_borrow_desc,
             new_loan_span,
-            format!("{}borrow occurs here{}", second_borrow_desc, opt_via),
-        );
-        err.span_label(
             old_loan_span,
-            format!("{} construction occurs here{}", container_name, old_opt_via),
-        );
-        if let Some(previous_end_span) = previous_end_span {
-            err.span_label(previous_end_span, "borrow from closure ends here");
-        }
-        err
+            previous_end_span,
+        })
     }
 
     pub(crate) fn cannot_reborrow_already_borrowed(
@@ -200,6 +171,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         msg_old: &str,
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+        //FIXME: would it be better for manual impl for this case?
         let via =
             |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {})", msg) };
         let mut err = struct_span_err!(
@@ -289,16 +261,10 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             (&ty::Slice(_), _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),
         };
-        let mut err = struct_span_err!(
-            self,
-            move_from_span,
-            E0508,
-            "cannot move out of type `{}`, a non-copy {}",
-            ty,
-            type_name,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
+        //FIXME: failed ui test diag-migration
+        //       -    error[E0508]: cannot move out of type `[S; 1]`, a non-copy array
+        //       +    error[E0508]: cannot move out of type `S`, a non-copy array
+        self.infcx.tcx.sess.create_err(InteriorNoncopyMoveErr { ty, type_name, move_from_span })
     }
 
     pub(crate) fn cannot_move_out_of_interior_of_drop(
@@ -435,11 +401,5 @@ pub(crate) fn borrowed_data_escapes_closure<'tcx>(
     escape_span: Span,
     escapes_from: &str,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    struct_span_err!(
-        tcx.sess,
-        escape_span,
-        E0521,
-        "borrowed data escapes outside of {}",
-        escapes_from,
-    )
+    tcx.sess.create_err(BorrowEscapeClosure { escapes_from, escape_span })
 }
