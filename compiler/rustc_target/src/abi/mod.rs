@@ -7,7 +7,7 @@ use crate::spec::Target;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::iter::Step;
-use std::num::NonZeroUsize;
+use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
@@ -69,34 +69,46 @@ impl Default for TargetDataLayout {
     }
 }
 
+pub enum TargetDataLayoutErrors<'a> {
+    InvalidAddressSpace { addr_space: &'a str, cause: &'a str, err: ParseIntError },
+    InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
+    MissingAlignment { cause: &'a str },
+    InvalidAlignment { cause: &'a str, err: String },
+    InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
+    InconsistentTargetPointerWidth { pointer_size: u64, target: u32 },
+    InvalidBitsSize { err: String },
+}
+
 impl TargetDataLayout {
-    pub fn parse(target: &Target) -> Result<TargetDataLayout, String> {
+    pub fn parse<'a>(target: &'a Target) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
         // Parse an address space index from a string.
-        let parse_address_space = |s: &str, cause: &str| {
+        let parse_address_space = |s: &'a str, cause: &'a str| {
             s.parse::<u32>().map(AddressSpace).map_err(|err| {
-                format!("invalid address space `{}` for `{}` in \"data-layout\": {}", s, cause, err)
+                TargetDataLayoutErrors::InvalidAddressSpace { addr_space: s, cause, err }
             })
         };
 
         // Parse a bit count from a string.
-        let parse_bits = |s: &str, kind: &str, cause: &str| {
-            s.parse::<u64>().map_err(|err| {
-                format!("invalid {} `{}` for `{}` in \"data-layout\": {}", kind, s, cause, err)
+        let parse_bits = |s: &'a str, kind: &'a str, cause: &'a str| {
+            s.parse::<u64>().map_err(|err| TargetDataLayoutErrors::InvalidBits {
+                kind,
+                bit: s,
+                cause,
+                err,
             })
         };
 
         // Parse a size string.
-        let size = |s: &str, cause: &str| parse_bits(s, "size", cause).map(Size::from_bits);
+        let size = |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
-        let align = |s: &[&str], cause: &str| {
+        let align = |s: &[&'a str], cause: &'a str| {
             if s.is_empty() {
-                return Err(format!("missing alignment for `{}` in \"data-layout\"", cause));
+                return Err(TargetDataLayoutErrors::MissingAlignment { cause });
             }
             let align_from_bits = |bits| {
-                Align::from_bits(bits).map_err(|err| {
-                    format!("invalid alignment for `{}` in \"data-layout\": {}", cause, err)
-                })
+                Align::from_bits(bits)
+                    .map_err(|err| TargetDataLayoutErrors::InvalidAlignment { cause, err })
             };
             let abi = parse_bits(s[0], "alignment", cause)?;
             let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
@@ -158,25 +170,24 @@ impl TargetDataLayout {
 
         // Perform consistency checks against the Target information.
         if dl.endian != target.endian {
-            return Err(format!(
-                "inconsistent target specification: \"data-layout\" claims \
-                 architecture is {}-endian, while \"target-endian\" is `{}`",
-                dl.endian.as_str(),
-                target.endian.as_str(),
-            ));
+            return Err(TargetDataLayoutErrors::InconsistentTargetArchitecture {
+                dl: dl.endian.as_str(),
+                target: target.endian.as_str(),
+            });
         }
 
         let target_pointer_width: u64 = target.pointer_width.into();
         if dl.pointer_size.bits() != target_pointer_width {
-            return Err(format!(
-                "inconsistent target specification: \"data-layout\" claims \
-                 pointers are {}-bit, while \"target-pointer-width\" is `{}`",
-                dl.pointer_size.bits(),
-                target.pointer_width
-            ));
+            return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+                pointer_size: dl.pointer_size.bits(),
+                target: target.pointer_width,
+            });
         }
 
-        dl.c_enum_min_size = Integer::from_size(Size::from_bits(target.c_enum_min_bits))?;
+        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(target.c_enum_min_bits)) {
+            Ok(bits) => bits,
+            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
+        };
 
         Ok(dl)
     }
