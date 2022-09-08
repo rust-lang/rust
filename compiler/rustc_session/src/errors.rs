@@ -6,6 +6,7 @@ use rustc_errors::{fluent, DiagnosticBuilder, Handler, MultiSpan};
 use rustc_macros::SessionDiagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::TargetDataLayoutErrors;
+use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
 #[derive(SessionDiagnostic)]
 #[diag(session::incorrect_cgu_reuse_type)]
@@ -155,4 +156,17 @@ pub struct UnstableVirtualFunctionElimination;
 #[diag(session::unsupported_dwarf_version)]
 pub struct UnsupportedDwarfVersion {
     pub dwarf_version: u32,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::target_stack_protector_not_supported)]
+pub struct StackProtectorNotSupportedForTarget<'a> {
+    pub stack_protector: StackProtector,
+    pub target_triple: &'a TargetTriple,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(session::split_debuginfo_unstable_platform)]
+pub struct SplitDebugInfoUnstablePlatform {
+    pub debuginfo: SplitDebuginfo,
 }

@@ -15,8 +15,6 @@ session_feature_diagnostic_for_issue =
 session_feature_diagnostic_help =
     add `#![feature({$feature})]` to the crate attributes to enable
 
-session_target_data_layout_parse_error = {$err}
-
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
 
 session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist.
@@ -54,3 +52,7 @@ session_target_inconsistent_architecture = inconsistent target specification: "d
 session_target_inconsistent_pointer_width = inconsistent target specification: "data-layout" claims pointers are {$pointer_size}-bit, while "target-pointer-width" is `{$target}`
 
 session_target_invalid_bits_size = {$err}
+
+session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
+
+session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform

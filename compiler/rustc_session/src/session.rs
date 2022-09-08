@@ -5,8 +5,9 @@ use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, S
 use crate::errors::{
     CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
     NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
-    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported, TargetRequiresUnwindTables,
-    UnstableVirtualFunctionElimination, UnsupportedDwarfVersion,
+    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
+    SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
+    TargetRequiresUnwindTables, UnstableVirtualFunctionElimination, UnsupportedDwarfVersion,
 };
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -1544,10 +1545,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.warn(&format!(
-                "`-Z stack-protector={}` is not supported for target {} and will be ignored",
-                sess.opts.unstable_opts.stack_protector, sess.opts.target_triple
-            ))
+            sess.emit_warning(StackProtectorNotSupportedForTarget {
+                stack_protector: sess.opts.unstable_opts.stack_protector,
+                target_triple: &sess.opts.target_triple,
+            });
         }
     }
 
@@ -1560,10 +1561,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if !sess.target.options.supported_split_debuginfo.contains(&sess.split_debuginfo())
         && !sess.opts.unstable_opts.unstable_options
     {
-        sess.err(&format!(
-            "`-Csplit-debuginfo={}` is unstable on this platform",
-            sess.split_debuginfo()
-        ));
+        sess.emit_err(SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
 }
 
