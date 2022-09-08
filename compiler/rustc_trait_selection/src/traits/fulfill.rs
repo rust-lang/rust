@@ -414,9 +414,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     ) {
                         None => {
                             pending_obligation.stalled_on =
-                                TyOrConstInferVar::maybe_from_generic_arg(arg)
-                                    .into_iter()
-                                    .collect();
+                                TyOrConstInferVar::maybe_from_generic_arg(arg).collect();
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(os)),

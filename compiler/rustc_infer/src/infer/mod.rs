@@ -1837,12 +1837,19 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
     pub fn maybe_from_generic_arg(
         arg: GenericArg<'tcx>,
-    ) -> impl IntoIterator<Item = TyOrConstInferVar<'tcx>> {
+    ) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
         match arg.unpack() {
-            GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
-            GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
-            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Type(ty) => [Self::maybe_from_ty(ty), None],
+            GenericArgKind::Const(ct) => match ct.kind() {
+                ty::ConstKind::Infer(InferConst::Var(v)) => {
+                    [Some(TyOrConstInferVar::Const(v)), Self::maybe_from_ty(ct.ty())]
+                }
+                _ => [None, None],
+            },
+            GenericArgKind::Lifetime(_) => [None, None],
         }
+        .into_iter()
+        .filter_map(|x| x)
     }
 
     /// Tries to extract an inference variable from a type, returns `None`
@@ -1852,15 +1859,6 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
             ty::Infer(ty::TyVar(v)) => Some(TyOrConstInferVar::Ty(v)),
             ty::Infer(ty::IntVar(v)) => Some(TyOrConstInferVar::TyInt(v)),
             ty::Infer(ty::FloatVar(v)) => Some(TyOrConstInferVar::TyFloat(v)),
-            _ => None,
-        }
-    }
-
-    /// Tries to extract an inference variable from a constant, returns `None`
-    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
-        match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
         }
     }
