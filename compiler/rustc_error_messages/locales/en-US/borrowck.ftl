@@ -126,6 +126,9 @@ borrowck_drop_temporary_might_cause_borrow_use = ... and the {$borrow_desc}borro
 borrowck_consider_add_semicolon =
     consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
 
+borrowck_consider_move_expression_end_of_block =
+    for example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block
+
 borrowck_consider_forcing_temporary_drop_sooner =
     the temporary is part of an expression at the end of a block;
     consider forcing this temporary to be dropped sooner, before the block's local variables are dropped
@@ -254,3 +257,51 @@ borrowck_borrowed_temporary_value_dropped =
 
 borrowck_thread_local_outlive_function =
     thread-local variable borrowed past end of function
+
+borrowck_closure_borrowing_outlive_function =
+    {$closure_kind} may outlive the current function, but it borrows {$borrowed_path}, which is owned by the current function
+    .label = may outlive borrowed value {$borrowed_path}
+    .path_label = {$borrowed_path} is borrowed here
+
+borrowck_cannot_return_ref_to_local =
+    cannot {$return_kind} {$reference} {$local}
+    .label = {$return_kind}s a {$reference} data owned by the current function
+
+borrowck_path_does_not_live_long_enough =
+    {$path} does not live long enough
+
+borrowck_cannot_borrow_across_destructor =
+    borrow may still be in use when destructor runs
+
+borrowck_cannot_borrow_across_generator_yield =
+    borrow may still be in use when generator yields
+    .label = possible yield occurs here
+
+borrowck_cannot_mutate_in_immutable_section =
+    cannot {$action} {$immutable_place} in {$immutable_section}
+    .label = cannot {$action}
+    .immutable_value_label = value is immutable in {$immutable_section}
+
+borrowck_cannot_act_moved_value =
+    {$verb} of {$optional_adverb_for_moved}moved value{$moved_path}
+
+borrowck_cannot_move_out_of_interior_of_drop =
+    cannot move out of type `{$container_ty}`, which implements the `Drop` trait
+    .label = cannot move out of here
+
+borrowck_cannot_move_out_of =
+    cannot move out of {$move_from_desc}
+
+borrowck_cannot_assign =
+    cannot assign to {$desc}
+
+borrowck_cannot_assign_immutable_argument =
+    cannot assign to immutable argument {$desc}
+
+borrowck_cannot_reassign_immutable_variable =
+    cannot assign twice to immutable variable {$desc}
+
+borrowck_cannot_assign_to_borrowed =
+    cannot assign to {$desc} because it is borrowed
+    .label = assignment to borrowed {$desc} occurs here
+    .borrow_here_label = borrow of {$desc} occurs here

@@ -226,7 +226,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let sub_label = UsedLaterDropped::UsedHere {
                             borrow_desc,
-                            local_name: &local_name.to_ident_string(),
+                            local_name,
                             type_desc: &type_desc,
                             dtor_desc,
                             span: body.source_info(drop_loc).span,
@@ -234,7 +234,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         err.subdiagnostic(sub_label);
 
                         if should_note_order {
-                            let sub_note = UsedLaterDropped::OppositeOrder {};
+                            let sub_note = UsedLaterDropped::OppositeOrder;
                             err.subdiagnostic(sub_note);
                         }
                     }
@@ -262,26 +262,16 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     })
                                     .unwrap_or(false)
                                 {
-                                    let sub_suggest = UsedLaterDropped::AddSemicolon {
+                                    err.subdiagnostic(UsedLaterDropped::AddSemicolon {
                                         span: info.span.shrink_to_hi(),
-                                    };
-                                    err.subdiagnostic(sub_suggest);
+                                    });
                                 }
                             } else {
-                                let sub_note = UsedLaterDropped::ManualDrop {};
-                                err.subdiagnostic(sub_note);
-
-                                //FIXME: waiting for multipart suggestion derive
-                                err.multipart_suggestion(
-                                    "for example, you could save the expression's value in a new \
-                                     local variable `x` and then make `x` be the expression at the \
-                                     end of the block",
-                                    vec![
-                                        (info.span.shrink_to_lo(), "let x = ".to_string()),
-                                        (info.span.shrink_to_hi(), "; x".to_string()),
-                                    ],
-                                    Applicability::MaybeIncorrect,
-                                );
+                                err.subdiagnostic(UsedLaterDropped::ManualDrop);
+                                err.subdiagnostic(UsedLaterDropped::MoveBlockEnd {
+                                    lo_span: info.span.shrink_to_lo(),
+                                    hi_span: info.span.shrink_to_hi(),
+                                });
                             };
                         }
                     }

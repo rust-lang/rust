@@ -1,7 +1,7 @@
 use rustc_errors::{IntoDiagnosticArg, MultiSpan};
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::diagnostics::RegionName;
 
@@ -171,7 +171,7 @@ pub(crate) enum AddMoveErr {
         binding_span: Span,
     },
     #[note(borrowck::moved_var_cannot_copy)]
-    MovedNotCopy {},
+    MovedNotCopy,
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -290,14 +290,14 @@ pub(crate) enum UsedLaterDropped<'a> {
     #[label(borrowck::drop_local_might_cause_borrow)]
     UsedHere {
         borrow_desc: &'a str,
-        local_name: &'a str,
+        local_name: Symbol,
         type_desc: &'a str,
         dtor_desc: &'a str,
         #[primary_span]
         span: Span,
     },
     #[note(borrowck::var_dropped_in_wrong_order)]
-    OppositeOrder {},
+    OppositeOrder,
     #[label(borrowck::temporary_access_to_borrow)]
     TemporaryCreatedHere {
         borrow_desc: &'a str,
@@ -321,9 +321,18 @@ pub(crate) enum UsedLaterDropped<'a> {
         #[primary_span]
         span: Span,
     },
-
+    #[multipart_suggestion(
+        borrowck::consider_move_expression_end_of_block,
+        applicability = "maybe-incorrect"
+    )]
+    MoveBlockEnd {
+        #[suggestion_part(code = "let x = ")]
+        lo_span: Span,
+        #[suggestion_part(code = "; x")]
+        hi_span: Span,
+    },
     #[note(borrowck::consider_forcing_temporary_drop_sooner)]
-    ManualDrop {},
+    ManualDrop,
 }
 
 #[derive(SessionSubdiagnostic)]
@@ -602,4 +611,126 @@ pub(crate) struct TemporaryDroppedErr {
 pub(crate) struct ThreadLocalOutliveErr {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::closure_borrowing_outlive_function, code = "E0373")]
+pub(crate) struct ClosureVarOutliveErr<'a> {
+    pub closure_kind: &'a str,
+    pub borrowed_path: &'a str,
+    #[primary_span]
+    #[label]
+    pub closure_span: Span,
+    #[label(borrowck::path_label)]
+    pub capture_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_return_ref_to_local, code = "E0515")]
+pub(crate) struct ReturnRefLocalErr<'a> {
+    pub return_kind: &'a str,
+    pub reference: &'a str,
+    pub local: &'a str,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::path_does_not_live_long_enough, code = "E0597")]
+pub(crate) struct PathShortLive<'a> {
+    pub path: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_borrow_across_destructor, code = "E0713")]
+pub(crate) struct BorrowAcrossDestructor {
+    #[primary_span]
+    pub borrow_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_borrow_across_generator_yield, code = "E0626")]
+pub(crate) struct BorrowAcrossGeneratorYield {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub yield_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_mutate_in_immutable_section, code = "E0510")]
+pub(crate) struct MutateInImmute<'a> {
+    pub action: &'a str,
+    pub immutable_place: &'a str,
+    pub immutable_section: &'a str,
+    #[primary_span]
+    #[label]
+    pub mutate_span: Span,
+    #[label(borrowck::immutable_value_label)]
+    pub immutable_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_act_moved_value, code = "E0382")]
+pub(crate) struct ActMovedValueErr<'a> {
+    pub verb: &'a str,
+    pub optional_adverb_for_moved: &'a str,
+    pub moved_path: String,
+    #[primary_span]
+    pub use_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_move_out_of_interior_of_drop, code = "E0509")]
+pub(crate) struct InteriorDropMoveErr<'a> {
+    pub container_ty: Ty<'a>,
+    #[primary_span]
+    #[label]
+    pub move_from_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_move_out_of, code = "E0507")]
+pub(crate) struct MovedOutErr<'a> {
+    pub move_from_desc: &'a str,
+    #[primary_span]
+    pub move_from_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_assign, code = "E0594")]
+pub(crate) struct AssignErr<'a> {
+    pub desc: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_assign_immutable_argument, code = "E0384")]
+pub(crate) struct ImmuteArgAssign<'a> {
+    pub desc: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_reassign_immutable_variable, code = "E0384")]
+pub(crate) struct ImmuteVarReassign<'a> {
+    pub desc: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(borrowck::cannot_assign_to_borrowed, code = "E0506")]
+pub(crate) struct AssignBorrowErr<'a> {
+    pub desc: &'a str,
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(borrowck::borrow_here_label)]
+    pub borrow_span: Span,
 }

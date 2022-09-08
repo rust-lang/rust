@@ -524,7 +524,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
 
         if binds_to.len() > 1 {
-            err.subdiagnostic(AddMoveErr::MovedNotCopy {});
+            err.subdiagnostic(AddMoveErr::MovedNotCopy);
         }
     }
 }

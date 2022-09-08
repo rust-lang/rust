@@ -7,7 +7,12 @@ use rustc_errors::{
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
-use crate::session_diagnostics::{TemporaryDroppedErr, ThreadLocalOutliveErr};
+use crate::session_diagnostics::{
+    ActMovedValueErr, AssignBorrowErr, AssignErr, BorrowAcrossDestructor,
+    BorrowAcrossGeneratorYield, ClosureVarOutliveErr, ImmuteArgAssign, ImmuteVarReassign,
+    InteriorDropMoveErr, MovedOutErr, MutateInImmute, PathShortLive, ReturnRefLocalErr,
+    TemporaryDroppedErr, ThreadLocalOutliveErr,
+};
 
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn cannot_move_when_borrowed(
@@ -238,17 +243,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0506,
-            "cannot assign to {} because it is borrowed",
-            desc,
-        );
-
-        err.span_label(borrow_span, format!("borrow of {} occurs here", desc));
-        err.span_label(span, format!("assignment to borrowed {} occurs here", desc));
-        err
+        self.infcx.tcx.sess.create_err(AssignBorrowErr { desc, span, borrow_span })
     }
 
     pub(crate) fn cannot_reassign_immutable(
@@ -257,8 +252,11 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
         is_arg: bool,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_err!(self, span, E0384, "cannot assign {} {}", msg, desc)
+        if is_arg {
+            self.infcx.tcx.sess.create_err(ImmuteArgAssign { desc, span })
+        } else {
+            self.infcx.tcx.sess.create_err(ImmuteVarReassign { desc, span })
+        }
     }
 
     pub(crate) fn cannot_assign(
@@ -266,7 +264,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
+        self.infcx.tcx.sess.create_err(AssignErr { desc, span })
     }
 
     pub(crate) fn cannot_move_out_of(
@@ -274,7 +272,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         move_from_desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc,)
+        self.infcx.tcx.sess.create_err(MovedOutErr { move_from_desc, move_from_span })
     }
 
     /// Signal an error due to an attempt to move out of the interior
@@ -308,15 +306,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         container_ty: Ty<'_>,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            move_from_span,
-            E0509,
-            "cannot move out of type `{}`, which implements the `Drop` trait",
-            container_ty,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
+        self.infcx.tcx.sess.create_err(InteriorDropMoveErr { container_ty, move_from_span })
     }
 
     pub(crate) fn cannot_act_on_moved_value(
@@ -327,18 +317,15 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         moved_path: Option<String>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let moved_path = moved_path.map(|mp| format!(": `{}`", mp)).unwrap_or_default();
-
-        struct_span_err!(
-            self,
-            use_span,
-            E0382,
-            "{} of {}moved value{}",
+        self.infcx.tcx.sess.create_err(ActMovedValueErr {
             verb,
             optional_adverb_for_moved,
             moved_path,
-        )
+            use_span,
+        })
     }
 
+    //FIXME: nested with other file, replace reason with subdiag.
     pub(crate) fn cannot_borrow_path_as_mutable_because(
         &self,
         span: Span,
@@ -356,18 +343,13 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         immutable_section: &str,
         action: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            mutate_span,
-            E0510,
-            "cannot {} {} in {}",
+        self.infcx.tcx.sess.create_err(MutateInImmute {
             action,
             immutable_place,
             immutable_section,
-        );
-        err.span_label(mutate_span, format!("cannot {}", action));
-        err.span_label(immutable_span, format!("value is immutable in {}", immutable_section));
-        err
+            mutate_span,
+            immutable_span,
+        })
     }
 
     pub(crate) fn cannot_borrow_across_generator_yield(
@@ -375,26 +357,14 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         yield_span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            span,
-            E0626,
-            "borrow may still be in use when generator yields",
-        );
-        err.span_label(yield_span, "possible yield occurs here");
-        err
+        self.infcx.tcx.sess.create_err(BorrowAcrossGeneratorYield { span, yield_span })
     }
 
     pub(crate) fn cannot_borrow_across_destructor(
         &self,
         borrow_span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(
-            self,
-            borrow_span,
-            E0713,
-            "borrow may still be in use when destructor runs",
-        )
+        self.infcx.tcx.sess.create_err(BorrowAcrossDestructor { borrow_span })
     }
 
     pub(crate) fn path_does_not_live_long_enough(
@@ -402,7 +372,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         path: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0597, "{} does not live long enough", path,)
+        self.infcx.tcx.sess.create_err(PathShortLive { path, span })
     }
 
     pub(crate) fn cannot_return_reference_to_local(
@@ -412,22 +382,12 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         reference_desc: &str,
         path_desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
+        self.infcx.tcx.sess.create_err(ReturnRefLocalErr {
+            return_kind,
+            reference: reference_desc,
+            local: path_desc,
             span,
-            E0515,
-            "cannot {RETURN} {REFERENCE} {LOCAL}",
-            RETURN = return_kind,
-            REFERENCE = reference_desc,
-            LOCAL = path_desc,
-        );
-
-        err.span_label(
-            span,
-            format!("{}s a {} data owned by the current function", return_kind, reference_desc),
-        );
-
-        err
+        })
     }
 
     pub(crate) fn cannot_capture_in_long_lived_closure(
@@ -437,18 +397,12 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrowed_path: &str,
         capture_span: Span,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            closure_span,
-            E0373,
-            "{} may outlive the current function, but it borrows {}, which is owned by the current \
-             function",
+        self.infcx.tcx.sess.create_err(ClosureVarOutliveErr {
             closure_kind,
             borrowed_path,
-        );
-        err.span_label(capture_span, format!("{} is borrowed here", borrowed_path))
-            .span_label(closure_span, format!("may outlive borrowed value {}", borrowed_path));
-        err
+            closure_span,
+            capture_span,
+        })
     }
 
     pub(crate) fn thread_local_value_does_not_live_long_enough(
