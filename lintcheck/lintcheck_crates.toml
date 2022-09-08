@@ -1,6 +1,6 @@
 [crates]
 # some of these are from cargotest
-cargo = {name = "cargo", versions = ['0.49.0']}
+cargo = {name = "cargo", versions = ['0.64.0']}
 iron = {name = "iron", versions = ['0.6.1']}
 ripgrep = {name = "ripgrep", versions = ['12.1.1']}
 xsv = {name = "xsv", versions = ['0.13.0']}
