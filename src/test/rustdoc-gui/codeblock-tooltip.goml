@@ -1,0 +1,96 @@
+// Checking the colors of the codeblocks tooltips.
+goto: file://|DOC_PATH|/test_docs/fn.foo.html
+show-text: true
+
+// Dark theme.
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+
+// compile_fail block
+assert-css: (".docblock .information .compile_fail", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .compile_fail"
+
+assert-css: (".docblock .information .compile_fail", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// should_panic block
+assert-css: (".docblock .information .should_panic", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .should_panic"
+
+assert-css: (".docblock .information .should_panic", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// ignore block
+assert-css: (".docblock .information .ignore", {"color": "rgba(255, 142, 0, 0.6)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgba(255, 142, 0, 0.6)"})
+
+move-cursor-to: ".docblock .information .ignore"
+
+assert-css: (".docblock .information .ignore", {"color": "rgb(255, 142, 0)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgb(255, 142, 0)"})
+
+
+// Light theme.
+local-storage: {"rustdoc-theme": "light"}
+reload:
+
+assert-css: (".docblock .information .compile_fail", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .compile_fail"
+
+assert-css: (".docblock .information .compile_fail", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// should_panic block
+assert-css: (".docblock .information .should_panic", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .should_panic"
+
+assert-css: (".docblock .information .should_panic", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// ignore block
+assert-css: (".docblock .information .ignore", {"color": "rgba(255, 142, 0, 0.6)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgba(255, 142, 0, 0.6)"})
+
+move-cursor-to: ".docblock .information .ignore"
+
+assert-css: (".docblock .information .ignore", {"color": "rgb(255, 142, 0)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgb(255, 142, 0)"})
+
+
+// Ayu theme.
+local-storage: {"rustdoc-theme": "ayu"}
+reload:
+
+assert-css: (".docblock .information .compile_fail", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .compile_fail"
+
+assert-css: (".docblock .information .compile_fail", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .compile_fail", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// should_panic block
+assert-css: (".docblock .information .should_panic", {"color": "rgba(255, 0, 0, 0.5)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgba(255, 0, 0, 0.5)"})
+
+move-cursor-to: ".docblock .information .should_panic"
+
+assert-css: (".docblock .information .should_panic", {"color": "rgb(255, 0, 0)"})
+assert-css: (".docblock .example-wrap .should_panic", {"border-left": "2px solid rgb(255, 0, 0)"})
+
+// ignore block
+assert-css: (".docblock .information .ignore", {"color": "rgba(255, 142, 0, 0.6)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgba(255, 142, 0, 0.6)"})
+
+move-cursor-to: ".docblock .information .ignore"
+
+assert-css: (".docblock .information .ignore", {"color": "rgb(255, 142, 0)"})
+assert-css: (".docblock .example-wrap .ignore", {"border-left": "2px solid rgb(255, 142, 0)"})
