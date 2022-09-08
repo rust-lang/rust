@@ -306,12 +306,12 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 }
 
-struct LateLintPassObjects<'a> {
-    lints: &'a mut [LateLintPassObject],
+struct LateLintPassObjects<'a, 'tcx> {
+    lints: &'a mut [LateLintPassObject<'tcx>],
 }
 
 #[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for LateLintPassObjects<'_> {
+impl LintPass for LateLintPassObjects<'_, '_> {
     fn name(&self) -> &'static str {
         panic!()
     }
@@ -329,7 +329,7 @@ macro_rules! expand_late_lint_pass_impl_methods {
 
 macro_rules! late_lint_pass_impl {
     ([], [$hir:tt], $methods:tt) => {
-        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_> {
+        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_, $hir> {
             expand_late_lint_pass_impl_methods!([$hir], $methods);
         }
     };
@@ -382,7 +382,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
     let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
+        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
 
     if !passes.is_empty() {
         late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
@@ -418,7 +418,8 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
 }
 
 fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
+    let mut passes =
+        unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
 
     if !tcx.sess.opts.unstable_opts.no_interleave_lints {
         if !passes.is_empty() {
@@ -434,7 +435,7 @@ fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints
         }
 
         let mut passes: Vec<_> =
-            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)()).collect();
+            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
 
         for pass in &mut passes {
             tcx.sess.prof.extra_verbose_generic_activity("run_late_module_lint", pass.name()).run(
