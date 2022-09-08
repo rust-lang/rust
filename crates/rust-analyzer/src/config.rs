@@ -220,7 +220,7 @@ config_data! {
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
 
-        /// Exclude imports in `Find All References`
+        /// Exclude imports from find-all-references.
         findAllRefs_excludeImports: bool = "false",
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
