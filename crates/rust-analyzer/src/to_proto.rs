@@ -467,7 +467,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::ImplicitReborrowHint
             | InlayKind::TypeHint
             | InlayKind::ClosingBraceHint => false,
-            InlayKind::BindingModeHint => inlay_hint.label.to_string() != "&",
+            InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
         }),
         kind: match inlay_hint.kind {
