@@ -250,6 +250,25 @@ impl<'a> Formatter<'a> {
             buf,
         }
     }
+
+    /// Set all the formatting options.
+    #[unstable(feature = "fmt_internals", issue = "none")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn set_options(
+        &mut self,
+        flags: u32,
+        fill: char,
+        align: rt::v1::Alignment,
+        width: Option<usize>,
+        precision: Option<usize>,
+    ) {
+        self.flags = flags;
+        self.fill = fill;
+        self.align = align;
+        self.width = width;
+        self.precision = precision;
+    }
 }
 
 // NB. Argument is essentially an optimized partially applied formatting function,
@@ -435,10 +454,8 @@ impl<'a> Arguments<'a> {
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     #[cfg(not(bootstrap))]
-    pub const fn new(
-        // TODO
-    ) -> Arguments<'a> {
-        unimplemented!() // TODO
+    pub const fn new(f: &'a dyn Fn(&mut Formatter<'_>) -> Result) -> Arguments<'a> {
+        Arguments { inner: Inner::Fn(f) }
     }
 
     #[doc(hidden)]
@@ -447,7 +464,7 @@ impl<'a> Arguments<'a> {
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     #[cfg(not(bootstrap))]
     pub const fn from_static_str(s: &'static str) -> Arguments<'a> {
-        unimplemented!() // TODO
+        Arguments { inner: Inner::StaticStr(s) }
     }
 
     /// Estimates the length of the formatted text.
@@ -459,7 +476,10 @@ impl<'a> Arguments<'a> {
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     #[cfg(not(bootstrap))]
     pub fn estimated_capacity(&self) -> usize {
-        unimplemented!() // TODO
+        match self.inner {
+            Inner::Fn(_) => 0, // FIXME
+            Inner::StaticStr(s) => s.len(),
+        }
     }
 
     /// Old estimated_capacity().
@@ -513,7 +533,14 @@ impl<'a> Arguments<'a> {
 #[derive(Copy, Clone)]
 #[cfg(not(bootstrap))]
 pub struct Arguments<'a> {
-    // TODO
+    inner: Inner<'a>,
+}
+
+#[cfg(not(bootstrap))]
+#[derive(Copy, Clone)]
+enum Inner<'a> {
+    Fn(&'a dyn Fn(&mut Formatter<'_>) -> Result),
+    StaticStr(&'static str),
 }
 
 /// Old fmt::Arguments.
@@ -565,7 +592,10 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[cfg(not(bootstrap))]
     pub const fn as_str(&self) -> Option<&'static str> {
-        unimplemented!() // TODO
+        match self.inner {
+            Inner::Fn(_) => None,
+            Inner::StaticStr(s) => Some(s),
+        }
     }
 
     /// Old as_str().
@@ -1248,7 +1278,10 @@ pub trait UpperExp {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(bootstrap))]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    unimplemented!() // TODO
+    match args.inner {
+        Inner::Fn(f) => f(&mut Formatter::new(output)),
+        Inner::StaticStr(s) => output.write_str(s),
+    }
 }
 
 /// Old write().
