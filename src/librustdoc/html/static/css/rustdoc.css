@@ -1528,10 +1528,6 @@ kbd {
 	cursor: default;
 }
 
-#implementations-list > h3 > span.in-band {
-	width: 100%;
-}
-
 #main-content > ul {
 	padding-left: 10px;
 }
