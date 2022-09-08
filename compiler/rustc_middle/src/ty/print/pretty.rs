@@ -923,7 +923,7 @@ pub trait PrettyPrinter<'tcx>:
                         {
                             if let ty::Generator(_, substs, _) = substs.type_at(0).kind() {
                                 let return_ty = substs.as_generator().return_ty();
-                                if !return_ty.is_ty_infer() {
+                                if !return_ty.is_ty_var() {
                                     return_ty.into()
                                 } else {
                                     continue;
