@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type or const parameters
   --> $DIR/issue-14303-struct.rs:1:17
    |
 LL | struct X<'a, T, 'b> {

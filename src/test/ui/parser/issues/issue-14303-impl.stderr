@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type or const parameters
   --> $DIR/issue-14303-impl.rs:3:13
    |
 LL | impl<'a, T, 'b> X<T> {}

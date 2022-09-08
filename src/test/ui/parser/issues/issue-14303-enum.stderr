@@ -1,4 +1,4 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type or const parameters
   --> $DIR/issue-14303-enum.rs:1:15
    |
 LL | enum X<'a, T, 'b> {
