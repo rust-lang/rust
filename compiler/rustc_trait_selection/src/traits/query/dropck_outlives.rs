@@ -48,8 +48,9 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::Adt(def, _) => {
-            if Some(def.did()) == tcx.lang_items().manually_drop() {
-                // `ManuallyDrop` never has a dtor.
+            if def.is_manually_drop() && !def.has_dtor(tcx) {
+                // A `#[manually_drop]` type without a Drop impl (e.g. `ManuallyDrop`)
+                // does not run any code at all when dropped.
                 true
             } else {
                 // Other types might. Moreover, PhantomData doesn't

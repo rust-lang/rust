@@ -604,6 +604,13 @@ pub struct MacroUse {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_should_be_applied_to_struct_enum)]
+pub struct ManuallyDropShouldBeAppliedToStructEnum {
+    #[label]
+    pub defn_span: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(passes_macro_export)]
 pub struct MacroExport;
 

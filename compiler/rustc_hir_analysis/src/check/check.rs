@@ -113,8 +113,10 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     allowed_union_field(*elem, tcx, param_env, span)
                 }
                 _ => {
-                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
-                    ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
+                    // Fallback case: if there is no destructor (including field drop glue), because it is
+                    // `Copy` or is `#[manually_drop]` with no `Drop`, then allow it.
+                    ty.ty_adt_def()
+                        .is_some_and(|adt_def| adt_def.is_manually_drop() && !adt_def.has_dtor(tcx))
                         || ty.is_copy_modulo_regions(tcx, param_env)
                 }
             }

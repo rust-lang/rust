@@ -113,6 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             if let ty::Adt(def, _) = arg_ty.kind() {
+                // FIXME: This is not correct with `#[manually_drop]`, as that is just like any other type.
                 if def.is_manually_drop() {
                     continue;
                 }
