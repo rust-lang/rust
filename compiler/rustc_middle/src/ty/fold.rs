@@ -126,6 +126,10 @@ pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
         c.super_fold_with(self)
     }
 
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        e.super_fold_with(self)
+    }
+
     fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
         p.super_fold_with(self)
     }
@@ -205,6 +209,10 @@ where
         Ok(self.fold_const(c))
     }
 
+    fn try_fold_effect(&mut self, e: ty::Effect<'tcx>) -> Result<ty::Effect<'tcx>, !> {
+        Ok(self.fold_effect(e))
+    }
+
     fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
         Ok(self.fold_predicate(p))
     }
@@ -213,23 +221,26 @@ where
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'tcx, F, G, H>
+pub struct BottomUpFolder<'tcx, F, G, H, E>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
     H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
+    E: FnMut(ty::Effect<'tcx>) -> ty::Effect<'tcx>,
 {
     pub tcx: TyCtxt<'tcx>,
     pub ty_op: F,
     pub lt_op: G,
     pub ct_op: H,
+    pub e_op: E,
 }
 
-impl<'tcx, F, G, H> TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
+impl<'tcx, F, G, H, E> TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H, E>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
     H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
+    E: FnMut(ty::Effect<'tcx>) -> ty::Effect<'tcx>,
 {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
@@ -248,6 +259,11 @@ where
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let ct = ct.super_fold_with(self);
         (self.ct_op)(ct)
+    }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        let e = e.super_fold_with(self);
+        (self.e_op)(e)
     }
 }
 

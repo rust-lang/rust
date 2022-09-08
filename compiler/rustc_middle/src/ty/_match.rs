@@ -120,6 +120,20 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         relate::super_relate_consts(self, a, b)
     }
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug!("{}.effects({:?}, {:?})", self.tag(), a, b);
+
+        if let ty::EffectValue::Infer(ty::InferEffect::Fresh(_)) = b.val {
+            return Ok(a);
+        }
+
+        ty::relate::super_relate_effect(self, a, b)
+    }
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,

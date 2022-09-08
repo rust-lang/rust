@@ -65,6 +65,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
+            e_op: |e| e,
             ty_op: |ty| match *ty.kind() {
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })
                     if replace_opaque_type(def_id) =>
@@ -595,6 +596,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
+                e_op: |e| e,
             });
 
             if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =

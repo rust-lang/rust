@@ -71,6 +71,7 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>),
     ConstMismatch(ExpectedFound<ty::Const<'tcx>>),
+    EffectMismatch(ExpectedFound<ty::Effect<'tcx>>),
 
     IntrinsicCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
@@ -228,6 +229,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
+            EffectMismatch(ref values) => {
+                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
+            }
             IntrinsicCast => write!(f, "cannot coerce intrinsics to function pointers"),
             TargetFeatureCast(_) => write!(
                 f,
@@ -244,7 +248,7 @@ impl<'tcx> TypeError<'tcx> {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
             | PolarityMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
             | ArgumentSorts(..) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | VariadicMismatch(_) | TargetFeatureCast(_) | EffectMismatch(_) => false,
 
             Mutability
             | ArgumentMutability(_)

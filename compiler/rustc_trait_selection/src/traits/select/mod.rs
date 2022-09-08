@@ -2357,6 +2357,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty_op: |_| err,
                     lt_op: |l| l,
                     ct_op: |c| c,
+                    e_op: |e| e,
                 });
                 Normalized { value, obligations: vec![] }
             }

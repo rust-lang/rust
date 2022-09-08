@@ -74,6 +74,18 @@ pub enum EffectKind {
     Host,
 }
 
+impl<'tcx> From<InferEffect<'tcx>> for EffectValue<'tcx> {
+    fn from(infer: InferEffect<'tcx>) -> Self {
+        Self::Infer(infer)
+    }
+}
+
+impl<'tcx> From<EffectVid<'tcx>> for EffectValue<'tcx> {
+    fn from(infer: EffectVid<'tcx>) -> Self {
+        InferEffect::Var(infer).into()
+    }
+}
+
 /// An inference variable for an effect, for use in effect generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash, Lift)]
 #[derive(HashStable)]

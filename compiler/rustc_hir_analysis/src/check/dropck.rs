@@ -319,6 +319,15 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         ty::relate::super_relate_consts(self, a, b)
     }
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug!("SimpleEqRelation::effects(a={:?}, b={:?})", a, b);
+        ty::relate::super_relate_effect(self, a, b)
+    }
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,

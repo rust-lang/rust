@@ -2609,6 +2609,16 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         // relation
         Ok(a)
     }
+
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        _b: ty::Effect<'tcx>,
+    ) -> relate::RelateResult<'tcx, ty::Effect<'tcx>> {
+        // FIXME(compiler-errors): This could at least do some first-order
+        // relation
+        Ok(a)
+    }
 }
 
 impl<'tcx> InferCtxt<'tcx> {

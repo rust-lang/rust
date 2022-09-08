@@ -53,6 +53,14 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
         Ok(a)
     }
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        _b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        Ok(a)
+    }
+
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         self.infcx.probe(|_| {
             if a.is_ty_infer() || b.is_ty_infer() {

@@ -91,6 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 ty_op: |ty| if ty == proj_ty { proj_term } else { ty },
                 lt_op: |lt| lt,
                 ct_op: |ct| ct,
+                e_op: |e| e,
             };
             // For example, in `impl Trait<Assoc = impl Send>`, for all of the bounds on `Assoc`,
             // e.g. `type Assoc: OtherTrait`, replace `<impl Trait as Trait>::Assoc: OtherTrait`

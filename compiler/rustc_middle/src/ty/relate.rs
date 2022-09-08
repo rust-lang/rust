@@ -97,6 +97,12 @@ pub trait TypeRelation<'tcx>: Sized {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>;
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>>;
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,
@@ -707,6 +713,18 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
 }
 
+/// The main "effect relation" routine. Note that this does not handle
+/// inference artifacts, so you should filter those out before calling
+/// it.
+pub fn super_relate_effect<'tcx, R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    a: ty::Effect<'tcx>,
+    b: ty::Effect<'tcx>,
+) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+    debug!("{}.super_relate_effect(a = {:?}, b = {:?})", relation.tag(), a, b);
+    if a == b { Ok(a) } else { Err(TypeError::EffectMismatch(expected_found(relation, a, b))) }
+}
+
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -794,6 +812,17 @@ impl<'tcx> Relate<'tcx> for ty::Const<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         relation.consts(a, b)
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::Effect<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug_assert_eq!(a.kind, b.kind);
+        relation.effects(a, b)
     }
 }
 

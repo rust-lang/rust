@@ -27,6 +27,7 @@ use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::infer::unify_key::{EffectVarValue, EffectVariableValue};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -700,6 +701,31 @@ where
         }
     }
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        mut b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        let a = self.infcx.shallow_resolve(a);
+
+        if !D::forbid_inference_vars() {
+            b = self.infcx.shallow_resolve(b);
+        }
+
+        match b.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(_)) if D::forbid_inference_vars() => {
+                // Forbid inference variables in the RHS.
+                self.infcx.tcx.sess.delay_span_bug(
+                    self.delegate.span(),
+                    format!("unexpected inference var {:?}", b,),
+                );
+                Ok(a)
+            }
+            // FIXME(invariance): see the related FIXME above.
+            _ => self.infcx.super_combine_effect(self, a, b),
+        }
+    }
+
     #[instrument(skip(self), level = "trace")]
     fn binders<T>(
         &mut self,
@@ -1099,6 +1125,34 @@ where
             }
             ty::ConstKind::Unevaluated(..) if self.tcx().lazy_normalization() => Ok(a),
             _ => relate::super_relate_consts(self, a, a),
+        }
+    }
+
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        _: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        match a.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(_)) if D::forbid_inference_vars() => {
+                bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
+            }
+            ty::EffectValue::Infer(ty::InferEffect::Var(vid)) => {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let variable_table = &mut inner.effect_unification_table();
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val.known() {
+                    Some(u) => self.relate(u, u),
+                    None => {
+                        let new_var_id = variable_table.new_key(EffectVarValue {
+                            origin: var_value.origin,
+                            val: EffectVariableValue::Unknown { universe: self.universe },
+                        });
+                        Ok(self.tcx().mk_effect(new_var_id, a.kind))
+                    }
+                }
+            }
+            _ => relate::super_relate_effect(self, a, a),
         }
     }
 

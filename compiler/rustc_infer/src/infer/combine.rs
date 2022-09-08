@@ -31,13 +31,15 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::{
+    ConstVarValue, ConstVariableValue, EffectVarValue, EffectVariableValue,
+};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InferConst, InferEffect, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -184,6 +186,40 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         ty::relate::super_relate_consts(relation, a, b)
+    }
+
+    pub fn super_combine_effect(
+        &self,
+        relation: &mut impl TypeRelation<'tcx>,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug!("{}.effect({:?}, {:?})", relation.tag(), a, b);
+        if a == b {
+            return Ok(a);
+        }
+
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
+
+        match (a.val, b.val) {
+            (
+                ty::EffectValue::Infer(InferEffect::Var(a_vid)),
+                ty::EffectValue::Infer(InferEffect::Var(b_vid)),
+            ) => {
+                self.inner.borrow_mut().effect_unification_table().union(a_vid, b_vid);
+                return Ok(a);
+            }
+
+            // All other cases of inference with other variables are errors.
+            (ty::EffectValue::Infer(InferEffect::Var(_)), ty::EffectValue::Infer(_))
+            | (ty::EffectValue::Infer(_), ty::EffectValue::Infer(InferEffect::Var(_))) => {
+                bug!("tried to combine Effect::Infer/Effect::Infer(InferEffect::Var)")
+            }
+            _ => {}
+        }
+
+        ty::relate::super_relate_effect(relation, a, b)
     }
 
     /// Unifies the const variable `target_vid` with the given constant.
@@ -728,6 +764,39 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.cause.span), self.for_universe))
     }
 
+    fn effects(
+        &mut self,
+        e: ty::Effect<'tcx>,
+        e2: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        assert_eq!(e, e2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
+        match e.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(vid)) => {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let variable_table = &mut inner.effect_unification_table();
+                let var_value = variable_table.probe_value(vid);
+                match var_value.val {
+                    EffectVariableValue::Known { value: u } => {
+                        drop(inner);
+                        self.relate(u, u)
+                    }
+                    EffectVariableValue::Unknown { universe } => {
+                        if self.for_universe.can_name(universe) {
+                            Ok(e)
+                        } else {
+                            let new_var_id = variable_table.new_key(EffectVarValue {
+                                origin: var_value.origin,
+                                val: EffectVariableValue::Unknown { universe: self.for_universe },
+                            });
+                            Ok(self.tcx().mk_effect(new_var_id, e.kind))
+                        }
+                    }
+                }
+            }
+            _ => Ok(e),
+        }
+    }
+
     fn consts(
         &mut self,
         c: ty::Const<'tcx>,
@@ -988,6 +1057,42 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                 Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
             _ => relate::super_relate_consts(self, c, c),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn effects(
+        &mut self,
+        e: ty::Effect<'tcx>,
+        _e: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug_assert_eq!(e, _e);
+
+        match e.val {
+            ty::EffectValue::Infer(ty::InferEffect::Var(vid)) => {
+                let var_value =
+                    self.infcx.inner.borrow_mut().effect_unification_table().probe_value(vid);
+                match var_value.val {
+                    EffectVariableValue::Known { value: u } => self.effects(u, u),
+                    EffectVariableValue::Unknown { universe } => {
+                        if self.for_universe.can_name(universe) {
+                            Ok(e)
+                        } else {
+                            let new_var_id =
+                                self.infcx.inner.borrow_mut().effect_unification_table().new_key(
+                                    EffectVarValue {
+                                        origin: var_value.origin,
+                                        val: EffectVariableValue::Unknown {
+                                            universe: self.for_universe,
+                                        },
+                                    },
+                                );
+                            Ok(self.tcx().mk_effect(new_var_id, e.kind))
+                        }
+                    }
+                }
+            }
+            _ => Ok(e),
         }
     }
 }

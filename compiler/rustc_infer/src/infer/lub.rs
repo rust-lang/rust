@@ -95,6 +95,14 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
+    fn effects(
+        &mut self,
+        a: ty::Effect<'tcx>,
+        b: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        self.fields.infcx.super_combine_effect(self, a, b)
+    }
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,

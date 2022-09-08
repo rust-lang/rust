@@ -278,6 +278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => t,
             },
+            e_op: |e| e,
         };
         let mut prev = eraser.fold_ty(ty);
         let mut prev_span = None;

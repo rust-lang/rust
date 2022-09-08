@@ -210,6 +210,16 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
+    fn effects(
+        &mut self,
+        pattern: ty::Effect<'tcx>,
+        value: ty::Effect<'tcx>,
+    ) -> RelateResult<'tcx, ty::Effect<'tcx>> {
+        debug!("{}.effects({:?}, {:?})", self.tag(), pattern, value);
+        relate::super_relate_effect(self, pattern, value)
+    }
+
     fn binders<T>(
         &mut self,
         pattern: ty::Binder<'tcx, T>,
