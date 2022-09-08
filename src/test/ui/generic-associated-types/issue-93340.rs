@@ -10,9 +10,10 @@ fn cmp_eq<'a, 'b, A: Scalar, B: Scalar, O: Scalar>(a: A::RefType<'a>, b: B::RefT
     todo!()
 }
 
-fn build_expression<A: Scalar, B: Scalar, O: Scalar>(
-) -> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
-    cmp_eq
+fn build_expression<A: Scalar, B: Scalar, O: Scalar>()
+-> impl Fn(A::RefType<'_>, B::RefType<'_>) -> O {
+    // FIXME(BoxyUwU)
+    cmp_eq::<A, B, O>
 }
 
 fn main() {}

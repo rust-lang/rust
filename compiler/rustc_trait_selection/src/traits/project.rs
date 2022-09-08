@@ -258,18 +258,6 @@ fn project_and_unify_type<'cx, 'tcx>(
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
 
-    // For an example where this is neccessary see src/test/ui/impl-trait/nested-return-type2.rs
-    // This allows users to omit re-mentioning all bounds on an associated type and just use an
-    // `impl Trait` for the assoc type to add more bounds.
-    let InferOk { value: actual, obligations: new } =
-        selcx.infcx().replace_opaque_types_with_inference_vars(
-            actual,
-            obligation.cause.body_id,
-            obligation.cause.span,
-            obligation.param_env,
-        );
-    obligations.extend(new);
-
     if let Some(ty) = normalized.ty() {
         if let &ty::Projection(projection) = ty.kind() {
             match opt_normalize_projection_type(
@@ -322,10 +310,32 @@ fn project_and_unify_type<'cx, 'tcx>(
                                     obligation.recursion_depth,
                                     &mut obligations,
                                 ) {
-                                    Ok(Some(_)) => infcx
-                                        .at(&obligation.cause, obligation.param_env)
-                                        .trace(ty, actual)
-                                        .eq(projection, normed_other),
+                                    Ok(Some(_)) => {
+                                        // For an example where this is neccessary see src/test/ui/impl-trait/nested-return-type2.rs
+                                        // This allows users to omit re-mentioning all bounds on an associated type and just use an
+                                        // `impl Trait` for the assoc type to add more bounds.
+                                        let InferOk {
+                                            value: s_opaque_infer_actual,
+                                            obligations: new,
+                                        } = selcx.infcx().replace_opaque_types_with_inference_vars(
+                                            actual,
+                                            obligation.cause.body_id,
+                                            obligation.cause.span,
+                                            obligation.param_env,
+                                        );
+                                        obligations.extend(new);
+
+                                        let s_opaque_infer_actual =
+                                            match s_opaque_infer_actual.kind() {
+                                                &ty::Projection(actual) => actual,
+                                                _ => unreachable!(),
+                                            };
+
+                                        infcx
+                                            .at(&obligation.cause, obligation.param_env)
+                                            .trace(ty, actual)
+                                            .eq(projection, s_opaque_infer_actual)
+                                    }
                                     Ok(None) => Ok(flipped_projection_eq),
                                     Err(InProgress) => unreachable!(),
                                 }
@@ -356,6 +366,18 @@ fn project_and_unify_type<'cx, 'tcx>(
             };
         }
     }
+
+    // For an example where this is neccessary see src/test/ui/impl-trait/nested-return-type2.rs
+    // This allows users to omit re-mentioning all bounds on an associated type and just use an
+    // `impl Trait` for the assoc type to add more bounds.
+    let InferOk { value: actual, obligations: new } =
+        selcx.infcx().replace_opaque_types_with_inference_vars(
+            actual,
+            obligation.cause.body_id,
+            obligation.cause.span,
+            obligation.param_env,
+        );
+    obligations.extend(new);
 
     match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
