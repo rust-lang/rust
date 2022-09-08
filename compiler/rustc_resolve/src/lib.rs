@@ -57,7 +57,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::{cmp, fmt, ptr};
+use std::{fmt, ptr};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
@@ -163,30 +163,11 @@ enum ImplTraitContext {
     Universal(LocalDefId),
 }
 
-#[derive(Eq)]
 struct BindingError {
     name: Symbol,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
     could_be_path: bool,
-}
-
-impl PartialOrd for BindingError {
-    fn partial_cmp(&self, other: &BindingError) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for BindingError {
-    fn eq(&self, other: &BindingError) -> bool {
-        self.name == other.name
-    }
-}
-
-impl Ord for BindingError {
-    fn cmp(&self, other: &BindingError) -> cmp::Ordering {
-        self.name.cmp(&other.name)
-    }
 }
 
 enum ResolutionError<'a> {
@@ -845,7 +826,7 @@ impl<'a> NameBinding<'a> {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct ExternPreludeEntry<'a> {
     extern_crate_item: Option<&'a NameBinding<'a>>,
     pub introduced_by_item: bool,

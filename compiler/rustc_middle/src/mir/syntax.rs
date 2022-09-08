@@ -741,7 +741,7 @@ pub enum TerminatorKind<'tcx> {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),
