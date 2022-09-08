@@ -338,7 +338,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         pats: &'tcx [hir::Pat<'tcx>],
         expected_len: usize,
-        gap_pos: Option<usize>,
+        gap_pos: hir::DotDotPos,
     ) -> Vec<FieldPat<'tcx>> {
         pats.iter()
             .enumerate_and_adjust(expected_len, gap_pos)

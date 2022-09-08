@@ -259,7 +259,7 @@ impl InferArg {
 
 #[derive(Debug, HashStable_Generic)]
 pub enum GenericArg<'hir> {
-    Lifetime(Lifetime),
+    Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
     Const(ConstArg),
     Infer(InferArg),
@@ -430,7 +430,7 @@ pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
     LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
-    Outlives(Lifetime),
+    Outlives(&'hir Lifetime),
 }
 
 impl GenericBound<'_> {
@@ -756,7 +756,7 @@ impl<'hir> WhereBoundPredicate<'hir> {
 pub struct WhereRegionPredicate<'hir> {
     pub span: Span,
     pub in_where_clause: bool,
-    pub lifetime: Lifetime,
+    pub lifetime: &'hir Lifetime,
     pub bounds: GenericBounds<'hir>,
 }
 
@@ -1059,6 +1059,35 @@ impl fmt::Display for RangeEnd {
     }
 }
 
+// Equivalent to `Option<usize>`. That type takes up 16 bytes on 64-bit, but
+// this type only takes up 4 bytes, at the cost of being restricted to a
+// maximum value of `u32::MAX - 1`. In practice, this is more than enough.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable_Generic)]
+pub struct DotDotPos(u32);
+
+impl DotDotPos {
+    // Panics if n >= u32::MAX.
+    pub fn new(n: Option<usize>) -> Self {
+        match n {
+            Some(n) => {
+                assert!(n < u32::MAX as usize);
+                Self(n as u32)
+            }
+            None => Self(u32::MAX),
+        }
+    }
+
+    pub fn as_opt_usize(&self) -> Option<usize> {
+        if self.0 == u32::MAX { None } else { Some(self.0 as usize) }
+    }
+}
+
+impl fmt::Debug for DotDotPos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_opt_usize().fmt(f)
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
@@ -1075,9 +1104,9 @@ pub enum PatKind<'hir> {
     Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
-    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
+    /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
     /// `0 <= position <= subpats.len()`
-    TupleStruct(QPath<'hir>, &'hir [Pat<'hir>], Option<usize>),
+    TupleStruct(QPath<'hir>, &'hir [Pat<'hir>], DotDotPos),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
@@ -1089,7 +1118,7 @@ pub enum PatKind<'hir> {
     /// A tuple pattern (e.g., `(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// `0 <= position <= subpats.len()`
-    Tuple(&'hir [Pat<'hir>], Option<usize>),
+    Tuple(&'hir [Pat<'hir>], DotDotPos),
 
     /// A `box` pattern.
     Box(&'hir Pat<'hir>),
@@ -2499,7 +2528,7 @@ pub enum TyKind<'hir> {
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
-    Rptr(Lifetime, MutTy<'hir>),
+    Rptr(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
     /// The never type (`!`).
@@ -2518,7 +2547,7 @@ pub enum TyKind<'hir> {
     OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], Lifetime, TraitObjectSyntax),
+    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
     /// Unused for now.
     Typeof(AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
@@ -3474,7 +3503,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
     #[cfg(not(bootstrap))]
-    static_assert_size!(GenericArg<'_>, 32);
+    static_assert_size!(GenericArg<'_>, 24);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
@@ -3486,17 +3515,17 @@ mod size_asserts {
     static_assert_size!(ItemKind<'_>, 48);
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
-    static_assert_size!(Pat<'_>, 88);
-    static_assert_size!(PatKind<'_>, 64);
+    static_assert_size!(Pat<'_>, 72);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 48);
     static_assert_size!(PathSegment<'_>, 56);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
     #[cfg(not(bootstrap))]
-    static_assert_size!(TraitItem<'static>, 88);
+    static_assert_size!(TraitItem<'_>, 88);
     #[cfg(not(bootstrap))]
     static_assert_size!(TraitItemKind<'_>, 48);
-    static_assert_size!(Ty<'_>, 72);
-    static_assert_size!(TyKind<'_>, 56);
+    static_assert_size!(Ty<'_>, 48);
+    static_assert_size!(TyKind<'_>, 32);
 }

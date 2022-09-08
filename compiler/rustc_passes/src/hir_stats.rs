@@ -437,6 +437,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         }
     }
 
+    fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
+        self.record("Lifetime", Id::Node(lifetime.hir_id), lifetime);
+        hir_visit::walk_lifetime(self, lifetime)
+    }
+
     fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)

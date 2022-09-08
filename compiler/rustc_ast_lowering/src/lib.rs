@@ -1196,7 +1196,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
             });
-            let kind = hir::TyKind::TraitObject(bounds, lifetime_bound, TraitObjectSyntax::None);
+            let kind = hir::TyKind::TraitObject(bounds, &lifetime_bound, TraitObjectSyntax::None);
             return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
         }
 
@@ -1934,8 +1934,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let res = res.unwrap_or(
                     self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error),
                 );
-                let l = self.new_named_lifetime_with_res(id, span, ident, res);
-                hir::GenericArg::Lifetime(l)
+                hir::GenericArg::Lifetime(self.new_named_lifetime_with_res(id, span, ident, res))
             },
         ));
 
@@ -2004,7 +2003,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
+    fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
         let span = self.lower_span(l.ident.span);
         let ident = self.lower_ident(l.ident);
         self.new_named_lifetime(l.id, l.id, span, ident)
@@ -2017,7 +2016,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ident: Ident,
         res: LifetimeRes,
-    ) -> hir::Lifetime {
+    ) -> &'hir hir::Lifetime {
         let name = match res {
             LifetimeRes::Param { param, .. } => {
                 let p_name = ParamName::Plain(ident);
@@ -2038,7 +2037,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         debug!(?name);
-        hir::Lifetime { hir_id: self.lower_node_id(id), span: self.lower_span(span), name }
+        self.arena.alloc(hir::Lifetime {
+            hir_id: self.lower_node_id(id),
+            span: self.lower_span(span),
+            name,
+        })
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2048,7 +2051,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         new_id: NodeId,
         span: Span,
         ident: Ident,
-    ) -> hir::Lifetime {
+    ) -> &'hir hir::Lifetime {
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         self.new_named_lifetime_with_res(new_id, span, ident, res)
     }
@@ -2462,14 +2465,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// bound, like the bound in `Box<dyn Debug>`. This method is not invoked
     /// when the bound is written, even if it is written with `'_` like in
     /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
-    fn elided_dyn_bound(&mut self, span: Span) -> hir::Lifetime {
+    fn elided_dyn_bound(&mut self, span: Span) -> &'hir hir::Lifetime {
         let r = hir::Lifetime {
             hir_id: self.next_id(),
             span: self.lower_span(span),
             name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
         };
         debug!("elided_dyn_bound: r={:?}", r);
-        r
+        self.arena.alloc(r)
     }
 }
 

@@ -226,19 +226,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         lhs: &hir::Pat<'_>,
         res: Res,
         pats: &[hir::Pat<'_>],
-        dotdot: Option<usize>,
+        dotdot: hir::DotDotPos,
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in tuple struct pattern"),
         };
-        let first_n = pats.iter().enumerate().take(dotdot.unwrap_or(pats.len()));
+        let dotdot = dotdot.as_opt_usize().unwrap_or(pats.len());
+        let first_n = pats.iter().enumerate().take(dotdot);
         let missing = variant.fields.len() - pats.len();
-        let last_n = pats
-            .iter()
-            .enumerate()
-            .skip(dotdot.unwrap_or(pats.len()))
-            .map(|(idx, pat)| (idx + missing, pat));
+        let last_n = pats.iter().enumerate().skip(dotdot).map(|(idx, pat)| (idx + missing, pat));
         for (idx, pat) in first_n.chain(last_n) {
             if let PatKind::Wild = pat.kind {
                 continue;
