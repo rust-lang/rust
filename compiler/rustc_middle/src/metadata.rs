@@ -2,6 +2,7 @@ use crate::ty;
 
 use rustc_hir::def::Res;
 use rustc_macros::HashStable;
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -18,7 +19,7 @@ pub struct ModChild {
     /// Local variables cannot be exported, so this `Res` doesn't need the ID parameter.
     pub res: Res<!>,
     /// Visibility of the item.
-    pub vis: ty::Visibility,
+    pub vis: ty::Visibility<DefId>,
     /// Span of the item.
     pub span: Span,
     /// A proper `macro_rules` item (not a reexport).

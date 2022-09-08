@@ -39,24 +39,26 @@ use std::ptr;
 
 type Res = def::Res<NodeId>;
 
-impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, LocalExpnId) {
+impl<'a, Id: Into<DefId>> ToNameBinding<'a>
+    for (Module<'a>, ty::Visibility<Id>, Span, LocalExpnId)
+{
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Module(self.0),
             ambiguity: None,
-            vis: self.1,
+            vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
         })
     }
 }
 
-impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, LocalExpnId) {
+impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(self.0, false),
             ambiguity: None,
-            vis: self.1,
+            vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
         })
@@ -70,7 +72,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, LocalExpnId, IsMacroE
         arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Res(self.0, true),
             ambiguity: None,
-            vis: self.1,
+            vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
         })
@@ -260,7 +262,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         self.r.visibilities[&def_id.expect_local()]
                     }
                     // Otherwise, the visibility is restricted to the nearest parent `mod` item.
-                    _ => ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod()),
+                    _ => ty::Visibility::Restricted(
+                        self.parent_scope.module.nearest_parent_mod().expect_local(),
+                    ),
                 })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
@@ -311,7 +315,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             } else {
                                 let vis = ty::Visibility::Restricted(res.def_id());
                                 if self.r.is_accessible_from(vis, parent_scope.module) {
-                                    Ok(vis)
+                                    Ok(vis.expect_local())
                                 } else {
                                     Err(VisResolutionError::AncestorOnly(path.span))
                                 }
@@ -649,7 +653,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         true,
                         // The whole `use` item
                         item,
-                        ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod()),
+                        ty::Visibility::Restricted(
+                            self.parent_scope.module.nearest_parent_mod().expect_local(),
+                        ),
                         root_span,
                     );
                 }
@@ -765,10 +771,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 if let Some(ctor_node_id) = vdata.ctor_id() {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
-                    let mut ctor_vis = if vis == ty::Visibility::Public
+                    let mut ctor_vis = if vis.is_public()
                         && self.r.session.contains_name(&item.attrs, sym::non_exhaustive)
                     {
-                        ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
+                        ty::Visibility::Restricted(CRATE_DEF_ID)
                     } else {
                         vis
                     };
@@ -785,7 +791,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         if ctor_vis.is_at_least(field_vis, &*self.r) {
                             ctor_vis = field_vis;
                         }
-                        ret_fields.push(field_vis);
+                        ret_fields.push(field_vis.to_def_id());
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res = Res::Def(
@@ -795,7 +801,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
                     self.r.visibilities.insert(ctor_def_id, ctor_vis);
 
-                    self.r.struct_constructors.insert(def_id, (ctor_res, ctor_vis, ret_fields));
+                    self.r
+                        .struct_constructors
+                        .insert(def_id, (ctor_res, ctor_vis.to_def_id(), ret_fields));
                 }
             }
 
@@ -867,8 +875,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
         .map(|module| {
             let used = self.process_macro_use_imports(item, module);
-            let binding =
-                (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
+            let vis = ty::Visibility::<LocalDefId>::Public;
+            let binding = (module, vis, sp, expansion).to_name_binding(self.r.arenas);
             (used, Some(ModuleOrUniformRoot::Module(module)), binding)
         })
         .unwrap_or((true, None, self.r.dummy_binding));
@@ -1117,7 +1125,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id()))),
+                vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID))),
                 used: Cell::new(false),
             })
         };
@@ -1263,7 +1271,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
-                ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
+                ty::Visibility::Restricted(CRATE_DEF_ID)
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
@@ -1294,7 +1302,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }
                 _ => self.resolve_visibility(&item.vis),
             };
-            if vis != ty::Visibility::Public {
+            if !vis.is_public() {
                 self.insert_unused_macro(ident, def_id, item.id, &rule_spans);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
@@ -1507,10 +1515,10 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.r.visibilities.insert(def_id, vis);
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
-        let ctor_vis = if vis == ty::Visibility::Public
+        let ctor_vis = if vis.is_public()
             && self.r.session.contains_name(&variant.attrs, sym::non_exhaustive)
         {
-            ty::Visibility::Restricted(CRATE_DEF_ID.to_def_id())
+            ty::Visibility::Restricted(CRATE_DEF_ID)
         } else {
             vis
         };

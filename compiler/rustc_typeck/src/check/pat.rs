@@ -1397,7 +1397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .iter()
                 .copied()
                 .filter(|(field, _)| {
-                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                    field.vis.is_accessible_from(tcx.parent_module(pat.hir_id), tcx)
                         && !matches!(
                             tcx.eval_stability(field.did, None, DUMMY_SP, None),
                             EvalResult::Deny { .. }

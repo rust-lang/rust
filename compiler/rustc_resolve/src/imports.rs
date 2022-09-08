@@ -214,7 +214,7 @@ impl<'a> Resolver<'a> {
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
-        let import_vis = import.expect_vis();
+        let import_vis = import.expect_vis().to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self)
             || pub_use_of_private_extern_crate_hack(import, binding)
         {
@@ -227,7 +227,7 @@ impl<'a> Resolver<'a> {
             if vis == import_vis
                 || max_vis.get().map_or(true, |max_vis| vis.is_at_least(max_vis, self))
             {
-                max_vis.set(Some(vis))
+                max_vis.set(Some(vis.expect_local()))
             }
         }
 

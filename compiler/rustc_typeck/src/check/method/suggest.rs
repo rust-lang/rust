@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module(self.body_id).to_def_id();
+            let scope = tcx.parent_module(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {

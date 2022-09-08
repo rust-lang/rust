@@ -338,7 +338,7 @@ define_tables! {
     children: Table<DefIndex, LazyArray<DefIndex>>,
 
     opt_def_kind: Table<DefIndex, DefKind>,
-    visibility: Table<DefIndex, LazyValue<ty::Visibility>>,
+    visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
     lookup_stability: Table<DefIndex, LazyValue<attr::Stability>>,
