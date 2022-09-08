@@ -23,7 +23,9 @@ use super::{
 use crate::ty;
 
 /// Functionality required for the bytes of an `Allocation`.
-pub trait AllocBytes: Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + Ord + core::hash::Hash {
+pub trait AllocBytes:
+    Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + Ord + core::hash::Hash
+{
     /// The length of the bytes.
     fn get_len(&self) -> usize;
     /// The address of the bytes.
@@ -36,25 +38,37 @@ pub trait AllocBytes: Clone + core::fmt::Debug + Eq + PartialEq + PartialOrd + O
     fn add_ptr(&mut self, to_add: usize) -> *mut u8;
     /// Hash the head and tail of the bytes.
     /// This is required to statisfy the `Hash` trait.
-    fn hash_head_tail<H: hash::Hasher>(&self, _byte_count: usize, _state: &mut H, _max_bytes_to_hash: usize) {}
+    fn hash_head_tail<H: hash::Hasher>(
+        &self,
+        _byte_count: usize,
+        _state: &mut H,
+        _max_bytes_to_hash: usize,
+    ) {
+    }
     /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
     fn adjust_to_align(self, _align: Align) -> Self {
         self
     }
     /// Create an `AllocBytes` from a slice of `u8`.
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
-    /// Create an uninitialized `AllocBytes` of the specified size and alignment; 
+    /// Create an uninitialized `AllocBytes` of the specified size and alignment;
     /// call the callback error handler if there is an error in allocating the memory.
-    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>>;
+    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(
+        size: Size,
+        _align: Align,
+        handle_alloc_fail: F,
+    ) -> Result<Self, InterpError<'tcx>>;
 }
 
 // Default `bytes` for `Allocation` is a `Box<[u8]>`.
 impl AllocBytes for Box<[u8]> {
-
-    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(size: Size, _align: Align, handle_alloc_fail: F) -> Result<Self, InterpError<'tcx>> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
-            handle_alloc_fail()
-        })?;
+    fn uninit<'tcx, F: Fn() -> InterpError<'tcx>>(
+        size: Size,
+        _align: Align,
+        handle_alloc_fail: F,
+    ) -> Result<Self, InterpError<'tcx>> {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize())
+            .map_err(|_| handle_alloc_fail())?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
         Ok(bytes)
@@ -63,7 +77,7 @@ impl AllocBytes for Box<[u8]> {
     fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
         Box::<[u8]>::from(slice.into())
     }
-    
+
     /// The length of the bytes.
     fn get_len(&self) -> usize {
         self.len()
@@ -89,9 +103,14 @@ impl AllocBytes for Box<[u8]> {
         self.as_mut_ptr().wrapping_add(to_add)
     }
 
-    fn hash_head_tail<H: hash::Hasher>(&self, _byte_count: usize, _state: &mut H, _max_bytes_to_hash: usize) {
+    fn hash_head_tail<H: hash::Hasher>(
+        &self,
+        _byte_count: usize,
+        _state: &mut H,
+        _max_bytes_to_hash: usize,
+    ) {
         self[.._max_bytes_to_hash].hash(_state);
-        self[_byte_count - _max_bytes_to_hash..].hash(_state);     
+        self[_byte_count - _max_bytes_to_hash..].hash(_state);
     }
 }
 
@@ -280,7 +299,7 @@ impl AllocRange {
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation initialized by the given bytes
-    // TODO! ellen make this generic for bytes
+    // FIXME! ellen make this generic for bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
@@ -288,7 +307,7 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     ) -> Self {
         let bytes = Bytes::from_bytes(slice, align);
         let size = Size::from_bytes(bytes.get_len());
-        
+
         Self {
             bytes,
             provenance: ProvenanceMap::new(),
@@ -322,7 +341,7 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         };
-        
+
         let bytes = Bytes::uninit(size, align, handle_alloc_fail)?;
 
         Ok(Allocation {
@@ -339,7 +358,7 @@ impl<Prov, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
 impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
     /// Adjust allocation from the ones in tcx to a custom Machine instance
     /// with a different Provenance and Extra type.
-    // TODO! ellen make this generic for Bytes
+    // FIXME! ellen make this generic for Bytes
     pub fn adjust_from_tcx<Prov, Extra, Err>(
         self,
         cx: &impl HasDataLayout,
@@ -355,14 +374,14 @@ impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
         let endian = cx.data_layout().endian;
         for &(offset, alloc_id) in self.provenance.iter() {
             let idx = offset.bytes_usize();
-            let ptr_bytes = bytes.get_slice_from_range_mut(idx..idx + ptr_size);//&mut bytes[idx..idx + ptr_size];
+            let ptr_bytes = bytes.get_slice_from_range_mut(idx..idx + ptr_size); //&mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
             let (ptr_prov, ptr_offset) =
                 adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_provenance.push((offset, ptr_prov));
         }
-        
+
         // Create allocation.
         Ok(Allocation {
             bytes,
@@ -461,7 +480,9 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         self.mark_init(range, true);
         self.clear_provenance(cx, range)?;
 
-        Ok(self.bytes.get_slice_from_range_mut(range.start.bytes_usize()..range.end().bytes_usize()))
+        Ok(self
+            .bytes
+            .get_slice_from_range_mut(range.start.bytes_usize()..range.end().bytes_usize()))
     }
 
     /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
