@@ -1059,8 +1059,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn extract_element(&mut self, _vec: RValue<'gcc>, _idx: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
+    #[cfg(feature="master")]
+    fn extract_element(&mut self, vec: RValue<'gcc>, idx: RValue<'gcc>) -> RValue<'gcc> {
+        self.context.new_vector_access(None, vec, idx).to_rvalue()
+    }
+
+    #[cfg(not(feature="master"))]
+    fn extract_element(&mut self, vec: RValue<'gcc>, idx: RValue<'gcc>) -> RValue<'gcc> {
+        let vector_type = vec.get_type().unqualified().dyncast_vector().expect("Called extract_element on a non-vector type");
+        let element_type = vector_type.get_element_type();
+        let vec_num_units = vector_type.get_num_units();
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let array = self.context.new_bitcast(None, vec, array_type).to_rvalue();
+        self.context.new_array_access(None, array, idx).to_rvalue()
     }
 
     fn vector_splat(&mut self, _num_elts: usize, _elt: RValue<'gcc>) -> RValue<'gcc> {
