@@ -153,3 +153,6 @@ parser_left_arrow_operator = unexpected token: `<-`
 
 parser_remove_let = expected pattern, found `let`
     .suggestion = remove the unnecessary `let` keyword
+
+parser_use_eq_instead = unexpected `==`
+    .suggestion = try using `=` instead
