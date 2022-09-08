@@ -102,13 +102,25 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     generics: &hir::Generics<'_>,
     err: &mut Diagnostic,
     trait_pred: PolyTraitPredicate<'tcx>,
+    associated_ty: Option<(&'static str, Ty<'tcx>)>,
 ) -> bool {
     if !trait_pred.is_suggestable(tcx, false) {
         return false;
     }
 
     let param_name = trait_pred.skip_binder().self_ty().to_string();
-    let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let mut constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+
+    if let Some((name, term)) = associated_ty {
+        // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
+        // That should be extracted into a helper function.
+        if constraint.ends_with('>') {
+            constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
+        } else {
+            constraint.push_str(&format!("<{} = {}>", name, term));
+        }
+    }
+
     let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     // Skip, there is a param named Self

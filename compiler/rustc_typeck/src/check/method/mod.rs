@@ -20,10 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{
-    self, AssocKind, DefIdTree, GenericParamDefKind, ProjectionPredicate, ProjectionTy,
-    ToPredicate, Ty, TypeVisitable,
-};
+use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -337,22 +334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
-        let opt_output_ty =
-            expected.only_has_type(self).and_then(|ty| (!ty.needs_infer()).then(|| ty));
-        let opt_output_assoc_item = self.tcx.associated_items(trait_def_id).find_by_name_and_kind(
-            self.tcx,
-            Ident::from_str("Output"),
-            AssocKind::Type,
-            trait_def_id,
-        );
-        let output_pred =
-            opt_output_ty.zip(opt_output_assoc_item).map(|(output_ty, output_assoc_item)| {
-                ty::Binder::dummy(ty::PredicateKind::Projection(ProjectionPredicate {
-                    projection_ty: ProjectionTy { substs, item_def_id: output_assoc_item.def_id },
-                    term: output_ty.into(),
-                }))
-                .to_predicate(self.tcx)
-            });
+        let output_ty = expected.only_has_type(self).and_then(|ty| (!ty.needs_infer()).then(|| ty));
 
         (
             traits::Obligation::new(
@@ -363,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rhs_span: opt_input_expr.map(|expr| expr.span),
                         is_lit: opt_input_expr
                             .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-                        output_pred,
+                        output_ty,
                     },
                 ),
                 self.param_env,
@@ -518,7 +500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
                         .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-                    output_pred: None,
+                    output_ty: None,
                 },
             )
         } else {

@@ -25,8 +25,7 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
     GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, IsSuggestable,
-    ProjectionPredicate, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
@@ -174,7 +173,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-        proj_pred: Option<ty::PolyProjectionPredicate<'tcx>>,
+        associated_item: Option<(&'static str, Ty<'tcx>)>,
         body_id: hir::HirId,
     );
 
@@ -467,7 +466,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         mut err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-        proj_pred: Option<ty::PolyProjectionPredicate<'tcx>>,
+        associated_ty: Option<(&'static str, Ty<'tcx>)>,
         body_id: hir::HirId,
     ) {
         let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
@@ -604,21 +603,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         trait_pred.print_modifiers_and_trait_path().to_string()
                     );
 
-                    if let Some(proj_pred) = proj_pred {
-                        let ProjectionPredicate { projection_ty, term } = proj_pred.skip_binder();
-                        let item = self.tcx.associated_item(projection_ty.item_def_id);
-
+                    if let Some((name, term)) = associated_ty {
                         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
                         // That should be extracted into a helper function.
                         if constraint.ends_with('>') {
                             constraint = format!(
-                                "{}, {}={}>",
+                                "{}, {} = {}>",
                                 &constraint[..constraint.len() - 1],
-                                item.name,
+                                name,
                                 term
                             );
                         } else {
-                            constraint.push_str(&format!("<{}={}>", item.name, term));
+                            constraint.push_str(&format!("<{} = {}>", name, term));
                         }
                     }
 
@@ -648,7 +644,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ..
                 }) if !param_ty => {
                     // Missing generic type parameter bound.
-                    if suggest_arbitrary_trait_bound(self.tcx, generics, &mut err, trait_pred) {
+                    if suggest_arbitrary_trait_bound(
+                        self.tcx,
+                        generics,
+                        &mut err,
+                        trait_pred,
+                        associated_ty,
+                    ) {
                         return;
                     }
                 }
