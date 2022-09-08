@@ -456,7 +456,7 @@ struct HandlerInner {
 }
 
 /// A key denoting where from a diagnostic was stashed.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
