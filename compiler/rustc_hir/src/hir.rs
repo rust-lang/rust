@@ -300,9 +300,9 @@ impl GenericArg<'_> {
     pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
             GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
-            GenericArg::Type(_) => ast::ParamKindOrd::Type,
-            GenericArg::Const(_) => ast::ParamKindOrd::Const,
-            GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
+            GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Infer(_) => {
+                ast::ParamKindOrd::TypeOrConst
+            }
         }
     }
 
