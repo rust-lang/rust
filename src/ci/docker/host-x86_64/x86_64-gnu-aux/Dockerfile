@@ -26,5 +26,3 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
 ENV RUST_CHECK_TARGET check-aux
-
-ENV SCRIPT python3 ../x.py test compiler --stage 2
