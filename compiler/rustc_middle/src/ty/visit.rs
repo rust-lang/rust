@@ -666,7 +666,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs to a projection, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::Projection(..) = t.kind() {
+            if let ty::Projection(..) | ty::Opaque(..) = t.kind() {
                 return ControlFlow::CONTINUE;
             }
         }
