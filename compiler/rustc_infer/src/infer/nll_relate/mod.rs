@@ -1070,6 +1070,6 @@ where
     }
 
     fn defer_projection_equality(&self) -> bool {
-        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
+        false
     }
 }

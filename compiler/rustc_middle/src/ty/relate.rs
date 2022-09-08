@@ -561,13 +561,6 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (ty::Projection(_), ty::Opaque(_, _)) | (ty::Opaque(_, _), ty::Projection(_)) => {
             Err(TypeError::Sorts(expected_found(relation, a, b)))
         }
-        // FIXME(BoxyUwU): This is isnt quite right i.e. if we have
-        // `<_ as Trait>::Assoc == <T as Other>::Assoc` we ideally wouldnt error because `_`
-        // might get inferred to something which allows normalization to `<T as Other>::Assoc`.
-        (&ty::Projection(proj_a), &ty::Projection(proj_b)) => {
-            let projection_ty = relation.relate(proj_a, proj_b)?;
-            Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
-        }
         (&ty::Projection(proj_a), _)
             if proj_a.has_infer_types_or_consts() && relation.defer_projection_equality() =>
         {
@@ -579,6 +572,10 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         {
             relation.projection_equate_obligation(proj_b, a);
             Ok(a)
+        }
+        (&ty::Projection(proj_a), &ty::Projection(proj_b)) => {
+            let projection_ty = relation.relate(proj_a, proj_b)?;
+            Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
         }
 
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))

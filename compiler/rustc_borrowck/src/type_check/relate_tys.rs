@@ -4,7 +4,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Const, ToPredicate, Ty};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
@@ -147,7 +147,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     // 'static.
     fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {}
 
-    fn projection_equate(&mut self, projection_ty: ty::ProjectionTy<'tcx>, ty: Ty<'tcx>) {
+    fn projection_equate(&mut self, _projection_ty: ty::ProjectionTy<'tcx>, _ty: Ty<'tcx>) {
         unreachable!()
     }
 

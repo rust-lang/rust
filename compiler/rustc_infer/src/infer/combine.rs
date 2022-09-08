@@ -783,7 +783,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     fn defer_projection_equality(&self) -> bool {
-        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
+        false
     }
 }
 

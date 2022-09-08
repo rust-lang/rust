@@ -29,6 +29,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
+use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
 use rustc_middle::ty::DefIdTree;
@@ -255,6 +257,7 @@ fn project_and_unify_type<'cx, 'tcx>(
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
+
     // For an example where this is neccessary see src/test/ui/impl-trait/nested-return-type2.rs
     // This allows users to omit re-mentioning all bounds on an associated type and just use an
     // `impl Trait` for the assoc type to add more bounds.
@@ -267,16 +270,94 @@ fn project_and_unify_type<'cx, 'tcx>(
         );
     obligations.extend(new);
 
-    let defer_projection_equality =
-        normalized.ty().map_or(true, |normalized| match normalized.kind() {
-            ty::Projection(proj) => proj != &obligation.predicate.projection_ty,
-            _ => true,
-        });
-    match infcx
-        .at(&obligation.cause, obligation.param_env)
-        .defer_projection_equality(defer_projection_equality)
-        .eq(normalized, actual)
-    {
+    if let Some(ty) = normalized.ty() {
+        if let &ty::Projection(projection) = ty.kind() {
+            match opt_normalize_projection_type(
+                selcx,
+                obligation.param_env,
+                projection,
+                obligation.cause.clone(),
+                obligation.recursion_depth,
+                &mut obligations,
+            ) {
+                Ok(Some(_)) => (),
+                Ok(None) => {
+                    debug!("failed normalization of: {:?}", projection);
+                    return ProjectAndUnifyResult::FailedNormalization;
+                }
+                Err(InProgress) => unreachable!(),
+            }
+
+            let actual = actual.ty().unwrap();
+            let done = match actual.kind() {
+                &ty::Projection(other) => {
+                    let flipped_projection_eq = InferOk {
+                        obligations: vec![Obligation::new(
+                            obligation.cause.clone(),
+                            obligation.param_env,
+                            ty::Binder::dummy(ty::ProjectionPredicate {
+                                projection_ty: other,
+                                term: ty::Term::from(ty),
+                            })
+                            .to_predicate(selcx.tcx()),
+                        )],
+                        value: (),
+                    };
+
+                    match opt_normalize_projection_type(
+                        selcx,
+                        obligation.param_env,
+                        other,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth,
+                        &mut obligations,
+                    ) {
+                        Ok(Some(normed_other)) => match normed_other.ty().unwrap().kind() {
+                            &ty::Projection(normed_other) => {
+                                match opt_normalize_projection_type(
+                                    selcx,
+                                    obligation.param_env,
+                                    normed_other,
+                                    obligation.cause.clone(),
+                                    obligation.recursion_depth,
+                                    &mut obligations,
+                                ) {
+                                    Ok(Some(_)) => infcx
+                                        .at(&obligation.cause, obligation.param_env)
+                                        .trace(ty, actual)
+                                        .eq(projection, normed_other),
+                                    Ok(None) => Ok(flipped_projection_eq),
+                                    Err(InProgress) => unreachable!(),
+                                }
+                            }
+                            ty::Infer(_) => {
+                                infcx.at(&obligation.cause, obligation.param_env).eq(ty, actual)
+                            }
+                            _ => Err(TypeError::Sorts(ExpectedFound::new(false, ty, actual))),
+                        },
+                        Ok(None) => Ok(flipped_projection_eq),
+                        Err(InProgress) => return ProjectAndUnifyResult::Recursive,
+                    }
+                }
+                ty::Infer(_) => infcx.at(&obligation.cause, obligation.param_env).eq(ty, actual),
+                _ => Err(TypeError::Sorts(ExpectedFound::new(false, ty, actual))),
+            };
+            return match done {
+                Ok(InferOk { obligations: inferred_obligations, value: () }) => {
+                    obligations.extend(inferred_obligations);
+                    ProjectAndUnifyResult::Holds(obligations)
+                }
+                Err(err) => {
+                    debug!("equating types encountered error {:?}", err);
+                    ProjectAndUnifyResult::MismatchedProjectionTypes(MismatchedProjectionTypes {
+                        err,
+                    })
+                }
+            };
+        }
+    }
+
+    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)

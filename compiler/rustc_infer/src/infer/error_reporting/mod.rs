@@ -2780,8 +2780,8 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
 
     fn projection_equate_obligation(
         &mut self,
-        projection_ty: ty::ProjectionTy<'tcx>,
-        ty: Ty<'tcx>,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
     ) {
         unreachable!()
     }
