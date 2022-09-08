@@ -26,7 +26,7 @@ docs! {
     "almost_complete_letter_range",
     "almost_swapped",
     "approx_constant",
-    "arithmetic",
+    "arithmetic_side_effects",
     "as_conversions",
     "as_underscore",
     "assertions_on_constants",

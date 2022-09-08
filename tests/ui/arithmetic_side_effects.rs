@@ -1,6 +1,6 @@
 #![allow(clippy::assign_op_pattern, clippy::unnecessary_owned_empty_strings)]
 #![feature(inline_const, saturating_int_impl)]
-#![warn(clippy::arithmetic)]
+#![warn(clippy::arithmetic_side_effects)]
 
 use core::num::{Saturating, Wrapping};
 

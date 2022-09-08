@@ -544,8 +544,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
-    let arithmetic_allowed = conf.arithmetic_allowed.clone();
-    store.register_late_pass(move || Box::new(operators::arithmetic::Arithmetic::new(arithmetic_allowed.clone())));
+    let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
+    store.register_late_pass(move || {
+        Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(
+            arithmetic_side_effects_allowed.clone(),
+        ))
+    });
     store.register_late_pass(|| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|| Box::new(utils::author::Author));
     let await_holding_invalid_types = conf.await_holding_invalid_types.clone();

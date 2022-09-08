@@ -437,7 +437,7 @@ store.register_lints(&[
     octal_escapes::OCTAL_ESCAPES,
     only_used_in_recursion::ONLY_USED_IN_RECURSION,
     operators::ABSURD_EXTREME_COMPARISONS,
-    operators::ARITHMETIC,
+    operators::ARITHMETIC_SIDE_EFFECTS,
     operators::ASSIGN_OP_PATTERN,
     operators::BAD_BIT_MASK,
     operators::CMP_NAN,
