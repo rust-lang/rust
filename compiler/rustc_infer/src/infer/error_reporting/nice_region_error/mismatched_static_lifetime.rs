@@ -1,13 +1,14 @@
 //! Error Reporting for when the lifetime for a type doesn't match the `impl` selected for a predicate
 //! to hold.
 
+use crate::errors::{note_and_explain, IntroducesStaticBecauseUnmetLifetimeReq};
+use crate::errors::{ImplNote, MismatchedStaticLifetime, TraitSubdiag};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::infer::error_reporting::note_and_explain_region;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::TypeVisitor;
@@ -39,12 +40,23 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             = *parent.code() else {
             return None;
         };
-        let mut err = self.tcx().sess.struct_span_err(cause.span, "incompatible lifetime on type");
+
         // FIXME: we should point at the lifetime
-        let mut multi_span: MultiSpan = vec![binding_span].into();
-        multi_span.push_span_label(binding_span, "introduces a `'static` lifetime requirement");
-        err.span_note(multi_span, "because this has an unmet lifetime requirement");
-        note_and_explain_region(self.tcx(), &mut err, "", sup, "...", Some(binding_span));
+        let multi_span: MultiSpan = vec![binding_span].into();
+        let multispan_subdiag = IntroducesStaticBecauseUnmetLifetimeReq {
+            unmet_requirements: multi_span,
+            binding_span,
+        };
+
+        let expl = note_and_explain::RegionExplanation::new(
+            self.tcx(),
+            sup,
+            Some(binding_span),
+            note_and_explain::PrefixKind::Empty,
+            note_and_explain::SuffixKind::Continues,
+        );
+        let mut impl_span = None;
+        let mut trait_subdiags = Vec::new();
         if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
             // If an impl is local, then maybe this isn't what they want. Try to
             // be as helpful as possible with implicit lifetimes.
@@ -73,31 +85,30 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // there aren't trait objects or because none are implicit, then just
                 // write a single note on the impl itself.
 
-                let impl_span = self.tcx().def_span(*impl_def_id);
-                err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
+                impl_span = Some(self.tcx().def_span(*impl_def_id));
             } else {
                 // Otherwise, point at all implicit static lifetimes
 
-                err.note("...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
                 for span in &traits {
-                    err.span_note(*span, "this has an implicit `'static` lifetime requirement");
+                    trait_subdiags.push(TraitSubdiag::Note { span: *span });
                     // It would be nice to put this immediately under the above note, but they get
                     // pushed to the end.
-                    err.span_suggestion_verbose(
-                        span.shrink_to_hi(),
-                        "consider relaxing the implicit `'static` requirement",
-                        " + '_",
-                        Applicability::MaybeIncorrect,
-                    );
+                    trait_subdiags.push(TraitSubdiag::Sugg { span: span.shrink_to_hi() });
                 }
             }
         } else {
             // Otherwise just point out the impl.
 
-            let impl_span = self.tcx().def_span(*impl_def_id);
-            err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
+            impl_span = Some(self.tcx().def_span(*impl_def_id));
         }
-        let reported = err.emit();
+        let err = MismatchedStaticLifetime {
+            cause_span: cause.span,
+            unmet_lifetime_reqs: multispan_subdiag,
+            expl,
+            impl_note: ImplNote { impl_span },
+            trait_subdiags,
+        };
+        let reported = self.tcx().sess.emit_err(err);
         Some(reported)
     }
 }
