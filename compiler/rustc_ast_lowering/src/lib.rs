@@ -1327,17 +1327,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             *in_trait,
                             itctx,
                         ),
-                    ImplTraitContext::TypeAliasesOpaqueTy => {
-                        let mut nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
-                        self.lower_opaque_impl_trait(
-                            span,
-                            hir::OpaqueTyOrigin::TyAlias,
-                            def_node_id,
-                            bounds,
-                            false,
-                            nested_itctx,
-                        )
-                    }
+                    ImplTraitContext::TypeAliasesOpaqueTy => self.lower_opaque_impl_trait(
+                        span,
+                        hir::OpaqueTyOrigin::TyAlias,
+                        def_node_id,
+                        bounds,
+                        false,
+                        &mut ImplTraitContext::TypeAliasesOpaqueTy,
+                    ),
                     ImplTraitContext::Universal => {
                         let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
