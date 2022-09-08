@@ -10,10 +10,11 @@ use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::{edition::Edition, Span, DUMMY_SP};
-use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
@@ -91,6 +92,10 @@ into_diagnostic_arg_using_display!(
     Edition,
     Ident,
     MacroRulesNormalizedIdent,
+    ParseIntError,
+    StackProtector,
+    &TargetTriple,
+    SplitDebuginfo
 );
 
 impl IntoDiagnosticArg for bool {

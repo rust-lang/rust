@@ -898,7 +898,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
     let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
-        sess.fatal(&err);
+        sess.emit_fatal(err);
     });
 
     let mut ret = CrateConfig::default();
