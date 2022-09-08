@@ -897,15 +897,27 @@ pub fn make_test_description<R: Read>(
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
-    // for `-Z gcc-ld=lld`
+
+    // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
+    // whether `rust-lld` is present in the compiler under test.
+    //
+    // The --compile-lib-path is the path to host shared libraries, but depends on the OS. For
+    // example:
+    // - on linux, it can be <sysroot>/lib
+    // - on windows, it can be <sysroot>/bin
+    //
+    // However, `rust-lld` is only located under the lib path, so we look for it there.
     let has_rust_lld = config
         .compile_lib_path
+        .parent()
+        .expect("couldn't traverse to the parent of the specified --compile-lib-path")
+        .join("lib")
         .join("rustlib")
         .join(&config.target)
         .join("bin")
-        .join("gcc-ld")
-        .join(if config.host.contains("windows") { "ld.exe" } else { "ld" })
+        .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
         .exists();
+
     iter_header(path, src, &mut |revision, ln| {
         if revision.is_some() && revision != cfg {
             return;
