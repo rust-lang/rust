@@ -23,6 +23,10 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
 	--copy-path-img-hover-filter: invert(100%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
 }
 
 .slider {
@@ -242,54 +246,6 @@ a.test-arrow:hover {
 :target {
 	background: rgba(255, 236, 164, 0.06);
 	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.compile_fail:hover, .information:hover + pre.compile_fail {
-	border-left: 2px solid #f00;
-}
-
-pre.should_panic {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.should_panic:hover, .information:hover + pre.should_panic {
-	border-left: 2px solid #f00;
-}
-
-pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.6);
-}
-
-pre.ignore:hover, .information:hover + pre.ignore {
-	border-left: 2px solid #ff9200;
-}
-
-.tooltip.compile_fail {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .compile_fail:hover {
-	color: #f00;
-}
-
-.tooltip.should_panic {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .should_panic:hover {
-	color: #f00;
-}
-
-.tooltip.ignore {
-	color: rgba(255,142,0,.6);
-}
-
-.information > .ignore:hover {
-	color: #ff9200;
 }
 
 .search-failed a {

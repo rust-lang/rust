@@ -1,9 +1,9 @@
 // This test ensures that items and documentation code blocks are wrapped in <pre><code>
 goto: file://|DOC_PATH|/test_docs/fn.foo.html
 size: (1080, 600)
-// There should be three doc codeblocks
+// There should be four doc codeblocks.
 // Check that their content is inside <pre><code>
-assert-count: (".example-wrap pre > code", 3)
+assert-count: (".example-wrap pre > code", 4)
 // Check that function signature is inside <pre><code>
 assert: "pre.rust.fn > code"
 

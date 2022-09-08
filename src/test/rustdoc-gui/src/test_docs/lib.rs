@@ -28,6 +28,12 @@ use std::fmt;
 /// Let's say I'm just some text will ya?
 /// ```
 ///
+/// A failing to run one:
+///
+/// ```should_panic
+/// panic!("tadam");
+/// ```
+///
 /// An inlined `code`!
 pub fn foo() {}
 
