@@ -2360,7 +2360,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let span = path.span;
         match path.res {
-            Res::Def(DefKind::OpaqueTy, did) => {
+            Res::Def(DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder, did) => {
                 // Check for desugared `impl Trait`.
                 assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();
@@ -2627,13 +2627,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
+            hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);
                 let def_id = item_id.def_id.to_def_id();
 
                 match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-                        self.impl_trait_ty_to_ty(def_id, lifetimes, origin)
+                        self.impl_trait_ty_to_ty(def_id, lifetimes, origin, in_trait)
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
@@ -2703,6 +2703,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def_id: DefId,
         lifetimes: &[hir::GenericArg<'_>],
         origin: OpaqueTyOrigin,
+        in_trait: bool,
     ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
         let tcx = self.tcx();
@@ -2746,7 +2747,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
 
-        tcx.mk_opaque(def_id, substs)
+        if in_trait { tcx.mk_projection(def_id, substs) } else { tcx.mk_opaque(def_id, substs) }
     }
 
     pub fn ty_of_arg(&self, ty: &hir::Ty<'_>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {

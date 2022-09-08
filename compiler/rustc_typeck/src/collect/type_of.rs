@@ -333,8 +333,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     find_opaque_ty_constraints_for_tait(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
-                    find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), in_trait, .. }) => {
+                    if in_trait {
+                        span_bug!(item.span, "impl-trait in trait has no default")
+                    } else {
+                        find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                    }
                 }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)

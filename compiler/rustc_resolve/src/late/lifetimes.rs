@@ -715,7 +715,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| this.visit_ty(&mt.ty));
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
+            hir::TyKind::OpaqueDef(item_id, lifetimes, _in_trait) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`

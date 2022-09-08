@@ -300,7 +300,7 @@ pub fn suggest_new_region_bound(
             continue;
         }
         match fn_return.kind {
-            TyKind::OpaqueDef(item_id, _) => {
+            TyKind::OpaqueDef(item_id, _, _) => {
                 let item = tcx.hir().item(item_id);
                 let ItemKind::OpaqueTy(opaque) = &item.kind else {
                     return;

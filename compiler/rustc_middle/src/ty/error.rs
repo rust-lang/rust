@@ -2,6 +2,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
+use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -538,7 +539,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Projection(proj_ty), _) => {
+                    (ty::Projection(proj_ty), _) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -547,7 +548,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Projection(proj_ty)) => {
+                    (_, ty::Projection(proj_ty)) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,

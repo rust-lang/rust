@@ -51,6 +51,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::List<Ty
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
