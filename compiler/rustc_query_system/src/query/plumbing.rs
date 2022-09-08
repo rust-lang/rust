@@ -7,6 +7,8 @@ use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
+use crate::values::Value;
+use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
@@ -118,17 +120,44 @@ where
 fn mk_cycle<CTX, V, R>(
     tcx: CTX,
     error: CycleError,
-    handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
+    handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
     CTX: QueryContext,
-    V: std::fmt::Debug,
+    V: std::fmt::Debug + Value<CTX::DepContext>,
     R: Clone,
 {
     let error = report_cycle(tcx.dep_context().sess(), error);
-    let value = handle_cycle_error(tcx, error);
+    let value = handle_cycle_error(*tcx.dep_context(), error, handler);
     cache.store_nocache(value)
+}
+
+fn handle_cycle_error<CTX, V>(
+    tcx: CTX,
+    mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
+    handler: HandleCycleError,
+) -> V
+where
+    CTX: DepContext,
+    V: Value<CTX>,
+{
+    use HandleCycleError::*;
+    match handler {
+        Error => {
+            error.emit();
+            Value::from_cycle_error(tcx)
+        }
+        Fatal => {
+            error.emit();
+            tcx.sess().abort_if_errors();
+            unreachable!()
+        }
+        DelayBug => {
+            error.delay_as_bug();
+            Value::from_cycle_error(tcx)
+        }
+    }
 }
 
 impl<'tcx, K> JobOwner<'tcx, K>
@@ -336,6 +365,7 @@ fn try_execute_query<CTX, C>(
 where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
+    C::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
@@ -686,6 +716,7 @@ pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> 
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     let query = Q::make_vtable(tcx, &key);
@@ -718,6 +749,7 @@ pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.

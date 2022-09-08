@@ -12,6 +12,13 @@ impl AddSubdiagnostic for CycleStack {
     }
 }
 
+#[derive(Copy, Clone)]
+pub enum HandleCycleError {
+    Error,
+    Fatal,
+    DelayBug,
+}
+
 #[derive(SessionSubdiagnostic)]
 pub enum StackCount {
     #[note(query_system::cycle_stack_single)]

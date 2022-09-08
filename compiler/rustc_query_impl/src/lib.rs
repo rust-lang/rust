@@ -34,9 +34,6 @@ pub use rustc_query_system::query::{deadlock, QueryContext};
 mod keys;
 use keys::Key;
 
-mod values;
-use self::values::Value;
-
 pub use rustc_query_system::query::QueryConfig;
 pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};
 
