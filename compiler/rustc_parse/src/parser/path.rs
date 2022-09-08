@@ -11,8 +11,9 @@ use rustc_ast::{
 use rustc_errors::{pluralize, Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
-
 use std::mem;
+use thin_vec::ThinVec;
+use tracing::debug;
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -63,7 +64,7 @@ impl<'a> Parser<'a> {
             path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: Vec::new(), span: path_span, tokens: None };
+            path = ast::Path { segments: ThinVec::new(), span: path_span, tokens: None };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -179,7 +180,7 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
-        let mut segments = Vec::new();
+        let mut segments = ThinVec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
@@ -191,7 +192,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segments(
         &mut self,
-        segments: &mut Vec<PathSegment>,
+        segments: &mut ThinVec<PathSegment>,
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, ()> {

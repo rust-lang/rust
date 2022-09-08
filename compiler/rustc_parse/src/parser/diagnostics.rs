@@ -5,6 +5,7 @@ use super::{
 };
 
 use crate::lexer::UnmatchedBrace;
+use crate::parser;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
@@ -24,11 +25,10 @@ use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
-use std::ops::{Deref, DerefMut};
-
 use std::mem::take;
-
-use crate::parser;
+use std::ops::{Deref, DerefMut};
+use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, trace};
 
 const TURBOFISH_SUGGESTION_STR: &str =
     "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments";
@@ -1142,8 +1142,11 @@ impl<'a> Parser<'a> {
             //     field: value,
             // }
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path =
-                Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
+            let path = Path {
+                segments: ThinVec::new(),
+                span: self.prev_token.span.shrink_to_lo(),
+                tokens: None,
+            };
             let struct_expr = snapshot.parse_struct_expr(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1950,7 +1953,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<T>> {
         self.expect(&token::ModSep)?;
 
-        let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
+        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
@@ -2992,7 +2995,7 @@ impl<'a> Parser<'a> {
                                             None,
                                             Path {
                                                 span: new_span,
-                                                segments: vec![
+                                                segments: thin_vec![
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
                                                 ],

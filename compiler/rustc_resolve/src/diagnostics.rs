@@ -25,6 +25,7 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
+use thin_vec::ThinVec;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::late::{PatternSource, Rib};
@@ -1254,7 +1255,7 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), true)];
+        let mut worklist = vec![(start_module, ThinVec::<ast::PathSegment>::new(), true)];
         let mut worklist_via_import = vec![];
 
         while let Some((in_module, path_segments, accessible)) = match worklist.pop() {

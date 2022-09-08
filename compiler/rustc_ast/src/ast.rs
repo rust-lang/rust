@@ -36,7 +36,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -90,7 +90,7 @@ pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
-    pub segments: Vec<PathSegment>,
+    pub segments: ThinVec<PathSegment>,
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -114,7 +114,7 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
+        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
 
     pub fn is_global(&self) -> bool {
@@ -3068,21 +3068,21 @@ mod size_asserts {
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericBound, 72);
     static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 200);
+    static_assert_size!(Impl, 184);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 104);
-    static_assert_size!(PatKind, 80);
-    static_assert_size!(Path, 40);
+    static_assert_size!(Pat, 88);
+    static_assert_size!(PatKind, 64);
+    static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(Ty, 80);
-    static_assert_size!(TyKind, 56);
+    static_assert_size!(Ty, 64);
+    static_assert_size!(TyKind, 40);
 }
