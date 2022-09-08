@@ -16,7 +16,7 @@ use rustc_session::config::{
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
+use rustc_session::utils::{CanonicalizedPath, ContentHashedFilePath, NativeLib, NativeLibKind};
 use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
@@ -592,7 +592,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(passes, vec![String::from("1"), String::from("2")]);
     tracked!(prefer_dynamic, true);
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
-    tracked!(profile_use, Some(PathBuf::from("abc")));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(soft_float, true);
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));
@@ -775,7 +774,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
-    tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -814,6 +812,41 @@ fn test_unstable_options_tracking_hash() {
         };
     }
     tracked_no_crate_hash!(no_codegen, true);
+}
+
+#[test]
+fn test_hashed_file_different_hash() {
+    let tempdir = tempfile::TempDir::new().unwrap();
+
+    let mut options = Options::default();
+
+    macro_rules! check {
+        ($opt: expr, $file: expr) => {
+            let path = tempdir.path().join($file);
+
+            // Write some data into the file
+            std::fs::write(&path, &[1, 2, 3]).unwrap();
+
+            // The hash is calculated now
+            *$opt = Some(ContentHashedFilePath::new(path.clone()));
+
+            let hash_no_crate = options.dep_tracking_hash(false);
+            let hash_crate = options.dep_tracking_hash(true);
+
+            // Write different data into the file
+            std::fs::write(&path, &[1, 2, 3, 4]).unwrap();
+
+            // The hash is re-calculated now
+            *$opt = Some(ContentHashedFilePath::new(path));
+
+            // Check that the hash has changed
+            assert_ne!(options.dep_tracking_hash(true), hash_crate);
+            assert_ne!(options.dep_tracking_hash(false), hash_no_crate);
+        };
+    }
+
+    check!(&mut options.cg.profile_use, "profile-instr.profdata");
+    check!(&mut options.unstable_opts.profile_sample_use, "profile-sample.profdata");
 }
 
 #[test]

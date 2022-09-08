@@ -3601,6 +3601,7 @@ dependencies = [
  "rustc_ty_utils",
  "rustc_typeck",
  "smallvec",
+ "tempfile",
  "tracing",
  "winapi",
 ]

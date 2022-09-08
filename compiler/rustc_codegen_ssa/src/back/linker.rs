@@ -299,7 +299,7 @@ impl<'a> GccLinker<'a> {
         };
 
         if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
-            self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
+            self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.as_path().display()));
         };
         self.linker_args(&[
             &format!("-plugin-opt={}", opt_level),

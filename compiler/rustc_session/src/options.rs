@@ -3,7 +3,7 @@ use crate::config::*;
 use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLib;
+use crate::utils::{ContentHashedFilePath, NativeLib};
 use rustc_errors::LanguageIdentifier;
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
@@ -364,6 +364,7 @@ mod desc {
     pub const parse_string_push: &str = parse_string;
     pub const parse_opt_langid: &str = "a language identifier";
     pub const parse_opt_pathbuf: &str = "a path";
+    pub const parse_opt_hashed_filepath: &str = "a path";
     pub const parse_list: &str = "a space-separated list of strings";
     pub const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
@@ -503,6 +504,19 @@ mod parse {
         match v {
             Some(s) => {
                 *slot = Some(PathBuf::from(s));
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub(crate) fn parse_opt_hashed_filepath(
+        slot: &mut Option<ContentHashedFilePath>,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                *slot = Some(ContentHashedFilePath::new(PathBuf::from(s)));
                 true
             }
             None => false,
@@ -1176,7 +1190,7 @@ options! {
     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [TRACKED],
         "compile the program with profiling instrumentation"),
-    profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+    profile_use: Option<ContentHashedFilePath> = (None, parse_opt_hashed_filepath, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
     #[rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
@@ -1488,7 +1502,7 @@ options! {
         (default based on relative source path)"),
     profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
         "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
-    profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+    profile_sample_use: Option<ContentHashedFilePath> = (None, parse_opt_hashed_filepath, [TRACKED],
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
