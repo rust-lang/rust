@@ -12,7 +12,6 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sorted_map::SortedMap;
-// use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
