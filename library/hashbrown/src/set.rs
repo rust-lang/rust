@@ -1,3 +1,5 @@
+#[cfg(feature = "raw")]
+use crate::raw::RawTable;
 use crate::{Equivalent, TryReserveError};
 use alloc::borrow::ToOwned;
 use core::fmt;
@@ -1134,6 +1136,26 @@ where
             Some((k, _)) => Some(k),
             None => None,
         }
+    }
+
+    /// Returns a mutable reference to the [`RawTable`] used underneath [`HashSet`].
+    /// This function is only available if the `raw` feature of the crate is enabled.
+    ///
+    /// # Note
+    ///
+    /// Calling this function is safe, but using the raw hash table API may require
+    /// unsafe functions or blocks.
+    ///
+    /// `RawTable` API gives the lowest level of control under the set that can be useful
+    /// for extending the HashSet's API, but may lead to *[undefined behavior]*.
+    ///
+    /// [`HashSet`]: struct.HashSet.html
+    /// [`RawTable`]: raw/struct.RawTable.html
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[cfg(feature = "raw")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn raw_table(&mut self) -> &mut RawTable<(T, ()), A> {
+        self.map.raw_table()
     }
 }
 
