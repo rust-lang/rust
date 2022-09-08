@@ -718,10 +718,10 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<QSelf>, Path, Vec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, Vec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<QSelf>, Path, Vec<P<Pat>>),
+    TupleStruct(Option<P<QSelf>>, Path, Vec<P<Pat>>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
@@ -731,7 +731,7 @@ pub enum PatKind {
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
     /// or associated constants. Qualified path patterns `<A>::B::C`/`<A as Trait>::B::C` can
     /// only legally refer to associated constants.
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
 
     /// A tuple pattern (`(a, b)`).
     Tuple(Vec<P<Pat>>),
@@ -1272,6 +1272,18 @@ impl Expr {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Closure {
+    pub binder: ClosureBinder,
+    pub capture_clause: CaptureBy,
+    pub asyncness: Async,
+    pub movability: Movability,
+    pub fn_decl: P<FnDecl>,
+    pub body: P<Expr>,
+    /// The span of the argument block `|...|`.
+    pub fn_decl_span: Span,
+}
+
 /// Limit types of a range (inclusive or exclusive)
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
 pub enum RangeLimits {
@@ -1279,6 +1291,20 @@ pub enum RangeLimits {
     HalfOpen,
     /// Inclusive at the beginning and end
     Closed,
+}
+
+/// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct MethodCall {
+    /// The method name and its generic arguments, e.g. `foo::<Bar, Baz>`.
+    pub seg: PathSegment,
+    /// The receiver, e.g. `x`.
+    pub receiver: P<Expr>,
+    /// The arguments, e.g. `a, b, c`.
+    pub args: Vec<P<Expr>>,
+    /// The span of the function, without the dot and receiver e.g. `foo::<Bar,
+    /// Baz>(a, b, c)`.
+    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -1293,7 +1319,7 @@ pub enum StructRest {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StructExpr {
-    pub qself: Option<QSelf>,
+    pub qself: Option<P<QSelf>>,
     pub path: Path,
     pub fields: Vec<ExprField>,
     pub rest: StructRest,
@@ -1314,17 +1340,8 @@ pub enum ExprKind {
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
     Call(P<Expr>, Vec<P<Expr>>),
-    /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
-    ///
-    /// The `PathSegment` represents the method name and its generic arguments
-    /// (within the angle brackets).
-    /// The standalone `Expr` is the receiver expression.
-    /// The vector of `Expr` is the arguments.
-    /// `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
-    /// This `Span` is the span of the function, without the dot and receiver
-    /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
+    /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
+    MethodCall(Box<MethodCall>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1363,9 +1380,7 @@ pub enum ExprKind {
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
-    ///
-    /// The final span is the span of the argument block `|...|`.
-    Closure(ClosureBinder, CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(Box<Closure>),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
@@ -1403,7 +1418,7 @@ pub enum ExprKind {
     /// parameters (e.g., `foo::bar::<baz>`).
     ///
     /// Optionally "qualified" (e.g., `<Vec<T> as SomeTrait>::SomeType`).
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
 
     /// A referencing operation (`&a`, `&mut a`, `&raw const a` or `&raw mut a`).
     AddrOf(BorrowKind, Mutability, P<Expr>),
@@ -2006,7 +2021,7 @@ pub enum TyKind {
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
     /// Type parameters are stored in the `Path` itself.
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(GenericBounds, TraitObjectSyntax),
@@ -2138,7 +2153,7 @@ impl InlineAsmTemplatePiece {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct InlineAsmSym {
     pub id: NodeId,
-    pub qself: Option<QSelf>,
+    pub qself: Option<P<QSelf>>,
     pub path: Path,
 }
 
@@ -3031,8 +3046,8 @@ mod size_asserts {
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr, 104);
-    static_assert_size!(ExprKind, 72);
+    static_assert_size!(Expr, 88);
+    static_assert_size!(ExprKind, 56);
     static_assert_size!(Fn, 184);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
@@ -3046,13 +3061,13 @@ mod size_asserts {
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 120);
+    static_assert_size!(Pat, 104);
     static_assert_size!(Path, 40);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 96);
+    static_assert_size!(PatKind, 80);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(Ty, 96);
-    static_assert_size!(TyKind, 72);
+    static_assert_size!(Ty, 80);
+    static_assert_size!(TyKind, 56);
     // tidy-alphabetical-end
 }
