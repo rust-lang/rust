@@ -37,14 +37,10 @@ trait Ty<'a> {
 fn main() {
     let v = Unit2.m(
         L {
-            //~^ ERROR expected
-            //~^^ ERROR expected
-            f: |x| {
-                drop(x);
-                Unit4
-            },
-        },
-    );
+        //~^ ERROR: expected
+        //~^^ ERROR: expected
+            f : |x| { drop(x); Unit4 }
+        });
 }
 
 impl<'a> Ty<'a> for Unit2 {

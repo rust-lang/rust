@@ -267,7 +267,16 @@ fn project_and_unify_type<'cx, 'tcx>(
         );
     obligations.extend(new);
 
-    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
+    let defer_projection_equality =
+        normalized.ty().map_or(true, |normalized| match normalized.kind() {
+            ty::Projection(proj) => proj != &obligation.predicate.projection_ty,
+            _ => true,
+        });
+    match infcx
+        .at(&obligation.cause, obligation.param_env)
+        .defer_projection_equality(defer_projection_equality)
+        .eq(normalized, actual)
+    {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)

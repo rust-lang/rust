@@ -54,6 +54,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     /// matching from matching anything against opaque
     /// types.
     pub define_opaque_types: bool,
+    pub defer_projection_equality: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -457,6 +458,19 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ty::Binder::dummy(predicate).to_predicate(self.tcx()),
         ));
     }
+
+    pub fn add_projection_equate_obligation(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) {
+        self.obligations.push(Obligation::new(
+            self.trace.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, term: ty::Term::from(ty) })
+                .to_predicate(self.tcx()),
+        ));
+    }
 }
 
 struct Generalizer<'cx, 'tcx> {
@@ -759,6 +773,18 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             _ => relate::super_relate_consts(self, c, c),
         }
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
+    ) {
+        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
+    }
 }
 
 pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
@@ -981,5 +1007,17 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
             }
             _ => relate::super_relate_consts(self, c, c),
         }
+    }
+
+    fn projection_equate_obligation(
+        &mut self,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
+    ) {
+        bug!("`ConstInferUnifier` shouldn't equate projections with other kinds of types");
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        bug!("`ConstInferUnifier` shouldn't equate projections with other kinds of types");
     }
 }

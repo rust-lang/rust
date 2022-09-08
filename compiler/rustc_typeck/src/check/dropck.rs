@@ -326,4 +326,20 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
         Ok(a)
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
+    ) {
+        bug!(
+            "`SimpleEqRelation` is only used for drop impl where clauses which shouldn't contain infer vars"
+        );
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        bug!(
+            "`SimpleEqRelation` is only used for drop impl where clauses which shouldn't contain infer vars"
+        );
+    }
 }

@@ -2777,6 +2777,18 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         // relation
         Ok(a)
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) {
+        unreachable!()
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        false
+    }
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {

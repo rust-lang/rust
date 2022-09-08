@@ -160,6 +160,18 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         }
         Ok(a)
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) {
+        self.fields.add_projection_equate_obligation(projection_ty, ty);
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        self.fields.defer_projection_equality
+    }
 }
 
 impl<'tcx> ConstEquateRelation<'tcx> for Equate<'_, '_, 'tcx> {

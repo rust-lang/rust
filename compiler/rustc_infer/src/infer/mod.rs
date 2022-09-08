@@ -784,6 +784,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         define_opaque_types: bool,
+        defer_projection_equality: bool,
     ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,
@@ -792,6 +793,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             param_env,
             obligations: PredicateObligations::new(),
             define_opaque_types,
+            defer_projection_equality,
         }
     }
 

@@ -121,4 +121,15 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
+    ) {
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        true
+    }
 }

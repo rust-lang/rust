@@ -5,7 +5,7 @@
 //! subtyping, type equality, etc.
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::{self, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
@@ -99,6 +99,10 @@ pub trait TypeRelation<'tcx>: Sized {
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>;
+
+    fn projection_equate_obligation(&mut self, projection_ty: ty::ProjectionTy<'tcx>, ty: Ty<'tcx>);
+
+    fn defer_projection_equality(&self) -> bool;
 }
 
 pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
@@ -270,6 +274,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
         a: ty::ProjectionTy<'tcx>,
         b: ty::ProjectionTy<'tcx>,
     ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>> {
+        // FIXME(projection_equality) defer to `R::relate_tys()` to ensure lazyness
         if a.item_def_id != b.item_def_id {
             Err(TypeError::ProjectionMismatched(expected_found(
                 relation,
@@ -552,10 +557,28 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_fn_ptr(fty))
         }
 
-        // these two are already handled downstream in case of lazy normalization
-        (&ty::Projection(a_data), &ty::Projection(b_data)) => {
-            let projection_ty = relation.relate(a_data, b_data)?;
+        // FIXME(BoxyUwU): remove this opaque R projection arm
+        (ty::Projection(_), ty::Opaque(_, _)) | (ty::Opaque(_, _), ty::Projection(_)) => {
+            Err(TypeError::Sorts(expected_found(relation, a, b)))
+        }
+        // FIXME(BoxyUwU): This is isnt quite right i.e. if we have
+        // `<_ as Trait>::Assoc == <T as Other>::Assoc` we ideally wouldnt error because `_`
+        // might get inferred to something which allows normalization to `<T as Other>::Assoc`.
+        (&ty::Projection(proj_a), &ty::Projection(proj_b)) => {
+            let projection_ty = relation.relate(proj_a, proj_b)?;
             Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
+        }
+        (&ty::Projection(proj_a), _)
+            if proj_a.has_infer_types_or_consts() && relation.defer_projection_equality() =>
+        {
+            relation.projection_equate_obligation(proj_a, b);
+            Ok(b)
+        }
+        (_, &ty::Projection(proj_b))
+            if proj_b.has_infer_types_or_consts() && relation.defer_projection_equality() =>
+        {
+            relation.projection_equate_obligation(proj_b, a);
+            Ok(a)
         }
 
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))

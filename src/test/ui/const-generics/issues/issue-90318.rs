@@ -12,14 +12,14 @@ impl True for If<true> {}
 fn consume<T: 'static>(_val: T)
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
-    //~^ ERROR: can't compare
+    //~^ ERROR: can't compare `TypeId` with `_` in const contexts
 {
 }
 
 fn test<T: 'static>()
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
-    //~^ ERROR: can't compare
+    //~^ ERROR: can't compare `TypeId` with `_` in const contexts
 {
 }
 

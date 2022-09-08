@@ -1,7 +1,4 @@
-// check-fail
-// known-bug: #88460
-
-// This should pass, but has a missed normalization due to HRTB.
+// check-pass
 
 pub trait Marker {}
 

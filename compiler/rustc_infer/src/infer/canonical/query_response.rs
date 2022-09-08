@@ -733,6 +733,23 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
     }
 
+    fn projection_equate(&mut self, projection_ty: ty::ProjectionTy<'tcx>, ty: Ty<'tcx>) {
+        self.obligations.push(Obligation {
+            cause: self.cause.clone(),
+            param_env: self.param_env,
+            predicate: ty::Binder::dummy(ty::PredicateKind::Projection(ty::ProjectionPredicate {
+                projection_ty,
+                term: ty::Term::from(ty),
+            }))
+            .to_predicate(self.infcx.tcx),
+            recursion_depth: 0,
+        })
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        true
+    }
+
     fn normalization() -> NormalizationStrategy {
         NormalizationStrategy::Eager
     }

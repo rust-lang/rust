@@ -40,6 +40,7 @@ pub struct At<'a, 'tcx> {
     /// matching from matching anything against opaque
     /// types.
     pub define_opaque_types: bool,
+    pub defer_projection_equality: bool,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -55,7 +56,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: true }
+        At {
+            infcx: self,
+            cause,
+            param_env,
+            define_opaque_types: true,
+            defer_projection_equality: true,
+        }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -99,6 +106,10 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 impl<'a, 'tcx> At<'a, 'tcx> {
     pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
         Self { define_opaque_types, ..self }
+    }
+
+    pub fn defer_projection_equality(self, defer_projection_equality: bool) -> Self {
+        Self { defer_projection_equality, ..self }
     }
 
     /// Hacky routine for equating two impl headers in coherence.
@@ -252,7 +263,12 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(
+                trace,
+                at.param_env,
+                at.define_opaque_types,
+                at.defer_projection_equality,
+            );
             fields
                 .sub(a_is_expected)
                 .relate(a, b)
@@ -269,7 +285,12 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(
+                trace,
+                at.param_env,
+                at.define_opaque_types,
+                at.defer_projection_equality,
+            );
             fields
                 .equate(a_is_expected)
                 .relate(a, b)
@@ -284,7 +305,12 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(
+                trace,
+                at.param_env,
+                at.define_opaque_types,
+                at.defer_projection_equality,
+            );
             fields
                 .lub(a_is_expected)
                 .relate(a, b)
@@ -299,7 +325,12 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
     {
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, at.define_opaque_types);
+            let mut fields = at.infcx.combine_fields(
+                trace,
+                at.param_env,
+                at.define_opaque_types,
+                at.defer_projection_equality,
+            );
             fields
                 .glb(a_is_expected)
                 .relate(a, b)

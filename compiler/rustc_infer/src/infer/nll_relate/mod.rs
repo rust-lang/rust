@@ -91,6 +91,11 @@ pub trait TypeRelatingDelegate<'tcx> {
     );
 
     fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
+
+    fn projection_equate(&mut self, projection_ty: ty::ProjectionTy<'tcx>, ty: Ty<'tcx>);
+
+    fn defer_projection_equality(&self) -> bool;
+
     fn register_opaque_type(
         &mut self,
         a: Ty<'tcx>,
@@ -273,38 +278,6 @@ where
         self.delegate.push_outlives(sup, sub, info);
     }
 
-    /// Relate a projection type and some value type lazily. This will always
-    /// succeed, but we push an additional `ProjectionEq` goal depending
-    /// on the value type:
-    /// - if the value type is any type `T` which is not a projection, we push
-    ///   `ProjectionEq(projection = T)`.
-    /// - if the value type is another projection `other_projection`, we create
-    ///   a new inference variable `?U` and push the two goals
-    ///   `ProjectionEq(projection = ?U)`, `ProjectionEq(other_projection = ?U)`.
-    fn relate_projection_ty(
-        &mut self,
-        projection_ty: ty::ProjectionTy<'tcx>,
-        value_ty: Ty<'tcx>,
-    ) -> Ty<'tcx> {
-        use rustc_span::DUMMY_SP;
-
-        match *value_ty.kind() {
-            ty::Projection(other_projection_ty) => {
-                let var = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: DUMMY_SP,
-                });
-                // FIXME(lazy-normalization): This will always ICE, because the recursive
-                // call will end up in the _ arm below.
-                self.relate_projection_ty(projection_ty, var);
-                self.relate_projection_ty(other_projection_ty, var);
-                var
-            }
-
-            _ => bug!("should never be invoked with eager normalization"),
-        }
-    }
-
     /// Relate a type inference variable with a value type. This works
     /// by creating a "generalization" G of the value where all the
     /// lifetimes are replaced with fresh inference values. This
@@ -344,7 +317,9 @@ where
             }
 
             ty::Projection(projection_ty) if D::normalization() == NormalizationStrategy::Lazy => {
-                return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_ty_var(vid)));
+                let ty_var = self.infcx.tcx.mk_ty_var(vid);
+                self.projection_equate_obligation(projection_ty, ty_var);
+                return Ok(ty_var);
             }
 
             _ => (),
@@ -608,18 +583,6 @@ where
                 self.relate_opaques(a, b)
             }
 
-            (&ty::Projection(projection_ty), _)
-                if D::normalization() == NormalizationStrategy::Lazy =>
-            {
-                Ok(self.relate_projection_ty(projection_ty, b))
-            }
-
-            (_, &ty::Projection(projection_ty))
-                if D::normalization() == NormalizationStrategy::Lazy =>
-            {
-                Ok(self.relate_projection_ty(projection_ty, a))
-            }
-
             _ => {
                 debug!(?a, ?b, ?self.ambient_variance);
 
@@ -791,6 +754,18 @@ where
         }
 
         Ok(a)
+    }
+
+    fn projection_equate_obligation(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        value_ty: Ty<'tcx>,
+    ) {
+        self.delegate.projection_equate(projection_ty, value_ty);
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        self.delegate.defer_projection_equality()
     }
 }
 
@@ -1084,5 +1059,17 @@ where
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
         Ok(a.rebind(result))
+    }
+
+    fn projection_equate_obligation(
+        &mut self,
+        _projection_ty: ty::ProjectionTy<'tcx>,
+        _ty: Ty<'tcx>,
+    ) {
+        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        bug!("`TypeGeneralizer` shouldn't equate projections with other kinds of types");
     }
 }

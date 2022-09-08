@@ -1,4 +1,4 @@
-error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]` to be a closure that returns `Unit3`, but it returns `Unit4`
+error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]` to be a closure that returns `Unit3`, but it returns `Unit4`
   --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
@@ -6,13 +6,11 @@ LL |       let v = Unit2.m(
 LL | /         L {
 LL | |
 LL | |
-LL | |             f: |x| {
-...  |
-LL | |             },
-LL | |         },
+LL | |             f : |x| { drop(x); Unit4 }
+LL | |         });
    | |_________^ expected struct `Unit3`, found struct `Unit4`
    |
-note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
+note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>
@@ -26,7 +24,7 @@ LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
 
-error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]` to be a closure that returns `Unit3`, but it returns `Unit4`
+error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]` to be a closure that returns `Unit3`, but it returns `Unit4`
   --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
@@ -34,13 +32,11 @@ LL |       let v = Unit2.m(
 LL | /         L {
 LL | |
 LL | |
-LL | |             f: |x| {
-...  |
-LL | |             },
-LL | |         },
+LL | |             f : |x| { drop(x); Unit4 }
+LL | |         });
    | |_________^ expected struct `Unit3`, found struct `Unit4`
    |
-note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
+note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>

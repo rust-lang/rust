@@ -211,4 +211,17 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         self.pattern_depth.shift_out(1);
         result
     }
+
+    fn projection_equate_obligation(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) {
+        unreachable!()
+    }
+
+    fn defer_projection_equality(&self) -> bool {
+        // FIXME(projection_equality): ???
+        false
+    }
 }
