@@ -1729,9 +1729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let private_fields: Vec<&ty::FieldDef> = variant
                 .fields
                 .iter()
-                .filter(|field| {
-                    !field.vis.is_accessible_from(tcx.parent_module(expr_id).to_def_id(), tcx)
-                })
+                .filter(|field| !field.vis.is_accessible_from(tcx.parent_module(expr_id), tcx))
                 .collect();
 
             if !private_fields.is_empty() {
@@ -2343,7 +2341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, _) = output_ty.kind() && !def.is_enum() {
                 def.non_enum_variant().fields.iter().any(|field| {
                     field.ident(self.tcx) == ident
-                        && field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                        && field.vis.is_accessible_from(expr.hir_id.owner, self.tcx)
                 })
             } else if let ty::Tuple(tys) = output_ty.kind()
                 && let Ok(idx) = ident.as_str().parse::<usize>()

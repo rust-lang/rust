@@ -202,6 +202,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
+        let mut span = pat.span;
 
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
@@ -262,6 +263,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
+                if let Some(ident_span) = ident.span.find_ancestor_inside(span) {
+                    span = span.with_hi(ident_span.hi());
+                }
+
                 let bm = *self
                     .typeck_results
                     .pat_binding_modes()
@@ -326,7 +331,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
-        Box::new(Pat { span: pat.span, ty, kind })
+        Box::new(Pat { span, ty, kind })
     }
 
     fn lower_tuple_subpats(

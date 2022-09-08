@@ -1895,9 +1895,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         // FIXME(compiler-errors): This could be generalized, both to
                         // be more granular, and probably look past other `#[fundamental]`
                         // types, too.
-                        self.tcx
-                            .visibility(def.did())
-                            .is_accessible_from(body_id.owner.to_def_id(), self.tcx)
+                        self.tcx.visibility(def.did()).is_accessible_from(body_id.owner, self.tcx)
                     } else {
                         true
                     }

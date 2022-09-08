@@ -305,6 +305,12 @@ impl DefId {
     }
 }
 
+impl From<LocalDefId> for DefId {
+    fn from(local: LocalDefId) -> DefId {
+        local.to_def_id()
+    }
+}
+
 impl<E: Encoder> Encodable<E> for DefId {
     default fn encode(&self, s: &mut E) {
         self.krate.encode(s);

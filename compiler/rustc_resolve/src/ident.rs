@@ -6,6 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::symbol::{kw, Ident};
@@ -25,6 +26,8 @@ use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, 
 use Determinacy::*;
 use Namespace::*;
 use RibKind::*;
+
+type Visibility = ty::Visibility<LocalDefId>;
 
 impl<'a> Resolver<'a> {
     /// A generic scope visitor.
@@ -424,8 +427,7 @@ impl<'a> Resolver<'a> {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let ok = |res, span, arenas| {
                     Ok((
-                        (res, ty::Visibility::Public, span, LocalExpnId::ROOT)
-                            .to_name_binding(arenas),
+                        (res, Visibility::Public, span, LocalExpnId::ROOT).to_name_binding(arenas),
                         Flags::empty(),
                     ))
                 };
@@ -438,7 +440,7 @@ impl<'a> Resolver<'a> {
                         {
                             let binding = (
                                 Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                ty::Visibility::Public,
+                                Visibility::Public,
                                 attr.span,
                                 expn_id,
                             )
@@ -841,9 +843,8 @@ impl<'a> Resolver<'a> {
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
-                        let binding =
-                            (module, ty::Visibility::Public, module.span, LocalExpnId::ROOT)
-                                .to_name_binding(self.arenas);
+                        let binding = (module, Visibility::Public, module.span, LocalExpnId::ROOT)
+                            .to_name_binding(self.arenas);
                         return Ok(binding);
                     } else if ident.name == kw::Super || ident.name == kw::SelfLower {
                         // FIXME: Implement these with renaming requirements so that e.g.

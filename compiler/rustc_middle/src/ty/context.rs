@@ -22,6 +22,7 @@ use crate::ty::{
     FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
     ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    Visibility,
 };
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -1727,6 +1728,11 @@ impl<'tcx> TyCtxt<'tcx> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits_in_crate(cnum).iter().copied())
+    }
+
+    #[inline]
+    pub fn local_visibility(self, def_id: LocalDefId) -> Visibility {
+        self.visibility(def_id.to_def_id()).expect_local()
     }
 }
 

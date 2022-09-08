@@ -3,7 +3,6 @@
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::{fmt, hash};
 
-use crate::DebruijnIndex;
 use crate::FloatTy;
 use crate::IntTy;
 use crate::Interner;
@@ -11,6 +10,7 @@ use crate::TyDecoder;
 use crate::TyEncoder;
 use crate::UintTy;
 use crate::UniverseIndex;
+use crate::{DebruijnIndex, HashStableContext};
 
 use self::RegionKind::*;
 use self::TyKind::*;
@@ -774,7 +774,7 @@ where
 
 // This is not a derived impl because a derive would require `I: HashStable`
 #[allow(rustc::usage_of_ty_tykind)]
-impl<CTX, I: Interner> HashStable<CTX> for TyKind<I>
+impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
 where
     I::AdtDef: HashStable<CTX>,
     I::DefId: HashStable<CTX>,
@@ -1286,7 +1286,7 @@ where
 }
 
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
 where
     I::EarlyBoundRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,

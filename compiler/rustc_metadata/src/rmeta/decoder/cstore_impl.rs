@@ -210,7 +210,6 @@ provide! { tcx, def_id, other, cdata,
     lookup_const_stability => { table }
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
-    visibility => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }
@@ -225,6 +224,7 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
 
+    visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
@@ -485,7 +485,7 @@ impl CStore {
     pub fn struct_field_visibilities_untracked(
         &self,
         def: DefId,
-    ) -> impl Iterator<Item = Visibility> + '_ {
+    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
@@ -493,7 +493,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
     }
 
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility {
+    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 

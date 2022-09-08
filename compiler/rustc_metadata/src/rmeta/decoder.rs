@@ -911,8 +911,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
     }
 
-    fn get_visibility(self, id: DefIndex) -> ty::Visibility {
-        self.root.tables.visibility.get(self, id).unwrap().decode(self)
+    fn get_visibility(self, id: DefIndex) -> ty::Visibility<DefId> {
+        self.root
+            .tables
+            .visibility
+            .get(self, id)
+            .unwrap()
+            .decode(self)
+            .map_id(|index| self.local_def_id(index))
     }
 
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
@@ -1182,7 +1188,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
 
-    fn get_struct_field_visibilities(self, id: DefIndex) -> impl Iterator<Item = Visibility> + 'a {
+    fn get_struct_field_visibilities(
+        self,
+        id: DefIndex,
+    ) -> impl Iterator<Item = Visibility<DefId>> + 'a {
         self.root
             .tables
             .children

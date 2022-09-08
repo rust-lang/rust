@@ -511,20 +511,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     _ => "",
                 };
 
-                multi_suggestions.push(SourceKindMultiSuggestion::FullyQualified {
-                    span: receiver.span,
+                multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                    receiver.span,
                     def_path,
                     adjustment,
                     successor,
-                });
+                ));
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
                 let ty_info = ty_to_string(self, ty);
-                multi_suggestions.push(SourceKindMultiSuggestion::ClosureReturn {
+                multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
                     ty_info,
                     data,
                     should_wrap_expr,
-                });
+                ));
             }
         }
         match error_code {
