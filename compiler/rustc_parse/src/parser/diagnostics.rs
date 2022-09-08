@@ -713,6 +713,14 @@ pub(crate) struct RemoveLet {
     pub span: Span,
 }
 
+#[derive(SessionDiagnostic)]
+#[diag(parser::use_eq_instead)]
+pub(crate) struct UseEqInstead {
+    #[primary_span]
+    #[suggestion_short(applicability = "machine-applicable", code = "=")]
+    pub span: Span,
+}
+
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -955,6 +963,14 @@ impl<'a> Parser<'a> {
                     .emit();
                 return Ok(true);
             }
+        }
+
+        if self.token.kind == TokenKind::EqEq
+            && self.prev_token.is_ident()
+            && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Eq)))
+        {
+            // Likely typo: `=` → `==` in let expr or enum item
+            return Err(self.sess.create_err(UseEqInstead { span: self.token.span }));
         }
 
         let expect = tokens_to_string(&expected);
