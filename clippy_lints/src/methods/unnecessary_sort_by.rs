@@ -131,7 +131,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         ] = &closure_body.params;
         if let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind;
         if method_path.ident.name == sym::cmp;
-        if is_trait_method(cx, &closure_body.value, sym::Ord);
+        if is_trait_method(cx, closure_body.value, sym::Ord);
         then {
             let (closure_body, closure_arg, reverse) = if mirrored_exprs(
                 left_expr,

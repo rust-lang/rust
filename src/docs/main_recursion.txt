@@ -1,0 +1,13 @@
+### What it does
+Checks for recursion using the entrypoint.
+
+### Why is this bad?
+Apart from special setups (which we could detect following attributes like #![no_std]),
+recursing into main() seems like an unintuitive anti-pattern we should be able to detect.
+
+### Example
+```
+fn main() {
+    main();
+}
+```

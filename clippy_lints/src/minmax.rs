@@ -1,7 +1,6 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{match_trait_method, paths};
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -84,19 +83,16 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
             }
         },
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
-            if_chain! {
-                if cx.typeck_results().expr_ty(receiver).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);
-                then {
-                    if path.ident.name == sym!(max) {
-                        fetch_const(cx, Some(receiver), args, MinMax::Max)
-                    } else if path.ident.name == sym!(min) {
-                        fetch_const(cx, Some(receiver), args, MinMax::Min)
-                    } else {
-                        None
-                    }
+            if cx.typeck_results().expr_ty(receiver).is_floating_point() || match_trait_method(cx, expr, &paths::ORD) {
+                if path.ident.name == sym!(max) {
+                    fetch_const(cx, Some(receiver), args, MinMax::Max)
+                } else if path.ident.name == sym!(min) {
+                    fetch_const(cx, Some(receiver), args, MinMax::Min)
                 } else {
                     None
                 }
+            } else {
+                None
             }
         },
         _ => None,
@@ -109,18 +105,18 @@ fn fetch_const<'a>(
     args: &'a [Expr<'a>],
     m: MinMax,
 ) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
-    let mut args = receiver.into_iter().chain(args.into_iter());
-    let arg0 = args.next()?;
-    let arg1 = args.next()?;
+    let mut args = receiver.into_iter().chain(args);
+    let first_arg = args.next()?;
+    let second_arg = args.next()?;
     if args.next().is_some() {
         return None;
     }
-    constant_simple(cx, cx.typeck_results(), arg0).map_or_else(
-        || constant_simple(cx, cx.typeck_results(), arg1).map(|c| (m, c, arg0)),
+    constant_simple(cx, cx.typeck_results(), first_arg).map_or_else(
+        || constant_simple(cx, cx.typeck_results(), second_arg).map(|c| (m, c, first_arg)),
         |c| {
-            if constant_simple(cx, cx.typeck_results(), arg1).is_none() {
+            if constant_simple(cx, cx.typeck_results(), second_arg).is_none() {
                 // otherwise ignore
-                Some((m, c, arg1))
+                Some((m, c, second_arg))
             } else {
                 None
             }

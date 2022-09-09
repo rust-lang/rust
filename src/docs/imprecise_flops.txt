@@ -1,0 +1,23 @@
+### What it does
+Looks for floating-point expressions that
+can be expressed using built-in methods to improve accuracy
+at the cost of performance.
+
+### Why is this bad?
+Negatively impacts accuracy.
+
+### Example
+```
+let a = 3f32;
+let _ = a.powf(1.0 / 3.0);
+let _ = (1.0 + a).ln();
+let _ = a.exp() - 1.0;
+```
+
+Use instead:
+```
+let a = 3f32;
+let _ = a.cbrt();
+let _ = a.ln_1p();
+let _ = a.exp_m1();
+```

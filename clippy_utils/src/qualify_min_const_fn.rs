@@ -6,8 +6,8 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind, NonDivergingIntrinsic
+    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -212,9 +212,7 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
-            check_operand(tcx, op, span, body)
-        },
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
             rustc_middle::mir::CopyNonOverlapping { dst, src, count },

@@ -1,0 +1,14 @@
+### What it does
+Checks for the use of short circuit boolean conditions as
+a
+statement.
+
+### Why is this bad?
+Using a short circuit boolean condition as a statement
+may hide the fact that the second part is executed or not depending on the
+outcome of the first part.
+
+### Example
+```
+f() && g(); // We should write `if f() { g(); }`.
+```

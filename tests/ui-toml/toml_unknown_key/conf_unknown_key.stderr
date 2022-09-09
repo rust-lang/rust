@@ -3,7 +3,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            allow-expect-in-tests
            allow-unwrap-in-tests
            allowed-scripts
-           arithmetic-allowed
+           arithmetic-side-effects-allowed
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types

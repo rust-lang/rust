@@ -507,7 +507,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
         if let Some(args) = args
             && !args.is_empty()
             && body.map_or(true, |body| {
-                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, &body.value)
+                sig.header.unsafety == Unsafety::Unsafe || contains_unsafe_block(cx, body.value)
             })
         {
             span_lint_and_then(
@@ -664,7 +664,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
         results,
         skip_count,
     };
-    v.visit_expr(&body.value);
+    v.visit_expr(body.value);
     v.results
 }
 

@@ -238,23 +238,23 @@ fn get_integer_from_float_constant(value: &Constant) -> Option<i32> {
 fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
     // Check receiver
     if let Some((value, _)) = constant(cx, cx.typeck_results(), receiver) {
-        let method = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
-            "exp"
+        if let Some(method) = if F32(f32_consts::E) == value || F64(f64_consts::E) == value {
+            Some("exp")
         } else if F32(2.0) == value || F64(2.0) == value {
-            "exp2"
+            Some("exp2")
         } else {
-            return;
-        };
-
-        span_lint_and_sugg(
-            cx,
-            SUBOPTIMAL_FLOPS,
-            expr.span,
-            "exponent for bases 2 and e can be computed more accurately",
-            "consider using",
-            format!("{}.{}()", prepare_receiver_sugg(cx, &args[0]), method),
-            Applicability::MachineApplicable,
-        );
+            None
+        } {
+            span_lint_and_sugg(
+                cx,
+                SUBOPTIMAL_FLOPS,
+                expr.span,
+                "exponent for bases 2 and e can be computed more accurately",
+                "consider using",
+                format!("{}.{}()", prepare_receiver_sugg(cx, &args[0]), method),
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     // Check argument

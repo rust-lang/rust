@@ -1,0 +1,18 @@
+### What it does
+
+Finds items imported through `std` when available through `core`.
+
+### Why is this bad?
+
+Crates which have `no_std` compatibility may wish to ensure types are imported from core to ensure
+disabling `std` does not cause the crate to fail to compile. This lint is also useful for crates
+migrating to become `no_std` compatible.
+
+### Example
+```
+use std::hash::Hasher;
+```
+Use instead:
+```
+use core::hash::Hasher;
+```

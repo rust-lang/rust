@@ -1,0 +1,15 @@
+### What it does
+Checks for indirect collection of populated `Option`
+
+### Why is this bad?
+`Option` is like a collection of 0-1 things, so `flatten`
+automatically does this without suspicious-looking `unwrap` calls.
+
+### Example
+```
+let _ = std::iter::empty::<Option<i32>>().filter(Option::is_some).map(Option::unwrap);
+```
+Use instead:
+```
+let _ = std::iter::empty::<Option<i32>>().flatten();
+```

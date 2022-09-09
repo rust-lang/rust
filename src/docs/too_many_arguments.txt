@@ -1,0 +1,14 @@
+### What it does
+Checks for functions with too many parameters.
+
+### Why is this bad?
+Functions with lots of parameters are considered bad
+style and reduce readability (“what does the 5th parameter mean?”). Consider
+grouping some parameters into a new type.
+
+### Example
+```
+fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) {
+    // ..
+}
+```

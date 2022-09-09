@@ -1,0 +1,20 @@
+### What it does
+Finds patterns that reimplement `Option::unwrap_or` or `Result::unwrap_or`.
+
+### Why is this bad?
+Concise code helps focusing on behavior instead of boilerplate.
+
+### Example
+```
+let foo: Option<i32> = None;
+match foo {
+    Some(v) => v,
+    None => 1,
+};
+```
+
+Use instead:
+```
+let foo: Option<i32> = None;
+foo.unwrap_or(1);
+```

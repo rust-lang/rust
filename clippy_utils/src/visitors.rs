@@ -274,7 +274,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
         }
         !found
     })
-    .visit_expr(&cx.tcx.hir().body(body).value);
+    .visit_expr(cx.tcx.hir().body(body).value);
     found
 }
 
@@ -568,6 +568,7 @@ pub fn for_each_local_use_after_expr<'tcx, B>(
 // Calls the given function for every unconsumed temporary created by the expression. Note the
 // function is only guaranteed to be called for types which need to be dropped, but it may be called
 // for other types.
+#[allow(clippy::too_many_lines)]
 pub fn for_each_unconsumed_temporary<'tcx, B>(
     cx: &LateContext<'tcx>,
     e: &'tcx Expr<'tcx>,

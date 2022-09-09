@@ -1,0 +1,40 @@
+### What it does
+Checks for struct constructors where all fields are shorthand and
+the order of the field init shorthand in the constructor is inconsistent
+with the order in the struct definition.
+
+### Why is this bad?
+Since the order of fields in a constructor doesn't affect the
+resulted instance as the below example indicates,
+
+```
+#[derive(Debug, PartialEq, Eq)]
+struct Foo {
+    x: i32,
+    y: i32,
+}
+let x = 1;
+let y = 2;
+
+// This assertion never fails:
+assert_eq!(Foo { x, y }, Foo { y, x });
+```
+
+inconsistent order can be confusing and decreases readability and consistency.
+
+### Example
+```
+struct Foo {
+    x: i32,
+    y: i32,
+}
+let x = 1;
+let y = 2;
+
+Foo { y, x };
+```
+
+Use instead:
+```
+Foo { x, y };
+```
