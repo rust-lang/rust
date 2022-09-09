@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::Session;
+use rustc_session::{Session, SessionDiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -404,15 +404,16 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_type_no_bounds(&self, bounds: &[GenericBound], ctx: &str) {
+    fn check_type_no_bounds<D>(&self, bounds: &[GenericBound], create_diag: impl FnOnce(Span) -> D)
+    where
+        D: SessionDiagnostic<'a>,
+    {
         let span = match bounds {
             [] => return,
             [b0] => b0.span(),
             [b0, .., bl] => b0.span().to(bl.span()),
         };
-        self.err_handler()
-            .struct_span_err(span, &format!("bounds on `type`s in {} have no effect", ctx))
-            .emit();
+        self.session.emit_err(create_diag(span));
     }
 
     fn check_foreign_ty_genericless(&self, generics: &Generics, where_span: Span) {
@@ -1205,7 +1206,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
-                self.check_type_no_bounds(bounds, "this context");
+                self.check_type_no_bounds(bounds, |span| TyAliasWithBound { span });
                 if where_clauses.1.0 {
                     let mut err = self.err_handler().struct_span_err(
                         where_clauses.1.1,
@@ -1241,7 +1242,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
-                self.check_type_no_bounds(bounds, "`extern` blocks");
+                self.check_type_no_bounds(bounds, |span| ForeignTypeWithBound { span });
                 self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
@@ -1539,7 +1540,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             replace_span: self.ending_semi_or_hi(item.span),
                         });
                     }
-                    self.check_type_no_bounds(bounds, "`impl`s");
+                    self.check_type_no_bounds(bounds, |span| ImplAssocTypeWithBound { span });
                     if ty.is_some() {
                         self.check_gat_where(
                             item.id,

@@ -90,3 +90,12 @@ ast_passes_fn_without_body =
     .suggestion = provide a definition for the function
 
 ast_passes_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
+
+ast_passes_ty_alias_with_bound =
+    bounds on `type`s in this context have no effect
+
+ast_passes_foreign_type_with_bound =
+    bounds on `type`s in `extern` blocks have no effect
+
+ast_passes_impl_assoc_type_with_bound =
+    bounds on `type`s in `impl`s have no effect

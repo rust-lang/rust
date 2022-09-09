@@ -224,3 +224,24 @@ pub enum ExternBlockSuggestion {
         abi: Symbol,
     },
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::ty_alias_with_bound)]
+pub struct TyAliasWithBound {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_type_with_bound)]
+pub struct ForeignTypeWithBound {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::impl_assoc_type_with_bound)]
+pub struct ImplAssocTypeWithBound {
+    #[primary_span]
+    pub span: Span,
+}
