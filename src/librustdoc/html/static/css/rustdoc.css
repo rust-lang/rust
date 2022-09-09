@@ -347,10 +347,6 @@ img {
 	max-width: 100%;
 }
 
-li {
-	position: relative;
-}
-
 .source .content {
 	max-width: none;
 	overflow: visible;
@@ -652,7 +648,7 @@ h2.location a {
 	position: relative;
 }
 
-.docblock > :not(.information):not(.more-examples-toggle) {
+.docblock > :not(.more-examples-toggle):not(.example-wrap) {
 	max-width: 100%;
 	overflow-x: auto;
 }
@@ -1169,12 +1165,12 @@ pre.ignore {
 	border-left: 2px solid var(--codeblock-ignore-color);
 }
 
-pre.compile_fail:hover, .information:hover + .example-wrap pre.compile_fail,
-pre.should_panic:hover, .information:hover + .example-wrap pre.should_panic {
+.example-wrap:hover pre.compile_fail,
+.example-wrap:hover pre.should_panic {
 	border-left: 2px solid var(--codeblock-error-hover-color);
 }
 
-pre.ignore:hover, .information:hover + .example-wrap pre.ignore {
+.example-wrap:hover pre.ignore {
 	border-left: 2px solid var(--codeblock-ignore-hover-color);
 }
 
@@ -1187,12 +1183,12 @@ pre.ignore:hover, .information:hover + .example-wrap pre.ignore {
 	color:  var(--codeblock-ignore-color);
 }
 
-.information > .compile_fail:hover,
-.information > .should_panic:hover {
+.example-wrap:hover .tooltip.compile_fail,
+.example-wrap:hover .tooltip.should_panic {
 	color: var(--codeblock-error-hover-color);
 }
 
-.information > .ignore:hover {
+.example-wrap:hover .tooltip.ignore {
 	color: var(--codeblock-ignore-hover-color);
 }
 
@@ -1727,7 +1723,7 @@ in storage.js plus the media query with (max-width: 700px)
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.docblock > .information:first-child > .tooltip {
+	.docblock > .example-wrap:first-child > .information > .tooltip {
 		margin-top: 16px;
 	}
 
