@@ -223,6 +223,9 @@ enum MalformedGenerics {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum UrlFragment {
     Item(DefId),
+    /// A part of a page that isn't a rust item.
+    ///
+    /// Eg: `[Vector Examples](std::vec::Vec#examples)`
     UserWritten(String),
 }
 
@@ -1127,7 +1130,7 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    did: res.def_id(self.cx.tcx),
+                    page_id: res.def_id(self.cx.tcx),
                     fragment,
                 })
             }
@@ -1146,11 +1149,12 @@ impl LinkCollector<'_, '_> {
                     item,
                     &diag_info,
                 )?;
-                let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
+
+                let page_id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    did: id,
+                    page_id,
                     fragment,
                 })
             }
