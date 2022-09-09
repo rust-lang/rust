@@ -33,7 +33,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
@@ -324,46 +323,17 @@ pub type GenericBounds = Vec<GenericBound>;
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
 /// `PartialOrd`, to allow the kinds to be unordered.
-#[derive(Hash, Clone, Copy)]
+#[derive(Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ParamKindOrd {
     Lifetime,
-    Type,
-    Const,
-    // `Infer` is not actually constructed directly from the AST, but is implicitly constructed
-    // during HIR lowering, and `ParamKindOrd` will implicitly order inferred variables last.
-    Infer,
+    TypeOrConst,
 }
-
-impl Ord for ParamKindOrd {
-    fn cmp(&self, other: &Self) -> Ordering {
-        use ParamKindOrd::*;
-        let to_int = |v| match v {
-            Lifetime => 0,
-            Infer | Type | Const => 1,
-        };
-
-        to_int(*self).cmp(&to_int(*other))
-    }
-}
-impl PartialOrd for ParamKindOrd {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl PartialEq for ParamKindOrd {
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-impl Eq for ParamKindOrd {}
 
 impl fmt::Display for ParamKindOrd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
-            ParamKindOrd::Type => "type".fmt(f),
-            ParamKindOrd::Const { .. } => "const".fmt(f),
-            ParamKindOrd::Infer => "infer".fmt(f),
+            ParamKindOrd::TypeOrConst => "type and const".fmt(f),
         }
     }
 }
