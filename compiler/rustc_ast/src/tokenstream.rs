@@ -217,12 +217,8 @@ impl AttrTokenStream {
                     let mut inner_attrs = Vec::new();
                     for attr in &data.attrs {
                         match attr.style {
-                            crate::AttrStyle::Outer => {
-                                outer_attrs.push(attr);
-                            }
-                            crate::AttrStyle::Inner => {
-                                inner_attrs.push(attr);
-                            }
+                            crate::AttrStyle::Outer => outer_attrs.push(attr),
+                            crate::AttrStyle::Inner => inner_attrs.push(attr),
                         }
                     }
 
@@ -239,9 +235,9 @@ impl AttrTokenStream {
                         // Check the last two trees (to account for a trailing semi)
                         for tree in target_tokens.iter_mut().rev().take(2) {
                             if let TokenTree::Delimited(span, delim, delim_tokens) = tree {
-                                // Inner attributes are only supported on extern blocks, functions, impls,
-                                // and modules. All of these have their inner attributes placed at
-                                // the beginning of the rightmost outermost braced group:
+                                // Inner attributes are only supported on extern blocks, functions,
+                                // impls, and modules. All of these have their inner attributes
+                                // placed at the beginning of the rightmost outermost braced group:
                                 // e.g. fn foo() { #![my_attr} }
                                 //
                                 // Therefore, we can insert them back into the right location
