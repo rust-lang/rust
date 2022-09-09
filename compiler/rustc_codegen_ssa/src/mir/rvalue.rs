@@ -87,7 +87,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_uint(v) == Some(0) {
+                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
                         let fill = bx.cx().const_u8(0);
                         bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
