@@ -2,7 +2,7 @@
 // have overflow and max-width CSS rules set because they create a bug in firefox on
 // mac. For more information: https://github.com/rust-lang/rust/issues/89185
 goto: file://|DOC_PATH|/test_docs/fn.foo.html
-assert-css: (".docblock > .information", {
+assert-css: (".docblock > .example-wrap > .information", {
     "overflow-x": "visible",
     "max-width": "none"
 }, ALL)

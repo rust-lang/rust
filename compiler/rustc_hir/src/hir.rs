@@ -2401,6 +2401,14 @@ impl<'hir> Ty<'hir> {
             _ => None,
         }
     }
+
+    pub fn peel_refs(&self) -> &Self {
+        let mut final_ty = self;
+        while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = &ty;
+        }
+        final_ty
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
