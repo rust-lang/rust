@@ -83,20 +83,21 @@ pub trait ValueAnalysis<'tcx> {
             }
             StatementKind::SetDiscriminant { .. } => {
                 // Could treat this as writing a constant to a pseudo-place.
+                // But discriminants are currently not tracked, so we do nothing.
+                // Related: https://github.com/rust-lang/unsafe-code-guidelines/issues/84
             }
             StatementKind::CopyNonOverlapping(..) => {
                 // FIXME: What to do here?
             }
-            StatementKind::StorageDead(local) => {
-                // It is UB to access an unallocated local.
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                // It is UB to read from an unitialized or unallocated local.
                 state.flood(Place::from(*local).as_ref(), self.map());
             }
             StatementKind::Deinit(box place) => {
-                // It is UB to access `uninit` bytes.
+                // It is UB to read `uninit` bytes.
                 state.flood(place.as_ref(), self.map());
             }
             StatementKind::Nop
-            | StatementKind::StorageLive(..)
             | StatementKind::Retag(..)
             | StatementKind::FakeRead(..)
             | StatementKind::Coverage(..)
