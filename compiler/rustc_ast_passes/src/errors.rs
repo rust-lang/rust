@@ -160,7 +160,7 @@ pub struct AssocFnWithoutBody {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_assoc_type_without_body)]
+#[diag(ast_passes_assoc_ty_without_body)]
 pub struct AssocTypeWithoutBody {
     #[primary_span]
     pub span: Span,
@@ -225,23 +225,23 @@ pub enum ExternBlockSuggestion {
     },
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(ast_passes::ty_alias_with_bound)]
+#[derive(Diagnostic)]
+#[diag(ast_passes_ty_alias_with_bound)]
 pub struct TyAliasWithBound {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(ast_passes::foreign_type_with_bound)]
-pub struct ForeignTypeWithBound {
+#[derive(Diagnostic)]
+#[diag(ast_passes_foreign_ty_with_bound)]
+pub struct ForeignTyWithBound {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
-#[diag(ast_passes::impl_assoc_type_with_bound)]
-pub struct ImplAssocTypeWithBound {
+#[derive(Diagnostic)]
+#[diag(ast_passes_impl_assoc_ty_with_bound)]
+pub struct ImplAssocTyWithBound {
     #[primary_span]
     pub span: Span,
 }

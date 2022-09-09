@@ -69,7 +69,7 @@ ast_passes_assoc_fn_without_body =
     associated function in `impl` without body
     .suggestion = provide a definition for the function
 
-ast_passes_assoc_type_without_body =
+ast_passes_assoc_ty_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
 
@@ -94,8 +94,8 @@ ast_passes_extern_block_suggestion = if you meant to declare an externally defin
 ast_passes_ty_alias_with_bound =
     bounds on `type`s in this context have no effect
 
-ast_passes_foreign_type_with_bound =
+ast_passes_foreign_ty_with_bound =
     bounds on `type`s in `extern` blocks have no effect
 
-ast_passes_impl_assoc_type_with_bound =
+ast_passes_impl_assoc_ty_with_bound =
     bounds on `type`s in `impl`s have no effect

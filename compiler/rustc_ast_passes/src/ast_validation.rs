@@ -1242,7 +1242,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
-                self.check_type_no_bounds(bounds, |span| ForeignTypeWithBound { span });
+                self.check_type_no_bounds(bounds, |span| ForeignTyWithBound { span });
                 self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
@@ -1535,12 +1535,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ..
                 }) => {
                     if ty.is_none() {
-                        self.session.emit_err(AssocTypeWithoutBody {
+                        self.session.emit_err(AssocTyWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
                         });
                     }
-                    self.check_type_no_bounds(bounds, |span| ImplAssocTypeWithBound { span });
+                    self.check_type_no_bounds(bounds, |span| ImplAssocTyWithBound { span });
                     if ty.is_some() {
                         self.check_gat_where(
                             item.id,
