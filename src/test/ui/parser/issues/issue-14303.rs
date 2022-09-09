@@ -1,22 +1,22 @@
 enum Enum<'a, T, 'b> {
-//~^ ERROR lifetime parameters must be declared prior to type or const parameters
+//~^ ERROR lifetime parameters must be declared prior to type and const parameters
     A(&'a &'b T)
 }
 
 struct Struct<'a, T, 'b> {
-//~^ ERROR lifetime parameters must be declared prior to type or const parameters
+//~^ ERROR lifetime parameters must be declared prior to type and const parameters
     x: &'a &'b T
 }
 
 trait Trait<'a, T, 'b> {}
-//~^ ERROR lifetime parameters must be declared prior to type or const parameters
+//~^ ERROR lifetime parameters must be declared prior to type and const parameters
 
 fn foo<'a, T, 'b>(x: &'a T) {}
-//~^ ERROR lifetime parameters must be declared prior to type or const parameters
+//~^ ERROR lifetime parameters must be declared prior to type and const parameters
 
 struct Y<T>(T);
 impl<'a, T, 'b> Y<T> {}
-//~^ ERROR lifetime parameters must be declared prior to type or const parameters
+//~^ ERROR lifetime parameters must be declared prior to type and const parameters
 
 mod bar {
     pub struct X<'a, 'b, 'c, T> {
