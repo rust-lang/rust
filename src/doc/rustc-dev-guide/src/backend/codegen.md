@@ -3,7 +3,7 @@
 Code generation (or "codegen") is the part of the compiler
 that actually generates an executable binary.
 Usually, rustc uses LLVM for code generation,
-bu there is also support for [Cranelift] and [GCC].
+but there is also support for [Cranelift] and [GCC].
 The key is that rustc doesn't implement codegen itself.
 It's worth noting, though, that in the Rust source code,
 many parts of the backend have `codegen` in their names
