@@ -1160,6 +1160,42 @@ pre.rust .question-mark {
 	font-weight: bold;
 }
 
+pre.compile_fail,
+pre.should_panic {
+	border-left: 2px solid var(--codeblock-error-color);
+}
+
+pre.ignore {
+	border-left: 2px solid var(--codeblock-ignore-color);
+}
+
+pre.compile_fail:hover, .information:hover + .example-wrap pre.compile_fail,
+pre.should_panic:hover, .information:hover + .example-wrap pre.should_panic {
+	border-left: 2px solid var(--codeblock-error-hover-color);
+}
+
+pre.ignore:hover, .information:hover + .example-wrap pre.ignore {
+	border-left: 2px solid var(--codeblock-ignore-hover-color);
+}
+
+.tooltip.compile_fail,
+.tooltip.should_panic {
+	color: var(--codeblock-error-color);
+}
+
+.tooltip.ignore {
+	color:  var(--codeblock-ignore-color);
+}
+
+.information > .compile_fail:hover,
+.information > .should_panic:hover {
+	color: var(--codeblock-error-hover-color);
+}
+
+.information > .ignore:hover {
+	color: var(--codeblock-ignore-hover-color);
+}
+
 a.test-arrow {
 	display: inline-block;
 	visibility: hidden;

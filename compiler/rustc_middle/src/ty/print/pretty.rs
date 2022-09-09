@@ -922,12 +922,14 @@ pub trait PrettyPrinter<'tcx>:
                         // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
-                            && let ty::Projection(ty::ProjectionTy { item_def_id, substs }) = ty.kind()
-                            && Some(*item_def_id) == tcx.lang_items().generator_return()
+                            && let ty::Projection(proj) = ty.kind()
+                            && let assoc = tcx.associated_item(proj.item_def_id)
+                            && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
+                            && assoc.name == rustc_span::sym::Return
                         {
                             if let ty::Generator(_, substs, _) = substs.type_at(0).kind() {
                                 let return_ty = substs.as_generator().return_ty();
-                                if !return_ty.is_ty_infer() {
+                                if !return_ty.is_ty_var() {
                                     return_ty.into()
                                 } else {
                                     continue;

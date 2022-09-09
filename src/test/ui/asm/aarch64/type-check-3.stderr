@@ -5,8 +5,8 @@ LL |         asm!("{}", in(reg) 0u8);
    |               ^^           --- for this argument
    |
    = note: `#[warn(asm_sub_register)]` on by default
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:50:15
@@ -14,8 +14,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(reg) 0u16);
    |               ^^           ---- for this argument
    |
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:52:15
@@ -23,8 +23,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(reg) 0i32);
    |               ^^           ---- for this argument
    |
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:54:15
@@ -32,8 +32,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(reg) 0f32);
    |               ^^           ---- for this argument
    |
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:57:15
@@ -41,8 +41,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(vreg) 0i16);
    |               ^^            ---- for this argument
    |
-   = help: use the `h` modifier to have the register formatted as `h0`
-   = help: or use the `v` modifier to keep the default formatting of `v0`
+   = help: use `{0:h}` to have the register formatted as `h0`
+   = help: or use `{0:v}` to keep the default formatting of `v0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:59:15
@@ -50,8 +50,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(vreg) 0f32);
    |               ^^            ---- for this argument
    |
-   = help: use the `s` modifier to have the register formatted as `s0`
-   = help: or use the `v` modifier to keep the default formatting of `v0`
+   = help: use `{0:s}` to have the register formatted as `s0`
+   = help: or use `{0:v}` to keep the default formatting of `v0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:61:15
@@ -59,8 +59,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(vreg) 0f64);
    |               ^^            ---- for this argument
    |
-   = help: use the `d` modifier to have the register formatted as `d0`
-   = help: or use the `v` modifier to keep the default formatting of `v0`
+   = help: use `{0:d}` to have the register formatted as `d0`
+   = help: or use `{0:v}` to keep the default formatting of `v0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:63:15
@@ -68,8 +68,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(vreg_low16) 0f64);
    |               ^^                  ---- for this argument
    |
-   = help: use the `d` modifier to have the register formatted as `d0`
-   = help: or use the `v` modifier to keep the default formatting of `v0`
+   = help: use `{0:d}` to have the register formatted as `d0`
+   = help: or use `{0:v}` to keep the default formatting of `v0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:66:15
@@ -77,8 +77,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{0} {0}", in(reg) 0i16);
    |               ^^^ ^^^           ---- for this argument
    |
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:68:15
@@ -86,8 +86,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{0} {0:x}", in(reg) 0i16);
    |               ^^^                 ---- for this argument
    |
-   = help: use the `w` modifier to have the register formatted as `w0`
-   = help: or use the `x` modifier to keep the default formatting of `x0`
+   = help: use `{0:w}` to have the register formatted as `w0`
+   = help: or use `{0:x}` to keep the default formatting of `x0`
 
 error: type `i128` cannot be used with this register class
   --> $DIR/type-check-3.rs:73:28

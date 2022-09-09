@@ -1,5 +1,6 @@
 // needs-sanitizer-support
 // needs-sanitizer-memory
+// min-llvm-version: 14.0.0
 //
 // revisions: unoptimized optimized
 //
@@ -9,7 +10,7 @@
 // run-fail
 // error-pattern: MemorySanitizer: use-of-uninitialized-value
 // error-pattern: Uninitialized value was created by an allocation
-// error-pattern: in the stack frame
+// error-pattern: in the stack frame of function 'random'
 //
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.
@@ -17,31 +18,21 @@
 #![feature(core_intrinsics)]
 #![feature(start)]
 #![feature(bench_black_box)]
-#![allow(invalid_value)]
 
 use std::hint::black_box;
 use std::mem::MaybeUninit;
 
 #[inline(never)]
 #[no_mangle]
-fn random() -> [isize; 32] {
-    let r = MaybeUninit::uninit();
+#[allow(invalid_value)]
+fn random() -> char {
+    let r = unsafe { MaybeUninit::uninit().assume_init() };
     // Avoid optimizing everything out.
-    unsafe { std::intrinsics::volatile_load(r.as_ptr()) }
-}
-
-#[inline(never)]
-#[no_mangle]
-fn xor(a: &[isize]) -> isize {
-    let mut s = 0;
-    for i in 0..a.len() {
-        s = s ^ a[i];
-    }
-    s
+    black_box(r)
 }
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
-    let r = black_box(random as fn() -> [isize; 32])();
-    xor(&r)
+    random();
+    0
 }

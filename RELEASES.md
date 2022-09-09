@@ -217,6 +217,7 @@ Language
 - [Fix constants not getting dropped if part of a diverging expression][94775]
 - [Support unit struct/enum variant in destructuring assignment][95380]
 - [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
+- [`const` functions may now specify `extern "C"` or `extern "Rust"`][95346]
 
 Compiler
 --------
@@ -306,6 +307,7 @@ and related tools.
 [94872]: https://github.com/rust-lang/rust/pull/94872/
 [95006]: https://github.com/rust-lang/rust/pull/95006/
 [95035]: https://github.com/rust-lang/rust/pull/95035/
+[95346]: https://github.com/rust-lang/rust/pull/95346/
 [95372]: https://github.com/rust-lang/rust/pull/95372/
 [95380]: https://github.com/rust-lang/rust/pull/95380/
 [95431]: https://github.com/rust-lang/rust/pull/95431/

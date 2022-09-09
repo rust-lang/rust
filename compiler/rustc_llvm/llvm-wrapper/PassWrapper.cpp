@@ -134,7 +134,12 @@ extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool 
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
-      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+#if LLVM_VERSION_GE(14, 0)
+      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel, /*EagerChecks=*/true}
+#else
+      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}
+#endif
+  ));
 #else
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
@@ -930,10 +935,18 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (SanitizerOptions) {
     if (SanitizerOptions->SanitizeMemory) {
+#if LLVM_VERSION_GE(14, 0)
+      MemorySanitizerOptions Options(
+          SanitizerOptions->SanitizeMemoryTrackOrigins,
+          SanitizerOptions->SanitizeMemoryRecover,
+          /*CompileKernel=*/false,
+          /*EagerChecks=*/true);
+#else
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
           SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false);
+#endif
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
 #if LLVM_VERSION_GE(14, 0) && LLVM_VERSION_LT(16, 0)

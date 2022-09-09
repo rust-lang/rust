@@ -45,8 +45,8 @@ LL |         asm!("{0} {0}", in(reg) 0i16);
    |               ^^^ ^^^           ---- for this argument
    |
    = note: `#[warn(asm_sub_register)]` on by default
-   = help: use the `x` modifier to have the register formatted as `ax`
-   = help: or use the `r` modifier to keep the default formatting of `rax`
+   = help: use `{0:x}` to have the register formatted as `ax`
+   = help: or use `{0:r}` to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:36:15
@@ -54,8 +54,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{0} {0:x}", in(reg) 0i16);
    |               ^^^                 ---- for this argument
    |
-   = help: use the `x` modifier to have the register formatted as `ax`
-   = help: or use the `r` modifier to keep the default formatting of `rax`
+   = help: use `{0:x}` to have the register formatted as `ax`
+   = help: or use `{0:r}` to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:38:15
@@ -63,8 +63,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(reg) 0i32);
    |               ^^           ---- for this argument
    |
-   = help: use the `e` modifier to have the register formatted as `eax`
-   = help: or use the `r` modifier to keep the default formatting of `rax`
+   = help: use `{0:e}` to have the register formatted as `eax`
+   = help: or use `{0:r}` to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:41:15
@@ -72,8 +72,8 @@ warning: formatting may not be suitable for sub-register argument
 LL |         asm!("{}", in(ymm_reg) 0i64);
    |               ^^               ---- for this argument
    |
-   = help: use the `x` modifier to have the register formatted as `xmm0`
-   = help: or use the `y` modifier to keep the default formatting of `ymm0`
+   = help: use `{0:x}` to have the register formatted as `xmm0`
+   = help: or use `{0:y}` to keep the default formatting of `ymm0`
 
 error: type `i8` cannot be used with this register class
   --> $DIR/type-check-3.rs:52:28

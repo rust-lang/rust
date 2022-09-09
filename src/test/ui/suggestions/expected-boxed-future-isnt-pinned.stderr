@@ -91,7 +91,7 @@ LL |   pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
    |                                             ------------------------------- the found opaque type
    |
    = note:   expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = {integer}>`
 help: you need to pin and box this expression
    |
 LL ~     Box::pin(async {
