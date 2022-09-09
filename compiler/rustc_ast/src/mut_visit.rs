@@ -644,7 +644,7 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, vis: &mut T) {
     match tt {
-        AttrAnnotatedTokenTree::Token(token) => {
+        AttrAnnotatedTokenTree::Token(token, _) => {
             visit_token(token, vis);
         }
         AttrAnnotatedTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
@@ -696,7 +696,7 @@ pub fn visit_attr_annotated_tts<T: MutVisitor>(
 ) {
     if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |(tree, _is_joint)| visit_attr_annotated_tt(tree, vis));
+        visit_vec(tts, |tree| visit_attr_annotated_tt(tree, vis));
     }
 }
 

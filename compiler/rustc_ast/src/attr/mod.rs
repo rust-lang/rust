@@ -303,13 +303,12 @@ impl Attribute {
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .create_token_stream(),
-            AttrKind::DocComment(comment_kind, data) => AttrAnnotatedTokenStream::from((
-                AttrAnnotatedTokenTree::Token(Token::new(
-                    token::DocComment(comment_kind, self.style, data),
-                    self.span,
-                )),
-                Spacing::Alone,
-            )),
+            AttrKind::DocComment(comment_kind, data) => {
+                AttrAnnotatedTokenStream::new(vec![AttrAnnotatedTokenTree::Token(
+                    Token::new(token::DocComment(comment_kind, self.style, data), self.span),
+                    Spacing::Alone,
+                )])
+            }
         }
     }
 }

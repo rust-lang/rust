@@ -177,12 +177,12 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
 /// during expansion to perform early cfg-expansion, and to process attributes
 /// during proc-macro invocations.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing)>>);
+pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<AttrAnnotatedTokenTree>>);
 
 /// Like `TokenTree`, but for `AttrAnnotatedTokenStream`
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum AttrAnnotatedTokenTree {
-    Token(Token),
+    Token(Token, Spacing),
     Delimited(DelimSpan, Delimiter, AttrAnnotatedTokenStream),
     /// Stores the attributes for an attribute target,
     /// along with the tokens for that attribute target.
@@ -191,7 +191,7 @@ pub enum AttrAnnotatedTokenTree {
 }
 
 impl AttrAnnotatedTokenStream {
-    pub fn new(tokens: Vec<(AttrAnnotatedTokenTree, Spacing)>) -> AttrAnnotatedTokenStream {
+    pub fn new(tokens: Vec<AttrAnnotatedTokenTree>) -> AttrAnnotatedTokenStream {
         AttrAnnotatedTokenStream(Lrc::new(tokens))
     }
 
@@ -204,9 +204,9 @@ impl AttrAnnotatedTokenStream {
         let trees: Vec<_> = self
             .0
             .iter()
-            .flat_map(|tree| match &tree.0 {
-                AttrAnnotatedTokenTree::Token(inner) => {
-                    smallvec![TokenTree::Token(inner.clone(), tree.1)].into_iter()
+            .flat_map(|tree| match &tree {
+                AttrAnnotatedTokenTree::Token(inner, spacing) => {
+                    smallvec![TokenTree::Token(inner.clone(), *spacing)].into_iter()
                 }
                 AttrAnnotatedTokenTree::Delimited(span, delim, stream) => {
                     smallvec![TokenTree::Delimited(*span, *delim, stream.to_tokenstream()),]
@@ -363,12 +363,6 @@ impl TokenStream {
     }
 }
 
-impl From<(AttrAnnotatedTokenTree, Spacing)> for AttrAnnotatedTokenStream {
-    fn from((tree, spacing): (AttrAnnotatedTokenTree, Spacing)) -> AttrAnnotatedTokenStream {
-        AttrAnnotatedTokenStream::new(vec![(tree, spacing)])
-    }
-}
-
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
         TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
@@ -428,10 +422,7 @@ impl TokenStream {
         } else {
             let attr_data =
                 AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrAnnotatedTokenStream::new(vec![(
-                AttrAnnotatedTokenTree::Attributes(attr_data),
-                Spacing::Alone,
-            )])
+            AttrAnnotatedTokenStream::new(vec![AttrAnnotatedTokenTree::Attributes(attr_data)])
         };
         Some(attr_annotated.to_tokenstream())
     }

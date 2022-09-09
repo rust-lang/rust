@@ -276,9 +276,9 @@ impl<'a> StripUnconfigured<'a> {
     /// Normal cfg-expansion operates on parsed AST nodes via the `configure` method
     fn configure_tokens(&self, stream: &AttrAnnotatedTokenStream) -> AttrAnnotatedTokenStream {
         fn can_skip(stream: &AttrAnnotatedTokenStream) -> bool {
-            stream.0.iter().all(|(tree, _spacing)| match tree {
+            stream.0.iter().all(|tree| match tree {
                 AttrAnnotatedTokenTree::Attributes(_) => false,
-                AttrAnnotatedTokenTree::Token(_) => true,
+                AttrAnnotatedTokenTree::Token(..) => true,
                 AttrAnnotatedTokenTree::Delimited(_, _, inner) => can_skip(inner),
             })
         }
@@ -290,7 +290,7 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|(tree, spacing)| match tree.clone() {
+            .flat_map(|tree| match tree.clone() {
                 AttrAnnotatedTokenTree::Attributes(mut data) => {
                     data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
 
@@ -298,24 +298,24 @@ impl<'a> StripUnconfigured<'a> {
                         data.tokens = LazyTokenStream::new(
                             self.configure_tokens(&data.tokens.create_token_stream()),
                         );
-                        Some((AttrAnnotatedTokenTree::Attributes(data), *spacing)).into_iter()
+                        Some(AttrAnnotatedTokenTree::Attributes(data)).into_iter()
                     } else {
                         None.into_iter()
                     }
                 }
                 AttrAnnotatedTokenTree::Delimited(sp, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some((AttrAnnotatedTokenTree::Delimited(sp, delim, inner), *spacing))
+                    Some(AttrAnnotatedTokenTree::Delimited(sp, delim, inner))
                         .into_iter()
                 }
-                AttrAnnotatedTokenTree::Token(ref token) if let TokenKind::Interpolated(ref nt) = token.kind => {
+                AttrAnnotatedTokenTree::Token(ref token, _) if let TokenKind::Interpolated(ref nt) = token.kind => {
                     panic!(
                         "Nonterminal should have been flattened at {:?}: {:?}",
                         token.span, nt
                     );
                 }
-                AttrAnnotatedTokenTree::Token(token) => {
-                    Some((AttrAnnotatedTokenTree::Token(token), *spacing)).into_iter()
+                AttrAnnotatedTokenTree::Token(token, spacing) => {
+                    Some(AttrAnnotatedTokenTree::Token(token, spacing)).into_iter()
                 }
             })
             .collect();
@@ -404,13 +404,13 @@ impl<'a> StripUnconfigured<'a> {
         };
         let pound_span = pound_token.span;
 
-        let mut trees = vec![(AttrAnnotatedTokenTree::Token(pound_token), Spacing::Alone)];
+        let mut trees = vec![AttrAnnotatedTokenTree::Token(pound_token, Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
             let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
                 panic!("Bad tokens for attribute {:?}", attr);
             };
-            trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
+            trees.push(AttrAnnotatedTokenTree::Token(bang_token, Spacing::Alone));
         }
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
@@ -422,7 +422,7 @@ impl<'a> StripUnconfigured<'a> {
                 .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
                 .create_token_stream(),
         );
-        trees.push((bracket_group, Spacing::Alone));
+        trees.push(bracket_group);
         let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(item, tokens, attr.style, item_span);
         if attr.has_name(sym::crate_type) {

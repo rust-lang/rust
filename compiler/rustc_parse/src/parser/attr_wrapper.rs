@@ -397,7 +397,7 @@ fn make_token_stream(
     struct FrameData {
         // This is `None` for the first frame, `Some` for all others.
         open_delim_sp: Option<(Delimiter, Span)>,
-        inner: Vec<(AttrAnnotatedTokenTree, Spacing)>,
+        inner: Vec<AttrAnnotatedTokenTree>,
     }
     let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
     let mut token_and_spacing = iter.next();
@@ -426,34 +426,34 @@ fn make_token_stream(
                         panic!("Bottom token frame is missing for token: {:?}", token)
                     })
                     .inner
-                    .push((delimited, Spacing::Alone));
+                    .push(delimited);
             }
             FlatToken::Token(token) => stack
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push((AttrAnnotatedTokenTree::Token(token), spacing)),
+                .push(AttrAnnotatedTokenTree::Token(token, spacing)),
             FlatToken::AttrTarget(data) => stack
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push((AttrAnnotatedTokenTree::Attributes(data), spacing)),
+                .push(AttrAnnotatedTokenTree::Attributes(data)),
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();
     }
     let mut final_buf = stack.pop().expect("Missing final buf!");
     if break_last_token {
-        let (last_token, spacing) = final_buf.inner.pop().unwrap();
-        if let AttrAnnotatedTokenTree::Token(last_token) = last_token {
+        let last_token = final_buf.inner.pop().unwrap();
+        if let AttrAnnotatedTokenTree::Token(last_token, spacing) = last_token {
             let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
 
             // An 'unglued' token is always two ASCII characters
             let mut first_span = last_token.span.shrink_to_lo();
             first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
 
-            final_buf.inner.push((
-                AttrAnnotatedTokenTree::Token(Token::new(unglued_first, first_span)),
+            final_buf.inner.push(AttrAnnotatedTokenTree::Token(
+                Token::new(unglued_first, first_span),
                 spacing,
             ));
         } else {
