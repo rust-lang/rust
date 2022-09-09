@@ -201,8 +201,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.inner.cx.tcx.typeck_body(right),
         ));
         let res = self.eq_expr(
-            &self.inner.cx.tcx.hir().body(left).value,
-            &self.inner.cx.tcx.hir().body(right).value,
+            self.inner.cx.tcx.hir().body(left).value,
+            self.inner.cx.tcx.hir().body(right).value,
         );
         self.inner.maybe_typeck_results = old_maybe_typeck_results;
         res
@@ -649,7 +649,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(&self.cx.tcx.hir().body(body).value);
+                self.hash_expr(self.cx.tcx.hir().body(body).value);
             },
             ExprKind::Field(e, ref f) => {
                 self.hash_expr(e);
@@ -1011,7 +1011,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
-        self.hash_expr(&self.cx.tcx.hir().body(body_id).value);
+        self.hash_expr(self.cx.tcx.hir().body(body_id).value);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
@@ -1019,7 +1019,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
-                GenericArg::Type(ref ty) => self.hash_ty(ty),
+                GenericArg::Type(ty) => self.hash_ty(ty),
                 GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }

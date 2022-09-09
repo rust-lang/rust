@@ -1,0 +1,25 @@
+### What it does
+Checks for loops on `x.iter()` where `&x` will do, and
+suggests the latter.
+
+### Why is this bad?
+Readability.
+
+### Known problems
+False negatives. We currently only warn on some known
+types.
+
+### Example
+```
+// with `y` a `Vec` or slice:
+for x in y.iter() {
+    // ..
+}
+```
+
+Use instead:
+```
+for x in &y {
+    // ..
+}
+```

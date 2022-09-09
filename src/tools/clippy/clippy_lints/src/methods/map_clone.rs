@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         if let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind;
         then {
             let closure_body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(closure_body.value);
             match closure_body.params[0].pat.kind {
                 hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
                     hir::BindingAnnotation::NONE, .., name, None

@@ -1,0 +1,14 @@
+### What it does
+Checks for functions collecting an iterator when collect
+is not needed.
+
+### Why is this bad?
+`collect` causes the allocation of a new data structure,
+when this allocation may not be needed.
+
+### Example
+```
+let len = iterator.clone().collect::<Vec<_>>().len();
+// should be
+let len = iterator.count();
+```

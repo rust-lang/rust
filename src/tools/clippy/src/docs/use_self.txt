@@ -1,0 +1,31 @@
+### What it does
+Checks for unnecessary repetition of structure name when a
+replacement with `Self` is applicable.
+
+### Why is this bad?
+Unnecessary repetition. Mixed use of `Self` and struct
+name
+feels inconsistent.
+
+### Known problems
+- Unaddressed false negative in fn bodies of trait implementations
+- False positive with associated types in traits (#4140)
+
+### Example
+```
+struct Foo;
+impl Foo {
+    fn new() -> Foo {
+        Foo {}
+    }
+}
+```
+could be
+```
+struct Foo;
+impl Foo {
+    fn new() -> Self {
+        Self {}
+    }
+}
+```

@@ -1,0 +1,14 @@
+### What it does
+Checks for passing a unit value as an argument to a function without using a
+unit literal (`()`).
+
+### Why is this bad?
+This is likely the result of an accidental semicolon.
+
+### Example
+```
+foo({
+    let a = bar();
+    baz(a);
+})
+```

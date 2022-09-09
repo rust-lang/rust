@@ -1,0 +1,14 @@
+### What it does
+Checks for `#[inline]` on trait methods without bodies
+
+### Why is this bad?
+Only implementations of trait methods may be inlined.
+The inline attribute is ignored for trait methods without bodies.
+
+### Example
+```
+trait Animal {
+    #[inline]
+    fn name(&self) -> &'static str;
+}
+```

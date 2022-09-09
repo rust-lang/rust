@@ -69,7 +69,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
         }
         true
     })
-    .visit_expr(&body.value);
+    .visit_expr(body.value);
     if !panics.is_empty() {
         span_lint_and_then(
             cx,

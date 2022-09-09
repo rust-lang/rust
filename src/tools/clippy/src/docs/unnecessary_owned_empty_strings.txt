@@ -1,0 +1,16 @@
+### What it does
+
+Detects cases of owned empty strings being passed as an argument to a function expecting `&str`
+
+### Why is this bad?
+
+This results in longer and less readable code
+
+### Example
+```
+vec!["1", "2", "3"].join(&String::new());
+```
+Use instead:
+```
+vec!["1", "2", "3"].join("");
+```

@@ -45,7 +45,7 @@ impl ops::BitOrAssign for EagernessSuggestion {
 }
 
 /// Determine the eagerness of the given function call.
-fn fn_eagerness<'tcx>(cx: &LateContext<'tcx>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
+fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
     let name = name.as_str();
 

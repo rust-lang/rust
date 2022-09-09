@@ -69,7 +69,10 @@ struct NumericFallbackVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
-        Self { ty_bounds: vec![TyBound::Nothing], cx }
+        Self {
+            ty_bounds: vec![TyBound::Nothing],
+            cx,
+        }
     }
 
     /// Check whether a passed literal has potential to cause fallback or not.
@@ -126,21 +129,19 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                     }
                     return;
                 }
-            }
+            },
 
             ExprKind::MethodCall(_, receiver, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
-                    for (expr, bound) in
-                        iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs())
-                    {
+                    for (expr, bound) in iter::zip(std::iter::once(*receiver).chain(args.iter()), fn_sig.inputs()) {
                         self.ty_bounds.push(TyBound::Ty(*bound));
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
                     return;
                 }
-            }
+            },
 
             ExprKind::Struct(_, fields, base) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
@@ -175,15 +176,15 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                         return;
                     }
                 }
-            }
+            },
 
             ExprKind::Lit(lit) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
                 self.check_lit(lit, ty, expr.hir_id);
                 return;
-            }
+            },
 
-            _ => {}
+            _ => {},
         }
 
         walk_expr(self, expr);
@@ -197,7 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 } else {
                     self.ty_bounds.push(TyBound::Nothing);
                 }
-            }
+            },
 
             _ => self.ty_bounds.push(TyBound::Nothing),
         }

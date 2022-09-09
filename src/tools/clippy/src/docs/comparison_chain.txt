@@ -1,0 +1,36 @@
+### What it does
+Checks comparison chains written with `if` that can be
+rewritten with `match` and `cmp`.
+
+### Why is this bad?
+`if` is not guaranteed to be exhaustive and conditionals can get
+repetitive
+
+### Known problems
+The match statement may be slower due to the compiler
+not inlining the call to cmp. See issue [#5354](https://github.com/rust-lang/rust-clippy/issues/5354)
+
+### Example
+```
+fn f(x: u8, y: u8) {
+    if x > y {
+        a()
+    } else if x < y {
+        b()
+    } else {
+        c()
+    }
+}
+```
+
+Use instead:
+```
+use std::cmp::Ordering;
+fn f(x: u8, y: u8) {
+     match x.cmp(&y) {
+         Ordering::Greater => a(),
+         Ordering::Less => b(),
+         Ordering::Equal => c()
+     }
+}
+```

@@ -236,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         typeck_results: cx.tcx.typeck(item.def_id),
                         panic_span: None,
                     };
-                    fpu.visit_expr(&body.value);
+                    fpu.visit_expr(body.value);
                     lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
@@ -286,7 +286,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 typeck_results: cx.tcx.typeck(item.def_id),
                 panic_span: None,
             };
-            fpu.visit_expr(&body.value);
+            fpu.visit_expr(body.value);
             lint_for_missing_headers(cx, item.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
@@ -348,7 +348,7 @@ fn lint_for_missing_headers<'tcx>(
                 if let Some(future) = cx.tcx.lang_items().future_trait();
                 let typeck = cx.tcx.typeck_body(body_id);
                 let body = cx.tcx.hir().body(body_id);
-                let ret_ty = typeck.expr_ty(&body.value);
+                let ret_ty = typeck.expr_ty(body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
@@ -828,7 +828,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
         // check for `unwrap`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-            let receiver_ty = self.typeck_results.expr_ty(&arglists[0].0).peel_refs();
+            let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
             if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
                 || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
             {

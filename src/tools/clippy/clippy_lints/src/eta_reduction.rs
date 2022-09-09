@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         };
         if body.value.span.from_expansion() {
             if body.params.is_empty() {
-                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, &body.value) {
+                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, body.value) {
                     // replace `|| vec![]` with `Vec::new`
                     span_lint_and_sugg(
                         cx,
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         let closure_ty = cx.typeck_results().expr_ty(expr);
 
         if_chain!(
-            if !is_adjusted(cx, &body.value);
+            if !is_adjusted(cx, body.value);
             if let ExprKind::Call(callee, args) = body.value.kind;
             if let ExprKind::Path(_) = callee.kind;
             if check_inputs(cx, body.params, None, args);
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         );
 
         if_chain!(
-            if !is_adjusted(cx, &body.value);
+            if !is_adjusted(cx, body.value);
             if let ExprKind::MethodCall(path, receiver, args, _) = body.value.kind;
             if check_inputs(cx, body.params, Some(receiver), args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
@@ -206,8 +206,7 @@ fn check_inputs(
             _ => false,
         }
     };
-    std::iter::zip(params, receiver.into_iter().chain(call_args.iter()))
-        .all(|(param, arg)| check_inputs(param, arg))
+    std::iter::zip(params, receiver.into_iter().chain(call_args.iter())).all(|(param, arg)| check_inputs(param, arg))
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tcx>) -> bool {

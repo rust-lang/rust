@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         })
         .collect::<Vec<_>>();
     if !args_to_recover.is_empty() && !is_from_proc_macro(cx, expr) {
-        lint_unit_args(cx, expr, &args_to_recover.as_slice());
+        lint_unit_args(cx, expr, args_to_recover.as_slice());
     }
 }
 

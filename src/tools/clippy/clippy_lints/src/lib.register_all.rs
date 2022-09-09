@@ -17,6 +17,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
+    LintId::of(bool_to_int_with_if::BOOL_TO_INT_WITH_IF),
     LintId::of(booleans::NONMINIMAL_BOOL),
     LintId::of(booleans::OVERLY_COMPLEX_BOOL_EXPR),
     LintId::of(borrow_deref_ref::BORROW_DEREF_REF),

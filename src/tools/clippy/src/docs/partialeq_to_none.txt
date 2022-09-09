@@ -1,0 +1,24 @@
+### What it does
+
+Checks for binary comparisons to a literal `Option::None`.
+
+### Why is this bad?
+
+A programmer checking if some `foo` is `None` via a comparison `foo == None`
+is usually inspired from other programming languages (e.g. `foo is None`
+in Python).
+Checking if a value of type `Option<T>` is (not) equal to `None` in that
+way relies on `T: PartialEq` to do the comparison, which is unneeded.
+
+### Example
+```
+fn foo(f: Option<u32>) -> &'static str {
+    if f != None { "yay" } else { "nay" }
+}
+```
+Use instead:
+```
+fn foo(f: Option<u32>) -> &'static str {
+    if f.is_some() { "yay" } else { "nay" }
+}
+```

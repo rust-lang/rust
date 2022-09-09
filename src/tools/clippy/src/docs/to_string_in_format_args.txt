@@ -1,0 +1,17 @@
+### What it does
+Checks for [`ToString::to_string`](https://doc.rust-lang.org/std/string/trait.ToString.html#tymethod.to_string)
+applied to a type that implements [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
+in a macro that does formatting.
+
+### Why is this bad?
+Since the type implements `Display`, the use of `to_string` is
+unnecessary.
+
+### Example
+```
+println!("error: something failed at {}", Location::caller().to_string());
+```
+Use instead:
+```
+println!("error: something failed at {}", Location::caller());
+```

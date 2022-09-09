@@ -21,7 +21,11 @@ pub(super) fn check(
     receiver: &Expr<'_>,
     args: &[Expr<'_>],
 ) {
-    let arg = if method_name == sym::clone && args.is_empty() { receiver } else { return };
+    let arg = if method_name == sym::clone && args.is_empty() {
+        receiver
+    } else {
+        return;
+    };
     if cx
         .typeck_results()
         .type_dependent_def_id(expr.hir_id)

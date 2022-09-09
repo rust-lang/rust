@@ -1,0 +1,13 @@
+### What it does
+Checks for calls to `std::mem::forget` with a value that does not implement `Drop`.
+
+### Why is this bad?
+Calling `std::mem::forget` is no different than dropping such a type. A different value may
+have been intended.
+
+### Example
+```
+struct Foo;
+let x = Foo;
+std::mem::forget(x);
+```

@@ -1,0 +1,19 @@
+### What it does
+Checks for usage of `option_env!(...).unwrap()` and
+suggests usage of the `env!` macro.
+
+### Why is this bad?
+Unwrapping the result of `option_env!` will panic
+at run-time if the environment variable doesn't exist, whereas `env!`
+catches it at compile-time.
+
+### Example
+```
+let _ = option_env!("HOME").unwrap();
+```
+
+Is better expressed as:
+
+```
+let _ = env!("HOME");
+```

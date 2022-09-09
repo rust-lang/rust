@@ -1,0 +1,20 @@
+### What it does
+Checks for `while let` expressions on iterators.
+
+### Why is this bad?
+Readability. A simple `for` loop is shorter and conveys
+the intent better.
+
+### Example
+```
+while let Some(val) = iter.next() {
+    ..
+}
+```
+
+Use instead:
+```
+for val in &mut iter {
+    ..
+}
+```

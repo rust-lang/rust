@@ -509,5 +509,11 @@ error: unnecessary use of `to_string`
 LL |         Box::new(build(y.to_string()))
    |                        ^^^^^^^^^^^^^ help: use: `y`
 
-error: aborting due to 78 previous errors
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned.rs:381:12
+   |
+LL |         id("abc".to_string())
+   |            ^^^^^^^^^^^^^^^^^ help: use: `"abc"`
+
+error: aborting due to 79 previous errors
 

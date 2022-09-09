@@ -1,0 +1,28 @@
+### What it does
+Checks for lifetimes with names which are one character
+long.
+
+### Why is this bad?
+A single character is likely not enough to express the
+purpose of a lifetime. Using a longer name can make code
+easier to understand, especially for those who are new to
+Rust.
+
+### Known problems
+Rust programmers and learning resources tend to use single
+character lifetimes, so this lint is at odds with the
+ecosystem at large. In addition, the lifetime's purpose may
+be obvious or, rarely, expressible in one character.
+
+### Example
+```
+struct DiagnosticCtx<'a> {
+    source: &'a str,
+}
+```
+Use instead:
+```
+struct DiagnosticCtx<'src> {
+    source: &'src str,
+}
+```

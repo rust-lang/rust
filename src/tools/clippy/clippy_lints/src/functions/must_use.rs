@@ -272,6 +272,6 @@ fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bo
         cx,
         mutates_static: false,
     };
-    intravisit::walk_expr(&mut v, &body.value);
+    intravisit::walk_expr(&mut v, body.value);
     v.mutates_static
 }

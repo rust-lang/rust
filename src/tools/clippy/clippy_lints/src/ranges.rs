@@ -350,6 +350,7 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
 // exclusive range plus one: `x..(y+1)`
 fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
+        if expr.span.can_be_used_for_suggestions();
         if let Some(higher::Range {
             start,
             end: Some(end),
@@ -357,14 +358,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }) = higher::Range::hir(expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
-            let span = if expr.span.from_expansion() {
-                expr.span
-                    .ctxt()
-                    .outer_expn_data()
-                    .call_site
-            } else {
-                expr.span
-            };
+            let span = expr.span;
             span_lint_and_then(
                 cx,
                 RANGE_PLUS_ONE,
@@ -399,6 +393,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
+        if expr.span.can_be_used_for_suggestions();
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::Range::hir(expr);
         if let Some(y) = y_minus_one(cx, end);
         then {

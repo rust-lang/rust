@@ -1,0 +1,16 @@
+### What it does
+Checks for transmutes from an integer to a `bool`.
+
+### Why is this bad?
+This might result in an invalid in-memory representation of a `bool`.
+
+### Example
+```
+let x = 1_u8;
+unsafe {
+    let _: bool = std::mem::transmute(x); // where x: u8
+}
+
+// should be:
+let _: bool = x != 0;
+```
