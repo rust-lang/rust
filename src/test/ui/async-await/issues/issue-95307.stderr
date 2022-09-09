@@ -8,6 +8,8 @@ LL |     async fn new() -> [u8; _];
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 error: in expressions, `_` can only be used on the left-hand side of an assignment
   --> $DIR/issue-95307.rs:7:28

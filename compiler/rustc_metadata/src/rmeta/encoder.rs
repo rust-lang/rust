@@ -847,6 +847,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field => true,
         DefKind::TyParam
@@ -879,6 +880,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
         | DefKind::Impl
@@ -967,6 +969,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -1003,6 +1006,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field
         | DefKind::TyParam
@@ -1032,6 +1036,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Static(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Impl
         | DefKind::AssocFn
@@ -1081,6 +1086,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Static(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Impl
         | DefKind::AssocFn

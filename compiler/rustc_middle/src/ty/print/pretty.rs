@@ -632,7 +632,13 @@ pub trait PrettyPrinter<'tcx>:
             ty::Foreign(def_id) => {
                 p!(print_def_path(def_id, &[]));
             }
-            ty::Projection(ref data) => p!(print(data)),
+            ty::Projection(ref data) => {
+                if self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder {
+                    return self.pretty_print_opaque_impl_type(data.item_def_id, data.substs);
+                } else {
+                    p!(print(data))
+                }
+            }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             ty::Opaque(def_id, substs) => {
                 // FIXME(eddyb) print this with `print_def_path`.

@@ -1492,7 +1492,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             Array(Box::new(clean_ty(ty, cx)), length)
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
-        TyKind::OpaqueDef(item_id, _) => {
+        TyKind::OpaqueDef(item_id, _, _) => {
             let item = cx.tcx.hir().item(item_id);
             if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                 ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())

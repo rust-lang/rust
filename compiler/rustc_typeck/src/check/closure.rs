@@ -4,6 +4,7 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::rustc_middle::ty::subst::Subst;
+use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -680,9 +681,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|e| e.map_bound(|e| *e).transpose_tuple2())
                 .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
             ty::Error(_) => return None,
+            ty::Projection(proj)
+                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            {
+                self.tcx
+                    .bound_explicit_item_bounds(proj.item_def_id)
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .find_map(|(p, s)| get_future_output(p.subst(self.tcx, proj.substs), s.0))?
+            }
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
-                "async fn generator return type not an inference variable"
+                "async fn generator return type not an inference variable: {ret_ty}"
             ),
         };
 

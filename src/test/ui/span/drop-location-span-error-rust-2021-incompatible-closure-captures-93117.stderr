@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:18:53
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:19:53
    |
 LL | trait C{async fn new(val: T) {}
    |        - unclosed delimiter
@@ -25,17 +25,6 @@ LL | trait C{async fn new(val: T) {}
    = help: pass `--edition 2021` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:9
-   |
-LL | trait C{async fn new(val: T) {}
-   |         -----^^^^^^^^^^^^^^^^^^
-   |         |
-   |         `async` because of this
-   |
-   = note: `async` trait functions are not currently supported
-   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
-
 error[E0423]: expected function, found module `crate`
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:9:5
    |
@@ -50,6 +39,19 @@ LL | pub struct A {}
 ...
 LL | trait C{async fn new(val: T) {}
    |                           ^ help: a struct with a similar name exists: `A`
+
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:9
+   |
+LL | trait C{async fn new(val: T) {}
+   |         -----^^^^^^^^^^^^^^^
+   |         |
+   |         `async` because of this
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 warning: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:6:57
@@ -72,6 +74,20 @@ help: add a dummy let to cause `path` to be fully captured
 LL |     async fn create(path: impl AsRef<std::path::Path>)  { let _ = &path;
    |                                                           ++++++++++++++
 
+error[E0308]: mismatched types
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:30
+   |
+LL | trait C{async fn new(val: T) {}
+   |                              ^^ expected associated type, found opaque type
+   |
+  ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
+   |                                           ------------------------------- the found opaque type
+   |
+   = note: expected associated type `impl Future<Output = ()>` (trait associated opaque type at <$DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:30>)
+                  found opaque type `impl Future<Output = ()>` (opaque type at <$SRC_DIR/core/src/future/mod.rs:LL:COL>)
+
 warning: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-93117.rs:13:30
    |
@@ -87,7 +103,7 @@ help: add a dummy let to cause `val` to be fully captured
 LL | trait C{async fn new(val: T) { let _ = &val;}
    |                                +++++++++++++
 
-error: aborting due to 6 previous errors; 2 warnings emitted
+error: aborting due to 7 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0412, E0423, E0670, E0706.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0308, E0412, E0423, E0670, E0706.
+For more information about an error, try `rustc --explain E0308`.

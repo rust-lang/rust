@@ -1,0 +1,12 @@
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return
+  --> $DIR/feature-gate-return_position_impl_trait_in_trait.rs:2:17
+   |
+LL |     fn bar() -> impl Sized;
+   |                 ^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0562`.

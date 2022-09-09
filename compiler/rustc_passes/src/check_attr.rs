@@ -661,6 +661,7 @@ impl CheckAttrVisitor<'_> {
             | Target::GlobalAsm
             | Target::TyAlias
             | Target::OpaqueTy
+            | Target::ImplTraitPlaceholder
             | Target::Enum
             | Target::Variant
             | Target::Struct

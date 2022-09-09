@@ -1585,8 +1585,16 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             ItemKind::OpaqueTy(hir::OpaqueTy {
                 origin:
                     hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                in_trait,
                 ..
-            }) => Some(fn_def_id.to_def_id()),
+            }) => {
+                if in_trait {
+                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                } else {
+                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                }
+                Some(fn_def_id.to_def_id())
+            }
             ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 assert_ne!(parent_id, CRATE_DEF_ID);
@@ -1787,7 +1795,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
         }
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
         Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
-        OpaqueDef(_, generic_args) => are_suggestable_generic_args(generic_args),
+        OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
         Path(hir::QPath::TypeRelative(ty, segment)) => {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
         }

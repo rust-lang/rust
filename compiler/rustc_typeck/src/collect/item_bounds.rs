@@ -59,10 +59,15 @@ fn opaque_type_bounds<'tcx>(
     opaque_def_id: DefId,
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
+    in_trait: bool,
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
     ty::print::with_no_queries!({
-        let item_ty =
-            tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
+        let substs = InternalSubsts::identity_for_item(tcx, opaque_def_id);
+        let item_ty = if in_trait {
+            tcx.mk_projection(opaque_def_id, substs)
+        } else {
+            tcx.mk_opaque(opaque_def_id, substs)
+        };
 
         let icx = ItemCtxt::new(tcx, opaque_def_id);
         let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
@@ -86,10 +91,10 @@ pub(super) fn explicit_item_bounds(
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span),
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }),
+            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait, .. }),
             span,
             ..
-        }) => opaque_type_bounds(tcx, def_id, bounds, *span),
+        }) => opaque_type_bounds(tcx, def_id, bounds, *span, *in_trait),
         _ => bug!("item_bounds called on {:?}", def_id),
     }
 }

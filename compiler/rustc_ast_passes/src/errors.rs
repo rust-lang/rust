@@ -80,17 +80,6 @@ pub enum InvalidVisibilityNote {
 }
 
 #[derive(SessionDiagnostic)]
-#[diag(ast_passes::trait_fn_async, code = "E0706")]
-#[note]
-#[note(ast_passes::note2)]
-pub struct TraitFnAsync {
-    #[primary_span]
-    pub fn_span: Span,
-    #[label]
-    pub span: Span,
-}
-
-#[derive(SessionDiagnostic)]
 #[diag(ast_passes::trait_fn_const, code = "E0379")]
 pub struct TraitFnConst {
     #[primary_span]

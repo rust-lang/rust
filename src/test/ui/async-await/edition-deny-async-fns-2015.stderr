@@ -53,7 +53,7 @@ LL |     async fn foo() {}
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/edition-deny-async-fns-2015.rs:36:9
+  --> $DIR/edition-deny-async-fns-2015.rs:37:9
    |
 LL |         async fn bar() {}
    |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
@@ -62,7 +62,7 @@ LL |         async fn bar() {}
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/edition-deny-async-fns-2015.rs:26:9
+  --> $DIR/edition-deny-async-fns-2015.rs:27:9
    |
 LL |         async fn foo() {}
    |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
@@ -71,7 +71,7 @@ LL |         async fn foo() {}
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/edition-deny-async-fns-2015.rs:31:13
+  --> $DIR/edition-deny-async-fns-2015.rs:32:13
    |
 LL |             async fn bar() {}
    |             ^^^^^ to use `async fn`, switch to Rust 2018 or later
@@ -83,14 +83,30 @@ error[E0706]: functions in traits cannot be declared `async`
   --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}
-   |     -----^^^^^^^^^^^^
+   |     -----^^^^^^^^^
    |     |
    |     `async` because of this
    |
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
-error: aborting due to 10 previous errors
+error[E0308]: mismatched types
+  --> $DIR/edition-deny-async-fns-2015.rs:18:20
+   |
+LL |     async fn foo() {}
+   |                    ^^ expected associated type, found opaque type
+   |
+  ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
+   |                                           ------------------------------- the found opaque type
+   |
+   = note: expected associated type `impl Future<Output = ()>` (trait associated opaque type at <$DIR/edition-deny-async-fns-2015.rs:18:20>)
+                  found opaque type `impl Future<Output = ()>` (opaque type at <$SRC_DIR/core/src/future/mod.rs:LL:COL>)
 
-Some errors have detailed explanations: E0670, E0706.
-For more information about an error, try `rustc --explain E0670`.
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0308, E0670, E0706.
+For more information about an error, try `rustc --explain E0308`.

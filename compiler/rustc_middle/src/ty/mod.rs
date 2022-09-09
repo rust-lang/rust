@@ -2484,6 +2484,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_default_method(self, def_id: DefId) -> bool {
         matches!(self.trait_of_item(def_id), Some(trait_id) if self.has_attr(trait_id, sym::const_trait))
     }
+
+    pub fn impl_trait_in_trait_parent(self, mut def_id: DefId) -> DefId {
+        while let def_kind = self.def_kind(def_id) && def_kind != DefKind::AssocFn {
+            debug_assert_eq!(def_kind, DefKind::ImplTraitPlaceholder);
+            def_id = self.parent(def_id);
+        }
+        def_id
+    }
 }
 
 /// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.
