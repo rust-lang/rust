@@ -25,6 +25,7 @@ pub mod cmath;
 pub mod env;
 pub mod fd;
 pub mod fs;
+pub mod futex;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
@@ -45,14 +46,14 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
 
-mod condvar;
-mod mutex;
-mod rwlock;
-
+#[path = "../unix/locks"]
 pub mod locks {
-    pub use super::condvar::*;
-    pub use super::mutex::*;
-    pub use super::rwlock::*;
+    mod futex_condvar;
+    mod futex_mutex;
+    mod futex_rwlock;
+    pub(crate) use futex_condvar::MovableCondvar;
+    pub(crate) use futex_mutex::{MovableMutex, Mutex};
+    pub(crate) use futex_rwlock::{MovableRwLock, RwLock};
 }
 
 use crate::io::ErrorKind;
