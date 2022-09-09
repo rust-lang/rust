@@ -55,9 +55,11 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         item
     }));
-    items.extend(doc.mods.iter().map(|x| {
-        inserted.insert((ItemType::Module, x.name));
-        clean_doc_module(x, cx)
+    items.extend(doc.mods.iter().filter_map(|x| {
+        if !inserted.insert((ItemType::Module, x.name)) {
+            return None;
+        }
+        Some(clean_doc_module(x, cx))
     }));
 
     // Split up imports from all other items.
