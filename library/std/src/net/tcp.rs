@@ -6,7 +6,7 @@ mod tests;
 use crate::io::prelude::*;
 
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, IoSlice, IoSliceMut};
 use crate::iter::FusedIterator;
 use crate::net::{Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
@@ -623,6 +623,10 @@ impl Read for TcpStream {
         self.0.read_vectored(bufs)
     }
 
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.0.read_buf_vectored(cursor)
+    }
+
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.0.is_read_vectored()
@@ -655,6 +659,10 @@ impl Read for &TcpStream {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
+    }
+
+    fn read_buf_vectored(&mut self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.0.read_buf_vectored(cursor)
     }
 
     #[inline]

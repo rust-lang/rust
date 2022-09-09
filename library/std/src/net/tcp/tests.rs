@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::io::prelude::*;
-use crate::io::{ErrorKind, IoSlice, IoSliceMut};
+use crate::io::{BorrowedSliceBuf, ErrorKind, IoSlice, IoSliceMaybeUninit, IoSliceMut};
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
@@ -301,6 +301,32 @@ fn read_vectored() {
         assert_eq!(b, [10]);
         // some implementations don't support readv, so we may only fill the first buffer
         assert!(len == 1 || c == [11, 12, 0]);
+    })
+}
+
+#[test]
+fn read_buf_vectored() {
+    each_ip(&mut |addr| {
+        let srv = t!(TcpListener::bind(&addr));
+        let mut s1 = t!(TcpStream::connect(&addr));
+        let mut s2 = t!(srv.accept()).0;
+
+        let len = s1.write(&[10, 11, 12]).unwrap();
+        assert_eq!(len, 3);
+
+        let a: &mut [u8] = &mut [];
+        let b: &mut [u8] = &mut [0];
+        let c: &mut [u8] = &mut [0; 3];
+        let mut bufs: [IoSliceMaybeUninit<'_>; 3] = [a.into(), b.into(), c.into()];
+        let mut bufs = BorrowedSliceBuf::new(&mut bufs);
+        let mut cursor = bufs.unfilled();
+        t!(s2.read_buf_vectored(cursor.reborrow()));
+
+        let len = cursor.written();
+        assert!(len > 0);
+        assert_eq!(b, &[10]);
+        // some implementations don't support readv, so we may only fill the first buffer
+        assert!(len == 1 || c == &[11, 12, 0]);
     })
 }
 

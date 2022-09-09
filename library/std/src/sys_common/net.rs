@@ -4,7 +4,7 @@ mod tests;
 use crate::cmp;
 use crate::ffi::CString;
 use crate::fmt;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
@@ -271,6 +271,10 @@ impl TcpStream {
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    pub fn read_buf_vectored(&self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf_vectored(cursor)
     }
 
     #[inline]

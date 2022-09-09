@@ -2,7 +2,8 @@ mod buffer;
 
 use crate::fmt;
 use crate::io::{
-    self, BorrowedCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+    self, BorrowedCursor, BorrowedSliceCursor, BufRead, IoSliceMut, Read, Seek, SeekFrom, SizeHint,
+    DEFAULT_BUF_SIZE,
 };
 use buffer::Buffer;
 
@@ -309,6 +310,22 @@ impl<R: Read> Read for BufReader<R> {
         };
         self.consume(nread);
         Ok(nread)
+    }
+
+    fn read_buf_vectored(&mut self, mut cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        if self.buf.pos() == self.buf.filled() && cursor.capacity() >= self.capacity() {
+            self.discard_buffer();
+            return self.inner.read_buf_vectored(cursor);
+        }
+
+        let prev = cursor.written();
+
+        let mut rem = self.fill_buf()?;
+        rem.read_buf_vectored(cursor.reborrow())?;
+
+        self.consume(cursor.written() - prev);
+
+        Ok(())
     }
 
     fn is_read_vectored(&self) -> bool {

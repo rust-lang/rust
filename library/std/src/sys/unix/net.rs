@@ -1,6 +1,6 @@
 use crate::cmp;
 use crate::ffi::CStr;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedSliceCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
@@ -257,6 +257,10 @@ impl Socket {
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
+    }
+
+    pub fn read_buf_vectored(&self, cursor: BorrowedSliceCursor<'_>) -> io::Result<()> {
+        self.0.read_buf_vectored(cursor)
     }
 
     #[inline]

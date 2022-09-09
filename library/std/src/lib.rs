@@ -310,6 +310,7 @@
 #![feature(raw_os_nonzero)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
+#![feature(slice_take)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]

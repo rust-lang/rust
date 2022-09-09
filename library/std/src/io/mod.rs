@@ -278,7 +278,9 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
+pub use self::readbuf::{
+    BorrowedBuf, BorrowedCursor, BorrowedSliceBuf, BorrowedSliceCursor, IoSliceMaybeUninit,
+};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -471,6 +473,27 @@ where
         // SAFETY: we initialised using `ensure_init` so there is no uninit data to advance to.
         cursor.advance(n);
     }
+    Ok(())
+}
+
+pub(crate) fn default_read_buf_vectored<F>(
+    read: F,
+    mut cursors: BorrowedSliceCursor<'_>,
+) -> Result<()>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize>,
+{
+    cursors.ensure_next_init();
+    if let Some(buf) = cursors.next_init_mut() {
+        let n = read(buf)?;
+        unsafe {
+            // SAFETY: we initialised using `ensure_init` so there is no uninit data to advance to.
+            cursors.advance(n);
+        }
+    } else {
+        read(&mut [])?;
+    }
+
     Ok(())
 }
 
@@ -836,6 +859,12 @@ pub trait Read {
         }
 
         Ok(())
+    }
+
+    /// TODO docs
+    #[unstable(feature = "read_buf", issue = "78485")]
+    fn read_buf_vectored(&mut self, bufs: BorrowedSliceCursor<'_>) -> Result<()> {
+        default_read_buf_vectored(|b| self.read(b), bufs)
     }
 
     /// Creates a "by reference" adaptor for this instance of `Read`.
