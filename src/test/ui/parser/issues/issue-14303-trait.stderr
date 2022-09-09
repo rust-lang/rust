@@ -1,8 +1,0 @@
-error: lifetime parameters must be declared prior to type parameters
-  --> $DIR/issue-14303-trait.rs:1:18
-   |
-LL | trait Foo<'a, T, 'b> {}
-   |          --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
-
-error: aborting due to previous error
-

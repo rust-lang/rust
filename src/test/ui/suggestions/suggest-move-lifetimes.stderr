@@ -1,22 +1,22 @@
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/suggest-move-lifetimes.rs:1:13
    |
 LL | struct A<T, 'a> {
    |         ----^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, T>`
 
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/suggest-move-lifetimes.rs:5:13
    |
 LL | struct B<T, 'a, U> {
    |         ----^^---- help: reorder the parameters: lifetimes, then consts and types: `<'a, T, U>`
 
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/suggest-move-lifetimes.rs:10:16
    |
 LL | struct C<T, U, 'a> {
    |         -------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, T, U>`
 
-error: lifetime parameters must be declared prior to type parameters
+error: lifetime parameters must be declared prior to type and const parameters
   --> $DIR/suggest-move-lifetimes.rs:15:16
    |
 LL | struct D<T, U, 'a, 'b, V, 'c> {

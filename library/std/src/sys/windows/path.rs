@@ -198,14 +198,7 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
 
     match path.bytes().iter().position(|&x| separator(x)) {
         Some(separator_start) => {
-            let mut separator_end = separator_start + 1;
-
-            // a series of multiple separator characters is treated as a single separator,
-            // except in verbatim paths
-            while !verbatim && separator_end < path.len() && separator(path.bytes()[separator_end])
-            {
-                separator_end += 1;
-            }
+            let separator_end = separator_start + 1;
 
             let component = &path.bytes()[..separator_start];
 
