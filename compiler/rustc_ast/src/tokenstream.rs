@@ -410,19 +410,6 @@ impl TokenStream {
         TokenStream(Lrc::new(self.0.iter().enumerate().map(|(i, tree)| f(i, tree)).collect()))
     }
 
-    fn opt_from_ast(node: &(impl HasAttrs + HasTokens)) -> Option<TokenStream> {
-        let tokens = node.tokens()?;
-        let attrs = node.attrs();
-        let attr_stream = if attrs.is_empty() {
-            tokens.create_token_stream()
-        } else {
-            let attr_data =
-                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
-            AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
-        };
-        Some(attr_stream.to_tokenstream())
-    }
-
     // Create a token stream containing a single token with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
@@ -439,8 +426,18 @@ impl TokenStream {
     }
 
     pub fn from_ast(node: &(impl HasAttrs + HasSpan + HasTokens + fmt::Debug)) -> TokenStream {
-        TokenStream::opt_from_ast(node)
-            .unwrap_or_else(|| panic!("missing tokens for node at {:?}: {:?}", node.span(), node))
+        let Some(tokens) = node.tokens() else {
+            panic!("missing tokens for node at {:?}: {:?}", node.span(), node);
+        };
+        let attrs = node.attrs();
+        let attr_stream = if attrs.is_empty() {
+            tokens.create_token_stream()
+        } else {
+            let attr_data =
+                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
+            AttrTokenStream::new(vec![AttrTokenTree::Attributes(attr_data)])
+        };
+        attr_stream.to_tokenstream()
     }
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
