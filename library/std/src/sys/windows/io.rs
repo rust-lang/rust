@@ -2,7 +2,7 @@ use crate::marker::PhantomData;
 use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::slice;
-use crate::sys::c;
+use crate::sys::{c, Align8};
 use core;
 use libc;
 
@@ -120,21 +120,21 @@ unsafe fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
 }
 
 unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
-    let size = size_of::<c::FILE_NAME_INFO>() + c::MAX_PATH * size_of::<c::WCHAR>();
-    let mut name_info_bytes = vec![0u8; size];
+    const SIZE: usize = size_of::<c::FILE_NAME_INFO>() + c::MAX_PATH * size_of::<c::WCHAR>();
+    let mut name_info_bytes = Align8([0u8; SIZE]);
     let res = c::GetFileInformationByHandleEx(
         handle,
         c::FileNameInfo,
-        name_info_bytes.as_mut_ptr() as *mut libc::c_void,
-        size as u32,
+        name_info_bytes.0.as_mut_ptr() as *mut libc::c_void,
+        SIZE as u32,
     );
     if res == 0 {
         return false;
     }
-    let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const c::FILE_NAME_INFO);
+    let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.0.as_ptr() as *const c::FILE_NAME_INFO);
     let name_len = name_info.FileNameLength as usize / 2;
     // Offset to get the `FileName` field.
-    let name_ptr = name_info_bytes.as_ptr().offset(size_of::<c::DWORD>() as isize).cast::<u16>();
+    let name_ptr = name_info_bytes.0.as_ptr().offset(size_of::<c::DWORD>() as isize).cast::<u16>();
     let s = core::slice::from_raw_parts(name_ptr, name_len);
     let name = String::from_utf16_lossy(s);
     // This checks whether 'pty' exists in the file name, which indicates that
