@@ -1,7 +1,7 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrTokenStream, AttributesData, CreateTokenStream};
-use rustc_ast::tokenstream::{AttrTokenTree, DelimSpan, LazyTokenStream, Spacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttributesData, ToAttrTokenStream};
+use rustc_ast::tokenstream::{AttrTokenTree, DelimSpan, LazyAttrTokenStream, Spacing};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
@@ -88,7 +88,7 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 // This also makes `Parser` very cheap to clone, since
 // there is no intermediate collection buffer to clone.
 #[derive(Clone)]
-struct LazyTokenStreamImpl {
+struct LazyAttrTokenStreamImpl {
     start_token: (Token, Spacing),
     cursor_snapshot: TokenCursor,
     num_calls: usize,
@@ -97,10 +97,10 @@ struct LazyTokenStreamImpl {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
+rustc_data_structures::static_assert_size!(LazyAttrTokenStreamImpl, 144);
 
-impl CreateTokenStream for LazyTokenStreamImpl {
-    fn create_token_stream(&self) -> AttrTokenStream {
+impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
+    fn to_attr_token_stream(&self) -> AttrTokenStream {
         // The token produced by the final call to `{,inlined_}next` was not
         // actually consumed by the callback. The combination of chaining the
         // initial token and using `take` produces the desired result - we
@@ -179,7 +179,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
 impl<'a> Parser<'a> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
-    /// into a `LazyTokenStream`, and returned along with the result
+    /// into a `LazyAttrTokenStream`, and returned along with the result
     /// of the callback.
     ///
     /// Note: If your callback consumes an opening delimiter
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
 
         // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens),
         // then extend the range of captured tokens to include it, since the parser
-        // was not actually bumped past it. When the `LazyTokenStream` gets converted
+        // was not actually bumped past it. When the `LazyAttrTokenStream` gets converted
         // into an `AttrTokenStream`, we will create the proper token.
         if self.token_cursor.break_last_token {
             assert_eq!(
@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
             Box::new([])
         } else {
             // Grab any replace ranges that occur *inside* the current AST node.
-            // We will perform the actual replacement when we convert the `LazyTokenStream`
+            // We will perform the actual replacement when we convert the `LazyAttrTokenStream`
             // to an `AttrTokenStream`.
             let start_calls: u32 = cursor_snapshot_next_calls.try_into().unwrap();
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
@@ -329,7 +329,7 @@ impl<'a> Parser<'a> {
                 .collect()
         };
 
-        let tokens = LazyTokenStream::new(LazyTokenStreamImpl {
+        let tokens = LazyAttrTokenStream::new(LazyAttrTokenStreamImpl {
             start_token,
             num_calls,
             cursor_snapshot,

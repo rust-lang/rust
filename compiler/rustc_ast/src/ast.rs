@@ -24,7 +24,7 @@ pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
@@ -92,7 +92,7 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: Vec<PathSegment>,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl PartialEq<Symbol> for Path {
@@ -564,7 +564,7 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
     /// The following *isn't* a parse error, but will cause multiple errors in following stages.
     /// ```compile_fail
     /// let x = {
@@ -583,7 +583,7 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Pat {
@@ -967,8 +967,8 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyTokenStream`. The parser is responsible for calling
-    /// `CreateTokenStream::add_trailing_semi` when there is actually
+    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
@@ -1014,7 +1014,7 @@ pub struct MacCallStmt {
     pub mac: P<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
@@ -1039,7 +1039,7 @@ pub struct Local {
     pub kind: LocalKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -1138,7 +1138,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Expr {
@@ -1997,7 +1997,7 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Clone for Ty {
@@ -2562,7 +2562,7 @@ impl<D: Decoder> Decodable<D> for AttrId {
 pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// A list of attributes.
@@ -2582,7 +2582,7 @@ pub struct Attribute {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2633,7 +2633,7 @@ impl PolyTraitRef {
 pub struct Visibility {
     pub kind: VisibilityKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2719,7 +2719,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyTokenStream>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Item {

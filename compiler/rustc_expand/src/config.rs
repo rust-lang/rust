@@ -4,7 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
-use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
+use rustc_ast::tokenstream::{LazyAttrTokenStream, TokenTree};
 use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem};
 use rustc_attr as attr;
@@ -259,8 +259,8 @@ impl<'a> StripUnconfigured<'a> {
     fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
-                let attr_stream = tokens.create_token_stream();
-                *tokens = LazyTokenStream::new(self.configure_tokens(&attr_stream));
+                let attr_stream = tokens.to_attr_token_stream();
+                *tokens = LazyAttrTokenStream::new(self.configure_tokens(&attr_stream));
             }
         }
     }
@@ -295,8 +295,8 @@ impl<'a> StripUnconfigured<'a> {
                     data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
 
                     if self.in_cfg(&data.attrs) {
-                        data.tokens = LazyTokenStream::new(
-                            self.configure_tokens(&data.tokens.create_token_stream()),
+                        data.tokens = LazyAttrTokenStream::new(
+                            self.configure_tokens(&data.tokens.to_attr_token_stream()),
                         );
                         Some(AttrTokenTree::Attributes(data)).into_iter()
                     } else {
@@ -420,10 +420,10 @@ impl<'a> StripUnconfigured<'a> {
             item.tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
-                .create_token_stream(),
+                .to_attr_token_stream(),
         );
         trees.push(bracket_group);
-        let tokens = Some(LazyTokenStream::new(AttrTokenStream::new(trees)));
+        let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(item, tokens, attr.style, item_span);
         if attr.has_name(sym::crate_type) {
             self.sess.parse_sess.buffer_lint(

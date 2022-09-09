@@ -301,7 +301,7 @@ impl<'a> Parser<'a> {
             if let Some(attr) = attr {
                 let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
                 // If we are currently capturing tokens, mark the location of this inner attribute.
-                // If capturing ends up creating a `LazyTokenStream`, we will include
+                // If capturing ends up creating a `LazyAttrTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
                 // `AttrTokenStream`. Inner attributes are stored in the parsed AST note.
                 // During macro expansion, they are selectively inserted back into the

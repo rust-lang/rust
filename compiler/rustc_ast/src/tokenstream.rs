@@ -121,12 +121,12 @@ where
     }
 }
 
-pub trait CreateTokenStream: sync::Send + sync::Sync {
-    fn create_token_stream(&self) -> AttrTokenStream;
+pub trait ToAttrTokenStream: sync::Send + sync::Sync {
+    fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
 
-impl CreateTokenStream for AttrTokenStream {
-    fn create_token_stream(&self) -> AttrTokenStream {
+impl ToAttrTokenStream for AttrTokenStream {
+    fn to_attr_token_stream(&self) -> AttrTokenStream {
         self.clone()
     }
 }
@@ -135,40 +135,40 @@ impl CreateTokenStream for AttrTokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
+pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
 
-impl LazyTokenStream {
-    pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
-        LazyTokenStream(Lrc::new(Box::new(inner)))
+impl LazyAttrTokenStream {
+    pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
+        LazyAttrTokenStream(Lrc::new(Box::new(inner)))
     }
 
-    pub fn create_token_stream(&self) -> AttrTokenStream {
-        self.0.create_token_stream()
+    pub fn to_attr_token_stream(&self) -> AttrTokenStream {
+        self.0.to_attr_token_stream()
     }
 }
 
-impl fmt::Debug for LazyTokenStream {
+impl fmt::Debug for LazyAttrTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyTokenStream({:?})", self.create_token_stream())
+        write!(f, "LazyAttrTokenStream({:?})", self.to_attr_token_stream())
     }
 }
 
-impl<S: Encoder> Encodable<S> for LazyTokenStream {
+impl<S: Encoder> Encodable<S> for LazyAttrTokenStream {
     fn encode(&self, s: &mut S) {
         // Used by AST json printing.
-        Encodable::encode(&self.create_token_stream(), s);
+        Encodable::encode(&self.to_attr_token_stream(), s);
     }
 }
 
-impl<D: Decoder> Decodable<D> for LazyTokenStream {
+impl<D: Decoder> Decodable<D> for LazyAttrTokenStream {
     fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyTokenStream");
+        panic!("Attempted to decode LazyAttrTokenStream");
     }
 }
 
-impl<CTX> HashStable<CTX> for LazyTokenStream {
+impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("Attempted to compute stable hash for LazyTokenStream");
+        panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }
 
@@ -224,7 +224,7 @@ impl AttrTokenStream {
 
                     let mut target_tokens: Vec<_> = data
                         .tokens
-                        .create_token_stream()
+                        .to_attr_token_stream()
                         .to_tokenstream()
                         .0
                         .iter()
@@ -296,7 +296,7 @@ pub struct AttributesData {
     pub attrs: AttrVec,
     /// The underlying tokens for the attribute target that `attrs`
     /// are applied to
-    pub tokens: LazyTokenStream,
+    pub tokens: LazyAttrTokenStream,
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
@@ -431,7 +431,7 @@ impl TokenStream {
         };
         let attrs = node.attrs();
         let attr_stream = if attrs.is_empty() {
-            tokens.create_token_stream()
+            tokens.to_attr_token_stream()
         } else {
             let attr_data =
                 AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };

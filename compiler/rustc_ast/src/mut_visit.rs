@@ -697,17 +697,20 @@ pub fn visit_attr_tts<T: MutVisitor>(AttrTokenStream(tts): &mut AttrTokenStream,
     }
 }
 
-pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(lazy_tts: Option<&mut LazyTokenStream>, vis: &mut T) {
+pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(
+    lazy_tts: Option<&mut LazyAttrTokenStream>,
+    vis: &mut T,
+) {
     if T::VISIT_TOKENS {
         if let Some(lazy_tts) = lazy_tts {
-            let mut tts = lazy_tts.create_token_stream();
+            let mut tts = lazy_tts.to_attr_token_stream();
             visit_attr_tts(&mut tts, vis);
-            *lazy_tts = LazyTokenStream::new(tts);
+            *lazy_tts = LazyAttrTokenStream::new(tts);
         }
     }
 }
 
-pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
+pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyAttrTokenStream>, vis: &mut T) {
     visit_lazy_tts_opt_mut(lazy_tts.as_mut(), vis);
 }
 

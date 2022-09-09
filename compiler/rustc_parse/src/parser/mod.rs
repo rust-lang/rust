@@ -237,7 +237,7 @@ struct TokenCursor {
     // the trailing `>>` token. The `break_last_token`
     // field is used to track this token - it gets
     // appended to the captured stream when
-    // we evaluate a `LazyTokenStream`
+    // we evaluate a `LazyAttrTokenStream`.
     break_last_token: bool,
 }
 
@@ -1465,7 +1465,7 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
 }
 
 /// A helper struct used when building an `AttrTokenStream` from
-/// a `LazyTokenStream`. Both delimiter and non-delimited tokens
+/// a `LazyAttrTokenStream`. Both delimiter and non-delimited tokens
 /// are stored as `FlatToken::Token`. A vector of `FlatToken`s
 /// is then 'parsed' to build up an `AttrTokenStream` with nested
 /// `AttrTokenTree::Delimited` tokens.
