@@ -80,11 +80,11 @@ mod rustc {
     }
 
     pub struct TransmuteTypeEnv<'cx, 'tcx> {
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
+        infcx: &'cx InferCtxt<'tcx>,
     }
 
     impl<'cx, 'tcx> TransmuteTypeEnv<'cx, 'tcx> {
-        pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> Self {
+        pub fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
             Self { infcx }
         }
 

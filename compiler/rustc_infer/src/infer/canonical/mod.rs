@@ -36,7 +36,7 @@ mod canonicalizer;
 pub mod query_response;
 mod substitute;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Creates a substitution S for the canonical value with fresh
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.

@@ -61,7 +61,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
     // meet an obligation
     fn try_get_upvar_span<F>(
         &self,
-        infer_context: &InferCtxt<'a, 'tcx>,
+        infer_context: &InferCtxt<'tcx>,
         generator_did: DefId,
         ty_matches: F,
     ) -> Option<GeneratorInteriorOrUpvar>
@@ -1586,7 +1586,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         expected: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
-            infcx: &InferCtxt<'_, 'tcx>,
+            infcx: &InferCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);

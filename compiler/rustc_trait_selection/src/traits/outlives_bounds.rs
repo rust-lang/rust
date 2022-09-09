@@ -26,7 +26,7 @@ pub trait InferCtxtExt<'a, 'tcx> {
     ) -> Bounds<'a, 'tcx>;
 }
 
-impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     /// Implied bounds are region relationships that we deduce
     /// automatically. The idea is that (e.g.) a caller must check that a
     /// function's argument types are well-formed immediately before

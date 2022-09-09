@@ -89,7 +89,7 @@ pub mod nice_region_error;
 /// field is only populated during an in-progress typeck.
 /// Get an instance by calling `InferCtxt::err` or `FnCtxt::infer_err`.
 pub struct TypeErrCtxt<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'a, 'tcx>,
+    pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
 }
 
@@ -103,9 +103,9 @@ impl TypeErrCtxt<'_, '_> {
     }
 }
 
-impl<'a, 'tcx> Deref for TypeErrCtxt<'a, 'tcx> {
-    type Target = InferCtxt<'a, 'tcx>;
-    fn deref(&self) -> &InferCtxt<'a, 'tcx> {
+impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
+    type Target = InferCtxt<'tcx>;
+    fn deref(&self) -> &InferCtxt<'tcx> {
         &self.infcx
     }
 }
@@ -329,7 +329,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     err
 }
 
-impl<'tcx> InferCtxt<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
@@ -2837,7 +2837,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'a, 'tcx>);
+struct SameTypeModuloInfer<'a, 'tcx>(&'a InferCtxt<'tcx>);
 
 impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -2924,7 +2924,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     fn report_inference_failure(
         &self,
         var_origin: RegionVariableOrigin,
@@ -3112,7 +3112,7 @@ impl TyCategory {
     }
 }
 
-impl<'tcx> InferCtxt<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Given a [`hir::Block`], get the span of its last expression or
     /// statement, peeling off any inner blocks.
     pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {

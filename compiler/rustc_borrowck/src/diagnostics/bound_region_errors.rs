@@ -407,7 +407,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
 #[instrument(skip(fulfill_cx, infcx), level = "debug")]
 fn try_extract_error_from_fulfill_cx<'tcx>(
     mut fulfill_cx: Box<dyn TraitEngine<'tcx> + 'tcx>,
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
 ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
@@ -427,7 +427,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
 }
 
 fn try_extract_error_from_region_constraints<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,

@@ -31,7 +31,7 @@ pub trait InferCtxtExt<'tcx> {
     ) -> EvaluationResult;
 }
 
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {

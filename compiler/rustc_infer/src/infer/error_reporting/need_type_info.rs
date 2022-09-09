@@ -152,7 +152,7 @@ impl UnderspecifiedArgKind {
     }
 }
 
-fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
+fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinter<'a, 'tcx> {
     let mut printer = FmtPrinter::new(infcx.tcx, ns);
     let ty_getter = move |ty_vid| {
         if infcx.probe_ty_var(ty_vid).is_ok() {
@@ -183,7 +183,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
     printer
 }
 
-fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
+fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
     match ty.kind() {
@@ -202,7 +202,7 @@ fn ty_to_string<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
 /// We don't want to directly use `ty_to_string` for closures as their type isn't really
 /// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
-fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String {
+fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let ty::Closure(_, substs) = ty.kind() else { unreachable!() };
     let fn_sig = substs.as_closure().sig();
     let args = fn_sig
@@ -226,7 +226,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> String 
     format!("fn({}){}", args, ret)
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Extracts data used by diagnostic for either types or constants
     /// which were stuck during inference.
     pub fn extract_inference_diagnostics_data(
@@ -566,7 +566,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-impl<'tcx> InferCtxt<'_, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     pub fn need_type_info_err_in_generator(
         &self,
         kind: hir::GeneratorKind,
@@ -657,7 +657,7 @@ impl<'tcx> InferSource<'tcx> {
 }
 
 impl<'tcx> InferSourceKind<'tcx> {
-    fn ty_localized_msg(&self, infcx: &InferCtxt<'_, 'tcx>) -> (&'static str, String) {
+    fn ty_localized_msg(&self, infcx: &InferCtxt<'tcx>) -> (&'static str, String) {
         match *self {
             InferSourceKind::LetBinding { ty, .. }
             | InferSourceKind::ClosureArg { ty, .. }
@@ -694,7 +694,7 @@ struct InsertableGenericArgs<'tcx> {
 /// While doing so, the currently best spot is stored in `infer_source`.
 /// For details on how we rank spots, see [Self::source_cost]
 struct FindInferSourceVisitor<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     typeck_results: &'a TypeckResults<'tcx>,
 
     target: GenericArg<'tcx>,
@@ -706,7 +706,7 @@ struct FindInferSourceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'a, 'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
         target: GenericArg<'tcx>,
     ) -> Self {

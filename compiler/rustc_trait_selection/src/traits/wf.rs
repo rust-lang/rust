@@ -14,8 +14,8 @@ use std::iter;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     recursion_depth: usize,
@@ -79,8 +79,8 @@ pub fn obligations<'a, 'tcx>(
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn trait_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     trait_pred: &ty::TraitPredicate<'tcx>,
@@ -102,8 +102,8 @@ pub fn trait_obligations<'a, 'tcx>(
 }
 
 #[instrument(skip(infcx), ret)]
-pub fn predicate_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn predicate_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     predicate: ty::Predicate<'tcx>,
@@ -275,7 +275,7 @@ impl<'tcx> WfPredicates<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
 
-    fn normalize(self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
+    fn normalize(self, infcx: &InferCtxt<'tcx>) -> Vec<traits::PredicateObligation<'tcx>> {
         let cause = self.cause(traits::WellFormed(None));
         let param_env = self.param_env;
         let mut obligations = Vec::with_capacity(self.out.len());

@@ -51,7 +51,7 @@ fn type_op_ascribe_user_type<'tcx>(
 /// this query can be re-run to better track the span of the obligation cause, and improve the error
 /// message. Do not call directly unless you're in that very specific context.
 pub fn type_op_ascribe_user_type_with_span<'a, 'tcx: 'a>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     fulfill_cx: &'a mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
     span: Option<Span>,
@@ -68,7 +68,7 @@ pub fn type_op_ascribe_user_type_with_span<'a, 'tcx: 'a>(
 }
 
 struct AscribeUserTypeCx<'me, 'tcx> {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     span: Span,
     fulfill_cx: &'me mut dyn TraitEngine<'tcx>,
@@ -210,7 +210,7 @@ fn type_op_eq<'tcx>(
 }
 
 fn type_op_normalize<'tcx, T>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     fulfill_cx: &mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, Normalize<T>>,
 ) -> Fallible<T>
@@ -285,7 +285,7 @@ fn type_op_prove_predicate<'tcx>(
 /// this query can be re-run to better track the span of the obligation cause, and improve the error
 /// message. Do not call directly unless you're in that very specific context.
 pub fn type_op_prove_predicate_with_cause<'a, 'tcx: 'a>(
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     fulfill_cx: &'a mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, ProvePredicate<'tcx>>,
     cause: ObligationCause<'tcx>,

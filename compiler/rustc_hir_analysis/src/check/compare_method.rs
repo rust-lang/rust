@@ -712,8 +712,8 @@ fn check_region_bounds_on_impl_item<'tcx>(
 }
 
 #[instrument(level = "debug", skip(infcx))]
-fn extract_spans_for_error_reporting<'a, 'tcx>(
-    infcx: &infer::InferCtxt<'a, 'tcx>,
+fn extract_spans_for_error_reporting<'tcx>(
+    infcx: &infer::InferCtxt<'tcx>,
     terr: TypeError<'_>,
     cause: &ObligationCause<'tcx>,
     impl_m: &ty::AssocItem,

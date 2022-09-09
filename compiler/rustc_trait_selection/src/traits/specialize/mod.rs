@@ -73,8 +73,8 @@ pub struct OverlapError {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn translate_substs<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
     source_substs: SubstsRef<'tcx>,
@@ -176,8 +176,8 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
-fn fulfill_implication<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+fn fulfill_implication<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_trait_ref: ty::TraitRef<'tcx>,
     target_impl: DefId,

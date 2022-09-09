@@ -59,7 +59,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
     /// `binder` with placeholder variables in a new universe. This means that the
     /// new placeholders can only be named by inference variables created after
@@ -114,7 +114,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(
         &self,
         overly_polymorphic: bool,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
+        snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
         // configured to skip the leak check, then skip the leak check

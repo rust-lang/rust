@@ -272,7 +272,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// user.
     fn evaluate_predicates(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         trait_did: DefId,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -877,7 +877,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     pub fn clean_pred(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         p: ty::Predicate<'tcx>,
     ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)

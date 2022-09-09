@@ -16,12 +16,12 @@ use std::ops::ControlFlow;
 /// useful for printing messages etc but also required at various
 /// points for correctness.
 pub struct OpportunisticVarResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     #[inline]
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         OpportunisticVarResolver { infcx }
     }
 }
@@ -62,11 +62,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
 /// If you want to resolve type and const variables as well, call
 /// [InferCtxt::resolve_vars_if_possible] first.
 pub struct OpportunisticRegionResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         OpportunisticRegionResolver { infcx }
     }
 }
@@ -116,11 +116,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
 /// It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
 pub struct UnresolvedTypeFinder<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         UnresolvedTypeFinder { infcx }
     }
 }
@@ -167,7 +167,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: T) -> FixupResult<'tcx, T>
+pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<'tcx, T>
 where
     T: TypeFoldable<'tcx>,
 {
@@ -177,7 +177,7 @@ where
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {

@@ -700,7 +700,7 @@ impl Locatable for hir::HirId {
 /// unresolved types and so forth.
 struct Resolver<'cx, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
 

@@ -565,7 +565,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self, infcx, body, polonius_output), level = "debug")]
     pub(super) fn solve(
         &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Rc<PoloniusOutput>>,
@@ -835,7 +835,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// 'a`. See `TypeTest` for more details.
     fn check_type_tests(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
@@ -923,7 +923,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(level = "debug", skip(self, infcx, propagated_outlives_requirements))]
     fn try_promote_type_test(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
@@ -1036,7 +1036,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(level = "debug", skip(self, infcx))]
     fn try_promote_type_test_subject(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
@@ -1212,7 +1212,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `point`.
     fn eval_verify_bound(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
@@ -1262,7 +1262,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn eval_if_eq(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
@@ -1718,7 +1718,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn check_member_constraints(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         let member_constraints = self.member_constraints.clone();

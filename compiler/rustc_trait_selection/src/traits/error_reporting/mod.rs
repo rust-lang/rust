@@ -128,7 +128,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     );
 }
 
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'_, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// Given some node representing a fn-like thing in the HIR map,
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
@@ -2515,7 +2515,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         pred: ty::PolyTraitRef<'tcx>,
     ) -> bool {
         struct ParamToVarFolder<'a, 'tcx> {
-            infcx: &'a InferCtxt<'a, 'tcx>,
+            infcx: &'a InferCtxt<'tcx>,
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 

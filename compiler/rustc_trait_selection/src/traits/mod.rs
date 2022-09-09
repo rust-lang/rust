@@ -140,8 +140,8 @@ pub fn predicates_for_generics<'tcx>(
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     def_id: DefId,
@@ -393,8 +393,8 @@ pub fn normalize_param_env_or_error<'tcx>(
 }
 
 /// Normalize a type and process all resulting obligations, returning any errors
-pub fn fully_normalize<'a, 'tcx, T>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn fully_normalize<'tcx, T>(
+    infcx: &InferCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     value: T,
@@ -429,8 +429,8 @@ where
 
 /// Process an obligation (and any nested obligations that come from it) to
 /// completion, returning any errors
-pub fn fully_solve_obligation<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn fully_solve_obligation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
 ) -> Vec<FulfillmentError<'tcx>> {
     let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
@@ -440,8 +440,8 @@ pub fn fully_solve_obligation<'a, 'tcx>(
 
 /// Process a set of obligations (and any nested obligations that come from them)
 /// to completion
-pub fn fully_solve_obligations<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn fully_solve_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
 ) -> Vec<FulfillmentError<'tcx>> {
     let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
@@ -452,8 +452,8 @@ pub fn fully_solve_obligations<'a, 'tcx>(
 /// Process a bound (and any nested obligations that come from it) to completion.
 /// This is a convenience function for traits that have no generic arguments, such
 /// as auto traits, and builtin traits like Copy or Sized.
-pub fn fully_solve_bound<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn fully_solve_bound<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,

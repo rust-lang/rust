@@ -167,7 +167,7 @@ fn overlap_within_probe<'cx, 'tcx>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
-    snapshot: &CombinedSnapshot<'_, 'tcx>,
+    snapshot: &CombinedSnapshot<'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
     let infcx = selcx.infcx();
 
@@ -327,8 +327,8 @@ fn negative_impl<'cx, 'tcx>(
     })
 }
 
-fn equate<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+fn equate<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     impl_env: ty::ParamEnv<'tcx>,
     subject1: ImplSubject<'tcx>,
     subject2: ImplSubject<'tcx>,
@@ -379,8 +379,8 @@ fn negative_impl_exists<'cx, 'tcx>(
 }
 
 #[instrument(level = "debug", skip(infcx))]
-fn resolve_negative_obligation<'cx, 'tcx>(
-    infcx: InferCtxt<'cx, 'tcx>,
+fn resolve_negative_obligation<'tcx>(
+    infcx: InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {

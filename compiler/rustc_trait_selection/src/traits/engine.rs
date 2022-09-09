@@ -41,16 +41,16 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 /// Used if you want to have pleasant experience when dealing
 /// with obligations outside of hir or mir typeck.
 pub struct ObligationCtxt<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'a, 'tcx>,
+    pub infcx: &'a InferCtxt<'tcx>,
     engine: RefCell<Box<dyn TraitEngine<'tcx>>>,
 }
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
     }
 
-    pub fn new_in_snapshot(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+    pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
         Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
     }
 

@@ -150,8 +150,8 @@ fn mir_borrowck<'tcx>(
 /// region ids on which the borrow checking was performed together with Polonius
 /// facts.
 #[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.with_opt_param().as_local().unwrap()), level = "debug")]
-fn do_mir_borrowck<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+fn do_mir_borrowck<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
     return_body_with_facts: bool,
@@ -474,7 +474,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 }
 
 struct MirBorrowckCtxt<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
     move_data: &'cx MoveData<'tcx>,

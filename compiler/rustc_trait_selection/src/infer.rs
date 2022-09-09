@@ -59,7 +59,7 @@ pub trait InferCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult;
 }
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -142,7 +142,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&InferCtxt<'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -170,7 +170,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&InferCtxt<'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,

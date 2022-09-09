@@ -68,7 +68,7 @@ pub fn search_for_adt_const_param_violation<'tcx>(
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
 fn type_marked_structural<'tcx>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> bool {

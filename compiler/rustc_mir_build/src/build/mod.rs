@@ -157,7 +157,7 @@ struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    infcx: InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'tcx>,
     typeck_results: &'tcx TypeckResults<'tcx>,
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
@@ -683,7 +683,7 @@ fn construct_error<'tcx>(
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
         thir: &'a Thir<'tcx>,
-        infcx: InferCtxt<'a, 'tcx>,
+        infcx: InferCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
         hir_id: hir::HirId,
         span: Span,

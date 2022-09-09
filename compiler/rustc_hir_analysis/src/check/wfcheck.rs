@@ -699,7 +699,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxHashSet<Ty<'tcx>>,
-    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'a, 'tcx>, &'a RegionBoundPairs<'tcx>),
+    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'tcx>, &'a RegionBoundPairs<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each

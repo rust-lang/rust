@@ -63,7 +63,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(level = "debug", skip(self, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
@@ -194,7 +194,7 @@ pub trait InferCtxtExt<'tcx> {
     ) -> Ty<'tcx>;
 }
 
-impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
     /// (*), computes the "definition type" for an opaque type

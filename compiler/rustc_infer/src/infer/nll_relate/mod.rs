@@ -44,7 +44,7 @@ pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     /// Callback to use when we deduce an outlives relationship.
     delegate: D,
@@ -149,11 +149,7 @@ impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    pub fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        delegate: D,
-        ambient_variance: ty::Variance,
-    ) -> Self {
+    pub fn new(infcx: &'me InferCtxt<'tcx>, delegate: D, ambient_variance: ty::Variance) -> Self {
         Self {
             infcx,
             delegate,
@@ -867,7 +863,7 @@ struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     delegate: &'me mut D,
 
