@@ -1307,7 +1307,7 @@ pub(crate) fn compare_ty_impl<'tcx>(
     })();
 }
 
-/// The equivalent of [compare_predicate_entailment], but for associated types
+/// The equivalent of [compare_predicates_and_trait_impl_trait_tys], but for associated types
 /// instead of associated functions.
 fn compare_type_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
