@@ -3,13 +3,10 @@
 **Tier: 3**
 
 Bare-metal target for any cpu in the ARMv5TE architecture family, supporting
-ARM/Thumb code interworking (aka `a32`/`t32`), with ARM code as the default code
+ARM/Thumb code interworking (aka `a32`/`t32`), with `a32` code as the default code
 generation.
 
-The `thumbv5te-none-eabi` target is the same as this one, but with THUMB code as the default.
-
-In particular this supports the main CPU of the Nintendo DS, but there's nothing DS
-specific with this target, so any ARMv5TE device should work fine.
+The `thumbv5te-none-eabi` target is the same as this one, but the instruction set defaults to `t32`.
 
 ## Target Maintainers
 
@@ -58,12 +55,6 @@ Most of `core` should work as expected, with the following notes:
 `alloc` is also supported, as long as you provide your own global allocator.
 
 Rust programs are output as ELF files.
-
-For running on DS hardware, you'll need to use an external tool to bundle this ELF file into an NDS binary. The `ndstool` utility included with devkitARM is one such tool that can do this for you:
-
-```shell
-ndstool -c [out_nds] -9 [in_elf]
-```
 
 ## Testing
 

@@ -1,6 +1,6 @@
 //! Targets the ARMv5TE, with code as `a32` code by default.
 
-use crate::spec::{cvs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{cvs, FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -20,8 +20,6 @@ pub fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-            linker: Some("rust-lld".into()),
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
             // * activate t32/a32 interworking
             // * use arch ARMv5TE
@@ -31,18 +29,13 @@ pub fn target() -> Target {
             // Also force-enable 32-bit atomics, which allows the use of atomic load/store only.
             // The resulting atomics are ABI incompatible with atomics backed by libatomic.
             features: "+soft-float,+strict-align,+atomics-32".into(),
+            frame_pointer: FramePointer::MayOmit,
             main_needs_argc_argv: false,
             // don't have atomic compare-and-swap
             atomic_cas: false,
             has_thumb_interworking: true,
-            relocation_model: RelocModel::Static,
-            panic_strategy: PanicStrategy::Abort,
-            // from thumb_base, rust-lang/rust#44993.
-            emit_debug_gdb_scripts: false,
-            // from thumb_base, apparently gcc/clang give enums a minimum of 8 bits on no-os targets
-            c_enum_min_bits: 8,
 
-            ..Default::default()
+            ..super::thumb_base::opts()
         },
     }
 }
