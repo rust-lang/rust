@@ -1364,6 +1364,14 @@ impl FileTimes {
 
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
+    /// Note that readonly in this context means readonly to *all* users, and does
+    /// not represent that the file is readonly from the context of the calling
+    /// user/group.
+    ///
+    /// For Unix-like systems this implies that there are no write bits set on the file.
+    /// This function does not consider posix-acls which may still allow write access.
+    ///
+    /// For Windows this implies that the "readonly" attribute is set on the file.
     ///
     /// # Examples
     ///
@@ -1390,8 +1398,17 @@ impl Permissions {
     /// using the resulting `Permission` will update file permissions to allow
     /// writing.
     ///
-    /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`set_permissions`] function.
+    /// For Unix-like systems this modifies the write bits for owner, group and
+    /// everyone, and is the equivalent of chmod a+w or chmod a-w.
+    /// This function does not consider posix-acls which may still allow or deny
+    /// write access.
+    ///
+    /// For Windows this alters the state of the "readonly" attribute on the file.
+    ///
+    /// This operation does **not** modify the files attributes. This only
+    /// changes the in-memory value of these attributes for the current permissions.
+    /// To modify the files attributes use the [`set_permissions`] function which
+    /// commits these attribute changes to the file.
     ///
     /// # Examples
     ///
@@ -1405,7 +1422,8 @@ impl Permissions {
     ///
     ///     permissions.set_readonly(true);
     ///
-    ///     // filesystem doesn't change
+    ///     // filesystem doesn't change, only the in memory state of the
+    ///     // readonly permission
     ///     assert_eq!(false, metadata.permissions().readonly());
     ///
     ///     // just this particular `permissions`.
