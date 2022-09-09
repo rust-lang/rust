@@ -1024,7 +1024,7 @@ pub enum MethodViolationCode {
     UndispatchableReceiver(Option<Span>),
 }
 
-/// These are the error cases for `codegen_fulfill_obligation`.
+/// These are the error cases for `codegen_select_candidate`.
 #[derive(Copy, Clone, Debug, Hash, HashStable, Encodable, Decodable)]
 pub enum CodegenObligationError {
     /// Ambiguity can happen when monomorphizing during trans

@@ -3,9 +3,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{
-    self, Instance, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitable};
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
@@ -101,7 +99,7 @@ fn resolve_associated_item<'tcx>(
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
 
-    let vtbl = match tcx.codegen_fulfill_obligation((param_env, ty::Binder::dummy(trait_ref))) {
+    let vtbl = match tcx.codegen_select_candidate((param_env, ty::Binder::dummy(trait_ref))) {
         Ok(vtbl) => vtbl,
         Err(CodegenObligationError::Ambiguity) => {
             let reported = tcx.sess.delay_span_bug(
