@@ -123,19 +123,32 @@ impl FromBytesWithNulError {
     const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::InteriorNul(pos) }
     }
+
     const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
 
     #[doc(hidden)]
     #[unstable(feature = "cstr_internals", issue = "none")]
-    pub fn __description(&self) -> &str {
+    pub const fn __description(&self) -> &str {
         match self.kind {
             FromBytesWithNulErrorKind::InteriorNul(..) => {
                 "data provided contains an interior nul byte"
             }
             FromBytesWithNulErrorKind::NotNulTerminated => "data provided is not nul terminated",
         }
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl fmt::Display for FromBytesWithNulError {
+    #[allow(deprecated, deprecated_in_future)]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.__description())?;
+        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
+            write!(f, " at byte pos {pos}")?;
+        }
+        Ok(())
     }
 }
 
@@ -164,24 +177,45 @@ impl fmt::Debug for CStr {
     }
 }
 
-#[stable(feature = "cstr_default", since = "1.10.0")]
-impl Default for &CStr {
-    fn default() -> Self {
-        const SLICE: &[c_char] = &[0];
-        // SAFETY: `SLICE` is indeed pointing to a valid nul-terminated string.
-        unsafe { CStr::from_ptr(SLICE.as_ptr()) }
+/// Converts a string literal to a `&'static Cstr`.
+///
+/// # Panics
+///
+/// `cstr!` panics if the input contains any interior nul bytes.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cstr_macro)]
+///
+/// use core::ffi::CStr;
+///
+/// const HELLO: &CStr = cstr!("Hello, world!");
+/// assert_eq!(HELLO.to_bytes_with_nul(), b"Hello, world!\0");
+/// ```
+#[macro_export]
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[rustc_diagnostic_item = "core_cstr_macro"]
+macro_rules! cstr {
+    ($($s:expr),*) => {
+        $crate::ffi::__cstr_macro_impl(concat!($($s,)* "\0").as_bytes())
     }
 }
 
-#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl fmt::Display for FromBytesWithNulError {
-    #[allow(deprecated, deprecated_in_future)]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.__description())?;
-        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
-            write!(f, " at byte pos {pos}")?;
-        }
-        Ok(())
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[doc(hidden)]
+pub const fn __cstr_macro_impl(bytes: &[u8]) -> &CStr {
+    match CStr::from_bytes_with_nul(bytes) {
+        Ok(cstr) => cstr,
+        Err(err) => panic!("{}", err.__description()),
+    }
+}
+
+#[stable(feature = "cstr_default", since = "1.10.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl const Default for &CStr {
+    fn default() -> Self {
+        cstr!()
     }
 }
 

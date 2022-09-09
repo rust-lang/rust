@@ -166,6 +166,7 @@
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
 #![feature(is_ascii_octdigit)]
+#![feature(cstr_macro)]
 //
 // Language features:
 #![feature(abi_unadjusted)]

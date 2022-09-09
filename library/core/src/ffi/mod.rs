@@ -19,6 +19,10 @@ pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
 
 mod c_str;
 
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[doc(hidden)]
+pub use self::c_str::__cstr_macro_impl;
+
 macro_rules! type_alias_no_nz {
     {
       $Docfile:tt, $Alias:ident = $Real:ty;
