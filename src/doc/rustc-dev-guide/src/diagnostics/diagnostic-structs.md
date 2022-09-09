@@ -1,14 +1,14 @@
 # Diagnostic and subdiagnostic structs
 rustc has two diagnostic derives that can be used to create simple diagnostics,
 which are recommended to be used when they are applicable:
-`#[derive(SessionDiagnostic)]` and `#[derive(SessionSubdiagnostic)]`.
+`#[derive(Diagnostic)]` and `#[derive(Subdiagnostic)]`.
 
 Diagnostics created with the derive macros can be translated into different
 languages and each has a slug that uniquely identifies the diagnostic.
 
-## `#[derive(SessionDiagnostic)]`
+## `#[derive(Diagnostic)]`
 Instead of using the `DiagnosticBuilder` API to create and emit diagnostics,
-the `SessionDiagnostic` derive can be used. `#[derive(SessionDiagnostic)]` is
+the `Diagnostic` derive can be used. `#[derive(Diagnostic)]` is
 only applicable for simple diagnostics that don't require much logic in
 deciding whether or not to add additional subdiagnostics.
 
@@ -16,7 +16,7 @@ Consider the [definition][defn] of the "field already declared" diagnostic
 shown below:
 
 ```rust,ignore
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(typeck::field_already_declared, code = "E0124")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
@@ -28,12 +28,12 @@ pub struct FieldAlreadyDeclared {
 }
 ```
 
-`SessionDiagnostic` can only be applied to structs. Every `SessionDiagnostic`
+`Diagnostic` can only be applied to structs. Every `Diagnostic`
 has to have one attribute, `#[diag(...)]`, applied to the struct itself.
 
 If an error has an error code (e.g. "E0624"), then that can be specified using
 the `code` sub-attribute. Specifying a `code` isn't mandatory, but if you are
-porting a diagnostic that uses `DiagnosticBuilder` to use `SessionDiagnostic`
+porting a diagnostic that uses `DiagnosticBuilder` to use `Diagnostic`
 then you should keep the code if there was one.
 
 `#[diag(..)]` must provide a slug as the first positional argument (a path to an
@@ -56,7 +56,7 @@ typeck_field_already_declared =
 `typeck_field_already_declared` is the slug from our example and is followed
 by the diagnostic message.
 
-Every field of the `SessionDiagnostic` which does not have an annotation is
+Every field of the `Diagnostic` which does not have an annotation is
 available in Fluent messages as a variable, like `field_name` in the example
 above. Fields can be annotated `#[skip_arg]` if this is undesired.
 
@@ -66,7 +66,7 @@ of the diagnostic.
 
 Diagnostics are more than just their primary message, they often include
 labels, notes, help messages and suggestions, all of which can also be
-specified on a `SessionDiagnostic`.
+specified on a `Diagnostic`.
 
 `#[label]`, `#[help]` and `#[note]` can all be applied to fields which have the
 type `Span`. Applying any of these attributes will create the corresponding
@@ -78,7 +78,7 @@ declared"). If there is more than one subdiagnostic of the same type, then
 these attributes can also take a value that is the attribute name to look for
 (e.g. `previous_decl_label` in our example).
 
-Other types have special behavior when used in a `SessionDiagnostic` derive:
+Other types have special behavior when used in a `Diagnostic` derive:
 
 - Any attribute applied to an `Option<T>` and will only emit a
   subdiagnostic if the option is `Some(..)`.
@@ -107,13 +107,13 @@ the value of the `field_name` field of the struct), not a Fluent identifier.
 `applicability` can be used to specify the applicability in the attribute, it
 cannot be used when the field's type contains an `Applicability`.
 
-In the end, the `SessionDiagnostic` derive will generate an implementation of
-`SessionDiagnostic` that looks like the following:
+In the end, the `Diagnostic` derive will generate an implementation of
+`IntoDiagnostic` that looks like the following:
 
 ```rust,ignore
-impl SessionDiagnostic<'_> for FieldAlreadyDeclared {
-    fn into_diagnostic(self, sess: &'_ rustc_session::Session) -> DiagnosticBuilder<'_> {
-        let mut diag = sess.struct_err(rustc_errors::fluent::typeck::field_already_declared);
+impl IntoDiagnostic<'_> for FieldAlreadyDeclared {
+    fn into_diagnostic(self, handler: &'_ rustc_errors::Handler) -> DiagnosticBuilder<'_> {
+        let mut diag = handler.struct_err(rustc_errors::fluent::typeck::field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
@@ -141,7 +141,7 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
 ```
 
 ### Reference
-`#[derive(SessionDiagnostic)]` and `#[derive(LintDiagnostic)]` support the
+`#[derive(Diagnostic)]` and `#[derive(LintDiagnostic)]` support the
 following attributes:
 
 - `#[diag(slug, code = "...")]`
@@ -210,20 +210,20 @@ following attributes:
       `has-placeholders` or `unspecified`.
 - `#[subdiagnostic]`
   - _Applied to a type that implements `AddToDiagnostic` (from
-    `#[derive(SessionSubdiagnostic)]`)._
+    `#[derive(Subdiagnostic)]`)._
   - Adds the subdiagnostic represented by the subdiagnostic struct.
 - `#[primary_span]` (_Optional_)
-  - _Applied to `Span` fields on `SessionSubdiagnostic`s. Not used for `LintDiagnostic`s._
+  - _Applied to `Span` fields on `Subdiagnostic`s. Not used for `LintDiagnostic`s._
   - Indicates the primary span of the diagnostic.
 - `#[skip_arg]` (_Optional_)
   - _Applied to any field._
   - Prevents the field from being provided as a diagnostic argument.
 
-## `#[derive(SessionSubdiagnostic)]`
+## `#[derive(Subdiagnostic)]`
 It is common in the compiler to write a function that conditionally adds a
 specific subdiagnostic to an error if it is applicable. Oftentimes these
 subdiagnostics could be represented using a diagnostic struct even if the
-overall diagnostic could not. In this circumstance, the `SessionSubdiagnostic`
+overall diagnostic could not. In this circumstance, the `Subdiagnostic`
 derive can be used to represent a partial diagnostic (e.g a note, label, help or
 suggestion) as a struct.
 
@@ -231,7 +231,7 @@ Consider the [definition][subdiag_defn] of the "expected return type" label
 shown below:
 
 ```rust
-#[derive(SessionSubdiagnostic)]
+#[derive(Subdiagnostic)]
 pub enum ExpectedReturnTypeLabel<'tcx> {
     #[label(typeck::expected_default_return_type)]
     Unit {
@@ -247,9 +247,9 @@ pub enum ExpectedReturnTypeLabel<'tcx> {
 }
 ```
 
-Unlike `SessionDiagnostic`, `SessionSubdiagnostic` can be applied to structs or
+Unlike `Diagnostic`, `Subdiagnostic` can be applied to structs or
 enums. Attributes that are placed on the type for structs are placed on each
-variants for enums (or vice versa). Each `SessionSubdiagnostic` should have one
+variants for enums (or vice versa). Each `Subdiagnostic` should have one
 attribute applied to the struct or each variant, one of:
 
 - `#[label(..)]` for defining a label
@@ -281,7 +281,7 @@ Every field of the type/variant which does not have an annotation is available
 in Fluent messages as a variable. Fields can be annotated `#[skip_arg]` if this
 is undesired.
 
-Like `SessionDiagnostic`, `SessionSubdiagnostic` supports `Option<T>` and
+Like `Diagnostic`, `Subdiagnostic` supports `Option<T>` and
 `Vec<T>` fields.
 
 Suggestions can be emitted using one of four attributes on the type/variant:
@@ -306,8 +306,8 @@ following sub-attributes:
 Applicabilities can also be specified as a field (of type `Applicability`)
 using the `#[applicability]` attribute.
 
-In the end, the `SessionSubdiagnostic` derive will generate an implementation
-of `SessionSubdiagnostic` that looks like the following:
+In the end, the `Subdiagnostic` derive will generate an implementation
+of `AddToDiagnostic` that looks like the following:
 
 ```rust
 impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
@@ -333,7 +333,7 @@ diagnostic or by assigning it to a `#[subdiagnostic]`-annotated field of a
 diagnostic struct.
 
 ### Reference
-`#[derive(SessionSubdiagnostic)]` supports the following attributes:
+`#[derive(Subdiagnostic)]` supports the following attributes:
 
 - `#[label(slug)]`, `#[help(slug)]` or `#[note(slug)]`
   - _Applied to struct or enum variant. Mutually exclusive with struct/enum variant attributes._

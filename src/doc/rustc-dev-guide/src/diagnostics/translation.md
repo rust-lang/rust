@@ -11,7 +11,7 @@ There are two ways of writing translatable diagnostics:
    diagnostic structs). See [the diagnostic and subdiagnostic structs
    documentation](./diagnostic-structs.md).
 2. Using typed identifiers with `DiagnosticBuilder` APIs (in
-   `SessionDiagnostic` implementations).
+   `Diagnostic` implementations).
 
 When adding or changing a translatable diagnostic, you don't need to worry
 about the translations, only updating the original English message. Currently,

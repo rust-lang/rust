@@ -314,10 +314,10 @@ reporting errors.
 
 [errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
 
-Diagnostics can be implemented as types which implement the `SessionDiagnostic`
+Diagnostics can be implemented as types which implement the `IntoDiagnostic`
 trait. This is preferred for new diagnostics as it enforces a separation
 between diagnostic emitting logic and the main code paths. For less-complex
-diagnostics, the `SessionDiagnostic` trait can be derived -- see [Diagnostic
+diagnostics, the `IntoDiagnostic` trait can be derived -- see [Diagnostic
 structs][diagnostic-structs]. Within the trait implementation, the APIs
 described below can be used as normal.
 
