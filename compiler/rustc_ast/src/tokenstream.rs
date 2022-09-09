@@ -255,7 +255,7 @@ impl AttrTokenStream {
 
                                 let mut builder = TokenStreamBuilder::new();
                                 for inner_attr in inner_attrs {
-                                    builder.push(inner_attr.tokens().to_tokenstream());
+                                    builder.push(inner_attr.tokens());
                                 }
                                 builder.push(delim_tokens.clone());
                                 *tree = TokenTree::Delimited(*span, *delim, builder.build());
@@ -273,7 +273,7 @@ impl AttrTokenStream {
                     let mut flat: SmallVec<[_; 1]> = SmallVec::new();
                     for attr in outer_attrs {
                         // FIXME: Make this more efficient
-                        flat.extend(attr.tokens().to_tokenstream().0.clone().iter().cloned());
+                        flat.extend(attr.tokens().0.clone().iter().cloned());
                     }
                     flat.extend(target_tokens);
                     flat.into_iter()

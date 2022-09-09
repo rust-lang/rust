@@ -388,7 +388,7 @@ impl<'a> StripUnconfigured<'a> {
         attr: &Attribute,
         (item, item_span): (ast::AttrItem, Span),
     ) -> Attribute {
-        let orig_tokens = attr.tokens().to_tokenstream();
+        let orig_tokens = attr.tokens();
 
         // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
         // and producing an attribute of the form `#[attr]`. We
