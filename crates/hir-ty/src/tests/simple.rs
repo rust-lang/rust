@@ -1918,6 +1918,88 @@ fn closure_return_inferred() {
 }
 
 #[test]
+fn generator_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: generator, deref
+use core::ops::{Generator, GeneratorState};
+use core::pin::Pin;
+
+fn f(v: i64) {}
+fn test() {
+    let mut g = |r| {
+        let a = yield 0;
+        let a = yield 1;
+        let a = yield 2;
+        "return value"
+    };
+
+    match Pin::new(&mut g).resume(0usize) {
+        GeneratorState::Yielded(y) => { f(y); }
+        GeneratorState::Complete(r) => {}
+    }
+}
+        "#,
+        expect![[r#"
+            70..71 'v': i64
+            78..80 '{}': ()
+            91..362 '{     ...   } }': ()
+            101..106 'mut g': {generator}
+            109..218 '|r| { ...     }': {generator}
+            110..111 'r': usize
+            113..218 '{     ...     }': &str
+            127..128 'a': usize
+            131..138 'yield 0': usize
+            137..138 '0': i64
+            152..153 'a': usize
+            156..163 'yield 1': usize
+            162..163 '1': i64
+            177..178 'a': usize
+            181..188 'yield 2': usize
+            187..188 '2': i64
+            198..212 '"return value"': &str
+            225..360 'match ...     }': ()
+            231..239 'Pin::new': fn new<&mut {generator}>(&mut {generator}) -> Pin<&mut {generator}>
+            231..247 'Pin::n...mut g)': Pin<&mut {generator}>
+            231..262 'Pin::n...usize)': GeneratorState<i64, &str>
+            240..246 '&mut g': &mut {generator}
+            245..246 'g': {generator}
+            255..261 '0usize': usize
+            273..299 'Genera...ded(y)': GeneratorState<i64, &str>
+            297..298 'y': i64
+            303..312 '{ f(y); }': ()
+            305..306 'f': fn f(i64)
+            305..309 'f(y)': ()
+            307..308 'y': i64
+            321..348 'Genera...ete(r)': GeneratorState<i64, &str>
+            346..347 'r': &str
+            352..354 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn generator_resume_yield_return_unit() {
+    check_no_mismatches(
+        r#"
+//- minicore: generator, deref
+use core::ops::{Generator, GeneratorState};
+use core::pin::Pin;
+fn test() {
+    let mut g = || {
+        let () = yield;
+    };
+
+    match Pin::new(&mut g).resume(()) {
+        GeneratorState::Yielded(()) => {}
+        GeneratorState::Complete(()) => {}
+    }
+}
+        "#,
+    );
+}
+
+#[test]
 fn fn_pointer_return() {
     check_infer(
         r#"
