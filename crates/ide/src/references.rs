@@ -118,8 +118,6 @@ pub(crate) fn find_all_refs(
 }
 
 fn filter_import_references(usages: &mut UsageSearchResult) {
-    // todo use this https://github.com/rust-lang/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs#L432
-
     for (_file_id, refs) in &mut usages.references {
         refs.retain(|it| match it.name.as_name_ref() {
             Some(name_ref) => {

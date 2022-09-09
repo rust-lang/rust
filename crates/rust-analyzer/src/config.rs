@@ -219,10 +219,6 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
-
-        /// Exclude imports from find-all-references.
-        findAllRefs_excludeImports: bool = "false",
-
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -361,6 +357,9 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
+
+        /// Exclude imports from find-all-references.
+        references_excludeImports: bool = "false",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -1151,7 +1150,7 @@ impl Config {
     }
 
     pub fn find_all_refs_exclude_imports(&self) -> bool {
-        self.data.findAllRefs_excludeImports
+        self.data.references_excludeImports
     }
 
     pub fn snippet_cap(&self) -> bool {
