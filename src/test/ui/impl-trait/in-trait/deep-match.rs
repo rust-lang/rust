@@ -9,7 +9,7 @@ trait Foo {
 
 impl Foo for () {
     fn bar() -> i32 { 0 }
-    //~^ ERROR method `bar` has an incompatible type for trait
+    //~^ ERROR method `bar` has an incompatible return type for trait
 }
 
 fn main() {}

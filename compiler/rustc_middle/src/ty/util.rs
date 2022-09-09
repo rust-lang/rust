@@ -655,7 +655,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>> {
-        ty::EarlyBinder(self.compare_predicates_and_trait_impl_trait_tys(def_id))
+        ty::EarlyBinder(self.collect_trait_impl_trait_tys(def_id))
     }
 
     pub fn bound_fn_sig(self, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'tcx>> {

@@ -161,7 +161,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query compare_predicates_and_trait_impl_trait_tys(key: DefId)
+    query collect_trait_impl_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {
         desc { "better description please" }
