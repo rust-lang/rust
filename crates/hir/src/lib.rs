@@ -582,8 +582,13 @@ impl Module {
 
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible.
-    pub fn find_use_path(self, db: &dyn DefDatabase, item: impl Into<ItemInNs>) -> Option<ModPath> {
-        hir_def::find_path::find_path(db, item.into().into(), self.into())
+    pub fn find_use_path(
+        self,
+        db: &dyn DefDatabase,
+        item: impl Into<ItemInNs>,
+        prefer_core: bool,
+    ) -> Option<ModPath> {
+        hir_def::find_path::find_path(db, item.into().into(), self.into(), prefer_core)
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -593,8 +598,15 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
+        prefer_core: bool,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(db, item.into().into(), self.into(), prefix_kind)
+        hir_def::find_path::find_path_prefixed(
+            db,
+            item.into().into(),
+            self.into(),
+            prefix_kind,
+            prefer_core,
+        )
     }
 }
 

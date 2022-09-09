@@ -353,6 +353,11 @@ Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-i
 --
 Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
 --
+[[rust-analyzer.imports.prefer.core]]rust-analyzer.imports.prefer.core (default: `false`)::
++
+--
+Prefer to use imports of the core crate over the std crate.
+--
 [[rust-analyzer.imports.prefix]]rust-analyzer.imports.prefix (default: `"plain"`)::
 +
 --

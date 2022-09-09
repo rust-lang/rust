@@ -803,6 +803,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.imports.prefer.core": {
+                    "markdownDescription": "Prefer to use imports of the core crate over the std crate.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.imports.prefix": {
                     "markdownDescription": "The path structure for newly inserted paths to use.",
                     "default": "plain",
