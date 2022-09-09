@@ -106,7 +106,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.return_type_has_opaque = ret_ty != declared_ret_ty;
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
-    fcx.ret_type_span = Some(decl.output.span());
 
     let span = body.value.span;
 
