@@ -4,8 +4,8 @@ goto: file://|DOC_PATH|/test_docs/index.html
 goto: ./fn.check_list_code_block.html
 // If the codeblock is the first element of the docblock, the information tooltip must have
 // have some top margin to avoid going over the toggle (the "[+]").
-assert-css: (".docblock > .example-wrap > .information > .compile_fail", { "margin-top": "16px" })
+assert-css: (".docblock > .example-wrap.compile_fail .tooltip", { "margin-top": "16px" })
 // Checks that the other codeblocks don't have this top margin.
-assert-css: ("ol > li > .example-wrap > .information > .compile_fail", { "margin-top": "0px" })
-assert-css: ("ol > li > .example-wrap > .information > .ignore", { "margin-top": "0px" })
-assert-css: (".docblock > .example-wrap > .information > .ignore", { "margin-top": "0px" })
+assert-css: ("ol > li > .example-wrap.compile_fail .tooltip", { "margin-top": "0px" })
+assert-css: ("ol > li > .example-wrap.ignore .tooltip", { "margin-top": "0px" })
+assert-css: (".docblock > .example-wrap.ignore .tooltip", { "margin-top": "0px" })
