@@ -29,10 +29,10 @@ use std::ops::Deref;
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited<'a, 'tcx> {
+pub struct Inherited<'tcx> {
     pub(super) infcx: InferCtxt<'tcx>,
 
-    pub(super) typeck_results: &'a RefCell<ty::TypeckResults<'tcx>>,
+    pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
@@ -70,7 +70,7 @@ pub struct Inherited<'a, 'tcx> {
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
 }
 
-impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
+impl<'tcx> Deref for Inherited<'tcx> {
     type Target = InferCtxt<'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.infcx
@@ -86,7 +86,7 @@ pub struct InheritedBuilder<'tcx> {
     typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 }
 
-impl<'tcx> Inherited<'_, 'tcx> {
+impl<'tcx> Inherited<'tcx> {
     pub fn build(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> InheritedBuilder<'tcx> {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
@@ -124,20 +124,20 @@ impl<'tcx> Inherited<'_, 'tcx> {
 }
 
 impl<'tcx> InheritedBuilder<'tcx> {
-    pub fn enter<F, R>(&mut self, f: F) -> R
+    pub fn enter<F, R>(mut self, f: F) -> R
     where
-        F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
+        F: FnOnce(&Inherited<'tcx>) -> R,
     {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id, &self.typeck_results)))
+        self.infcx.enter(|infcx| f(&Inherited::new(infcx, def_id, self.typeck_results)))
     }
 }
 
-impl<'a, 'tcx> Inherited<'a, 'tcx> {
+impl<'tcx> Inherited<'tcx> {
     fn new(
         infcx: InferCtxt<'tcx>,
         def_id: LocalDefId,
-        typeck_results: &'a RefCell<ty::TypeckResults<'tcx>>,
+        typeck_results: RefCell<ty::TypeckResults<'tcx>>,
     ) -> Self {
         let tcx = infcx.tcx;
         let body_id = tcx.hir().maybe_body_owned_by(def_id);

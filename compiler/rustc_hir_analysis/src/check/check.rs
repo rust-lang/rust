@@ -78,7 +78,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
 /// * inherited: other fields inherited from the enclosing fn (if any)
 #[instrument(skip(inherited, body), level = "debug")]
 pub(super) fn check_fn<'a, 'tcx>(
-    inherited: &'a Inherited<'a, 'tcx>,
+    inherited: &'a Inherited<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,

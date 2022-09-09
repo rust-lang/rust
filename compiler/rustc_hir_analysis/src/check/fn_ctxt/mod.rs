@@ -118,7 +118,7 @@ pub struct FnCtxt<'a, 'tcx> {
 
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
-    pub(super) inh: &'a Inherited<'a, 'tcx>,
+    pub(super) inh: &'a Inherited<'tcx>,
 
     /// True if the function or closure's return type is known before
     /// entering the function/closure, i.e. if the return type is
@@ -132,7 +132,7 @@ pub struct FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn new(
-        inh: &'a Inherited<'a, 'tcx>,
+        inh: &'a Inherited<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
     ) -> FnCtxt<'a, 'tcx> {
@@ -184,7 +184,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
-    type Target = Inherited<'a, 'tcx>;
+    type Target = Inherited<'tcx>;
     fn deref(&self) -> &Self::Target {
         &self.inh
     }
