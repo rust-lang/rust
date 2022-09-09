@@ -183,7 +183,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             outlives_env.param_env,
         );
 
-        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
+        self.err_ctxt().resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 

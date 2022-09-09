@@ -720,6 +720,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) {
         if !self.tcx.sess.has_errors().is_some() {
             self.infcx
+                .err_ctxt()
                 .emit_inference_failure_err(
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),

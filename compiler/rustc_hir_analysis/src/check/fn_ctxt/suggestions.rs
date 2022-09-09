@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We'll later suggest `.as_ref` when noting the type error,
         // so skip if we will suggest that instead.
-        if self.should_suggest_as_ref(expected_ty, expr_ty).is_some() {
+        if self.err_ctxt().should_suggest_as_ref(expected_ty, expr_ty).is_some() {
             return false;
         }
 
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         err: &mut Diagnostic,
     ) -> bool {
-        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+        if let Some((span_semi, boxed)) = self.err_ctxt().could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {
                 err.span_suggestion_verbose(
                     span_semi,

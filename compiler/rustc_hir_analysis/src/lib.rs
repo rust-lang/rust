@@ -110,7 +110,7 @@ use rustc_middle::util;
 use rustc_session::config::EntryFnType;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::iter;
@@ -146,7 +146,7 @@ fn require_same_types<'tcx>(
         let errors = match infcx.at(cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
             Err(err) => {
-                infcx.report_mismatched_types(cause, expected, actual, err).emit();
+                infcx.err_ctxt().report_mismatched_types(cause, expected, actual, err).emit();
                 return false;
             }
         };
@@ -154,7 +154,7 @@ fn require_same_types<'tcx>(
         match &errors[..] {
             [] => true,
             errors => {
-                infcx.report_fulfillment_errors(errors, None, false);
+                infcx.err_ctxt().report_fulfillment_errors(errors, None, false);
                 false
             }
         }
@@ -318,7 +318,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             ocx.register_bound(cause, param_env, norm_return_ty, term_did);
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
-                infcx.report_fulfillment_errors(&errors, None, false);
+                infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                 error = true;
             }
         });

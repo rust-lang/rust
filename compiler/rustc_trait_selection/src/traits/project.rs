@@ -18,7 +18,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
-use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
@@ -513,7 +513,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                                 self.param_env,
                                 ty,
                             );
-                            self.selcx.infcx().report_overflow_error(&obligation, true);
+                            self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let substs = substs.fold_with(self);
@@ -569,7 +569,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         self.param_env,
                         ty,
                     );
-                    self.selcx.infcx().report_overflow_error(&obligation, true);
+                    self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
                 }
                 debug!(
                     ?self.depth,

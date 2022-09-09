@@ -29,7 +29,7 @@ use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVE
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use rustc_ty_utils::representability::{self, Representability};
 
@@ -760,7 +760,7 @@ fn check_opaque_meets_bounds<'tcx>(
             // version.
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
-                infcx.report_fulfillment_errors(&errors, None, false);
+                infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             }
             match origin {
                 // Checked when type checking the function containing them.

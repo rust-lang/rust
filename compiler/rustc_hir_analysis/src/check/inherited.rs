@@ -78,7 +78,7 @@ impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
 }
 
 /// A temporary returned by `Inherited::build(...)`. This is necessary
-/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// for multiple `InferCtxt` to share the same `typeck_results`
 /// without using `Rc` or something similar.
 pub struct InheritedBuilder<'tcx> {
     infcx: infer::InferCtxtBuilder<'tcx>,

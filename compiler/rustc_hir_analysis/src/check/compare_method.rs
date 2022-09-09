@@ -19,7 +19,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
@@ -395,7 +395,7 @@ fn compare_predicate_entailment<'tcx>(
                 _ => {}
             }
 
-            infcx.note_type_err(
+            infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
                 trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
@@ -415,7 +415,7 @@ fn compare_predicate_entailment<'tcx>(
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return Err(reported);
         }
 
@@ -508,7 +508,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
                     trait_m.name
                 );
                 let hir = tcx.hir();
-                infcx.note_type_err(
+                infcx.err_ctxt().note_type_err(
                     &mut diag,
                     &cause,
                     hir.get_if_local(impl_m.def_id)
@@ -530,7 +530,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
         // RPITs.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return Err(reported);
         }
 
@@ -1382,7 +1382,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
                 }
             });
 
-            infcx.note_type_err(
+            infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
                 trait_c_span.map(|span| (span, "type in trait".to_owned())),
@@ -1401,7 +1401,7 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            return Err(infcx.report_fulfillment_errors(&errors, None, false));
+            return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None, false));
         }
 
         // FIXME return `ErrorReported` if region obligations error?
@@ -1522,7 +1522,7 @@ fn compare_type_predicate_entailment<'tcx>(
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return Err(reported);
         }
 
@@ -1751,7 +1751,7 @@ pub fn check_type_bounds<'tcx>(
         // version.
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return Err(reported);
         }
 
@@ -1769,6 +1769,7 @@ pub fn check_type_bounds<'tcx>(
         let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
         for (key, value) in constraints {
             infcx
+                .err_ctxt()
                 .report_mismatched_types(
                     &ObligationCause::misc(
                         value.hidden_type.span,

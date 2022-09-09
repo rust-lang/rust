@@ -13,6 +13,7 @@ use crate::check::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer;
+use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::subst::GenericArgKind;
@@ -166,6 +167,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn sess(&self) -> &Session {
         &self.tcx.sess
+    }
+
+    /// Creates an `TypeErrCtxt` with a reference to the in-progress
+    /// `TypeckResults` which is used for diagnostics.
+    /// Use [`InferCtxt::err_ctxt`] to start one without a `TypeckResults`.
+    ///
+    /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
+    pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+        TypeErrCtxt { infcx: &self.infcx, typeck_results: Some(self.typeck_results.borrow()) }
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {

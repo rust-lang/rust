@@ -5,7 +5,7 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
@@ -213,7 +213,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 self.param_env,
                                 ty,
                             );
-                            self.infcx.report_overflow_error(&obligation, true);
+                            self.infcx.err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let generic_ty = self.tcx().bound_type_of(def_id);

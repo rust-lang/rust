@@ -650,7 +650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if tys.len() == 1 {
                         // A tuple wrap suggestion actually occurs within,
                         // so don't do anything special here.
-                        err = self.report_and_explain_type_error(
+                        err = self.err_ctxt().report_and_explain_type_error(
                             TypeTrace::types(
                                 &self.misc(*lo),
                                 true,
@@ -742,7 +742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let cause = &self.misc(provided_span);
                 let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                 if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
-                    self.report_and_explain_type_error(trace, *e).emit();
+                    self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
                     return true;
                 }
                 false
@@ -766,7 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
             let cause = &self.misc(provided_arg_span);
             let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-            let mut err = self.report_and_explain_type_error(trace, *err);
+            let mut err = self.err_ctxt().report_and_explain_type_error(trace, *err);
             self.emit_coerce_suggestions(
                 &mut err,
                 &provided_args[*provided_idx],
@@ -840,7 +840,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let cause = &self.misc(provided_span);
                         let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                         if let Some(e) = error {
-                            self.note_type_err(
+                            self.err_ctxt().note_type_err(
                                 &mut err,
                                 &trace.cause,
                                 None,
@@ -1474,7 +1474,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &mut |err| {
                             if let Some(expected_ty) = expected.only_has_type(self) {
                                 if !self.consider_removing_semicolon(blk, expected_ty, err) {
-                                    self.consider_returning_binding(blk, expected_ty, err);
+                                    self.err_ctxt().consider_returning_binding(
+                                        blk,
+                                        expected_ty,
+                                        err,
+                                    );
                                 }
                                 if expected_ty == self.tcx.types.bool {
                                     // If this is caused by a missing `let` in a `while let`,

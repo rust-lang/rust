@@ -56,7 +56,7 @@ impl<'tcx> UniverseInfo<'tcx> {
     ) {
         match self.0 {
             UniverseInfoInner::RelateTys { expected, found } => {
-                let err = mbcx.infcx.report_mismatched_types(
+                let err = mbcx.infcx.err_ctxt().report_mismatched_types(
                     &cause,
                     expected,
                     found,
@@ -449,42 +449,38 @@ fn try_extract_error_from_region_constraints<'tcx>(
         })?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
-    let nice_error = match (error_region, *sub_region) {
-        (Some(error_region), ty::ReVar(vid)) => NiceRegionError::new(
-            infcx,
-            RegionResolutionError::SubSupConflict(
-                vid,
-                region_var_origin(vid),
-                cause.clone(),
-                error_region,
-                cause.clone(),
-                placeholder_region,
-                vec![],
-            ),
+    let error = match (error_region, *sub_region) {
+        (Some(error_region), ty::ReVar(vid)) => RegionResolutionError::SubSupConflict(
+            vid,
+            region_var_origin(vid),
+            cause.clone(),
+            error_region,
+            cause.clone(),
+            placeholder_region,
+            vec![],
         ),
-        (Some(error_region), _) => NiceRegionError::new(
-            infcx,
-            RegionResolutionError::ConcreteFailure(cause.clone(), error_region, placeholder_region),
-        ),
+        (Some(error_region), _) => {
+            RegionResolutionError::ConcreteFailure(cause.clone(), error_region, placeholder_region)
+        }
         // Note universe here is wrong...
-        (None, ty::ReVar(vid)) => NiceRegionError::new(
-            infcx,
-            RegionResolutionError::UpperBoundUniverseConflict(
-                vid,
-                region_var_origin(vid),
-                universe_of_region(vid),
-                cause.clone(),
-                placeholder_region,
-            ),
+        (None, ty::ReVar(vid)) => RegionResolutionError::UpperBoundUniverseConflict(
+            vid,
+            region_var_origin(vid),
+            universe_of_region(vid),
+            cause.clone(),
+            placeholder_region,
         ),
-        (None, _) => NiceRegionError::new(
-            infcx,
-            RegionResolutionError::ConcreteFailure(cause.clone(), sub_region, placeholder_region),
-        ),
+        (None, _) => {
+            RegionResolutionError::ConcreteFailure(cause.clone(), sub_region, placeholder_region)
+        }
     };
-    nice_error.try_report_from_nll().or_else(|| {
+    NiceRegionError::new(&infcx.err_ctxt(), error).try_report_from_nll().or_else(|| {
         if let SubregionOrigin::Subtype(trace) = cause {
-            Some(infcx.report_and_explain_type_error(*trace, TypeError::RegionsPlaceholderMismatch))
+            Some(
+                infcx
+                    .err_ctxt()
+                    .report_and_explain_type_error(*trace, TypeError::RegionsPlaceholderMismatch),
+            )
         } else {
             None
         }

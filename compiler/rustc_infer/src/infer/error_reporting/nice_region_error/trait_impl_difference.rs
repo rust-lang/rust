@@ -84,12 +84,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let expected_highlight = HighlightBuilder::build(self.tcx(), expected);
         let expected = self
-            .infcx
+            .cx
             .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
             .name;
         let found_highlight = HighlightBuilder::build(self.tcx(), found);
         let found =
-            self.infcx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
+            self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
 
         err.span_label(sp, &format!("found `{}`", found));
         err.span_label(trait_sp, &format!("expected `{}`", expected));

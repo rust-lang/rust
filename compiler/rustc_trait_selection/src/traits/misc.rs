@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 
 #[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {
@@ -70,7 +70,7 @@ pub fn can_type_implement_copy<'tcx>(
                         }
                     }
                     Err(errors) => {
-                        infcx.report_fulfillment_errors(&errors, None, false);
+                        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                     }
                 };
             }

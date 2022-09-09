@@ -14,7 +14,7 @@ use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
 };
@@ -775,7 +775,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         let errors = fulfill_cx.select_all_or_error(&infcx);
                         if !errors.is_empty() {
-                            infcx.report_fulfillment_errors(&errors, None, false);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                         }
                     });
 
@@ -837,7 +837,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // as we are going to error again anyways.
                                 tcx.infer_ctxt().enter(|infcx| {
                                     if let Err(e) = implsrc {
-                                        infcx.report_selection_error(
+                                        infcx.err_ctxt().report_selection_error(
                                             obligation.clone(),
                                             &obligation,
                                             &e,

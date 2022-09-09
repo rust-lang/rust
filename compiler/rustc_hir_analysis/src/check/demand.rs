@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_predicates(obligations);
                 None
             }
-            Err(e) => Some(self.report_mismatched_types(&cause, expected, actual, e)),
+            Err(e) => Some(self.err_ctxt().report_mismatched_types(&cause, expected, actual, e)),
         }
     }
 
@@ -109,7 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_predicates(obligations);
                 None
             }
-            Err(e) => Some(self.report_mismatched_types(cause, expected, actual, e)),
+            Err(e) => Some(self.err_ctxt().report_mismatched_types(cause, expected, actual, e)),
         }
     }
 
@@ -153,7 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
+        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
         let is_insufficiently_polymorphic =
             matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));

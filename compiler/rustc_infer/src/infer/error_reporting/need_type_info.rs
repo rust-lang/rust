@@ -2,6 +2,7 @@ use crate::errors::{
     AmbigousImpl, AmbigousReturn, AnnotationRequired, InferenceBadError, NeedTypeInfoInGenerator,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
+use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use rustc_errors::IntoDiagnostic;
@@ -317,7 +318,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// Used as a fallback in [InferCtxt::emit_inference_failure_err]
+    /// Used as a fallback in [TypeErrCtxt::emit_inference_failure_err]
     /// in case we weren't able to get a better error.
     fn bad_inference_failure_err(
         &self,
@@ -364,7 +365,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
+}
 
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -376,14 +379,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
-        let Some(typeck_results) = self.in_progress_typeck_results else {
+        let Some(typeck_results) = &self.typeck_results else {
             // If we don't have any typeck results we're outside
             // of a body, so we won't be able to get better info
             // here.
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
-        let typeck_results = typeck_results.borrow();
-        let typeck_results = &typeck_results;
 
         let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
         if let Some(body_id) = body_id {
@@ -563,7 +564,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
         }
     }
+}
 
+impl<'tcx> InferCtxt<'_, 'tcx> {
     pub fn need_type_info_err_in_generator(
         &self,
         kind: hir::GeneratorKind,

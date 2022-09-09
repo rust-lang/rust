@@ -12,7 +12,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause};
@@ -324,7 +324,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                         }),
                     );
                     if !errors.is_empty() {
-                        infcx.report_fulfillment_errors(&errors, None, false);
+                        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                     }
 
                     // Finally, resolve all regions.
@@ -377,6 +377,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                            mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
             if (mt_a.mutbl, mt_b.mutbl) == (hir::Mutability::Not, hir::Mutability::Mut) {
                 infcx
+                    .err_ctxt()
                     .report_mismatched_types(
                         &cause,
                         mk_ptr(mt_b.ty),
@@ -576,7 +577,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         );
         let errors = traits::fully_solve_obligation(&infcx, predicate);
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
+            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
         }
 
         // Finally, resolve all regions.

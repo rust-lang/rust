@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 
 use crate::session_diagnostics::ConstNotUsedTraitAlias;
@@ -299,6 +299,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
                         Err(err) => {
                             infcx
+                                .err_ctxt()
                                 .report_mismatched_types(
                                     &ObligationCause::misc(instantiated_ty.span, body_id),
                                     self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
@@ -325,7 +326,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     if errors.is_empty() {
                         definition_ty
                     } else {
-                        infcx.report_fulfillment_errors(&errors, None, false);
+                        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                         self.tcx.ty_error()
                     }
                 },

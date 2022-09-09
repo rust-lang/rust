@@ -26,7 +26,7 @@ pub mod wf;
 use crate::errors::DumpVTableEntries;
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
-use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -238,7 +238,7 @@ fn do_normalize_predicates<'tcx>(
         let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
             Ok(predicates) => predicates,
             Err(errors) => {
-                let reported = infcx.report_fulfillment_errors(&errors, None, false);
+                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
                 return Err(reported);
             }
         };

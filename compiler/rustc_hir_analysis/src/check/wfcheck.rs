@@ -22,7 +22,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -104,7 +104,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         f(&mut wfcx);
         let errors = wfcx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
+            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return;
         }
 
@@ -1677,7 +1677,7 @@ fn receiver_is_valid<'tcx>(
     // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {
         if let Err(err) = wfcx.equate_types(&cause, wfcx.param_env, self_ty, receiver_ty) {
-            infcx.report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
+            infcx.err_ctxt().report_mismatched_types(&cause, self_ty, receiver_ty, err).emit();
         }
         return true;
     }
@@ -1709,7 +1709,10 @@ fn receiver_is_valid<'tcx>(
                 if let Err(err) =
                     wfcx.equate_types(&cause, wfcx.param_env, self_ty, potential_self_ty)
                 {
-                    infcx.report_mismatched_types(&cause, self_ty, potential_self_ty, err).emit();
+                    infcx
+                        .err_ctxt()
+                        .report_mismatched_types(&cause, self_ty, potential_self_ty, err)
+                        .emit();
                 }
 
                 break;

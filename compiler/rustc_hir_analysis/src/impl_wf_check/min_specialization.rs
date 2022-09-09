@@ -77,7 +77,7 @@ use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
 
@@ -153,7 +153,7 @@ fn get_impl_substs<'tcx>(
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            ocx.infcx.report_fulfillment_errors(&errors, None, false);
+            ocx.infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
             return None;
         }
 

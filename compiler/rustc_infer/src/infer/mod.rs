@@ -40,6 +40,7 @@ use std::cell::{Cell, Ref, RefCell};
 use std::fmt;
 
 use self::combine::CombineFields;
+use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
@@ -701,6 +702,12 @@ pub struct CombinedSnapshot<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    /// Creates a `TypeErrCtxt` for emitting various inference errors.
+    /// During typeck, use `FnCtxt::infer_err` instead.
+    pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+        TypeErrCtxt { infcx: self, typeck_results: None }
+    }
+
     /// calls `tcx.try_unify_abstract_consts` after
     /// canonicalizing the consts.
     #[instrument(skip(self), level = "debug")]
@@ -1343,32 +1350,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         errors
     }
-
-    /// Process the region constraints and report any errors that
-    /// result. After this, no more unification operations should be
-    /// done -- or the compiler will panic -- but it is legal to use
-    /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    ///
-    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
-    /// to do both of these operations together.
-    pub fn resolve_regions_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
-        let errors = self.resolve_regions(outlives_env);
-
-        if !self.is_tainted_by_errors() {
-            // As a heuristic, just skip reporting region errors
-            // altogether if other errors have been reported while
-            // this infcx was in use.  This is totally hokey but
-            // otherwise we have a hard time separating legit region
-            // errors from silly ones.
-            self.report_region_errors(generic_param_scope, &errors);
-        }
-    }
-
     /// Obtains (and clears) the current set of region
     /// constraints. The inference context is still usable: further
     /// unifications will simply add new constraints.
@@ -1522,59 +1503,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
          */
 
         resolve::fully_resolve(self, value)
-    }
-
-    // [Note-Type-error-reporting]
-    // An invariant is that anytime the expected or actual type is Error (the special
-    // error type, meaning that an error occurred when typechecking this expression),
-    // this is a derived error. The error cascaded from another error (that was already
-    // reported), so it's not useful to display it to the user.
-    // The following methods implement this logic.
-    // They check if either the actual or expected type is Error, and don't print the error
-    // in this case. The typechecker should only ever report type errors involving mismatched
-    // types using one of these methods, and should not call span_err directly for such
-    // errors.
-
-    pub fn type_error_struct_with_diag<M>(
-        &self,
-        sp: Span,
-        mk_diag: M,
-        actual_ty: Ty<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
-    where
-        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-    {
-        let actual_ty = self.resolve_vars_if_possible(actual_ty);
-        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
-
-        let mut err = mk_diag(self.ty_to_string(actual_ty));
-
-        // Don't report an error if actual type is `Error`.
-        if actual_ty.references_error() {
-            err.downgrade_to_delayed_bug();
-        }
-
-        err
-    }
-
-    pub fn report_mismatched_types(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: Ty<'tcx>,
-        actual: Ty<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
-    }
-
-    pub fn report_mismatched_consts(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        expected: ty::Const<'tcx>,
-        actual: ty::Const<'tcx>,
-        err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 
     pub fn replace_bound_vars_with_fresh_vars<T>(
@@ -1813,6 +1741,86 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+}
+
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+    /// Process the region constraints and report any errors that
+    /// result. After this, no more unification operations should be
+    /// done -- or the compiler will panic -- but it is legal to use
+    /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    ///
+    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
+    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// to do both of these operations together.
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
+        let errors = self.resolve_regions(outlives_env);
+
+        if !self.is_tainted_by_errors() {
+            // As a heuristic, just skip reporting region errors
+            // altogether if other errors have been reported while
+            // this infcx was in use.  This is totally hokey but
+            // otherwise we have a hard time separating legit region
+            // errors from silly ones.
+            self.report_region_errors(generic_param_scope, &errors);
+        }
+    }
+
+    // [Note-Type-error-reporting]
+    // An invariant is that anytime the expected or actual type is Error (the special
+    // error type, meaning that an error occurred when typechecking this expression),
+    // this is a derived error. The error cascaded from another error (that was already
+    // reported), so it's not useful to display it to the user.
+    // The following methods implement this logic.
+    // They check if either the actual or expected type is Error, and don't print the error
+    // in this case. The typechecker should only ever report type errors involving mismatched
+    // types using one of these methods, and should not call span_err directly for such
+    // errors.
+
+    pub fn type_error_struct_with_diag<M>(
+        &self,
+        sp: Span,
+        mk_diag: M,
+        actual_ty: Ty<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    {
+        let actual_ty = self.resolve_vars_if_possible(actual_ty);
+        debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
+
+        let mut err = mk_diag(self.ty_to_string(actual_ty));
+
+        // Don't report an error if actual type is `Error`.
+        if actual_ty.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
+
+        err
+    }
+
+    pub fn report_mismatched_types(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
+    }
+
+    pub fn report_mismatched_consts(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        expected: ty::Const<'tcx>,
+        actual: ty::Const<'tcx>,
+        err: TypeError<'tcx>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 }
 

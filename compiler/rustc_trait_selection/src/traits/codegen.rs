@@ -4,7 +4,7 @@
 // general routines.
 
 use crate::infer::{DefiningAnchor, TyCtxtInferExt};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::{
     ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
     Unimplemented,
@@ -69,7 +69,7 @@ pub fn codegen_select_candidate<'tcx>(
             // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
             for err in errors {
                 if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
-                    infcx.report_overflow_error_cycle(&cycle);
+                    infcx.err_ctxt().report_overflow_error_cycle(&cycle);
                 }
             }
             return Err(CodegenObligationError::FulfillmentError);

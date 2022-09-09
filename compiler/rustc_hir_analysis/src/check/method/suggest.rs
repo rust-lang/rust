@@ -22,7 +22,7 @@ use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
-use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedNote,
@@ -855,8 +855,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             // Avoid crashing.
                                             return (None, None);
                                         }
-                                        let OnUnimplementedNote { message, label, .. } =
-                                            self.on_unimplemented_note(trait_ref, &obligation);
+                                        let OnUnimplementedNote { message, label, .. } = self
+                                            .err_ctxt()
+                                            .on_unimplemented_note(trait_ref, &obligation);
                                         (message, label)
                                     })
                                     .unwrap_or((None, None))

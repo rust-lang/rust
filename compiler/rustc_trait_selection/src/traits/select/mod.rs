@@ -20,7 +20,7 @@ use super::{
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
-use crate::traits::error_reporting::InferCtxtExt;
+use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -1095,7 +1095,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             ErrorGuaranteed::unchecked_claim_error_was_emitted(),
                         ));
                     }
-                    self.infcx.report_overflow_error(error_obligation, true);
+                    self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
                     return Err(OverflowError::Canonical);
