@@ -417,29 +417,18 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_foreign_ty_genericless(&self, generics: &Generics, where_span: Span) {
-        let cannot_have = |span, descr, remove_descr| {
-            self.err_handler()
-                .struct_span_err(
-                    span,
-                    &format!("`type`s inside `extern` blocks cannot have {}", descr),
-                )
-                .span_suggestion(
-                    span,
-                    &format!("remove the {}", remove_descr),
-                    "",
-                    Applicability::MaybeIncorrect,
-                )
-                .span_label(self.current_extern_span(), "`extern` block begins here")
-                .note(MORE_EXTERN)
-                .emit();
-        };
-
         if !generics.params.is_empty() {
-            cannot_have(generics.span, "generic parameters", "generic parameters");
+            self.session.emit_err(ForeignTyWithGenericParam {
+                span: generics.span,
+                extern_span: self.current_extern_span(),
+            });
         }
 
         if !generics.where_clause.predicates.is_empty() {
-            cannot_have(where_span, "`where` clauses", "`where` clause");
+            self.session.emit_err(ForeignTyWithWhereClause {
+                span: where_span,
+                extern_span: self.current_extern_span(),
+            });
         }
     }
 

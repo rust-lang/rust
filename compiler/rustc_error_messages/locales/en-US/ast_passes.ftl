@@ -1,3 +1,6 @@
+ast_passes_more_extern_note =
+    for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
 ast_passes_forbidden_let =
     `let` expressions are not supported here
     .note = only supported directly in conditions of `if` and `while` expressions
@@ -99,3 +102,13 @@ ast_passes_foreign_ty_with_bound =
 
 ast_passes_impl_assoc_ty_with_bound =
     bounds on `type`s in `impl`s have no effect
+
+ast_passes_foreign_ty_with_generic_param =
+    `type`s inside `extern` blocks cannot have generic parameters
+    .suggestion = remove the generic parameters
+    .extern_block_label = `extern` block begins here
+
+ast_passes_foreign_ty_with_where_clause =
+    `type`s inside `extern` blocks cannot have `where` clauses
+    .suggestion = remove the `where` clause
+    .extern_block_label = `extern` block begins here

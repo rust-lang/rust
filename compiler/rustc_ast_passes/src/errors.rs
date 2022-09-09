@@ -245,3 +245,25 @@ pub struct ImplAssocTyWithBound {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_ty_with_generic_param)]
+#[note(ast_passes::more_extern_note)]
+pub struct ForeignTyWithGenericParam {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+    #[label]
+    pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_ty_with_where_clause)]
+#[note(ast_passes::more_extern_note)]
+pub struct ForeignTyWithWhereClause {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+    #[label]
+    pub extern_span: Span,
+}
