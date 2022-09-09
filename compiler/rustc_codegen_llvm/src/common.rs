@@ -215,7 +215,11 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
-        try_as_const_integral(v).map(|v| unsafe { llvm::LLVMConstIntGetZExtValue(v) })
+        try_as_const_integral(v).and_then(|v| unsafe {
+            let mut i = 0u64;
+            let success = llvm::LLVMRustConstIntGetZExtValue(v, &mut i);
+            success.then_some(i)
+        })
     }
 
     fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
