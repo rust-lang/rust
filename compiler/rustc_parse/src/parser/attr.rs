@@ -303,7 +303,7 @@ impl<'a> Parser<'a> {
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final
-                // `AttrAnnotatedTokenStream`. Inner attributes are stored in the parsed AST note.
+                // `AttrTokenStream`. Inner attributes are stored in the parsed AST note.
                 // During macro expansion, they are selectively inserted back into the
                 // token stream (the first inner attribute is removed each time we invoke the
                 // corresponding macro).

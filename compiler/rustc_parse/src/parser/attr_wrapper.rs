@@ -1,7 +1,7 @@
 use super::{Capturing, FlatToken, ForceCollect, Parser, ReplaceRange, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttributesData, CreateTokenStream};
-use rustc_ast::tokenstream::{AttrAnnotatedTokenTree, DelimSpan, LazyTokenStream, Spacing};
+use rustc_ast::tokenstream::{AttrTokenStream, AttributesData, CreateTokenStream};
+use rustc_ast::tokenstream::{AttrTokenTree, DelimSpan, LazyTokenStream, Spacing};
 use rustc_ast::{self as ast};
 use rustc_ast::{AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_errors::PResult;
@@ -100,7 +100,7 @@ struct LazyTokenStreamImpl {
 rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
 
 impl CreateTokenStream for LazyTokenStreamImpl {
-    fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
+    fn create_token_stream(&self) -> AttrTokenStream {
         // The token produced by the final call to `{,inlined_}next` was not
         // actually consumed by the callback. The combination of chaining the
         // initial token and using `take` produces the desired result - we
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
         // If we 'broke' the last token (e.g. breaking a '>>' token to two '>' tokens),
         // then extend the range of captured tokens to include it, since the parser
         // was not actually bumped past it. When the `LazyTokenStream` gets converted
-        // into an `AttrAnnotatedTokenStream`, we will create the proper token.
+        // into an `AttrTokenStream`, we will create the proper token.
         if self.token_cursor.break_last_token {
             assert_eq!(
                 trailing,
@@ -317,7 +317,7 @@ impl<'a> Parser<'a> {
         } else {
             // Grab any replace ranges that occur *inside* the current AST node.
             // We will perform the actual replacement when we convert the `LazyTokenStream`
-            // to an `AttrAnnotatedTokenStream`
+            // to an `AttrTokenStream`.
             let start_calls: u32 = cursor_snapshot_next_calls.try_into().unwrap();
             self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
                 .iter()
@@ -392,12 +392,12 @@ impl<'a> Parser<'a> {
 fn make_token_stream(
     mut iter: impl Iterator<Item = (FlatToken, Spacing)>,
     break_last_token: bool,
-) -> AttrAnnotatedTokenStream {
+) -> AttrTokenStream {
     #[derive(Debug)]
     struct FrameData {
         // This is `None` for the first frame, `Some` for all others.
         open_delim_sp: Option<(Delimiter, Span)>,
-        inner: Vec<AttrAnnotatedTokenTree>,
+        inner: Vec<AttrTokenTree>,
     }
     let mut stack = vec![FrameData { open_delim_sp: None, inner: vec![] }];
     let mut token_and_spacing = iter.next();
@@ -418,8 +418,8 @@ fn make_token_stream(
                     open_delim, span
                 );
                 let dspan = DelimSpan::from_pair(open_sp, span);
-                let stream = AttrAnnotatedTokenStream::new(frame_data.inner);
-                let delimited = AttrAnnotatedTokenTree::Delimited(dspan, delim, stream);
+                let stream = AttrTokenStream::new(frame_data.inner);
+                let delimited = AttrTokenTree::Delimited(dspan, delim, stream);
                 stack
                     .last_mut()
                     .unwrap_or_else(|| {
@@ -432,12 +432,12 @@ fn make_token_stream(
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push(AttrAnnotatedTokenTree::Token(token, spacing)),
+                .push(AttrTokenTree::Token(token, spacing)),
             FlatToken::AttrTarget(data) => stack
                 .last_mut()
                 .expect("Bottom token frame is missing!")
                 .inner
-                .push(AttrAnnotatedTokenTree::Attributes(data)),
+                .push(AttrTokenTree::Attributes(data)),
             FlatToken::Empty => {}
         }
         token_and_spacing = iter.next();
@@ -445,21 +445,20 @@ fn make_token_stream(
     let mut final_buf = stack.pop().expect("Missing final buf!");
     if break_last_token {
         let last_token = final_buf.inner.pop().unwrap();
-        if let AttrAnnotatedTokenTree::Token(last_token, spacing) = last_token {
+        if let AttrTokenTree::Token(last_token, spacing) = last_token {
             let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
 
             // An 'unglued' token is always two ASCII characters
             let mut first_span = last_token.span.shrink_to_lo();
             first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
 
-            final_buf.inner.push(AttrAnnotatedTokenTree::Token(
-                Token::new(unglued_first, first_span),
-                spacing,
-            ));
+            final_buf
+                .inner
+                .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
         } else {
             panic!("Unexpected last token {:?}", last_token)
         }
     }
     assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
-    AttrAnnotatedTokenStream::new(final_buf.inner)
+    AttrTokenStream::new(final_buf.inner)
 }

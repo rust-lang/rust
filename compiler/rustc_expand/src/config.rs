@@ -2,7 +2,7 @@
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
 use rustc_ast::NodeId;
@@ -259,8 +259,8 @@ impl<'a> StripUnconfigured<'a> {
     fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
-                let attr_annotated_tokens = tokens.create_token_stream();
-                *tokens = LazyTokenStream::new(self.configure_tokens(&attr_annotated_tokens));
+                let attr_stream = tokens.create_token_stream();
+                *tokens = LazyTokenStream::new(self.configure_tokens(&attr_stream));
             }
         }
     }
@@ -270,16 +270,16 @@ impl<'a> StripUnconfigured<'a> {
         if self.in_cfg(&attrs) { Some(attrs) } else { None }
     }
 
-    /// Performs cfg-expansion on `stream`, producing a new `AttrAnnotatedTokenStream`.
+    /// Performs cfg-expansion on `stream`, producing a new `AttrTokenStream`.
     /// This is only used during the invocation of `derive` proc-macros,
     /// which require that we cfg-expand their entire input.
     /// Normal cfg-expansion operates on parsed AST nodes via the `configure` method
-    fn configure_tokens(&self, stream: &AttrAnnotatedTokenStream) -> AttrAnnotatedTokenStream {
-        fn can_skip(stream: &AttrAnnotatedTokenStream) -> bool {
+    fn configure_tokens(&self, stream: &AttrTokenStream) -> AttrTokenStream {
+        fn can_skip(stream: &AttrTokenStream) -> bool {
             stream.0.iter().all(|tree| match tree {
-                AttrAnnotatedTokenTree::Attributes(_) => false,
-                AttrAnnotatedTokenTree::Token(..) => true,
-                AttrAnnotatedTokenTree::Delimited(_, _, inner) => can_skip(inner),
+                AttrTokenTree::Attributes(_) => false,
+                AttrTokenTree::Token(..) => true,
+                AttrTokenTree::Delimited(_, _, inner) => can_skip(inner),
             })
         }
 
@@ -291,35 +291,35 @@ impl<'a> StripUnconfigured<'a> {
             .0
             .iter()
             .flat_map(|tree| match tree.clone() {
-                AttrAnnotatedTokenTree::Attributes(mut data) => {
+                AttrTokenTree::Attributes(mut data) => {
                     data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
 
                     if self.in_cfg(&data.attrs) {
                         data.tokens = LazyTokenStream::new(
                             self.configure_tokens(&data.tokens.create_token_stream()),
                         );
-                        Some(AttrAnnotatedTokenTree::Attributes(data)).into_iter()
+                        Some(AttrTokenTree::Attributes(data)).into_iter()
                     } else {
                         None.into_iter()
                     }
                 }
-                AttrAnnotatedTokenTree::Delimited(sp, delim, mut inner) => {
+                AttrTokenTree::Delimited(sp, delim, mut inner) => {
                     inner = self.configure_tokens(&inner);
-                    Some(AttrAnnotatedTokenTree::Delimited(sp, delim, inner))
+                    Some(AttrTokenTree::Delimited(sp, delim, inner))
                         .into_iter()
                 }
-                AttrAnnotatedTokenTree::Token(ref token, _) if let TokenKind::Interpolated(ref nt) = token.kind => {
+                AttrTokenTree::Token(ref token, _) if let TokenKind::Interpolated(ref nt) = token.kind => {
                     panic!(
                         "Nonterminal should have been flattened at {:?}: {:?}",
                         token.span, nt
                     );
                 }
-                AttrAnnotatedTokenTree::Token(token, spacing) => {
-                    Some(AttrAnnotatedTokenTree::Token(token, spacing)).into_iter()
+                AttrTokenTree::Token(token, spacing) => {
+                    Some(AttrTokenTree::Token(token, spacing)).into_iter()
                 }
             })
             .collect();
-        AttrAnnotatedTokenStream::new(trees)
+        AttrTokenStream::new(trees)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -404,17 +404,17 @@ impl<'a> StripUnconfigured<'a> {
         };
         let pound_span = pound_token.span;
 
-        let mut trees = vec![AttrAnnotatedTokenTree::Token(pound_token, Spacing::Alone)];
+        let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
             let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
                 panic!("Bad tokens for attribute {:?}", attr);
             };
-            trees.push(AttrAnnotatedTokenTree::Token(bang_token, Spacing::Alone));
+            trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
         }
         // We don't really have a good span to use for the synthesized `[]`
         // in `#[attr]`, so just use the span of the `#` token.
-        let bracket_group = AttrAnnotatedTokenTree::Delimited(
+        let bracket_group = AttrTokenTree::Delimited(
             DelimSpan::from_single(pound_span),
             Delimiter::Bracket,
             item.tokens
@@ -423,7 +423,7 @@ impl<'a> StripUnconfigured<'a> {
                 .create_token_stream(),
         );
         trees.push(bracket_group);
-        let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
+        let tokens = Some(LazyTokenStream::new(AttrTokenStream::new(trees)));
         let attr = attr::mk_attr_from_item(item, tokens, attr.style, item_span);
         if attr.has_name(sym::crate_type) {
             self.sess.parse_sess.buffer_lint(

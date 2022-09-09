@@ -7,7 +7,7 @@ use crate::ast::{MacArgs, MacArgsEq, MacDelimiter, MetaItem, MetaItemKind, Neste
 use crate::ast::{Path, PathSegment};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
-use crate::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
+use crate::tokenstream::{AttrTokenStream, AttrTokenTree};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyTokenStream, TokenStream};
 use crate::util::comments;
@@ -296,7 +296,7 @@ impl Attribute {
         }
     }
 
-    pub fn tokens(&self) -> AttrAnnotatedTokenStream {
+    pub fn tokens(&self) -> AttrTokenStream {
         match self.kind {
             AttrKind::Normal(ref normal) => normal
                 .tokens
@@ -304,7 +304,7 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .create_token_stream(),
             AttrKind::DocComment(comment_kind, data) => {
-                AttrAnnotatedTokenStream::new(vec![AttrAnnotatedTokenTree::Token(
+                AttrTokenStream::new(vec![AttrTokenTree::Token(
                     Token::new(token::DocComment(comment_kind, self.style, data), self.span),
                     Spacing::Alone,
                 )])
