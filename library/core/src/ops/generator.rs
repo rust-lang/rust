@@ -83,7 +83,7 @@ pub trait Generator<R = ()> {
     /// `return` statement or implicitly as the last expression of a generator
     /// literal. For example futures would use this as `Result<T, E>` as it
     /// represents a completed future.
-    #[lang = "generator_return"]
+    #[cfg_attr(bootstrap, lang = "generator_return")]
     type Return;
 
     /// Resumes the execution of this generator.
