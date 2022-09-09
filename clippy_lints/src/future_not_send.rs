@@ -7,7 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{EarlyBinder, Opaque, PredicateKind::Trait};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
-use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 
 declare_clippy_lint! {
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                         |db| {
                             cx.tcx.infer_ctxt().enter(|infcx| {
                                 for FulfillmentError { obligation, .. } in send_errors {
-                                    infcx.maybe_note_obligation_cause_for_async_await(db, &obligation);
+                                    infcx.err_ctxt().maybe_note_obligation_cause_for_async_await(db, &obligation);
                                     if let Trait(trait_pred) = obligation.predicate.kind().skip_binder() {
                                         db.note(&format!(
                                             "`{}` doesn't implement `{}`",
