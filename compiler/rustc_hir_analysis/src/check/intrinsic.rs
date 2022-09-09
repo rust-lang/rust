@@ -8,7 +8,7 @@ use crate::errors::{
 use crate::require_same_types;
 
 use hir::def_id::DefId;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, TyCtxt};
@@ -63,10 +63,66 @@ fn equate_intrinsic_type<'tcx>(
 
 /// Returns the unsafety of the given intrinsic.
 pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir::Unsafety {
-    match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
+    let has_safe_attr = match tcx.has_attr(intrinsic_id, sym::rustc_safe_intrinsic) {
         true => hir::Unsafety::Normal,
         false => hir::Unsafety::Unsafe,
+    };
+    let is_in_list = match tcx.item_name(intrinsic_id) {
+        // When adding a new intrinsic to this list,
+        // it's usually worth updating that intrinsic's documentation
+        // to note that it's safe to call, since
+        // safe extern fns are otherwise unprecedented.
+        sym::abort
+        | sym::assert_inhabited
+        | sym::assert_zero_valid
+        | sym::assert_uninit_valid
+        | sym::size_of
+        | sym::min_align_of
+        | sym::needs_drop
+        | sym::caller_location
+        | sym::add_with_overflow
+        | sym::sub_with_overflow
+        | sym::mul_with_overflow
+        | sym::wrapping_add
+        | sym::wrapping_sub
+        | sym::wrapping_mul
+        | sym::saturating_add
+        | sym::saturating_sub
+        | sym::rotate_left
+        | sym::rotate_right
+        | sym::ctpop
+        | sym::ctlz
+        | sym::cttz
+        | sym::bswap
+        | sym::bitreverse
+        | sym::discriminant_value
+        | sym::type_id
+        | sym::likely
+        | sym::unlikely
+        | sym::ptr_guaranteed_cmp
+        | sym::minnumf32
+        | sym::minnumf64
+        | sym::maxnumf32
+        | sym::rustc_peek
+        | sym::maxnumf64
+        | sym::type_name
+        | sym::forget
+        | sym::black_box
+        | sym::variant_count
+        | sym::ptr_mask => hir::Unsafety::Normal,
+        _ => hir::Unsafety::Unsafe,
+    };
+
+    if has_safe_attr != is_in_list {
+        tcx.sess.struct_span_err(
+            tcx.def_span(intrinsic_id),
+            DiagnosticMessage::Str(format!(
+                    "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
+                    tcx.item_name(intrinsic_id)
+        ))).emit();
     }
+
+    is_in_list
 }
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
@@ -312,7 +368,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     1,
                     vec![
-                        tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0))
+                        tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0)),
                     ],
                     tcx.mk_projection(discriminant_def_id, tcx.mk_substs([param(0).into()].iter())),
                 )
