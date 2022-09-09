@@ -78,21 +78,22 @@ pub(crate) fn render_source_with_highlighting(
 }
 
 fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, tooltip: Tooltip) {
-    write!(out, "<div class=\"example-wrap\">");
-
-    let tooltip_class = match tooltip {
-        Tooltip::Ignore => " ignore",
-        Tooltip::CompileFail => " compile_fail",
-        Tooltip::ShouldPanic => " should_panic",
-        Tooltip::Edition(_) => " edition",
-        Tooltip::None => "",
-    };
+    write!(
+        out,
+        "<div class=\"example-wrap{}\">",
+        match tooltip {
+            Tooltip::Ignore => " ignore",
+            Tooltip::CompileFail => " compile_fail",
+            Tooltip::ShouldPanic => " should_panic",
+            Tooltip::Edition(_) => " edition",
+            Tooltip::None => "",
+        },
+    );
 
     if tooltip != Tooltip::None {
         write!(
             out,
-            "<div class='information'><div class='tooltip{}'{}>ⓘ</div></div>",
-            tooltip_class,
+            "<div class='tooltip'{}>ⓘ</div>",
             if let Tooltip::Edition(edition_info) = tooltip {
                 format!(" data-edition=\"{}\"", edition_info)
             } else {
@@ -104,10 +105,10 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, to
     if let Some(extra) = extra_content {
         out.push_buffer(extra);
     }
-    if class.is_empty() && tooltip_class.is_empty() {
+    if class.is_empty() {
         write!(out, "<pre class=\"rust\">");
     } else {
-        write!(out, "<pre class=\"rust {class}{tooltip_class}\">");
+        write!(out, "<pre class=\"rust {class}\">");
     }
     write!(out, "<code>");
 }
