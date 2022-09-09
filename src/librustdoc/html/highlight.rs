@@ -52,35 +52,14 @@ pub(crate) fn render_example_with_highlighting(
     tooltip: Tooltip,
     playground_button: Option<&str>,
 ) {
-    let class = match tooltip {
-        Tooltip::Ignore => " ignore",
-        Tooltip::CompileFail => " compile_fail",
-        Tooltip::ShouldPanic => " should_panic",
-        Tooltip::Edition(_) => " edition",
-        Tooltip::None => "",
-    };
-
-    if tooltip != Tooltip::None {
-        write!(
-            out,
-            "<div class='information'><div class='tooltip{}'{}>ⓘ</div></div>",
-            class,
-            if let Tooltip::Edition(edition_info) = tooltip {
-                format!(" data-edition=\"{}\"", edition_info)
-            } else {
-                String::new()
-            },
-        );
-    }
-
-    write_header(out, &format!("rust-example-rendered{}", class), None);
+    write_header(out, "rust-example-rendered", None, tooltip);
     write_code(out, src, None, None);
     write_footer(out, playground_button);
 }
 
 /// Highlights `src` as a macro, returning the HTML output.
 pub(crate) fn render_macro_with_highlighting(src: &str, out: &mut Buffer) {
-    write_header(out, "macro", None);
+    write_header(out, "macro", None, Tooltip::None);
     write_code(out, src, None, None);
     write_footer(out, None);
 }
@@ -93,20 +72,42 @@ pub(crate) fn render_source_with_highlighting(
     href_context: HrefContext<'_, '_, '_>,
     decoration_info: DecorationInfo,
 ) {
-    write_header(out, "", Some(line_numbers));
+    write_header(out, "", Some(line_numbers), Tooltip::None);
     write_code(out, src, Some(href_context), Some(decoration_info));
     write_footer(out, None);
 }
 
-fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>) {
+fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, tooltip: Tooltip) {
     write!(out, "<div class=\"example-wrap\">");
+
+    let tooltip_class = match tooltip {
+        Tooltip::Ignore => " ignore",
+        Tooltip::CompileFail => " compile_fail",
+        Tooltip::ShouldPanic => " should_panic",
+        Tooltip::Edition(_) => " edition",
+        Tooltip::None => "",
+    };
+
+    if tooltip != Tooltip::None {
+        write!(
+            out,
+            "<div class='information'><div class='tooltip{}'{}>ⓘ</div></div>",
+            tooltip_class,
+            if let Tooltip::Edition(edition_info) = tooltip {
+                format!(" data-edition=\"{}\"", edition_info)
+            } else {
+                String::new()
+            },
+        );
+    }
+
     if let Some(extra) = extra_content {
         out.push_buffer(extra);
     }
-    if class.is_empty() {
+    if class.is_empty() && tooltip_class.is_empty() {
         write!(out, "<pre class=\"rust\">");
     } else {
-        write!(out, "<pre class=\"rust {}\">", class);
+        write!(out, "<pre class=\"rust {class}{tooltip_class}\">");
     }
     write!(out, "<code>");
 }

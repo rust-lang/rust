@@ -699,9 +699,8 @@ function loadCss(cssFileName) {
 
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        let lineNumbersFunc = () => {};
         if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = x => {
+            onEachLazy(document.getElementsByClassName("rust-example-rendered"), x => {
                 const count = x.textContent.split("\n").length;
                 const elems = [];
                 for (let i = 0; i < count; ++i) {
@@ -711,26 +710,8 @@ function loadCss(cssFileName) {
                 addClass(node, "line-number");
                 node.innerHTML = elems.join("\n");
                 x.parentNode.insertBefore(node, x);
-            };
+            });
         }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), e => {
-            if (hasClass(e, "compile_fail")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            } else if (hasClass(e, "ignore")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            }
-            lineNumbersFunc(e);
-        });
     }());
 
     let oldSidebarScrollPosition = null;
