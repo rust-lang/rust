@@ -9,4 +9,4 @@ rustup toolchain install nightly --component miri
 rustup override set nightly
 cargo miri setup
 
-cargo miri test
+MIRIFLAGS='-Zmiri-retag-fields' cargo miri test

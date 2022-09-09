@@ -1,6 +1,6 @@
 // Extracted from the scopeguard crate
 use core::{
-    mem,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
     ptr,
 };
@@ -28,15 +28,13 @@ where
     #[inline]
     pub fn into_inner(guard: Self) -> T {
         // Cannot move out of Drop-implementing types, so
-        // ptr::read the value and forget the guard.
+        // ptr::read the value out of a ManuallyDrop<Self>
+        // Don't use mem::forget as that might invalidate value
+        let guard = ManuallyDrop::new(guard);
         unsafe {
             let value = ptr::read(&guard.value);
-            // read the closure so that it is dropped, and assign it to a local
-            // variable to ensure that it is only dropped after the guard has
-            // been forgotten. (In case the Drop impl of the closure, or that
-            // of any consumed captured variable, panics).
-            let _dropfn = ptr::read(&guard.dropfn);
-            mem::forget(guard);
+            // read the closure so that it is dropped
+            let _ = ptr::read(&guard.dropfn);
             value
         }
     }
