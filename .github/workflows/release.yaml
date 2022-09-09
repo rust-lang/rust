@@ -34,6 +34,7 @@ jobs:
           - os: ubuntu-20.04
             target: x86_64-unknown-linux-gnu
             code-target: linux-x64
+            container: ubuntu:18.04
           - os: ubuntu-20.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
@@ -49,6 +50,7 @@ jobs:
 
     name: dist (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
 
     env:
       RA_TARGET: ${{ matrix.target }}
@@ -59,11 +61,17 @@ jobs:
         with:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
+      - name: Install toolchain dependencies
+        if: matrix.container == 'ubuntu:18.04'
+        run: apt-get update && apt-get install -y build-essential curl
+
       - name: Install Rust toolchain
-        run: |
-          rustup update --no-self-update stable
-          rustup target add ${{ matrix.target }}
-          rustup component add rust-src
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          components: rust-src
+          override: true
 
       - name: Install Node.js
         uses: actions/setup-node@v1
@@ -71,7 +79,7 @@ jobs:
           node-version: 16.x
 
       - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
+        if: "!matrix.container && (matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf')"
         run: sudo apt-get update
 
       - name: Install AArch64 target toolchain
