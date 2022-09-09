@@ -69,7 +69,7 @@ ast_passes_assoc_fn_without_body =
     associated function in `impl` without body
     .suggestion = provide a definition for the function
 
-ast_passes_assoc_ty_without_body =
+ast_passes_impl_assoc_ty_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
 

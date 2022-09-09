@@ -160,8 +160,8 @@ pub struct AssocFnWithoutBody {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_assoc_ty_without_body)]
-pub struct AssocTypeWithoutBody {
+#[diag(ast_passes_impl_assoc_ty_without_body)]
+pub struct ImplAssocTyWithoutBody {
     #[primary_span]
     pub span: Span,
     #[suggestion(code = " = <type>;", applicability = "has-placeholders")]

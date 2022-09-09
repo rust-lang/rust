@@ -1535,7 +1535,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     ..
                 }) => {
                     if ty.is_none() {
-                        self.session.emit_err(AssocTyWithoutBody {
+                        self.session.emit_err(ImplAssocTyWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
                         });
