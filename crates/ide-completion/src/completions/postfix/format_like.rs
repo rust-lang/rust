@@ -16,8 +16,11 @@
 //
 // image::https://user-images.githubusercontent.com/48062697/113020656-b560f500-917a-11eb-87de-02991f61beb8.gif[]
 
-use ide_db::{syntax_helpers::format_string_exprs::{parse_format_exprs, add_placeholders}, SnippetCap};
-use syntax::ast::{self, AstToken};
+use ide_db::{
+    syntax_helpers::format_string_exprs::{parse_format_exprs, with_placeholders},
+    SnippetCap,
+};
+use syntax::{ast, AstToken};
 
 use crate::{
     completions::postfix::build_postfix_snippet_builder, context::CompletionContext, Completions,
@@ -48,10 +51,10 @@ pub(crate) fn add_format_like_completions(
         None => return,
     };
 
-    if let Ok((out, exprs)) = parse_format_exprs(receiver_text) {
-        let exprs = add_placeholders(exprs.map(|e| e.1)).collect_vec();
+    if let Ok((out, exprs)) = parse_format_exprs(receiver_text.text()) {
+        let exprs = with_placeholders(exprs);
         for (label, macro_name) in KINDS {
-            let snippet = format!(r#"{}("{}", {})"#, macro_name, out, exprs.join(", "));
+            let snippet = format!(r#"{}({}, {})"#, macro_name, out, exprs.join(", "));
 
             postfix_snippet(label, macro_name, &snippet).add_to(acc);
         }
@@ -77,7 +80,7 @@ mod tests {
 
         for (kind, input, output) in test_vector {
             let (parsed_string, exprs) = parse_format_exprs(input).unwrap();
-            let exprs = add_placeholders(exprs.map(|e| e.1)).collect_vec();;
+            let exprs = with_placeholders(exprs);
             let snippet = format!(r#"{}("{}", {})"#, kind, parsed_string, exprs.join(", "));
             assert_eq!(&snippet, output);
         }

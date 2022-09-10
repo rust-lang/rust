@@ -1,9 +1,13 @@
-use syntax::{ast, TextRange, AstToken};
+//! Tools to work with expressions present in format string literals for the `format_args!` family of macros.
+//! Primarily meant for assists and completions.
 
+/// Enum for represenging extraced format string args.
+/// Can either be extracted expressions (which includes identifiers),
+/// or placeholders `{}`.
 #[derive(Debug)]
 pub enum Arg {
     Placeholder,
-    Expr(String)
+    Expr(String),
 }
 
 /**
@@ -13,18 +17,18 @@ pub enum Arg {
  ```
 */
 
-pub fn add_placeholders (args: impl Iterator<Item = Arg>) -> impl Iterator<Item = String> {
+pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
     let mut placeholder_id = 1;
-    args.map(move |a|
-        match a {
+    args.into_iter()
+        .map(move |a| match a {
             Arg::Expr(s) => s,
             Arg::Placeholder => {
                 let s = format!("${placeholder_id}");
                 placeholder_id += 1;
                 s
             }
-        }
-    )
+        })
+        .collect()
 }
 
 /**
@@ -39,7 +43,7 @@ pub fn add_placeholders (args: impl Iterator<Item = Arg>) -> impl Iterator<Item 
  assert_eq!(parse("{expr} {} {expr} ").unwrap(), ("{} {} {}", vec![Arg::Expr("expr"), Arg::Placeholder, Arg::Expr("expr")]));
  ```
 */
-pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, ()> {
+pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum State {
         NotExpr,
@@ -49,9 +53,6 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
         FormatOpts,
     }
 
-    let start = input.syntax().text_range().start();
-
-    let mut expr_start = start;
     let mut current_expr = String::new();
     let mut state = State::NotExpr;
     let mut extracted_expressions = Vec::new();
@@ -62,8 +63,8 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
     // "{MyStruct { val_a: 0, val_b: 1 }}".
     let mut inexpr_open_count = 0;
 
-    let mut chars = input.text().chars().zip(0u32..).peekable();
-    while let Some((chr, idx )) = chars.next() {
+    let mut chars = input.chars().peekable();
+    while let Some(chr) = chars.next() {
         match (state, chr) {
             (State::NotExpr, '{') => {
                 output.push(chr);
@@ -95,7 +96,7 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
             (State::MaybeExpr, '}') => {
                 // This is an empty sequence '{}'. Replace it with placeholder.
                 output.push(chr);
-                extracted_expressions.push((TextRange::empty(expr_start), Arg::Placeholder));
+                extracted_expressions.push(Arg::Placeholder);
                 state = State::NotExpr;
             }
             (State::MaybeExpr, _) => {
@@ -103,13 +104,12 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
                     current_expr.push('\\');
                 }
                 current_expr.push(chr);
-                expr_start = start.checked_add(idx.into()).ok_or(())?;
                 state = State::Expr;
             }
             (State::Expr, '}') => {
                 if inexpr_open_count == 0 {
                     output.push(chr);
-                    extracted_expressions.push((TextRange::new(expr_start, start.checked_add(idx.into()).ok_or(())?), Arg::Expr(current_expr.trim().into())));
+                    extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
                     current_expr = String::new();
                     state = State::NotExpr;
                 } else {
@@ -118,7 +118,7 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
                     inexpr_open_count -= 1;
                 }
             }
-            (State::Expr, ':') if matches!(chars.peek(), Some((':', _))) => {
+            (State::Expr, ':') if matches!(chars.peek(), Some(':')) => {
                 // path separator
                 current_expr.push_str("::");
                 chars.next();
@@ -127,7 +127,7 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
                 if inexpr_open_count == 0 {
                     // We're outside of braces, thus assume that it's a specifier, like "{Some(value):?}"
                     output.push(chr);
-                    extracted_expressions.push((TextRange::new(expr_start, start.checked_add(idx.into()).ok_or(())?), Arg::Expr(current_expr.trim().into())));
+                    extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
                     current_expr = String::new();
                     state = State::FormatOpts;
                 } else {
@@ -162,7 +162,7 @@ pub fn parse_format_exprs(input: &ast::String) -> Result<Vec<(TextRange, Arg)>, 
         return Err(());
     }
 
-    Ok(extracted_expressions)
+    Ok((output, extracted_expressions))
 }
 
 #[cfg(test)]
@@ -171,17 +171,11 @@ mod tests {
     use expect_test::{expect, Expect};
 
     fn check(input: &str, expect: &Expect) {
-        let mut parser = FormatStrParser::new((*input).to_owned());
-        let outcome_repr = if parser.parse().is_ok() {
-            // Parsing should be OK, expected repr is "string; expr_1, expr_2".
-            if parser.extracted_expressions.is_empty() {
-                parser.output
-            } else {
-                format!("{}; {}", parser.output, parser.extracted_expressions.join(", "))
-            }
+        let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_string(), vec![]));
+        let outcome_repr = if !exprs.is_empty() {
+            format!("{}; {}", output, with_placeholders(exprs).join(", "))
         } else {
-            // Parsing should fail, expected repr is "-".
-            "-".to_owned()
+            output
         };
 
         expect.assert_eq(&outcome_repr);

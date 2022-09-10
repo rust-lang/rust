@@ -1596,13 +1596,27 @@ fn doctest_move_format_string_arg() {
     check_doc_test(
         "move_format_string_arg",
         r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
 fn main() {
-    println!("{x + 1}$0");
+    print!("{x + 1}$0");
 }
 "#####,
         r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
 fn main() {
-    println!("{a}", a$0 = x + 1);
+    print!("{}"$0, x + 1);
 }
 "#####,
     )
