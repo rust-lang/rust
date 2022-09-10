@@ -686,11 +686,7 @@ impl<'a> AstValidator<'a> {
 
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
-fn validate_generic_param_order(
-    handler: &rustc_errors::Handler,
-    generics: &[GenericParam],
-    span: Span,
-) {
+fn validate_generic_param_order(session: &Session, generics: &[GenericParam], span: Span) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = Vec::with_capacity(generics.len());
@@ -749,21 +745,14 @@ fn validate_generic_param_order(
 
         ordered_params += ">";
 
-        for (param_ord, (max_param, spans)) in &out_of_order {
-            let mut err = handler.struct_span_err(
-                spans.clone(),
-                &format!(
-                    "{} parameters must be declared prior to {} parameters",
-                    param_ord, max_param,
-                ),
-            );
-            err.span_suggestion(
-                span,
-                "reorder the parameters: lifetimes, then consts and types",
-                &ordered_params,
-                Applicability::MachineApplicable,
-            );
-            err.emit();
+        for (param_ord, (max_param, spans)) in out_of_order {
+            session.emit_err(GenericParamWrongOrder {
+                spans,
+                param_kind: param_ord,
+                max_param_kind: max_param,
+                replace_span: span,
+                correct_order: ordered_params.clone(),
+            });
         }
     }
 }
@@ -1186,7 +1175,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        validate_generic_param_order(self.err_handler(), &generics.params, generics.span);
+        validate_generic_param_order(self.session, &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(predicate) = predicate {

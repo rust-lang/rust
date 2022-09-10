@@ -215,3 +215,15 @@ ast_passes_impl_trait_ty_without_trait_bound =
 
 ast_passes_deprecated_extern_missing_abi =
     extern declarations without an explicit ABI are deprecated
+
+ast_passes_generic_param_wrong_order =
+    { $param_kind ->
+        [lifetime] lifetime
+        [type] type
+       *[const] const
+    } parameters must be declared prior to { $max_param_kind ->
+        [lifetime] lifetime
+        [type] type
+       *[const] const
+    } parameters
+    .suggestion = reorder the parameters: lifetimes, then consts and types

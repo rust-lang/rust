@@ -1,5 +1,7 @@
 //! Errors emitted by ast_passes.
 
+use rustc_ast::ParamKindOrd;
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -246,7 +248,7 @@ pub struct ImplAssocTyWithBound {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_ty_with_generic_param)]
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignTyWithGenericParam {
@@ -257,7 +259,7 @@ pub struct ForeignTyWithGenericParam {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_ty_with_where_clause)]
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignTyWithWhereClause {
@@ -268,7 +270,7 @@ pub struct ForeignTyWithWhereClause {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_ty_with_body)]
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignTyWithBody {
@@ -281,7 +283,7 @@ pub struct ForeignTyWithBody {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_static_with_body)]
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignStaticWithBody {
@@ -294,7 +296,7 @@ pub struct ForeignStaticWithBody {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_fn_with_body)]
 #[help]
 #[note(ast_passes::more_extern_note)]
@@ -308,7 +310,7 @@ pub struct ForeignFnWithBody {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_fn_with_qualifier)]
 pub struct ForeignFnWithQualifier {
     #[primary_span]
@@ -319,7 +321,7 @@ pub struct ForeignFnWithQualifier {
     pub replace_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::foreign_item_non_ascii)]
 #[note]
 pub struct ForeignItemNonAscii {
@@ -329,14 +331,14 @@ pub struct ForeignItemNonAscii {
     pub extern_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::forbidden_c_var_args)]
 pub struct ForbiddenCVarArgs {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::unnamed_assoc_const)]
 pub struct UnnamedAssocConst {
     #[primary_span]
@@ -344,14 +346,14 @@ pub struct UnnamedAssocConst {
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::nomangle_item_non_ascii, code = "E0754")]
 pub struct NomangleItemNonAscii {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::mod_file_item_non_ascii, code = "E0754")]
 #[help]
 pub struct ModFileItemNonAscii {
@@ -360,7 +362,7 @@ pub struct ModFileItemNonAscii {
     pub name: Symbol,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::auto_trait_with_generic_param, code = "E0567")]
 pub struct AutoTraitWithGenericParam {
     #[primary_span]
@@ -370,7 +372,7 @@ pub struct AutoTraitWithGenericParam {
     pub ident_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::auto_trait_with_super_trait_or_where_clause, code = "E0568")]
 pub struct AutoTraitWithSuperTraitOrWhereClause {
     #[primary_span]
@@ -380,7 +382,7 @@ pub struct AutoTraitWithSuperTraitOrWhereClause {
     pub ident_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::auto_trait_with_assoc_item, code = "E0380")]
 pub struct AutoTraitWithAssocItem {
     #[primary_span]
@@ -391,7 +393,7 @@ pub struct AutoTraitWithAssocItem {
     pub ident_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::generic_arg_after_constraint)]
 pub struct GenericArgAfterConstraint {
     #[primary_span]
@@ -409,28 +411,28 @@ pub struct GenericArgAfterConstraint {
     pub correct_order: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::fn_ptr_ty_with_pat, code = "E0561")]
 pub struct FnPtrTyWithPat {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::multiple_explicit_lifetime_bound, code = "E0226")]
 pub struct MultipleExplicitLifetimeBound {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::impl_trait_ty_in_path_param, code = "E0667")]
 pub struct ImplTraitTyInPathParam {
     #[primary_span]
     pub span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::impl_trait_ty_nested, code = "E0666")]
 pub struct ImplTraitTyNested {
     #[primary_span]
@@ -440,9 +442,21 @@ pub struct ImplTraitTyNested {
     pub outer_span: Span,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(ast_passes::impl_trait_ty_without_trait_bound)]
 pub struct ImplTraitTyWithoutTraitBound {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes::generic_param_wrong_order)]
+pub struct GenericParamWrongOrder {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub param_kind: ParamKindOrd,
+    pub max_param_kind: ParamKindOrd,
+    #[suggestion(code = "{correct_order}", applicability = "machine-applicable")]
+    pub replace_span: Span,
+    pub correct_order: String,
 }

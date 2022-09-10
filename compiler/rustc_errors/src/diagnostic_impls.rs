@@ -147,6 +147,17 @@ impl IntoDiagnosticArg for hir::ConstContext {
     }
 }
 
+impl IntoDiagnosticArg for ast::ParamKindOrd {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+            ast::ParamKindOrd::Lifetime => "lifetime",
+            ast::ParamKindOrd::Type => "type",
+            ast::ParamKindOrd::Const => "const",
+            ast::ParamKindOrd::Infer => "infer",
+        }))
+    }
+}
+
 impl IntoDiagnosticArg for ast::Path {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Owned(pprust::path_to_string(&self)))
