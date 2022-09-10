@@ -214,9 +214,6 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 hir_ty_to_ty(cx.tcx, hir_ty)
             };
             if same_type_and_consts(ty, cx.tcx.type_of(impl_id));
-            let hir = cx.tcx.hir();
-            // prevents false positive on `#[derive(serde::Deserialize)]`
-            if !hir.span(hir.get_parent_node(hir_ty.hir_id)).in_derive_expansion();
             then {
                 span_lint(cx, hir_ty.span);
             }
