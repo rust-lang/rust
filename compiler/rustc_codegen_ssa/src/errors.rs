@@ -1,66 +1,66 @@
 //! Errors emitted by codegen_ssa
 
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::Diagnostic;
 use std::borrow::Cow;
 use std::io::Error;
 use std::path::{Path, PathBuf};
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::missing_native_static_library)]
 pub struct MissingNativeStaticLibrary<'a> {
     pub library_name: &'a str,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::lib_def_write_failure)]
 pub struct LibDefWriteFailure {
     pub error: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::version_script_write_failure)]
 pub struct VersionScriptWriteFailure {
     pub error: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::symbol_file_write_failure)]
 pub struct SymbolFileWriteFailure {
     pub error: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::unsupported_arch)]
 pub struct UnsupportedArch;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::msvc_path_not_found)]
 pub struct MsvcPathNotFound;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::link_exe_not_found)]
 pub struct LinkExeNotFound;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::ld64_unimplemented_modifier)]
 pub struct Ld64UnimplementedModifier;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::linker_unsupported_modifier)]
 pub struct LinkerUnsupportedModifier;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::L4Bender_exporting_symbols_unimplemented)]
 pub struct L4BenderExportingSymbolsUnimplemented;
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::no_natvis_directory)]
 pub struct NoNatvisDirectory {
     pub error: Error,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::copy_path_buf)]
 pub struct CopyPathBuf {
     pub source_file: PathBuf,
@@ -69,7 +69,7 @@ pub struct CopyPathBuf {
 }
 
 // Reports Paths using `Debug` implementation rather than Path's `Display` implementation.
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::copy_path)]
 pub struct CopyPath<'a> {
     from: DebugArgPath<'a>,
@@ -93,13 +93,13 @@ impl IntoDiagnosticArg for DebugArgPath<'_> {
     }
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::ignoring_emit_path)]
 pub struct IgnoringEmitPath {
     pub extension: String,
 }
 
-#[derive(SessionDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(codegen_ssa::ignoring_output)]
 pub struct IgnoringOutput {
     pub extension: String,
