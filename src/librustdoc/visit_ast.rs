@@ -164,7 +164,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.inside_public_path &= self.cx.tcx.visibility(def_id).is_public();
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                continue;
+            }
             self.visit_item(item, None, &mut om);
+        }
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
+            // To match the way import precedence works, visit glob imports last.
+            // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
+            // imported items appear last, then they'll be the ones that get discarded.
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+                self.visit_item(item, None, &mut om);
+            }
         }
         self.inside_public_path = orig_inside_public_path;
         om
