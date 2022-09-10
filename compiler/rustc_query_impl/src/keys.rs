@@ -552,11 +552,11 @@ impl Key for HirId {
     }
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        self.owner.default_span(tcx)
+        tcx.hir().span(*self)
     }
 
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
-        Some(self.owner.to_def_id())
+        None
     }
 }
