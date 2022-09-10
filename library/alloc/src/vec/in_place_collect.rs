@@ -55,6 +55,9 @@
 //! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
+//! If dropping any remaining source item (`T`) panics then [`InPlaceDstBufDrop`] will handle dropping
+//! the already collected sink items (`U`) and freeing the allocation.
+//!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
 //!
 //! # O(1) collect
@@ -194,8 +197,8 @@ where
         // Drop any remaining values at the tail of the source but prevent drop of the allocation
         // itself once IntoIter goes out of scope.
         // If the drop panics then we also try to drop the destination buffer and its elements.
-        // This is safe because `forget_allocation_drop_remaining` forgets the allocation *before*
-        // trying to drop the remaining elements.
+        // This is safe because `forget_allocation_drop_remaining` immediately forgets the allocation
+        // and won't panic before that.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
