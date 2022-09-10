@@ -136,6 +136,7 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
+    mod move_format_string_arg;
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;

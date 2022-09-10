@@ -1592,6 +1592,23 @@ fn apply<T, U, F>(f: F, x: T) -> U where F: FnOnce(T) -> U {
 }
 
 #[test]
+fn doctest_move_format_string_arg() {
+    check_doc_test(
+        "move_format_string_arg",
+        r#####"
+fn main() {
+    println!("{x + 1}$0");
+}
+"#####,
+        r#####"
+fn main() {
+    println!("{a}", a$0 = x + 1);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_move_from_mod_rs() {
     check_doc_test(
         "move_from_mod_rs",
