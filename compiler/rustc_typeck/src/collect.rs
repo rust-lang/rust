@@ -3287,6 +3287,15 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     use rustc_ast::{Lit, LitIntType, LitKind};
+    if !tcx.features().raw_dylib && tcx.sess.target.arch == "x86" {
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::raw_dylib,
+            attr.span,
+            "`#[link_ordinal]` is unstable on x86",
+        )
+        .emit();
+    }
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
     let sole_meta_list = match meta_item_list {

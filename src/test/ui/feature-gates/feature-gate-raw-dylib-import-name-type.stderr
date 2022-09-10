@@ -1,4 +1,4 @@
-error[E0658]: link kind `raw-dylib` is unstable
+error[E0658]: link kind `raw-dylib` is unstable on x86
   --> $DIR/feature-gate-raw-dylib-import-name-type.rs:3:29
    |
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated")]

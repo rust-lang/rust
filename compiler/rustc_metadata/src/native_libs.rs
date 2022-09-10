@@ -113,12 +113,12 @@ impl<'tcx> Collector<'tcx> {
                             "raw-dylib" => {
                                 if !sess.target.is_like_windows {
                                     sess.emit_err(FrameworkOnlyWindows { span });
-                                } else if !features.raw_dylib {
+                                } else if !features.raw_dylib && sess.target.arch == "x86" {
                                     feature_err(
                                         &sess.parse_sess,
                                         sym::raw_dylib,
                                         span,
-                                        "link kind `raw-dylib` is unstable",
+                                        "link kind `raw-dylib` is unstable on x86",
                                     )
                                     .emit();
                                 }
