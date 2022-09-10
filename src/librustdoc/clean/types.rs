@@ -510,7 +510,7 @@ impl Item {
             .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, page_id: did, ref fragment }| {
                 debug!(?did);
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
@@ -1134,7 +1134,10 @@ pub(crate) struct ItemLink {
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: String,
-    pub(crate) did: DefId,
+    /// The `DefId` of the Item whose **HTML Page** contains the item being
+    /// linked to. This will be different to `item_id` on item's that don't
+    /// have their own page, such as struct fields and enum variants.
+    pub(crate) page_id: DefId,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<UrlFragment>,
 }

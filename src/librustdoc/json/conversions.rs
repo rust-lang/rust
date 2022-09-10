@@ -19,6 +19,7 @@ use crate::clean::utils::print_const_expr;
 use crate::clean::{self, ItemId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
@@ -29,8 +30,14 @@ impl JsonRenderer<'_> {
             .get(&item.item_id)
             .into_iter()
             .flatten()
-            .map(|clean::ItemLink { link, did, .. }| {
-                (link.clone(), from_item_id((*did).into(), self.tcx))
+            .map(|clean::ItemLink { link, page_id, fragment, .. }| {
+                let id = match fragment {
+                    Some(UrlFragment::Item(frag_id)) => *frag_id,
+                    // FIXME: Pass the `UserWritten` segment to JSON consumer.
+                    Some(UrlFragment::UserWritten(_)) | None => *page_id,
+                };
+
+                (link.clone(), from_item_id(id.into(), self.tcx))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
