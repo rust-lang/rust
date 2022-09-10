@@ -54,7 +54,7 @@ and its associated dynamic libraries,
 which `x.py` will download for you.
 (You can also configure `x.py` to use something else.)
 
-The stage0 compiler is then used only to compile `rustbuild`, `std`, and `rustc`.
+The stage0 compiler is then used only to compile `src/bootstrap`, `std`, and `rustc`.
 When compiling `rustc`, the stage0 compiler uses the freshly compiled `std`.
 There are two concepts at play here:
 a compiler (with its set of dependencies)
