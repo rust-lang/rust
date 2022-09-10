@@ -18,7 +18,7 @@ use rustc_middle::ty::{self, TyCtxt};
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
-pub fn codegen_fulfill_obligation<'tcx>(
+pub fn codegen_select_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {

@@ -971,7 +971,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
+        codegen_select_candidate: codegen::codegen_select_candidate,
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,

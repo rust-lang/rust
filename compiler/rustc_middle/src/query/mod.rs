@@ -1202,14 +1202,11 @@ rustc_queries! {
         }
     }
 
-    query codegen_fulfill_obligation(
+    query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
     ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
         cache_on_disk_if { true }
-        desc { |tcx|
-            "checking if `{}` fulfills its obligations",
-            tcx.def_path_str(key.1.def_id())
-        }
+        desc { |tcx| "computing candidate for `{}`", key.1 }
     }
 
     /// Return all `impl` blocks in the current crate.
