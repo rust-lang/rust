@@ -1,9 +1,7 @@
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
-use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ops::Try;
-use core::ptr::NonNull;
 
 use super::{count, wrap_index, RingSlices};
 
@@ -15,45 +13,30 @@ use super::{count, wrap_index, RingSlices};
 /// [`iter`]: super::VecDeque::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    ring: NonNull<[T]>,
+    ring: &'a [MaybeUninit<T>],
     tail: usize,
     head: usize,
-    _marker: PhantomData<&'a T>,
 }
 
 impl<'a, T> Iter<'a, T> {
     pub(super) fn new(ring: &'a [MaybeUninit<T>], tail: usize, head: usize) -> Self {
-        Iter {
-            ring: unsafe { NonNull::new_unchecked(ring as *const [MaybeUninit<T>] as *mut _) },
-            tail,
-            head,
-            _marker: PhantomData,
-        }
-    }
-
-    unsafe fn ring(&self) -> &'a [MaybeUninit<T>] {
-        unsafe {
-            core::slice::from_raw_parts(
-                self.ring.as_ptr() as *const MaybeUninit<T>,
-                self.ring.len(),
-            )
-        }
+        Iter { ring, tail, head }
     }
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for Iter<'_, T> {}
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = unsafe { RingSlices::ring_slices(self.ring(), self.head, self.tail) };
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         // Safety:
         // - `self.head` and `self.tail` in a ring buffer are always valid indices.
         // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
-        f.debug_tuple("Iter").field(&front).field(&back).finish()
+        unsafe {
+            f.debug_tuple("Iter")
+                .field(&MaybeUninit::slice_assume_init_ref(front))
+                .field(&MaybeUninit::slice_assume_init_ref(back))
+                .finish()
+        }
     }
 }
 
@@ -61,7 +44,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
-        Iter { ring: self.ring, tail: self.tail, head: self.head, _marker: PhantomData }
+        Iter { ring: self.ring, tail: self.tail, head: self.head }
     }
 }
 
@@ -79,7 +62,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         // Safety:
         // - `self.tail` in a ring buffer is always a valid index.
         // - `self.head` and `self.tail` equality is checked above.
-        unsafe { Some(self.ring().get_unchecked(tail).assume_init_ref()) }
+        unsafe { Some(self.ring.get_unchecked(tail).assume_init_ref()) }
     }
 
     #[inline]
@@ -92,11 +75,11 @@ impl<'a, T> Iterator for Iter<'a, T> {
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         // Safety:
         // - `self.head` and `self.tail` in a ring buffer are always valid indices.
         // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
-            let (front, back) = RingSlices::ring_slices(self.ring(), self.head, self.tail);
             accum = MaybeUninit::slice_assume_init_ref(front).iter().fold(accum, &mut f);
             MaybeUninit::slice_assume_init_ref(back).iter().fold(accum, &mut f)
         }
@@ -111,13 +94,12 @@ impl<'a, T> Iterator for Iter<'a, T> {
         let (mut iter, final_res);
         if self.tail <= self.head {
             // Safety: single slice self.ring[self.tail..self.head] is initialized.
-            iter =
-                unsafe { MaybeUninit::slice_assume_init_ref(&self.ring()[self.tail..self.head]) }
-                    .iter();
+            iter = unsafe { MaybeUninit::slice_assume_init_ref(&self.ring[self.tail..self.head]) }
+                .iter();
             final_res = iter.try_fold(init, &mut f);
         } else {
-            // Safety: two slices: self.ring()[self.tail..], self.ring()[..self.head] both are initialized.
-            let (front, back) = unsafe { self.ring().split_at(self.tail) };
+            // Safety: two slices: self.ring[self.tail..], self.ring[..self.head] both are initialized.
+            let (front, back) = self.ring.split_at(self.tail);
 
             let mut back_iter = unsafe { MaybeUninit::slice_assume_init_ref(back).iter() };
             let res = back_iter.try_fold(init, &mut f);
@@ -151,7 +133,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         // that is in bounds.
         unsafe {
             let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
-            self.ring().get_unchecked(idx).assume_init_ref()
+            self.ring.get_unchecked(idx).assume_init_ref()
         }
     }
 }
@@ -167,18 +149,18 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
         // Safety:
         // - `self.head` in a ring buffer is always a valid index.
         // - `self.head` and `self.tail` equality is checked above.
-        unsafe { Some(self.ring().get_unchecked(self.head).assume_init_ref()) }
+        unsafe { Some(self.ring.get_unchecked(self.head).assume_init_ref()) }
     }
 
     fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
+        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
         // Safety:
         // - `self.head` and `self.tail` in a ring buffer are always valid indices.
         // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
-            let (front, back) = RingSlices::ring_slices(self.ring(), self.head, self.tail);
             accum = MaybeUninit::slice_assume_init_ref(back).iter().rfold(accum, &mut f);
             MaybeUninit::slice_assume_init_ref(front).iter().rfold(accum, &mut f)
         }
@@ -192,14 +174,14 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     {
         let (mut iter, final_res);
         if self.tail <= self.head {
-            // Safety: single slice self.ring()[self.tail..self.head] is initialized.
+            // Safety: single slice self.ring[self.tail..self.head] is initialized.
             iter = unsafe {
-                MaybeUninit::slice_assume_init_ref(&self.ring()[self.tail..self.head]).iter()
+                MaybeUninit::slice_assume_init_ref(&self.ring[self.tail..self.head]).iter()
             };
             final_res = iter.try_rfold(init, &mut f);
         } else {
-            // Safety: two slices: self.ring()[self.tail..], self.ring()[..self.head] both are initialized.
-            let (front, back) = unsafe { self.ring().split_at(self.tail) };
+            // Safety: two slices: self.ring[self.tail..], self.ring[..self.head] both are initialized.
+            let (front, back) = self.ring.split_at(self.tail);
 
             let mut front_iter =
                 unsafe { MaybeUninit::slice_assume_init_ref(&front[..self.head]).iter() };
