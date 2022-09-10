@@ -135,8 +135,8 @@ fn main() {
     // CTFE-specific equality tests, need to also work at runtime.
     let addr = &13 as *const i32;
     let addr2 = (addr as usize).wrapping_add(usize::MAX).wrapping_add(1);
-    assert!(addr.guaranteed_eq(addr2 as *const _));
-    assert!(addr.guaranteed_ne(0x100 as *const _));
+    assert_eq!(addr.guaranteed_eq(addr2 as *const _), Some(true));
+    assert_eq!(addr.guaranteed_ne(0x100 as *const _), Some(true));
 
     wide_ptr_ops();
     metadata_vtable();

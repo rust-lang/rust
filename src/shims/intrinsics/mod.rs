@@ -75,17 +75,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         match intrinsic_name {
             // Miri overwriting CTFE intrinsics.
-            "ptr_guaranteed_eq" => {
+            "ptr_guaranteed_cmp" => {
                 let [left, right] = check_arg_count(args)?;
                 let left = this.read_immediate(left)?;
                 let right = this.read_immediate(right)?;
-                this.binop_ignore_overflow(mir::BinOp::Eq, &left, &right, dest)?;
-            }
-            "ptr_guaranteed_ne" => {
-                let [left, right] = check_arg_count(args)?;
-                let left = this.read_immediate(left)?;
-                let right = this.read_immediate(right)?;
-                this.binop_ignore_overflow(mir::BinOp::Ne, &left, &right, dest)?;
+                let (val, _overflowed, _ty) =
+                    this.overflowing_binary_op(mir::BinOp::Eq, &left, &right)?;
+                // We're type punning a bool as an u8 here.
+                this.write_scalar(val, dest)?;
             }
             "const_allocate" => {
                 // For now, for compatibility with the run-time implementation of this, we just return null.
