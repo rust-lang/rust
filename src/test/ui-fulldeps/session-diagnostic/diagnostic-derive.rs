@@ -269,16 +269,16 @@ struct SuggestWithSpanOnly {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateSpanAndApplicability {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
     suggestion: (Span, Span, Applicability),
+    //~^ ERROR specified multiple times
 }
 
 #[derive(Diagnostic)]
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct SuggestWithDuplicateApplicabilityAndSpan {
     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one
     suggestion: (Applicability, Applicability, Span),
+    //~^ ERROR specified multiple times
 }
 
 #[derive(Diagnostic)]
@@ -588,4 +588,20 @@ struct DuplicatedSuggestionCode {
     #[suggestion(typeck::suggestion, code = "...", code = ",,,")]
     //~^ ERROR specified multiple times
     suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct InvalidTypeInSuggestionTuple {
+    #[suggestion(typeck::suggestion, code = "...")]
+    suggestion: (Span, usize),
+    //~^ ERROR wrong types for suggestion
+}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct MissingApplicabilityInSuggestionTuple {
+    #[suggestion(typeck::suggestion, code = "...")]
+    suggestion: (Span,),
+    //~^ ERROR wrong types for suggestion
 }

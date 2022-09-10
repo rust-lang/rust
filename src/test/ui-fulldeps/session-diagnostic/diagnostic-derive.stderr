@@ -263,21 +263,29 @@ LL | |     suggestion: Applicability,
    |
    = help: `#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`
 
-error: type of field annotated with `#[suggestion(...)]` contains more than one `Span`
-  --> $DIR/diagnostic-derive.rs:271:5
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:272:24
    |
-LL | /     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-LL | |
-LL | |     suggestion: (Span, Span, Applicability),
-   | |___________________________________________^
+LL |     suggestion: (Span, Span, Applicability),
+   |                        ^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:272:18
+   |
+LL |     suggestion: (Span, Span, Applicability),
+   |                  ^^^^
 
-error: type of field annotated with `#[suggestion(...)]` contains more than one Applicability
-  --> $DIR/diagnostic-derive.rs:279:5
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:280:33
    |
-LL | /     #[suggestion(typeck::suggestion, code = "This is suggested code")]
-LL | |
-LL | |     suggestion: (Applicability, Applicability, Span),
-   | |____________________________________________________^
+LL |     suggestion: (Applicability, Applicability, Span),
+   |                                 ^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:280:18
+   |
+LL |     suggestion: (Applicability, Applicability, Span),
+   |                  ^^^^^^^^^^^^^
 
 error: `#[label = ...]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:287:5
@@ -415,6 +423,22 @@ note: previously specified here
 LL |     #[suggestion(typeck::suggestion, code = "...", code = ",,,")]
    |                                      ^^^^^^^^^^^^
 
+error: wrong types for suggestion
+  --> $DIR/diagnostic-derive.rs:597:24
+   |
+LL |     suggestion: (Span, usize),
+   |                        ^^^^^
+   |
+   = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
+
+error: wrong types for suggestion
+  --> $DIR/diagnostic-derive.rs:605:17
+   |
+LL |     suggestion: (Span,),
+   |                 ^^^^^^^
+   |
+   = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
+
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/diagnostic-derive.rs:53:3
    |
@@ -471,7 +495,7 @@ LL |         arg: impl IntoDiagnosticArg,
    |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
    = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 56 previous errors
+error: aborting due to 58 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

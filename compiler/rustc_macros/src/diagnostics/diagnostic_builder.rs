@@ -571,46 +571,37 @@ impl DiagnosticDeriveBuilder {
                 let mut span_idx = None;
                 let mut applicability_idx = None;
 
+                fn type_err(span: &Span) -> Result<!, DiagnosticDeriveError> {
+                    span_err(span.unwrap(), "wrong types for suggestion")
+                        .help(
+                            "`#[suggestion(...)]` on a tuple field must be applied to fields \
+                             of type `(Span, Applicability)`",
+                        )
+                        .emit();
+                    Err(DiagnosticDeriveError::ErrorHandled)
+                }
+
                 for (idx, elem) in tup.elems.iter().enumerate() {
                     if type_matches_path(elem, &["rustc_span", "Span"]) {
-                        if span_idx.is_none() {
-                            span_idx = Some(syn::Index::from(idx));
-                        } else {
-                            throw_span_err!(
-                                info.span.unwrap(),
-                                "type of field annotated with `#[suggestion(...)]` contains more \
-                                 than one `Span`"
-                            );
-                        }
+                        span_idx.set_once((syn::Index::from(idx), elem.span().unwrap()));
                     } else if type_matches_path(elem, &["rustc_errors", "Applicability"]) {
-                        if applicability_idx.is_none() {
-                            applicability_idx = Some(syn::Index::from(idx));
-                        } else {
-                            throw_span_err!(
-                                info.span.unwrap(),
-                                "type of field annotated with `#[suggestion(...)]` contains more \
-                                 than one Applicability"
-                            );
-                        }
+                        applicability_idx.set_once((syn::Index::from(idx), elem.span().unwrap()));
+                    } else {
+                        type_err(&elem.span())?;
                     }
                 }
 
-                if let Some(span_idx) = span_idx {
-                    let binding = &info.binding.binding;
-                    let span = quote!(#binding.#span_idx);
-                    let applicability = applicability_idx
-                        .map(|applicability_idx| quote!(#binding.#applicability_idx))
-                        .unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
+                let Some((span_idx, _)) = span_idx else {
+                    type_err(&tup.span())?;
+                };
+                let Some((applicability_idx, _applicability_span)) = applicability_idx else {
+                    type_err(&tup.span())?;
+                };
+                let binding = &info.binding.binding;
+                let span = quote!(#binding.#span_idx);
+                let applicability = quote!(#binding.#applicability_idx);
 
-                    return Ok((span, Some(applicability)));
-                }
-
-                throw_span_err!(info.span.unwrap(), "wrong types for suggestion", |diag| {
-                    diag.help(
-                        "`#[suggestion(...)]` on a tuple field must be applied to fields of type \
-                         `(Span, Applicability)`",
-                    )
-                });
+                Ok((span, Some(applicability)))
             }
             // If `ty` isn't a `Span` or `(Span, Applicability)` then emit an error.
             _ => throw_span_err!(info.span.unwrap(), "wrong field type for suggestion", |diag| {
