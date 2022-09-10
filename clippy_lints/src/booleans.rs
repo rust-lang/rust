@@ -237,7 +237,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             &Term(n) => {
-                let snip = snippet_opt(self.cx, self.terminals[n as usize].span)?;
+                let snip = snippet_opt(self.cx, self.terminals[n as usize].span.source_callsite())?;
                 self.output.push_str(&snip);
             },
         }
