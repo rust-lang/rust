@@ -911,6 +911,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Checks if the lint is gated on a feature that is not enabled.
     ///
     /// Returns `true` if the lint's feature is enabled.
+    // FIXME only emit this once for each attribute, instead of repeating it 4 times for
+    // pre-expansion lints, post-expansion lints, `shallow_lint_levels_on` and `lint_expectations`.
     fn check_gated_lint(&self, lint_id: LintId, span: Span) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
             if !self.sess.features_untracked().enabled(feature) {
