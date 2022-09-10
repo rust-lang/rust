@@ -16,9 +16,7 @@ mod bar {
 // @set import = "$.index[*][?(@.kind=='import')].id"
 pub use bar::Baz;
 
-// FIXME(adotinthevoid): Use hasexact once #99474 lands
-
-// @has "$.index[*][?(@.kind=='module')].inner.items[*]" $import
-// @is  "$.index[*][?(@.kind=='import')].inner.id" $baz
-// @has "$.index[*][?(@.kind=='struct')].inner.impls[*]" $impl
-// @has "$.index[*][?(@.kind=='impl')].inner.items[*]" $doit
+// @is "$.index[*][?(@.kind=='module')].inner.items[*]" $import
+// @is "$.index[*][?(@.kind=='import')].inner.id" $baz
+// @is "$.index[*][?(@.kind=='struct')].inner.impls[*]" $impl
+// @is "$.index[*][?(@.kind=='impl')].inner.items[*]" $doit
