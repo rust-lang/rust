@@ -1,10 +1,11 @@
+use crate::errors::{ActualImplExplNotes, TraitPlaceholderMismatch};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -12,7 +13,7 @@ use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, RePlaceholder, ReVar, Region, TyCtxt};
 
-use std::fmt::{self, Write};
+use std::fmt;
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
@@ -205,26 +206,21 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         actual_substs: SubstsRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = cause.span();
-        let msg = format!(
-            "implementation of `{}` is not general enough",
-            self.tcx().def_path_str(trait_def_id),
-        );
-        let mut err = self.tcx().sess.struct_span_err(span, &msg);
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id)
-        | ObligationCauseCode::ExprItemObligation(def_id, ..) =
-            *cause.code()
-        {
-            err.span_label(span, "doesn't satisfy where-clause");
-            err.span_label(
-                self.tcx().def_span(def_id),
-                &format!("due to a where-clause on `{}`...", self.tcx().def_path_str(def_id)),
-            );
-            true
-        } else {
-            err.span_label(span, &msg);
-            false
-        };
+        let (leading_ellipsis, satisfy_span, where_span, dup_span, def_id) =
+            if let ObligationCauseCode::ItemObligation(def_id)
+            | ObligationCauseCode::ExprItemObligation(def_id, ..) = *cause.code()
+            {
+                (
+                    true,
+                    Some(span),
+                    Some(self.tcx().def_span(def_id)),
+                    None,
+                    self.tcx().def_path_str(def_id),
+                )
+            } else {
+                (false, None, None, Some(span), String::new())
+            };
 
         let expected_trait_ref = self
             .cx
@@ -284,8 +280,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             ?expected_self_ty_has_vid,
         );
 
-        self.explain_actual_impl_that_was_found(
-            &mut err,
+        let actual_impl_expl_notes = self.explain_actual_impl_that_was_found(
             sub_placeholder,
             sup_placeholder,
             has_sub,
@@ -299,7 +294,17 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        err
+        let diag = TraitPlaceholderMismatch {
+            span,
+            satisfy_span,
+            where_span,
+            dup_span,
+            def_id,
+            trait_def_id: self.tcx().def_path_str(trait_def_id),
+            actual_impl_expl_notes,
+        };
+
+        self.tcx().sess.create_err(diag)
     }
 
     /// Add notes with details about the expected and actual trait refs, with attention to cases
@@ -309,7 +314,6 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// due to the number of combinations we have to deal with.
     fn explain_actual_impl_that_was_found(
         &self,
-        err: &mut Diagnostic,
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         has_sub: Option<usize>,
@@ -321,7 +325,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
         leading_ellipsis: bool,
-    ) {
+    ) -> Vec<ActualImplExplNotes> {
         // HACK(eddyb) maybe move this in a more central location.
         #[derive(Copy, Clone)]
         struct Highlighted<'tcx, T> {
@@ -380,120 +384,107 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         let mut expected_trait_ref = highlight_trait_ref(expected_trait_ref);
         expected_trait_ref.highlight.maybe_highlighting_region(sub_placeholder, has_sub);
         expected_trait_ref.highlight.maybe_highlighting_region(sup_placeholder, has_sup);
-        err.note(&{
-            let passive_voice = match (has_sub, has_sup) {
-                (Some(_), _) | (_, Some(_)) => any_self_ty_has_vid,
-                (None, None) => {
-                    expected_trait_ref.highlight.maybe_highlighting_region(vid, expected_has_vid);
-                    match expected_has_vid {
-                        Some(_) => true,
-                        None => any_self_ty_has_vid,
-                    }
-                }
-            };
 
-            let mut note = if same_self_type {
-                let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
-                self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
-
-                if self_ty.value.is_closure()
-                    && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
-                {
-                    let closure_sig = self_ty.map(|closure| {
-                        if let ty::Closure(_, substs) = closure.kind() {
-                            self.tcx().signature_unclosure(
-                                substs.as_closure().sig(),
-                                rustc_hir::Unsafety::Normal,
-                            )
-                        } else {
-                            bug!("type is not longer closure");
-                        }
-                    });
-
-                    format!(
-                        "{}closure with signature `{}` must implement `{}`",
-                        if leading_ellipsis { "..." } else { "" },
-                        closure_sig,
-                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    )
-                } else {
-                    format!(
-                        "{}`{}` must implement `{}`",
-                        if leading_ellipsis { "..." } else { "" },
-                        self_ty,
-                        expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    )
-                }
-            } else if passive_voice {
-                format!(
-                    "{}`{}` would have to be implemented for the type `{}`",
-                    if leading_ellipsis { "..." } else { "" },
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    expected_trait_ref.map(|tr| tr.self_ty()),
-                )
-            } else {
-                format!(
-                    "{}`{}` must implement `{}`",
-                    if leading_ellipsis { "..." } else { "" },
-                    expected_trait_ref.map(|tr| tr.self_ty()),
-                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            };
-
-            match (has_sub, has_sup) {
-                (Some(n1), Some(n2)) => {
-                    let _ = write!(
-                        note,
-                        ", for any two lifetimes `'{}` and `'{}`...",
-                        std::cmp::min(n1, n2),
-                        std::cmp::max(n1, n2),
-                    );
-                }
-                (Some(n), _) | (_, Some(n)) => {
-                    let _ = write!(note, ", for any lifetime `'{}`...", n,);
-                }
-                (None, None) => {
-                    if let Some(n) = expected_has_vid {
-                        let _ = write!(note, ", for some specific lifetime `'{}`...", n,);
-                    }
+        let passive_voice = match (has_sub, has_sup) {
+            (Some(_), _) | (_, Some(_)) => any_self_ty_has_vid,
+            (None, None) => {
+                expected_trait_ref.highlight.maybe_highlighting_region(vid, expected_has_vid);
+                match expected_has_vid {
+                    Some(_) => true,
+                    None => any_self_ty_has_vid,
                 }
             }
+        };
 
-            note
-        });
+        let (kind, ty_or_sig, trait_path) = if same_self_type {
+            let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
+            self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
+
+            if self_ty.value.is_closure()
+                && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
+            {
+                let closure_sig = self_ty.map(|closure| {
+                    if let ty::Closure(_, substs) = closure.kind() {
+                        self.tcx().signature_unclosure(
+                            substs.as_closure().sig(),
+                            rustc_hir::Unsafety::Normal,
+                        )
+                    } else {
+                        bug!("type is not longer closure");
+                    }
+                });
+                (
+                    "signature",
+                    closure_sig.to_string(),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                )
+            } else {
+                (
+                    "other",
+                    self_ty.to_string(),
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+                )
+            }
+        } else if passive_voice {
+            (
+                "passive",
+                expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+            )
+        } else {
+            (
+                "other",
+                expected_trait_ref.map(|tr| tr.self_ty()).to_string(),
+                expected_trait_ref.map(|tr| tr.print_only_trait_path()).to_string(),
+            )
+        };
+
+        let (lt_kind, lifetime_1, lifetime_2) = match (has_sub, has_sup) {
+            (Some(n1), Some(n2)) => ("two", std::cmp::min(n1, n2), std::cmp::max(n1, n2)),
+            (Some(n), _) | (_, Some(n)) => ("any", n, 0),
+            (None, None) => {
+                if let Some(n) = expected_has_vid {
+                    ("some", n, 0)
+                } else {
+                    ("nothing", 0, 0)
+                }
+            }
+        };
+
+        let note_1 = ActualImplExplNotes::NoteOne {
+            leading_ellipsis,
+            kind,
+            ty_or_sig,
+            trait_path,
+            lt_kind,
+            lifetime_1,
+            lifetime_2,
+        };
 
         let mut actual_trait_ref = highlight_trait_ref(actual_trait_ref);
         actual_trait_ref.highlight.maybe_highlighting_region(vid, actual_has_vid);
-        err.note(&{
-            let passive_voice = match actual_has_vid {
-                Some(_) => any_self_ty_has_vid,
-                None => true,
-            };
 
-            let mut note = if same_self_type {
-                format!(
-                    "...but it actually implements `{}`",
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            } else if passive_voice {
-                format!(
-                    "...but `{}` is actually implemented for the type `{}`",
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                    actual_trait_ref.map(|tr| tr.self_ty()),
-                )
-            } else {
-                format!(
-                    "...but `{}` actually implements `{}`",
-                    actual_trait_ref.map(|tr| tr.self_ty()),
-                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
-                )
-            };
+        let passive_voice = match actual_has_vid {
+            Some(_) => any_self_ty_has_vid,
+            None => true,
+        };
 
-            if let Some(n) = actual_has_vid {
-                let _ = write!(note, ", for some specific lifetime `'{}`", n);
-            }
+        let trait_path_2 = actual_trait_ref.map(|tr| tr.print_only_trait_path()).to_string();
+        let ty = actual_trait_ref.map(|tr| tr.self_ty()).to_string();
+        let kind_2 = if same_self_type {
+            "implements_trait"
+        } else if passive_voice {
+            "implemented_for_ty"
+        } else {
+            "ty_implements"
+        };
 
-            note
-        });
+        let has_lifetime = actual_has_vid.is_some();
+        let lifetime = actual_has_vid.unwrap_or_default();
+
+        let note_2 =
+            ActualImplExplNotes::NoteTwo { kind_2, trait_path_2, ty, has_lifetime, lifetime };
+
+        vec![note_1, note_2]
     }
 }

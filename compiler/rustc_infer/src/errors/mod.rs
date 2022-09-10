@@ -540,3 +540,44 @@ pub struct ExplicitLifetimeRequired<'a> {
     #[skip_arg]
     pub new_ty: Ty<'a>,
 }
+
+#[derive(SessionSubdiagnostic)]
+pub enum ActualImplExplNotes {
+    // Field names have to be different across all variants
+    #[note(infer::actual_impl_expl_1)]
+    NoteOne {
+        leading_ellipsis: bool,
+        kind: &'static str,
+        ty_or_sig: String,
+        trait_path: String,
+        lt_kind: &'static str,
+        lifetime_1: usize,
+        lifetime_2: usize,
+    },
+    #[note(infer::actual_impl_expl_2)]
+    NoteTwo {
+        kind_2: &'static str,
+        trait_path_2: String,
+        has_lifetime: bool,
+        lifetime: usize,
+        ty: String,
+    },
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(infer::trait_placeholder_mismatch)]
+pub struct TraitPlaceholderMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[label(infer::label_satisfy)]
+    pub satisfy_span: Option<Span>,
+    #[label(infer::label_where)]
+    pub where_span: Option<Span>,
+    #[label(infer::label_dup)]
+    pub dup_span: Option<Span>,
+    pub def_id: String,
+    pub trait_def_id: String,
+
+    #[subdiagnostic]
+    pub actual_impl_expl_notes: Vec<ActualImplExplNotes>,
+}

@@ -183,3 +183,31 @@ infer_explicit_lifetime_required_sugg = add explicit lifetime `{$named}` to {$id
     [ident] the type of `{$simple_ident}`
     *[param_type] type
 }
+
+infer_actual_impl_expl_1 = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}{$kind ->
+    [signature] closure with signature `{$ty_or_sig}` must implement `{$trait_path}`
+    [passive] `{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`
+    *[other] `{$ty_or_sig}` must implement `{$trait_path}`
+}{$lt_kind ->
+    [two] , for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+    [any] , for any lifetime `'{$lifetime_1}`...
+    [some] , for some specific lifetime `'{lifetime_1}`...
+    *[nothing] {""}
+}
+
+infer_actual_impl_expl_2 = {$kind_2 ->
+    [implements_trait] ...but it actually implements `{$trait_path_2}`
+    [implemented_for_ty] ...but `{$trait_path_2}` is actually implemented for the type `{$ty}`
+    *[ty_implements] ...but `{$ty}` actually implements `{$trait_path_2}`
+}{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+
+infer_trait_placeholder_mismatch = implementation of `{$trait_def_id}` is not general enough
+    .label_satisfy = doesn't satisfy where-clause
+    .label_where = due to a where-clause on `{$def_id}`...
+    .label_dup = implementation of `{$trait_def_id}` is not general enough
