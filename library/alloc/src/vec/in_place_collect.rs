@@ -194,11 +194,10 @@ where
             );
         }
 
-        // Drop any remaining values at the tail of the source but prevent drop of the allocation
-        // itself once IntoIter goes out of scope.
-        // If the drop panics then we also try to drop the destination buffer and its elements.
+        // The ownership of the allocation and the new `T` values is temporarily moved into `dst_guard`.
         // This is safe because `forget_allocation_drop_remaining` immediately forgets the allocation
-        // and won't panic before that.
+        // before any panic can occur in order to avoid any double free, and then proceeds to drop
+        // any remaining values at the tail of the source.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
