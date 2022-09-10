@@ -359,3 +359,33 @@ pub struct ModFileItemNonAscii {
     pub span: Span,
     pub name: Symbol,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::auto_trait_with_generic_param, code = "E0567")]
+pub struct AutoTraitWithGenericParam {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(ast_passes::ident_label)]
+    pub ident_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::auto_trait_with_super_trait_or_where_clause, code = "E0568")]
+pub struct AutoTraitWithSuperTraitOrWhereClause {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::ident_label)]
+    pub ident_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::auto_trait_with_assoc_item)]
+pub struct AutoTraitWithAssocItem {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub replace_span: Span,
+    #[label(ast_passes::ident_label)]
+    pub ident_span: Span,
+}

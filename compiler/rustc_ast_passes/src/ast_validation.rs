@@ -531,50 +531,23 @@ impl<'a> AstValidator<'a> {
 
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
         if !generics.params.is_empty() {
-            struct_span_err!(
-                self.session,
-                generics.span,
-                E0567,
-                "auto traits cannot have generic parameters"
-            )
-            .span_label(ident_span, "auto trait cannot have generic parameters")
-            .span_suggestion(
-                generics.span,
-                "remove the parameters",
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
+            self.session.emit_err(AutoTraitWithGenericParam { span: generics.span, ident_span });
         }
-    }
-
-    fn emit_e0568(&self, span: Span, ident_span: Span) {
-        struct_span_err!(
-            self.session,
-            span,
-            E0568,
-            "auto traits cannot have super traits or lifetime bounds"
-        )
-        .span_label(ident_span, "auto trait cannot have super traits or lifetime bounds")
-        .span_suggestion(
-            span,
-            "remove the super traits or lifetime bounds",
-            "",
-            Applicability::MachineApplicable,
-        )
-        .emit();
     }
 
     fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
         if let [.., last] = &bounds[..] {
             let span = ident_span.shrink_to_hi().to(last.span());
-            self.emit_e0568(span, ident_span);
+            self.session.emit_err(AutoTraitWithSuperTraitOrWhereClause { span, ident_span });
         }
     }
 
     fn deny_where_clause(&self, where_clause: &WhereClause, ident_span: Span) {
         if !where_clause.predicates.is_empty() {
-            self.emit_e0568(where_clause.span, ident_span);
+            self.session.emit_err(AutoTraitWithSuperTraitOrWhereClause {
+                span: where_clause.span,
+                ident_span,
+            });
         }
     }
 
@@ -582,20 +555,11 @@ impl<'a> AstValidator<'a> {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
             let total_span = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
-            struct_span_err!(
-                self.session,
+            self.session.emit_err(AutoTraitWithAssocItem {
                 spans,
-                E0380,
-                "auto traits cannot have associated items"
-            )
-            .span_suggestion(
-                total_span,
-                "remove these associated items",
-                "",
-                Applicability::MachineApplicable,
-            )
-            .span_label(ident_span, "auto trait cannot have associated items")
-            .emit();
+                replace_span: total_span,
+                ident_span,
+            });
         }
     }
 

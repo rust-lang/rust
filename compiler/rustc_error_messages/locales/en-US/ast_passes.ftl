@@ -160,3 +160,18 @@ ast_passes_nomangle_item_non_ascii =
 ast_passes_mod_file_item_non_ascii =
     trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using `#[path]` attribute to specify filesystem path
+
+ast_passes_auto_trait_with_generic_param =
+    auto traits cannot have generic parameters
+    .ident_label = auto trait cannot have generic parameters
+    .suggestion = remove the parameters
+
+ast_passes_auto_trait_with_super_trait_or_where_clause =
+    auto traits cannot have super traits or lifetime bounds
+    .ident_label = auto trait cannot have super traits or lifetime bounds
+    .suggestion = remove the super traits or lifetime bounds
+
+ast_passes_auto_trait_with_assoc_item =
+    auto traits cannot have associated items
+    .suggestion = remove these associated items
+    .ident_label = auto trait cannot have associated items
