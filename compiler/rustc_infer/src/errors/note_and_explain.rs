@@ -27,13 +27,6 @@ impl<'a> DescriptionCtx<'a> {
                 me.kind = "restatic";
             }
 
-            ty::ReEmpty(ty::UniverseIndex::ROOT) => me.kind = "reempty",
-
-            ty::ReEmpty(ui) => {
-                me.kind = "reemptyuni";
-                me.arg = format!("{:?}", ui);
-            }
-
             ty::RePlaceholder(_) => return None,
 
             // FIXME(#13998) RePlaceholder should probably print like

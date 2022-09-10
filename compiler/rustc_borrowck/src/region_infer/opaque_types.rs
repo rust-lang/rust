@@ -109,7 +109,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                        .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
+                        .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
 
@@ -433,7 +433,7 @@ struct ReverseMapper<'tcx> {
 
     key: ty::OpaqueTypeKey<'tcx>,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
-    map_missing_regions_to_empty: bool,
+    do_not_error: bool,
 
     /// initially `Some`, set to `None` once error has been reported
     hidden_ty: Option<Ty<'tcx>>,
@@ -450,29 +450,19 @@ impl<'tcx> ReverseMapper<'tcx> {
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
-        Self {
-            tcx,
-            key,
-            map,
-            map_missing_regions_to_empty: false,
-            hidden_ty: Some(hidden_ty),
-            span,
-        }
+        Self { tcx, key, map, do_not_error: false, hidden_ty: Some(hidden_ty), span }
     }
 
-    fn fold_kind_mapping_missing_regions_to_empty(
-        &mut self,
-        kind: GenericArg<'tcx>,
-    ) -> GenericArg<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
-        self.map_missing_regions_to_empty = true;
+    fn fold_kind_no_missing_regions_error(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
+        assert!(!self.do_not_error);
+        self.do_not_error = true;
         let kind = kind.fold_with(self);
-        self.map_missing_regions_to_empty = false;
+        self.do_not_error = false;
         kind
     }
 
     fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
+        assert!(!self.do_not_error);
         kind.fold_with(self)
     }
 }
@@ -496,9 +486,9 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             ty::ReErased => return r,
 
             // The regions that we expect from borrow checking.
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {}
 
-            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) => {
+            ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.
@@ -510,7 +500,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None if self.map_missing_regions_to_empty => self.tcx.lifetimes.re_root_empty,
+            None if self.do_not_error => self.tcx.lifetimes.re_static,
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
@@ -522,7 +512,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
                 }
-                self.tcx.lifetimes.re_root_empty
+                self.tcx.lifetimes.re_static
             }
             None => {
                 self.tcx
@@ -574,7 +564,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        self.fold_kind_no_missing_regions_error(kind)
                     } else {
                         // ...but not elsewhere.
                         self.fold_kind_normally(kind)
@@ -589,7 +579,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        self.fold_kind_no_missing_regions_error(kind)
                     } else {
                         // ...but not elsewhere.
                         self.fold_kind_normally(kind)

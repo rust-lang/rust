@@ -54,13 +54,6 @@ pub struct UniversalRegions<'tcx> {
     /// The total number of universal region variables instantiated.
     num_universals: usize,
 
-    /// A special region variable created for the `'empty(U0)` region.
-    /// Note that this is **not** a "universal" region, as it doesn't
-    /// represent a universally bound placeholder or any such thing.
-    /// But we do create it here in this type because it's a useful region
-    /// to have around in a few limited cases.
-    pub root_empty: RegionVid,
-
     /// The "defining" type for this function, with all universal
     /// regions instantiated. For a closure or generator, this is the
     /// closure type, but for a top-level function it's the `FnDef`.
@@ -323,11 +316,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// See `UniversalRegionIndices::to_region_vid`.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = *r {
-            self.root_empty
-        } else {
-            self.indices.to_region_vid(r)
-        }
+        self.indices.to_region_vid(r)
     }
 
     /// As part of the NLL unit tests, you can annotate a function with
@@ -501,16 +490,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             _ => None,
         };
 
-        let root_empty = self
-            .infcx
-            .next_nll_region_var(NllRegionVariableOrigin::Existential { from_forall: true })
-            .to_region_vid();
-
         UniversalRegions {
             indices,
             fr_static,
             fr_fn_body,
-            root_empty,
             first_extern_index,
             first_local_index,
             num_universals,

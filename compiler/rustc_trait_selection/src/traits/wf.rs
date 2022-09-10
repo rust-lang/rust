@@ -101,6 +101,7 @@ pub fn trait_obligations<'a, 'tcx>(
     wf.normalize(infcx)
 }
 
+#[instrument(skip(infcx), ret)]
 pub fn predicate_obligations<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -440,6 +441,7 @@ impl<'tcx> WfPredicates<'tcx> {
         let param_env = self.param_env;
         let depth = self.recursion_depth;
         while let Some(arg) = walker.next() {
+            debug!(?arg, ?self.out);
             let ty = match arg.unpack() {
                 GenericArgKind::Type(ty) => ty,
 
@@ -689,6 +691,8 @@ impl<'tcx> WfPredicates<'tcx> {
                     ));
                 }
             }
+
+            debug!(?self.out);
         }
     }
 

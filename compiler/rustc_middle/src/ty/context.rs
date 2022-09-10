@@ -276,9 +276,6 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct CommonLifetimes<'tcx> {
-    /// `ReEmpty` in the root universe.
-    pub re_root_empty: Region<'tcx>,
-
     /// `ReStatic`
     pub re_static: Region<'tcx>,
 
@@ -987,11 +984,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             ))
         };
 
-        CommonLifetimes {
-            re_root_empty: mk(ty::ReEmpty(ty::UniverseIndex::ROOT)),
-            re_static: mk(ty::ReStatic),
-            re_erased: mk(ty::ReErased),
-        }
+        CommonLifetimes { re_static: mk(ty::ReStatic), re_erased: mk(ty::ReErased) }
     }
 }
 

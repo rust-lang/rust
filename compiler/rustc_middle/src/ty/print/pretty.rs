@@ -1986,7 +1986,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
             ty::ReVar(_) | ty::ReErased => false,
 
-            ty::ReStatic | ty::ReEmpty(_) => true,
+            ty::ReStatic => true,
         }
     }
 
@@ -2068,14 +2068,6 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             ty::ReErased => {}
             ty::ReStatic => {
                 p!("'static");
-                return Ok(self);
-            }
-            ty::ReEmpty(ty::UniverseIndex::ROOT) => {
-                p!("'<empty>");
-                return Ok(self);
-            }
-            ty::ReEmpty(ui) => {
-                p!(write("'<empty:{:?}>", ui));
                 return Ok(self);
             }
         }

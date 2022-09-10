@@ -1816,6 +1816,7 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
     None
 }
 
+#[instrument(level = "debug", skip(tcx))]
 fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
@@ -2046,8 +2047,8 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
 /// Returns a list of type predicates for the definition with ID `def_id`, including inferred
 /// lifetime constraints. This includes all predicates returned by `explicit_predicates_of`, plus
 /// inferred constraints concerning which regions outlive other regions.
+#[instrument(level = "debug", skip(tcx))]
 fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    debug!("predicates_defined_on({:?})", def_id);
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!("predicates_defined_on: explicit_predicates_of({:?}) = {:?}", def_id, result,);
     let inferred_outlives = tcx.inferred_outlives_of(def_id);

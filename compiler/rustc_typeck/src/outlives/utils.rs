@@ -161,12 +161,6 @@ fn is_free_region(region: Region<'_>) -> bool {
         // ignore it.  We can't put it on the struct header anyway.
         ty::ReLateBound(..) => false,
 
-        // This can appear in `where Self: ` bounds (#64855):
-        //
-        //     struct Bar<T>(<Self as Foo>::Type) where Self: ;
-        //     struct Baz<'a>(&'a Self) where Self: ;
-        ty::ReEmpty(_) => false,
-
         // These regions don't appear in types from type declarations:
         ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {
             bug!("unexpected region in outlives inference: {:?}", region);

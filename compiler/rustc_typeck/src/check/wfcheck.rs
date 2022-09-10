@@ -1816,6 +1816,7 @@ fn report_bivariance(
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
     /// aren't true.
+    #[instrument(level = "debug", skip(self))]
     fn check_false_global_bounds(&mut self) {
         let tcx = self.ocx.infcx.tcx;
         let mut span = self.span;
