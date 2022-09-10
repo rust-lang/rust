@@ -581,3 +581,11 @@ struct LintAttributeOnSessionDiag {}
 //~| ERROR diagnostic slug not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnLintDiag {}
+
+#[derive(Diagnostic)]
+#[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct DuplicatedSuggestionCode {
+    #[suggestion(typeck::suggestion, code = "...", code = ",,,")]
+    //~^ ERROR specified multiple times
+    suggestion: Span,
+}

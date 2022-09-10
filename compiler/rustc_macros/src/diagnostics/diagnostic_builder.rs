@@ -476,7 +476,7 @@ impl DiagnosticDeriveBuilder {
                     match nested_name {
                         "code" => {
                             let formatted_str = self.build_format(&s.value(), s.span());
-                            code = Some(formatted_str);
+                            code.set_once((formatted_str, span));
                         }
                         "applicability" => {
                             applicability = match applicability {
@@ -524,7 +524,7 @@ impl DiagnosticDeriveBuilder {
 
         let msg = msg.unwrap_or_else(|| parse_quote! { _subdiag::suggestion });
         let msg = quote! { rustc_errors::fluent::#msg };
-        let code = code.unwrap_or_else(|| quote! { String::new() });
+        let code = code.value().unwrap_or_else(|| quote! { String::new() });
 
         Ok(quote! { #diag.#method(#span_field, #msg, #code, #applicability); })
     }
