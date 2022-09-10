@@ -155,7 +155,7 @@ impl DiagnosticDeriveBuilder {
                 } else {
                     Ident::new(name, attr.span())
                 };
-                return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::_subdiag::#fn_name); });
+                return Ok(self.add_subdiagnostic(&fn_name, parse_quote! { _subdiag::#fn_name }));
             }
             _ => throw_invalid_attr!(attr, &meta),
         };
@@ -449,20 +449,18 @@ impl DiagnosticDeriveBuilder {
 
         let (span_field, mut applicability) = self.span_and_applicability_of_ty(info)?;
 
-        let mut msg = None;
         let mut code = None;
 
         let mut nested_iter = nested.into_iter().peekable();
-        if let Some(nested_attr) = nested_iter.peek() {
-            if let NestedMeta::Meta(Meta::Path(path)) = nested_attr {
-                msg = Some(path.clone());
-            }
+        let msg = if let Some(NestedMeta::Meta(Meta::Path(path))) = nested_iter.peek() {
+            let path = path.clone();
+            // Move the iterator forward if a path was found (don't otherwise so that
+            // code/applicability can be found or an error emitted).
+            nested_iter.next();
+            Some(path)
+        } else {
+            None
         };
-        // Move the iterator forward if a path was found (don't otherwise so that
-        // code/applicability can be found or an error emitted).
-        if msg.is_some() {
-            let _ = nested_iter.next();
-        }
 
         for nested_attr in nested_iter {
             let meta = match nested_attr {
