@@ -8,9 +8,9 @@ pub mod sub {
     }
 }
 
+#[doc(inline)]
+pub use sub::*;
+
 // @count foo/index.html '//a[@class="mod"][@title="foo::prelude mod"]' 1
 // @count foo/prelude/index.html '//div[@class="item-row"]' 0
 pub mod prelude {}
-
-#[doc(inline)]
-pub use sub::*;
