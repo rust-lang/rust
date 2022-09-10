@@ -984,11 +984,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     };
 
-                    let env_place = Place {
+                    let use_place = Place {
                         local: ty::CAPTURE_STRUCT_LOCAL,
                         projection: tcx.intern_place_elems(&projs),
                     };
-                    let use_place = env_place;
                     self.var_debug_info.push(VarDebugInfo {
                         name: *sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
