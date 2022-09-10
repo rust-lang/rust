@@ -1151,40 +1151,98 @@ pre.rust .question-mark {
 	font-weight: bold;
 }
 
-pre.compile_fail,
-pre.should_panic {
+.example-wrap.compile_fail,
+.example-wrap.should_panic {
 	border-left: 2px solid var(--codeblock-error-color);
 }
 
-pre.ignore {
+.ignore.example-wrap {
 	border-left: 2px solid var(--codeblock-ignore-color);
 }
 
-.example-wrap:hover pre.compile_fail,
-.example-wrap:hover pre.should_panic {
+.example-wrap.compile_fail:hover,
+.example-wrap.should_panic:hover {
 	border-left: 2px solid var(--codeblock-error-hover-color);
 }
 
-.example-wrap:hover pre.ignore {
+.example-wrap.ignore:hover {
 	border-left: 2px solid var(--codeblock-ignore-hover-color);
 }
 
-.tooltip.compile_fail,
-.tooltip.should_panic {
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip {
 	color: var(--codeblock-error-color);
 }
 
-.tooltip.ignore {
+.example-wrap.ignore .tooltip {
 	color:  var(--codeblock-ignore-color);
 }
 
-.example-wrap:hover .tooltip.compile_fail,
-.example-wrap:hover .tooltip.should_panic {
+.example-wrap.compile_fail:hover .tooltip,
+.example-wrap.should_panic:hover .tooltip {
 	color: var(--codeblock-error-hover-color);
 }
 
-.example-wrap:hover .tooltip.ignore {
+.example-wrap.ignore:hover .tooltip {
 	color: var(--codeblock-ignore-hover-color);
+}
+
+.example-wrap .tooltip {
+	position: absolute;
+	display: block;
+	cursor: pointer;
+	left: -25px;
+	top: 5px;
+}
+
+.example-wrap .tooltip::after {
+	display: none;
+	text-align: center;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	font-size: 1rem;
+	border: 1px solid var(--border-color);
+	position: absolute;
+	width: max-content;
+	top: -2px;
+	z-index: 1;
+}
+
+.example-wrap .tooltip::before {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 16px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	display: none;
+	z-index: 1;
+}
+
+.example-wrap.ignore .tooltip::after {
+	content: "This example is not tested";
+}
+.example-wrap.compile_fail .tooltip::after {
+	content: "This example deliberately fails to compile";
+}
+.example-wrap.should_panic .tooltip::after {
+	content: "This example panics";
+}
+.example-wrap.edition .tooltip::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
+	display: inline;
+}
+
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip,
+.example-wrap.ignore .tooltip {
+	font-weight: bold;
+	font-size: 1.25rem;
 }
 
 a.test-arrow {
@@ -1252,62 +1310,6 @@ h3.variant {
 	padding-right: 3px;
 }
 
-.information {
-	position: absolute;
-	left: -25px;
-	margin-top: 7px;
-	z-index: 1;
-}
-
-.tooltip {
-	position: relative;
-	display: inline-block;
-	cursor: pointer;
-}
-
-.tooltip::after {
-	display: none;
-	text-align: center;
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	font-size: 1rem;
-	border: 1px solid var(--border-color);
-}
-
-.tooltip.ignore::after {
-	content: "This example is not tested";
-}
-.tooltip.compile_fail::after {
-	content: "This example deliberately fails to compile";
-}
-.tooltip.should_panic::after {
-	content: "This example panics";
-}
-.tooltip.edition::after {
-	content: "This code runs with edition " attr(data-edition);
-}
-
-.tooltip::before {
-	content: " ";
-	position: absolute;
-	top: 50%;
-	left: 16px;
-	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
-	display: none;
-}
-
-.tooltip:hover::before, .tooltip:hover::after {
-	display: inline;
-}
-
-.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
-	font-weight: bold;
-	font-size: 1.25rem;
-}
-
 .notable-traits-tooltip {
 	display: inline-block;
 	cursor: pointer;
@@ -1349,7 +1351,7 @@ h3.variant {
 	display: block;
 }
 
-.notable-traits .docblock code.content{
+.notable-traits .docblock code.content {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
@@ -1718,7 +1720,7 @@ in storage.js plus the media query with (max-width: 700px)
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.docblock > .example-wrap:first-child > .information > .tooltip {
+	.docblock > .example-wrap:first-child .tooltip {
 		margin-top: 16px;
 	}
 
