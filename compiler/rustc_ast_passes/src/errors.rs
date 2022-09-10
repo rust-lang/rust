@@ -408,3 +408,41 @@ pub struct GenericArgAfterConstraint {
     pub constraints_len: usize,
     pub correct_order: String,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::fn_ptr_ty_with_pat, code = "E0561")]
+pub struct FnPtrTyWithPat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::multiple_explicit_lifetime_bound, code = "E0226")]
+pub struct MultipleExplicitLifetimeBound {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::impl_trait_ty_in_path_param, code = "E0667")]
+pub struct ImplTraitTyInPathParam {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::impl_trait_ty_nested, code = "E0666")]
+pub struct ImplTraitTyNested {
+    #[primary_span]
+    #[label(ast_passes::nested_label)]
+    pub nested_span: Span,
+    #[label(ast_passes::outer_label)]
+    pub outer_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::impl_trait_ty_without_trait_bound)]
+pub struct ImplTraitTyWithoutTraitBound {
+    #[primary_span]
+    pub span: Span,
+}

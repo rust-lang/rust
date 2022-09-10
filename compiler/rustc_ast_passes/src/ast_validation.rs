@@ -624,13 +624,7 @@ impl<'a> AstValidator<'a> {
             TyKind::BareFn(bfty) => {
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
-                    struct_span_err!(
-                        self.session,
-                        span,
-                        E0561,
-                        "patterns aren't allowed in function pointer types"
-                    )
-                    .emit();
+                    self.session.emit_err(FnPtrTyWithPat { span });
                 });
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);
                 if let Extern::Implicit(_) = bfty.ext {
@@ -643,13 +637,9 @@ impl<'a> AstValidator<'a> {
                 for bound in bounds {
                     if let GenericBound::Outlives(lifetime) = bound {
                         if any_lifetime_bounds {
-                            struct_span_err!(
-                                self.session,
-                                lifetime.ident.span,
-                                E0226,
-                                "only a single explicit lifetime bound is permitted"
-                            )
-                            .emit();
+                            self.session.emit_err(MultipleExplicitLifetimeBound {
+                                span: lifetime.ident.span,
+                            });
                             break;
                         }
                         any_lifetime_bounds = true;
@@ -658,29 +648,15 @@ impl<'a> AstValidator<'a> {
             }
             TyKind::ImplTrait(_, bounds) => {
                 if self.is_impl_trait_banned {
-                    struct_span_err!(
-                        self.session,
-                        ty.span,
-                        E0667,
-                        "`impl Trait` is not allowed in path parameters"
-                    )
-                    .emit();
+                    self.session.emit_err(ImplTraitTyInPathParam { span: ty.span });
                 }
 
-                if let Some(outer_impl_trait_sp) = self.outer_impl_trait {
-                    struct_span_err!(
-                        self.session,
-                        ty.span,
-                        E0666,
-                        "nested `impl Trait` is not allowed"
-                    )
-                    .span_label(outer_impl_trait_sp, "outer `impl Trait`")
-                    .span_label(ty.span, "nested `impl Trait` here")
-                    .emit();
+                if let Some(outer_span) = self.outer_impl_trait {
+                    self.session.emit_err(ImplTraitTyNested { nested_span: ty.span, outer_span });
                 }
 
                 if !bounds.iter().any(|b| matches!(b, GenericBound::Trait(..))) {
-                    self.err_handler().span_err(ty.span, "at least one trait must be specified");
+                    self.session.emit_err(ImplTraitTyWithoutTraitBound { span: ty.span });
                 }
             }
             _ => {}
@@ -701,7 +677,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                "extern declarations without an explicit ABI are deprecated",
+                fluent::ast_passes::deprecated_extern_missing_abi,
                 BuiltinLintDiagnostics::MissingAbi(span, abi::Abi::FALLBACK),
             )
         }

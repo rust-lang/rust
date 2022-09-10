@@ -195,3 +195,23 @@ ast_passes_generic_arg_after_constraint =
         [one] generic argument
        *[other] generic arguments
     }
+
+ast_passes_fn_ptr_ty_with_pat =
+    patterns aren't allowed in function pointer types
+
+ast_passes_multiple_explicit_lifetime_bound =
+    only a single explicit lifetime bound is permitted
+
+ast_passes_impl_trait_ty_in_path_param =
+    `impl Trait` is not allowed in path parameters
+
+ast_passes_impl_trait_ty_nested =
+    nested `impl Trait` is not allowed
+    .outer_label = outer `impl Trait`
+    .nested_label = nested `impl Trait` here
+
+ast_passes_impl_trait_ty_without_trait_bound =
+    at least one trait must be specified
+
+ast_passes_deprecated_extern_missing_abi =
+    extern declarations without an explicit ABI are deprecated
