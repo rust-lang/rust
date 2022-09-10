@@ -313,8 +313,11 @@ pub struct FilePermissions {
     mode: mode_t,
 }
 
-#[derive(Copy, Clone)]
-pub struct FileTimes([libc::timespec; 2]);
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: Option<SystemTime>,
+    modified: Option<SystemTime>,
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
@@ -512,45 +515,11 @@ impl FilePermissions {
 
 impl FileTimes {
     pub fn set_accessed(&mut self, t: SystemTime) {
-        self.0[0] = t.t.to_timespec().expect("Invalid system time");
+        self.accessed = Some(t);
     }
 
     pub fn set_modified(&mut self, t: SystemTime) {
-        self.0[1] = t.t.to_timespec().expect("Invalid system time");
-    }
-}
-
-struct TimespecDebugAdapter<'a>(&'a libc::timespec);
-
-impl fmt::Debug for TimespecDebugAdapter<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("timespec")
-            .field("tv_sec", &self.0.tv_sec)
-            .field("tv_nsec", &self.0.tv_nsec)
-            .finish()
-    }
-}
-
-impl fmt::Debug for FileTimes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FileTimes")
-            .field("accessed", &TimespecDebugAdapter(&self.0[0]))
-            .field("modified", &TimespecDebugAdapter(&self.0[1]))
-            .finish()
-    }
-}
-
-impl Default for FileTimes {
-    fn default() -> Self {
-        // Redox doesn't appear to support `UTIME_OMIT`, so we stub it out here, and always return
-        // an error in `set_times`.
-        // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
-        // the same as for Redox.
-        #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))]
-        let omit = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
-        let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
-        Self([omit; 2])
+        self.modified = Some(t);
     }
 }
 
@@ -1084,6 +1053,17 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
+        let to_timespec = |time: Option<SystemTime>| {
+            match time {
+                Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
+                Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
+                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too small to set as a file time")),
+                None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
+            }
+        };
+        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
+        let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
@@ -1099,7 +1079,7 @@ impl File {
                 cvt(unsafe {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
                     match futimens.get() {
-                        Some(futimens) => futimens(self.as_raw_fd(), times.0.as_ptr()),
+                        Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
                         #[cfg(target_os = "macos")]
                         None => {
                             fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
@@ -1108,7 +1088,7 @@ impl File {
                                     tv_usec: (ts.tv_nsec / 1000) as _
                                 }
                             }
-                            let timevals = [ts_to_tv(&times.0[0]), ts_to_tv(&times.0[1])];
+                            let timevals = [ts_to_tv(&times[0]), ts_to_tv(&times[1])];
                             libc::futimes(self.as_raw_fd(), timevals.as_ptr())
                         }
                         // futimes requires even newer Android.
@@ -1121,7 +1101,7 @@ impl File {
                 })?;
                 Ok(())
             } else {
-                cvt(unsafe { libc::futimens(self.as_raw_fd(), times.0.as_ptr()) })?;
+                cvt(unsafe { libc::futimens(self.as_raw_fd(), times.as_ptr()) })?;
                 Ok(())
             }
         }

@@ -251,6 +251,7 @@
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
 #![feature(exhaustive_patterns)]
+#![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(let_chains)]
