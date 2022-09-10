@@ -1,6 +1,6 @@
 use super::ERR_EXPECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::has_debug_impl;
 use clippy_utils::{meets_msrv, msrvs, ty::is_type_diagnostic_item};
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
@@ -28,7 +28,7 @@ pub(super) fn check(
         // Tests if the T type in a `Result<T, E>` is not None
         if let Some(data_type) = get_data_type(cx, result_type);
         // Tests if the T type in a `Result<T, E>` implements debug
-        if has_debug_impl(data_type, cx);
+        if has_debug_impl(cx, data_type);
 
         then {
             span_lint_and_sugg(
@@ -50,11 +50,4 @@ fn get_data_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
         ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::Result) => substs.types().next(),
         _ => None,
     }
-}
-
-/// Given a type, very if the Debug trait has been impl'd
-fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    cx.tcx
-        .get_diagnostic_item(sym::Debug)
-        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }
