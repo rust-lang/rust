@@ -3,112 +3,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{
-    self, Binder, Instance, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-};
+use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitable};
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
-
-use rustc_data_structures::sso::SsoHashSet;
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
-use std::ops::ControlFlow;
-
-// FIXME(#86795): `BoundVarsCollector` here should **NOT** be used
-// outside of `resolve_associated_item`. It's just to address #64494,
-// #83765, and #85848 which are creating bound types/regions that lose
-// their `Binder` *unintentionally*.
-// It's ideal to remove `BoundVarsCollector` and just use
-// `ty::Binder::*` methods but we use this stopgap until we figure out
-// the "real" fix.
-struct BoundVarsCollector<'tcx> {
-    binder_index: ty::DebruijnIndex,
-    vars: BTreeMap<u32, ty::BoundVariableKind>,
-    // We may encounter the same variable at different levels of binding, so
-    // this can't just be `Ty`
-    visited: SsoHashSet<(ty::DebruijnIndex, Ty<'tcx>)>,
-}
-
-impl<'tcx> BoundVarsCollector<'tcx> {
-    fn new() -> Self {
-        BoundVarsCollector {
-            binder_index: ty::INNERMOST,
-            vars: BTreeMap::new(),
-            visited: SsoHashSet::default(),
-        }
-    }
-
-    fn into_vars(self, tcx: TyCtxt<'tcx>) -> &'tcx ty::List<ty::BoundVariableKind> {
-        let max = self.vars.iter().map(|(k, _)| *k).max().unwrap_or(0);
-        for i in 0..max {
-            if let None = self.vars.get(&i) {
-                panic!("Unknown variable: {:?}", i);
-            }
-        }
-
-        tcx.mk_bound_variable_kinds(self.vars.into_iter().map(|(_, v)| v))
-    }
-}
-
-impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
-    type BreakTy = ();
-
-    fn visit_binder<T: TypeVisitable<'tcx>>(
-        &mut self,
-        t: &Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        self.binder_index.shift_in(1);
-        let result = t.super_visit_with(self);
-        self.binder_index.shift_out(1);
-        result
-    }
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if t.outer_exclusive_binder() < self.binder_index
-            || !self.visited.insert((self.binder_index, t))
-        {
-            return ControlFlow::CONTINUE;
-        }
-        match *t.kind() {
-            ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
-                match self.vars.entry(bound_ty.var.as_u32()) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(ty::BoundVariableKind::Ty(bound_ty.kind));
-                    }
-                    Entry::Occupied(entry) => match entry.get() {
-                        ty::BoundVariableKind::Ty(_) => {}
-                        _ => bug!("Conflicting bound vars"),
-                    },
-                }
-            }
-
-            _ => (),
-        };
-
-        t.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            ty::ReLateBound(index, br) if index == self.binder_index => {
-                match self.vars.entry(br.var.as_u32()) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(ty::BoundVariableKind::Region(br.kind));
-                    }
-                    Entry::Occupied(entry) => match entry.get() {
-                        ty::BoundVariableKind::Region(_) => {}
-                        _ => bug!("Conflicting bound vars"),
-                    },
-                }
-            }
-
-            _ => (),
-        };
-
-        r.super_visit_with(self)
-    }
-}
 
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -201,19 +99,14 @@ fn resolve_associated_item<'tcx>(
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
 
-    // See FIXME on `BoundVarsCollector`.
-    let mut bound_vars_collector = BoundVarsCollector::new();
-    trait_ref.visit_with(&mut bound_vars_collector);
-    let trait_binder = ty::Binder::bind_with_vars(trait_ref, bound_vars_collector.into_vars(tcx));
-    let vtbl = match tcx.codegen_fulfill_obligation((param_env, trait_binder)) {
+    let vtbl = match tcx.codegen_select_candidate((param_env, ty::Binder::dummy(trait_ref))) {
         Ok(vtbl) => vtbl,
         Err(CodegenObligationError::Ambiguity) => {
             let reported = tcx.sess.delay_span_bug(
                 tcx.def_span(trait_item_id),
                 &format!(
-                    "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
+                    "encountered ambiguity selecting `{trait_ref:?}` during codegen, presuming due to \
                      overflow or prior type error",
-                    trait_binder
                 ),
             );
             return Err(reported);

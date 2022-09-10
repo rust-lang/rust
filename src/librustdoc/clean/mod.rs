@@ -50,14 +50,23 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     let mut inserted = FxHashSet::default();
     items.extend(doc.foreigns.iter().map(|(item, renamed)| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
-        if let Some(name) = item.name {
+        if let Some(name) = item.name && !item.attrs.lists(sym::doc).has_word(sym::hidden) {
             inserted.insert((item.type_(), name));
         }
         item
     }));
-    items.extend(doc.mods.iter().map(|x| {
-        inserted.insert((ItemType::Module, x.name));
-        clean_doc_module(x, cx)
+    items.extend(doc.mods.iter().filter_map(|x| {
+        if !inserted.insert((ItemType::Module, x.name)) {
+            return None;
+        }
+        let item = clean_doc_module(x, cx);
+        if item.attrs.lists(sym::doc).has_word(sym::hidden) {
+            // Hidden modules are stripped at a later stage.
+            // If a hidden module has the same name as a visible one, we want
+            // to keep both of them around.
+            inserted.remove(&(ItemType::Module, x.name));
+        }
+        Some(item)
     }));
 
     // Split up imports from all other items.
@@ -72,7 +81,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         let v = clean_maybe_renamed_item(cx, item, *renamed);
         for item in &v {
-            if let Some(name) = item.name {
+            if let Some(name) = item.name && !item.attrs.lists(sym::doc).has_word(sym::hidden) {
                 inserted.insert((item.type_(), name));
             }
         }

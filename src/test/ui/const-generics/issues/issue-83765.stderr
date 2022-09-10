@@ -4,13 +4,13 @@ error[E0391]: cycle detected when resolving instance `<LazyUpdim<T, { T::DIM }, 
 LL |     const DIM: usize;
    |     ^^^^^^^^^^^^^^^^
    |
-note: ...which requires checking if `TensorDimension` fulfills its obligations...
+note: ...which requires computing candidate for `<LazyUpdim<T, { T::DIM }, DIM> as TensorDimension>`...
   --> $DIR/issue-83765.rs:4:1
    |
 LL | trait TensorDimension {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires resolving instance `<LazyUpdim<T, { T::DIM }, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when checking if `TensorDimension` fulfills its obligations
+note: cycle used when computing candidate for `<LazyUpdim<T, { T::DIM }, DIM> as TensorDimension>`
   --> $DIR/issue-83765.rs:4:1
    |
 LL | trait TensorDimension {

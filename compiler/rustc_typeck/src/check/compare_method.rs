@@ -295,12 +295,26 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
         // type would be more appropriate. In other places we have a `Vec<Span>`
         // corresponding to their `Vec<Predicate>`, but we don't have that here.
         // Fixing this would improve the output of test `issue-83765.rs`.
-        let sub_result = infcx
+        let mut result = infcx
             .at(&cause, param_env)
             .sup(trait_fty, impl_fty)
             .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok));
 
-        if let Err(terr) = sub_result {
+        // HACK(RPITIT): #101614. When we are trying to infer the hidden types for
+        // RPITITs, we need to equate the output tys instead of just subtyping. If
+        // we just use `sup` above, we'll end up `&'static str <: _#1t`, which causes
+        // us to infer `_#1t = #'_#2r str`, where `'_#2r` is unconstrained, which gets
+        // fixed up to `ReEmpty`, and which is certainly not what we want.
+        if trait_fty.has_infer_types() {
+            result = result.and_then(|()| {
+                infcx
+                    .at(&cause, param_env)
+                    .eq(trait_sig.output(), impl_sig.output())
+                    .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok))
+            });
+        }
+
+        if let Err(terr) = result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
             let (impl_err_span, trait_err_span) =
@@ -445,6 +459,7 @@ pub(super) fn compare_predicates_and_trait_impl_trait_tys<'tcx>(
                             region
                         }
                     });
+                    debug!(%ty);
                     collected_tys.insert(def_id, ty);
                 }
                 Err(err) => {

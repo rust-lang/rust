@@ -48,7 +48,7 @@ cfg_if! {
         /// the native atomic types.
         /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
         /// as it's not intended to be used separately.
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct Atomic<T: Copy>(Cell<T>);
 
         impl<T: Copy> Atomic<T> {
