@@ -5,7 +5,7 @@
 use crate::keys::Key;
 use crate::{on_disk_cache, Queries};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
@@ -499,9 +499,28 @@ macro_rules! define_queries {
     }
 }
 
+use crate::{ExternProviders, OnDiskCache, Providers};
+
+impl<'tcx> Queries<'tcx> {
+    pub fn new(
+        local_providers: Providers,
+        extern_providers: ExternProviders,
+        on_disk_cache: Option<OnDiskCache<'tcx>>,
+    ) -> Self {
+        Queries {
+            local_providers: Box::new(local_providers),
+            extern_providers: Box::new(extern_providers),
+            on_disk_cache,
+            jobs: AtomicU64::new(1),
+            ..Queries::default()
+        }
+    }
+}
+
 macro_rules! define_queries_struct {
     (
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
+        #[derive(Default)]
         pub struct Queries<'tcx> {
             local_providers: Box<Providers>,
             extern_providers: Box<ExternProviders>,
@@ -514,20 +533,6 @@ macro_rules! define_queries_struct {
         }
 
         impl<'tcx> Queries<'tcx> {
-            pub fn new(
-                local_providers: Providers,
-                extern_providers: ExternProviders,
-                on_disk_cache: Option<OnDiskCache<'tcx>>,
-            ) -> Self {
-                Queries {
-                    local_providers: Box::new(local_providers),
-                    extern_providers: Box::new(extern_providers),
-                    on_disk_cache,
-                    jobs: AtomicU64::new(1),
-                    $($name: Default::default()),*
-                }
-            }
-
             pub(crate) fn try_collect_active_jobs(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
