@@ -166,6 +166,11 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_i8p();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
+                let vtable_ptr_ty = cx.scalar_pair_element_backend_type(
+                    cx.layout_of(cx.tcx().mk_mut_ptr(target)),
+                    1,
+                    true,
+                );
                 let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
@@ -176,7 +181,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                new_vptr
+                bx.pointercast(new_vptr, vtable_ptr_ty)
             } else {
                 old_info
             }
