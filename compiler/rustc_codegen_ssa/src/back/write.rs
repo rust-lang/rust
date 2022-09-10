@@ -872,19 +872,12 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         );
         match link_or_copy(&source_file, &output_path) {
             Ok(_) => Some(output_path),
-            Err(_) => {
-                // FIXME:
-                // Should we add Translations support in Handler, or should we pass a session here ?
-                //
-                // As Luis Cardoso mentioned here https://github.com/rust-lang/rust/pull/100753#discussion_r952975345,
-                // Translations support in Handler is tricky because SessionDiagnostic is not a trait,
-                // and we can't implement it in Handler because rustc_errors cannot depend on rustc_session.
-                //
-                // As for passing a session here, my understanding is that all these errors should be reported via
-                // the Shared Handler, which leads us to probably having to support Translations in another way.
-
-                // let diag_handler = cgcx.create_diag_handler();
-                // diag_handler.emit_err(errors::CopyPathBuf { source_file, output_path, error });
+            Err(error) => {
+                cgcx.create_diag_handler().emit_err(errors::CopyPathBuf {
+                    source_file,
+                    output_path,
+                    error,
+                });
                 None
             }
         }
