@@ -432,24 +432,14 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
+    fn check_foreign_kind_bodyless<D>(&self, ident: Ident, create_diag: impl FnOnce(Span, Span, Span) -> D, body: Option<Span>)
+    where
+        D: SessionDiagnostic<'a>,
+    {
         let Some(body) = body else {
             return;
         };
-        self.err_handler()
-            .struct_span_err(ident.span, &format!("incorrect `{}` inside `extern` block", kind))
-            .span_label(ident.span, "cannot have a body")
-            .span_label(body, "the invalid body")
-            .span_label(
-                self.current_extern_span(),
-                format!(
-                    "`extern` blocks define existing foreign {0}s and {0}s \
-                    inside of them cannot have a body",
-                    kind
-                ),
-            )
-            .note(MORE_EXTERN)
-            .emit();
+        self.session.emit_err(create_diag(ident.span, body, self.current_extern_span()));
     }
 
     /// An `fn` in `extern { ... }` cannot have a body `{ ... }`.
@@ -1230,13 +1220,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ..
             }) => {
                 self.check_defaultness(fi.span, *defaultness);
-                self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
+                self.check_foreign_kind_bodyless(fi.ident, |span, body_span, extern_span| ForeignTyWithBody { span, body_span, extern_span }, ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, |span| ForeignTyWithBound { span });
                 self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
-                self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+                self.check_foreign_kind_bodyless(fi.ident, |span, body_span, extern_span| ForeignStaticWithBody { span, body_span, extern_span }, body.as_ref().map(|b| b.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}

@@ -1,4 +1,4 @@
-ast_passes_more_extern_note =
+-ast_passes_more_extern =
     for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 ast_passes_forbidden_let =
@@ -107,8 +107,24 @@ ast_passes_foreign_ty_with_generic_param =
     `type`s inside `extern` blocks cannot have generic parameters
     .suggestion = remove the generic parameters
     .extern_block_label = `extern` block begins here
+    .more_extern_note = { -ast_passes_more_extern }
 
 ast_passes_foreign_ty_with_where_clause =
     `type`s inside `extern` blocks cannot have `where` clauses
     .suggestion = remove the `where` clause
     .extern_block_label = `extern` block begins here
+    .more_extern_note = { -ast_passes_more_extern }
+
+ast_passes_foreign_ty_with_body =
+    incorrect `type` inside `extern` block
+    .label = cannot have a body
+    .body_label = the invalid body
+    .extern_block_label = `extern` blocks define existing foreign types and types inside of them cannot have a body
+    .more_extern_note = { -ast_passes_more_extern }
+
+ast_passes_foreign_static_with_body =
+    incorrect `static` inside `extern` block
+    .label = cannot have a body
+    .body_label = the invalid body
+    .extern_block_label = `extern` blocks define existing foreign statics and statics inside of them cannot have a body
+    .more_extern_note = { -ast_passes_more_extern }

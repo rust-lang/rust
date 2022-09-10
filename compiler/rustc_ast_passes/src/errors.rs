@@ -253,7 +253,7 @@ pub struct ForeignTyWithGenericParam {
     #[primary_span]
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    #[label]
+    #[label(ast_passes::extern_block_label)]
     pub extern_span: Span,
 }
 
@@ -264,6 +264,30 @@ pub struct ForeignTyWithWhereClause {
     #[primary_span]
     #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
-    #[label]
+    #[label(ast_passes::extern_block_label)]
+    pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_ty_with_body)]
+#[note(ast_passes::more_extern_note)]
+pub struct ForeignTyWithBody {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::body_label)]
+    pub body_span: Span,
+    #[label(ast_passes::extern_block_label)]
+    pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_static_with_body)]
+#[note(ast_passes::more_extern_note)]
+pub struct ForeignStaticWithBody {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::body_label)]
+    pub body_span: Span,
+    #[label(ast_passes::extern_block_label)]
     pub extern_span: Span,
 }
