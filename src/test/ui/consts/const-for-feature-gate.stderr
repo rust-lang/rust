@@ -7,21 +7,6 @@ LL |     for _ in 0..5 {}
    = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
    = help: add `#![feature(const_for)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `std::ops::Range<{integer}>: Iterator` is not satisfied
-  --> $DIR/const-for-feature-gate.rs:4:14
-   |
-LL |     for _ in 0..5 {}
-   |              ^^^^ `std::ops::Range<{integer}>` is not an iterator
-   |
-   = help: the trait `~const Iterator` is not implemented for `std::ops::Range<{integer}>`
-note: the trait `Iterator` is implemented for `std::ops::Range<{integer}>`, but that implementation is not `const`
-  --> $DIR/const-for-feature-gate.rs:4:14
-   |
-LL |     for _ in 0..5 {}
-   |              ^^^^
-   = note: required for `std::ops::Range<{integer}>` to implement `~const IntoIterator`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0277, E0658.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0658`.

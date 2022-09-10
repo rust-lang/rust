@@ -3,7 +3,8 @@
 
 const _: () = {
     for _ in 0..5 {}
-    //~^ error: the trait bound
+    //~^ error: cannot call
+    //~| error: cannot convert
 };
 
 fn main() {}

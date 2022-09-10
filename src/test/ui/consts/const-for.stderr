@@ -1,17 +1,24 @@
-error[E0277]: the trait bound `std::ops::Range<{integer}>: Iterator` is not satisfied
-  --> $DIR/const-for.rs:5:14
-   |
-LL |     for _ in 0..5 {}
-   |              ^^^^ `std::ops::Range<{integer}>` is not an iterator
-   |
-   = help: the trait `~const Iterator` is not implemented for `std::ops::Range<{integer}>`
-note: the trait `Iterator` is implemented for `std::ops::Range<{integer}>`, but that implementation is not `const`
+error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
   --> $DIR/const-for.rs:5:14
    |
 LL |     for _ in 0..5 {}
    |              ^^^^
-   = note: required for `std::ops::Range<{integer}>` to implement `~const IntoIterator`
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL | impl<I: ~const Iterator> const IntoIterator for I {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
+  --> $DIR/const-for.rs:5:14
+   |
+LL |     for _ in 0..5 {}
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
