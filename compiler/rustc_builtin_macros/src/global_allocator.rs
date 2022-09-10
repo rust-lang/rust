@@ -40,8 +40,7 @@ pub fn expand(
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f =
-        AllocFnFactory { span, ty_span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
+    let f = AllocFnFactory { span, ty_span, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
@@ -63,7 +62,6 @@ pub fn expand(
 struct AllocFnFactory<'a, 'b> {
     span: Span,
     ty_span: Span,
-    kind: AllocatorKind,
     global: Ident,
     cx: &'b ExtCtxt<'a>,
 }
@@ -92,7 +90,7 @@ impl AllocFnFactory<'_, '_> {
         }));
         let item = self.cx.item(
             self.span,
-            Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&AllocatorKind::Global.fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
