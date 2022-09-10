@@ -473,18 +473,10 @@ impl<'a> AstValidator<'a> {
     /// An item in `extern { ... }` cannot use non-ascii identifier.
     fn check_foreign_item_ascii_only(&self, ident: Ident) {
         if !ident.as_str().is_ascii() {
-            let n = 83942;
-            self.err_handler()
-                .struct_span_err(
-                    ident.span,
-                    "items in `extern` blocks cannot use non-ascii identifiers",
-                )
-                .span_label(self.current_extern_span(), "in this `extern` block")
-                .note(&format!(
-                    "this limitation may be lifted in the future; see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
-                    n, n,
-                ))
-                .emit();
+            self.session.emit_err(ForeignItemNonAscii {
+                span: ident.span,
+                extern_span: self.current_extern_span(),
+            });
         }
     }
 
@@ -507,24 +499,19 @@ impl<'a> AstValidator<'a> {
 
         for Param { ty, span, .. } in &fk.decl().inputs {
             if let TyKind::CVarArgs = ty.kind {
-                self.err_handler()
-                    .struct_span_err(
-                        *span,
-                        "only foreign or `unsafe extern \"C\"` functions may be C-variadic",
-                    )
-                    .emit();
+                self.session.emit_err(ForbiddenCVarArgs { span: *span });
             }
         }
     }
 
-    fn check_item_named(&self, ident: Ident, kind: &str) {
+    fn check_item_named<D>(&self, ident: Ident, create_diag: impl FnOnce(Span) -> D)
+    where
+        D: SessionDiagnostic<'a>,
+    {
         if ident.name != kw::Underscore {
             return;
         }
-        self.err_handler()
-            .struct_span_err(ident.span, &format!("`{}` items in this context need a name", kind))
-            .span_label(ident.span, format!("`_` is not a valid name for this `{}` item", kind))
-            .emit();
+        self.session.emit_err(create_diag(ident.span));
     }
 
     fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
@@ -532,28 +519,14 @@ impl<'a> AstValidator<'a> {
             return;
         }
         let head_span = self.session.source_map().guess_head_span(item_span);
-        struct_span_err!(
-            self.session,
-            head_span,
-            E0754,
-            "`#[no_mangle]` requires ASCII identifier"
-        )
-        .emit();
+        self.session.emit_err(NomangleItemNonAscii { span: head_span });
     }
 
     fn check_mod_file_item_asciionly(&self, ident: Ident) {
         if ident.name.as_str().is_ascii() {
             return;
         }
-        struct_span_err!(
-            self.session,
-            ident.span,
-            E0754,
-            "trying to load file for module `{}` with non-ascii identifier name",
-            ident.name
-        )
-        .help("consider using `#[path]` attribute to specify filesystem path")
-        .emit();
+        self.session.emit_err(ModFileItemNonAscii { span: ident.span, name: ident.name });
     }
 
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
@@ -1537,7 +1510,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         if let AssocItemKind::Const(..) = item.kind {
-            self.check_item_named(item.ident, "const");
+            self.check_item_named(item.ident, |span| UnnamedAssocConst { span });
         }
 
         match &item.kind {

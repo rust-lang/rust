@@ -107,27 +107,27 @@ ast_passes_foreign_ty_with_generic_param =
     `type`s inside `extern` blocks cannot have generic parameters
     .suggestion = remove the generic parameters
     .extern_block_label = `extern` block begins here
-    .more_extern_note = { -ast_passes_more_extern }
+    .more_extern_note = {-ast_passes_more_extern}
 
 ast_passes_foreign_ty_with_where_clause =
     `type`s inside `extern` blocks cannot have `where` clauses
     .suggestion = remove the `where` clause
     .extern_block_label = `extern` block begins here
-    .more_extern_note = { -ast_passes_more_extern }
+    .more_extern_note = {-ast_passes_more_extern}
 
 ast_passes_foreign_ty_with_body =
     incorrect `type` inside `extern` block
     .label = cannot have a body
     .body_label = the invalid body
     .extern_block_label = `extern` blocks define existing foreign types and types inside of them cannot have a body
-    .more_extern_note = { -ast_passes_more_extern }
+    .more_extern_note = {-ast_passes_more_extern}
 
 ast_passes_foreign_static_with_body =
     incorrect `static` inside `extern` block
     .label = cannot have a body
     .body_label = the invalid body
     .extern_block_label = `extern` blocks define existing foreign statics and statics inside of them cannot have a body
-    .more_extern_note = { -ast_passes_more_extern }
+    .more_extern_note = {-ast_passes_more_extern}
 
 ast_passes_foreign_fn_with_body =
     incorrect function inside `extern` block
@@ -135,9 +135,28 @@ ast_passes_foreign_fn_with_body =
     .suggestion = remove the invalid body
     .help = you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
     .extern_block_label = `extern` blocks define existing foreign functions and functions inside of them cannot have a body
-    .more_extern_note = { -ast_passes_more_extern }
+    .more_extern_note = {-ast_passes_more_extern}
 
 ast_passes_foreign_fn_with_qualifier =
     functions in `extern` blocks cannot have qualifiers
     .extern_block_label = in this `extern` block
     .suggestion = remove the qualifiers
+
+ast_passes_foreign_item_non_ascii =
+    items in `extern` blocks cannot use non-ascii identifiers
+    .extern_block_label = in this `extern` block
+    .note = this limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information
+
+ast_passes_forbidden_c_var_args =
+    only foreign or `unsafe extern "C"` functions may be C-variadic
+
+ast_passes_unnamed_assoc_const =
+    `const` items in this context need a name
+    .label = `_` is not a valid name for this `const` item
+
+ast_passes_nomangle_item_non_ascii =
+    `#[no_mangle]` requires ASCII identifier
+
+ast_passes_mod_file_item_non_ascii =
+    trying to load file for module `{$name}` with non-ascii identifier name
+    .help = consider using `#[path]` attribute to specify filesystem path

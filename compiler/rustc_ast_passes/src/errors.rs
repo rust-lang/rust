@@ -318,3 +318,44 @@ pub struct ForeignFnWithQualifier {
     #[suggestion_verbose(code = "fn ", applicability = "maybe-incorrect")]
     pub replace_span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_item_non_ascii)]
+#[note]
+pub struct ForeignItemNonAscii {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::extern_block_label)]
+    pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::forbidden_c_var_args)]
+pub struct ForbiddenCVarArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::unnamed_assoc_const)]
+pub struct UnnamedAssocConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::nomangle_item_non_ascii, code = "E0754")]
+pub struct NomangleItemNonAscii {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::mod_file_item_non_ascii, code = "E0754")]
+#[help]
+pub struct ModFileItemNonAscii {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
