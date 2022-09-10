@@ -128,3 +128,16 @@ ast_passes_foreign_static_with_body =
     .body_label = the invalid body
     .extern_block_label = `extern` blocks define existing foreign statics and statics inside of them cannot have a body
     .more_extern_note = { -ast_passes_more_extern }
+
+ast_passes_foreign_fn_with_body =
+    incorrect function inside `extern` block
+    .label = cannot have a body
+    .suggestion = remove the invalid body
+    .help = you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+    .extern_block_label = `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+    .more_extern_note = { -ast_passes_more_extern }
+
+ast_passes_foreign_fn_with_qualifier =
+    functions in `extern` blocks cannot have qualifiers
+    .extern_block_label = in this `extern` block
+    .suggestion = remove the qualifiers

@@ -273,6 +273,7 @@ pub struct ForeignTyWithWhereClause {
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignTyWithBody {
     #[primary_span]
+    #[label]
     pub span: Span,
     #[label(ast_passes::body_label)]
     pub body_span: Span,
@@ -285,9 +286,35 @@ pub struct ForeignTyWithBody {
 #[note(ast_passes::more_extern_note)]
 pub struct ForeignStaticWithBody {
     #[primary_span]
+    #[label]
     pub span: Span,
     #[label(ast_passes::body_label)]
     pub body_span: Span,
     #[label(ast_passes::extern_block_label)]
     pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_fn_with_body)]
+#[help]
+#[note(ast_passes::more_extern_note)]
+pub struct ForeignFnWithBody {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[suggestion(code = ";", applicability = "maybe-incorrect")]
+    pub body_span: Span,
+    #[label(ast_passes::extern_block_label)]
+    pub extern_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::foreign_fn_with_qualifier)]
+pub struct ForeignFnWithQualifier {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::extern_block_label)]
+    pub extern_span: Span,
+    #[suggestion_verbose(code = "fn ", applicability = "maybe-incorrect")]
+    pub replace_span: Span,
 }

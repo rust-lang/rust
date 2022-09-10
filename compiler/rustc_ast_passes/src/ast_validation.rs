@@ -30,9 +30,6 @@ use std::ops::{Deref, DerefMut};
 
 use crate::errors::*;
 
-const MORE_EXTERN: &str =
-    "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
-
 /// Is `self` allowed semantically as the first parameter in an `FnDecl`?
 enum SelfSemantic {
     Yes,
@@ -451,26 +448,11 @@ impl<'a> AstValidator<'a> {
         let Some(body) = body else {
             return;
         };
-        self.err_handler()
-            .struct_span_err(ident.span, "incorrect function inside `extern` block")
-            .span_label(ident.span, "cannot have a body")
-            .span_suggestion(
-                body.span,
-                "remove the invalid body",
-                ";",
-                Applicability::MaybeIncorrect,
-            )
-            .help(
-                "you might have meant to write a function accessible through FFI, \
-                which can be done by writing `extern fn` outside of the `extern` block",
-            )
-            .span_label(
-                self.current_extern_span(),
-                "`extern` blocks define existing foreign functions and functions \
-                inside of them cannot have a body",
-            )
-            .note(MORE_EXTERN)
-            .emit();
+        self.session.emit_err(ForeignFnWithBody {
+            span: ident.span,
+            body_span: body.span,
+            extern_span: self.current_extern_span(),
+        });
     }
 
     fn current_extern_span(&self) -> Span {
@@ -480,16 +462,11 @@ impl<'a> AstValidator<'a> {
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
     fn check_foreign_fn_headerless(&self, ident: Ident, span: Span, header: FnHeader) {
         if header.has_qualifiers() {
-            self.err_handler()
-                .struct_span_err(ident.span, "functions in `extern` blocks cannot have qualifiers")
-                .span_label(self.current_extern_span(), "in this `extern` block")
-                .span_suggestion_verbose(
-                    span.until(ident.span.shrink_to_lo()),
-                    "remove the qualifiers",
-                    "fn ",
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            self.session.emit_err(ForeignFnWithQualifier {
+                span: ident.span,
+                extern_span: self.current_extern_span(),
+                replace_span: span.until(ident.span.shrink_to_lo()),
+            });
         }
     }
 
