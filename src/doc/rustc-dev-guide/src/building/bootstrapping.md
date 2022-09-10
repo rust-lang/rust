@@ -229,14 +229,6 @@ another program we are building with the stage N compiler:
 `build --stage N compiler/rustc` is linking the stage N artifacts to the `std`
 built by the stage N compiler.
 
-Here is a chart of a full build using `x.py`:
-
-<img alt="A diagram of the rustc compilation phases" src="../img/rustc_stages.svg" class="center" />
-
-Keep in mind this diagram is a simplification, i.e. `rustdoc` can be built at
-different stages, the process is a bit different when passing flags such as
-`--keep-stage`, or if there are non-host targets.
-
 ### Stages and `std`
 
 Note that there are two `std` libraries in play here:
