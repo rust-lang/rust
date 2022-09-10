@@ -28,8 +28,12 @@ use crate::errors::{
     UnknownToolInScopedLint,
 };
 
+/// Collection of lint levels for the whole crate.
+/// This is used by AST-based lints, which do not
+/// wait until we have built HIR to be emitted.
 #[derive(Debug)]
 struct LintLevelSets {
+    /// Linked list of specifications.
     list: IndexVec<LintStackIndex, LintSet>,
 }
 
@@ -40,12 +44,19 @@ rustc_index::newtype_index! {
     }
 }
 
+/// Specifications found at this position in the stack.  This map only represents the lints
+/// found for one set of attributes (like `shallow_lint_levels_on` does).
+///
+/// We store the level specifications as a linked list.
+/// Each `LintSet` represents a set of attributes on the same AST node.
+/// The `parent` forms a linked list that matches the AST tree.
+/// This way, walking the linked list is equivalent to walking the AST bottom-up
+/// to find the specifications for a given lint.
 #[derive(Debug)]
 struct LintSet {
     // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
     // flag.
     specs: FxHashMap<LintId, LevelAndSource>,
-
     parent: LintStackIndex,
 }
 
