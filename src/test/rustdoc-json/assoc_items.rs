@@ -3,25 +3,35 @@
 pub struct Simple;
 
 impl Simple {
-    // @has "$.index[*][?(@.name=='CONSTANT')].kind" \"assoc_const\"
+    // @is "$.index[*][?(@.name=='CONSTANT')].kind" \"assoc_const\"
     pub const CONSTANT: usize = 0;
 }
 
 pub trait EasyToImpl {
-    // @has "$.index[*][?(@.name=='ToDeclare')].kind" \"assoc_type\"
-    // @has "$.index[*][?(@.name=='ToDeclare')].inner.default" null
+    // @is "$.index[*][?(@.docs=='ToDeclare trait')].kind" \"assoc_type\"
+    // @is "$.index[*][?(@.docs=='ToDeclare trait')].inner.default" null
+    // @is "$.index[*][?(@.docs=='ToDeclare trait')].inner.bounds" []
+    /// ToDeclare trait
     type ToDeclare;
-    // @has "$.index[*][?(@.name=='AN_ATTRIBUTE')].kind" \"assoc_const\"
-    // @has "$.index[*][?(@.name=='AN_ATTRIBUTE')].inner.default" null
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE trait')].kind" \"assoc_const\"
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE trait')].inner.default" null
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE trait')].inner.type.kind" '"primitive"'
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE trait')].inner.type.inner" '"usize"'
+    /// AN_ATTRIBUTE trait
     const AN_ATTRIBUTE: usize;
 }
 
 impl EasyToImpl for Simple {
-    // @has "$.index[*][?(@.name=='ToDeclare')].inner.default.kind" \"primitive\"
-    // @has "$.index[*][?(@.name=='ToDeclare')].inner.default.inner" \"usize\"
+    // @is "$.index[*][?(@.docs=='ToDeclare impl')].kind" '"assoc_type"'
+    // @is "$.index[*][?(@.docs=='ToDeclare impl')].inner.default.kind" \"primitive\"
+    // @is "$.index[*][?(@.docs=='ToDeclare impl')].inner.default.inner" \"usize\"
+    /// ToDeclare impl
     type ToDeclare = usize;
-    // @has "$.index[*][?(@.name=='AN_ATTRIBUTE')].inner.type.kind" \"primitive\"
-    // @has "$.index[*][?(@.name=='AN_ATTRIBUTE')].inner.type.inner" \"usize\"
-    // @has "$.index[*][?(@.name=='AN_ATTRIBUTE')].inner.default" \"12\"
+
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE impl')].kind" '"assoc_const"'
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE impl')].inner.type.kind" \"primitive\"
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE impl')].inner.type.inner" \"usize\"
+    // @is "$.index[*][?(@.docs=='AN_ATTRIBUTE impl')].inner.default" \"12\"
+    /// AN_ATTRIBUTE impl
     const AN_ATTRIBUTE: usize = 12;
 }

@@ -146,7 +146,8 @@ impl Target {
         if self.position_independent_executables && !triple.ends_with("-linuxkernel") {
             assert_eq!(self.relocation_model, RelocModel::Pic);
         }
-        if self.relocation_model == RelocModel::Pic {
+        // The UEFI targets do not support dynamic linking but still require PIC (#101377).
+        if self.relocation_model == RelocModel::Pic && self.os != "uefi" {
             assert!(self.dynamic_linking || self.position_independent_executables);
         }
         if self.static_position_independent_executables {

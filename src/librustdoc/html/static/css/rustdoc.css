@@ -592,10 +592,6 @@ h2.location a {
 	margin: 0;
 }
 
-#search {
-	position: relative;
-}
-
 .search-loading {
 	text-align: center;
 }
@@ -973,7 +969,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results > a {
 	display: block;
-	width: 100%;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
