@@ -4,7 +4,10 @@ goto: file://|DOC_PATH|/lib2/struct.Foo.html
 assert-attribute: (".impl-items .rustdoc-toggle", {"open": ""})
 click: "h4.code-header" // This is the position of "pub" in "pub fn a_method"
 assert-attribute: (".impl-items .rustdoc-toggle", {"open": ""})
-click: ".impl-items .rustdoc-toggle summary::before" // This is the position of "[-]" next to that pub fn.
+click-with-offset: (
+    ".impl-items .rustdoc-toggle summary",
+    {"x": -24, "y": 8}, // This is the position of "[-]" next to that pub fn.
+)
 assert-attribute-false: (".impl-items .rustdoc-toggle", {"open": ""})
 
 // Click the "Trait" part of "impl Trait" and verify it navigates.
