@@ -138,7 +138,7 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
-use super::{InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -193,12 +193,16 @@ where
 
         // Drop any remaining values at the tail of the source but prevent drop of the allocation
         // itself once IntoIter goes out of scope.
-        // If the drop panics then we also leak any elements collected into dst_buf.
+        // If the drop panics then we also try to drop the destination buffer and its elements.
+        // This is safe because `forget_allocation_drop_remaining` forgets the allocation *before*
+        // trying to drop the remaining elements.
         //
         // Note: This access to the source wouldn't be allowed by the TrustedRandomIteratorNoCoerce
         // contract (used by SpecInPlaceCollect below). But see the "O(1) collect" section in the
         // module documenttation why this is ok anyway.
+        let dst_guard = InPlaceDstBufDrop { ptr: dst_buf, len, cap };
         src.forget_allocation_drop_remaining();
+        mem::forget(dst_guard);
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
 
