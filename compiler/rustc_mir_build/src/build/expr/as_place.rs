@@ -2,7 +2,7 @@
 
 use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, Capture, CaptureMap};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
@@ -59,8 +59,6 @@ pub(crate) enum PlaceBase {
         var_hir_id: LocalVarId,
         /// DefId of the closure
         closure_def_id: LocalDefId,
-        /// The trait closure implements, `Fn`, `FnMut`, `FnOnce`
-        closure_kind: ty::ClosureKind,
     },
 }
 
@@ -145,27 +143,6 @@ fn is_ancestor_or_same_capture(
     iter::zip(proj_possible_ancestor, proj_capture).all(|(a, b)| a == b)
 }
 
-/// Computes the index of a capture within the desugared closure provided the closure's
-/// `closure_min_captures` and the capture's index of the capture in the
-/// `ty::MinCaptureList` of the root variable `var_hir_id`.
-fn compute_capture_idx<'tcx>(
-    closure_min_captures: &ty::RootVariableMinCaptureList<'tcx>,
-    var_hir_id: LocalVarId,
-    root_var_idx: usize,
-) -> usize {
-    let mut res = 0;
-    for (var_id, capture_list) in closure_min_captures {
-        if *var_id == var_hir_id.0 {
-            res += root_var_idx;
-            break;
-        } else {
-            res += capture_list.len();
-        }
-    }
-
-    res
-}
-
 /// Given a closure, returns the index of a capture within the desugared closure struct and the
 /// `ty::CapturedPlace` which is the ancestor of the Place represented using the `var_hir_id`
 /// and `projection`.
@@ -174,27 +151,17 @@ fn compute_capture_idx<'tcx>(
 ///
 /// Returns None, when the ancestor is not found.
 fn find_capture_matching_projections<'a, 'tcx>(
-    typeck_results: &'a ty::TypeckResults<'tcx>,
+    upvars: &'a CaptureMap<'tcx>,
     var_hir_id: LocalVarId,
-    closure_def_id: LocalDefId,
     projections: &[PlaceElem<'tcx>],
-) -> Option<(usize, &'a ty::CapturedPlace<'tcx>)> {
-    let closure_min_captures = typeck_results.closure_min_captures.get(&closure_def_id)?;
-    let root_variable_min_captures = closure_min_captures.get(&var_hir_id.0)?;
-
+) -> Option<(usize, &'a Capture<'tcx>)> {
     let hir_projections = convert_to_hir_projections_and_truncate_for_capture(projections);
 
-    // If an ancestor is found, `idx` is the index within the list of captured places
-    // for root variable `var_hir_id` and `capture` is the `ty::CapturedPlace` itself.
-    let (idx, capture) = root_variable_min_captures.iter().enumerate().find(|(_, capture)| {
+    upvars.get_by_key_enumerated(var_hir_id.0).find(|(_, capture)| {
         let possible_ancestor_proj_kinds: Vec<_> =
-            capture.place.projections.iter().map(|proj| proj.kind).collect();
+            capture.captured_place.place.projections.iter().map(|proj| proj.kind).collect();
         is_ancestor_or_same_capture(&possible_ancestor_proj_kinds, &hir_projections)
-    })?;
-
-    // Convert index to be from the perspective of the entire closure_min_captures map
-    // instead of just the root variable capture list
-    Some((compute_capture_idx(closure_min_captures, var_hir_id, idx), capture))
+    })
 }
 
 /// Takes a PlaceBuilder and resolves the upvar (if any) within it, so that the
@@ -204,24 +171,15 @@ fn find_capture_matching_projections<'a, 'tcx>(
 fn to_upvars_resolved_place_builder<'a, 'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
+    upvars: &'a CaptureMap<'tcx>,
 ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
     match from_builder.base {
         PlaceBase::Local(_) => Ok(from_builder),
-        PlaceBase::Upvar { var_hir_id, closure_def_id, closure_kind } => {
-            let mut upvar_resolved_place_builder = PlaceBuilder::from(ty::CAPTURE_STRUCT_LOCAL);
-            match closure_kind {
-                ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
-                    upvar_resolved_place_builder = upvar_resolved_place_builder.deref();
-                }
-                ty::ClosureKind::FnOnce => {}
-            }
-
+        PlaceBase::Upvar { var_hir_id, closure_def_id } => {
             let Some((capture_index, capture)) =
                 find_capture_matching_projections(
-                    typeck_results,
+                    upvars,
                     var_hir_id,
-                    closure_def_id,
                     &from_builder.projection,
                 ) else {
                 let closure_span = tcx.def_span(closure_def_id);
@@ -241,39 +199,17 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                 return Err(from_builder);
             };
 
-            // We won't be building MIR if the closure wasn't local
-            let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id);
-            let closure_ty = typeck_results.node_type(closure_hir_id);
-
-            let substs = match closure_ty.kind() {
-                ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
-                ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
-                _ => bug!("Lowering capture for non-closure type {:?}", closure_ty),
-            };
-
             // Access the capture by accessing the field within the Closure struct.
-            //
-            // We must have inferred the capture types since we are building MIR, therefore
-            // it's safe to call `tuple_element_ty` and we can unwrap here because
-            // we know that the capture exists and is the `capture_index`-th capture.
-            let var_ty = substs.tupled_upvars_ty().tuple_fields()[capture_index];
+            let capture_info = &upvars[capture_index];
 
-            upvar_resolved_place_builder =
-                upvar_resolved_place_builder.field(Field::new(capture_index), var_ty);
-
-            // If the variable is captured via ByRef(Immutable/Mutable) Borrow,
-            // we need to deref it
-            upvar_resolved_place_builder = match capture.info.capture_kind {
-                ty::UpvarCapture::ByRef(_) => upvar_resolved_place_builder.deref(),
-                ty::UpvarCapture::ByValue => upvar_resolved_place_builder,
-            };
+            let mut upvar_resolved_place_builder = PlaceBuilder::from(capture_info.use_place);
 
             // We used some of the projections to build the capture itself,
             // now we apply the remaining to the upvar resolved place.
             let remaining_projections = strip_prefix(
-                capture.place.base_ty,
+                capture.captured_place.place.base_ty,
                 from_builder.projection,
-                &capture.place.projections,
+                &capture.captured_place.place.projections,
             );
             upvar_resolved_place_builder.projection.extend(remaining_projections);
 
@@ -315,24 +251,24 @@ fn strip_prefix<'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    pub(crate) fn into_place<'a>(
+    pub(in crate::build) fn into_place<'a>(
         self,
         tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
+        upvars: &'a CaptureMap<'tcx>,
     ) -> Place<'tcx> {
         if let PlaceBase::Local(local) = self.base {
             Place { local, projection: tcx.intern_place_elems(&self.projection) }
         } else {
-            self.expect_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
+            self.expect_upvars_resolved(tcx, upvars).into_place(tcx, upvars)
         }
     }
 
     fn expect_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
+        upvars: &'a CaptureMap<'tcx>,
     ) -> PlaceBuilder<'tcx> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
+        to_upvars_resolved_place_builder(self, tcx, upvars).unwrap()
     }
 
     /// Attempts to resolve the `PlaceBuilder`.
@@ -346,12 +282,12 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// not captured. This can happen because the final mir that will be
     /// generated doesn't require a read for this place. Failures will only
     /// happen inside closures.
-    pub(crate) fn try_upvars_resolved<'a>(
+    pub(in crate::build) fn try_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
+        upvars: &'a CaptureMap<'tcx>,
     ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        to_upvars_resolved_place_builder(self, tcx, typeck_results)
+        to_upvars_resolved_place_builder(self, tcx, upvars)
     }
 
     pub(crate) fn base(&self) -> PlaceBase {
@@ -392,6 +328,12 @@ impl<'tcx> From<PlaceBase> for PlaceBuilder<'tcx> {
     }
 }
 
+impl<'tcx> From<Place<'tcx>> for PlaceBuilder<'tcx> {
+    fn from(p: Place<'tcx>) -> Self {
+        Self { base: PlaceBase::Local(p.local), projection: p.projection.to_vec() }
+    }
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
     ///
@@ -411,7 +353,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self.tcx, &self.upvars))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -435,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.tcx, self.typeck_results))
+        block.and(place_builder.into_place(self.tcx, &self.upvars))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -530,7 +472,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
+                    let place = place_builder.clone().into_place(this.tcx, &this.upvars);
                     this.cfg.push(
                         block,
                         Statement {
@@ -629,17 +571,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         closure_def_id: LocalDefId,
         var_hir_id: LocalVarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let closure_ty =
-            self.typeck_results.node_type(self.tcx.hir().local_def_id_to_hir_id(closure_def_id));
-
-        let closure_kind = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
-            self.infcx.closure_kind(closure_substs).unwrap()
-        } else {
-            // Generators are considered FnOnce.
-            ty::ClosureKind::FnOnce
-        };
-
-        block.and(PlaceBuilder::from(PlaceBase::Upvar { var_hir_id, closure_def_id, closure_kind }))
+        block.and(PlaceBuilder::from(PlaceBase::Upvar { var_hir_id, closure_def_id }))
     }
 
     /// Lower an index expression
@@ -678,7 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self.tcx, self.typeck_results);
+            base_place = base_place.expect_upvars_resolved(self.tcx, &self.upvars);
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -710,7 +642,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             len,
-            Rvalue::Len(slice.into_place(self.tcx, self.typeck_results)),
+            Rvalue::Len(slice.into_place(self.tcx, &self.upvars)),
         );
         // lt = idx < len
         self.cfg.push_assign(

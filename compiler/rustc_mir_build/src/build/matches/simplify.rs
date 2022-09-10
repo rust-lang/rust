@@ -156,11 +156,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                    match_pair.place.clone().try_upvars_resolved(self.tcx, &self.upvars)
                 {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self.tcx, &self.upvars),
                         variance,
                     });
                 }
@@ -185,11 +185,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 is_primary: _,
             } => {
                 if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                    match_pair.place.clone().try_upvars_resolved(self.tcx, &self.upvars)
                 {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source: place_resolved.into_place(self.tcx, &self.upvars),
                         var_id: var,
                         binding_mode: mode,
                     });

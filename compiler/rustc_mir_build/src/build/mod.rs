@@ -6,6 +6,7 @@ use crate::thir::pattern::pat_from_hir;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -415,10 +416,19 @@ struct Builder<'a, 'tcx> {
     var_indices: FxHashMap<LocalVarId, LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
-    upvar_mutbls: Vec<Mutability>,
+    upvars: CaptureMap<'tcx>,
     unit_temp: Option<Place<'tcx>>,
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
+}
+
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
+
+#[derive(Debug)]
+struct Capture<'tcx> {
+    captured_place: &'tcx ty::CapturedPlace<'tcx>,
+    use_place: Place<'tcx>,
+    mutability: Mutability,
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -865,7 +875,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             in_scope_unsafe: safety,
             local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
-            upvar_mutbls: vec![],
+            upvars: CaptureMap::new(),
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
@@ -934,7 +944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // indexed closure and we stored in a map called closure_min_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
-        // debuginfo and to fill `self.upvar_mutbls`.
+        // debuginfo and to fill `self.upvars`.
         if hir_typeck_results.closure_min_captures.get(&fn_def_id).is_some() {
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
@@ -954,7 +964,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .closure_min_captures_flattened(fn_def_id)
                 .zip(capture_tys.zip(capture_syms));
 
-            self.upvar_mutbls = captures_with_tys
+            self.upvars = captures_with_tys
                 .enumerate()
                 .map(|(i, (captured_place, (ty, sym)))| {
                     let capture = captured_place.info.capture_kind;
@@ -974,16 +984,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     };
 
+                    let use_place = Place {
+                        local: ty::CAPTURE_STRUCT_LOCAL,
+                        projection: tcx.intern_place_elems(&projs),
+                    };
                     self.var_debug_info.push(VarDebugInfo {
                         name: *sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
-                        value: VarDebugInfoContents::Place(Place {
-                            local: ty::CAPTURE_STRUCT_LOCAL,
-                            projection: tcx.intern_place_elems(&projs),
-                        }),
+                        value: VarDebugInfoContents::Place(use_place),
                     });
 
-                    mutability
+                    let capture = Capture { captured_place, use_place, mutability };
+                    (var_id, capture)
                 })
                 .collect();
         }
