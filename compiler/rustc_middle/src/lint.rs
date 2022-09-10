@@ -27,8 +27,6 @@ pub enum LintLevelSource {
         span: Span,
         /// RFC 2383 reason
         reason: Option<Symbol>,
-        /// The lint tool. (e.g. rustdoc, clippy)
-        tool: Option<Symbol>,
     },
 
     /// Lint level was set by a command-line flag.
