@@ -102,12 +102,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Helper to ensure that queries only return `Copy` types.
-#[inline(always)]
-fn copy<T: Copy>(x: &T) -> T {
-    *x
-}
-
 fn evaluate_query<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(
@@ -126,11 +120,9 @@ where
     Cache::Stored: Copy,
     Cache: QueryCache,
 {
-    let cached = try_get_cached(tcx, query_cache, &key, copy);
-
-    match cached {
-        Ok(value) => return value,
-        Err(()) => (),
+    match try_get_cached(tcx, query_cache, &key, mode) {
+        Ok(value) => value,
+        Err(()) => execute_query(tcx.queries, tcx, span, key, mode),
     }
 }
 

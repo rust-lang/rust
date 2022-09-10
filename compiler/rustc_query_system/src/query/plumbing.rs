@@ -303,24 +303,23 @@ where
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<'a, CTX, C, R, OnHit>(
+pub fn try_get_cached<'a, CTX, C>(
     tcx: CTX,
     cache: &'a C,
     key: &C::Key,
-    // `on_hit` can be called while holding a lock to the query cache
-    on_hit: OnHit,
-) -> Result<R, ()>
+    mode: QueryMode,
+) -> Result<Option<C::Stored>, ()>
 where
     C: QueryCache,
+    C::Stored: Copy,
     CTX: DepContext,
-    OnHit: FnOnce(&C::Stored) -> R,
 {
     cache.lookup(&key, |value, index| {
         if std::intrinsics::unlikely(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
         tcx.dep_graph().read_index(index);
-        on_hit(value)
+        if matches!(mode, QueryMode::Ensure) { None } else { Some(*value) }
     })
 }
 
@@ -676,7 +675,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum QueryMode {
     Get,
     Ensure,
