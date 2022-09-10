@@ -179,6 +179,7 @@ mod attrs;
 mod await_holding_invalid;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
+mod bool_to_int_with_if;
 mod booleans;
 mod borrow_deref_ref;
 mod cargo;
@@ -523,7 +524,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     #[cfg(feature = "internal")]
     {
         if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|_| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
+            store.register_late_pass(|| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
             return;
         }
     }
@@ -544,8 +545,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|_| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
-    let arithmetic_allowed = conf.arithmetic_allowed.clone();
-    store.register_late_pass(move |_| Box::new(operators::arithmetic::Arithmetic::new(arithmetic_allowed.clone())));
+    let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
+    store.register_late_pass(move |_| {
+        Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(
+            arithmetic_side_effects_allowed.clone(),
+        ))
+    });
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|_| Box::new(utils::author::Author));
     let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
@@ -901,6 +906,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(manual_string_new::ManualStringNew));
     store.register_late_pass(|_| Box::new(unused_peekable::UnusedPeekable));
     store.register_early_pass(|| Box::new(multi_assignments::MultiAssignments));
+    store.register_late_pass(|_| Box::new(bool_to_int_with_if::BoolToIntWithIf));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

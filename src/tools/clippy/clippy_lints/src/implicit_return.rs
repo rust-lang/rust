@@ -232,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
             return;
         }
 
-        let res_ty = cx.typeck_results().expr_ty(&body.value);
+        let res_ty = cx.typeck_results().expr_ty(body.value);
         if res_ty.is_unit() || res_ty.is_never() {
             return;
         }
@@ -243,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
                 None => return,
             }
         } else {
-            &body.value
+            body.value
         };
         lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }

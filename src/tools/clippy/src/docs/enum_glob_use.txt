@@ -1,0 +1,24 @@
+### What it does
+Checks for `use Enum::*`.
+
+### Why is this bad?
+It is usually better style to use the prefixed name of
+an enumeration variant, rather than importing variants.
+
+### Known problems
+Old-style enumerations that prefix the variants are
+still around.
+
+### Example
+```
+use std::cmp::Ordering::*;
+
+foo(Less);
+```
+
+Use instead:
+```
+use std::cmp::Ordering;
+
+foo(Ordering::Less)
+```

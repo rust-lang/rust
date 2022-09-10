@@ -1,0 +1,22 @@
+### What it does
+Checks for manual swapping.
+
+### Why is this bad?
+The `std::mem::swap` function exposes the intent better
+without deinitializing or copying either variable.
+
+### Example
+```
+let mut a = 42;
+let mut b = 1337;
+
+let t = b;
+b = a;
+a = t;
+```
+Use std::mem::swap():
+```
+let mut a = 1;
+let mut b = 2;
+std::mem::swap(&mut a, &mut b);
+```

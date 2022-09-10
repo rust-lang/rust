@@ -1,0 +1,20 @@
+### What it does
+Checks for boolean expressions that contain terminals that
+can be eliminated.
+
+### Why is this bad?
+This is most likely a logic bug.
+
+### Known problems
+Ignores short circuiting behavior.
+
+### Example
+```
+// The `b` is unnecessary, the expression is equivalent to `if a`.
+if a && b || a { ... }
+```
+
+Use instead:
+```
+if a {}
+```

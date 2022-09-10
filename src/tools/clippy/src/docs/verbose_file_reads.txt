@@ -1,0 +1,17 @@
+### What it does
+Checks for use of File::read_to_end and File::read_to_string.
+
+### Why is this bad?
+`fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
+See also: [fs::read docs](https://doc.rust-lang.org/std/fs/fn.read.html), [fs::read_to_string docs](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)
+
+### Example
+```
+let mut f = File::open("foo.txt").unwrap();
+let mut bytes = Vec::new();
+f.read_to_end(&mut bytes).unwrap();
+```
+Can be written more concisely as
+```
+let mut bytes = fs::read("foo.txt").unwrap();
+```

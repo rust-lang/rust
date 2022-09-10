@@ -1,0 +1,16 @@
+### What it does
+Checks for usages of `cloned()` on an `Iterator` or `Option` where
+`copied()` could be used instead.
+
+### Why is this bad?
+`copied()` is better because it guarantees that the type being cloned
+implements `Copy`.
+
+### Example
+```
+[1, 2, 3].iter().cloned();
+```
+Use instead:
+```
+[1, 2, 3].iter().copied();
+```

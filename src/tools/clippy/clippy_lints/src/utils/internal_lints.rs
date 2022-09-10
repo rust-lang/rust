@@ -505,7 +505,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                             .hir_id(),
                     ),
                 );
-                collector.visit_expr(&cx.tcx.hir().body(body_id).value);
+                collector.visit_expr(cx.tcx.hir().body(body_id).value);
             }
         }
     }
@@ -653,7 +653,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(path, self_arg, _, _) = &expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
@@ -685,9 +685,8 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         let method_names: Vec<&str> = method_names.iter().map(Symbol::as_str).collect();
         if_chain! {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
-            let args = arg_lists[1];
-            if args.len() == 1;
-            let self_arg = &args.0;
+            let (self_arg, args)= arg_lists[1];
+            if args.is_empty();
             let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
             then {
@@ -734,30 +733,30 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             if and_then_args.len() == 5;
             if let ExprKind::Closure(&Closure { body, .. }) = &and_then_args[4].kind;
             let body = cx.tcx.hir().body(body);
-            let only_expr = peel_blocks_with_stmt(&body.value);
-            if let ExprKind::MethodCall(ps, span_call_args, _) = &only_expr.kind;
-            if let ExprKind::Path(..) = span_call_args[0].kind;
+            let only_expr = peel_blocks_with_stmt(body.value);
+            if let ExprKind::MethodCall(ps, recv, span_call_args, _) = &only_expr.kind;
+            if let ExprKind::Path(..) = recv.kind;
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
                 match ps.ident.as_str() {
-                    "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
+                    "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[0]) => {
                         suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
                     },
-                    "span_help" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
-                        let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
+                    "span_help" if sle.eq_expr(&and_then_args[2], &span_call_args[0]) => {
+                        let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
                         suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), true);
                     },
-                    "span_note" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
-                        let note_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
+                    "span_note" if sle.eq_expr(&and_then_args[2], &span_call_args[0]) => {
+                        let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
                         suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), true);
                     },
                     "help" => {
-                        let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
+                        let help_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                         suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false);
                     }
                     "note" => {
-                        let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
+                        let note_snippet = snippet(cx, span_call_args[0].span, r#""...""#);
                         suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false);
                     }
                     _  => (),
@@ -798,9 +797,9 @@ fn span_suggestion_snippets<'a, 'hir>(
     cx: &LateContext<'_>,
     span_call_args: &'hir [Expr<'hir>],
 ) -> SpanSuggestionSnippets<'a> {
-    let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
-    let sugg_snippet = snippet(cx, span_call_args[3].span, "..");
-    let applicability_snippet = snippet(cx, span_call_args[4].span, "Applicability::MachineApplicable");
+    let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
+    let sugg_snippet = snippet(cx, span_call_args[2].span, "..");
+    let applicability_snippet = snippet(cx, span_call_args[3].span, "Applicability::MachineApplicable");
 
     SpanSuggestionSnippets {
         help: help_snippet,
@@ -954,7 +953,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
                 if let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(def_id) {
                     if let ItemKind::Const(.., body_id) | ItemKind::Static(.., body_id) = item.kind {
                         let body = cx.tcx.hir().body(body_id);
-                        return path_to_matched_type(cx, &body.value);
+                        return path_to_matched_type(cx, body.value);
                     }
                 }
             },
@@ -1046,7 +1045,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
             if el_ty.is_str();
             let body = cx.tcx.hir().body(body_id);
             let typeck_results = cx.tcx.typeck_body(body_id);
-            if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, &body.value);
+            if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
             let path: Vec<&str> = path.iter().map(|x| {
                     if let Constant::Str(s) = x {
                         s.as_str()
@@ -1177,7 +1176,7 @@ impl InterningDefinedSymbol {
         };
         if_chain! {
             // is a method call
-            if let ExprKind::MethodCall(_, [item], _) = call.kind;
+            if let ExprKind::MethodCall(_, item, [], _) = call.kind;
             if let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id);
             let ty = cx.typeck_results().expr_ty(item);
             // ...on either an Ident or a Symbol

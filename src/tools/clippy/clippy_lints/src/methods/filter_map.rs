@@ -25,7 +25,7 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
         },
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(&body.value);
+            let closure_expr = peel_blocks(body.value);
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, receiver, ..) => {

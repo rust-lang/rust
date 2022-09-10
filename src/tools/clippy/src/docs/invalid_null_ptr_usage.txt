@@ -1,0 +1,16 @@
+### What it does
+This lint checks for invalid usages of `ptr::null`.
+
+### Why is this bad?
+This causes undefined behavior.
+
+### Example
+```
+// Undefined behavior
+unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
+```
+
+Use instead:
+```
+unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
+```

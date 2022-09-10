@@ -1,0 +1,10 @@
+### What it does
+Checks for usage of `panic!`.
+
+### Why is this bad?
+`panic!` will stop the execution of the executable
+
+### Example
+```
+panic!("even with a good reason");
+```

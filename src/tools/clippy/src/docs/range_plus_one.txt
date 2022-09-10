@@ -1,0 +1,36 @@
+### What it does
+Checks for exclusive ranges where 1 is added to the
+upper bound, e.g., `x..(y+1)`.
+
+### Why is this bad?
+The code is more readable with an inclusive range
+like `x..=y`.
+
+### Known problems
+Will add unnecessary pair of parentheses when the
+expression is not wrapped in a pair but starts with an opening parenthesis
+and ends with a closing one.
+I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
+
+Also in many cases, inclusive ranges are still slower to run than
+exclusive ranges, because they essentially add an extra branch that
+LLVM may fail to hoist out of the loop.
+
+This will cause a warning that cannot be fixed if the consumer of the
+range only accepts a specific range type, instead of the generic
+`RangeBounds` trait
+([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
+
+### Example
+```
+for i in x..(y+1) {
+    // ..
+}
+```
+
+Use instead:
+```
+for i in x..=y {
+    // ..
+}
+```

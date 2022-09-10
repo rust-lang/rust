@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                     hir_id: body.value.hir_id,
                 };
                 let typeck_results = cx.tcx.typeck_body(body_id);
-                let expr_ty = typeck_results.expr_ty(&body.value);
+                let expr_ty = typeck_results.expr_ty(body.value);
 
                 if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {
                     let return_expr_span = match &body.value.kind {

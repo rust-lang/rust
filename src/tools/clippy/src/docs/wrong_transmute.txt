@@ -1,0 +1,15 @@
+### What it does
+Checks for transmutes that can't ever be correct on any
+architecture.
+
+### Why is this bad?
+It's basically guaranteed to be undefined behavior.
+
+### Known problems
+When accessing C, users might want to store pointer
+sized objects in `extradata` arguments to save an allocation.
+
+### Example
+```
+let ptr: *const T = core::intrinsics::transmute('x')
+```

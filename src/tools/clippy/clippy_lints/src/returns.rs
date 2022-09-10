@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 } else {
                     RetReplacement::Empty
                 };
-                check_final_expr(cx, &body.value, Some(body.value.span), replacement);
+                check_final_expr(cx, body.value, Some(body.value.span), replacement);
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(block, _) = body.value.kind {

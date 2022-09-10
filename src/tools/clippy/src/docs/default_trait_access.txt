@@ -1,0 +1,16 @@
+### What it does
+Checks for literal calls to `Default::default()`.
+
+### Why is this bad?
+It's easier for the reader if the name of the type is used, rather than the
+generic `Default`.
+
+### Example
+```
+let s: String = Default::default();
+```
+
+Use instead:
+```
+let s = String::default();
+```

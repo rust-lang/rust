@@ -66,6 +66,30 @@ error: use of `unwrap_or` followed by a function call
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
 
+error: use of `or_insert` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:82:19
+   |
+LL |     map.entry(42).or_insert(String::new());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
+
+error: use of `or_insert` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:85:23
+   |
+LL |     map_vec.entry(42).or_insert(vec![]);
+   |                       ^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
+
+error: use of `or_insert` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:88:21
+   |
+LL |     btree.entry(42).or_insert(String::new());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
+
+error: use of `or_insert` followed by a call to `new`
+  --> $DIR/or_fun_call.rs:91:25
+   |
+LL |     btree_vec.entry(42).or_insert(vec![]);
+   |                         ^^^^^^^^^^^^^^^^^ help: try this: `or_default()`
+
 error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:94:21
    |
@@ -132,5 +156,5 @@ error: use of `unwrap_or` followed by a call to `new`
 LL |         .unwrap_or(String::new());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
-error: aborting due to 22 previous errors
+error: aborting due to 26 previous errors
 

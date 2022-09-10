@@ -15,9 +15,9 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, count_recv: &hi
         if let Some(def_id) = cx.tcx.hir().opt_local_def_id(closure.hir_id);
         if let Some(body_id) = cx.tcx.hir().maybe_body_owned_by(def_id);
         let closure_body = cx.tcx.hir().body(body_id);
-        if !cx.typeck_results().expr_ty(&closure_body.value).is_unit();
+        if !cx.typeck_results().expr_ty(closure_body.value).is_unit();
         then {
-            if let Some(map_mutated_vars) = mutated_variables(&closure_body.value, cx) {
+            if let Some(map_mutated_vars) = mutated_variables(closure_body.value, cx) {
                 // A variable is used mutably inside of the closure. Suppress the lint.
                 if !map_mutated_vars.is_empty() {
                     return;
