@@ -1111,51 +1111,52 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
 
 #[test]
 fn test_from_iter_specialization_panic_during_drop_doesnt_leak() {
-    static mut DROP_COUNTER_SHOULD_BE_DROPPED: usize = 0;
-    static mut DROP_COUNTER_DROPPED_TWICE: usize = 0;
+    static mut DROP_COUNTER_OLD: [usize; 5] = [0; 5];
+    static mut DROP_COUNTER_NEW: [usize; 2] = [0; 2];
 
     #[derive(Debug)]
-    enum Droppable {
-        ShouldBeDropped,
-        DroppedTwice(Box<i32>),
-        PanicOnDrop,
+    struct Old(usize);
+
+    impl Drop for Old {
+        fn drop(&mut self) {
+            unsafe {
+                DROP_COUNTER_OLD[self.0] += 1;
+            }
+
+            if self.0 == 3 {
+                panic!();
+            }
+
+            println!("Dropped Old: {}", self.0);
+        }
     }
 
-    impl Drop for Droppable {
+    #[derive(Debug)]
+    struct New(usize);
+
+    impl Drop for New {
         fn drop(&mut self) {
-            match self {
-                Droppable::ShouldBeDropped => {
-                    unsafe {
-                        DROP_COUNTER_SHOULD_BE_DROPPED += 1;
-                    }
-                    println!("Dropping ShouldBeDropped!")
-                }
-                Droppable::DroppedTwice(_) => {
-                    unsafe {
-                        DROP_COUNTER_DROPPED_TWICE += 1;
-                    }
-                    println!("Dropping DroppedTwice!")
-                }
-                Droppable::PanicOnDrop => {
-                    if !std::thread::panicking() {
-                        panic!();
-                    }
-                }
+            unsafe {
+                DROP_COUNTER_NEW[self.0] += 1;
             }
+
+            println!("Dropped New: {}", self.0);
         }
     }
 
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let v = vec![
-            Droppable::ShouldBeDropped,
-            Droppable::DroppedTwice(Box::new(123)),
-            Droppable::PanicOnDrop,
-        ];
-        let _ = v.into_iter().take(1).collect::<Vec<_>>();
+        let v = vec![Old(0), Old(1), Old(2), Old(3), Old(4)];
+        let _ = v.into_iter().map(|x| New(x.0)).take(2).collect::<Vec<_>>();
     }));
 
-    assert_eq!(unsafe { DROP_COUNTER_SHOULD_BE_DROPPED }, 1);
-    assert_eq!(unsafe { DROP_COUNTER_DROPPED_TWICE }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[1] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[2] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[3] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_OLD[4] }, 1);
+
+    assert_eq!(unsafe { DROP_COUNTER_NEW[0] }, 1);
+    assert_eq!(unsafe { DROP_COUNTER_NEW[1] }, 1);
 }
 
 // regression test for issue #85322. Peekable previously implemented InPlaceIterable,
