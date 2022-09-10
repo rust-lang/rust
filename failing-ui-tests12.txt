@@ -12,6 +12,7 @@ src/test/ui/simd/intrinsic/float-minmax-pass.rs
 src/test/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs
 src/test/ui/simd/intrinsic/generic-cast-pass.rs
 src/test/ui/simd/intrinsic/generic-cast-pointer-width.rs
+src/test/ui/simd/intrinsic/generic-comparison-pass.rs
 src/test/ui/simd/intrinsic/generic-elements-pass.rs
 src/test/ui/simd/intrinsic/generic-reduction-pass.rs
 src/test/ui/simd/intrinsic/inlining-issue67557-ice.rs
