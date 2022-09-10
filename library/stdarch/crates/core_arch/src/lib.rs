@@ -32,7 +32,8 @@
     allow_internal_unstable,
     decl_macro,
     bench_black_box,
-    asm_const
+    asm_const,
+    target_feature_11
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall))]
 #![deny(clippy::missing_inline_in_public_items)]
