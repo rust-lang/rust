@@ -51,6 +51,9 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
     }
 
     let (new_fmt, extracted_args) = parse_format_exprs(fmt_string.text()).ok()?;
+    if extracted_args.is_empty() {
+        return None;
+    }
 
     acc.add(
         AssistId("move_format_string_arg", AssistKind::QuickFix),
