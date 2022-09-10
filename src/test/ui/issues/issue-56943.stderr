@@ -5,6 +5,18 @@ LL |     let _: issue_56943::S = issue_56943::S2;
    |            --------------   ^^^^^^^^^^^^^^^ expected struct `S`, found struct `S2`
    |            |
    |            expected due to this
+   |
+   = note: struct `S2` and struct `S` have similar names, but are actually distinct types
+note: struct `S2` is defined in crate `issue_56943`.
+  --> $DIR/auxiliary/issue-56943.rs:2:9
+   |
+LL | mod m { pub struct S; }
+   |         ^^^^^^^^^^^^
+note: struct `S` is defined in crate `issue_56943`.
+  --> $DIR/auxiliary/issue-56943.rs:1:1
+   |
+LL | pub struct S;
+   | ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

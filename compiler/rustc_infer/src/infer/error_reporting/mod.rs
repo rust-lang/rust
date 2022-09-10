@@ -51,6 +51,7 @@ use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePa
 
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
+use crate::infer::ExpectedFound;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -1653,8 +1654,51 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ),
                 Mismatch::Fixed(s) => (s.into(), s.into(), None),
             };
-            match (&terr, expected == found) {
-                (TypeError::Sorts(values), extra) => {
+            let looks_similar = |e: ExpectedFound<Ty<'_>>| {
+                // We're only interested in adts
+                if let (Some(e), Some(f)) = (e.expected.ty_adt_def(), e.found.ty_adt_def()) {
+                    // Only compare the last parts of the path.
+                    // `whatever::Foo` is pretty similar to `blah::Foo`
+                    let e_path = self.tcx.def_path(e.did()).data;
+                    let f_path = self.tcx.def_path(f.did()).data;
+                    if let (Some(e), Some(f)) = (e_path.last(), f_path.last()) {
+                        return e.data == f.data;
+                    }
+                }
+                false
+            };
+
+            match terr {
+                // If two types mismatch but have similar names, mention that specifically.
+                TypeError::Sorts(values) if looks_similar(values) => {
+                    let found_adt = values.found.ty_adt_def().unwrap();
+                    let expected_adt = values.expected.ty_adt_def().unwrap();
+
+                    let found_name = values.found.sort_string(self.tcx);
+                    let expected_name = values.expected.sort_string(self.tcx);
+
+                    diag.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
+
+                    for (adt, name) in [(found_adt, found_name), (expected_adt, expected_name)] {
+                        let defid = adt.did();
+                        let def_span = self.tcx.def_span(defid);
+
+                        let msg = if defid.is_local() {
+                            format!("{name} is defined in the current crate.")
+                        } else if self.tcx.all_diagnostic_items(()).id_to_name.get(&defid).is_some()
+                        {
+                            // if it's a diagnostic item, it's definitely defined in std/core/alloc
+                            // otherwise might be, might not be.
+                            format!("{name} is defined in the standard library.")
+                        } else {
+                            let crate_name = self.tcx.crate_name(defid.krate);
+                            format!("{name} is defined in crate `{crate_name}`.")
+                        };
+                        diag.span_note(def_span, msg);
+                    }
+                }
+                TypeError::Sorts(values) => {
+                    let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
                             let sm = self.tcx.sess.source_map();
@@ -1707,10 +1751,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                (TypeError::ObjectUnsafeCoercion(_), _) => {
+                TypeError::ObjectUnsafeCoercion(_) => {
                     diag.note_unsuccessful_coercion(found, expected);
                 }
-                (_, _) => {
+                _ => {
                     debug!(
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
                         exp_found, expected, found
