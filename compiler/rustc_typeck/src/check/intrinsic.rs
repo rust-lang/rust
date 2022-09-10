@@ -95,8 +95,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::type_id
         | sym::likely
         | sym::unlikely
-        | sym::ptr_guaranteed_eq
-        | sym::ptr_guaranteed_ne
+        | sym::ptr_guaranteed_cmp
         | sym::minnumf32
         | sym::minnumf64
         | sym::maxnumf32
@@ -302,8 +301,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types.bool]))
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.bool)
+            sym::ptr_guaranteed_cmp => {
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.u8)
             }
 
             sym::const_allocate => {

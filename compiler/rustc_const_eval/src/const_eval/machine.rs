@@ -191,34 +191,35 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
-    fn guaranteed_eq(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
+    /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
+    fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         Ok(match (a, b) {
             // Comparisons between integers are always known.
-            (Scalar::Int { .. }, Scalar::Int { .. }) => a == b,
-            // Equality with integers can never be known for sure.
-            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => false,
-            // FIXME: return `true` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them (see e.g. #73722).
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
-        })
-    }
-
-    fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
-        Ok(match (a, b) {
-            // Comparisons between integers are always known.
-            (Scalar::Int(_), Scalar::Int(_)) => a != b,
+            (Scalar::Int { .. }, Scalar::Int { .. }) => {
+                if a == b {
+                    1
+                } else {
+                    0
+                }
+            }
             // Comparisons of abstract pointers with null pointers are known if the pointer
             // is in bounds, because if they are in bounds, the pointer can't be null.
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), ptr @ Scalar::Ptr(..))
-            | (ptr @ Scalar::Ptr(..), Scalar::Int(int)) => {
-                int.is_null() && !self.scalar_may_be_null(ptr)?
+            | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
+                if int.is_null() && !self.scalar_may_be_null(ptr)? =>
+            {
+                0
             }
-            // FIXME: return `true` for at least some comparisons where we can reliably
+            // Equality with integers can never be known for sure.
+            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
+            // FIXME: return a `1` for when both sides are the same pointer, *except* that
+            // some things (like functions and vtables) do not have stable addresses
+            // so we need to be careful around them (see e.g. #73722).
+            // FIXME: return `0` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
             // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
+            (Scalar::Ptr(..), Scalar::Ptr(..)) => 2,
         })
     }
 }
@@ -329,15 +330,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             throw_unsup_format!("intrinsic `{intrinsic_name}` is not supported at compile-time");
         };
         match intrinsic_name {
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = ecx.read_scalar(&args[0])?;
                 let b = ecx.read_scalar(&args[1])?;
-                let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
-                    ecx.guaranteed_eq(a, b)?
-                } else {
-                    ecx.guaranteed_ne(a, b)?
-                };
-                ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
+                let cmp = ecx.guaranteed_cmp(a, b)?;
+                ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
             }
             sym::const_allocate => {
                 let size = ecx.read_scalar(&args[0])?.to_machine_usize(ecx)?;

@@ -35,7 +35,10 @@ impl<T: ?Sized> *mut T {
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *mut u8).guaranteed_eq(null_mut())
+        match (self as *mut u8).guaranteed_eq(null_mut()) {
+            None => false,
+            Some(res) => res,
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -697,20 +700,16 @@ impl<T: ?Sized> *mut T {
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
-    /// At runtime this function behaves like `self == other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be equal.
-    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
+    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_ne`]: #method.guaranteed_ne
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -719,29 +718,25 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_eq(self, other: *mut T) -> bool
+    pub const fn guaranteed_eq(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
+        (self as *const T).guaranteed_eq(other as _)
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `self != other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
-    /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// it is not always possible to determine inequality of two pointers, so this function may
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
+    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_eq`]: #method.guaranteed_eq
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -750,11 +745,11 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const unsafe fn guaranteed_ne(self, other: *mut T) -> bool
+    pub const fn guaranteed_ne(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_ne(self as *const _, other as *const _)
+        (self as *const T).guaranteed_ne(other as _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in

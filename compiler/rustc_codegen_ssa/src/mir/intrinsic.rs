@@ -551,14 +551,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    bx.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    bx.icmp(IntPredicate::IntNE, a, b)
-                }
+                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {

@@ -97,7 +97,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         }
 
         // Raw pointers are not allowed in type level constants, as we cannot properly test them for
-        // equality at compile-time (see `ptr_guaranteed_eq`/`_ne`).
+        // equality at compile-time (see `ptr_guaranteed_cmp`).
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => Err(ValTreeCreationError::NonSupportedType),
