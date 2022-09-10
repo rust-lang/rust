@@ -432,8 +432,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_foreign_kind_bodyless<D>(&self, ident: Ident, create_diag: impl FnOnce(Span, Span, Span) -> D, body: Option<Span>)
-    where
+    fn check_foreign_kind_bodyless<D>(
+        &self,
+        ident: Ident,
+        create_diag: impl FnOnce(Span, Span, Span) -> D,
+        body: Option<Span>,
+    ) where
         D: SessionDiagnostic<'a>,
     {
         let Some(body) = body else {
@@ -1220,13 +1224,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ..
             }) => {
                 self.check_defaultness(fi.span, *defaultness);
-                self.check_foreign_kind_bodyless(fi.ident, |span, body_span, extern_span| ForeignTyWithBody { span, body_span, extern_span }, ty.as_ref().map(|b| b.span));
+                self.check_foreign_kind_bodyless(
+                    fi.ident,
+                    |span, body_span, extern_span| ForeignTyWithBody {
+                        span,
+                        body_span,
+                        extern_span,
+                    },
+                    ty.as_ref().map(|b| b.span),
+                );
                 self.check_type_no_bounds(bounds, |span| ForeignTyWithBound { span });
                 self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
-                self.check_foreign_kind_bodyless(fi.ident, |span, body_span, extern_span| ForeignStaticWithBody { span, body_span, extern_span }, body.as_ref().map(|b| b.span));
+                self.check_foreign_kind_bodyless(
+                    fi.ident,
+                    |span, body_span, extern_span| ForeignStaticWithBody {
+                        span,
+                        body_span,
+                        extern_span,
+                    },
+                    body.as_ref().map(|b| b.span),
+                );
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
