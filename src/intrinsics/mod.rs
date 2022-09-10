@@ -816,17 +816,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         }
 
-        sym::ptr_guaranteed_eq => {
+        sym::ptr_guaranteed_cmp => {
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b);
-            ret.write_cvalue(fx, val);
-        }
-
-        sym::ptr_guaranteed_ne => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-
-            let val = crate::num::codegen_ptr_binop(fx, BinOp::Ne, a, b);
             ret.write_cvalue(fx, val);
         }
 
