@@ -16,6 +16,7 @@ mod tests;
 // Flag to indicate that the memory returned by `HeapAlloc` should be zeroed.
 const HEAP_ZERO_MEMORY: c::DWORD = 0x00000008;
 
+#[link(name = "kernel32")]
 extern "system" {
     // Get a handle to the default heap of the current process, or null if the operation fails.
     //
