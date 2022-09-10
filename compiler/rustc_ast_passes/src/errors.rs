@@ -374,13 +374,14 @@ pub struct AutoTraitWithGenericParam {
 #[diag(ast_passes::auto_trait_with_super_trait_or_where_clause, code = "E0568")]
 pub struct AutoTraitWithSuperTraitOrWhereClause {
     #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
     pub span: Span,
     #[label(ast_passes::ident_label)]
     pub ident_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[diag(ast_passes::auto_trait_with_assoc_item)]
+#[diag(ast_passes::auto_trait_with_assoc_item, code = "E0380")]
 pub struct AutoTraitWithAssocItem {
     #[primary_span]
     pub spans: Vec<Span>,
@@ -388,4 +389,22 @@ pub struct AutoTraitWithAssocItem {
     pub replace_span: Span,
     #[label(ast_passes::ident_label)]
     pub ident_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[diag(ast_passes::generic_arg_after_constraint)]
+pub struct GenericArgAfterConstraint {
+    #[primary_span]
+    pub arg_spans: Vec<Span>,
+    #[label(ast_passes::constraints_label)]
+    pub constraint_spans: Vec<Span>,
+    #[label(ast_passes::last_arg_label)]
+    pub last_arg_span: Span,
+    #[label(ast_passes::first_constraint_label)]
+    pub first_constraint_span: Span,
+    #[suggestion_verbose(code = "{correct_order}", applicability = "machine-applicable")]
+    pub replace_span: Span,
+    pub args_len: usize,
+    pub constraints_len: usize,
+    pub correct_order: String,
 }

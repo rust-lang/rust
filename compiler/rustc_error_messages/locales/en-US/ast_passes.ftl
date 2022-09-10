@@ -175,3 +175,23 @@ ast_passes_auto_trait_with_assoc_item =
     auto traits cannot have associated items
     .suggestion = remove these associated items
     .ident_label = auto trait cannot have associated items
+
+ast_passes_generic_arg_after_constraint =
+    generic arguments must come before the first constraint
+    .first_constraint_label = { $constraints_len ->
+        [one] constraint
+       *[other] constraints
+    }
+    .last_arg_label = { $args_len ->
+        [one] generic argument
+       *[other] generic arguments
+    }
+    .constraints_label = {""}
+    .args_label = {""}
+    .suggestion = move the { $constraints_len ->
+        [one] constraint
+       *[other] constraints
+    } after the { $args_len ->
+        [one] generic argument
+       *[other] generic arguments
+    }

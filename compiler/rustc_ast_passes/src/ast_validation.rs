@@ -13,7 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability};
+use rustc_errors::{error_code, fluent, struct_span_err, Applicability};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -602,32 +602,21 @@ impl<'a> AstValidator<'a> {
                 AngleBracketedArg::Constraint(c) => Either::Left(c.span),
                 AngleBracketedArg::Arg(a) => Either::Right(a.span()),
             });
+        let last_arg_span = *arg_spans.last().unwrap();
+        let first_constraint_span = constraint_spans[0];
         let args_len = arg_spans.len();
-        let constraint_len = constraint_spans.len();
+        let constraints_len = constraint_spans.len();
         // ...and then error:
-        self.err_handler()
-            .struct_span_err(
-                arg_spans.clone(),
-                "generic arguments must come before the first constraint",
-            )
-            .span_label(constraint_spans[0], &format!("constraint{}", pluralize!(constraint_len)))
-            .span_label(
-                *arg_spans.iter().last().unwrap(),
-                &format!("generic argument{}", pluralize!(args_len)),
-            )
-            .span_labels(constraint_spans, "")
-            .span_labels(arg_spans, "")
-            .span_suggestion_verbose(
-                data.span,
-                &format!(
-                    "move the constraint{} after the generic argument{}",
-                    pluralize!(constraint_len),
-                    pluralize!(args_len)
-                ),
-                self.correct_generic_order_suggestion(&data),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        self.session.emit_err(GenericArgAfterConstraint {
+            arg_spans: arg_spans.clone(),
+            constraint_spans,
+            last_arg_span,
+            first_constraint_span,
+            replace_span: data.span,
+            args_len,
+            constraints_len,
+            correct_order: self.correct_generic_order_suggestion(&data),
+        });
     }
 
     fn visit_ty_common(&mut self, ty: &'a Ty) {
