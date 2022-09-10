@@ -942,7 +942,7 @@ fn has_url(s: &str) -> bool {
         || REFERENCE_LINK_URL.is_match(s)
 }
 
-/// Returns true if the given string may be part of a Markdown talble.
+/// Returns true if the given string may be part of a Markdown table.
 fn is_table_item(mut s: &str) -> bool {
     // This function may return false positive, but should get its job done in most cases (i.e.
     // markdown tables with two column delimiters).
