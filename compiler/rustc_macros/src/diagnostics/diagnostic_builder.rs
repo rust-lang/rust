@@ -478,26 +478,12 @@ impl DiagnosticDeriveBuilder {
                             let formatted_str = self.build_format(&s.value(), s.span());
                             code.set_once((formatted_str, span));
                         }
-                        "applicability" => {
-                            applicability = match applicability {
-                                Some(v) => {
-                                    span_err(
-                                        span,
-                                        "applicability cannot be set in both the field and \
-                                         attribute",
-                                    )
-                                    .emit();
-                                    Some(v)
-                                }
-                                None => match Applicability::from_str(&s.value()) {
-                                    Ok(v) => Some(quote! { #v }),
-                                    Err(()) => {
-                                        span_err(span, "invalid applicability").emit();
-                                        None
-                                    }
-                                },
+                        "applicability" => match Applicability::from_str(&s.value()) {
+                            Ok(v) => applicability.set_once((quote! { #v }, span)),
+                            Err(()) => {
+                                span_err(span, "invalid applicability").emit();
                             }
-                        }
+                        },
                         _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                             diag.help(
                                 "only `message`, `code` and `applicability` are valid field \
@@ -516,8 +502,9 @@ impl DiagnosticDeriveBuilder {
             }
         }
 
-        let applicability =
-            applicability.unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
+        let applicability = applicability
+            .value()
+            .unwrap_or_else(|| quote!(rustc_errors::Applicability::Unspecified));
 
         let name = path.segments.last().unwrap().ident.to_string();
         let method = format_ident!("span_{}", name);
@@ -559,7 +546,7 @@ impl DiagnosticDeriveBuilder {
     fn span_and_applicability_of_ty(
         &self,
         info: FieldInfo<'_>,
-    ) -> Result<(TokenStream, Option<TokenStream>), DiagnosticDeriveError> {
+    ) -> Result<(TokenStream, Option<(TokenStream, proc_macro::Span)>), DiagnosticDeriveError> {
         match &info.ty {
             // If `ty` is `Span` w/out applicability, then use `Applicability::Unspecified`.
             ty @ Type::Path(..) if type_matches_path(ty, &["rustc_span", "Span"]) => {
@@ -594,14 +581,14 @@ impl DiagnosticDeriveBuilder {
                 let Some((span_idx, _)) = span_idx else {
                     type_err(&tup.span())?;
                 };
-                let Some((applicability_idx, _applicability_span)) = applicability_idx else {
+                let Some((applicability_idx, applicability_span)) = applicability_idx else {
                     type_err(&tup.span())?;
                 };
                 let binding = &info.binding.binding;
                 let span = quote!(#binding.#span_idx);
                 let applicability = quote!(#binding.#applicability_idx);
 
-                Ok((span, Some(applicability)))
+                Ok((span, Some((applicability, applicability_span))))
             }
             // If `ty` isn't a `Span` or `(Span, Applicability)` then emit an error.
             _ => throw_span_err!(info.span.unwrap(), "wrong field type for suggestion", |diag| {

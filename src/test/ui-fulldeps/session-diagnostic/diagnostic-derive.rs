@@ -436,7 +436,7 @@ struct ErrorWithNoteCustomWrongOrder {
 #[diag(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ApplicabilityInBoth {
     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
-    //~^ ERROR applicability cannot be set in both the field and attribute
+    //~^ ERROR specified multiple times
     suggestion: (Span, Applicability),
 }
 

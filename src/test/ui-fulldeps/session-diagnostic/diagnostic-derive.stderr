@@ -293,11 +293,17 @@ error: `#[label = ...]` is not a valid attribute
 LL |     #[label = "bar"]
    |     ^^^^^^^^^^^^^^^^
 
-error: applicability cannot be set in both the field and attribute
+error: specified multiple times
   --> $DIR/diagnostic-derive.rs:438:52
    |
 LL |     #[suggestion(typeck::suggestion, code = "...", applicability = "maybe-incorrect")]
    |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:440:24
+   |
+LL |     suggestion: (Span, Applicability),
+   |                        ^^^^^^^^^^^^^
 
 error: invalid applicability
   --> $DIR/diagnostic-derive.rs:446:52
