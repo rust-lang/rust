@@ -3,7 +3,7 @@ use gccjit::FnAttribute;
 use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
-    ALLOCATOR_METHODS,
+    ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -126,5 +126,10 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
     let value = tcx.sess.opts.unstable_opts.oom.should_panic();
     let value = context.new_rvalue_from_int(i8, value as i32);
+    global.global_set_initializer_rvalue(value);
+
+    let name = NO_ALLOC_SHIM_IS_UNSTABLE.to_string();
+    let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    let value = context.new_rvalue_from_int(i8, 0);
     global.global_set_initializer_rvalue(value);
 }

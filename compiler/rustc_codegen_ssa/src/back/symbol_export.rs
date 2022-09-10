@@ -2,7 +2,7 @@ use crate::base::allocator_kind_for_codegen;
 
 use std::collections::hash_map::Entry::*;
 
-use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
+use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -241,6 +241,17 @@ fn exported_symbols_provider_local(
                 used: false,
             },
         ));
+
+        let exported_symbol =
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        ))
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
