@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::same_type_and_consts;
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::{is_from_proc_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -87,7 +87,7 @@ impl_lint_pass!(UseSelf => [USE_SELF]);
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
-    fn check_item(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
         if matches!(item.kind, ItemKind::OpaqueTy(_)) {
             // skip over `ItemKind::OpaqueTy` in order to lint `foo() -> impl <..>`
             return;
@@ -103,6 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if parameters.as_ref().map_or(true, |params| {
                 !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
+            if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
                     impl_id: item.def_id,
