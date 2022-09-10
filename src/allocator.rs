@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{
     alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
-    ALLOCATOR_METHODS,
+    ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
@@ -93,5 +93,12 @@ fn codegen_inner(
     data_ctx.set_align(1);
     let val = oom_strategy.should_panic();
     data_ctx.define(Box::new([val]));
+    module.define_data(data_id, &data_ctx).unwrap();
+
+    let data_id =
+        module.declare_data(NO_ALLOC_SHIM_IS_UNSTABLE, Linkage::Export, false, false).unwrap();
+    let mut data_ctx = DataContext::new();
+    data_ctx.set_align(1);
+    data_ctx.define(Box::new([0]));
     module.define_data(data_id, &data_ctx).unwrap();
 }
