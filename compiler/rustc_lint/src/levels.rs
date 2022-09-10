@@ -621,7 +621,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                 .name,
                             span: sp,
                             reason,
-                            tool: tool_name,
                         };
                         for &id in *ids {
                             if self.check_gated_lint(id, attr.span) {
@@ -639,7 +638,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     name: Symbol::intern(complete_name),
                                     span: sp,
                                     reason,
-                                    tool: tool_name,
                                 };
                                 for &id in ids {
                                     if self.check_gated_lint(id, attr.span) {
@@ -681,7 +679,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     name: Symbol::intern(&new_lint_name),
                                     span: sp,
                                     reason,
-                                    tool: tool_name,
                                 };
                                 for id in ids {
                                     self.insert_spec(*id, (level, src));
@@ -779,7 +776,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             name: Symbol::intern(&new_name),
                             span: sp,
                             reason,
-                            tool: tool_name,
                         };
                         for &id in ids {
                             if self.check_gated_lint(id, attr.span) {
