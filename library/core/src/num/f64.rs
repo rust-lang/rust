@@ -393,7 +393,7 @@ impl f64 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-754 doesn't define just a single NaN value;
+    /// Note that IEEE 754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -624,7 +624,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-754 doesn't assign any
+    /// positive sign bit and positive infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
@@ -655,7 +655,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-754 doesn't assign any
+    /// negative sign bit and negative infinity. Note that IEEE 754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
@@ -844,7 +844,7 @@ impl f64 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
     /// This also matches the behavior of libm’s fmax.
     ///
@@ -864,7 +864,7 @@ impl f64 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
     /// This also matches the behavior of libm’s fmin.
     ///
@@ -1044,9 +1044,9 @@ impl f64 {
     /// It turns out this is incredibly portable, for two reasons:
     ///
     /// * Floats and Ints have the same endianness on all supported platforms.
-    /// * IEEE-754 very precisely specifies the bit layout of floats.
+    /// * IEEE 754 very precisely specifies the bit layout of floats.
     ///
-    /// However there is one caveat: prior to the 2008 version of IEEE-754, how
+    /// However there is one caveat: prior to the 2008 version of IEEE 754, how
     /// to interpret the NaN signaling bit wasn't actually specified. Most platforms
     /// (notably x86 and ARM) picked the interpretation that was ultimately
     /// standardized in 2008, but some didn't (notably MIPS). As a result, all
