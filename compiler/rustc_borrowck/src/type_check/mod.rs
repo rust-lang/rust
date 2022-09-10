@@ -424,12 +424,31 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             }
 
             if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
+                // N.B.: When instantiating a trait method as a function item, it does not actually matter
+                // whether the trait is `const` or not, or whether `where T: ~const Tr` needs to be satisfied
+                // as `const`. If we were to introduce instantiating trait methods as `const fn`s, we would
+                // check that after this, either via a bound `where F: ~const FnOnce` or when coercing to a
+                // `const fn` pointer.
+                //
+                // FIXME(fee1-dead) FIXME(const_trait_impl): update this doc when trait methods can satisfy
+                // `~const FnOnce` or can be coerced to `const fn` pointer.
+                let const_norm = self.tcx().def_kind(def_id) == hir::def::DefKind::AssocFn
+                    && self.tcx().def_kind(ty::DefIdTree::parent(self.tcx(), def_id))
+                        == hir::def::DefKind::Trait;
+
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
+                let prev = self.cx.param_env;
+                if const_norm {
+                    self.cx.param_env = prev.without_const();
+                }
                 self.cx.normalize_and_prove_instantiated_predicates(
                     def_id,
                     instantiated_predicates,
                     locations,
                 );
+                if const_norm {
+                    self.cx.param_env = prev;
+                }
             }
         }
     }
