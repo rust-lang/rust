@@ -910,6 +910,12 @@ impl ObjectSafetyViolation {
             }
             ObjectSafetyViolation::Method(
                 name,
+                MethodViolationCode::ReferencesImplTraitInTrait,
+                _,
+            ) => format!("method `{}` references an `impl Trait` type in its return type", name)
+                .into(),
+            ObjectSafetyViolation::Method(
+                name,
                 MethodViolationCode::WhereClauseReferencesSelf,
                 _,
             ) => {
@@ -1013,6 +1019,9 @@ pub enum MethodViolationCode {
 
     /// e.g., `fn foo(&self) -> Self`
     ReferencesSelfOutput,
+
+    /// e.g., `fn foo(&self) -> impl Sized`
+    ReferencesImplTraitInTrait,
 
     /// e.g., `fn foo(&self) where Self: Clone`
     WhereClauseReferencesSelf,
