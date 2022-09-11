@@ -226,7 +226,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let param_env = self.param_env;
         self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
 
-        // Finally:
         // - outlives is reflexive, so `'r: 'r` for every region `'r`
         // - `'static: 'r` for every region `'r`
         // - `'r: 'fn_body` for every (other) universally quantified
@@ -263,7 +262,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
             let constraints_unnorm = self.add_implied_bounds(ty);
-            constraints_unnorm.map(|c| constraints.push(c));
+            if let Some(c) = constraints_unnorm {
+                constraints.push(c)
+            }
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .param_env
                 .and(type_op::normalize::Normalize::new(ty))
@@ -279,7 +280,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         error_info: None,
                     }
                 });
-            constraints_normalize.map(|c| constraints.push(c));
+            if let Some(c) = constraints_normalize {
+                constraints.push(c)
+            }
 
             // Note: we need this in examples like
             // ```
@@ -295,7 +298,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // Both &Self::Bar and &() are WF
             if ty != norm_ty {
                 let constraints_norm = self.add_implied_bounds(norm_ty);
-                constraints_norm.map(|c| constraints.push(c));
+                if let Some(c) = constraints_norm {
+                    constraints.push(c)
+                }
             }
 
             normalized_inputs_and_output.push(norm_ty);
