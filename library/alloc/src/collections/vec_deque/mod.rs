@@ -1334,9 +1334,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // it.  We do not write to `self` nor reborrow to a mutable reference.
             // Hence the raw pointer we created above, for `deque`, remains valid.
             let ring = self.buffer_as_slice();
-            let iter = Iter::new(ring, drain_tail, drain_head);
 
-            Drain::new(drain_head, head, iter, deque)
+            Drain::new(drain_head, head, ring, drain_tail, drain_head, deque)
         }
     }
 
