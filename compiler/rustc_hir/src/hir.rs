@@ -576,8 +576,7 @@ impl<'hir> Generics<'hir> {
         if self.has_where_clause_predicates {
             self.predicates
                 .iter()
-                .filter(|p| p.in_where_clause())
-                .last()
+                .rfind(|&p| p.in_where_clause())
                 .map_or(end, |p| p.span())
                 .shrink_to_hi()
                 .to(end)
