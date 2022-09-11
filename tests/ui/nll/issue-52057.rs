@@ -1,6 +1,6 @@
 // Regression test for #52057. There is an implied bound
-// that `I: 'a` where `'a` is the lifetime of `self` in `parse_first`;
-// but to observe that, one must normalize first.
+// that `I: 'x` where `'x` is the lifetime of the reference `&mut Self::Input`
+// in `parse_first`; but to observe that, one must normalize first.
 //
 // run-pass
 

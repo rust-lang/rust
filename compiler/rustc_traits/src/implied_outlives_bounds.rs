@@ -81,6 +81,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // From the full set of obligations, just filter down to the
         // region relationships.
         outlives_bounds.extend(obligations.into_iter().filter_map(|obligation| {
+            debug!(?obligation);
             assert!(!obligation.has_escaping_bound_vars());
             match obligation.predicate.kind().no_bound_vars() {
                 None => None,
