@@ -18,6 +18,8 @@ use syn::{
 };
 use synstructure::{BindingInfo, Structure};
 
+use super::utils::SpannedOption;
+
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
@@ -40,10 +42,10 @@ pub(crate) struct DiagnosticDeriveBuilder {
     pub kind: DiagnosticDeriveKind,
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
-    pub slug: Option<(Path, proc_macro::Span)>,
+    pub slug: SpannedOption<Path>,
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
-    pub code: Option<(String, proc_macro::Span)>,
+    pub code: SpannedOption<String>,
 }
 
 impl HasFieldMap for DiagnosticDeriveBuilder {
@@ -191,7 +193,7 @@ impl DiagnosticDeriveBuilder {
             match nested_attr {
                 NestedMeta::Meta(Meta::Path(path)) => {
                     if is_diag {
-                        self.slug.set_once((path.clone(), span));
+                        self.slug.set_once(path.clone(), span);
                     } else {
                         let fn_name = proc_macro2::Ident::new(name, attr.span());
                         return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
@@ -224,8 +226,8 @@ impl DiagnosticDeriveBuilder {
                 let span = s.span().unwrap();
                 match nested_name.as_str() {
                     "code" => {
-                        self.code.set_once((s.value(), span));
-                        let code = &self.code.as_ref().map(|(v, _)| v);
+                        self.code.set_once(s.value(), span);
+                        let code = &self.code.value_ref();
                         tokens.push(quote! {
                             #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                         });
@@ -476,10 +478,10 @@ impl DiagnosticDeriveBuilder {
                     match nested_name {
                         "code" => {
                             let formatted_str = self.build_format(&s.value(), s.span());
-                            code.set_once((formatted_str, span));
+                            code.set_once(formatted_str, span);
                         }
                         "applicability" => match Applicability::from_str(&s.value()) {
-                            Ok(v) => applicability.set_once((quote! { #v }, span)),
+                            Ok(v) => applicability.set_once(quote! { #v }, span),
                             Err(()) => {
                                 span_err(span, "invalid applicability").emit();
                             }
@@ -546,7 +548,7 @@ impl DiagnosticDeriveBuilder {
     fn span_and_applicability_of_ty(
         &self,
         info: FieldInfo<'_>,
-    ) -> Result<(TokenStream, Option<(TokenStream, proc_macro::Span)>), DiagnosticDeriveError> {
+    ) -> Result<(TokenStream, SpannedOption<TokenStream>), DiagnosticDeriveError> {
         match &info.ty {
             // If `ty` is `Span` w/out applicability, then use `Applicability::Unspecified`.
             ty @ Type::Path(..) if type_matches_path(ty, &["rustc_span", "Span"]) => {
@@ -570,9 +572,9 @@ impl DiagnosticDeriveBuilder {
 
                 for (idx, elem) in tup.elems.iter().enumerate() {
                     if type_matches_path(elem, &["rustc_span", "Span"]) {
-                        span_idx.set_once((syn::Index::from(idx), elem.span().unwrap()));
+                        span_idx.set_once(syn::Index::from(idx), elem.span().unwrap());
                     } else if type_matches_path(elem, &["rustc_errors", "Applicability"]) {
-                        applicability_idx.set_once((syn::Index::from(idx), elem.span().unwrap()));
+                        applicability_idx.set_once(syn::Index::from(idx), elem.span().unwrap());
                     } else {
                         type_err(&elem.span())?;
                     }

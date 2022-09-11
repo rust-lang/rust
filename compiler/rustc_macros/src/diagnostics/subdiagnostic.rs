@@ -15,6 +15,8 @@ use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+use super::utils::SpannedOption;
+
 /// Which kind of suggestion is being created?
 #[derive(Clone, Copy)]
 enum SubdiagnosticSuggestionKind {
@@ -195,10 +197,10 @@ struct SubdiagnosticDeriveBuilder<'a> {
     fields: HashMap<String, TokenStream>,
 
     /// Identifier for the binding to the `#[primary_span]` field.
-    span_field: Option<(proc_macro2::Ident, proc_macro::Span)>,
+    span_field: SpannedOption<proc_macro2::Ident>,
     /// If a suggestion, the identifier for the binding to the `#[applicability]` field or a
     /// `rustc_errors::Applicability::*` variant directly.
-    applicability: Option<(TokenStream, proc_macro::Span)>,
+    applicability: SpannedOption<TokenStream>,
 
     /// Set to true when a `#[suggestion_part]` field is encountered, used to generate an error
     /// during finalization if still `false`.
@@ -283,7 +285,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
             if let Some(nested_attr) = nested_iter.next() {
                 match nested_attr {
                     NestedMeta::Meta(Meta::Path(path)) => {
-                        slug.set_once((path.clone(), span));
+                        slug.set_once(path.clone(), span);
                     }
                     NestedMeta::Meta(meta @ Meta::NameValue(_))
                         if matches!(
@@ -326,7 +328,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     "code" => {
                         if matches!(kind, SubdiagnosticKind::Suggestion { .. }) {
                             let formatted_str = self.build_format(&value.value(), value.span());
-                            code.set_once((formatted_str, span));
+                            code.set_once(formatted_str, span);
                         } else {
                             span_err(
                                 span,
@@ -349,7 +351,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                                     span_err(span, "invalid applicability").emit();
                                     Applicability::Unspecified
                                 });
-                            self.applicability.set_once((quote! { #value }, span));
+                            self.applicability.set_once(quote! { #value }, span);
                         } else {
                             span_err(
                                 span,
@@ -485,7 +487,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                 report_error_if_not_applied_to_span(attr, &info)?;
 
                 let binding = info.binding.binding.clone();
-                self.span_field.set_once((binding, span));
+                self.span_field.set_once(binding, span);
 
                 Ok(quote! {})
             }
@@ -509,7 +511,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     report_error_if_not_applied_to_applicability(attr, &info)?;
 
                     let binding = info.binding.binding.clone();
-                    self.applicability.set_once((quote! { #binding }, span));
+                    self.applicability.set_once(quote! { #binding }, span);
                 } else {
                     span_err(span, "`#[applicability]` is only valid on suggestions").emit();
                 }
@@ -577,7 +579,7 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
                     match nested_name {
                         "code" => {
                             let formatted_str = self.build_format(&value.value(), value.span());
-                            code.set_once((formatted_str, span));
+                            code.set_once(formatted_str, span);
                         }
                         _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
@@ -635,11 +637,12 @@ impl<'a> SubdiagnosticDeriveBuilder<'a> {
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 
-        let span_field = self.span_field.as_ref().map(|(span, _)| span);
-        let applicability = self.applicability.take().map_or_else(
-            || quote! { rustc_errors::Applicability::Unspecified },
-            |(applicability, _)| applicability,
-        );
+        let span_field = self.span_field.value_ref();
+        let applicability = self
+            .applicability
+            .take()
+            .value()
+            .unwrap_or_else(|| quote! { rustc_errors::Applicability::Unspecified });
 
         let diag = &self.diag;
         let mut calls = TokenStream::new();

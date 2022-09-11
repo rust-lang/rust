@@ -172,13 +172,17 @@ pub(crate) struct FieldInfo<'a> {
 /// Small helper trait for abstracting over `Option` fields that contain a value and a `Span`
 /// for error reporting if they are set more than once.
 pub(crate) trait SetOnce<T> {
-    fn set_once(&mut self, _: (T, Span));
+    fn set_once(&mut self, value: T, span: Span);
 
     fn value(self) -> Option<T>;
+    fn value_ref(&self) -> Option<&T>;
 }
 
-impl<T> SetOnce<T> for Option<(T, Span)> {
-    fn set_once(&mut self, (value, span): (T, Span)) {
+/// An [`Option<T>`] that keeps track of the span that caused it to be set; used with [`SetOnce`].
+pub(super) type SpannedOption<T> = Option<(T, Span)>;
+
+impl<T> SetOnce<T> for SpannedOption<T> {
+    fn set_once(&mut self, value: T, span: Span) {
         match self {
             None => {
                 *self = Some((value, span));
@@ -193,6 +197,10 @@ impl<T> SetOnce<T> for Option<(T, Span)> {
 
     fn value(self) -> Option<T> {
         self.map(|(v, _)| v)
+    }
+
+    fn value_ref(&self) -> Option<&T> {
+        self.as_ref().map(|(v, _)| v)
     }
 }
 
