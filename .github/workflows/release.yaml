@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           apt-get update && apt-get install -y build-essential curl
-          curl --proto '=https' --tlsv1.2 "https://sh.rustup.rs" | sh -s -- --default-toolchain none -y
+          curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --profile minimal --default-toolchain none -y
           echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
 
       - name: Install Rust toolchain
