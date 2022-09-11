@@ -25,9 +25,8 @@ LL |     eq::<dyn, Foo>
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 help: use `dyn`
    |
-LL -     eq::<dyn, Foo>
-LL +     eq::<dyn, dyn Foo>
-   |
+LL |     eq::<dyn, dyn Foo>
+   |               +++
 
 error[E0107]: missing generics for trait `Foo`
   --> $DIR/issue-86756.rs:5:15

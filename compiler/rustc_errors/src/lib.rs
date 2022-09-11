@@ -150,21 +150,20 @@ pub struct SubstitutionHighlight {
 
 impl SubstitutionPart {
     pub fn is_addition(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty()
-            && sm
-                .span_to_snippet(self.span)
-                .map_or(self.span.is_empty(), |snippet| snippet.trim().is_empty())
+        !self.snippet.is_empty() && !self.replaces_meaningful_content(sm)
     }
 
-    pub fn is_deletion(&self) -> bool {
-        self.snippet.trim().is_empty()
+    pub fn is_deletion(&self, sm: &SourceMap) -> bool {
+        self.snippet.trim().is_empty() && self.replaces_meaningful_content(sm)
     }
 
     pub fn is_replacement(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty()
-            && sm
-                .span_to_snippet(self.span)
-                .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+        !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
+    }
+
+    fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
+        sm.span_to_snippet(self.span)
+            .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
     }
 }
 

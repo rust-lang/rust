@@ -6,9 +6,8 @@ LL | impl LocalTraitTwo for LocalTraitOne {}
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl LocalTraitTwo for LocalTraitOne {}
-LL + impl LocalTraitTwo for dyn LocalTraitOne {}
-   |
+LL | impl LocalTraitTwo for dyn LocalTraitOne {}
+   |                        +++
 help: alternatively use a blanket implementation to implement `LocalTraitTwo` for all types that also implement `LocalTraitOne`
    |
 LL | impl<T: LocalTraitOne> LocalTraitTwo for T {}
@@ -22,9 +21,8 @@ LL | impl fmt::Display for LocalTraitOne {
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl fmt::Display for LocalTraitOne {
-LL + impl fmt::Display for dyn LocalTraitOne {
-   |
+LL | impl fmt::Display for dyn LocalTraitOne {
+   |                       +++
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
@@ -34,9 +32,8 @@ LL | impl fmt::Display for LocalTraitTwo + Send {
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl fmt::Display for LocalTraitTwo + Send {
-LL + impl fmt::Display for dyn LocalTraitTwo + Send {
-   |
+LL | impl fmt::Display for dyn LocalTraitTwo + Send {
+   |                       +++
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/suggest-blanket-impl-local-trait.rs:34:24
@@ -46,9 +43,8 @@ LL | impl LocalTraitOne for fmt::Display {}
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl LocalTraitOne for fmt::Display {}
-LL + impl LocalTraitOne for dyn fmt::Display {}
-   |
+LL | impl LocalTraitOne for dyn fmt::Display {}
+   |                        +++
 help: alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `fmt::Display`
    |
 LL | impl<T: fmt::Display> LocalTraitOne for T {}
@@ -62,9 +58,8 @@ LL | impl LocalTraitOne for fmt::Display + Send {}
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl LocalTraitOne for fmt::Display + Send {}
-LL + impl LocalTraitOne for dyn fmt::Display + Send {}
-   |
+LL | impl LocalTraitOne for dyn fmt::Display + Send {}
+   |                        +++
 help: alternatively use a blanket implementation to implement `LocalTraitOne` for all types that also implement `fmt::Display + Send`
    |
 LL | impl<T: fmt::Display + Send> LocalTraitOne for T {}
@@ -78,9 +73,8 @@ LL | impl<E> GenericTrait<E> for LocalTraitOne {}
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl<E> GenericTrait<E> for LocalTraitOne {}
-LL + impl<E> GenericTrait<E> for dyn LocalTraitOne {}
-   |
+LL | impl<E> GenericTrait<E> for dyn LocalTraitOne {}
+   |                             +++
 help: alternatively use a blanket implementation to implement `GenericTrait<E>` for all types that also implement `LocalTraitOne`
    |
 LL | impl<E, T: LocalTraitOne> GenericTrait<E> for T {}
@@ -94,9 +88,8 @@ LL | impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
    |
 help: add `dyn` keyword before this trait
    |
-LL - impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
-LL + impl<T, E> GenericTraitTwo<E> for dyn GenericTrait<T> {}
-   |
+LL | impl<T, E> GenericTraitTwo<E> for dyn GenericTrait<T> {}
+   |                                   +++
 help: alternatively use a blanket implementation to implement `GenericTraitTwo<E>` for all types that also implement `GenericTrait<T>`
    |
 LL | impl<T, E, U: GenericTrait<T>> GenericTraitTwo<E> for U {}

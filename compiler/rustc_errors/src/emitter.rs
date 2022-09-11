@@ -1704,7 +1704,7 @@ impl EmitterWriter {
         {
             notice_capitalization |= only_capitalization;
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion());
+            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if let Some(span) = span.primary_span() {
