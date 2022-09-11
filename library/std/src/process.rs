@@ -466,15 +466,16 @@ impl fmt::Debug for ChildStderr {
 ///             .args(["/C", "echo hello"])
 ///             .output()
 ///             .expect("failed to execute process")
+///     assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\r\n");
 /// } else {
 ///     Command::new("sh")
 ///             .arg("-c")
 ///             .arg("echo hello")
 ///             .output()
 ///             .expect("failed to execute process")
+///     assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\n");
 /// };
 ///
-/// assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\n");
 /// ```
 ///
 /// `Command` can be reused to spawn multiple processes. The builder methods
