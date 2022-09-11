@@ -3,15 +3,15 @@
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/derefer_complex_case.rs:+0:11: +0:11
-      let mut _1: std::slice::Iter<i32>;   // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+      let mut _1: std::slice::Iter<'_, i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       let mut _2: &[i32; 2];               // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       let _3: [i32; 2];                    // in scope 0 at $DIR/derefer_complex_case.rs:+1:18: +1:26
-      let mut _4: std::slice::Iter<i32>;   // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+      let mut _4: std::slice::Iter<'_, i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       let mut _5: ();                      // in scope 0 at $DIR/derefer_complex_case.rs:+0:1: +2:2
       let _6: ();                          // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       let mut _7: std::option::Option<&i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-      let mut _8: &mut std::slice::Iter<i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-      let mut _9: &mut std::slice::Iter<i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+      let mut _8: &mut std::slice::Iter<'_, i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+      let mut _9: &mut std::slice::Iter<'_, i32>; // in scope 0 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       let mut _10: isize;                  // in scope 0 at $DIR/derefer_complex_case.rs:+1:5: +1:40
       let mut _11: !;                      // in scope 0 at $DIR/derefer_complex_case.rs:+1:5: +1:40
       let mut _13: i32;                    // in scope 0 at $DIR/derefer_complex_case.rs:+1:34: +1:37
@@ -53,10 +53,10 @@
           StorageLive(_9);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           _9 = &mut _4;                    // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           _8 = &mut (*_9);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-          _7 = <std::slice::Iter<i32> as Iterator>::next(move _8) -> bb3; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+          _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> bb3; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:6:17: 6:26
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::slice::Iter<i32>) -> Option<<std::slice::Iter<i32> as Iterator>::Item> {<std::slice::Iter<i32> as Iterator>::next}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: for<'r> fn(&'r mut std::slice::Iter<'_, i32>) -> Option<<std::slice::Iter<'_, i32> as Iterator>::Item> {<std::slice::Iter<'_, i32> as Iterator>::next}, val: Value(<ZST>) }
       }
   
       bb3: {
