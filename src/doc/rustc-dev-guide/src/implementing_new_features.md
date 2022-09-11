@@ -123,9 +123,9 @@ a new unstable feature:
 2. Pick a name for the feature gate (for RFCs, use the name
    in the RFC).
 
-3. Add a feature gate declaration to `rustc_feature/src/active.rs`
-   in the active `declare_features` block. See [here][add-feature-gate] for
-   detailed instructions.
+3. Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
+   `declare_features` block, and add the feature gate keyword to
+   `rustc_span/src/symbol.rs`. See [here][add-feature-gate] for detailed instructions.
 
 4. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
