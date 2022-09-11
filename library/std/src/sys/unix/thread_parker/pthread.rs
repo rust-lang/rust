@@ -1,15 +1,5 @@
 //! Thread parking without `futex` using the `pthread` synchronization primitives.
 
-#![cfg(not(any(
-    target_os = "linux",
-    target_os = "android",
-    all(target_os = "emscripten", target_feature = "atomics"),
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "dragonfly",
-    target_os = "fuchsia",
-)))]
-
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomPinned;
 use crate::pin::Pin;
@@ -59,8 +49,8 @@ unsafe fn wait_timeout(
         target_os = "espidf"
     ))]
     let (now, dur) = {
-        use super::time::SystemTime;
         use crate::cmp::min;
+        use crate::sys::time::SystemTime;
 
         // OSX implementation of `pthread_cond_timedwait` is buggy
         // with super long durations. When duration is greater than
@@ -85,7 +75,7 @@ unsafe fn wait_timeout(
         target_os = "espidf"
     )))]
     let (now, dur) = {
-        use super::time::Timespec;
+        use crate::sys::time::Timespec;
 
         (Timespec::now(libc::CLOCK_MONOTONIC), dur)
     };
