@@ -571,9 +571,9 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
-            variant
-                .iter()
-                .map(move |field| ty::EarlyBinder(layout.field_tys[*field]).subst(tcx, self.substs))
+            variant.iter().map(move |field| {
+                ty::EarlyBinder(layout.field_tys[*field].ty).subst(tcx, self.substs)
+            })
         })
     }
 

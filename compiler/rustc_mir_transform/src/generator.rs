@@ -916,7 +916,15 @@ fn compute_layout<'tcx>(
     let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
     for (saved_local, local) in saved_locals.iter_enumerated() {
         locals.push(local);
-        tys.push(body.local_decls[local].ty);
+        let decl = &body.local_decls[local];
+        let decl = GeneratorSavedTy {
+            ty: decl.ty,
+            source_info: decl.source_info,
+            is_static_ptr: decl.internal
+                && decl.ty.is_unsafe_ptr()
+                && matches!(decl.local_info.as_deref(), Some(LocalInfo::StaticRef { .. })),
+        };
+        tys.push(decl);
         debug!("generator saved local {:?} => {:?}", saved_local, local);
     }
 
@@ -947,7 +955,7 @@ fn compute_layout<'tcx>(
             // just use the first one here. That's fine; fields do not move
             // around inside generators, so it doesn't matter which variant
             // index we access them by.
-            remap.entry(locals[saved_local]).or_insert((tys[saved_local], variant_index, idx));
+            remap.entry(locals[saved_local]).or_insert((tys[saved_local].ty, variant_index, idx));
         }
         variant_fields.push(fields);
         variant_source_info.push(source_info_at_suspension_points[suspension_point_idx]);
@@ -957,6 +965,7 @@ fn compute_layout<'tcx>(
 
     let layout =
         GeneratorLayout { field_tys: tys, variant_fields, variant_source_info, storage_conflicts };
+    debug!(?layout);
 
     (remap, layout, storage_liveness)
 }
