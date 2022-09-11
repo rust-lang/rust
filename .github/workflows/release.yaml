@@ -63,15 +63,16 @@ jobs:
 
       - name: Install toolchain dependencies
         if: matrix.container == 'ubuntu:18.04'
-        run: apt-get update && apt-get install -y build-essential curl
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y build-essential curl
+          curl --proto '=https' --tlsv1.2 "https://sh.rustup.rs" | sh -s -- --default-toolchain none -y
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          components: rust-src
-          override: true
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
 
       - name: Install Node.js
         uses: actions/setup-node@v1
