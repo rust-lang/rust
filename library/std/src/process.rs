@@ -461,18 +461,18 @@ impl fmt::Debug for ChildStderr {
 /// ```
 /// use std::process::Command;
 ///
-/// let output = if cfg!(target_os = "windows") {
-///     Command::new("cmd")
+/// if cfg!(target_os = "windows") {
+///     let output = Command::new("cmd")
 ///             .args(["/C", "echo hello"])
 ///             .output()
-///             .expect("failed to execute process")
+///             .expect("failed to execute process");
 ///     assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\r\n");
 /// } else {
-///     Command::new("sh")
+///     let output = Command::new("sh")
 ///             .arg("-c")
 ///             .arg("echo hello")
 ///             .output()
-///             .expect("failed to execute process")
+///             .expect("failed to execute process");
 ///     assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\n");
 /// };
 ///
