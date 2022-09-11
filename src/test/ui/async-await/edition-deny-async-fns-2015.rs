@@ -17,7 +17,6 @@ impl Foo {
 trait Bar {
     async fn foo() {} //~ ERROR `async fn` is not permitted in Rust 2015
     //~^ ERROR functions in traits cannot be declared `async`
-    //~| ERROR mismatched types
 }
 
 fn main() {
