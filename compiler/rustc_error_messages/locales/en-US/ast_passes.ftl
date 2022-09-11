@@ -225,3 +225,89 @@ ast_passes_generic_param_wrong_order =
        *[type_or_const] type and const
     } parameters
     .suggestion = reorder the parameters: lifetimes, then consts and types
+
+ast_passes_obsolete_auto_trait_syntax =
+    `impl Trait for .. {"{}"}` is an obsolete syntax
+    .help = use `auto trait Trait {"{}"}` instead
+
+ast_passes_unsafe_negative_impl =
+    negative impls cannot be unsafe
+    .negative_label = negative because of this
+    .unsafe_label = unsafe because of this
+
+ast_passes_unsafe_inherent_impl =
+    inherent impls cannot be unsafe
+    .unsafe_label = unsafe because of this
+    .ty_label = inherent impl for this type
+
+ast_passes_negative_inherent_impl =
+    inherent impls cannot be negative
+    .negative_label = negative because of this
+    .ty_label = inherent impl for this type
+
+ast_passes_default_inherent_impl =
+    inherent impls cannot be `default`
+    .default_label = `default` because of this
+    .ty_label = inherent impl for this type
+    .note = only trait implementations may be annotated with `default`
+
+ast_passes_const_inherent_impl =
+    inherent impls cannot be `const`
+    .const_label = `const` because of this
+    .ty_label = inherent impl for this type
+    .note = only trait implementations may be annotated with `const`
+
+ast_passes_unsafe_extern_block =
+    extern block cannot be declared unsafe
+
+ast_passes_unsafe_module =
+    module cannot be declared unsafe
+
+ast_passes_empty_union =
+    unions cannot have zero fields
+
+ast_passes_ty_alias_with_where_clause =
+    where clauses are not allowed after the type for type aliases
+    .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+
+ast_passes_generic_param_with_default_not_trailing =
+    generic parameters with a default must be trailing
+
+ast_passes_lifetime_nested_quantification =
+    nested quantification of lifetimes
+
+ast_passes_super_trait_with_maybe =
+    `?Trait` is not permitted in supertraits
+    .note = traits are `?{$path_str}` by default
+
+ast_passes_trait_object_with_maybe =
+    `?Trait` is not permitted in trait object types
+
+ast_passes_forbidden_maybe_const =
+    `~const` is not allowed here
+    .trait_object = trait objects cannot have `~const` trait bounds
+    .closure = closures cannot have `~const` trait bounds
+    .fn_not_const = this function is not `const`, so it cannot have `~const` trait bounds
+
+ast_passes_maybe_const_with_maybe_trait =
+    `~const` and `?` are mutually exclusive
+
+ast_passes_const_async_fn =
+    functions cannot be both `const` and `async`
+    .const_label = `const` because of this
+    .async_label = `async` because of this
+    .fn_label = {""}
+
+ast_passes_patterns_in_foreign_fns =
+    patterns aren't allowed in foreign function declarations
+    .label = pattern not allowed in foreign function
+
+ast_passes_patterns_in_fns_without_body =
+    patterns aren't allowed in functions without bodies
+    .label = pattern not allowed in function without body
+
+ast_passes_equality_constraint =
+    equality constraints are not yet supported in `where` clauses
+    .label = not supported
+    .assoc_constraint_suggestion = if `{$assoc_ty}` is an associated type you're trying to set, use the associated type binding syntax
+    .note = see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information

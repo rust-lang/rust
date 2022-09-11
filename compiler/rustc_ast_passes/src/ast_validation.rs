@@ -13,7 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, fluent, struct_span_err, Applicability};
+use rustc_errors::fluent;
 use rustc_macros::Subdiagnostic;
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -242,10 +242,6 @@ impl<'a> AstValidator<'a> {
             }
             _ => visit::walk_ty(self, t),
         }
-    }
-
-    fn err_handler(&self) -> &rustc_errors::Handler {
-        &self.session.diagnostic()
     }
 
     fn check_lifetime(&self, ident: Ident) {
@@ -866,25 +862,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.with_in_trait_impl(true, Some(*constness), |this| {
                     this.invalid_visibility(&item.vis, None);
                     if let TyKind::Err = self_ty.kind {
-                        this.err_handler()
-                            .struct_span_err(
-                                item.span,
-                                "`impl Trait for .. {}` is an obsolete syntax",
-                            )
-                            .help("use `auto trait Trait {}` instead")
-                            .emit();
+                        this.session.emit_err(ObsoleteAutoTraitSyntax { span: item.span });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {
-                        struct_span_err!(
-                            this.session,
-                            sp.to(t.path.span),
-                            E0198,
-                            "negative impls cannot be unsafe"
-                        )
-                        .span_label(sp, "negative because of this")
-                        .span_label(span, "unsafe because of this")
-                        .emit();
+                        this.session.emit_err(UnsafeNegativeImpl {
+                            span: sp.to(t.path.span),
+                            negative_span: sp,
+                            unsafe_span: span,
+                        });
                     }
 
                     this.visit_vis(&item.vis);
@@ -912,35 +898,27 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self_ty,
                 items: _,
             }) => {
-                let error = |annotation_span, annotation| {
-                    let mut err = self.err_handler().struct_span_err(
-                        self_ty.span,
-                        &format!("inherent impls cannot be {}", annotation),
-                    );
-                    err.span_label(annotation_span, &format!("{} because of this", annotation));
-                    err.span_label(self_ty.span, "inherent impl for this type");
-                    err
-                };
-
                 self.invalid_visibility(
                     &item.vis,
                     Some(InvalidVisibilityNote::IndividualImplItems),
                 );
                 if let &Unsafe::Yes(span) = unsafety {
-                    error(span, "unsafe").code(error_code!(E0197)).emit();
+                    self.session
+                        .emit_err(UnsafeInherentImpl { span: self_ty.span, unsafe_span: span });
                 }
                 if let &ImplPolarity::Negative(span) = polarity {
-                    error(span, "negative").emit();
+                    self.session
+                        .emit_err(NegativeInherentImpl { span: self_ty.span, negative_span: span });
                 }
                 if let &Defaultness::Default(def_span) = defaultness {
-                    error(def_span, "`default`")
-                        .note("only trait implementations may be annotated with `default`")
-                        .emit();
+                    self.session.emit_err(DefaultInherentImpl {
+                        span: self_ty.span,
+                        default_span: def_span,
+                    });
                 }
                 if let &Const::Yes(span) = constness {
-                    error(span, "`const`")
-                        .note("only trait implementations may be annotated with `const`")
-                        .emit();
+                    self.session
+                        .emit_err(ConstInherentImpl { span: self_ty.span, const_span: span });
                 }
             }
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
@@ -982,7 +960,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     Some(InvalidVisibilityNote::IndividualForeignItems),
                 );
                 if let &Unsafe::Yes(span) = unsafety {
-                    self.err_handler().span_err(span, "extern block cannot be declared unsafe");
+                    self.session.emit_err(UnsafeExternBlock { span });
                 }
                 if abi.is_none() {
                     self.maybe_lint_missing_abi(item.span, item.id);
@@ -1022,7 +1000,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Mod(unsafety, mod_kind) => {
                 if let &Unsafe::Yes(span) = unsafety {
-                    self.err_handler().span_err(span, "module cannot be declared unsafe");
+                    self.session.emit_err(UnsafeModule { span });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
@@ -1033,7 +1011,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Union(vdata, ..) => {
                 if vdata.fields().is_empty() {
-                    self.err_handler().span_err(item.span, "unions cannot have zero fields");
+                    self.session.emit_err(EmptyUnion { span: item.span });
                 }
             }
             ItemKind::Const(def, .., None) => {
@@ -1059,14 +1037,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, |span| TyAliasWithBound { span });
                 if where_clauses.1.0 {
-                    let mut err = self.err_handler().struct_span_err(
-                        where_clauses.1.1,
-                        "where clauses are not allowed after the type for type aliases",
-                    );
-                    err.note(
-                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
-                    );
-                    err.emit();
+                    self.session.emit_err(TyAliasWithWhereClause { span: where_clauses.1.1 });
                 }
             }
             _ => {}
@@ -1164,11 +1135,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                     if let Some(span) = prev_param_default {
-                        let mut err = self.err_handler().struct_span_err(
-                            span,
-                            "generic parameters with a default must be trailing",
-                        );
-                        err.emit();
+                        self.session.emit_err(GenericParamWithDefaultNotTrailing { span });
                         break;
                     }
                 }
@@ -1199,13 +1166,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             match bound {
                                 GenericBound::Trait(t, _) => {
                                     if !t.bound_generic_params.is_empty() {
-                                        struct_span_err!(
-                                            self.err_handler(),
-                                            t.span,
-                                            E0316,
-                                            "nested quantification of lifetimes"
-                                        )
-                                        .emit();
+                                        self.session.emit_err(LifetimeNestedQuantification {
+                                            span: t.span,
+                                        });
                                     }
                                 }
                                 GenericBound::Outlives(_) => {}
@@ -1230,32 +1193,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let GenericBound::Trait(poly, modify) = bound {
             match (ctxt, modify) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
-                    let mut err = self
-                        .err_handler()
-                        .struct_span_err(poly.span, "`?Trait` is not permitted in supertraits");
-                    let path_str = pprust::path_to_string(&poly.trait_ref.path);
-                    err.note(&format!("traits are `?{}` by default", path_str));
-                    err.emit();
+                    self.session.emit_err(SuperTraitWithMaybe {
+                        span: poly.span,
+                        path_str: pprust::path_to_string(&poly.trait_ref.path),
+                    });
                 }
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
-                    let mut err = self.err_handler().struct_span_err(
-                        poly.span,
-                        "`?Trait` is not permitted in trait object types",
-                    );
-                    err.emit();
+                    self.session.emit_err(TraitObjectWithMaybe { span: poly.span });
                 }
                 (_, TraitBoundModifier::MaybeConst) if let Some(reason) = &self.disallow_tilde_const => {
-                    let mut err = self.err_handler().struct_span_err(bound.span(), "`~const` is not allowed here");
-                    match reason {
-                        DisallowTildeConstContext::TraitObject => err.note("trait objects cannot have `~const` trait bounds"),
-                        DisallowTildeConstContext::Fn(FnKind::Closure(..)) => err.note("closures cannot have `~const` trait bounds"),
-                        DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => err.span_note(ident.span, "this function is not `const`, so it cannot have `~const` trait bounds"),
-                    };
-                    err.emit();
+                    self.session.emit_err(ForbiddenMaybeConst { span: bound.span(), reason });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.err_handler()
-                        .span_err(bound.span(), "`~const` and `?` are mutually exclusive");
+                    self.session.emit_err(MaybeConstWithMaybeTrait { span: bound.span() });
                 }
                 _ => {}
             }
@@ -1294,15 +1244,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ..
         }) = fk.header()
         {
-            self.err_handler()
-                .struct_span_err(
-                    vec![*cspan, *aspan],
-                    "functions cannot be both `const` and `async`",
-                )
-                .span_label(*cspan, "`const` because of this")
-                .span_label(*aspan, "`async` because of this")
-                .span_label(span, "") // Point at the fn header.
-                .emit();
+            self.session.emit_err(ConstAsyncFn {
+                spans: vec![*cspan, *aspan],
+                const_span: *cspan,
+                async_span: *aspan,
+                fn_span: span,
+            });
         }
 
         if let FnKind::Closure(ClosureBinder::For { generic_params, .. }, ..) = fk {
@@ -1324,20 +1271,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // Functions without bodies cannot have patterns.
         if let FnKind::Fn(ctxt, _, sig, _, _, None) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
-                let (code, msg, label) = match ctxt {
-                    FnCtxt::Foreign => (
-                        error_code!(E0130),
-                        "patterns aren't allowed in foreign function declarations",
-                        "pattern not allowed in foreign function",
-                    ),
-                    _ => (
-                        error_code!(E0642),
-                        "patterns aren't allowed in functions without bodies",
-                        "pattern not allowed in function without body",
-                    ),
-                };
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
+                        let msg = match ctxt {
+                            FnCtxt::Foreign => fluent::ast_passes::patterns_in_foreign_fns,
+                            _ => fluent::ast_passes::patterns_in_fns_without_body,
+                        };
                         let diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(span, ident);
                         self.lint_buffer.buffer_lint_with_diagnostic(
                             PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -1348,11 +1287,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         )
                     }
                 } else {
-                    self.err_handler()
-                        .struct_span_err(span, msg)
-                        .span_label(span, label)
-                        .code(code)
-                        .emit();
+                    match ctxt {
+                        FnCtxt::Foreign => self.session.emit_err(PatternsInForeignFns { span }),
+                        _ => self.session.emit_err(PatternsInFnsWithoutBody { span }),
+                    };
                 }
             });
         }
@@ -1474,129 +1412,120 @@ fn deny_equality_constraints(
     predicate: &WhereEqPredicate,
     generics: &Generics,
 ) {
-    let mut err = this.err_handler().struct_span_err(
-        predicate.span,
-        "equality constraints are not yet supported in `where` clauses",
-    );
-    err.span_label(predicate.span, "not supported");
+    let mut err =
+        EqualityConstraint { span: predicate.span, assoc_constraint_suggestion: Vec::new() };
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind {
-        if let TyKind::Path(None, path) = &qself.ty.kind {
-            match &path.segments[..] {
-                [PathSegment { ident, args: None, .. }] => {
-                    for param in &generics.params {
-                        if param.ident == *ident {
-                            let param = ident;
-                            match &full_path.segments[qself.position..] {
-                                [PathSegment { ident, args, .. }] => {
-                                    // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
-                                    let mut assoc_path = full_path.clone();
-                                    // Remove `Bar` from `Foo::Bar`.
-                                    assoc_path.segments.pop();
-                                    let len = assoc_path.segments.len() - 1;
-                                    let gen_args = args.as_deref().cloned();
-                                    // Build `<Bar = RhsTy>`.
-                                    let arg = AngleBracketedArg::Constraint(AssocConstraint {
-                                        id: rustc_ast::node_id::DUMMY_NODE_ID,
-                                        ident: *ident,
-                                        gen_args,
-                                        kind: AssocConstraintKind::Equality {
-                                            term: predicate.rhs_ty.clone().into(),
-                                        },
-                                        span: ident.span,
-                                    });
-                                    // Add `<Bar = RhsTy>` to `Foo`.
-                                    match &mut assoc_path.segments[len].args {
-                                        Some(args) => match args.deref_mut() {
-                                            GenericArgs::Parenthesized(_) => continue,
-                                            GenericArgs::AngleBracketed(args) => {
-                                                args.args.push(arg);
-                                            }
-                                        },
-                                        empty_args => {
-                                            *empty_args = AngleBracketedArgs {
-                                                span: ident.span,
-                                                args: vec![arg],
-                                            }
-                                            .into();
-                                        }
+        if let TyKind::Path(None, qself_ty_path) = &qself.ty.kind {
+            if let [PathSegment { ident: qself_ty_ident, args: None, .. }] =
+                &qself_ty_path.segments[..]
+            {
+                if generics.params.iter().any(|param| param.ident == *qself_ty_ident) {
+                    if let [PathSegment { ident: assoc_ty_ident, args: assoc_ty_args, .. }] =
+                        &full_path.segments[qself.position..]
+                    {
+                        // Build `<Bar = RhsTy>`.
+                        let new_arg = AngleBracketedArg::Constraint(AssocConstraint {
+                            id: rustc_ast::node_id::DUMMY_NODE_ID,
+                            ident: *assoc_ty_ident,
+                            gen_args: assoc_ty_args.as_deref().cloned(),
+                            kind: AssocConstraintKind::Equality {
+                                term: predicate.rhs_ty.clone().into(),
+                            },
+                            span: assoc_ty_ident.span,
+                        });
+
+                        let bound_opt = {
+                            // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+                            let mut new_bound = full_path.clone();
+                            // Remove `Bar` from `Foo::Bar`.
+                            new_bound.segments.pop();
+                            // Add `<Bar = RhsTy>` to `Foo` if applicable and return.
+                            match &mut new_bound.segments.last_mut().unwrap().args {
+                                Some(args) => match args.deref_mut() {
+                                    GenericArgs::Parenthesized(_) => None,
+                                    GenericArgs::AngleBracketed(args) => {
+                                        args.args.push(new_arg);
+                                        Some(new_bound)
                                     }
-                                    err.span_suggestion_verbose(
+                                },
+                                empty_args => {
+                                    *empty_args = AngleBracketedArgs {
+                                        span: assoc_ty_ident.span,
+                                        args: vec![new_arg],
+                                    }
+                                    .into();
+                                    Some(new_bound)
+                                }
+                            }
+                        };
+
+                        if let Some(bound) = bound_opt {
+                            err.assoc_constraint_suggestion.push(
+                                EqualityConstraintToAssocConstraintSuggestion {
+                                    assoc_ty: assoc_ty_ident.name.to_string(),
+                                    suggestion: vec![(
                                         predicate.span,
-                                        &format!(
-                                            "if `{}` is an associated type you're trying to set, \
-                                            use the associated type binding syntax",
-                                            ident
-                                        ),
                                         format!(
                                             "{}: {}",
-                                            param,
-                                            pprust::path_to_string(&assoc_path)
+                                            qself_ty_ident.name,
+                                            pprust::path_to_string(&bound)
                                         ),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                                _ => {}
-                            };
+                                    )],
+                                },
+                            )
                         }
                     }
                 }
-                _ => {}
             }
         }
     }
     // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
-                if param.ident == potential_param.ident {
-                    for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifier::None) = bound
-                        {
-                            if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
-                                let assoc = pprust::path_to_string(&ast::Path::from_ident(
-                                    potential_assoc.ident,
-                                ));
-                                let ty = pprust::ty_to_string(&predicate.rhs_ty);
-                                let (args, span) = match &trait_segment.args {
-                                    Some(args) => match args.deref() {
-                                        ast::GenericArgs::AngleBracketed(args) => {
-                                            let Some(arg) = args.args.last() else {
-                                                continue;
-                                            };
-                                            (
-                                                format!(", {} = {}", assoc, ty),
-                                                arg.span().shrink_to_hi(),
-                                            )
-                                        }
-                                        _ => continue,
-                                    },
-                                    None => (
-                                        format!("<{} = {}>", assoc, ty),
-                                        trait_segment.span().shrink_to_hi(),
-                                    ),
-                                };
-                                err.multipart_suggestion(
-                                    &format!(
-                                        "if `{}::{}` is an associated type you're trying to set, \
-                                        use the associated type binding syntax",
-                                        trait_segment.ident, potential_assoc.ident,
-                                    ),
-                                    vec![(span, args), (predicate.span, String::new())],
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+            if let Some(param) =
+                generics.params.iter().find(|param| param.ident == potential_param.ident)
+            {
+                for bound in &param.bounds {
+                    if let ast::GenericBound::Trait(trait_ref, TraitBoundModifier::None) = bound {
+                        if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
+                            let assoc = potential_assoc.ident;
+                            let rhs = pprust::ty_to_string(&predicate.rhs_ty);
+                            let (add_loc, add_str) = match &trait_segment.args {
+                                Some(args) => match args.deref() {
+                                    ast::GenericArgs::AngleBracketed(args) => {
+                                        let Some(arg) = args.args.last() else {
+                                            continue;
+                                        };
+                                        (
+                                            arg.span().shrink_to_hi(),
+                                            format!(", {} = {}", assoc, rhs),
+                                        )
+                                    }
+                                    _ => continue,
+                                },
+                                None => (
+                                    trait_segment.span().shrink_to_hi(),
+                                    format!("<{} = {}>", assoc, rhs),
+                                ),
+                            };
+                            err.assoc_constraint_suggestion.push(
+                                EqualityConstraintToAssocConstraintSuggestion {
+                                    assoc_ty: format!("{}::{}", trait_segment.ident, assoc),
+                                    suggestion: vec![
+                                        (add_loc, add_str),
+                                        (predicate.span, String::new()),
+                                    ],
+                                },
+                            );
                         }
                     }
                 }
             }
         }
     }
-    err.note(
-        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information",
-    );
-    err.emit();
+    this.session.emit_err(err);
 }
 
 pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
