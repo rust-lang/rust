@@ -7,8 +7,7 @@ LL |     demo3!(foo#bar);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo3!(foo#bar);
-LL +     demo3!(foo #bar);
+LL |     demo3!(foo #bar);
    |
 
 error: prefix `foo` is unknown
@@ -20,8 +19,7 @@ LL |     demo2!(foo"bar");
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo2!(foo"bar");
-LL +     demo2!(foo "bar");
+LL |     demo2!(foo "bar");
    |
 
 error: prefix `foo` is unknown
@@ -33,8 +31,7 @@ LL |     demo2!(foo'b');
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo2!(foo'b');
-LL +     demo2!(foo 'b');
+LL |     demo2!(foo 'b');
    |
 
 error: prefix `foo` is unknown
@@ -46,8 +43,7 @@ LL |     demo2!(foo'b);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo2!(foo'b);
-LL +     demo2!(foo 'b);
+LL |     demo2!(foo 'b);
    |
 
 error: prefix `foo` is unknown
@@ -59,8 +55,7 @@ LL |     demo3!(foo# bar);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo3!(foo# bar);
-LL +     demo3!(foo # bar);
+LL |     demo3!(foo # bar);
    |
 
 error: prefix `foo` is unknown
@@ -72,8 +67,7 @@ LL |     demo4!(foo#! bar);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo4!(foo#! bar);
-LL +     demo4!(foo #! bar);
+LL |     demo4!(foo #! bar);
    |
 
 error: prefix `foo` is unknown
@@ -85,8 +79,7 @@ LL |     demo4!(foo## bar);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo4!(foo## bar);
-LL +     demo4!(foo ## bar);
+LL |     demo4!(foo ## bar);
    |
 
 error: prefix `foo` is unknown
@@ -98,8 +91,7 @@ LL |     demo4!(foo#bar#);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo4!(foo#bar#);
-LL +     demo4!(foo #bar#);
+LL |     demo4!(foo #bar#);
    |
 
 error: prefix `bar` is unknown
@@ -111,8 +103,7 @@ LL |     demo4!(foo#bar#);
    = note: prefixed identifiers and literals are reserved since Rust 2021
 help: consider inserting whitespace here
    |
-LL -     demo4!(foo#bar#);
-LL +     demo4!(foo#bar #);
+LL |     demo4!(foo#bar #);
    |
 
 error: aborting due to 9 previous errors
