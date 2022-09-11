@@ -201,6 +201,7 @@ TrivialTypeTraversalAndLiftImpls! {
     bool,
     usize,
     ::rustc_target::abi::VariantIdx,
+    u16,
     u32,
     u64,
     String,
