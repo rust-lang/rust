@@ -395,7 +395,7 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
     /// Allows generators to be cloned.
-    (active, generator_clone, "1.60.0", Some(95360), None),
+    (active, generator_clone, "CURRENT_RUSTC_VERSION", Some(95360), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
