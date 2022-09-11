@@ -364,3 +364,77 @@ fn const_maybe_uninit() {
 
     assert_eq!(FIELD_BY_FIELD, Foo { x: 1, y: 2 });
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+        z: Bar,
+    }
+
+    #[repr(C)]
+    struct Bar(u8, u8);
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 2);
+    assert_eq!(offset_of!(Foo, z.0), 4);
+    assert_eq!(offset_of!(Foo, z.1), 5);
+
+    // Layout of tuples is unstable
+    assert!(offset_of!((u8, u16), 0) <= size_of::<(u8, u16)>() - 1);
+    assert!(offset_of!((u8, u16), 1) <= size_of::<(u8, u16)>() - 2);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn const_offset_of() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+    }
+
+    const X_OFFSET: usize = offset_of!(Foo, x);
+    const Y_OFFSET: usize = offset_of!(Foo, y);
+
+    assert_eq!(X_OFFSET, 0);
+    assert_eq!(Y_OFFSET, 2);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_without_const_promotion() {
+    #[repr(C)]
+    struct Foo<SuppressConstPromotion> {
+        x: u8,
+        y: u16,
+        _scp: SuppressConstPromotion,
+    }
+
+    // Normally, offset_of is always const promoted.
+    // The generic parameter prevents this from happening.
+    // This is needed to test the codegen impl of offset_of
+    fn inner<SuppressConstPromotion>() {
+        assert_eq!(offset_of!(Foo<SuppressConstPromotion>, x), 0);
+        assert_eq!(offset_of!(Foo<SuppressConstPromotion>, y), 2);
+    }
+
+    inner::<()>();
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn offset_of_dst() {
+    #[repr(C)]
+    struct Foo {
+        x: u8,
+        y: u16,
+        slice: [u8],
+    }
+
+    assert_eq!(offset_of!(Foo, x), 0);
+    assert_eq!(offset_of!(Foo, y), 2);
+}

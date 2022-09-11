@@ -208,6 +208,9 @@ pub struct TypeckResults<'tcx> {
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
+
+    /// Container types and field indices of `offset_of!` expressions
+    offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<FieldIdx>)>,
 }
 
 /// Whenever a value may be live across a generator yield, the type of that value winds up in the
@@ -280,6 +283,7 @@ impl<'tcx> TypeckResults<'tcx> {
             generator_interior_predicates: Default::default(),
             treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
+            offset_of_data: Default::default(),
         }
     }
 
@@ -529,6 +533,14 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn coercion_casts(&self) -> &ItemLocalSet {
         &self.coercion_casts
+    }
+
+    pub fn offset_of_data(&self) -> LocalTableInContext<'_, (Ty<'tcx>, Vec<FieldIdx>)> {
+        LocalTableInContext { hir_owner: self.hir_owner, data: &self.offset_of_data }
+    }
+
+    pub fn offset_of_data_mut(&mut self) -> LocalTableInContextMut<'_, (Ty<'tcx>, Vec<FieldIdx>)> {
+        LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
     }
 }
 

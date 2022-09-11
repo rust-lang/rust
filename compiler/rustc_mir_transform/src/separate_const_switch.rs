@@ -303,8 +303,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::ShallowInitBox(_, _)
                     | Rvalue::UnaryOp(_, Operand::Constant(_))
-                    | Rvalue::Cast(_, Operand::Constant(_), _)
-                    => return None,
+                    | Rvalue::Cast(_, Operand::Constant(_), _) => return None,
                 }
             }
 

@@ -1,0 +1,33 @@
+error: field `b` is never read
+  --> $DIR/liveness-offset-of.rs:8:5
+   |
+LL | struct Alpha {
+   |        ----- field in this struct
+LL |     a: (),
+LL |     b: (),
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-offset-of.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: field `a` is never read
+  --> $DIR/liveness-offset-of.rs:13:5
+   |
+LL | struct Beta {
+   |        ---- field in this struct
+LL |     a: (),
+   |     ^
+
+error: field `a` is never read
+  --> $DIR/liveness-offset-of.rs:18:5
+   |
+LL | struct Gamma {
+   |        ----- field in this struct
+LL |     a: (),
+   |     ^
+
+error: aborting due to 3 previous errors
+

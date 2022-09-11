@@ -345,6 +345,7 @@ pub(crate) fn format_expr(
         // Style Guide RFC for InlineAsm variant pending
         // https://github.com/rust-dev-tools/fmt-rfcs/issues/152
         ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
+        ast::ExprKind::OffsetOf(..) => Some(context.snippet(expr.span).to_owned()),
         ast::ExprKind::TryBlock(ref block) => {
             if let rw @ Some(_) =
                 rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)

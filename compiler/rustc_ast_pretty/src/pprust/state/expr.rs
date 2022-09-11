@@ -549,6 +549,27 @@ impl<'a> State<'a> {
                 self.end();
                 self.pclose();
             }
+            ast::ExprKind::OffsetOf(container, fields) => {
+                // FIXME: This should have its own syntax, distinct from a macro invocation.
+                self.word("offset_of!");
+                self.popen();
+                self.rbox(0, Inconsistent);
+                self.print_type(container);
+                self.word(",");
+                self.space();
+
+                let (&first, rest) =
+                    fields.split_first().expect("offset_of! should have at least 1 field");
+
+                self.print_ident(first);
+
+                for &field in rest {
+                    self.word(".");
+                    self.print_ident(field);
+                }
+
+                self.end();
+            }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
             ast::ExprKind::Paren(e) => {
                 self.popen();

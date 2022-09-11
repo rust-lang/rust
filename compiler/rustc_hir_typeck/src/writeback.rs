@@ -70,6 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
+        wbcx.visit_offset_of_container_types();
 
         wbcx.typeck_results.rvalue_scopes =
             mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
@@ -295,7 +296,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                     self.visit_field_id(field.hir_id);
                 }
             }
-            hir::ExprKind::Field(..) => {
+            hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
             hir::ExprKind::ConstBlock(anon_const) => {
@@ -679,6 +680,28 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let ftys = self.resolve(ftys.clone(), &hir_id);
             self.typeck_results.fru_field_types_mut().insert(hir_id, ftys);
+        }
+    }
+
+    fn visit_offset_of_container_types(&mut self) {
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
+
+        for (local_id, &(container, ref indices)) in
+            fcx_typeck_results.offset_of_data().items_in_stable_order()
+        {
+            let hir_id = hir::HirId { owner: common_hir_owner, local_id };
+
+            if cfg!(debug_assertions) && container.needs_infer() {
+                span_bug!(
+                    hir_id.to_span(self.fcx.tcx),
+                    "writeback: `{:?}` has inference variables",
+                    container
+                );
+            };
+
+            self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
         }
     }
 

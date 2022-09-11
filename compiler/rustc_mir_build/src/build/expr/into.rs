@@ -561,7 +561,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ZstLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
-            | ExprKind::StaticRef { .. } => {
+            | ExprKind::StaticRef { .. }
+            | ExprKind::OffsetOf { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,

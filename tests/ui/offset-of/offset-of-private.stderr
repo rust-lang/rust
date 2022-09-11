@@ -1,0 +1,9 @@
+error[E0616]: field `private` of struct `Foo` is private
+  --> $DIR/offset-of-private.rs:15:24
+   |
+LL |     offset_of!(m::Foo, private);
+   |                        ^^^^^^^ private field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0616`.
