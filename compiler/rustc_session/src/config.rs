@@ -1022,7 +1022,13 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let panic_strategy = sess.panic_strategy();
     ret.insert((sym::panic, Some(panic_strategy.desc_symbol())));
 
-    for s in sess.opts.unstable_opts.sanitizer {
+    for mut s in sess.opts.unstable_opts.sanitizer {
+        // KASAN should use the same attribute name as ASAN, as it's still ASAN
+        // under the hood
+        if s == SanitizerSet::KERNELADDRESS {
+            s = SanitizerSet::ADDRESS;
+        }
+
         let symbol = Symbol::intern(&s.to_string());
         ret.insert((sym::sanitize, Some(symbol)));
     }

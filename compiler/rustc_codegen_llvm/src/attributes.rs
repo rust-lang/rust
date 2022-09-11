@@ -62,7 +62,7 @@ pub fn sanitize_attrs<'ll>(
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
     let enabled = cx.tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
-    if enabled.contains(SanitizerSet::ADDRESS) {
+    if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
     if enabled.contains(SanitizerSet::MEMORY) {
