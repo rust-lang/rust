@@ -5,7 +5,6 @@ edition = "2021"
 
 [lib]
 test = false
-doctest = false
 
 [dependencies]
 bitflags = "1.0"

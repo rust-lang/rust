@@ -5,7 +5,6 @@ edition = "2021"
 build = false
 
 [lib]
-doctest = false
 
 [dependencies]
 rustc_serialize = { path = "../rustc_serialize" }
