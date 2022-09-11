@@ -611,7 +611,19 @@ mod prim_pointer {}
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
-/// Slices have a dynamic size and do not coerce to arrays.
+///
+/// Slices have a dynamic size and do not coerce to arrays. Instead, use
+/// `slice.try_into().unwrap()` or `<ArrayType>::try_from(slice).unwrap()`.
+///
+/// Array's `try_from(slice)` implementations (and the corresponding `slice.try_into()`
+/// array implementations) succeed if the input slice length is the same as the result
+/// array length. They optimize especially well when the optimizer can easily determine
+/// the slice length, e.g. `<[u8; 4]>::try_from(&slice[4..8]).unwrap()`. Array implements
+/// [TryFrom](crate::convert::TryFrom) returning:
+///
+/// - `[T; N]` copies from the slice's elements
+/// - `&[T; N]` references the original slice's elements
+/// - `&mut [T; N]` references the original slice's elements
 ///
 /// You can move elements out of an array with a [slice pattern]. If you want
 /// one element, see [`mem::replace`].
@@ -638,6 +650,15 @@ mod prim_pointer {}
 /// let array: [i32; 3] = [0; 3];
 ///
 /// for x in &array { }
+/// ```
+///
+/// You can use `<ArrayType>::try_from(slice)` or `slice.try_into()` to get an array from
+/// a slice:
+///
+/// ```
+/// let bytes: [u8; 3] = [1, 0, 2];
+/// assert_eq!(1, u16::from_le_bytes(<[u8; 2]>::try_from(&bytes[0..2]).unwrap()));
+/// assert_eq!(512, u16::from_le_bytes(bytes[1..3].try_into().unwrap()));
 /// ```
 ///
 /// You can use a [slice pattern] to move elements out of an array:
