@@ -79,6 +79,7 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
             (LitKind::Byte(b'a') | LitKind::Char('a'), LitKind::Byte(b'z') | LitKind::Char('z'))
             | (LitKind::Byte(b'A') | LitKind::Char('A'), LitKind::Byte(b'Z') | LitKind::Char('Z'))
         )
+        && !span.from_expansion()
     {
         span_lint_and_then(
             cx,
