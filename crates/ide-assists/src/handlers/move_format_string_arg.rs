@@ -56,7 +56,15 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
     }
 
     acc.add(
-        AssistId("move_format_string_arg", AssistKind::QuickFix),
+        AssistId(
+            "move_format_string_arg",
+            // if there aren't any expressions, then make the assist a RefactorExtract
+            if extracted_args.iter().filter(|f| matches!(f, Arg::Expr(_))).count() == 0 {
+                AssistKind::RefactorExtract
+            } else {
+                AssistKind::QuickFix
+            },
+        ),
         "Extract format args",
         tt.syntax().text_range(),
         |edit| {
@@ -107,7 +115,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
                 args.push_str(", ");
 
                 match extracted_args {
-                    Arg::Expr(s) => {
+                    Arg::Ident(s) | Arg::Expr(s) => {
                         // insert arg
                         args.push_str(&s);
                     }

@@ -4,16 +4,19 @@
 /// Enum for represenging extraced format string args.
 /// Can either be extracted expressions (which includes identifiers),
 /// or placeholders `{}`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Arg {
     Placeholder,
+    Ident(String),
     Expr(String),
 }
 
 /**
- Add placeholders like `$1` and `$2` in place of [`Arg::Placeholder`].
+ Add placeholders like `$1` and `$2` in place of [`Arg::Placeholder`],
+ and unwraps the [`Arg::Ident`] and [`Arg::Expr`] enums.
  ```rust
- assert_eq!(vec![Arg::Expr("expr"), Arg::Placeholder, Arg::Expr("expr")], vec!["expr", "$1", "expr"])
+ # use ide_db::syntax_helpers::format_string_exprs::*;
+ assert_eq!(with_placeholders(vec![Arg::Ident("ident".to_owned()), Arg::Placeholder, Arg::Expr("expr + 2".to_owned())]), vec!["ident".to_owned(), "$1".to_owned(), "expr + 2".to_owned()])
  ```
 */
 
@@ -21,7 +24,7 @@ pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
     let mut placeholder_id = 1;
     args.into_iter()
         .map(move |a| match a {
-            Arg::Expr(s) => s,
+            Arg::Expr(s) | Arg::Ident(s) => s,
             Arg::Placeholder => {
                 let s = format!("${placeholder_id}");
                 placeholder_id += 1;
@@ -40,21 +43,22 @@ pub fn with_placeholders(args: Vec<Arg>) -> Vec<String> {
  Splits a format string that may contain expressions
  like
  ```rust
- assert_eq!(parse("{expr} {} {expr} ").unwrap(), ("{} {} {}", vec![Arg::Expr("expr"), Arg::Placeholder, Arg::Expr("expr")]));
+ assert_eq!(parse("{ident} {} {expr + 42} ").unwrap(), ("{} {} {}", vec![Arg::Ident("ident"), Arg::Placeholder, Arg::Expr("expr + 42")]));
  ```
 */
 pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum State {
-        NotExpr,
-        MaybeExpr,
+        NotArg,
+        MaybeArg,
         Expr,
+        Ident,
         MaybeIncorrect,
         FormatOpts,
     }
 
+    let mut state = State::NotArg;
     let mut current_expr = String::new();
-    let mut state = State::NotExpr;
     let mut extracted_expressions = Vec::new();
     let mut output = String::new();
 
@@ -66,15 +70,15 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
     let mut chars = input.chars().peekable();
     while let Some(chr) = chars.next() {
         match (state, chr) {
-            (State::NotExpr, '{') => {
+            (State::NotArg, '{') => {
                 output.push(chr);
-                state = State::MaybeExpr;
+                state = State::MaybeArg;
             }
-            (State::NotExpr, '}') => {
+            (State::NotArg, '}') => {
                 output.push(chr);
                 state = State::MaybeIncorrect;
             }
-            (State::NotExpr, _) => {
+            (State::NotArg, _) => {
                 if matches!(chr, '\\' | '$') {
                     output.push('\\');
                 }
@@ -83,51 +87,72 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
             (State::MaybeIncorrect, '}') => {
                 // It's okay, we met "}}".
                 output.push(chr);
-                state = State::NotExpr;
+                state = State::NotArg;
             }
             (State::MaybeIncorrect, _) => {
                 // Error in the string.
                 return Err(());
             }
-            (State::MaybeExpr, '{') => {
+            // Escaped braces `{{`
+            (State::MaybeArg, '{') => {
                 output.push(chr);
-                state = State::NotExpr;
+                state = State::NotArg;
             }
-            (State::MaybeExpr, '}') => {
-                // This is an empty sequence '{}'. Replace it with placeholder.
+            (State::MaybeArg, '}') => {
+                // This is an empty sequence '{}'.
                 output.push(chr);
                 extracted_expressions.push(Arg::Placeholder);
-                state = State::NotExpr;
+                state = State::NotArg;
             }
-            (State::MaybeExpr, _) => {
+            (State::MaybeArg, _) => {
                 if matches!(chr, '\\' | '$') {
                     current_expr.push('\\');
                 }
                 current_expr.push(chr);
-                state = State::Expr;
+
+                // While Rust uses the unicode sets of XID_start and XID_continue for Identifiers
+                // this is probably the best we can do to avoid a false positive
+                if chr.is_alphabetic() || chr == '_' {
+                    state = State::Ident;
+                } else {
+                    state = State::Expr;
+                }
             }
-            (State::Expr, '}') => {
+            (State::Ident | State::Expr, '}') => {
                 if inexpr_open_count == 0 {
                     output.push(chr);
-                    extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
+
+                    if matches!(state, State::Expr) {
+                        extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
+                    } else {
+                        extracted_expressions.push(Arg::Ident(current_expr.trim().into()));
+                    }
+
                     current_expr = String::new();
-                    state = State::NotExpr;
+                    state = State::NotArg;
                 } else {
                     // We're closing one brace met before inside of the expression.
                     current_expr.push(chr);
                     inexpr_open_count -= 1;
                 }
             }
-            (State::Expr, ':') if matches!(chars.peek(), Some(':')) => {
+            (State::Ident | State::Expr, ':') if matches!(chars.peek(), Some(':')) => {
                 // path separator
+                state = State::Expr;
                 current_expr.push_str("::");
                 chars.next();
             }
-            (State::Expr, ':') => {
+            (State::Ident | State::Expr, ':') => {
                 if inexpr_open_count == 0 {
                     // We're outside of braces, thus assume that it's a specifier, like "{Some(value):?}"
                     output.push(chr);
-                    extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
+
+                    if matches!(state, State::Expr) {
+                        extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
+                    } else {
+                        extracted_expressions.push(Arg::Ident(current_expr.trim().into()));
+                    }
+
                     current_expr = String::new();
                     state = State::FormatOpts;
                 } else {
@@ -135,11 +160,16 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                     current_expr.push(chr);
                 }
             }
-            (State::Expr, '{') => {
+            (State::Ident | State::Expr, '{') => {
+                state = State::Expr;
                 current_expr.push(chr);
                 inexpr_open_count += 1;
             }
-            (State::Expr, _) => {
+            (State::Ident | State::Expr, _) => {
+                if !(chr.is_alphanumeric() || chr == '_' || chr == '#') {
+                    state = State::Expr;
+                }
+
                 if matches!(chr, '\\' | '$') {
                     current_expr.push('\\');
                 }
@@ -147,7 +177,7 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
             }
             (State::FormatOpts, '}') => {
                 output.push(chr);
-                state = State::NotExpr;
+                state = State::NotArg;
             }
             (State::FormatOpts, _) => {
                 if matches!(chr, '\\' | '$') {
@@ -158,7 +188,7 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
         }
     }
 
-    if state != State::NotExpr {
+    if state != State::NotArg {
         return Err(());
     }
 
@@ -217,5 +247,21 @@ mod tests {
         for (input, output) in test_vector {
             check(input, output)
         }
+    }
+
+    #[test]
+    fn arg_type() {
+        assert_eq!(
+            parse_format_exprs("{_ident} {r#raw_ident} {expr.obj} {name {thing: 42} } {}")
+                .unwrap()
+                .1,
+            vec![
+                Arg::Ident("_ident".to_owned()),
+                Arg::Ident("r#raw_ident".to_owned()),
+                Arg::Expr("expr.obj".to_owned()),
+                Arg::Expr("name {thing: 42}".to_owned()),
+                Arg::Placeholder
+            ]
+        );
     }
 }
