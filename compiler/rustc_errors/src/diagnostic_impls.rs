@@ -151,9 +151,7 @@ impl IntoDiagnosticArg for ast::ParamKindOrd {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(match self {
             ast::ParamKindOrd::Lifetime => "lifetime",
-            ast::ParamKindOrd::Type => "type",
-            ast::ParamKindOrd::Const => "const",
-            ast::ParamKindOrd::Infer => "infer",
+            ast::ParamKindOrd::TypeOrConst => "type_or_const",
         }))
     }
 }

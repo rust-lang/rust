@@ -219,11 +219,9 @@ ast_passes_deprecated_extern_missing_abi =
 ast_passes_generic_param_wrong_order =
     { $param_kind ->
         [lifetime] lifetime
-        [type] type
-       *[const] const
+       *[type_or_const] type and const
     } parameters must be declared prior to { $max_param_kind ->
         [lifetime] lifetime
-        [type] type
-       *[const] const
+       *[type_or_const] type and const
     } parameters
     .suggestion = reorder the parameters: lifetimes, then consts and types
