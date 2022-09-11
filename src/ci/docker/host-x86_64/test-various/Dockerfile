@@ -16,7 +16,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   pkg-config \
   xz-utils \
   wget \
-  patch
+  patch \
+  ovmf \
+  qemu-system-x86
 
 RUN curl -sL https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz | \
   tar -xJ
@@ -64,4 +66,9 @@ ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
 ENV MUSL_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $MUSL_TARGETS
 
-ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT
+COPY host-x86_64/test-various/uefi_qemu_test /uefi_qemu_test
+ENV UEFI_TARGETS=x86_64-unknown-uefi
+ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
+  python3 -u /uefi_qemu_test/run.py
+
+ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT
