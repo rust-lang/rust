@@ -463,7 +463,10 @@ impl Build {
             .to_path_buf();
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
             // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-            panic!("run `cargo build --bins` before `cargo run`")
+            panic!(
+                "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
+                bootstrap_out.display()
+            )
         }
 
         let mut build = Build {
