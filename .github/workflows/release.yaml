@@ -79,7 +79,7 @@ jobs:
           node-version: 16.x
 
       - name: Update apt repositories
-        if: "!matrix.container && (matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf')"
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get update
 
       - name: Install AArch64 target toolchain
