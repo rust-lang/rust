@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `[static generator@$DIR/clone-impl-static.rs:7:15: 9:6]: Copy` is not satisfied
+error[E0277]: the trait bound `[static generator@$DIR/clone-impl-static.rs:7:15: 7:29]: Copy` is not satisfied
   --> $DIR/clone-impl-static.rs:10:16
    |
 LL |     check_copy(&gen);
-   |     ---------- ^^^^ the trait `Copy` is not implemented for `[static generator@$DIR/clone-impl-static.rs:7:15: 9:6]`
+   |     ---------- ^^^^ the trait `Copy` is not implemented for `[static generator@$DIR/clone-impl-static.rs:7:15: 7:29]`
    |     |
    |     required by a bound introduced by this call
    |
@@ -12,11 +12,11 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `[static generator@$DIR/clone-impl-static.rs:7:15: 9:6]: Clone` is not satisfied
+error[E0277]: the trait bound `[static generator@$DIR/clone-impl-static.rs:7:15: 7:29]: Clone` is not satisfied
   --> $DIR/clone-impl-static.rs:12:17
    |
 LL |     check_clone(&gen);
-   |     ----------- ^^^^ the trait `Clone` is not implemented for `[static generator@$DIR/clone-impl-static.rs:7:15: 9:6]`
+   |     ----------- ^^^^ the trait `Clone` is not implemented for `[static generator@$DIR/clone-impl-static.rs:7:15: 7:29]`
    |     |
    |     required by a bound introduced by this call
    |
