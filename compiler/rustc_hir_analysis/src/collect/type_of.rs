@@ -340,10 +340,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     ..
                 }) => {
                     if in_trait {
-                        span_bug!(item.span, "impl-trait in trait has no default")
-                    } else {
-                        find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                        assert!(tcx.impl_defaultness(owner).has_value());
                     }
+                    find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
                 }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)
