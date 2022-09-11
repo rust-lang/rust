@@ -345,6 +345,7 @@ cc = [
     "@CraftSpider",
     "@aDotInTheVoid",
     "@Enselic",
+    "@obi1kenobi",
 ]
 
 [mentions."src/tools/cargo"]
