@@ -22,7 +22,7 @@ maintenance = { status = "experimental" }
 
 [dependencies]
 libc = { version = "0.2", optional = true, default-features = false }
-cfg-if = "0.1.10"
+cfg-if = "1.0.0"
 
 # When built as part of libstd
 core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }

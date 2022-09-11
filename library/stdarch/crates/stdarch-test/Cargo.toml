@@ -10,7 +10,7 @@ simd-test-macro = { path = "../simd-test-macro" }
 cc = "1.0"
 lazy_static = "1.0"
 rustc-demangle = "0.1.8"
-cfg-if = "0.1"
+cfg-if = "1.0"
 
 # We use a crates.io dependency to disassemble wasm binaries to look for
 # instructions for `#[assert_instr]`. Note that we use an `=` dependency here
