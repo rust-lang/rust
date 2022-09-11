@@ -35,21 +35,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         // All `#[rustc_do_not_const_check]` functions should be hooked here.
         let def_id = instance.def_id();
 
-        if Some(def_id) == self.tcx.lang_items().const_eval_select() {
-            // redirect to const_eval_select_ct
-            if let Some(const_eval_select) = self.tcx.lang_items().const_eval_select_ct() {
-                return Ok(Some(
-                    ty::Instance::resolve(
-                        *self.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        const_eval_select,
-                        instance.substs,
-                    )
-                    .unwrap()
-                    .unwrap(),
-                ));
-            }
-        } else if Some(def_id) == self.tcx.lang_items().panic_display()
+        if Some(def_id) == self.tcx.lang_items().panic_display()
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
             // &str or &&str
@@ -89,10 +75,10 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// exhaustion error.
     ///
     /// Setting this to `0` disables the limit and allows the interpreter to run forever.
-    pub steps_remaining: usize,
+    pub(super) steps_remaining: usize,
 
     /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
+    pub(super) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
 
     /// We need to make sure consts never point to anything mutable, even recursively. That is
     /// relied on for pattern matching on consts with references.
@@ -101,14 +87,22 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
     /// This boolean here controls the second part.
     pub(super) can_access_statics: bool,
+
+    /// Whether to check alignment during evaluation.
+    pub(super) check_alignment: bool,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
+    pub(crate) fn new(
+        const_eval_limit: Limit,
+        can_access_statics: bool,
+        check_alignment: bool,
+    ) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
             stack: Vec::new(),
             can_access_statics,
+            check_alignment,
         }
     }
 }
@@ -197,34 +191,35 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
-    fn guaranteed_eq(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
+    /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
+    fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         Ok(match (a, b) {
             // Comparisons between integers are always known.
-            (Scalar::Int { .. }, Scalar::Int { .. }) => a == b,
-            // Equality with integers can never be known for sure.
-            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => false,
-            // FIXME: return `true` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them (see e.g. #73722).
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
-        })
-    }
-
-    fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
-        Ok(match (a, b) {
-            // Comparisons between integers are always known.
-            (Scalar::Int(_), Scalar::Int(_)) => a != b,
+            (Scalar::Int { .. }, Scalar::Int { .. }) => {
+                if a == b {
+                    1
+                } else {
+                    0
+                }
+            }
             // Comparisons of abstract pointers with null pointers are known if the pointer
             // is in bounds, because if they are in bounds, the pointer can't be null.
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), ptr @ Scalar::Ptr(..))
-            | (ptr @ Scalar::Ptr(..), Scalar::Int(int)) => {
-                int.is_null() && !self.scalar_may_be_null(ptr)?
+            | (ptr @ Scalar::Ptr(..), Scalar::Int(int))
+                if int.is_null() && !self.scalar_may_be_null(ptr)? =>
+            {
+                0
             }
-            // FIXME: return `true` for at least some comparisons where we can reliably
+            // Equality with integers can never be known for sure.
+            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
+            // FIXME: return a `1` for when both sides are the same pointer, *except* that
+            // some things (like functions and vtables) do not have stable addresses
+            // so we need to be careful around them (see e.g. #73722).
+            // FIXME: return `0` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
             // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
+            (Scalar::Ptr(..), Scalar::Ptr(..)) => 2,
         })
     }
 }
@@ -235,6 +230,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     type MemoryKind = MemoryKind;
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
+
+    #[inline(always)]
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.machine.check_alignment
+    }
+
+    #[inline(always)]
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    }
 
     fn load_mir(
         ecx: &InterpCx<'mir, 'tcx, Self>,
@@ -251,9 +256,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     );
                     throw_inval!(AlreadyReported(guar));
                 } else {
+                    // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
+                    // so this should be unreachable.
                     let path = ecx.tcx.def_path_str(def.did);
-                    Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))
-                        .into())
+                    bug!("trying to call extern function `{path}` at compile-time");
                 }
             }
             _ => Ok(ecx.tcx.instance_mir(instance)),
@@ -309,7 +315,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx, Self::PointerTag>,
+        dest: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -321,22 +327,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
         // CTFE-specific intrinsics.
         let Some(ret) = target else {
-            return Err(ConstEvalErrKind::NeedsRfc(format!(
-                "calling intrinsic `{}`",
-                intrinsic_name
-            ))
-            .into());
+            throw_unsup_format!("intrinsic `{intrinsic_name}` is not supported at compile-time");
         };
         match intrinsic_name {
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                let a = ecx.read_immediate(&args[0])?.to_scalar()?;
-                let b = ecx.read_immediate(&args[1])?.to_scalar()?;
-                let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
-                    ecx.guaranteed_eq(a, b)?
-                } else {
-                    ecx.guaranteed_ne(a, b)?
-                };
-                ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
+            sym::ptr_guaranteed_cmp => {
+                let a = ecx.read_scalar(&args[0])?;
+                let b = ecx.read_scalar(&args[1])?;
+                let cmp = ecx.guaranteed_cmp(a, b)?;
+                ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
             }
             sym::const_allocate => {
                 let size = ecx.read_scalar(&args[0])?.to_machine_usize(ecx)?;
@@ -369,7 +367,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // we don't deallocate it.
                 let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
                 let is_allocated_in_another_const = matches!(
-                    ecx.tcx.get_global_alloc(alloc_id),
+                    ecx.tcx.try_get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))
                 );
 
@@ -382,11 +380,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             }
             _ => {
-                return Err(ConstEvalErrKind::NeedsRfc(format!(
-                    "calling intrinsic `{}`",
-                    intrinsic_name
-                ))
-                .into());
+                throw_unsup_format!(
+                    "intrinsic `{intrinsic_name}` is not supported at compile-time"
+                );
             }
         }
 
@@ -429,7 +425,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _left: &ImmTy<'tcx>,
         _right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
-        Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
+        throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
@@ -451,7 +447,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _ptr: Pointer<AllocId>,
     ) -> InterpResult<'tcx> {
-        Err(ConstEvalErrKind::NeedsRfc("exposing pointers".to_string()).into())
+        // This is only reachable with -Zunleash-the-miri-inside-of-you.
+        throw_unsup_format!("exposing pointers is not possible at compile-time")
     }
 
     #[inline(always)]
@@ -470,14 +467,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 

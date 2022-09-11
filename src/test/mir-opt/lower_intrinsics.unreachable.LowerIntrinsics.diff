@@ -2,25 +2,21 @@
 + // MIR for `unreachable` after LowerIntrinsics
   
   fn unreachable() -> ! {
-      let mut _0: !;                       // return place in scope 0 at $DIR/lower_intrinsics.rs:28:25: 28:26
-      let mut _1: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:28:27: 30:2
-      let _2: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:29:14: 29:45
-      let mut _3: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:29:14: 29:45
+      let mut _0: !;                       // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:25: +0:26
+      let mut _1: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:27: +2:2
+      let _2: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:45
+      let mut _3: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:45
       scope 1 {
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:29:5: 29:47
-          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
--         _3 = std::intrinsics::unreachable(); // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:5: +1:47
+          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:45
+-         _3 = std::intrinsics::unreachable(); // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:45
 -                                          // mir::Constant
--                                          // + span: $DIR/lower_intrinsics.rs:29:14: 29:43
+-                                          // + span: $DIR/lower_intrinsics.rs:31:14: 31:43
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn() -> ! {std::intrinsics::unreachable}, val: Value(<ZST>) }
-+         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
-      }
-  
-      bb1 (cleanup): {
-          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:28:1: 30:2
++         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:45
       }
   }
   

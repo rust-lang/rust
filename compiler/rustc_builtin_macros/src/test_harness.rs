@@ -14,7 +14,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
-use tracing::debug;
+use thin_vec::thin_vec;
 
 use std::{iter, mem};
 
@@ -51,7 +51,7 @@ pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast
     let test_runner = get_test_runner(sess, span_diagnostic, &krate);
 
     if sess.opts.test {
-        let panic_strategy = match (panic_strategy, sess.opts.debugging_opts.panic_abort_tests) {
+        let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
             (PanicStrategy::Abort, true) => PanicStrategy::Abort,
             (PanicStrategy::Abort, false) => {
                 if panic_strategy == platform_panic_strategy {
@@ -298,8 +298,10 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // extern crate test
-    let test_extern_stmt =
-        ecx.stmt_item(sp, ecx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None)));
+    let test_extern_stmt = ecx.stmt_item(
+        sp,
+        ecx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None)),
+    );
 
     // #[rustc_main]
     let main_meta = ecx.meta_word(sp, sym::rustc_main);
@@ -333,7 +335,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: vec![main_attr],
+        attrs: thin_vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },

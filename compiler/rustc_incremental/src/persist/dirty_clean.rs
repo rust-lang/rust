@@ -80,7 +80,7 @@ const BASE_STRUCT: &[&str] =
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
 
-const EXTRA_TRAIT: &[&str] = &[label_strs::trait_of_item];
+const EXTRA_TRAIT: &[&str] = &[];
 
 // Fully Built Labels
 
@@ -134,7 +134,7 @@ struct Assertion {
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+    if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
 

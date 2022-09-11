@@ -1,0 +1,32 @@
+### What it does
+Checks for usage of unicode scripts other than those explicitly allowed
+by the lint config.
+
+This lint doesn't take into account non-text scripts such as `Unknown` and `Linear_A`.
+It also ignores the `Common` script type.
+While configuring, be sure to use official script name [aliases] from
+[the list of supported scripts][supported_scripts].
+
+See also: [`non_ascii_idents`].
+
+[aliases]: http://www.unicode.org/reports/tr24/tr24-31.html#Script_Value_Aliases
+[supported_scripts]: https://www.unicode.org/iso15924/iso15924-codes.html
+
+### Why is this bad?
+It may be not desired to have many different scripts for
+identifiers in the codebase.
+
+Note that if you only want to allow plain English, you might want to use
+built-in [`non_ascii_idents`] lint instead.
+
+[`non_ascii_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#non-ascii-idents
+
+### Example
+```
+// Assuming that `clippy.toml` contains the following line:
+// allowed-locales = ["Latin", "Cyrillic"]
+let counter = 10; // OK, latin is allowed.
+let счётчик = 10; // OK, cyrillic is allowed.
+let zähler = 10; // OK, it's still latin.
+let カウンタ = 10; // Will spawn the lint.
+```

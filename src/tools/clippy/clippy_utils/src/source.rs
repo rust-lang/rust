@@ -11,24 +11,6 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext};
 use std::borrow::Cow;
 
-/// Checks if the span starts with the given text. This will return false if the span crosses
-/// multiple files or if source is not available.
-///
-/// This is used to check for proc macros giving unhelpful spans to things.
-pub fn span_starts_with<T: LintContext>(cx: &T, span: Span, text: &str) -> bool {
-    fn helper(sm: &SourceMap, span: Span, text: &str) -> bool {
-        let pos = sm.lookup_byte_offset(span.lo());
-        let Some(ref src) = pos.sf.src else {
-            return false;
-        };
-        let end = span.hi() - pos.sf.start_pos;
-        src.get(pos.pos.0 as usize..end.0 as usize)
-            // Expression spans can include wrapping parenthesis. Remove them first.
-            .map_or(false, |s| s.trim_start_matches('(').starts_with(text))
-    }
-    helper(cx.sess().source_map(), span, text)
-}
-
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
 /// Also takes an `Option<String>` which can be put inside the braces.
 pub fn expr_block<'a, T: LintContext>(
@@ -353,7 +335,7 @@ pub fn snippet_with_context<'a>(
 /// span containing `m!(0)`.
 pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
     let outer_span = hygiene::walk_chain(span, outer);
-    (outer_span.ctxt() == outer).then(|| outer_span)
+    (outer_span.ctxt() == outer).then_some(outer_span)
 }
 
 /// Removes block comments from the given `Vec` of lines.

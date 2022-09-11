@@ -195,6 +195,41 @@ impl<B, C> ControlFlow<B, C> {
             ControlFlow::Break(x) => ControlFlow::Break(f(x)),
         }
     }
+
+    /// Converts the `ControlFlow` into an `Option` which is `Some` if the
+    /// `ControlFlow` was `Continue` and `None` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(control_flow_enum)]
+    /// use std::ops::ControlFlow;
+    ///
+    /// assert_eq!(ControlFlow::<i32, String>::Break(3).continue_value(), None);
+    /// assert_eq!(ControlFlow::<String, i32>::Continue(3).continue_value(), Some(3));
+    /// ```
+    #[inline]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub fn continue_value(self) -> Option<C> {
+        match self {
+            ControlFlow::Continue(x) => Some(x),
+            ControlFlow::Break(..) => None,
+        }
+    }
+
+    /// Maps `ControlFlow<B, C>` to `ControlFlow<B, T>` by applying a function
+    /// to the continue value in case it exists.
+    #[inline]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub fn map_continue<T, F>(self, f: F) -> ControlFlow<B, T>
+    where
+        F: FnOnce(C) -> T,
+    {
+        match self {
+            ControlFlow::Continue(x) => ControlFlow::Continue(f(x)),
+            ControlFlow::Break(x) => ControlFlow::Break(x),
+        }
+    }
 }
 
 /// These are used only as part of implementing the iterator adapters.

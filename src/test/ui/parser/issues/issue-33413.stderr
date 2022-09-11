@@ -11,6 +11,11 @@ LL |     fn f(*, a: u8) -> u8 {}
    |        -              ^^ expected `u8`, found `()`
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `a`
+   |
+LL |     fn f(*, a: u8) -> u8 { a }
+   |                            +
 
 error: aborting due to 2 previous errors
 

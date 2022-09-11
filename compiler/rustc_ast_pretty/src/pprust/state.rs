@@ -11,8 +11,8 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{attr, Term};
+use rustc_ast::{self as ast, BlockCheckMode, Mutability, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{attr, BindingAnnotation, ByRef, Term};
 use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -145,7 +145,7 @@ pub fn print_crate<'a>(
 /// This makes printed token streams look slightly nicer,
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
-    if let TokenTree::Token(token) = prev {
+    if let TokenTree::Token(token, _) = prev {
         if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
@@ -154,12 +154,12 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
         }
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
         }
         TokenTree::Delimited(..) => true,
     }
@@ -372,12 +372,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.word(lit.token.to_string())
+        self.word(lit.token_lit.to_string())
     }
 
     fn print_string(&mut self, st: &str, style: ast::StrStyle) {
         let st = match style {
-            ast::StrStyle::Cooked => (format!("\"{}\"", st.escape_debug())),
+            ast::StrStyle::Cooked => format!("\"{}\"", st.escape_debug()),
             ast::StrStyle::Raw(n) => {
                 format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = st)
             }
@@ -442,12 +442,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         match attr.kind {
-            ast::AttrKind::Normal(ref item, _) => {
+            ast::AttrKind::Normal(ref normal) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
-                self.print_attr_item(&item, attr.span);
+                self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
             ast::AttrKind::DocComment(comment_kind, data) => {
@@ -526,7 +526,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(token) => {
+            TokenTree::Token(token, _) => {
                 let token_str = self.token_to_string_ext(&token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {
@@ -1399,16 +1399,12 @@ impl<'a> State<'a> {
         is that it doesn't matter */
         match pat.kind {
             PatKind::Wild => self.word("_"),
-            PatKind::Ident(binding_mode, ident, ref sub) => {
-                match binding_mode {
-                    ast::BindingMode::ByRef(mutbl) => {
-                        self.word_nbsp("ref");
-                        self.print_mutability(mutbl, false);
-                    }
-                    ast::BindingMode::ByValue(ast::Mutability::Not) => {}
-                    ast::BindingMode::ByValue(ast::Mutability::Mut) => {
-                        self.word_nbsp("mut");
-                    }
+            PatKind::Ident(BindingAnnotation(by_ref, mutbl), ident, ref sub) => {
+                if by_ref == ByRef::Yes {
+                    self.word_nbsp("ref");
+                }
+                if mutbl == Mutability::Mut {
+                    self.word_nbsp("mut");
                 }
                 self.print_ident(ident);
                 if let Some(ref p) = *sub {
@@ -1487,12 +1483,10 @@ impl<'a> State<'a> {
             }
             PatKind::Ref(ref inner, mutbl) => {
                 self.word("&");
-                if mutbl == ast::Mutability::Mut {
+                if mutbl == Mutability::Mut {
                     self.word("mut ");
                 }
-                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
-                    inner.kind
-                {
+                if let PatKind::Ident(ast::BindingAnnotation::MUT, ..) = inner.kind {
                     self.popen();
                     self.print_pat(inner);
                     self.pclose();

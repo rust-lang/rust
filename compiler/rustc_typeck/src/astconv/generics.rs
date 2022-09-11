@@ -86,7 +86,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let param_type = tcx.infer_ctxt().enter(|infcx| {
                             infcx.resolve_numeric_literals_with_default(tcx.type_of(param.def_id))
                         });
-                        if param_type.is_suggestable(tcx) {
+                        if param_type.is_suggestable(tcx, false) {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
                                 "consider changing this type parameter to be a `const` generic",
@@ -298,9 +298,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     // show that order to the user as a possible order for the parameters
                                     let mut param_types_present = defs
                                         .params
-                                        .clone()
-                                        .into_iter()
-                                        .map(|param| (param.kind.to_ord(), param))
+                                        .iter()
+                                        .map(|param| (param.kind.to_ord(), param.clone()))
                                         .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
                                     param_types_present.sort_by_key(|(ord, _)| *ord);
                                     let (mut param_types_present, ordered_params): (
@@ -648,7 +647,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 multispan.push_span_label(span_late, note);
                 tcx.struct_span_lint_hir(
                     LATE_BOUND_LIFETIME_ARGUMENTS,
-                    args.args[0].id(),
+                    args.args[0].hir_id(),
                     multispan,
                     |lint| {
                         lint.build(msg).emit();

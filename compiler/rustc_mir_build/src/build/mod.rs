@@ -6,6 +6,7 @@ use crate::thir::pattern::pat_from_hir;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -68,9 +69,10 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
-        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure { fn_decl, body, .. }, .. }) => {
-            (*body, fn_decl.output.span(), None)
-        }
+        Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(hir::Closure { fn_decl, body, .. }),
+            ..
+        }) => (*body, fn_decl.output.span(), None),
         Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
             span,
@@ -249,7 +251,18 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
 
-            build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
+            let span_with_body = span_with_body.to(tcx.hir().span(body_id.hir_id));
+
+            build::construct_const(
+                &thir,
+                &infcx,
+                expr,
+                def,
+                id,
+                return_ty,
+                return_ty_span,
+                span_with_body,
+            )
         };
 
         lints::check(tcx, &body);
@@ -260,7 +273,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         // by borrow checking.
         debug_assert!(
             !(body.local_decls.has_free_regions()
-                || body.basic_blocks().has_free_regions()
+                || body.basic_blocks.has_free_regions()
                 || body.var_debug_info.has_free_regions()
                 || body.yield_ty().has_free_regions()),
             "Unexpected free regions in MIR: {:?}",
@@ -403,10 +416,19 @@ struct Builder<'a, 'tcx> {
     var_indices: FxHashMap<LocalVarId, LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
-    upvar_mutbls: Vec<Mutability>,
+    upvars: CaptureMap<'tcx>,
     unit_temp: Option<Place<'tcx>>,
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
+}
+
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
+
+#[derive(Debug)]
+struct Capture<'tcx> {
+    captured_place: &'tcx ty::CapturedPlace<'tcx>,
+    use_place: Place<'tcx>,
+    mutability: Mutability,
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -671,7 +693,7 @@ where
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
-                        fn_def.did.to_def_id(),
+                        fn_def.did,
                         &arguments,
                         arg_scope,
                         &thir[expr],
@@ -704,9 +726,8 @@ fn construct_const<'a, 'tcx>(
     hir_id: hir::HirId,
     const_ty: Ty<'tcx>,
     const_ty_span: Span,
+    span: Span,
 ) -> Body<'tcx> {
-    let tcx = infcx.tcx;
-    let span = tcx.hir().span(hir_id);
     let mut builder = Builder::new(
         thir,
         infcx,
@@ -854,7 +875,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             in_scope_unsafe: safety,
             local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
             canonical_user_type_annotations: IndexVec::new(),
-            upvar_mutbls: vec![],
+            upvars: CaptureMap::new(),
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
@@ -894,7 +915,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn args_and_body(
         &mut self,
         mut block: BasicBlock,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,
@@ -923,7 +944,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // indexed closure and we stored in a map called closure_min_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
-        // debuginfo and to fill `self.upvar_mutbls`.
+        // debuginfo and to fill `self.upvars`.
         if hir_typeck_results.closure_min_captures.get(&fn_def_id).is_some() {
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
@@ -943,7 +964,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 .closure_min_captures_flattened(fn_def_id)
                 .zip(capture_tys.zip(capture_syms));
 
-            self.upvar_mutbls = captures_with_tys
+            self.upvars = captures_with_tys
                 .enumerate()
                 .map(|(i, (captured_place, (ty, sym)))| {
                     let capture = captured_place.info.capture_kind;
@@ -963,16 +984,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     };
 
+                    let use_place = Place {
+                        local: ty::CAPTURE_STRUCT_LOCAL,
+                        projection: tcx.intern_place_elems(&projs),
+                    };
                     self.var_debug_info.push(VarDebugInfo {
                         name: *sym,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
-                        value: VarDebugInfoContents::Place(Place {
-                            local: ty::CAPTURE_STRUCT_LOCAL,
-                            projection: tcx.intern_place_elems(&projs),
-                        }),
+                        value: VarDebugInfoContents::Place(use_place),
                     });
 
-                    mutability
+                    let capture = Capture { captured_place, use_place, mutability };
+                    (var_id, capture)
                 })
                 .collect();
         }
@@ -1004,7 +1027,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let original_source_scope = self.source_scope;
             let span = pattern.span;
             self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
-            match *pattern.kind {
+            match pattern.kind {
                 // Don't introduce extra copies for simple bindings
                 PatKind::Binding {
                     mutability,
@@ -1025,7 +1048,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             VarBindingForm {
                                 binding_mode,
                                 opt_ty_info,
-                                opt_match_place: Some((Some(place), span)),
+                                opt_match_place: Some((None, span)),
                                 pat_span: span,
                             },
                         )))))
@@ -1041,7 +1064,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, pattern, place_builder, false));
+                    unpack!(
+                        block =
+                            self.place_into_pattern(block, pattern.as_ref(), place_builder, false)
+                    );
                 }
             }
             self.source_scope = original_source_scope;

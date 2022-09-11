@@ -2,9 +2,9 @@
 + // MIR for `main` after Inline
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:16:11: 16:11
-      let _1: ();                          // in scope 0 at $DIR/cycle.rs:17:5: 17:9
-+     let mut _2: fn() {g};                // in scope 0 at $DIR/cycle.rs:17:5: 17:9
+      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:+0:11: +0:11
+      let _1: ();                          // in scope 0 at $DIR/cycle.rs:+1:5: +1:9
++     let mut _2: fn() {g};                // in scope 0 at $DIR/cycle.rs:+1:5: +1:9
 +     scope 1 (inlined f::<fn() {g}>) {    // at $DIR/cycle.rs:17:5: 17:9
 +         debug g => _2;                   // in scope 1 at $DIR/cycle.rs:5:6: 5:7
 +         let _3: ();                      // in scope 1 at $DIR/cycle.rs:6:5: 6:8
@@ -25,10 +25,10 @@
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:17:5: 17:9
--         _1 = f::<fn() {g}>(g) -> bb1;    // scope 0 at $DIR/cycle.rs:17:5: 17:9
-+         StorageLive(_2);                 // scope 0 at $DIR/cycle.rs:17:5: 17:9
-+         _2 = g;                          // scope 0 at $DIR/cycle.rs:17:5: 17:9
+          StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
+-         _1 = f::<fn() {g}>(g) -> bb1;    // scope 0 at $DIR/cycle.rs:+1:5: +1:9
++         StorageLive(_2);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
++         _2 = g;                          // scope 0 at $DIR/cycle.rs:+1:5: +1:9
                                            // mir::Constant
 -                                          // + span: $DIR/cycle.rs:17:5: 17:6
 -                                          // + literal: Const { ty: fn(fn() {g}) {f::<fn() {g}>}, val: Value(<ZST>) }
@@ -47,10 +47,10 @@
       }
   
       bb1: {
-+         StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:17:5: 17:9
-          StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:17:9: 17:10
-          _0 = const ();                   // scope 0 at $DIR/cycle.rs:16:11: 18:2
-          return;                          // scope 0 at $DIR/cycle.rs:18:2: 18:2
++         StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:9
+          StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:+1:9: +1:10
+          _0 = const ();                   // scope 0 at $DIR/cycle.rs:+0:11: +2:2
+          return;                          // scope 0 at $DIR/cycle.rs:+2:2: +2:2
 +     }
 + 
 +     bb2 (cleanup): {

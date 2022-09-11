@@ -1,0 +1,17 @@
+### What it does
+Checks for arguments to `==` which have their address
+taken to satisfy a bound
+and suggests to dereference the other argument instead
+
+### Why is this bad?
+It is more idiomatic to dereference the other argument.
+
+### Example
+```
+&x == y
+```
+
+Use instead:
+```
+x == *y
+```

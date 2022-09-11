@@ -26,7 +26,7 @@ LL |     [1; ().await];
    |
    = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `()`
+   = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
    |
 LL -     [1; ().await];

@@ -1,4 +1,3 @@
-#![allow(rustc::potential_query_instability)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
@@ -16,6 +15,9 @@
 #[macro_use]
 extern crate rustc_macros;
 
+#[macro_use]
+extern crate tracing;
+
 extern crate proc_macro as pm;
 
 mod placeholders;
@@ -27,6 +29,7 @@ pub mod base;
 pub mod build;
 #[macro_use]
 pub mod config;
+pub mod errors;
 pub mod expand;
 pub mod module;
 pub mod proc_macro;

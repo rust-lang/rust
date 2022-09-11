@@ -6,13 +6,13 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, HasAttrs, Item, NodeId, PatKind};
+use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::BuiltinLintDiagnostics;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session, SessionDiagnostic};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -71,7 +71,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+    pub fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
         match self {
             Annotatable::Item(item) => item.visit_attrs(f),
             Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
@@ -772,7 +772,7 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
+        let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
@@ -781,6 +781,17 @@ impl SyntaxExtension {
                 .span_label(
                     sess.source_map().guess_head_span(span),
                     "const stability attribute affects this macro",
+                )
+                .emit();
+        }
+        if let Some((_, sp)) = body_stability {
+            sess.parse_sess
+                .span_diagnostic
+                .struct_span_err(sp, "macros cannot have body stability attributes")
+                .span_label(sp, "invalid body stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "body stability attribute affects this macro",
                 )
                 .emit();
         }
@@ -985,9 +996,11 @@ pub struct ExtCtxt<'a> {
     /// Error recovery mode entered when expansion is stuck
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
-    pub expansions: FxHashMap<Span, Vec<String>>,
+    pub expansions: FxIndexMap<Span, Vec<String>>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
+    /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
+    pub buffered_early_lint: Vec<BufferedEarlyLint>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -1018,8 +1031,9 @@ impl<'a> ExtCtxt<'a> {
                 is_trailing_mac: false,
             },
             force_mode: false,
-            expansions: FxHashMap::default(),
+            expansions: FxIndexMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
+            buffered_early_lint: vec![],
         }
     }
 
@@ -1213,7 +1227,7 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err(_) => None,
+            ast::LitKind::Err => None,
             _ => Some((cx.struct_span_err(l.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

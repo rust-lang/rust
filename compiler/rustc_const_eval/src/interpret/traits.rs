@@ -1,27 +1,24 @@
-use std::convert::TryFrom;
-
-use rustc_middle::mir::interpret::{alloc_range, InterpResult, Pointer, PointerArithmetic};
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, COMMON_VTABLE_ENTRIES_ALIGN, COMMON_VTABLE_ENTRIES_DROPINPLACE,
-    COMMON_VTABLE_ENTRIES_SIZE,
-};
+use rustc_middle::mir::interpret::{InterpResult, Pointer};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::{Align, Size};
 
 use super::util::ensure_monomorphic_enough;
-use super::{FnVal, InterpCx, Machine};
+use super::{InterpCx, Machine};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///
-    /// The `trait_ref` encodes the erased self type. Hence, if we are
-    /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
-    /// `trait_ref` would map `T: Trait`.
-    pub fn get_vtable(
-        &mut self,
+    /// The `trait_ref` encodes the erased self type. Hence, if we are making an object `Foo<Trait>`
+    /// from a value of type `Foo<T>`, then `trait_ref` would map `T: Trait`. `None` here means that
+    /// this is an auto trait without any methods, so we only need the basic vtable (drop, size,
+    /// align).
+    pub fn get_vtable_ptr(
+        &self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions((ty, poly_trait_ref));
@@ -30,114 +27,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ensure_monomorphic_enough(*self.tcx, ty)?;
         ensure_monomorphic_enough(*self.tcx, poly_trait_ref)?;
 
-        let vtable_allocation = self.tcx.vtable_allocation((ty, poly_trait_ref));
-
-        let vtable_ptr = self.global_base_pointer(Pointer::from(vtable_allocation))?;
-
+        let vtable_symbolic_allocation = self.tcx.create_vtable_alloc(ty, poly_trait_ref);
+        let vtable_ptr = self.global_base_pointer(Pointer::from(vtable_symbolic_allocation))?;
         Ok(vtable_ptr.into())
     }
 
-    /// Resolves the function at the specified slot in the provided
-    /// vtable. Currently an index of '3' (`TyCtxt::COMMON_VTABLE_ENTRIES.len()`)
-    /// corresponds to the first method declared in the trait of the provided vtable.
-    pub fn get_vtable_slot(
+    /// Returns a high-level representation of the entries of the given vtable.
+    pub fn get_vtable_entries(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
-        idx: u64,
-    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
-        let ptr_size = self.pointer_size();
-        let vtable_slot = vtable.offset(ptr_size * idx, self)?;
-        let vtable_slot = self
-            .get_ptr_alloc(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
-            .expect("cannot be a ZST");
-        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_pointer(Size::ZERO)?.check_init()?)?;
-        self.get_ptr_fn(fn_ptr)
+        vtable: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, &'tcx [ty::VtblEntry<'tcx>]> {
+        let (ty, poly_trait_ref) = self.get_ptr_vtable(vtable)?;
+        Ok(if let Some(poly_trait_ref) = poly_trait_ref {
+            let trait_ref = poly_trait_ref.with_self_ty(*self.tcx, ty);
+            let trait_ref = self.tcx.erase_regions(trait_ref);
+            self.tcx.vtable_entries(trait_ref)
+        } else {
+            TyCtxt::COMMON_VTABLE_ENTRIES
+        })
     }
 
-    /// Returns the drop fn instance as well as the actual dynamic type.
-    pub fn read_drop_type_from_vtable(
+    pub fn get_vtable_size_and_align(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
-    ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
-        let pointer_size = self.pointer_size();
-        // We don't care about the pointee type; we just want a pointer.
-        let vtable = self
-            .get_ptr_alloc(
-                vtable,
-                pointer_size * u64::try_from(TyCtxt::COMMON_VTABLE_ENTRIES.len()).unwrap(),
-                self.tcx.data_layout.pointer_align.abi,
-            )?
-            .expect("cannot be a ZST");
-        let drop_fn = vtable
-            .read_pointer(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_DROPINPLACE).unwrap())?
-            .check_init()?;
-        // We *need* an instance here, no other kind of function value, to be able
-        // to determine the type.
-        let drop_instance = self.get_ptr_fn(self.scalar_to_ptr(drop_fn)?)?.as_instance()?;
-        trace!("Found drop fn: {:?}", drop_instance);
-        let fn_sig = drop_instance.ty(*self.tcx, self.param_env).fn_sig(*self.tcx);
-        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig);
-        // The drop function takes `*mut T` where `T` is the type being dropped, so get that.
-        let args = fn_sig.inputs();
-        if args.len() != 1 {
-            throw_ub!(InvalidVtableDropFn(fn_sig));
-        }
-        let ty =
-            args[0].builtin_deref(true).ok_or_else(|| err_ub!(InvalidVtableDropFn(fn_sig)))?.ty;
-        Ok((drop_instance, ty))
-    }
-
-    pub fn read_size_and_align_from_vtable(
-        &self,
-        vtable: Pointer<Option<M::PointerTag>>,
+        vtable: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let pointer_size = self.pointer_size();
-        // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
-        // the size, and the align (which we read below).
-        let vtable = self
-            .get_ptr_alloc(
-                vtable,
-                pointer_size * u64::try_from(TyCtxt::COMMON_VTABLE_ENTRIES.len()).unwrap(),
-                self.tcx.data_layout.pointer_align.abi,
-            )?
-            .expect("cannot be a ZST");
-        let size = vtable
-            .read_integer(alloc_range(
-                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap(),
-                pointer_size,
-            ))?
-            .check_init()?;
-        let size = size.to_machine_usize(self)?;
-        let size = Size::from_bytes(size);
-        let align = vtable
-            .read_integer(alloc_range(
-                pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap(),
-                pointer_size,
-            ))?
-            .check_init()?;
-        let align = align.to_machine_usize(self)?;
-        let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
-
-        if size > self.max_size_of_val() {
-            throw_ub!(InvalidVtableSize);
-        }
-        Ok((size, align))
-    }
-
-    pub fn read_new_vtable_after_trait_upcasting_from_vtable(
-        &self,
-        vtable: Pointer<Option<M::PointerTag>>,
-        idx: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
-        let pointer_size = self.pointer_size();
-
-        let vtable_slot = vtable.offset(pointer_size * idx, self)?;
-        let new_vtable = self
-            .get_ptr_alloc(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
-            .expect("cannot be a ZST");
-
-        let new_vtable = self.scalar_to_ptr(new_vtable.read_pointer(Size::ZERO)?.check_init()?)?;
-
-        Ok(new_vtable)
+        let (ty, _trait_ref) = self.get_ptr_vtable(vtable)?;
+        let layout = self.layout_of(ty)?;
+        assert!(!layout.is_unsized(), "there are no vtables for unsized types");
+        Ok((layout.size, layout.align.abi))
     }
 }

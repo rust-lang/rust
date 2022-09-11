@@ -6,7 +6,7 @@
 SRC_DIR := $(abspath .)
 SRC_DIR_PARENT := $(abspath ..)
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 all: \
   abs_input_outside_working_dir \

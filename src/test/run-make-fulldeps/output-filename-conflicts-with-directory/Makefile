@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	cp foo.rs $(TMPDIR)/foo.rs

@@ -65,6 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         Self {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
+            considering_regions: self.considering_regions,
             in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
@@ -73,10 +74,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             evaluation_cache: self.evaluation_cache.clone(),
             reported_trait_errors: self.reported_trait_errors.clone(),
             reported_closure_mismatch: self.reported_closure_mismatch.clone(),
-            tainted_by_errors_flag: self.tainted_by_errors_flag.clone(),
+            tainted_by_errors: self.tainted_by_errors.clone(),
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
+            normalize_fn_sig_for_diagnostic: self
+                .normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         }
     }
 }

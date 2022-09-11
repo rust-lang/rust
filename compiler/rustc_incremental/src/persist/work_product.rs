@@ -3,7 +3,7 @@
 //! [work products]: WorkProduct
 
 use crate::persist::fs::*;
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_fs_util::link_or_copy;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;

@@ -120,8 +120,8 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         // byte strings are already handled well enough by `EscapeError::NonAsciiCharInByteString`
         let (text, span, padding) = match &expr.kind {
-            ast::ExprKind::Lit(ast::Lit { token, kind, span }) => {
-                let text = token.symbol;
+            ast::ExprKind::Lit(ast::Lit { token_lit, kind, span }) => {
+                let text = token_lit.symbol;
                 if !contains_text_flow_control_chars(text.as_str()) {
                     return;
                 }

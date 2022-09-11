@@ -45,6 +45,8 @@ fn _if_let_guard() {
         //~| ERROR `let` expressions in this position are unstable
         //~| ERROR `let` expressions in this position are unstable
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
 
         () if let Range { start: _, end: _ } = (true..true) && false => {}
         //~^ ERROR `if let` guards are experimental

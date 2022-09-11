@@ -6,7 +6,7 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_span::Span;
 
-use crate::diagnostics::UseSpans;
+use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
@@ -88,7 +88,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(StatementKind::Assign(box (
                     place,
                     Rvalue::Use(Operand::Move(move_from)),
-                ))) = self.body.basic_blocks()[location.block]
+                ))) = self.body.basic_blocks[location.block]
                     .statements
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
@@ -368,13 +368,31 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);
-                match (self.describe_place(move_place.as_ref()), source.describe_for_named_place())
-                {
-                    (Some(place_desc), Some(source_desc)) => self.cannot_move_out_of(
+                let move_place_ref = move_place.as_ref();
+                match (
+                    self.describe_place_with_options(
+                        move_place_ref,
+                        DescribePlaceOpt {
+                            including_downcast: false,
+                            including_tuple_field: false,
+                        },
+                    ),
+                    self.describe_name(move_place_ref),
+                    source.describe_for_named_place(),
+                ) {
+                    (Some(place_desc), Some(name), Some(source_desc)) => self.cannot_move_out_of(
+                        span,
+                        &format!("`{place_desc}` as enum variant `{name}` which is behind a {source_desc}"),
+                    ),
+                    (Some(place_desc), Some(name), None) => self.cannot_move_out_of(
+                        span,
+                        &format!("`{place_desc}` as enum variant `{name}`"),
+                    ),
+                    (Some(place_desc), _, Some(source_desc)) => self.cannot_move_out_of(
                         span,
                         &format!("`{place_desc}` which is behind a {source_desc}"),
                     ),
-                    (_, _) => self.cannot_move_out_of(
+                    (_, _, _) => self.cannot_move_out_of(
                         span,
                         &source.describe_for_unnamed_place(self.infcx.tcx),
                     ),

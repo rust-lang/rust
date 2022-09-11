@@ -56,9 +56,9 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
+                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
                         match trees.next() {
-                            Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
+                            Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((frag, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
 
@@ -146,7 +146,7 @@ fn parse_tree(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => {
+        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
@@ -217,7 +217,7 @@ fn parse_tree(
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
-                Some(tokenstream::TokenTree::Token(token)) if token.is_ident() => {
+                Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
                     if ident.name == kw::Crate && !is_raw {
@@ -228,18 +228,20 @@ fn parse_tree(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(tokenstream::TokenTree::Token(Token { kind: token::Dollar, span })) => {
+                Some(tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }, _)) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
                             &Token { kind: token::Dollar, span },
                         );
+                    } else {
+                        maybe_emit_macro_metavar_expr_feature(features, sess, span);
                     }
                     TokenTree::token(token::Dollar, span)
                 }
 
                 // `tree` is followed by some other token. This is an error.
-                Some(tokenstream::TokenTree::Token(token)) => {
+                Some(tokenstream::TokenTree::Token(token, _)) => {
                     let msg = format!(
                         "expected identifier, found `{}`",
                         pprust::token_to_string(&token),
@@ -254,7 +256,7 @@ fn parse_tree(
         }
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(token) => TokenTree::Token(token),
+        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(token),
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
@@ -289,7 +291,7 @@ fn parse_kleene_op(
     span: Span,
 ) -> Result<Result<(KleeneOp, Span), Token>, Span> {
     match input.next() {
-        Some(tokenstream::TokenTree::Token(token)) => match kleene_op(&token) {
+        Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(&token) {
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token)),
         },

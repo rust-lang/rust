@@ -1,0 +1,22 @@
+### What it does
+Checks for the use of `.iter().count()`.
+
+### Why is this bad?
+`.len()` is more efficient and more
+readable.
+
+### Example
+```
+let some_vec = vec![0, 1, 2, 3];
+
+some_vec.iter().count();
+&some_vec[..].iter().count();
+```
+
+Use instead:
+```
+let some_vec = vec![0, 1, 2, 3];
+
+some_vec.len();
+&some_vec[..].len();
+```

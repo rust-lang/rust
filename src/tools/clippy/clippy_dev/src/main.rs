@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Arg, ArgAction, ArgMatches, Command, PossibleValue};
-use clippy_dev::{bless, fmt, lint, new_lint, serve, setup, update_lints};
+use clippy_dev::{bless, dogfood, fmt, lint, new_lint, serve, setup, update_lints};
 use indoc::indoc;
 
 fn main() {
@@ -12,6 +12,13 @@ fn main() {
     match matches.subcommand() {
         Some(("bless", matches)) => {
             bless::bless(matches.contains_id("ignore-timestamp"));
+        },
+        Some(("dogfood", matches)) => {
+            dogfood::dogfood(
+                matches.contains_id("fix"),
+                matches.contains_id("allow-dirty"),
+                matches.contains_id("allow-staged"),
+            );
         },
         Some(("fmt", matches)) => {
             fmt::run(matches.contains_id("check"), matches.contains_id("verbose"));
@@ -29,7 +36,8 @@ fn main() {
             match new_lint::create(
                 matches.get_one::<String>("pass"),
                 matches.get_one::<String>("name"),
-                matches.get_one::<String>("category"),
+                matches.get_one::<String>("category").map(String::as_str),
+                matches.get_one::<String>("type").map(String::as_str),
                 matches.contains_id("msrv"),
             ) {
                 Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
@@ -104,6 +112,17 @@ fn get_clap_config() -> ArgMatches {
                     .long("ignore-timestamp")
                     .help("Include files updated before clippy was built"),
             ),
+            Command::new("dogfood").about("Runs the dogfood test").args([
+                Arg::new("fix").long("fix").help("Apply the suggestions when possible"),
+                Arg::new("allow-dirty")
+                    .long("allow-dirty")
+                    .help("Fix code even if the working directory has changes")
+                    .requires("fix"),
+                Arg::new("allow-staged")
+                    .long("allow-staged")
+                    .help("Fix code even if the working directory has staged changes")
+                    .requires("fix"),
+            ]),
             Command::new("fmt")
                 .about("Run rustfmt on all projects and tests")
                 .args([
@@ -139,7 +158,8 @@ fn get_clap_config() -> ArgMatches {
                         .help("Specify whether the lint runs during the early or late pass")
                         .takes_value(true)
                         .value_parser([PossibleValue::new("early"), PossibleValue::new("late")])
-                        .required(true),
+                        .conflicts_with("type")
+                        .required_unless_present("type"),
                     Arg::new("name")
                         .short('n')
                         .long("name")
@@ -165,6 +185,11 @@ fn get_clap_config() -> ArgMatches {
                             PossibleValue::new("internal_warn"),
                         ])
                         .takes_value(true),
+                    Arg::new("type")
+                        .long("type")
+                        .help("What directory the lint belongs in")
+                        .takes_value(true)
+                        .required(false),
                     Arg::new("msrv").long("msrv").help("Add MSRV config code to the lint"),
                 ]),
             Command::new("setup")

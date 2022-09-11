@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # The target used below doesn't support atomic CAS operations. Verify that's the case
 all:

@@ -12,31 +12,11 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         let hcx = self;
         match hcx.body_resolver {
             BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
-            BodyResolver::Traverse { hash_bodies: false, .. } => {}
-            BodyResolver::Traverse { hash_bodies: true, owner, bodies } => {
+            BodyResolver::Ignore => {}
+            BodyResolver::Traverse { owner, bodies } => {
                 assert_eq!(id.hir_id.owner, owner);
                 bodies[&id.hir_id.local_id].hash_stable(hcx, hasher);
             }
         }
-    }
-
-    fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
-        self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Expr { hir_id, ref span, ref kind } = *expr;
-
-            hir_id.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-        })
-    }
-
-    fn hash_hir_ty(&mut self, ty: &hir::Ty<'_>, hasher: &mut StableHasher) {
-        self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Ty { hir_id, ref kind, ref span } = *ty;
-
-            hir_id.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        })
     }
 }

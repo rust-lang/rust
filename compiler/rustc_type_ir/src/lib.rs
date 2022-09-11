@@ -1,6 +1,8 @@
 #![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate bitflags;
@@ -20,6 +22,9 @@ pub mod sty;
 
 pub use codec::*;
 pub use sty::*;
+
+/// Needed so we can use #[derive(HashStable_Generic)]
+pub trait HashStableContext {}
 
 pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
@@ -293,6 +298,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStable_Generic)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -310,6 +316,7 @@ impl DebruijnIndex {
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///
     /// you would need to shift the index for `'a` into a new binder.
+    #[inline]
     #[must_use]
     pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() + amount)
@@ -317,18 +324,21 @@ impl DebruijnIndex {
 
     /// Update this index in place by shifting it "in" through
     /// `amount` number of binders.
+    #[inline]
     pub fn shift_in(&mut self, amount: u32) {
         *self = self.shifted_in(amount);
     }
 
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
+    #[inline]
     #[must_use]
     pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
+    #[inline]
     pub fn shift_out(&mut self, amount: u32) {
         *self = self.shifted_out(amount);
     }
@@ -353,13 +363,14 @@ impl DebruijnIndex {
     /// If we invoke `shift_out_to_binder` and the region is in fact
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
+    #[inline]
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum IntTy {
     Isize,
     I8,
@@ -406,7 +417,7 @@ impl IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum UintTy {
     Usize,
     U8,
@@ -453,7 +464,7 @@ impl UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum FloatTy {
     F32,
     F64,
@@ -590,7 +601,7 @@ impl UnifyKey for FloatVid {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
@@ -659,30 +670,6 @@ impl Variance {
     }
 }
 
-impl<CTX> HashStable<CTX> for DebruijnIndex {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.as_u32().hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for IntTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for UintTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
-impl<CTX> HashStable<CTX> for FloatTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
@@ -693,12 +680,6 @@ impl<CTX> HashStable<CTX> for InferTy {
             FloatVar(v) => v.index.hash_stable(ctx, hasher),
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
-    }
-}
-
-impl<CTX> HashStable<CTX> for Variance {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        discriminant(self).hash_stable(ctx, hasher);
     }
 }
 
@@ -804,6 +785,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
+    #[derive(HashStable_Generic)]
     pub struct UniverseIndex {
         DEBUG_FORMAT = "U{}",
     }
@@ -841,11 +823,5 @@ impl UniverseIndex {
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self.private < other.private
-    }
-}
-
-impl<CTX> HashStable<CTX> for UniverseIndex {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.private.hash_stable(ctx, hasher);
     }
 }

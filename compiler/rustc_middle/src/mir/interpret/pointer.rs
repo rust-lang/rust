@@ -107,8 +107,12 @@ impl<T: HasDataLayout> PointerArithmetic for T {}
 /// pointer), but `derive` adds some unnecessary bounds.
 pub trait Provenance: Copy + fmt::Debug {
     /// Says whether the `offset` field of `Pointer`s with this provenance is the actual physical address.
-    /// If `true, ptr-to-int casts work by simply discarding the provenance.
-    /// If `false`, ptr-to-int casts are not supported. The offset *must* be relative in that case.
+    /// - If `false`, the offset *must* be relative. This means the bytes representing a pointer are
+    ///   different from what the Abstract Machine prescribes, so the interpreter must prevent any
+    ///   operation that would inspect the underlying bytes of a pointer, such as ptr-to-int
+    ///   transmutation. A `ReadPointerAsBytes` error will be raised in such situations.
+    /// - If `true`, the interpreter will permit operations to inspect the underlying bytes of a
+    ///   pointer, and implement ptr-to-int transmutation by stripping provenance.
     const OFFSET_IS_ADDR: bool;
 
     /// We also use this trait to control whether to abort execution when a pointer is being partially overwritten
@@ -125,6 +129,9 @@ pub trait Provenance: Copy + fmt::Debug {
     /// Otherwise this function is best-effort (but must agree with `Machine::ptr_get_alloc`).
     /// (Identifying the offset in that allocation, however, is harder -- use `Memory::ptr_get_alloc` for that.)
     fn get_alloc_id(self) -> Option<AllocId>;
+
+    /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
+    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
 }
 
 impl Provenance for AllocId {
@@ -152,6 +159,10 @@ impl Provenance for AllocId {
     fn get_alloc_id(self) -> Option<AllocId> {
         Some(self)
     }
+
+    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
+        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
+    }
 }
 
 /// Represents a pointer in the Miri engine.
@@ -159,34 +170,34 @@ impl Provenance for AllocId {
 /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub struct Pointer<Tag = AllocId> {
-    pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Tag` type)
-    pub provenance: Tag,
+pub struct Pointer<Prov = AllocId> {
+    pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)
+    pub provenance: Prov,
 }
 
 static_assert_size!(Pointer, 16);
-// `Option<Tag>` pointers are also passed around quite a bit
+// `Option<Prov>` pointers are also passed around quite a bit
 // (but not stored in permanent machine state).
 static_assert_size!(Pointer<Option<AllocId>>, 16);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: Provenance> fmt::Debug for Pointer<Tag> {
+impl<Prov: Provenance> fmt::Debug for Pointer<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Provenance::fmt(self, f)
     }
 }
 
-impl<Tag: Provenance> fmt::Debug for Pointer<Option<Tag>> {
+impl<Prov: Provenance> fmt::Debug for Pointer<Option<Prov>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {
-            Some(tag) => Provenance::fmt(&Pointer::new(tag, self.offset), f),
+            Some(prov) => Provenance::fmt(&Pointer::new(prov, self.offset), f),
             None => write!(f, "{:#x}[noalloc]", self.offset.bytes()),
         }
     }
 }
 
-impl<Tag: Provenance> fmt::Display for Pointer<Option<Tag>> {
+impl<Prov: Provenance> fmt::Display for Pointer<Option<Prov>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.provenance.is_none() && self.offset.bytes() == 0 {
             write!(f, "null pointer")
@@ -204,38 +215,38 @@ impl From<AllocId> for Pointer {
     }
 }
 
-impl<Tag> From<Pointer<Tag>> for Pointer<Option<Tag>> {
+impl<Prov> From<Pointer<Prov>> for Pointer<Option<Prov>> {
     #[inline(always)]
-    fn from(ptr: Pointer<Tag>) -> Self {
-        let (tag, offset) = ptr.into_parts();
-        Pointer::new(Some(tag), offset)
+    fn from(ptr: Pointer<Prov>) -> Self {
+        let (prov, offset) = ptr.into_parts();
+        Pointer::new(Some(prov), offset)
     }
 }
 
-impl<Tag> Pointer<Option<Tag>> {
-    /// Convert this pointer that *might* have a tag into a pointer that *definitely* has a tag, or
-    /// an absolute address.
+impl<Prov> Pointer<Option<Prov>> {
+    /// Convert this pointer that *might* have a provenance into a pointer that *definitely* has a
+    /// provenance, or an absolute address.
     ///
     /// This is rarely what you want; call `ptr_try_get_alloc_id` instead.
-    pub fn into_pointer_or_addr(self) -> Result<Pointer<Tag>, Size> {
+    pub fn into_pointer_or_addr(self) -> Result<Pointer<Prov>, Size> {
         match self.provenance {
-            Some(tag) => Ok(Pointer::new(tag, self.offset)),
+            Some(prov) => Ok(Pointer::new(prov, self.offset)),
             None => Err(self.offset),
         }
     }
 
     /// Returns the absolute address the pointer points to.
-    /// Only works if Tag::OFFSET_IS_ADDR is true!
+    /// Only works if Prov::OFFSET_IS_ADDR is true!
     pub fn addr(self) -> Size
     where
-        Tag: Provenance,
+        Prov: Provenance,
     {
-        assert!(Tag::OFFSET_IS_ADDR);
+        assert!(Prov::OFFSET_IS_ADDR);
         self.offset
     }
 }
 
-impl<Tag> Pointer<Option<Tag>> {
+impl<Prov> Pointer<Option<Prov>> {
     #[inline(always)]
     pub fn from_addr(addr: u64) -> Self {
         Pointer { provenance: None, offset: Size::from_bytes(addr) }
@@ -247,21 +258,21 @@ impl<Tag> Pointer<Option<Tag>> {
     }
 }
 
-impl<'tcx, Tag> Pointer<Tag> {
+impl<'tcx, Prov> Pointer<Prov> {
     #[inline(always)]
-    pub fn new(provenance: Tag, offset: Size) -> Self {
+    pub fn new(provenance: Prov, offset: Size) -> Self {
         Pointer { provenance, offset }
     }
 
-    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the type `Tag`!
+    /// Obtain the constituents of this pointer. Not that the meaning of the offset depends on the type `Prov`!
     /// This function must only be used in the implementation of `Machine::ptr_get_alloc`,
     /// and when a `Pointer` is taken apart to be stored efficiently in an `Allocation`.
     #[inline(always)]
-    pub fn into_parts(self) -> (Tag, Size) {
+    pub fn into_parts(self) -> (Prov, Size) {
         (self.provenance, self.offset)
     }
 
-    pub fn map_provenance(self, f: impl FnOnce(Tag) -> Tag) -> Self {
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         Pointer { provenance: f(self.provenance), ..self }
     }
 

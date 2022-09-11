@@ -18,9 +18,10 @@ use crate::llvm;
 use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
+use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_middle::ty::Ty;
+use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use smallvec::SmallVec;
-use tracing::debug;
 
 /// Declare a function.
 ///
@@ -97,6 +98,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_type(self),
         );
         fn_abi.apply_attrs_llfn(self, llfn);
+
+        if self.tcx.sess.is_sanitizer_cfi_enabled() {
+            let typeid = typeid_for_fnabi(self.tcx, fn_abi);
+            self.set_type_metadata(llfn, typeid);
+        }
+
         llfn
     }
 

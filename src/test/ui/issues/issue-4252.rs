@@ -7,7 +7,7 @@ trait X {
 }
 
 #[derive(Debug)]
-struct Y(isize);
+struct Y(#[allow(unused_tuple_struct_fields)] isize);
 
 #[derive(Debug)]
 struct Z<T: X+std::fmt::Debug> {

@@ -205,12 +205,13 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Adt(did, _, substs, _, _) => {
                     tcx.bound_type_of(did).subst(tcx, substs)
                 }
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
+                AggregateKind::Closure(did, substs) => tcx.mk_closure(did.to_def_id(), substs),
                 AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did, substs, movability)
+                    tcx.mk_generator(did.to_def_id(), substs, movability)
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }
 

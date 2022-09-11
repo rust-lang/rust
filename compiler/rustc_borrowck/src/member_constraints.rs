@@ -38,6 +38,8 @@ pub(crate) struct NllMemberConstraint<'tcx> {
     /// The hidden type in which `R0` appears. (Used in error reporting.)
     pub(crate) hidden_ty: Ty<'tcx>,
 
+    pub(crate) key: ty::OpaqueTypeKey<'tcx>,
+
     /// The region `R0`.
     pub(crate) member_region_vid: ty::RegionVid,
 
@@ -90,6 +92,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
             member_region_vid,
             definition_span: m_c.definition_span,
             hidden_ty: m_c.hidden_ty,
+            key: m_c.key,
             start_index,
             end_index,
         });

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: foo
 	$(call RUN,foo) | $(CGREP) -v unreachable

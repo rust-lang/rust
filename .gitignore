@@ -42,9 +42,11 @@ no_llvm_build
 /llvm/
 /mingw-build/
 /build/
+/build-rust-analyzer/
 /dist/
 /unicode-downloads
 /target
+/src/bootstrap/target
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`
 /obj/

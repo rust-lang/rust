@@ -37,7 +37,6 @@ use rustc_errors::{
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use tracing::debug;
 
 use std::ops::Range;
 use std::{cmp, mem, slice};
@@ -47,6 +46,7 @@ bitflags::bitflags! {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
         const CONST_EXPR        = 1 << 2;
+        const ALLOW_LET         = 1 << 3;
     }
 }
 
@@ -147,15 +147,12 @@ pub struct Parser<'a> {
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
     pub current_closure: Option<ClosureSpans>,
-    /// Used to track where `let`s are allowed. For example, `if true && let 1 = 1` is valid
-    /// but `[1, 2, 3][let _ = ()]` is not.
-    let_expr_allowed: bool,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 336);
+rustc_data_structures::static_assert_size!(Parser<'_>, 328);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -268,13 +265,13 @@ impl TokenCursor {
             // FIXME: we currently don't return `Delimiter` open/close delims. To fix #67062 we will
             // need to, whereupon the `delim != Delimiter::Invisible` conditions below can be
             // removed.
-            if let Some((tree, spacing)) = self.frame.tree_cursor.next_with_spacing_ref() {
+            if let Some(tree) = self.frame.tree_cursor.next_ref() {
                 match tree {
-                    &TokenTree::Token(ref token) => match (desugar_doc_comments, token) {
+                    &TokenTree::Token(ref token, spacing) => match (desugar_doc_comments, token) {
                         (true, &Token { kind: token::DocComment(_, attr_style, data), span }) => {
                             return self.desugar(attr_style, data, span);
                         }
-                        _ => return (token.clone(), *spacing),
+                        _ => return (token.clone(), spacing),
                     },
                     &TokenTree::Delimited(sp, delim, ref tts) => {
                         // Set `open_delim` to true here because we deal with it immediately.
@@ -283,7 +280,7 @@ impl TokenCursor {
                         if delim != Delimiter::Invisible {
                             return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
                         }
-                        // No open delimeter to return; continue on to the next iteration.
+                        // No open delimiter to return; continue on to the next iteration.
                     }
                 };
             } else if let Some(frame) = self.stack.pop() {
@@ -318,12 +315,14 @@ impl TokenCursor {
             delim_span,
             Delimiter::Bracket,
             [
-                TokenTree::token(token::Ident(sym::doc, false), span),
-                TokenTree::token(token::Eq, span),
-                TokenTree::token(TokenKind::lit(token::StrRaw(num_of_hashes), data, None), span),
+                TokenTree::token_alone(token::Ident(sym::doc, false), span),
+                TokenTree::token_alone(token::Eq, span),
+                TokenTree::token_alone(
+                    TokenKind::lit(token::StrRaw(num_of_hashes), data, None),
+                    span,
+                ),
             ]
-            .iter()
-            .cloned()
+            .into_iter()
             .collect::<TokenStream>(),
         );
 
@@ -332,14 +331,16 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 None,
                 if attr_style == AttrStyle::Inner {
-                    [TokenTree::token(token::Pound, span), TokenTree::token(token::Not, span), body]
-                        .iter()
-                        .cloned()
-                        .collect::<TokenStream>()
+                    [
+                        TokenTree::token_alone(token::Pound, span),
+                        TokenTree::token_alone(token::Not, span),
+                        body,
+                    ]
+                    .into_iter()
+                    .collect::<TokenStream>()
                 } else {
-                    [TokenTree::token(token::Pound, span), body]
-                        .iter()
-                        .cloned()
+                    [TokenTree::token_alone(token::Pound, span), body]
+                        .into_iter()
                         .collect::<TokenStream>()
                 },
             ),
@@ -458,7 +459,6 @@ impl<'a> Parser<'a> {
                 inner_attr_ranges: Default::default(),
             },
             current_closure: None,
-            let_expr_allowed: false,
         };
 
         // Make parser point to the first token.
@@ -1042,7 +1042,7 @@ impl<'a> Parser<'a> {
             if all_normal {
                 return match frame.tree_cursor.look_ahead(dist - 1) {
                     Some(tree) => match tree {
-                        TokenTree::Token(token) => looker(token),
+                        TokenTree::Token(token, _) => looker(token),
                         TokenTree::Delimited(dspan, delim, _) => {
                             looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                         }
@@ -1115,10 +1115,14 @@ impl<'a> Parser<'a> {
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
-            value: self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()),
+            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr(span.to(blk_span), ExprKind::ConstBlock(anon_const), AttrVec::from(attrs)))
+        Ok(self.mk_expr_with_attrs(
+            span.to(blk_span),
+            ExprKind::ConstBlock(anon_const),
+            AttrVec::from(attrs),
+        ))
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1226,7 +1230,7 @@ impl<'a> Parser<'a> {
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
                 self.bump();
-                TokenTree::Token(self.prev_token.clone())
+                TokenTree::Token(self.prev_token.clone(), Spacing::Alone)
             }
         }
     }
@@ -1245,7 +1249,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.token.kind {
                 token::Eof | token::CloseDelim(..) => break,
-                _ => result.push(self.parse_token_tree().into()),
+                _ => result.push(self.parse_token_tree()),
             }
         }
         TokenStream::new(result)
@@ -1294,7 +1298,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `in`
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: false,
+                };
                 return Ok(Visibility {
                     span: lo.to(self.prev_token.span),
                     kind: vis,
@@ -1307,7 +1315,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: true,
+                };
                 return Ok(Visibility {
                     span: lo.to(self.prev_token.span),
                     kind: vis,
@@ -1370,7 +1382,7 @@ impl<'a> Parser<'a> {
         match self.parse_str_lit() {
             Ok(str_lit) => Some(str_lit),
             Err(Some(lit)) => match lit.kind {
-                ast::LitKind::Err(_) => None,
+                ast::LitKind::Err => None,
                 _ => {
                     self.struct_span_err(lit.span, "non-string ABI literal")
                         .span_suggestion(

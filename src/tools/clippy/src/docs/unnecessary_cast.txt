@@ -1,0 +1,19 @@
+### What it does
+Checks for casts to the same type, casts of int literals to integer types
+and casts of float literals to float types.
+
+### Why is this bad?
+It's just unnecessary.
+
+### Example
+```
+let _ = 2i32 as i32;
+let _ = 0.5 as f32;
+```
+
+Better:
+
+```
+let _ = 2_i32;
+let _ = 0.5_f32;
+```

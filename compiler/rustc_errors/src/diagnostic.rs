@@ -3,16 +3,19 @@ use crate::{
     CodeSuggestion, DiagnosticMessage, EmissionGuarantee, Level, LintDiagnosticBuilder, MultiSpan,
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::FluentValue;
 use rustc_hir as hir;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::{edition::Edition, Span, DUMMY_SP};
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::num::ParseIntError;
+use std::path::{Path, PathBuf};
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `Diagnostic`.
@@ -40,6 +43,61 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
+
+impl IntoDiagnosticArg for DiagnosticArgFromDisplay<'_> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.0.to_string().into_diagnostic_arg()
+    }
+}
+
+impl<'a> From<&'a dyn fmt::Display> for DiagnosticArgFromDisplay<'a> {
+    fn from(t: &'a dyn fmt::Display) -> Self {
+        DiagnosticArgFromDisplay(t)
+    }
+}
+
+impl<'a, T: fmt::Display> From<&'a T> for DiagnosticArgFromDisplay<'a> {
+    fn from(t: &'a T) -> Self {
+        DiagnosticArgFromDisplay(t)
+    }
+}
+
+macro_rules! into_diagnostic_arg_using_display {
+    ($( $ty:ty ),+ $(,)?) => {
+        $(
+            impl IntoDiagnosticArg for $ty {
+                fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+                    self.to_string().into_diagnostic_arg()
+                }
+            }
+        )+
+    }
+}
+
+into_diagnostic_arg_using_display!(
+    i8,
+    u8,
+    i16,
+    u16,
+    i32,
+    u32,
+    i64,
+    u64,
+    i128,
+    u128,
+    std::io::Error,
+    std::num::NonZeroU32,
+    hir::Target,
+    Edition,
+    Ident,
+    MacroRulesNormalizedIdent,
+    ParseIntError,
+    StackProtector,
+    &TargetTriple,
+    SplitDebuginfo
+);
+
 impl IntoDiagnosticArg for bool {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         if self {
@@ -50,81 +108,9 @@ impl IntoDiagnosticArg for bool {
     }
 }
 
-impl IntoDiagnosticArg for i8 {
+impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for u8 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for i16 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for u16 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for i32 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for u32 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for i64 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for u64 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for i128 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for u128 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for String {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self))
-    }
-}
-
-impl IntoDiagnosticArg for std::num::NonZeroU32 {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
-    }
-}
-
-impl IntoDiagnosticArg for Edition {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
     }
 }
 
@@ -134,21 +120,39 @@ impl IntoDiagnosticArg for Symbol {
     }
 }
 
-impl IntoDiagnosticArg for Ident {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        self.to_string().into_diagnostic_arg()
-    }
-}
-
 impl<'a> IntoDiagnosticArg for &'a str {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         self.to_string().into_diagnostic_arg()
     }
 }
 
+impl IntoDiagnosticArg for String {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl<'a> IntoDiagnosticArg for &'a Path {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for PathBuf {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.display().to_string()))
+    }
+}
+
 impl IntoDiagnosticArg for usize {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Number(self)
+    }
+}
+
+impl IntoDiagnosticArg for PanicStrategy {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.desc().to_string()))
     }
 }
 
@@ -433,18 +437,17 @@ impl Diagnostic {
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
     ) -> &mut Self {
-        let mut msg: Vec<_> =
-            vec![("required when trying to coerce from type `".to_string(), Style::NoStyle)];
+        let mut msg: Vec<_> = vec![("required when trying to coerce from type `", Style::NoStyle)];
         msg.extend(expected.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
         }));
-        msg.push(("` to type '".to_string(), Style::NoStyle));
+        msg.push(("` to type '", Style::NoStyle));
         msg.extend(found.0.iter().map(|x| match *x {
-            StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-            StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            StringPart::Normal(ref s) => (s.as_str(), Style::NoStyle),
+            StringPart::Highlighted(ref s) => (s.as_str(), Style::Highlight),
         }));
-        msg.push(("`".to_string(), Style::NoStyle));
+        msg.push(("`", Style::NoStyle));
 
         // For now, just attach these as notes
         self.highlighted_note(msg);
@@ -496,7 +499,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_trait_signature(&mut self, name: String, signature: String) -> &mut Self {
+    pub fn note_trait_signature(&mut self, name: Symbol, signature: String) -> &mut Self {
         self.highlighted_note(vec![
             (format!("`{}` from trait: `", name), Style::NoStyle),
             (signature, Style::Highlight),
@@ -695,19 +698,12 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
-        assert!(!suggestion.is_empty());
-        self.push_suggestion(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: suggestion
-                    .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                    .collect(),
-            }],
-            msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::CompletelyHidden,
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
             applicability,
-        });
-        self
+            SuggestionStyle::CompletelyHidden,
+        )
     }
 
     /// Prints out a message with a suggested edit of the code.
@@ -990,12 +986,12 @@ impl Diagnostic {
     fn sub_with_highlights<M: Into<SubdiagnosticMessage>>(
         &mut self,
         level: Level,
-        mut message: Vec<(M, Style)>,
+        message: Vec<(M, Style)>,
         span: MultiSpan,
         render_span: Option<MultiSpan>,
     ) {
         let message = message
-            .drain(..)
+            .into_iter()
             .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.0), m.1))
             .collect();
         let sub = SubDiagnostic { level, message, span, render_span };

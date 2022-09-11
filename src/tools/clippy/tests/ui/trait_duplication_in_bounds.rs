@@ -1,101 +1,112 @@
+// run-rustfix
 #![deny(clippy::trait_duplication_in_bounds)]
+#![allow(unused)]
 
-use std::collections::BTreeMap;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
+    unimplemented!();
+}
 
-fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
+fn bad_bar<T, U>(arg0: T, arg1: U)
 where
-    T: Clone,
-    T: Default,
+    T: Clone + Clone + Clone + Copy,
+    U: Clone + Copy,
 {
     unimplemented!();
 }
 
-fn good_bar<T: Clone + Default>(arg: T) {
+fn good_bar<T: Clone + Copy, U: Clone + Copy>(arg0: T, arg1: U) {
     unimplemented!();
 }
 
-fn good_foo<T>(arg: T)
+fn good_foo<T, U>(arg0: T, arg1: U)
 where
-    T: Clone + Default,
+    T: Clone + Copy,
+    U: Clone + Copy,
 {
     unimplemented!();
 }
 
-fn good_foobar<T: Default>(arg: T)
-where
-    T: Clone,
-{
-    unimplemented!();
+trait GoodSelfTraitBound: Clone + Copy {
+    fn f();
 }
 
-trait T: Default {
+trait GoodSelfWhereClause {
     fn f()
     where
-        Self: Default;
+        Self: Clone + Copy;
 }
 
-trait U: Default {
+trait BadSelfTraitBound: Clone + Clone + Clone {
+    fn f();
+}
+
+trait BadSelfWhereClause {
     fn f()
     where
-        Self: Clone;
+        Self: Clone + Clone + Clone;
 }
 
-trait ZZ: Default {
-    fn g();
-    fn h();
+trait GoodTraitBound<T: Clone + Copy, U: Clone + Copy> {
+    fn f();
+}
+
+trait GoodWhereClause<T, U> {
     fn f()
     where
-        Self: Default + Clone;
+        T: Clone + Copy,
+        U: Clone + Copy;
 }
 
-trait BadTrait: Default + Clone {
+trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
+    fn f();
+}
+
+trait BadWhereClause<T, U> {
     fn f()
     where
-        Self: Default + Clone;
-    fn g()
-    where
-        Self: Default;
-    fn h()
-    where
-        Self: Copy;
+        T: Clone + Clone + Clone + Copy,
+        U: Clone + Copy;
 }
 
-#[derive(Default, Clone)]
-struct Life;
+struct GoodStructBound<T: Clone + Copy, U: Clone + Copy> {
+    t: T,
+    u: U,
+}
 
-impl T for Life {
+impl<T: Clone + Copy, U: Clone + Copy> GoodTraitBound<T, U> for GoodStructBound<T, U> {
     // this should not warn
     fn f() {}
 }
 
-impl U for Life {
+struct GoodStructWhereClause;
+
+impl<T, U> GoodTraitBound<T, U> for GoodStructWhereClause
+where
+    T: Clone + Copy,
+    U: Clone + Copy,
+{
     // this should not warn
     fn f() {}
 }
 
-// should not warn
-trait Iter: Iterator {
-    fn into_group_btreemap<K, V>(self) -> BTreeMap<K, Vec<V>>
-    where
-        Self: Iterator<Item = (K, V)> + Sized,
-        K: Ord + Eq,
-    {
-        unimplemented!();
-    }
+fn no_error_separate_arg_bounds(program: impl AsRef<()>, dir: impl AsRef<()>, args: &[impl AsRef<()>]) {}
+
+trait GenericTrait<T> {}
+
+fn good_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
+    unimplemented!();
 }
 
-struct Foo;
-
-trait FooIter: Iterator<Item = Foo> {
-    fn bar()
-    where
-        Self: Iterator<Item = Foo>,
-    {
-    }
+fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
+    unimplemented!();
 }
 
-// This should not lint
-fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+mod foo {
+    pub trait Clone {}
+}
+
+fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
+    unimplemented!();
+}
 
 fn main() {}

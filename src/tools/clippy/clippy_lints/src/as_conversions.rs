@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Note that this lint is specialized in linting *every single* use of `as`
     /// regardless of whether good alternatives exist or not.
     /// If you want more precise lints for `as`, please consider using these separate lints:
-    /// `unnecessary_cast`, `cast_lossless/possible_truncation/possible_wrap/precision_loss/sign_loss`,
+    /// `unnecessary_cast`, `cast_lossless/cast_possible_truncation/cast_possible_wrap/cast_precision_loss/cast_sign_loss`,
     /// `fn_to_numeric_cast(_with_truncation)`, `char_lit_as_u8`, `ref_to_mut` and `ptr_as_ptr`.
     /// There is a good explanation the reason why this lint should work in this way and how it is useful
     /// [in this issue](https://github.com/rust-lang/rust-clippy/issues/5122).

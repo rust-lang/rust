@@ -357,8 +357,8 @@ fn run_test(
     for codegen_options_str in &rustdoc_options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
-    for debugging_option_str in &rustdoc_options.debugging_opts_strs {
-        compiler.arg("-Z").arg(&debugging_option_str);
+    for unstable_option_str in &rustdoc_options.unstable_opts_strs {
+        compiler.arg("-Z").arg(&unstable_option_str);
     }
     if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
@@ -740,7 +740,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
 
             let emitter = EmitterWriter::new(
-                box io::sink(),
+                Box::new(io::sink()),
                 None,
                 None,
                 fallback_bundle,
@@ -751,7 +751,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let handler = Handler::with_emitter(false, None, box emitter);
+            let handler = Handler::with_emitter(false, None, Box::new(emitter));
             let sess = ParseSess::with_span_handler(handler, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
@@ -1222,7 +1222,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs, None);
+        let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
@@ -1289,14 +1289,9 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'hir hir::Variant<'_>,
-        g: &'hir hir::Generics<'_>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
         self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
-            intravisit::walk_variant(this, v, g, item_id);
+            intravisit::walk_variant(this, v);
         });
     }
 

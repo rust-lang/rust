@@ -106,4 +106,20 @@ fn main() {
     for n in vec![Some(1), Some(2), Some(3)].iter().flatten() {
         println!("{}", n);
     }
+
+    run_unformatted_tests();
+}
+
+#[rustfmt::skip]
+fn run_unformatted_tests() {
+    // Skip rustfmt here on purpose so the suggestion does not fit in one line
+    for n in vec![
+        Some(1),
+        Some(2),
+        Some(3)
+    ].iter() {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
+    }
 }

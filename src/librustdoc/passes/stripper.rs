@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
-use crate::clean::{self, Item, ItemIdSet};
+use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
 use crate::formats::cache::Cache;
 
@@ -11,6 +11,23 @@ pub(crate) struct Stripper<'a> {
     pub(crate) retained: &'a mut ItemIdSet,
     pub(crate) access_levels: &'a AccessLevels<DefId>,
     pub(crate) update_retained: bool,
+    pub(crate) is_json_output: bool,
+}
+
+// We need to handle this differently for the JSON output because some non exported items could
+// be used in public API. And so, we need these items as well. `is_exported` only checks if they
+// are in the public API, which is not enough.
+#[inline]
+fn is_item_reachable(
+    is_json_output: bool,
+    access_levels: &AccessLevels<DefId>,
+    item_id: ItemId,
+) -> bool {
+    if is_json_output {
+        access_levels.is_reachable(item_id.expect_def_id())
+    } else {
+        access_levels.is_exported(item_id.expect_def_id())
+    }
 }
 
 impl<'a> DocFolder for Stripper<'a> {
@@ -45,8 +62,9 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
-                if i.item_id.is_local()
-                    && !self.access_levels.is_exported(i.item_id.expect_def_id())
+                let item_id = i.item_id;
+                if item_id.is_local()
+                    && !is_item_reachable(self.is_json_output, self.access_levels, item_id)
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -70,7 +88,17 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem { .. } | clean::ImportItem(..) => {}
+            clean::ExternCrateItem { .. } => {}
+            clean::ImportItem(ref imp) => {
+                // Because json doesn't inline imports from private modules, we need to mark
+                // the imported item as retained so it's impls won't be stripped.
+                //
+                // FIXME: Is it necessary to check for json output here: See
+                // https://github.com/rust-lang/rust/pull/100325#discussion_r941495215
+                if let Some(did) = imp.source.did && self.is_json_output {
+                    self.retained.insert(did.into());
+                }
+            }
 
             clean::ImplItem(..) => {}
 
@@ -84,7 +112,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::PrimitiveItem(..) => {}
 
             // Keywords are never stripped
-            clean::KeywordItem(..) => {}
+            clean::KeywordItem => {}
         }
 
         let fastreturn = match *i.kind {
@@ -119,6 +147,8 @@ impl<'a> DocFolder for Stripper<'a> {
 pub(crate) struct ImplStripper<'a> {
     pub(crate) retained: &'a ItemIdSet,
     pub(crate) cache: &'a Cache,
+    pub(crate) is_json_output: bool,
+    pub(crate) document_private: bool,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
@@ -126,8 +156,27 @@ impl<'a> DocFolder for ImplStripper<'a> {
         if let clean::ImplItem(ref imp) = *i.kind {
             // Impl blocks can be skipped if they are: empty; not a trait impl; and have no
             // documentation.
-            if imp.trait_.is_none() && imp.items.is_empty() && i.doc_value().is_none() {
-                return None;
+            //
+            // There is one special case: if the impl block contains only private items.
+            if imp.trait_.is_none() {
+                // If the only items present are private ones and we're not rendering private items,
+                // we don't document it.
+                if !imp.items.is_empty()
+                    && !self.document_private
+                    && imp.items.iter().all(|i| {
+                        let item_id = i.item_id;
+                        item_id.is_local()
+                            && !is_item_reachable(
+                                self.is_json_output,
+                                &self.cache.access_levels,
+                                item_id,
+                            )
+                    })
+                {
+                    return None;
+                } else if imp.items.is_empty() && i.doc_value().is_none() {
+                    return None;
+                }
             }
             if let Some(did) = imp.for_.def_id(self.cache) {
                 if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())

@@ -1,23 +1,23 @@
 // MIR for `array_casts` after SimplifyCfg-elaborate-drops
 
 fn array_casts() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/retag.rs:57:18: 57:18
-    let mut _1: [usize; 2];              // in scope 0 at $DIR/retag.rs:58:9: 58:14
-    let mut _3: *mut [usize; 2];         // in scope 0 at $DIR/retag.rs:59:13: 59:19
-    let mut _4: &mut [usize; 2];         // in scope 0 at $DIR/retag.rs:59:13: 59:19
-    let _5: ();                          // in scope 0 at $DIR/retag.rs:60:5: 60:30
-    let mut _6: *mut usize;              // in scope 0 at $DIR/retag.rs:60:15: 60:23
-    let mut _7: *mut usize;              // in scope 0 at $DIR/retag.rs:60:15: 60:16
-    let mut _10: *const [usize; 2];      // in scope 0 at $DIR/retag.rs:63:13: 63:15
-    let _11: &[usize; 2];                // in scope 0 at $DIR/retag.rs:63:13: 63:15
+    let mut _0: ();                      // return place in scope 0 at $DIR/retag.rs:+0:18: +0:18
+    let mut _1: [usize; 2];              // in scope 0 at $DIR/retag.rs:+1:9: +1:14
+    let mut _3: *mut [usize; 2];         // in scope 0 at $DIR/retag.rs:+2:13: +2:19
+    let mut _4: &mut [usize; 2];         // in scope 0 at $DIR/retag.rs:+2:13: +2:19
+    let _5: ();                          // in scope 0 at $DIR/retag.rs:+3:5: +3:30
+    let mut _6: *mut usize;              // in scope 0 at $DIR/retag.rs:+3:15: +3:23
+    let mut _7: *mut usize;              // in scope 0 at $DIR/retag.rs:+3:15: +3:16
+    let mut _10: *const [usize; 2];      // in scope 0 at $DIR/retag.rs:+6:13: +6:15
+    let _11: &[usize; 2];                // in scope 0 at $DIR/retag.rs:+6:13: +6:15
     let _12: ();                         // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _13: (&usize, &usize);       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _14: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _15: usize;                      // in scope 0 at $DIR/retag.rs:64:16: 64:36
-    let mut _16: *const usize;           // in scope 0 at $DIR/retag.rs:64:26: 64:34
-    let mut _17: *const usize;           // in scope 0 at $DIR/retag.rs:64:26: 64:27
+    let _15: usize;                      // in scope 0 at $DIR/retag.rs:+7:16: +7:36
+    let mut _16: *const usize;           // in scope 0 at $DIR/retag.rs:+7:26: +7:34
+    let mut _17: *const usize;           // in scope 0 at $DIR/retag.rs:+7:26: +7:27
     let mut _18: &usize;                 // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-    let _19: usize;                      // in scope 0 at $DIR/retag.rs:64:38: 64:39
+    let _19: usize;                      // in scope 0 at $DIR/retag.rs:+7:38: +7:39
     let mut _22: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _23: bool;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _24: usize;                  // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -31,18 +31,18 @@ fn array_casts() -> () {
     let _33: &usize;                     // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     let mut _34: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     scope 1 {
-        debug x => _1;                   // in scope 1 at $DIR/retag.rs:58:9: 58:14
-        let _2: *mut usize;              // in scope 1 at $DIR/retag.rs:59:9: 59:10
+        debug x => _1;                   // in scope 1 at $DIR/retag.rs:+1:9: +1:14
+        let _2: *mut usize;              // in scope 1 at $DIR/retag.rs:+2:9: +2:10
         scope 2 {
-            debug p => _2;               // in scope 2 at $DIR/retag.rs:59:9: 59:10
-            let _8: [usize; 2];          // in scope 2 at $DIR/retag.rs:62:9: 62:10
+            debug p => _2;               // in scope 2 at $DIR/retag.rs:+2:9: +2:10
+            let _8: [usize; 2];          // in scope 2 at $DIR/retag.rs:+5:9: +5:10
             scope 3 {
             }
             scope 4 {
-                debug x => _8;           // in scope 4 at $DIR/retag.rs:62:9: 62:10
-                let _9: *const usize;    // in scope 4 at $DIR/retag.rs:63:9: 63:10
+                debug x => _8;           // in scope 4 at $DIR/retag.rs:+5:9: +5:10
+                let _9: *const usize;    // in scope 4 at $DIR/retag.rs:+6:9: +6:10
                 scope 5 {
-                    debug p => _9;       // in scope 5 at $DIR/retag.rs:63:9: 63:10
+                    debug p => _9;       // in scope 5 at $DIR/retag.rs:+6:9: +6:10
                     let _20: &usize;     // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                     let _21: &usize;     // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                     let mut _35: &usize; // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -62,62 +62,62 @@ fn array_casts() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/retag.rs:58:9: 58:14
-        _1 = [const 0_usize, const 0_usize]; // scope 0 at $DIR/retag.rs:58:29: 58:35
-        StorageLive(_2);                 // scope 1 at $DIR/retag.rs:59:9: 59:10
-        StorageLive(_3);                 // scope 1 at $DIR/retag.rs:59:13: 59:19
-        StorageLive(_4);                 // scope 1 at $DIR/retag.rs:59:13: 59:19
-        _4 = &mut _1;                    // scope 1 at $DIR/retag.rs:59:13: 59:19
-        Retag(_4);                       // scope 1 at $DIR/retag.rs:59:13: 59:19
-        _3 = &raw mut (*_4);             // scope 1 at $DIR/retag.rs:59:13: 59:19
-        Retag([raw] _3);                 // scope 1 at $DIR/retag.rs:59:13: 59:19
-        _2 = move _3 as *mut usize (Pointer(ArrayToPointer)); // scope 1 at $DIR/retag.rs:59:13: 59:33
-        StorageDead(_3);                 // scope 1 at $DIR/retag.rs:59:32: 59:33
-        StorageDead(_4);                 // scope 1 at $DIR/retag.rs:59:33: 59:34
-        StorageLive(_5);                 // scope 2 at $DIR/retag.rs:60:5: 60:30
-        StorageLive(_6);                 // scope 3 at $DIR/retag.rs:60:15: 60:23
-        StorageLive(_7);                 // scope 3 at $DIR/retag.rs:60:15: 60:16
-        _7 = _2;                         // scope 3 at $DIR/retag.rs:60:15: 60:16
-        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> bb1; // scope 3 at $DIR/retag.rs:60:15: 60:23
+        StorageLive(_1);                 // scope 0 at $DIR/retag.rs:+1:9: +1:14
+        _1 = [const 0_usize, const 0_usize]; // scope 0 at $DIR/retag.rs:+1:29: +1:35
+        StorageLive(_2);                 // scope 1 at $DIR/retag.rs:+2:9: +2:10
+        StorageLive(_3);                 // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        StorageLive(_4);                 // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        _4 = &mut _1;                    // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        Retag(_4);                       // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        _3 = &raw mut (*_4);             // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        Retag([raw] _3);                 // scope 1 at $DIR/retag.rs:+2:13: +2:19
+        _2 = move _3 as *mut usize (Pointer(ArrayToPointer)); // scope 1 at $DIR/retag.rs:+2:13: +2:33
+        StorageDead(_3);                 // scope 1 at $DIR/retag.rs:+2:32: +2:33
+        StorageDead(_4);                 // scope 1 at $DIR/retag.rs:+2:33: +2:34
+        StorageLive(_5);                 // scope 2 at $DIR/retag.rs:+3:5: +3:30
+        StorageLive(_6);                 // scope 3 at $DIR/retag.rs:+3:15: +3:23
+        StorageLive(_7);                 // scope 3 at $DIR/retag.rs:+3:15: +3:16
+        _7 = _2;                         // scope 3 at $DIR/retag.rs:+3:15: +3:16
+        _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> bb1; // scope 3 at $DIR/retag.rs:+3:15: +3:23
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:60:17: 60:20
+                                         // + span: $DIR/retag.rs:61:17: 61:20
                                          // + literal: Const { ty: unsafe fn(*mut usize, usize) -> *mut usize {ptr::mut_ptr::<impl *mut usize>::add}, val: Value(<ZST>) }
     }
 
     bb1: {
-        StorageDead(_7);                 // scope 3 at $DIR/retag.rs:60:22: 60:23
-        (*_6) = const 1_usize;           // scope 3 at $DIR/retag.rs:60:14: 60:27
-        StorageDead(_6);                 // scope 3 at $DIR/retag.rs:60:27: 60:28
-        _5 = const ();                   // scope 3 at $DIR/retag.rs:60:5: 60:30
-        StorageDead(_5);                 // scope 2 at $DIR/retag.rs:60:29: 60:30
-        StorageLive(_8);                 // scope 2 at $DIR/retag.rs:62:9: 62:10
-        _8 = [const 0_usize, const 1_usize]; // scope 2 at $DIR/retag.rs:62:25: 62:31
-        StorageLive(_9);                 // scope 4 at $DIR/retag.rs:63:9: 63:10
-        StorageLive(_10);                // scope 4 at $DIR/retag.rs:63:13: 63:15
-        StorageLive(_11);                // scope 4 at $DIR/retag.rs:63:13: 63:15
-        _11 = &_8;                       // scope 4 at $DIR/retag.rs:63:13: 63:15
-        Retag(_11);                      // scope 4 at $DIR/retag.rs:63:13: 63:15
-        _10 = &raw const (*_11);         // scope 4 at $DIR/retag.rs:63:13: 63:15
-        Retag([raw] _10);                // scope 4 at $DIR/retag.rs:63:13: 63:15
-        _9 = move _10 as *const usize (Pointer(ArrayToPointer)); // scope 4 at $DIR/retag.rs:63:13: 63:31
-        StorageDead(_10);                // scope 4 at $DIR/retag.rs:63:30: 63:31
-        StorageDead(_11);                // scope 4 at $DIR/retag.rs:63:31: 63:32
+        StorageDead(_7);                 // scope 3 at $DIR/retag.rs:+3:22: +3:23
+        (*_6) = const 1_usize;           // scope 3 at $DIR/retag.rs:+3:14: +3:27
+        StorageDead(_6);                 // scope 3 at $DIR/retag.rs:+3:27: +3:28
+        _5 = const ();                   // scope 3 at $DIR/retag.rs:+3:5: +3:30
+        StorageDead(_5);                 // scope 2 at $DIR/retag.rs:+3:29: +3:30
+        StorageLive(_8);                 // scope 2 at $DIR/retag.rs:+5:9: +5:10
+        _8 = [const 0_usize, const 1_usize]; // scope 2 at $DIR/retag.rs:+5:25: +5:31
+        StorageLive(_9);                 // scope 4 at $DIR/retag.rs:+6:9: +6:10
+        StorageLive(_10);                // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        StorageLive(_11);                // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        _11 = &_8;                       // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        Retag(_11);                      // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        _10 = &raw const (*_11);         // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        Retag([raw] _10);                // scope 4 at $DIR/retag.rs:+6:13: +6:15
+        _9 = move _10 as *const usize (Pointer(ArrayToPointer)); // scope 4 at $DIR/retag.rs:+6:13: +6:31
+        StorageDead(_10);                // scope 4 at $DIR/retag.rs:+6:30: +6:31
+        StorageDead(_11);                // scope 4 at $DIR/retag.rs:+6:31: +6:32
         StorageLive(_12);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_13);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_14);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        StorageLive(_15);                // scope 5 at $DIR/retag.rs:64:16: 64:36
-        StorageLive(_16);                // scope 6 at $DIR/retag.rs:64:26: 64:34
-        StorageLive(_17);                // scope 6 at $DIR/retag.rs:64:26: 64:27
-        _17 = _9;                        // scope 6 at $DIR/retag.rs:64:26: 64:27
-        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> bb2; // scope 6 at $DIR/retag.rs:64:26: 64:34
+        StorageLive(_15);                // scope 5 at $DIR/retag.rs:+7:16: +7:36
+        StorageLive(_16);                // scope 6 at $DIR/retag.rs:+7:26: +7:34
+        StorageLive(_17);                // scope 6 at $DIR/retag.rs:+7:26: +7:27
+        _17 = _9;                        // scope 6 at $DIR/retag.rs:+7:26: +7:27
+        _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> bb2; // scope 6 at $DIR/retag.rs:+7:26: +7:34
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:64:28: 64:31
+                                         // + span: $DIR/retag.rs:65:28: 65:31
                                          // + literal: Const { ty: unsafe fn(*const usize, usize) -> *const usize {ptr::const_ptr::<impl *const usize>::add}, val: Value(<ZST>) }
     }
 
     bb2: {
-        StorageDead(_17);                // scope 6 at $DIR/retag.rs:64:33: 64:34
-        _15 = (*_16);                    // scope 6 at $DIR/retag.rs:64:25: 64:34
+        StorageDead(_17);                // scope 6 at $DIR/retag.rs:+7:33: +7:34
+        _15 = (*_16);                    // scope 6 at $DIR/retag.rs:+7:25: +7:34
         _14 = &_15;                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_14);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -128,7 +128,9 @@ fn array_casts() -> () {
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_18);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _13 = (move _14, move _18);      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Deinit(_13);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        (_13.0: &usize) = move _14;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        (_13.1: &usize) = move _18;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_13);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -154,7 +156,8 @@ fn array_casts() -> () {
 
     bb3: {
         StorageLive(_27);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _27 = core::panicking::AssertKind::Eq; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Deinit(_27);                     // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        discriminant(_27) = 0;           // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_28);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_29);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _29 = move _27;                  // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -171,7 +174,8 @@ fn array_casts() -> () {
         _32 = &(*_33);                   // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_32);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_34);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _34 = Option::<Arguments>::None; // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        Deinit(_34);                     // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        discriminant(_34) = 0;           // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_34);                      // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _28 = core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
@@ -188,11 +192,11 @@ fn array_casts() -> () {
         StorageDead(_15);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_13);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_12);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _0 = const ();                   // scope 0 at $DIR/retag.rs:57:18: 65:2
-        StorageDead(_9);                 // scope 4 at $DIR/retag.rs:65:1: 65:2
-        StorageDead(_8);                 // scope 2 at $DIR/retag.rs:65:1: 65:2
-        StorageDead(_2);                 // scope 1 at $DIR/retag.rs:65:1: 65:2
-        StorageDead(_1);                 // scope 0 at $DIR/retag.rs:65:1: 65:2
-        return;                          // scope 0 at $DIR/retag.rs:65:2: 65:2
+        _0 = const ();                   // scope 0 at $DIR/retag.rs:+0:18: +8:2
+        StorageDead(_9);                 // scope 4 at $DIR/retag.rs:+8:1: +8:2
+        StorageDead(_8);                 // scope 2 at $DIR/retag.rs:+8:1: +8:2
+        StorageDead(_2);                 // scope 1 at $DIR/retag.rs:+8:1: +8:2
+        StorageDead(_1);                 // scope 0 at $DIR/retag.rs:+8:1: +8:2
+        return;                          // scope 0 at $DIR/retag.rs:+8:2: +8:2
     }
 }

@@ -1,7 +1,8 @@
-#![feature(const_ptr_offset_from)]
+#![feature(const_ptr_sub_ptr)]
 #![feature(core_intrinsics)]
 
 use std::intrinsics::{ptr_offset_from, ptr_offset_from_unsigned};
+use std::ptr;
 
 #[repr(C)]
 struct Struct {
@@ -75,9 +76,21 @@ pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
     let base_ptr: *const Struct = &uninit as *const _ as *const Struct;
     let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
     let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
-    let offset = unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) }; //~ERROR evaluation of constant value failed
+    unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) } //~ERROR evaluation of constant value failed
     //~| pointers into different allocations
-    offset as usize
+};
+
+pub const TOO_FAR_APART1: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
+    unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
+    //~| too far ahead
+};
+pub const TOO_FAR_APART2: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
+    unsafe { ptr_offset_from(ptr1, ptr2) } //~ERROR evaluation of constant value failed
+    //~| too far before
 };
 
 const WRONG_ORDER_UNSIGNED: usize = {
@@ -85,6 +98,28 @@ const WRONG_ORDER_UNSIGNED: usize = {
     let p = a.as_ptr();
     unsafe { ptr_offset_from_unsigned(p, p.add(2) ) } //~ERROR evaluation of constant value failed
     //~| first pointer has smaller offset than second: 0 < 8
+};
+pub const TOO_FAR_APART_UNSIGNED: usize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_add(isize::MAX as usize + 42);
+    // This would fit into a `usize` but we still don't allow it.
+    unsafe { ptr_offset_from_unsigned(ptr2, ptr1) } //~ERROR evaluation of constant value failed
+    //~| too far ahead
+};
+
+// These do NOT complain that pointers are too far apart; they pass that check (to then fail the
+// next one).
+pub const OFFSET_VERY_FAR1: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_offset(isize::MAX);
+    unsafe { ptr2.offset_from(ptr1) }
+    //~^ inside
+};
+pub const OFFSET_VERY_FAR2: isize = {
+    let ptr1 = ptr::null::<u8>();
+    let ptr2 = ptr1.wrapping_offset(isize::MAX);
+    unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
+    //~^ inside
 };
 
 fn main() {}

@@ -1,0 +1,12 @@
+### What it does
+Warns if hexadecimal or binary literals are not grouped
+by nibble or byte.
+
+### Why is this bad?
+Negatively impacts readability.
+
+### Example
+```
+let x: u32 = 0xFFF_FFF;
+let y: u8 = 0b01_011_101;
+```

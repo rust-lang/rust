@@ -18,11 +18,10 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, ExistentialProjection, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
-use rustc_target::abi::{Integer, TagEncoding, Variants};
+use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
+use rustc_target::abi::Integer;
 use smallvec::SmallVec;
 
-use std::borrow::Cow;
 use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -98,7 +97,6 @@ fn push_debuginfo_type_name<'tcx>(
 
             if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
-                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
@@ -391,11 +389,10 @@ fn push_debuginfo_type_name<'tcx>(
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
-            // an artificial `enum$<>` type, as defined in msvc_enum_fallback().
+            // an artificial `enum2$<>` type, as defined in msvc_enum_fallback().
             if cpp_like_debuginfo && t.is_generator() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
-                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_closure_or_generator_name(tcx, def_id, substs, true, output, visited);
@@ -428,58 +425,17 @@ fn push_debuginfo_type_name<'tcx>(
 
     /// MSVC names enums differently than other platforms so that the debugging visualization
     // format (natvis) is able to understand enums and render the active variant correctly in the
-    // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
-    // `EnumMemberDescriptionFactor::create_member_descriptions`.
+    // debugger. For more information, look in
+    // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
-        tcx: TyCtxt<'tcx>,
         ty_and_layout: TyAndLayout<'tcx>,
         push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
         debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
-        let ty = ty_and_layout.ty;
-
-        output.push_str("enum$<");
+        output.push_str("enum2$<");
         push_inner(output, visited);
-
-        let variant_name = |variant_index| match ty.kind() {
-            ty::Adt(adt_def, _) => {
-                debug_assert!(adt_def.is_enum());
-                Cow::from(adt_def.variant(variant_index).name.as_str())
-            }
-            ty::Generator(..) => GeneratorSubsts::variant_name(variant_index),
-            _ => unreachable!(),
-        };
-
-        if let Variants::Multiple {
-            tag_encoding: TagEncoding::Niche { dataful_variant, .. },
-            tag,
-            variants,
-            ..
-        } = &ty_and_layout.variants
-        {
-            let dataful_variant_layout = &variants[*dataful_variant];
-
-            // calculate the range of values for the dataful variant
-            let dataful_discriminant_range =
-                dataful_variant_layout.largest_niche().unwrap().valid_range;
-
-            let min = dataful_discriminant_range.start;
-            let min = tag.size(&tcx).truncate(min);
-
-            let max = dataful_discriminant_range.end;
-            let max = tag.size(&tcx).truncate(max);
-
-            let dataful_variant_name = variant_name(*dataful_variant);
-            write!(output, ", {}, {}, {}", min, max, dataful_variant_name).unwrap();
-        } else if let Variants::Single { index: variant_idx } = &ty_and_layout.variants {
-            // Uninhabited enums can't be constructed and should never need to be visualized so
-            // skip this step for them.
-            if !ty_and_layout.abi.is_uninhabited() {
-                write!(output, ", {}", variant_name(*variant_idx)).unwrap();
-            }
-        }
         push_close_angle_bracket(true, output);
     }
 

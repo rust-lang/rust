@@ -2,6 +2,7 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
+use hir::def_id::DefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -11,14 +12,13 @@ use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_infer::infer::{self, TyCtxtInferExt};
-use rustc_infer::traits;
+use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
-use std::iter;
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
@@ -63,70 +63,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
-    /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
-    /// the ctor would successfully solve the type mismatch and if so, suggest it:
+    /// When encountering an fn-like type, try accessing the output of the type
+    /// // and suggesting calling it if it satisfies a predicate (i.e. if the
+    /// output has a method or a field):
     /// ```compile_fail,E0308
     /// fn foo(x: usize) -> usize { x }
     /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
     /// ```
-    fn suggest_fn_call(
+    pub(crate) fn suggest_fn_call(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        expected: Ty<'tcx>,
         found: Ty<'tcx>,
+        can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let (def_id, output, inputs) = match *found.kind() {
-            ty::FnDef(def_id, _) => {
-                let fn_sig = found.fn_sig(self.tcx);
-                (def_id, fn_sig.output(), fn_sig.inputs().skip_binder().len())
-            }
-            ty::Closure(def_id, substs) => {
-                let fn_sig = substs.as_closure().sig();
-                (def_id, fn_sig.output(), fn_sig.inputs().skip_binder().len() - 1)
-            }
-            ty::Opaque(def_id, substs) => {
-                let sig = self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
-                    // args tuple will always be substs[1]
-                    && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                    {
-                        Some((
-                            pred.kind().rebind(proj.term.ty().unwrap()),
-                            args.len(),
-                        ))
-                    } else {
-                        None
-                    }
-                });
-                if let Some((output, inputs)) = sig {
-                    (def_id, output, inputs)
-                } else {
-                    return false;
-                }
-            }
-            _ => return false,
-        };
-
-        let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
-        let output = self.normalize_associated_types_in(expr.span, output);
-        if !output.is_ty_var() && self.can_coerce(output, expected) {
-            let (sugg_call, mut applicability) = match inputs {
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(expr, found)
+            else { return false; };
+        if can_satisfy(output) {
+            let (sugg_call, mut applicability) = match inputs.len() {
                 0 => ("".to_string(), Applicability::MachineApplicable),
                 1..=4 => (
-                    (0..inputs).map(|_| "_").collect::<Vec<_>>().join(", "),
-                    Applicability::MachineApplicable,
+                    inputs
+                        .iter()
+                        .map(|ty| {
+                            if ty.is_suggestable(self.tcx, false) {
+                                format!("/* {ty} */")
+                            } else {
+                                "".to_string()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    Applicability::HasPlaceholders,
                 ),
-                _ => ("...".to_string(), Applicability::HasPlaceholders),
+                _ => ("/* ... */".to_string(), Applicability::HasPlaceholders),
             };
 
-            let msg = match self.tcx.def_kind(def_id) {
-                DefKind::Fn => "call this function",
-                DefKind::Closure | DefKind::OpaqueTy => "call this closure",
-                DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct",
-                DefKind::Ctor(CtorOf::Variant, _) => "instantiate this tuple variant",
-                _ => "call this function",
+            let msg = match def_id_or_name {
+                DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
+                    DefKind::Ctor(CtorOf::Struct, _) => "instantiate this tuple struct".to_string(),
+                    DefKind::Ctor(CtorOf::Variant, _) => {
+                        "instantiate this tuple variant".to_string()
+                    }
+                    kind => format!("call this {}", kind.descr(def_id)),
+                },
+                DefIdOrName::Name(name) => format!("call this {name}"),
             };
 
             let sugg = match expr.kind {
@@ -163,6 +144,182 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    /// Extracts information about a callable type for diagnostics. This is a
+    /// heuristic -- it doesn't necessarily mean that a type is always callable,
+    /// because the callable type must also be well-formed to be called.
+    pub(in super::super) fn extract_callable_info(
+        &self,
+        expr: &Expr<'_>,
+        found: Ty<'tcx>,
+    ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
+        // Autoderef is useful here because sometimes we box callables, etc.
+        let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
+            match *found.kind() {
+                ty::FnPtr(fn_sig) =>
+                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
+                ty::FnDef(def_id, _) => {
+                    let fn_sig = found.fn_sig(self.tcx);
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
+                }
+                ty::Closure(def_id, substs) => {
+                    let fn_sig = substs.as_closure().sig();
+                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
+                }
+                ty::Opaque(def_id, substs) => {
+                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
+                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                DefIdOrName::DefId(def_id),
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                ty::Dynamic(data, _) => {
+                    data.iter().find_map(|pred| {
+                        if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
+                        && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        // for existential projection, substs are shifted over by 1
+                        && let ty::Tuple(args) = proj.substs.type_at(0).kind()
+                        {
+                            Some((
+                                DefIdOrName::Name("trait object"),
+                                pred.rebind(proj.term.ty().unwrap()),
+                                pred.rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                ty::Param(param) => {
+                    let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
+                    self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
+                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        && proj.projection_ty.self_ty() == found
+                        // args tuple will always be substs[1]
+                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
+                        {
+                            Some((
+                                DefIdOrName::DefId(def_id),
+                                pred.kind().rebind(proj.term.ty().unwrap()),
+                                pred.kind().rebind(args.as_slice()),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                }
+                _ => None,
+            }
+        }) else { return None; };
+
+        let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
+        let inputs = inputs
+            .skip_binder()
+            .iter()
+            .map(|ty| {
+                self.replace_bound_vars_with_fresh_vars(
+                    expr.span,
+                    infer::FnCall,
+                    inputs.rebind(*ty),
+                )
+            })
+            .collect();
+
+        // We don't want to register any extra obligations, which should be
+        // implied by wf, but also because that would possibly result in
+        // erroneous errors later on.
+        let infer::InferOk { value: output, obligations: _ } =
+            self.normalize_associated_types_in_as_infer_ok(expr.span, output);
+
+        if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
+    }
+
+    pub fn suggest_two_fn_call(
+        &self,
+        err: &mut Diagnostic,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_ty: Ty<'tcx>,
+        can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
+    ) -> bool {
+        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
+            else { return false; };
+        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
+            else { return false; };
+
+        if can_satisfy(lhs_output_ty, rhs_output_ty) {
+            let mut sugg = vec![];
+            let mut applicability = Applicability::MachineApplicable;
+
+            for (expr, inputs) in [(lhs_expr, lhs_inputs), (rhs_expr, rhs_inputs)] {
+                let (sugg_call, this_applicability) = match inputs.len() {
+                    0 => ("".to_string(), Applicability::MachineApplicable),
+                    1..=4 => (
+                        inputs
+                            .iter()
+                            .map(|ty| {
+                                if ty.is_suggestable(self.tcx, false) {
+                                    format!("/* {ty} */")
+                                } else {
+                                    "/* value */".to_string()
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        Applicability::HasPlaceholders,
+                    ),
+                    _ => ("/* ... */".to_string(), Applicability::HasPlaceholders),
+                };
+
+                applicability = applicability.max(this_applicability);
+
+                match expr.kind {
+                    hir::ExprKind::Call(..)
+                    | hir::ExprKind::Path(..)
+                    | hir::ExprKind::Index(..)
+                    | hir::ExprKind::Lit(..) => {
+                        sugg.extend([(expr.span.shrink_to_hi(), format!("({sugg_call})"))]);
+                    }
+                    hir::ExprKind::Closure { .. } => {
+                        // Might be `{ expr } || { bool }`
+                        applicability = Applicability::MaybeIncorrect;
+                        sugg.extend([
+                            (expr.span.shrink_to_lo(), "(".to_string()),
+                            (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                        ]);
+                    }
+                    _ => {
+                        sugg.extend([
+                            (expr.span.shrink_to_lo(), "(".to_string()),
+                            (expr.span.shrink_to_hi(), format!(")({sugg_call})")),
+                        ]);
+                    }
+                }
+            }
+
+            err.multipart_suggestion_verbose(
+                format!("use parentheses to call these"),
+                sugg,
+                applicability,
+            );
+
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn suggest_deref_ref_or_into(
         &self,
         err: &mut Diagnostic,
@@ -180,62 +337,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion(sp, &msg, suggestion, applicability);
             }
-        } else if let (ty::FnDef(def_id, ..), true) =
-            (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
+        } else if self.suggest_fn_call(err, expr, found, |output| self.can_coerce(output, expected))
+            && let ty::FnDef(def_id, ..) = &found.kind()
+            && let Some(sp) = self.tcx.hir().span_if_local(*def_id)
         {
-            if def_id.is_local() {
-                err.span_label(self.tcx.def_span(def_id), &format!("{} defined here", found));
-            }
+            err.span_label(sp, format!("{found} defined here"));
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
-            let is_struct_pat_shorthand_field =
-                self.maybe_get_struct_pattern_shorthand_field(expr).is_some();
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
-                if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                    let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
-                        .filter_map(|(receiver, method)| {
-                            let method_call = format!(".{}()", method.name);
-                            if receiver.ends_with(&method_call) {
-                                None // do not suggest code that is already there (#53348)
-                            } else {
-                                let method_call_list = [".to_vec()", ".to_string()"];
-                                let mut sugg = if receiver.ends_with(".clone()")
-                                    && method_call_list.contains(&method_call.as_str())
-                                {
-                                    let max_len = receiver.rfind('.').unwrap();
-                                    vec![(
-                                        expr.span,
-                                        format!("{}{}", &receiver[..max_len], method_call),
-                                    )]
-                                } else {
-                                    if expr.precedence().order()
-                                        < ExprPrecedence::MethodCall.order()
-                                    {
-                                        vec![
-                                            (expr.span.shrink_to_lo(), "(".to_string()),
-                                            (expr.span.shrink_to_hi(), format!("){}", method_call)),
-                                        ]
-                                    } else {
-                                        vec![(expr.span.shrink_to_hi(), method_call)]
-                                    }
-                                };
-                                if is_struct_pat_shorthand_field {
-                                    sugg.insert(
-                                        0,
-                                        (expr.span.shrink_to_lo(), format!("{}: ", receiver)),
-                                    );
-                                }
-                                Some(sugg)
-                            }
-                        })
-                        .peekable();
-                    if suggestions.peek().is_some() {
-                        err.multipart_suggestions(
-                            "try using a conversion method",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                let mut suggestions = methods.iter()
+                    .filter_map(|conversion_method| {
+                        let receiver_method_ident = expr.method_ident();
+                        if let Some(method_ident) = receiver_method_ident
+                            && method_ident.name == conversion_method.name
+                        {
+                            return None // do not suggest code that is already there (#53348)
+                        }
+
+                        let method_call_list = [sym::to_vec, sym::to_string];
+                        let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
+                            && receiver_method.ident.name == sym::clone
+                            && method_call_list.contains(&conversion_method.name)
+                            // If receiver is `.clone()` and found type has one of those methods,
+                            // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
+                            // to an owned type (`Vec` or `String`).  These conversions clone internally,
+                            // so we remove the user's `clone` call.
+                        {
+                            vec![(
+                                receiver_method.ident.span,
+                                conversion_method.name.to_string()
+                            )]
+                        } else if expr.precedence().order()
+                            < ExprPrecedence::MethodCall.order()
+                        {
+                            vec![
+                                (expr.span.shrink_to_lo(), "(".to_string()),
+                                (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
+                            ]
+                        } else {
+                            vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
+                        };
+                        let struct_pat_shorthand_field = self.maybe_get_struct_pattern_shorthand_field(expr);
+                        if let Some(name) = struct_pat_shorthand_field {
+                            sugg.insert(
+                                0,
+                                (expr.span.shrink_to_lo(), format!("{}: ", name)),
+                            );
+                        }
+                        Some(sugg)
+                    })
+                    .peekable();
+                if suggestions.peek().is_some() {
+                    err.multipart_suggestions(
+                        "try using a conversion method",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             } else if let ty::Adt(found_adt, found_substs) = found.kind()
                 && self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
@@ -507,25 +664,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(self.tcx), can_suggest, expected.is_unit()) {
-            (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
-                err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found });
-                true
-            }
-            (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
-                // that.
-                err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
-                true
-            }
-            (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
+        match &fn_decl.output {
+            &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() && !can_suggest => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.subdiagnostic(ExpectedReturnTypeLabel::Unit { span });
-                true
+                return true;
             }
-            // expectation was caused by something else, not the default return
-            (&hir::FnRetTy::DefaultReturn(_), _, _, false) => false,
-            (&hir::FnRetTy::Return(ref ty), _, _, _) => {
+            &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
+                if found.is_suggestable(self.tcx, false) {
+                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                    return true;
+                } else if let ty::Closure(_, substs) = found.kind()
+                    // FIXME(compiler-errors): Get better at printing binders...
+                    && let closure = substs.as_closure()
+                    && closure.sig().is_suggestable(self.tcx, false)
+                {
+                    err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: closure.print_as_impl_trait().to_string() });
+                    return true;
+                } else {
+                    // FIXME: if `found` could be `impl Iterator` we should suggest that.
+                    err.subdiagnostic(AddReturnTypeSuggestion::MissingHere { span });
+                    return true
+                }
+            }
+            &hir::FnRetTy::Return(ref ty) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
@@ -542,9 +704,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.try_suggest_return_impl_trait(err, expected, ty, fn_id);
                     return true;
                 }
-                false
             }
+            _ => {}
         }
+        false
     }
 
     /// check whether the return type is a generic type with a trait bound
@@ -766,6 +929,69 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn suggest_copied_or_cloned(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        let ty::Adt(adt_def, substs) = expr_ty.kind() else { return; };
+        let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return; };
+        if adt_def != expected_adt_def {
+            return;
+        }
+
+        let mut suggest_copied_or_cloned = || {
+            let expr_inner_ty = substs.type_at(0);
+            let expected_inner_ty = expected_substs.type_at(0);
+            if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
+                && self.can_eq(self.param_env, *ty, expected_inner_ty).is_ok()
+            {
+                let def_path = self.tcx.def_path_str(adt_def.did());
+                if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
+                    diag.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::copied` to copy the value inside the `{def_path}`"
+                        ),
+                        ".copied()",
+                        Applicability::MachineApplicable,
+                    );
+                } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
+                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
+                        self,
+                        self.param_env,
+                        *ty,
+                        clone_did,
+                        expr.span
+                    )
+                {
+                    diag.span_suggestion_verbose(
+                        expr.span.shrink_to_hi(),
+                        format!(
+                            "use `{def_path}::cloned` to clone the value inside the `{def_path}`"
+                        ),
+                        ".cloned()",
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        };
+
+        if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
+            && adt_def.did() == result_did
+            // Check that the error types are equal
+            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1)).is_ok()
+        {
+            suggest_copied_or_cloned();
+        } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
+            && adt_def.did() == option_did
+        {
+            suggest_copied_or_cloned();
+        }
+    }
+
     /// Suggest wrapping the block in square brackets instead of curly braces
     /// in case the block was mistaken array syntax, e.g. `{ 1 }` -> `[ 1 ]`.
     pub(crate) fn suggest_block_to_brackets(
@@ -826,7 +1052,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
     ) {
-        let hir::ExprKind::MethodCall(segment, &[ref callee_expr], _) = expr.kind else { return; };
+        let hir::ExprKind::MethodCall(segment, callee_expr, &[], _) = expr.kind else { return; };
         let Some(clone_trait_did) = self.tcx.lang_items().clone_trait() else { return; };
         let ty::Ref(_, pointee_ty, _) = found_ty.kind() else { return };
         let results = self.typeck_results.borrow();
@@ -835,8 +1061,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && results.type_dependent_def_id(expr.hir_id).map_or(
                 false,
                 |did| {
-                    self.tcx.associated_item(did).container
-                        == ty::AssocItemContainer::TraitContainer(clone_trait_did)
+                    let assoc_item = self.tcx.associated_item(did);
+                    assoc_item.container == ty::AssocItemContainer::TraitContainer
+                        && assoc_item.container_id(self.tcx) == clone_trait_did
                 },
             )
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this
@@ -865,4 +1092,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
     }
+
+    /// A common error is to add an extra semicolon:
+    ///
+    /// ```compile_fail,E0308
+    /// fn foo() -> usize {
+    ///     22;
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the final statement in a block is an
+    /// expression with an explicit semicolon whose type is compatible
+    /// with `expected_ty`. If so, it suggests removing the semicolon.
+    pub(crate) fn consider_removing_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        err: &mut Diagnostic,
+    ) -> bool {
+        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+            if let StatementAsExpression::NeedsBoxing = boxed {
+                err.span_suggestion_verbose(
+                    span_semi,
+                    "consider removing this semicolon and boxing the expression",
+                    "",
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_suggestion_short(
+                    span_semi,
+                    "remove this semicolon",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
+pub enum DefIdOrName {
+    DefId(DefId),
+    Name(&'static str),
 }

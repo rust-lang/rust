@@ -6,11 +6,14 @@
 
 #![feature(let_chains)]
 #![feature(let_else)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
 
 mod builtin;
+mod session_diagnostics;
 
 pub use builtin::*;
 pub use IntType::*;

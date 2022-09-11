@@ -12,7 +12,6 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
-use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
@@ -188,7 +187,7 @@ pub enum GenericKind<'tcx> {
 /// }
 /// ```
 /// This is described with an `AnyRegion('a, 'b)` node.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
 pub enum VerifyBound<'tcx> {
     /// See [`VerifyIfEq`] docs
     IfEq(ty::Binder<'tcx, VerifyIfEq<'tcx>>),
@@ -427,21 +426,21 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub fn data(&self) -> &RegionConstraintData<'tcx> {
+    pub(super) fn data(&self) -> &RegionConstraintData<'tcx> {
         &self.data
     }
 
-    pub fn start_snapshot(&mut self) -> RegionSnapshot {
+    pub(super) fn start_snapshot(&mut self) -> RegionSnapshot {
         debug!("RegionConstraintCollector: start_snapshot");
         RegionSnapshot { any_unifications: self.any_unifications }
     }
 
-    pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
+    pub(super) fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
         self.any_unifications = snapshot.any_unifications;
     }
 
-    pub fn new_region_var(
+    pub(super) fn new_region_var(
         &mut self,
         universe: ty::UniverseIndex,
         origin: RegionVariableOrigin,
@@ -456,12 +455,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Returns the universe for the given variable.
-    pub fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
+    pub(super) fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
         self.var_infos[vid].universe
     }
 
     /// Returns the origin for the given variable.
-    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+    pub(super) fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
         self.var_infos[vid].origin
     }
 
@@ -493,7 +492,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.undo_log.push(AddVerify(index));
     }
 
-    pub fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
+    pub(super) fn add_given(&mut self, sub: Region<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
         if self.data.givens.insert((sub, sup)) {
             debug!("add_given({:?} <= {:?})", sub, sup);
@@ -502,7 +501,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn make_eqregion(
+    pub(super) fn make_eqregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
@@ -531,9 +530,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn member_constraint(
+    pub(super) fn member_constraint(
         &mut self,
-        opaque_type_def_id: DefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         member_region: ty::Region<'tcx>,
@@ -546,7 +545,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
 
         self.data.member_constraints.push(MemberConstraint {
-            opaque_type_def_id,
+            key,
             definition_span,
             hidden_ty,
             member_region,
@@ -555,7 +554,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[instrument(skip(self, origin), level = "debug")]
-    pub fn make_subregion(
+    pub(super) fn make_subregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
@@ -586,7 +585,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn verify_generic_bound(
+    pub(super) fn verify_generic_bound(
         &mut self,
         origin: SubregionOrigin<'tcx>,
         kind: GenericKind<'tcx>,
@@ -596,7 +595,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.add_verify(Verify { kind, origin, region: sub, bound });
     }
 
-    pub fn lub_regions(
+    pub(super) fn lub_regions(
         &mut self,
         tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
@@ -614,7 +613,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn glb_regions(
+    pub(super) fn glb_regions(
         &mut self,
         tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
@@ -635,7 +634,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     /// Resolves the passed RegionVid to the root RegionVid in the unification table
-    pub fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
+    pub(super) fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
         self.unification_table().find(rid).vid
     }
 
@@ -700,7 +699,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             ty::ReStatic | ty::ReErased | ty::ReFree(..) | ty::ReEarlyBound(..) => {
                 ty::UniverseIndex::ROOT
             }
-            ty::ReEmpty(ui) => ui,
             ty::RePlaceholder(placeholder) => placeholder.universe,
             ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) => bug!("universe(): encountered bound region {:?}", region),

@@ -18,12 +18,18 @@ LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
    |                          ---  ---     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or argument 2
-   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
 help: consider making the type lifetime-generic with a new `'a` lifetime
    |
 LL |     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
    |                       +++++++     ++      ++         ++
 
-error: aborting due to 2 previous errors
+error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'r, 's> fn(&'r u8, &'s u8) -> &u8`
+  --> $DIR/rfc1623-2.rs:10:6
+   |
+LL |     &(non_elidable as fn(&u8, &u8) -> &u8);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
 
-For more information about this error, try `rustc --explain E0106`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0605.
+For more information about an error, try `rustc --explain E0106`.

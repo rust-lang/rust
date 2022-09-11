@@ -8,18 +8,17 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
+use crate::common;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::ArchiveBuilder;
-use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_session::cstore::{DllCallingConvention, DllImport};
+use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
+use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
 pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
-    dst: PathBuf,
     additions: Vec<Addition>,
 }
 
@@ -55,16 +54,11 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
 }
 
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
-    /// Creates a new static archive, ready for modifying the archive specified
-    /// by `config`.
-    fn new(sess: &'a Session, output: &Path) -> LlvmArchiveBuilder<'a> {
-        LlvmArchiveBuilder { sess, dst: output.to_path_buf(), additions: Vec::new() }
-    }
-
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
+    fn add_archive(
+        &mut self,
+        archive: &Path,
+        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()> {
         let archive_ro = match ArchiveRO::open(archive) {
             Ok(ar) => ar,
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
@@ -89,41 +83,47 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(mut self) -> bool {
-        match self.build_with_llvm() {
+    fn build(mut self: Box<Self>, output: &Path) -> bool {
+        match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
             Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
     }
+}
 
-    fn inject_dll_import_lib(
-        &mut self,
+pub struct LlvmArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+    }
+
+    fn create_dll_import_lib(
+        &self,
+        sess: &Session,
         lib_name: &str,
         dll_imports: &[DllImport],
-        tmpdir: &MaybeTempDir,
-    ) {
+        tmpdir: &Path,
+    ) -> PathBuf {
         let output_path = {
-            let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
+            let mut output_path: PathBuf = tmpdir.to_path_buf();
             output_path.push(format!("{}_imports", lib_name));
             output_path.with_extension("lib")
         };
 
-        let target = &self.sess.target;
-        let mingw_gnu_toolchain = target.vendor == "pc"
-            && target.os == "windows"
-            && target.env == "gnu"
-            && target.abi.is_empty();
+        let target = &sess.target;
+        let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(target);
 
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
-                if self.sess.target.arch == "x86" {
+                if sess.target.arch == "x86" {
                     (
-                        LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain),
-                        import.ordinal,
+                        common::i686_decorated_name(import, mingw_gnu_toolchain, false),
+                        import.ordinal(),
                     )
                 } else {
-                    (import.name.to_string(), import.ordinal)
+                    (import.name.to_string(), import.ordinal())
                 }
             })
             .collect();
@@ -134,8 +134,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions.  Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path =
-                tmpdir.as_ref().join(format!("{}_imports", lib_name)).with_extension("def");
+            let def_file_path = tmpdir.join(format!("{}_imports", lib_name)).with_extension("def");
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -154,11 +153,14 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    self.sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    sess.fatal(&format!("Error writing .DEF file: {}", e));
                 }
             };
 
-            let dlltool = find_binutils_dlltool(self.sess);
+            // --no-leading-underscore: For the `import_name_type` feature to work, we need to be
+            // able to control the *exact* spelling of each of the symbols that are being imported:
+            // hence we don't want `dlltool` adding leading underscores automatically.
+            let dlltool = find_binutils_dlltool(sess);
             let result = std::process::Command::new(dlltool)
                 .args([
                     "-d",
@@ -167,14 +169,15 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
                     lib_name,
                     "-l",
                     output_path.to_str().unwrap(),
+                    "--no-leading-underscore",
                 ])
                 .output();
 
             match result {
                 Err(e) => {
-                    self.sess.fatal(&format!("Error calling dlltool: {}", e));
+                    sess.fatal(&format!("Error calling dlltool: {}", e));
                 }
-                Ok(output) if !output.status.success() => self.sess.fatal(&format!(
+                Ok(output) if !output.status.success() => sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
@@ -187,10 +190,10 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
             let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
 
-            tracing::trace!("invoking LLVMRustWriteImportLibrary");
-            tracing::trace!("  dll_name {:#?}", dll_name_z);
-            tracing::trace!("  output_path {}", output_path.display());
-            tracing::trace!(
+            trace!("invoking LLVMRustWriteImportLibrary");
+            trace!("  dll_name {:#?}", dll_name_z);
+            trace!("  output_path {}", output_path.display());
+            trace!(
                 "  import names: {}",
                 dll_imports
                     .iter()
@@ -220,13 +223,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
                     output_path_z.as_ptr(),
                     ffi_exports.as_ptr(),
                     ffi_exports.len(),
-                    llvm_machine_type(&self.sess.target.arch) as u16,
-                    !self.sess.target.is_like_msvc,
+                    llvm_machine_type(&sess.target.arch) as u16,
+                    !sess.target.is_like_msvc,
                 )
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                self.sess.fatal(&format!(
+                sess.fatal(&format!(
                     "Error creating import library for {}: {}",
                     lib_name,
                     llvm::last_error().unwrap_or("unknown LLVM error".to_string())
@@ -234,18 +237,12 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             }
         };
 
-        self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
-            self.sess.fatal(&format!(
-                "failed to add native library {}: {}",
-                output_path.display(),
-                e
-            ));
-        });
+        output_path
     }
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn build_with_llvm(&mut self) -> io::Result<bool> {
+    fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
         let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
             self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
@@ -255,7 +252,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut strings = Vec::new();
         let mut members = Vec::new();
 
-        let dst = CString::new(self.dst.to_str().unwrap())?;
+        let dst = CString::new(output.to_str().unwrap())?;
 
         unsafe {
             for addition in &mut additions {
@@ -327,22 +324,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
             ret
         }
     }
-
-    fn i686_decorated_name(import: &DllImport, mingw: bool) -> String {
-        let name = import.name;
-        let prefix = if mingw { "" } else { "_" };
-
-        match import.calling_convention {
-            DllCallingConvention::C => format!("{}{}", prefix, name),
-            DllCallingConvention::Stdcall(arg_list_size) => {
-                format!("{}{}@{}", prefix, name, arg_list_size)
-            }
-            DllCallingConvention::Fastcall(arg_list_size) => format!("@{}@{}", name, arg_list_size),
-            DllCallingConvention::Vectorcall(arg_list_size) => {
-                format!("{}@@{}", name, arg_list_size)
-            }
-        }
-    }
 }
 
 fn string_to_io_error(s: String) -> io::Error {
@@ -351,7 +332,7 @@ fn string_to_io_error(s: String) -> io::Error {
 
 fn find_binutils_dlltool(sess: &Session) -> OsString {
     assert!(sess.target.options.is_like_windows && !sess.target.options.is_like_msvc);
-    if let Some(dlltool_path) = &sess.opts.debugging_opts.dlltool {
+    if let Some(dlltool_path) = &sess.opts.unstable_opts.dlltool {
         return dlltool_path.clone().into_os_string();
     }
 

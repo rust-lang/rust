@@ -4,7 +4,6 @@
 #![allow(path_statements)]
 #![allow(clippy::deref_addrof)]
 #![allow(clippy::redundant_field_names)]
-#![feature(untagged_unions)]
 
 struct Unit;
 struct Tuple(i32);

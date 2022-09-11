@@ -1,0 +1,18 @@
+### What it does
+Checks for manual re-implementations of `PartialEq::ne`.
+
+### Why is this bad?
+`PartialEq::ne` is required to always return the
+negated result of `PartialEq::eq`, which is exactly what the default
+implementation does. Therefore, there should never be any need to
+re-implement it.
+
+### Example
+```
+struct Foo;
+
+impl PartialEq for Foo {
+   fn eq(&self, other: &Foo) -> bool { true }
+   fn ne(&self, other: &Foo) -> bool { !(self == other) }
+}
+```

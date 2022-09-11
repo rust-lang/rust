@@ -3,7 +3,6 @@
 // compile-flags: --crate-type lib --emit link
 #![allow(clashing_extern_declarations)]
 #![feature(raw_dylib)]
-//~^ WARN the feature `raw_dylib` is incomplete
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {
     fn f(x: i32);

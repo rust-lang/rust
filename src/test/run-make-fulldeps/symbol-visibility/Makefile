@@ -5,6 +5,7 @@ include ../tools.mk
 NM=nm -D
 CDYLIB_NAME=liba_cdylib.so
 RDYLIB_NAME=liba_rust_dylib.so
+PROC_MACRO_NAME=liba_proc_macro.so
 EXE_NAME=an_executable
 COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.so
 
@@ -12,6 +13,7 @@ ifeq ($(UNAME),Darwin)
 NM=nm -gU
 CDYLIB_NAME=liba_cdylib.dylib
 RDYLIB_NAME=liba_rust_dylib.dylib
+PROC_MACRO_NAME=liba_proc_macro.dylib
 EXE_NAME=an_executable
 COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.dylib
 endif
@@ -20,6 +22,7 @@ ifdef IS_WINDOWS
 NM=nm -g
 CDYLIB_NAME=liba_cdylib.dll.a
 RDYLIB_NAME=liba_rust_dylib.dll.a
+PROC_MACRO_NAME=liba_proc_macro.dll
 EXE_NAME=an_executable.exe
 COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.dll.a
 endif
@@ -31,6 +34,7 @@ all:
 	$(RUSTC) -Zshare-generics=no an_rlib.rs
 	$(RUSTC) -Zshare-generics=no a_cdylib.rs
 	$(RUSTC) -Zshare-generics=no a_rust_dylib.rs
+	$(RUSTC) -Zshare-generics=no a_proc_macro.rs
 	$(RUSTC) -Zshare-generics=no an_executable.rs
 	$(RUSTC) -Zshare-generics=no a_cdylib.rs --crate-name combined_rlib_dylib --crate-type=rlib,cdylib
 
@@ -54,6 +58,14 @@ all:
 	# Check that a Rust dylib does not export generics if -Zshare-generics=no
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "0" ]
 
+	# Check that a proc macro exports its public #[no_mangle] functions
+	# FIXME(#99978) avoid exporting #[no_mangle] symbols for proc macros
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]
+	# Check that a proc macro exports the public #[no_mangle] functions of dependencies
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "1" ]
+	# Check that a proc macro DOES NOT export any public Rust functions
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
+
 # FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
 ifndef IS_WINDOWS
 	# Check that an executable does not export any dynamic symbols
@@ -75,6 +87,7 @@ endif
 	$(RUSTC) -Zshare-generics=yes an_rlib.rs
 	$(RUSTC) -Zshare-generics=yes a_cdylib.rs
 	$(RUSTC) -Zshare-generics=yes a_rust_dylib.rs
+	$(RUSTC) -Zshare-generics=yes a_proc_macro.rs
 	$(RUSTC) -Zshare-generics=yes an_executable.rs
 
 	# Check that a cdylib exports its public #[no_mangle] functions
@@ -93,6 +106,14 @@ endif
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_rust_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "1" ]
+
+	# Check that a proc macro exports its public #[no_mangle] functions
+	# FIXME(#99978) avoid exporting #[no_mangle] symbols for proc macros
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]
+	# Check that a proc macro exports the public #[no_mangle] functions of dependencies
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "1" ]
+	# Check that a proc macro DOES NOT export any public Rust functions
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
 
 ifndef IS_WINDOWS
 	# Check that an executable does not export any dynamic symbols

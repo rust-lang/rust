@@ -16,12 +16,16 @@
 
 use self::TargetLint::*;
 
+use crate::errors::{
+    CheckNameDeprecated, CheckNameUnknown, CheckNameUnknownTool, CheckNameWarning, RequestedLevel,
+    UnsupportedGroup,
+};
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err};
+use rustc_errors::add_elided_lifetime_in_path_suggestion;
 use rustc_errors::{
     Applicability, DecorateLint, LintDiagnosticBuilder, MultiSpan, SuggestionStyle,
 };
@@ -39,13 +43,16 @@ use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintI
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span};
 use rustc_target::abi;
-use tracing::debug;
 
 use std::cell::Cell;
 use std::iter;
 use std::slice;
+
+type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync;
+type LateLintPassFactory =
+    dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::Send + sync::Sync;
 
 /// Information about the registered lints.
 ///
@@ -61,11 +68,11 @@ pub struct LintStore {
     /// interior mutability, we don't enforce this (and lints should, in theory,
     /// be compatible with being constructed more than once, though not
     /// necessarily in a sane manner. This is safe though.)
-    pub pre_expansion_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub early_passes: Vec<Box<dyn Fn() -> EarlyLintPassObject + sync::Send + sync::Sync>>,
-    pub late_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub pre_expansion_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub early_passes: Vec<Box<EarlyLintPassFactory>>,
+    pub late_passes: Vec<Box<LateLintPassFactory>>,
     /// This is unique in that we construct them per-module, so not once.
-    pub late_module_passes: Vec<Box<dyn Fn() -> LateLintPassObject + sync::Send + sync::Sync>>,
+    pub late_module_passes: Vec<Box<LateLintPassFactory>>,
 
     /// Lints indexed by name.
     by_name: FxHashMap<String, TargetLint>,
@@ -183,14 +190,20 @@ impl LintStore {
 
     pub fn register_late_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_passes.push(Box::new(pass));
     }
 
     pub fn register_late_mod_pass(
         &mut self,
-        pass: impl Fn() -> LateLintPassObject + 'static + sync::Send + sync::Sync,
+        pass: impl for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx>
+        + 'static
+        + sync::Send
+        + sync::Sync,
     ) {
         self.late_module_passes.push(Box::new(pass));
     }
@@ -326,68 +339,41 @@ impl LintStore {
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
         if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn(_)) {
-            struct_span_err!(
-                sess,
-                DUMMY_SP,
-                E0602,
-                "`{}` lint group is not supported with ´--force-warn´",
-                crate::WARNINGS.name_lower()
-            )
-            .emit();
+            sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             return;
         }
-        let db = match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
-            CheckLintNameResult::Ok(_) => None,
-            CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
-            CheckLintNameResult::NoLint(suggestion) => {
-                let mut err =
-                    struct_span_err!(sess, DUMMY_SP, E0602, "unknown lint: `{}`", lint_name);
-
-                if let Some(suggestion) = suggestion {
-                    err.help(&format!("did you mean: `{}`", suggestion));
-                }
-
-                Some(err.forget_guarantee())
+        let lint_name = lint_name.to_string();
+        match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
+            CheckLintNameResult::Warning(msg, _) => {
+                sess.emit_warning(CheckNameWarning {
+                    msg,
+                    sub: RequestedLevel { level, lint_name },
+                });
             }
-            CheckLintNameResult::Tool(result) => match result {
-                Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
-                    "lint name `{}` is deprecated \
-                     and does not have an effect anymore. \
-                     Use: {}",
-                    lint_name, new_name
-                ))),
-                _ => None,
-            },
-            CheckLintNameResult::NoTool => Some(
-                struct_span_err!(
-                    sess,
-                    DUMMY_SP,
-                    E0602,
-                    "unknown lint tool: `{}`",
-                    tool_name.unwrap()
-                )
-                .forget_guarantee(),
-            ),
+            CheckLintNameResult::NoLint(suggestion) => {
+                sess.emit_err(CheckNameUnknown {
+                    lint_name: lint_name.clone(),
+                    suggestion,
+                    sub: RequestedLevel { level, lint_name },
+                });
+            }
+            CheckLintNameResult::Tool(result) => {
+                if let Err((Some(_), new_name)) = result {
+                    sess.emit_warning(CheckNameDeprecated {
+                        lint_name: lint_name.clone(),
+                        new_name,
+                        sub: RequestedLevel { level, lint_name },
+                    });
+                }
+            }
+            CheckLintNameResult::NoTool => {
+                sess.emit_err(CheckNameUnknownTool {
+                    tool_name: tool_name.unwrap(),
+                    sub: RequestedLevel { level, lint_name },
+                });
+            }
+            _ => {}
         };
-
-        if let Some(mut db) = db {
-            let msg = format!(
-                "requested on the command line with `{} {}`",
-                match level {
-                    Level::Allow => "-A",
-                    Level::Warn => "-W",
-                    Level::ForceWarn(_) => "--force-warn",
-                    Level::Deny => "-D",
-                    Level::Forbid => "-F",
-                    Level::Expect(_) => {
-                        unreachable!("lints with the level of `expect` should not run this code");
-                    }
-                },
-                lint_name
-            );
-            db.note(&msg);
-            db.emit();
-        }
     }
 
     /// True if this symbol represents a lint group name.
@@ -440,7 +426,7 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        tracing::debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
+                        debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
                         let tool_prefix = format!("{}::", tool_name);
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name)
@@ -533,7 +519,7 @@ impl LintStore {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
             Some(other) => {
-                tracing::debug!("got renamed lint {:?}", other);
+                debug!("got renamed lint {:?}", other);
                 CheckLintNameResult::NoLint(None)
             }
         }
@@ -582,7 +568,7 @@ pub trait LintPassObject: Sized {}
 
 impl LintPassObject for EarlyLintPassObject {}
 
-impl LintPassObject for LateLintPassObject {}
+impl LintPassObject for LateLintPassObject<'_> {}
 
 pub trait LintContext: Sized {
     type PassObject: LintPassObject;
@@ -694,9 +680,8 @@ pub trait LintContext: Sized {
                     }
 
                     if let Some(span) = in_test_module {
-                        let def_span = self.sess().source_map().guess_head_span(span);
                         db.span_help(
-                            span.shrink_to_lo().to(def_span),
+                            self.sess().source_map().guess_head_span(span),
                             "consider adding a `#[cfg(test)]` to the containing module",
                         );
                     }
@@ -857,6 +842,29 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable,
                     );
                 },
+                BuiltinLintDiagnostics::NamedArgumentUsedPositionally{ position_sp_to_replace, position_sp_for_msg, named_arg_sp, named_arg_name, is_formatting_arg} => {
+                    db.span_label(named_arg_sp, "this named argument is referred to by position in formatting string");
+                    if let Some(positional_arg_for_msg) = position_sp_for_msg {
+                        let msg = format!("this formatting argument uses named argument `{}` by position", named_arg_name);
+                        db.span_label(positional_arg_for_msg, msg);
+                    }
+
+                    if let Some(positional_arg_to_replace) = position_sp_to_replace {
+                        let name = if is_formatting_arg { named_arg_name + "$" } else { named_arg_name };
+                        let span_to_replace = if let Ok(positional_arg_content) =
+                            self.sess().source_map().span_to_snippet(positional_arg_to_replace) && positional_arg_content.starts_with(':') {
+                            positional_arg_to_replace.shrink_to_lo()
+                        } else {
+                            positional_arg_to_replace
+                        };
+                        db.span_suggestion_verbose(
+                            span_to_replace,
+                            "use the named argument by name to avoid ambiguity",
+                            name,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
@@ -951,8 +959,8 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl LintContext for LateContext<'_> {
-    type PassObject = LateLintPassObject;
+impl<'tcx> LintContext for LateContext<'tcx> {
+    type PassObject = LateLintPassObject<'tcx>;
 
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {

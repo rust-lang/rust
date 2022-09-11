@@ -153,7 +153,7 @@ mod stream {
     }
 
     enum Slot<T> {
-        Next(usize),
+        Next(#[allow(unused_tuple_struct_fields)] usize),
         _Data { _a: T },
     }
 

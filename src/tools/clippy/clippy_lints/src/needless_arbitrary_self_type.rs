@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
-use rustc_ast::ast::{BindingMode, Lifetime, Mutability, Param, PatKind, Path, TyKind};
+use rustc_ast::ast::{BindingAnnotation, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -120,14 +120,14 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
 
         match &p.ty.kind {
             TyKind::Path(None, path) => {
-                if let PatKind::Ident(BindingMode::ByValue(mutbl), _, _) = p.pat.kind {
+                if let PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), _, _) = p.pat.kind {
                     check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Value, mutbl);
                 }
             },
             TyKind::Rptr(lifetime, mut_ty) => {
                 if_chain! {
                 if let TyKind::Path(None, path) = &mut_ty.ty.kind;
-                if let PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, _) = p.pat.kind;
+                if let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind;
                     then {
                         check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
                     }

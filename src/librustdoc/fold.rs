@@ -2,7 +2,7 @@ use crate::clean::*;
 
 pub(crate) fn strip_item(mut item: Item) -> Item {
     if !matches!(*item.kind, StrippedItem(..)) {
-        item.kind = box StrippedItem(item.kind);
+        item.kind = Box::new(StrippedItem(item.kind));
     }
     item
 }
@@ -46,7 +46,7 @@ pub(crate) trait DocFolder: Sized {
                     let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                     VariantItem(Variant::Tuple(fields))
                 }
-                Variant::CLike => VariantItem(Variant::CLike),
+                Variant::CLike(disr) => VariantItem(Variant::CLike(disr)),
             },
             ExternCrateItem { src: _ }
             | ImportItem(_)
@@ -69,16 +69,16 @@ pub(crate) trait DocFolder: Sized {
             | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
-            | KeywordItem(_) => kind,
+            | KeywordItem => kind,
         }
     }
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.kind = box match *item.kind {
-            StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
+        item.kind = Box::new(match *item.kind {
+            StrippedItem(box i) => StrippedItem(Box::new(self.fold_inner_recur(i))),
             _ => self.fold_inner_recur(*item.kind),
-        };
+        });
         item
     }
 

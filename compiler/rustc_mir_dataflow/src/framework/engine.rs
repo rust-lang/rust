@@ -1,5 +1,8 @@
 //! A solver for dataflow problems.
 
+use crate::errors::{
+    DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
+};
 use crate::framework::BitSetExt;
 
 use std::ffi::OsString;
@@ -108,9 +111,9 @@ where
         // Otherwise, compute and store the cumulative transfer function for each block.
 
         let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
-        let mut trans_for_block = IndexVec::from_elem(identity, body.basic_blocks());
+        let mut trans_for_block = IndexVec::from_elem(identity, &body.basic_blocks);
 
-        for (block, block_data) in body.basic_blocks().iter_enumerated() {
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
             A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
         }
@@ -144,7 +147,7 @@ where
         apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
         let bottom_value = analysis.bottom_value(body);
-        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), body.basic_blocks());
+        let mut entry_sets = IndexVec::from_elem(bottom_value.clone(), &body.basic_blocks);
         analysis.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
 
         if A::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != bottom_value {
@@ -197,8 +200,7 @@ where
             ..
         } = self;
 
-        let mut dirty_queue: WorkQueue<BasicBlock> =
-            WorkQueue::with_none(body.basic_blocks().len());
+        let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
 
         if A::Direction::IS_FORWARD {
             for (bb, _) in traversal::reverse_postorder(body) {
@@ -289,7 +291,7 @@ where
             io::BufWriter::new(fs::File::create(&path)?)
         }
 
-        None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
+        None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
             create_dump_file(
@@ -314,8 +316,8 @@ where
 
     let graphviz = graphviz::Formatter::new(body, results, style);
     let mut render_opts =
-        vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
-    if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
+    if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
     dot::render_opts(&graphviz, &mut buf, &render_opts)?;
@@ -347,7 +349,7 @@ impl RustcMirAttrs {
                     match path.file_name() {
                         Some(_) => Ok(path),
                         None => {
-                            tcx.sess.span_err(attr.span(), "path must end in a filename");
+                            tcx.sess.emit_err(PathMustEndInFilename { span: attr.span() });
                             Err(())
                         }
                     }
@@ -356,7 +358,7 @@ impl RustcMirAttrs {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {
-                        tcx.sess.span_err(attr.span(), "unknown formatter");
+                        tcx.sess.emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
                     }
                 })
@@ -377,8 +379,7 @@ impl RustcMirAttrs {
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.sess
-                .span_err(attr.span(), &format!("duplicate values for `{}`", attr.name_or_empty()));
+            tcx.sess.emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
 
             return Err(());
         }
@@ -387,8 +388,7 @@ impl RustcMirAttrs {
             *field = Some(mapper(s)?);
             Ok(())
         } else {
-            tcx.sess
-                .span_err(attr.span(), &format!("`{}` requires an argument", attr.name_or_empty()));
+            tcx.sess.emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
             Err(())
         }
     }

@@ -11,6 +11,8 @@ struct Test {
     packages: &'static [&'static str],
     features: Option<&'static [&'static str]>,
     manifest_path: Option<&'static str>,
+    /// `filters` are passed to libtest (i.e., after a `--` in the `cargo test` invocation).
+    filters: &'static [&'static str],
 }
 
 const TEST_REPOS: &[Test] = &[
@@ -22,6 +24,7 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "ripgrep",
@@ -31,6 +34,7 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "tokei",
@@ -40,6 +44,7 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "xsv",
@@ -49,6 +54,21 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        // Many tests here use quickcheck and some of them can fail randomly, so only run deterministic tests.
+        filters: &[
+            "test_flatten::",
+            "test_fmt::",
+            "test_headers::",
+            "test_index::",
+            "test_join::",
+            "test_partition::",
+            "test_search::",
+            "test_select::",
+            "test_slice::",
+            "test_split::",
+            "test_stats::",
+            "test_table::",
+        ],
     },
     Test {
         name: "servo",
@@ -60,6 +80,7 @@ const TEST_REPOS: &[Test] = &[
         packages: &["selectors"],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "diesel",
@@ -75,6 +96,7 @@ const TEST_REPOS: &[Test] = &[
         // not any other crate present in the diesel workspace
         // (This is required to set the feature flags above)
         manifest_path: Some("diesel/Cargo.toml"),
+        filters: &[],
     },
 ];
 
@@ -97,7 +119,8 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     if let Some(lockfile) = test.lock {
         fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
     }
-    if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path) {
+    if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path, test.filters)
+    {
         panic!("tests failed for {}", test.repo);
     }
 }
@@ -155,6 +178,7 @@ fn run_cargo_test(
     packages: &[&str],
     features: Option<&[&str]>,
     manifest_path: Option<&str>,
+    filters: &[&str],
 ) -> bool {
     let mut command = Command::new(cargo_path);
     command.arg("test");
@@ -173,6 +197,9 @@ fn run_cargo_test(
     for name in packages {
         command.arg("-p").arg(name);
     }
+
+    command.arg("--");
+    command.args(filters);
 
     let status = command
         // Disable rust-lang/cargo's cross-compile tests

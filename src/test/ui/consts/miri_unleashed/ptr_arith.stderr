@@ -1,34 +1,26 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:9:14
-   |
-LL |     let _v = x == x;
-   |              ^^^^^^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
-
-error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:15:13
+  --> $DIR/ptr_arith.rs:9:13
    |
 LL |     let x = &0 as *const _ as usize;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ "exposing pointers" needs an rfc before being allowed inside constants
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ exposing pointers is not possible at compile-time
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:23:14
+  --> $DIR/ptr_arith.rs:17:14
    |
 LL |     let _v = x + 0;
    |              ^ unable to turn pointer into raw bytes
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/ptr_arith.rs:9:14
-   |
-LL |     let _v = x == x;
-   |              ^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/ptr_arith.rs:15:13
+  --> $DIR/ptr_arith.rs:9:13
    |
 LL |     let x = &0 as *const _ as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

@@ -155,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// * From each pre-binding block to the next pre-binding block.
     /// * From each otherwise block to the next pre-binding block.
-    #[tracing::instrument(level = "debug", skip(self, arms))]
+    #[instrument(level = "debug", skip(self, arms))]
     pub(crate) fn match_expr(
         &mut self,
         destination: Place<'tcx>,
@@ -170,7 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
 
-        let match_has_guard = arms.iter().copied().any(|arm| self.thir[arm].guard.is_some());
+        let match_has_guard = arm_candidates.iter().any(|(_, candidate)| candidate.has_guard);
         let mut candidates =
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
@@ -221,9 +221,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(scrutinee_span);
 
         if let Ok(scrutinee_builder) =
-            scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+            scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, &self.upvars)
         {
-            let scrutinee_place = scrutinee_builder.into_place(self.tcx, self.typeck_results);
+            let scrutinee_place = scrutinee_builder.into_place(self.tcx, &self.upvars);
             self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
         }
 
@@ -348,12 +348,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // ```
                     let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
                     let scrutinee_place: Place<'tcx>;
-                    if let Ok(scrutinee_builder) = scrutinee_place_builder
-                        .clone()
-                        .try_upvars_resolved(this.tcx, this.typeck_results)
+                    if let Ok(scrutinee_builder) =
+                        scrutinee_place_builder.clone().try_upvars_resolved(this.tcx, &this.upvars)
                     {
-                        scrutinee_place =
-                            scrutinee_builder.into_place(this.tcx, this.typeck_results);
+                        scrutinee_place = scrutinee_builder.into_place(this.tcx, &this.upvars);
                         opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
                     }
                     let scope = this.declare_bindings(
@@ -490,10 +488,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
-        match *irrefutable_pat.kind {
+        match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
@@ -518,17 +516,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // broken.
             PatKind::AscribeUserType {
                 subpattern:
-                    Pat {
+                    box Pat {
                         kind:
-                            box PatKind::Binding {
-                                mode: BindingMode::ByValue,
-                                var,
-                                subpattern: None,
-                                ..
+                            PatKind::Binding {
+                                mode: BindingMode::ByValue, var, subpattern: None, ..
                             },
                         ..
                     },
-                ascription: thir::Ascription { annotation, variance: _ },
+                ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -541,7 +536,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let ty_source_info = self.source_info(annotation.span);
 
-                let base = self.canonical_user_type_annotations.push(annotation);
+                let base = self.canonical_user_type_annotations.push(annotation.clone());
                 self.cfg.push(
                     block,
                     Statement {
@@ -581,7 +576,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn place_into_pattern(
         &mut self,
         block: BasicBlock,
-        irrefutable_pat: Pat<'tcx>,
+        irrefutable_pat: &Pat<'tcx>,
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
@@ -623,9 +618,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // };
                     // ```
                     if let Ok(match_pair_resolved) =
-                        initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                        initializer.clone().try_upvars_resolved(self.tcx, &self.upvars)
                     {
-                        let place = match_pair_resolved.into_place(self.tcx, self.typeck_results);
+                        let place = match_pair_resolved.into_place(self.tcx, &self.upvars);
                         *match_place = Some(place);
                     }
                 }
@@ -702,7 +697,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
-        // Altough there is almost always scope for given variable in corner cases
+        // Although there is almost always scope for given variable in corner cases
         // like #92893 we might get variable with no scope.
         if let Some(region_scope) = self.region_scope_tree.var_scope(var.0.local_id) && schedule_drop{
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
@@ -744,7 +739,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
             pattern, pattern_user_ty
         );
-        match *pattern.kind {
+        match pattern.kind {
             PatKind::Binding {
                 mutability,
                 name,
@@ -767,7 +762,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
-                for subpattern in prefix {
+                for subpattern in prefix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
                 for subpattern in slice {
@@ -777,7 +772,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         f,
                     );
                 }
-                for subpattern in suffix {
+                for subpattern in suffix.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
@@ -830,7 +825,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // may not all be in the leftmost subpattern. For example in
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
-                for subpattern in pats {
+                for subpattern in pats.iter() {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
                 }
             }
@@ -982,7 +977,7 @@ enum TestKind<'tcx> {
     },
 
     /// Test whether the value falls within an inclusive or exclusive range
-    Range(PatRange<'tcx>),
+    Range(Box<PatRange<'tcx>>),
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
@@ -1330,7 +1325,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // All of the or-patterns have been sorted to the end, so if the first
         // pattern is an or-pattern we only have or-patterns.
-        match *first_candidate.match_pairs[0].pattern.kind {
+        match first_candidate.match_pairs[0].pattern.kind {
             PatKind::Or { .. } => (),
             _ => {
                 self.test_candidates(
@@ -1350,7 +1345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut otherwise = None;
         for match_pair in match_pairs {
-            let PatKind::Or { ref pats } = &*match_pair.pattern.kind else {
+            let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
                 bug!("Or-patterns should have been sorted to the end");
             };
             let or_span = match_pair.pattern.span;
@@ -1384,7 +1379,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
         otherwise: &mut Option<BasicBlock>,
-        pats: &'pat [Pat<'tcx>],
+        pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: PlaceBuilder<'tcx>,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
@@ -1605,9 +1600,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of any places that is switched on.
         if let Some(fb) = fake_borrows && let Ok(match_place_resolved) =
-            match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+            match_place.clone().try_upvars_resolved(self.tcx, &self.upvars)
         {
-            let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results);
+            let resolved_place = match_place_resolved.into_place(self.tcx, &self.upvars);
             fb.insert(resolved_place);
         }
 
@@ -1615,7 +1610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // those N possible outcomes, create a (initially empty)
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
-        debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
+        debug!("test_candidates: test={:?} match_pair={:?}", test, match_pair);
         let mut target_candidates: Vec<Vec<&mut Candidate<'pat, 'tcx>>> = vec![];
         target_candidates.resize_with(test.targets(), Default::default);
 
@@ -1635,8 +1630,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         // at least the first candidate ought to be tested
         assert!(total_candidate_count > candidates.len());
-        debug!("tested_candidates: {}", total_candidate_count - candidates.len());
-        debug!("untested_candidates: {}", candidates.len());
+        debug!("test_candidates: tested_candidates: {}", total_candidate_count - candidates.len());
+        debug!("test_candidates: untested_candidates: {}", candidates.len());
 
         // HACK(matthewjasper) This is a closure so that we can let the test
         // create its blocks before the rest of the match. This currently
@@ -1794,10 +1789,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         let mut opt_expr_place: Option<(Option<&Place<'tcx>>, Span)> = None;
         let expr_place: Place<'tcx>;
-        if let Ok(expr_builder) =
-            expr_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
-        {
-            expr_place = expr_builder.into_place(self.tcx, self.typeck_results);
+        if let Ok(expr_builder) = expr_place_builder.try_upvars_resolved(self.tcx, &self.upvars) {
+            expr_place = expr_builder.into_place(self.tcx, &self.upvars);
             opt_expr_place = Some((Some(&expr_place), expr_span));
         }
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
@@ -2273,5 +2266,83 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
         debug!("declare_binding: vars={:?}", locals);
         self.var_indices.insert(var_id, locals);
+    }
+
+    pub(crate) fn ast_let_else(
+        &mut self,
+        mut block: BasicBlock,
+        init: &Expr<'tcx>,
+        initializer_span: Span,
+        else_block: BlockId,
+        visibility_scope: Option<SourceScope>,
+        remainder_scope: region::Scope,
+        remainder_span: Span,
+        pattern: &Pat<'tcx>,
+    ) -> BlockAnd<()> {
+        let else_block_span = self.thir[else_block].span;
+        let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
+            let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
+            let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
+            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
+            this.declare_bindings(
+                visibility_scope,
+                remainder_span,
+                pattern,
+                ArmHasGuard(false),
+                Some((None, initializer_span)),
+            );
+            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
+            let fake_borrow_temps = this.lower_match_tree(
+                block,
+                initializer_span,
+                pattern.span,
+                false,
+                &mut [&mut candidate, &mut wildcard],
+            );
+            // This block is for the matching case
+            let matching = this.bind_pattern(
+                this.source_info(pattern.span),
+                candidate,
+                None,
+                &fake_borrow_temps,
+                initializer_span,
+                None,
+                None,
+                None,
+            );
+            // This block is for the failure case
+            let failure = this.bind_pattern(
+                this.source_info(else_block_span),
+                wildcard,
+                None,
+                &fake_borrow_temps,
+                initializer_span,
+                None,
+                None,
+                None,
+            );
+            this.break_for_else(failure, remainder_scope, this.source_info(initializer_span));
+            matching.unit()
+        });
+
+        // This place is not really used because this destination place
+        // should never be used to take values at the end of the failure
+        // block.
+        let dummy_place = self.temp(self.tcx.types.never, else_block_span);
+        let failure_block;
+        unpack!(
+            failure_block = self.ast_block(
+                dummy_place,
+                failure,
+                else_block,
+                self.source_info(else_block_span),
+            )
+        );
+        self.cfg.terminate(
+            failure_block,
+            self.source_info(else_block_span),
+            TerminatorKind::Unreachable,
+        );
+        matching.unit()
     }
 }

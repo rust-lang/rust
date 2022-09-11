@@ -89,6 +89,10 @@ fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
     let mut helper = SigDropHelper::new(cx);
+    let scrutinee = match (source, &scrutinee.kind) {
+        (MatchSource::ForLoopDesugar, ExprKind::Call(_, [e])) => e,
+        _ => scrutinee,
+    };
     helper.find_sig_drop(scrutinee).map(|drops| {
         let message = if source == MatchSource::Normal {
             "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"
@@ -287,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
         self.is_chain_end = false;
 
         match ex.kind {
-            ExprKind::MethodCall(_, [ref expr, ..], _) => {
+            ExprKind::MethodCall(_, expr, ..) => {
                 self.visit_expr(expr);
             }
             ExprKind::Binary(_, left, right) => {
@@ -327,8 +331,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Index(..) |
             ExprKind::Ret(..) |
             ExprKind::Repeat(..) |
-            ExprKind::Yield(..) |
-            ExprKind::MethodCall(..) => walk_expr(self, ex),
+            ExprKind::Yield(..) => walk_expr(self, ex),
             ExprKind::AddrOf(_, _, _) |
             ExprKind::Block(_, _) |
             ExprKind::Break(_, _) |

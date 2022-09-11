@@ -161,6 +161,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query compare_predicates_and_trait_impl_trait_tys(key: DefId)
+        -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
+    {
+        desc { "better description please" }
+        separate_provide_extern
+    }
+
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
         eval_always
         desc { "running analysis passes on this crate" }
@@ -351,7 +358,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
         desc {
             |tcx| "building an abstract representation for {}", tcx.def_path_str(key),
         }
@@ -360,7 +367,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
         desc {
             |tcx|
             "building an abstract representation for the const argument {}",
@@ -413,12 +420,12 @@ rustc_queries! {
     }
 
     query symbols_for_closure_captures(
-        key: (LocalDefId, DefId)
+        key: (LocalDefId, LocalDefId)
     ) -> Vec<rustc_span::Symbol> {
         storage(ArenaCacheSelector<'tcx>)
         desc {
             |tcx| "symbols for captures of closure `{}` in `{}`",
-            tcx.def_path_str(key.1),
+            tcx.def_path_str(key.1.to_def_id()),
             tcx.def_path_str(key.0.to_def_id())
         }
     }
@@ -765,11 +772,20 @@ rustc_queries! {
         desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    /// Returns the types assumed to be well formed while "inside" of the given item.
+    ///
+    /// Note that we've liberated the late bound regions of function signatures, so
+    /// this can not be used to check whether these types are well formed.
+    query assumed_wf_types(key: DefId) -> &'tcx ty::List<Ty<'tcx>> {
+        desc { |tcx| "computing the implied bounds of {}", tcx.def_path_str(key) }
+    }
+
     /// Computes the signature of the function.
     query fn_sig(key: DefId) -> ty::PolyFnSig<'tcx> {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        cycle_delay_bug
     }
 
     /// Performs lint checking for the module.
@@ -809,8 +825,8 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_liveness(key: LocalDefId) -> () {
-        desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
+    query check_liveness(key: DefId) {
+        desc { |tcx| "checking liveness of variables in {}", tcx.def_path_str(key) }
     }
 
     /// Return the live symbols in the crate for dead code check.
@@ -1094,6 +1110,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+        desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     query should_inherit_track_caller(def_id: DefId) -> bool {
         desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
     }
@@ -1137,21 +1158,13 @@ rustc_queries! {
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
         storage(ArenaCacheSelector<'tcx>)
-        desc { |tcx| "rendering constant intializer of `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "rendering constant initializer of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
     query impl_parent(def_id: DefId) -> Option<DefId> {
         desc { |tcx| "computing specialization parent impl of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
-        separate_provide_extern
-    }
-
-    /// Given an `associated_item`, find the trait it belongs to.
-    /// Return `None` if the `DefId` is not an associated item.
-    query trait_of_item(associated_item: DefId) -> Option<DefId> {
-        desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
-        cache_on_disk_if { associated_item.is_local() }
         separate_provide_extern
     }
 
@@ -1189,14 +1202,11 @@ rustc_queries! {
         }
     }
 
-    query codegen_fulfill_obligation(
+    query codegen_select_candidate(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
     ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
         cache_on_disk_if { true }
-        desc { |tcx|
-            "checking if `{}` fulfills its obligations",
-            tcx.def_path_str(key.1.def_id())
-        }
+        desc { |tcx| "computing candidate for `{}`", key.1 }
     }
 
     /// Return all `impl` blocks in the current crate.
@@ -1303,6 +1313,7 @@ rustc_queries! {
     query layout_of(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
+        depth_limit
         desc { "computing layout of `{}`", key.value }
         remap_env_constness
     }
@@ -1559,6 +1570,9 @@ rustc_queries! {
         -> Option<NativeLibKind> {
         desc { |tcx| "native_library_kind({})", tcx.def_path_str(def_id) }
     }
+    query native_library(def_id: DefId) -> Option<&'tcx NativeLib> {
+        desc { |tcx| "native_library({})", tcx.def_path_str(def_id) }
+    }
 
     /// Does lifetime resolution, but does not descend into trait items. This
     /// should only be used for resolving lifetimes of on trait definitions,
@@ -1583,19 +1597,21 @@ rustc_queries! {
     query is_late_bound_map(_: LocalDefId) -> Option<&'tcx FxIndexSet<LocalDefId>> {
         desc { "testing if a region is late bound" }
     }
-    /// For a given item (like a struct), gets the default lifetimes to be used
+    /// For a given item's generic parameter, gets the default lifetimes to be used
     /// for each parameter if a trait object were to be passed for that parameter.
-    /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
-    /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
-    query object_lifetime_defaults(_: LocalDefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
-        desc { "looking up lifetime defaults for a region on an item" }
+    /// For example, for `T` in `struct Foo<'a, T>`, this would be `'static`.
+    /// For `T` in `struct Foo<'a, T: 'a>`, this would instead be `'a`.
+    /// This query will panic if passed something that is not a type parameter.
+    query object_lifetime_default(key: DefId) -> ObjectLifetimeDefault {
+        desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(key) }
+        separate_provide_extern
     }
     query late_bound_vars_map(_: LocalDefId)
         -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
         desc { "looking up late bound vars" }
     }
 
-    query visibility(def_id: DefId) -> ty::Visibility {
+    query visibility(def_id: DefId) -> ty::Visibility<DefId> {
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1634,9 +1650,13 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the lib features map" }
     }
-    query defined_lib_features(_: CrateNum)
-        -> &'tcx [(Symbol, Option<Symbol>)] {
+    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
         desc { "calculating the lib features defined in a crate" }
+        separate_provide_extern
+    }
+    query stability_implications(_: CrateNum) -> FxHashMap<Symbol, Symbol> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "calculating the implications between `#[unstable]` features defined in a crate" }
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
@@ -1955,6 +1975,14 @@ rustc_queries! {
         }
     }
 
+    query is_impossible_method(key: (DefId, DefId)) -> bool {
+        desc { |tcx|
+            "checking if {} is impossible to call within {}",
+            tcx.def_path_str(key.1),
+            tcx.def_path_str(key.0),
+        }
+    }
+
     query method_autoderef_steps(
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
@@ -2052,5 +2080,13 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "looking up generator diagnostic data of `{}`", tcx.def_path_str(key) }
         separate_provide_extern
+    }
+
+    query permits_uninit_init(key: TyAndLayout<'tcx>) -> bool {
+        desc { "checking to see if {:?} permits being left uninit", key.ty }
+    }
+
+    query permits_zero_init(key: TyAndLayout<'tcx>) -> bool {
+        desc { "checking to see if {:?} permits being left zeroed", key.ty }
     }
 }

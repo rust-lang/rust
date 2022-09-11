@@ -20,13 +20,9 @@ pub(crate) fn emit_unescape_error(
     range: Range<usize>,
     error: EscapeError,
 ) {
-    tracing::debug!(
+    debug!(
         "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
-        lit,
-        span_with_quotes,
-        mode,
-        range,
-        error
+        lit, span_with_quotes, mode, range, error
     );
     let last_char = || {
         let c = lit[range.clone()].chars().rev().next().unwrap();

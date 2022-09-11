@@ -7,7 +7,7 @@ struct Bar;
 
 pub fn some_func() {
     let f = Bar();
-//~^ ERROR: expected function, found `Bar`
+//~^ ERROR: expected function, found struct `Bar`
 }
 
 fn main() {

@@ -1,6 +1,6 @@
 pub use self::AssocItemContainer::*;
 
-use crate::ty;
+use crate::ty::{self, DefIdTree};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
@@ -11,33 +11,8 @@ use super::{TyCtxt, Visibility};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash, Encodable, Decodable)]
 pub enum AssocItemContainer {
-    TraitContainer(DefId),
-    ImplContainer(DefId),
-}
-
-impl AssocItemContainer {
-    pub fn impl_def_id(&self) -> Option<DefId> {
-        match *self {
-            ImplContainer(id) => Some(id),
-            _ => None,
-        }
-    }
-
-    /// Asserts that this is the `DefId` of an associated item declared
-    /// in a trait, and returns the trait `DefId`.
-    pub fn assert_trait(&self) -> DefId {
-        match *self {
-            TraitContainer(id) => id,
-            _ => bug!("associated item has wrong container type: {:?}", self),
-        }
-    }
-
-    pub fn id(&self) -> DefId {
-        match *self {
-            TraitContainer(id) => id,
-            ImplContainer(id) => id,
-        }
-    }
+    TraitContainer,
+    ImplContainer,
 }
 
 /// Information about an associated item
@@ -46,8 +21,6 @@ pub struct AssocItem {
     pub def_id: DefId,
     pub name: Symbol,
     pub kind: AssocKind,
-    pub vis: Visibility,
-    pub defaultness: hir::Defaultness,
     pub container: AssocItemContainer,
 
     /// If this is an item in an impl of a trait then this is the `DefId` of
@@ -62,6 +35,36 @@ pub struct AssocItem {
 impl AssocItem {
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
+    }
+
+    pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
+        tcx.impl_defaultness(self.def_id)
+    }
+
+    #[inline]
+    pub fn visibility(&self, tcx: TyCtxt<'_>) -> Visibility<DefId> {
+        tcx.visibility(self.def_id)
+    }
+
+    #[inline]
+    pub fn container_id(&self, tcx: TyCtxt<'_>) -> DefId {
+        tcx.parent(self.def_id)
+    }
+
+    #[inline]
+    pub fn trait_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
+        match self.container {
+            AssocItemContainer::ImplContainer => None,
+            AssocItemContainer::TraitContainer => Some(tcx.parent(self.def_id)),
+        }
+    }
+
+    #[inline]
+    pub fn impl_container(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
+        match self.container {
+            AssocItemContainer::ImplContainer => Some(tcx.parent(self.def_id)),
+            AssocItemContainer::TraitContainer => None,
+        }
     }
 
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
@@ -101,6 +104,16 @@ impl AssocKind {
             AssocKind::Const => DefKind::AssocConst,
             AssocKind::Fn => DefKind::AssocFn,
             AssocKind::Type => DefKind::AssocTy,
+        }
+    }
+}
+
+impl std::fmt::Display for AssocKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AssocKind::Fn => write!(f, "method"),
+            AssocKind::Const => write!(f, "associated const"),
+            AssocKind::Type => write!(f, "associated type"),
         }
     }
 }

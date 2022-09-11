@@ -1,0 +1,23 @@
+### What it does
+Checks methods that contain a `self` argument but don't use it
+
+### Why is this bad?
+It may be clearer to define the method as an associated function instead
+of an instance method if it doesn't require `self`.
+
+### Example
+```
+struct A;
+impl A {
+    fn method(&self) {}
+}
+```
+
+Could be written:
+
+```
+struct A;
+impl A {
+    fn method() {}
+}
+```

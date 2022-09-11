@@ -1,3 +1,4 @@
+use info;
 use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -31,7 +32,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
-use tracing::info;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -48,7 +48,10 @@ pub fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    let target_features = codegen_backend.target_features(sess);
+    let unstable_target_features = codegen_backend.target_features(sess, true);
+    sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
+
+    let target_features = codegen_backend.target_features(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
@@ -76,7 +79,7 @@ pub fn create_session(
     } else {
         get_codegen_backend(
             &sopts.maybe_sysroot,
-            sopts.debugging_opts.codegen_backend.as_ref().map(|name| &name[..]),
+            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
         )
     };
 
@@ -86,9 +89,9 @@ pub fn create_session(
     let bundle = match rustc_errors::fluent_bundle(
         sopts.maybe_sysroot.clone(),
         sysroot_candidates(),
-        sopts.debugging_opts.translate_lang.clone(),
-        sopts.debugging_opts.translate_additional_ftl.as_deref(),
-        sopts.debugging_opts.translate_directionality_markers,
+        sopts.unstable_opts.translate_lang.clone(),
+        sopts.unstable_opts.translate_additional_ftl.as_deref(),
+        sopts.unstable_opts.translate_directionality_markers,
     ) {
         Ok(bundle) => bundle,
         Err(e) => {
@@ -114,7 +117,6 @@ pub fn create_session(
 
     let mut check_cfg = config::to_crate_check_config(check_cfg);
     check_cfg.fill_well_known();
-    check_cfg.fill_actual(&cfg);
 
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
@@ -556,6 +558,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     // Only check command line flags if present. If no types are specified by
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
+    // JUSTIFICATION: before wrapper fn is available
+    #[allow(rustc::bad_opt_access)]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         base.extend(attr_types);
@@ -645,24 +649,6 @@ pub fn build_output_filenames(
             )
         }
     }
-}
-
-#[cfg(not(target_os = "linux"))]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    std::fs::rename(src, dst)
-}
-
-/// This function attempts to bypass the auto_da_alloc heuristic implemented by some filesystems
-/// such as btrfs and ext4. When renaming over a file that already exists then they will "helpfully"
-/// write back the source file before committing the rename in case a developer forgot some of
-/// the fsyncs in the open/write/fsync(file)/rename/fsync(dir) dance for atomic file updates.
-///
-/// To avoid triggering this heuristic we delete the destination first, if it exists.
-/// The cost of an extra syscall is much lower than getting descheduled for the sync IO.
-#[cfg(target_os = "linux")]
-pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
-    let _ = std::fs::remove_file(dst);
-    std::fs::rename(src, dst)
 }
 
 /// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"

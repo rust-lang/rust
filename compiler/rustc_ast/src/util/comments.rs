@@ -194,7 +194,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
     }
 
     for token in rustc_lexer::tokenize(&text[pos..]) {
-        let token_text = &text[pos..pos + token.len];
+        let token_text = &text[pos..pos + token.len as usize];
         match token.kind {
             rustc_lexer::TokenKind::Whitespace => {
                 if let Some(mut idx) = token_text.find('\n') {
@@ -211,8 +211,10 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             }
             rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_none() {
-                    let code_to_the_right =
-                        !matches!(text[pos + token.len..].chars().next(), Some('\r' | '\n'));
+                    let code_to_the_right = !matches!(
+                        text[pos + token.len as usize..].chars().next(),
+                        Some('\r' | '\n')
+                    );
                     let style = match (code_to_the_left, code_to_the_right) {
                         (_, true) => CommentStyle::Mixed,
                         (false, false) => CommentStyle::Isolated,
@@ -246,7 +248,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                 code_to_the_left = true;
             }
         }
-        pos += token.len;
+        pos += token.len as usize;
     }
 
     comments

@@ -1,20 +1,20 @@
-error: `impl` associated type signature for `A` doesn't match `trait` associated type signature
-  --> $DIR/impl_bounds.rs:15:5
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/impl_bounds.rs:15:39
    |
 LL |     type A<'a> where Self: 'a;
-   |     ---------- expected
+   |     ---------- definition of `A` from trait
 ...
 LL |     type A<'a> = (&'a ()) where Self: 'static;
-   |     ^^^^^^^^^^ found
+   |                                       ^^^^^^^ impl has extra requirement `T: 'static`
 
-error: `impl` associated type signature for `B` doesn't match `trait` associated type signature
-  --> $DIR/impl_bounds.rs:17:5
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/impl_bounds.rs:17:48
    |
 LL |     type B<'a, 'b> where 'a: 'b;
-   |     -------------- expected
+   |     -------------- definition of `B` from trait
 ...
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |     ^^^^^^^^^^^^^^ found
+   |                                                ^^ impl has extra requirement `'b: 'a`
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:22
@@ -37,24 +37,24 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:20:5
+  --> $DIR/impl_bounds.rs:20:33
    |
 LL |     type C = String where Self: Copy;
-   |     ^^^^^^ the trait `Copy` is not implemented for `T`
+   |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
-note: the requirement `Fooy<T>: Copy` appears on the associated impl type `C` but not on the corresponding associated trait type
-  --> $DIR/impl_bounds.rs:7:5
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated type `C` but not on the corresponding trait's associated type
+  --> $DIR/impl_bounds.rs:7:10
    |
 LL | trait Foo {
    |       --- in this trait
 ...
 LL |     type C where Self: Clone;
-   |     ^^^^^^ this trait associated type doesn't have the requirement `Fooy<T>: Copy`
+   |          ^ this trait's associated type doesn't have the requirement `Fooy<T>: Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -67,19 +67,19 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
+note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:11:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
-note: the requirement `Fooy<T>: Copy` appears on the impl method `d` but not on the corresponding trait method
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s method `d` but not on the corresponding trait's method
   --> $DIR/impl_bounds.rs:8:8
    |
 LL | trait Foo {
    |       --- in this trait
 ...
 LL |     fn d() where Self: Clone;
-   |        ^ this trait method doesn't have the requirement `Fooy<T>: Copy`
+   |        ^ this trait's method doesn't have the requirement `Fooy<T>: Copy`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
    |
@@ -88,5 +88,5 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0478.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0276, E0277, E0478.
+For more information about an error, try `rustc --explain E0276`.

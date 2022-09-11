@@ -1,4 +1,3 @@
-use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
@@ -40,21 +39,31 @@ pub(super) fn find_library(
     ));
 }
 
-pub trait ArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path) -> Self;
+pub trait ArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
 
-    fn add_file(&mut self, path: &Path);
-
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static;
-
-    fn build(self) -> bool;
-
-    fn inject_dll_import_lib(
-        &mut self,
+    /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
+    /// and returns the path on disk to that import library.
+    /// This functions doesn't take `self` so that it can be called from
+    /// `linker_with_args`, which is specialized on `ArchiveBuilder` but
+    /// doesn't take or create an instance of that type.
+    fn create_dll_import_lib(
+        &self,
+        sess: &Session,
         lib_name: &str,
         dll_imports: &[DllImport],
-        tmpdir: &MaybeTempDir,
-    );
+        tmpdir: &Path,
+    ) -> PathBuf;
+}
+
+pub trait ArchiveBuilder<'a> {
+    fn add_file(&mut self, path: &Path);
+
+    fn add_archive(
+        &mut self,
+        archive: &Path,
+        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()>;
+
+    fn build(self: Box<Self>, output: &Path) -> bool;
 }

@@ -14,6 +14,19 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrollbar-thumb-background-color: #5c6773;
 	--scrollbar-color: #5c6773 #24292f;
 	--headings-border-bottom-color: #5c6773;
+	--border-color: #5c6773;
+	--button-background-color: #141920;
+	--right-side-color: grey;
+	--code-attribute-color: #999;
+	--toggles-color: #999;
+	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
+	--copy-path-button-color: #fff;
+	--copy-path-img-filter: invert(70%);
+	--copy-path-img-hover-filter: invert(100%);
+	--codeblock-error-hover-color: rgb(255, 0, 0);
+	--codeblock-error-color: rgba(255, 0, 0, .5);
+	--codeblock-ignore-hover-color: rgb(255, 142, 0);
+	--codeblock-ignore-color: rgba(255, 142, 0, .6);
 }
 
 .slider {
@@ -36,10 +49,6 @@ h4 {
 	border: none;
 }
 
-.in-band {
-	background-color: #0f1419;
-}
-
 .docblock code {
 	color: #ffb454;
 }
@@ -49,7 +58,7 @@ h4 {
 .docblock pre > code, pre > code {
 	color: #e6e1cf;
 }
-span code {
+.item-info code {
 	color: #e6e1cf;
 }
 .docblock a > code {
@@ -84,17 +93,14 @@ pre, .rustdoc.source .example-wrap {
 	border-right: 1px solid #ffb44c;
 }
 
-.docblock table td, .docblock table th {
-	border-color: #5c6773;
-}
-
 .search-results a:hover {
-	background-color: #777;
+	color: #fff !important;
+	background-color: #3c3c3c;
 }
 
 .search-results a:focus {
-	color: #000 !important;
-	background-color: #c6afb3;
+	color: #fff !important;
+	background-color: #3c3c3c;
 }
 .search-results a {
 	color: #0096cf;
@@ -151,13 +157,6 @@ pre, .rustdoc.source .example-wrap {
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
 
-nav.main .current {
-	border-top-color: #5c6773;
-	border-bottom-color: #5c6773;
-}
-nav.main .separator {
-	border: 1px solid #5c6773;
-}
 a {
 	color: #39AFD7;
 }
@@ -166,32 +165,27 @@ a {
 .sidebar h3 a {
 	color: white;
 }
-.search-results a {
-	color: #0096cf;
-}
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
-details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
-	color: #999;
-}
-
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
-	background-color: #141920;
-	/* Without the `!important`, the border-color is ignored for `<select>`... */
-	border-color: #424c57 !important;
+#crate-search-div::after {
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: #e0e0e0 !important;
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
 }
 
 .search-input {
-	color: #ffffff;
+	color: #fff;
 }
 
 .module-item .stab,
@@ -199,39 +193,14 @@ details.undocumented > summary::before {
 	color: #000;
 }
 
-/* Created this empty rule to satisfy the theme checks. */
-.stab.empty-impl {}
-
-.stab.unstable,
-.stab.deprecated,
-.stab.portability,
-.stab.empty-impl {
+.stab {
 	color: #c5c5c5;
 	background: #314559 !important;
-	border-style: none !important;
-	border-radius: 4px;
-	padding: 3px 6px 3px 6px;
 }
 
 .stab.portability > code {
 	color: #e6e1cf;
 	background: none;
-}
-
-#help > div {
-	background: #14191f;
-	box-shadow: 0px 6px 20px 0px black;
-	border: none;
-	border-radius: 4px;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #5c6773;
-}
-
-.rightside,
-.out-of-band {
-	color: grey;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {
@@ -244,7 +213,7 @@ details.undocumented > summary::before {
 pre.rust .number, pre.rust .string { color: #b8cc52; }
 pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
 pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .op, pre.rust .lifetime { color: #ff7733; }
+pre.rust .lifetime { color: #ff7733; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
 pre.rust .question-mark {
 	color: #ff9011;
@@ -254,9 +223,6 @@ pre.rust .self {
 	font-style: italic;
 }
 pre.rust .attribute {
-	color: #e6e1cf;
-}
-pre.rust .attribute .ident, pre.rust .attribute .op {
 	color: #e6e1cf;
 }
 
@@ -277,62 +243,9 @@ a.test-arrow:hover {
 	color: #c5c5c5;
 }
 
-.toggle-label,
-.code-attribute {
-	color: #999;
-}
-
 :target {
 	background: rgba(255, 236, 164, 0.06);
 	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-pre.compile_fail {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.compile_fail:hover, .information:hover + pre.compile_fail {
-	border-left: 2px solid #f00;
-}
-
-pre.should_panic {
-	border-left: 2px solid rgba(255,0,0,.4);
-}
-
-pre.should_panic:hover, .information:hover + pre.should_panic {
-	border-left: 2px solid #f00;
-}
-
-pre.ignore {
-	border-left: 2px solid rgba(255,142,0,.6);
-}
-
-pre.ignore:hover, .information:hover + pre.ignore {
-	border-left: 2px solid #ff9200;
-}
-
-.tooltip.compile_fail {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .compile_fail:hover {
-	color: #f00;
-}
-
-.tooltip.should_panic {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .should_panic:hover {
-	color: #f00;
-}
-
-.tooltip.ignore {
-	color: rgba(255,142,0,.6);
-}
-
-.information > .ignore:hover {
-	color: #ff9200;
 }
 
 .search-failed a {
@@ -342,7 +255,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
-	border: 1px solid #5c6773;
 }
 
 .tooltip::before {
@@ -351,11 +263,6 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .notable-traits-tooltiptext {
 	background-color: #314559;
-	border-color: #5c6773;
-}
-
-.notable-traits-tooltiptext .notable {
-	border-bottom-color: #5c6773;
 }
 
 #titles > button.selected {
@@ -383,7 +290,6 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-.search-input:focus {}
 .content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content span.struct,.content a.struct,.block a.current.struct {}
@@ -398,16 +304,13 @@ h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type)
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
 .content a.static, .block a.current.static {}
 .content span.keyword,.content a.keyword,.block a.current.keyword {}
-pre.rust .comment {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
 .content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
 .block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
 .content .fnname {}
 pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
-pre.rust .attribute .ident {}
+pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
-pre.rust .doccomment {}
 .stab.deprecated {}
 .content a.attr,.content a.derive,.content a.macro {}
 .stab.portability {}
@@ -459,23 +362,13 @@ a.result-keyword:focus {}
 .sidebar a.current.tymethod {}
 .sidebar a.current.keyword {}
 
-@media (max-width: 700px) {
-	.sidebar-elems {
-		border-right-color: #5c6773;
-	}
-}
-
 kbd {
 	color: #c5c5c5;
 	background-color: #314559;
-	border-color: #5c6773;
-	border-bottom-color: #5c6773;
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
 #settings-menu > a, #help-button > button {
-	border-color: #5c6773;
-	background-color: #0f1419;
 	color: #fff;
 }
 
@@ -483,37 +376,9 @@ kbd {
 	filter: invert(100);
 }
 
-.popover, .popover::before,
-#help-button span.top, #help-button span.bottom {
-	border-color: #5c6773;
-}
-
-#copy-path {
-	color: #fff;
-}
-#copy-path > img {
-	filter: invert(70%);
-}
-#copy-path:hover > img {
-	filter: invert(100%);
-}
-
 #settings-menu > a:hover, #settings-menu > a:focus,
 #help-button > button:hover, #help-button > button:focus {
 	border-color: #e0e0e0;
-}
-
-#theme-choices {
-	border-color: #5c6773;
-	background-color: #0f1419;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top-color: #5c6773;
-}
-
-#theme-choices > button:hover, #theme-choices > button:focus {
-	background-color: rgba(110, 110, 110, 0.33);
 }
 
 .search-results .result-name span.alias {
@@ -525,7 +390,6 @@ kbd {
 
 #source-sidebar > .title {
 	color: #fff;
-	border-bottom-color: #5c6773;
 }
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
 #source-sidebar div.files > a:focus, details.dir-entry summary:focus {
@@ -544,9 +408,6 @@ kbd {
 .scraped-example-list .scrape-help:hover {
 	border-color: white;
 	color: white;
-}
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	color: #999;
 }
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);

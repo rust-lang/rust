@@ -11,8 +11,6 @@
 #![feature(const_nonnull_slice_from_raw_parts)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]
-#![feature(core_c_str)]
-#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
@@ -29,6 +27,7 @@
 #![feature(binary_heap_as_slice)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
+#![feature(iter_next_chunk)]
 #![feature(round_char_boundary)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
@@ -39,11 +38,13 @@
 #![feature(const_str_from_utf8)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(panic_update_hook)]
+#![feature(pointer_is_aligned)]
 #![feature(slice_flatten)]
 #![feature(thin_box)]
 #![feature(bench_black_box)]
 #![feature(strict_provenance)]
 #![feature(once_cell)]
+#![feature(drain_keep_rest)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

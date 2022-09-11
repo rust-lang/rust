@@ -1,4 +1,4 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
@@ -11,7 +11,7 @@ help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ++++
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Copy` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:6:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
@@ -96,7 +96,7 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      ~~~~~~~~~~~~
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Fn(&'a u32)` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:38:5
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {

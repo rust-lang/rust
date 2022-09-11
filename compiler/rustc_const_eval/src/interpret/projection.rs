@@ -1,13 +1,11 @@
 //! This file implements "place projections"; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
 //!
-//! OpTy and PlaceTy genrally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
+//! OpTy and PlaceTy generally work by "let's see if we are actually an MPlaceTy, and do something custom if not".
 //! For PlaceTy, the custom thing is basically always to call `force_allocation` and then use the MPlaceTy logic anyway.
 //! For OpTy, the custom thing on field pojections has to be pretty clever (since `Operand::Immediate` can have fields),
 //! but for array/slice operations it only has to worry about `Operand::Uninit`. That makes the value part trivial,
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
-
-use std::hash::Hash;
 
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -20,10 +18,10 @@ use super::{
 };
 
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx: 'mir, Tag, M> InterpCx<'mir, 'tcx, M>
+impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Tag: Provenance + Eq + Hash + 'static,
-    M: Machine<'mir, 'tcx, PointerTag = Tag>,
+    Prov: Provenance + 'static,
+    M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     //# Field access
 
@@ -35,9 +33,9 @@ where
     /// For indexing into arrays, use `mplace_index`.
     pub fn mplace_field(
         &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
+        base: &MPlaceTy<'tcx, M::Provenance>,
         field: usize,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let offset = base.layout.fields.offset(field);
         let field_layout = base.layout.field(self, field);
 
@@ -63,7 +61,7 @@ where
 
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
         // codegen -- mostly to see if we can get away with that
-        base.offset(offset, meta, field_layout, self)
+        base.offset_with_meta(offset, meta, field_layout, self)
     }
 
     /// Gets the place of a field inside the place, and also the field's type.
@@ -72,9 +70,9 @@ where
     /// into the field of a local `ScalarPair`, we have to first allocate it.
     pub fn place_field(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         field: usize,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // FIXME: We could try to be smarter and avoid allocation for fields that span the
         // entire place.
         let base = self.force_allocation(base)?;
@@ -83,9 +81,9 @@ where
 
     pub fn operand_field(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         field: usize,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let base = match base.try_as_mplace() {
             Ok(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
@@ -100,6 +98,8 @@ where
         // This makes several assumptions about what layouts we will encounter; we match what
         // codegen does as good as we can (see `extract_field` in `rustc_codegen_ssa/src/mir/operand.rs`).
         let field_val: Immediate<_> = match (*base, base.layout.abi) {
+            // if the entire value is uninit, then so is the field (can happen in ConstProp)
+            (Immediate::Uninit, _) => Immediate::Uninit,
             // the field contains no information, can be left uninit
             _ if field_layout.is_zst() => Immediate::Uninit,
             // the field covers the entire type
@@ -124,6 +124,7 @@ where
                     b_val
                 })
             }
+            // everything else is a bug
             _ => span_bug!(
                 self.cur_span(),
                 "invalid field access on immediate {}, layout {:#?}",
@@ -139,9 +140,9 @@ where
 
     pub fn mplace_downcast(
         &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
+        base: &MPlaceTy<'tcx, M::Provenance>,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // Downcasts only change the layout.
         // (In particular, no check about whether this is even the active variant -- that's by design,
         // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
@@ -153,22 +154,22 @@ where
 
     pub fn place_downcast(
         &self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // Downcast just changes the layout
-        let mut base = *base;
+        let mut base = base.clone();
         base.layout = base.layout.for_variant(self, variant);
         Ok(base)
     }
 
     pub fn operand_downcast(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         variant: VariantIdx,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // Downcast just changes the layout
-        let mut base = *base;
+        let mut base = base.clone();
         base.layout = base.layout.for_variant(self, variant);
         Ok(base)
     }
@@ -178,9 +179,9 @@ where
     #[inline(always)]
     pub fn operand_index(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         index: u64,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // Not using the layout method because we want to compute on u64
         match base.layout.fields {
             abi::FieldsShape::Array { stride, count: _ } => {
@@ -193,9 +194,7 @@ where
                 let offset = stride * index; // `Size` multiplication
                 // All fields have the same layout.
                 let field_layout = base.layout.field(self, 0);
-                assert!(!field_layout.is_unsized());
-
-                base.offset(offset, MemPlaceMeta::None, field_layout, self)
+                base.offset(offset, field_layout, self)
             }
             _ => span_bug!(
                 self.cur_span(),
@@ -209,32 +208,32 @@ where
     // same by repeatedly calling `operand_index`.
     pub fn operand_array_fields<'a>(
         &self,
-        base: &'a OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Tag>>> + 'a> {
+        base: &'a OpTy<'tcx, Prov>,
+    ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, OpTy<'tcx, Prov>>> + 'a> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let abi::FieldsShape::Array { stride, .. } = base.layout.fields else {
             span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
         };
-        let layout = base.layout.field(self, 0);
+        let field_layout = base.layout.field(self, 0);
         let dl = &self.tcx.data_layout;
         // `Size` multiplication
-        Ok((0..len).map(move |i| base.offset(stride * i, MemPlaceMeta::None, layout, dl)))
+        Ok((0..len).map(move |i| base.offset(stride * i, field_layout, dl)))
     }
 
     /// Index into an array.
     pub fn mplace_index(
         &self,
-        base: &MPlaceTy<'tcx, M::PointerTag>,
+        base: &MPlaceTy<'tcx, M::Provenance>,
         index: u64,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         Ok(self.operand_index(&base.into(), index)?.assert_mem_place())
     }
 
     pub fn place_index(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         index: u64,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // There's not a lot we can do here, since we cannot have a place to a part of a local. If
         // we are accessing the only element of a 1-element array, it's still the entire local...
         // that doesn't seem worth it.
@@ -246,11 +245,11 @@ where
 
     fn operand_constant_index(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         offset: u64,
         min_length: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let n = base.len(self)?;
         if n < min_length {
             // This can only be reached in ConstProp and non-rustc-MIR.
@@ -270,11 +269,11 @@ where
 
     fn place_constant_index(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         offset: u64,
         min_length: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let base = self.force_allocation(base)?;
         Ok(self
             .operand_constant_index(&base.into(), offset, min_length, from_end)?
@@ -286,11 +285,11 @@ where
 
     fn operand_subslice(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         from: u64,
         to: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let actual_to = if from_end {
             if from.checked_add(to).map_or(true, |to| to > len) {
@@ -326,16 +325,16 @@ where
             }
         };
         let layout = self.layout_of(ty)?;
-        base.offset(from_offset, meta, layout, self)
+        base.offset_with_meta(from_offset, meta, layout, self)
     }
 
     pub fn place_subslice(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         from: u64,
         to: u64,
         from_end: bool,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let base = self.force_allocation(base)?;
         Ok(self.operand_subslice(&base.into(), from, to, from_end)?.assert_mem_place().into())
     }
@@ -346,9 +345,9 @@ where
     #[instrument(skip(self), level = "trace")]
     pub fn place_projection(
         &mut self,
-        base: &PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::Provenance>,
         proj_elem: mir::PlaceElem<'tcx>,
-    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
             Field(field, _) => self.place_field(base, field.index())?,
@@ -370,9 +369,9 @@ where
     #[instrument(skip(self), level = "trace")]
     pub fn operand_projection(
         &self,
-        base: &OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::Provenance>,
         proj_elem: mir::PlaceElem<'tcx>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
             Field(field, _) => self.operand_field(base, field.index())?,

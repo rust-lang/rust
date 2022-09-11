@@ -161,22 +161,15 @@ impl Diagnostic {
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(spans: Vec<Span>) -> crate::bridge::client::MultiSpan {
-            let mut multi_span = crate::bridge::client::MultiSpan::new();
-            for span in spans {
-                multi_span.push(span.0);
+        fn to_internal(diag: Diagnostic) -> crate::bridge::Diagnostic<crate::bridge::client::Span> {
+            crate::bridge::Diagnostic {
+                level: diag.level,
+                message: diag.message,
+                spans: diag.spans.into_iter().map(|s| s.0).collect(),
+                children: diag.children.into_iter().map(to_internal).collect(),
             }
-            multi_span
         }
 
-        let mut diag = crate::bridge::client::Diagnostic::new(
-            self.level,
-            &self.message[..],
-            to_internal(self.spans),
-        );
-        for c in self.children {
-            diag.sub(c.level, &c.message[..], to_internal(c.spans));
-        }
-        diag.emit();
+        crate::bridge::client::FreeFunctions::emit_diagnostic(to_internal(self));
     }
 }

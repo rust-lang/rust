@@ -34,7 +34,7 @@ LL | pub const fn size_of<T>() -> usize {
 help: remove the extra argument
    |
 LL |     std::mem::size_of();
-   |     ~~~~~~~~~~~~~~~~~~~
+   |                      ~~
 
 error: aborting due to 3 previous errors
 

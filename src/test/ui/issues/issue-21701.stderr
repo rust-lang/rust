@@ -8,16 +8,22 @@ LL |     let y = t();
    |             |
    |             call expression requires function
 
-error[E0618]: expected function, found `Bar`
+error[E0618]: expected function, found struct `Bar`
   --> $DIR/issue-21701.rs:9:13
    |
 LL | struct Bar;
-   | ---------- `Bar` defined here
+   | ---------- struct `Bar` defined here
 ...
 LL |     let f = Bar();
    |             ^^^--
    |             |
    |             call expression requires function
+   |
+help: `Bar` is a unit struct, and does not take parentheses to be constructed
+   |
+LL -     let f = Bar();
+LL +     let f = Bar;
+   |
 
 error: aborting due to 2 previous errors
 

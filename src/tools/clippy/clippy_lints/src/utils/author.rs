@@ -6,7 +6,9 @@ use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::{ArrayLen, ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind};
+use rustc_hir::{
+    ArrayLen, BindingAnnotation, Closure, ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::{Ident, Symbol};
@@ -138,9 +140,9 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
     let hir = cx.tcx.hir();
-    if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
+    if let Some(body_id) = hir.maybe_body_owned_by(hir_id.expect_owner()) {
         check_node(cx, hir_id, |v| {
-            v.expr(&v.bind("expr", &hir.body(body_id).value));
+            v.expr(&v.bind("expr", hir.body(body_id).value));
         });
     }
 }
@@ -276,7 +278,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         match lit.value.node {
             LitKind::Bool(val) => kind!("Bool({val:?})"),
             LitKind::Char(c) => kind!("Char({c:?})"),
-            LitKind::Err(val) => kind!("Err({val})"),
+            LitKind::Err => kind!("Err"),
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
@@ -402,10 +404,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(func);
                 self.slice(args, |e| self.expr(e));
             },
-            ExprKind::MethodCall(method_name, args, _) => {
-                bind!(self, method_name, args);
-                kind!("MethodCall({method_name}, {args}, _)");
+            ExprKind::MethodCall(method_name, receiver, args, _) => {
+                bind!(self, method_name, receiver, args);
+                kind!("MethodCall({method_name}, {receiver}, {args}, _)");
                 self.ident(field!(method_name.ident));
+                self.expr(receiver);
                 self.slice(args, |e| self.expr(e));
             },
             ExprKind::Tup(elements) => {
@@ -466,13 +469,13 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(scrutinee);
                 self.slice(arms, |arm| self.arm(arm));
             },
-            ExprKind::Closure {
+            ExprKind::Closure(&Closure {
                 capture_clause,
                 fn_decl,
                 body: body_id,
                 movability,
                 ..
-            } => {
+            }) => {
                 let movability = OptionPat::new(movability.map(|m| format!("Movability::{m:?}")));
 
                 let ret_ty = match fn_decl.output {
@@ -595,7 +598,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = &self.cx.tcx.hir().body(body_id.value).value;
+        let expr = self.cx.tcx.hir().body(body_id.value).value;
         bind!(self, expr);
         out!("let {expr} = &cx.tcx.hir().body({body_id}).value;");
         self.expr(expr);
@@ -609,10 +612,16 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
         match pat.value.kind {
             PatKind::Wild => kind!("Wild"),
-            PatKind::Binding(anno, .., name, sub) => {
+            PatKind::Binding(ann, _, name, sub) => {
                 bind!(self, name);
                 opt_bind!(self, sub);
-                kind!("Binding(BindingAnnotation::{anno:?}, _, {name}, {sub})");
+                let ann = match ann {
+                    BindingAnnotation::NONE => "NONE",
+                    BindingAnnotation::REF => "REF",
+                    BindingAnnotation::MUT => "MUT",
+                    BindingAnnotation::REF_MUT => "REF_MUT",
+                };
+                kind!("Binding(BindingAnnotation::{ann}, _, {name}, {sub})");
                 self.ident(name);
                 sub.if_some(|p| self.pat(p));
             },

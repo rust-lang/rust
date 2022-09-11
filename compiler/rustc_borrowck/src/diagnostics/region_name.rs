@@ -34,13 +34,13 @@ pub(crate) enum RegionNameSource {
     /// The `'static` region.
     Static,
     /// The free region corresponding to the environment of a closure.
-    SynthesizedFreeEnvRegion(Span, String),
+    SynthesizedFreeEnvRegion(Span, &'static str),
     /// The region corresponding to an argument.
     AnonRegionFromArgument(RegionNameHighlight),
     /// The region corresponding to a closure upvar.
-    AnonRegionFromUpvar(Span, String),
+    AnonRegionFromUpvar(Span, Symbol),
     /// The region corresponding to the return type of a closure.
-    AnonRegionFromOutput(RegionNameHighlight, String),
+    AnonRegionFromOutput(RegionNameHighlight, &'static str),
     /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
     /// An anonymous region from an async fn.
@@ -110,7 +110,7 @@ impl RegionName {
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
                 diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));
-                diag.note(note);
+                diag.note(*note);
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
@@ -189,7 +189,7 @@ impl Display for RegionName {
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
-        self.body.source.def_id().as_local().unwrap()
+        self.body.source.def_id().expect_local()
     }
 
     pub(crate) fn mir_hir_id(&self) -> hir::HirId {
@@ -265,7 +265,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// *user* has a name for. In that case, we'll be able to map
     /// `fr` to a `Region<'tcx>`, and that region will be one of
     /// named variants.
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_from_error_region(&self, fr: RegionVid) -> Option<RegionName> {
         let error_region = self.to_error_region(fr)?;
 
@@ -325,7 +325,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure { fn_decl_span, .. }
+                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. })
                         = tcx.hir().expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
@@ -350,21 +350,14 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                     Some(RegionName {
                         name: region_name,
-                        source: RegionNameSource::SynthesizedFreeEnvRegion(
-                            fn_decl_span,
-                            note.to_string(),
-                        ),
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(fn_decl_span, note),
                     })
                 }
 
                 ty::BoundRegionKind::BrAnon(_) => None,
             },
 
-            ty::ReLateBound(..)
-            | ty::ReVar(..)
-            | ty::RePlaceholder(..)
-            | ty::ReEmpty(_)
-            | ty::ReErased => None,
+            ty::ReLateBound(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => None,
         }
     }
 
@@ -376,7 +369,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
         fr: RegionVid,
@@ -592,8 +585,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
             hir::LifetimeName::Param(_, hir::ParamName::Fresh)
             | hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Implicit
-            | hir::LifetimeName::Underscore => {
+            | hir::LifetimeName::Infer => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //
@@ -666,7 +658,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  | let x = Some(&22);
     ///        - fully elaborated type of `x` is `Option<&'1 u32>`
     /// ```
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
@@ -678,7 +670,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: region_name,
-            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name.to_string()),
+            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
         })
     }
 
@@ -686,7 +678,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// must be a closure since, in a free fn, such an argument would
     /// have to either also appear in an argument (if using elision)
     /// or be early bound (named, not in argument).
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
         let hir = tcx.hir();
@@ -701,16 +693,16 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description, hir_ty) = match hir.get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl, body, fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, .. }),
                 ..
             }) => {
                 let (mut span, mut hir_ty) = match fn_decl.output {
                     hir::FnRetTy::DefaultReturn(_) => {
-                        (tcx.sess.source_map().end_point(*fn_decl_span), None)
+                        (tcx.sess.source_map().end_point(fn_decl_span), None)
                     }
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(*body).generator_kind {
+                let mir_description = match hir.body(body).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
                         hir::AsyncGeneratorKind::Block => " of async block",
                         hir::AsyncGeneratorKind::Closure => " of async closure",
@@ -756,7 +748,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: self.synthesize_region_name(),
-            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description.to_string()),
+            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description),
         })
     }
 
@@ -776,7 +768,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
         let hir = self.infcx.tcx.hir();
 
-        let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind else {
+        let hir::TyKind::OpaqueDef(id, _, _) = hir_ty.kind else {
             span_bug!(
                 hir_ty.span,
                 "lowered return type of async fn is not OpaqueDef: {:?}",
@@ -818,7 +810,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
     }
 
-    #[tracing::instrument(level = "trace", skip(self))]
+    #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_yield_ty(
         &self,
         fr: RegionVid,
@@ -841,9 +833,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
-            }) => (tcx.sess.source_map().end_point(*fn_decl_span)),
+            }) => tcx.sess.source_map().end_point(fn_decl_span),
             _ => self.body.span,
         };
 

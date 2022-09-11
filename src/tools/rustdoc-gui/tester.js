@@ -201,6 +201,19 @@ async function main(argv) {
         process.setMaxListeners(opts["jobs"] + 1);
     }
 
+    // We catch this "event" to display a nicer message in case of unexpected exit (because of a
+    // missing `--no-sandbox`).
+    const exitHandling = (code) => {
+        if (!opts["no_sandbox"]) {
+            console.log("");
+            console.log(
+                "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
+--no-sandbox` at the end. For example: `x.py test src/test/rustdoc-gui --test-args --no-sandbox`");
+            console.log("");
+        }
+    };
+    process.on('exit', exitHandling);
+
     const tests_queue = [];
     let results = {
         successful: [],
@@ -246,6 +259,9 @@ async function main(argv) {
         await Promise.all(tests_queue);
     }
     status_bar.finish();
+
+    // We don't need this listener anymore.
+    process.removeListener("exit", exitHandling);
 
     if (debug) {
         results.successful.sort(by_filename);

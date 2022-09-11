@@ -59,7 +59,7 @@ pub type UpvarCaptureMap = FxHashMap<UpvarId, UpvarCapture>;
 
 /// Given the closure DefId this map provides a map of root variables to minimum
 /// set of `CapturedPlace`s that need to be tracked to support all captures of that closure.
-pub type MinCaptureInformationMap<'tcx> = FxHashMap<DefId, RootVariableMinCaptureList<'tcx>>;
+pub type MinCaptureInformationMap<'tcx> = FxHashMap<LocalDefId, RootVariableMinCaptureList<'tcx>>;
 
 /// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
 /// Used to track the minimum set of `Place`s that need to be captured to support all
@@ -128,6 +128,14 @@ impl<'tcx> ClosureKind {
             None
         }
     }
+
+    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
+        match self {
+            ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
+            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().unwrap(),
+            ClosureKind::FnOnce => tcx.lang_items().fn_trait().unwrap(),
+        }
+    }
 }
 
 /// A composite describing a `Place` that is captured by a closure.
@@ -174,7 +182,11 @@ impl<'tcx> CapturedPlace<'tcx> {
                         .unwrap();
                     }
                     ty => {
-                        bug!("Unexpected type {:?} for `Field` projection", ty)
+                        span_bug!(
+                            self.get_capture_kind_span(tcx),
+                            "Unexpected type {:?} for `Field` projection",
+                            ty
+                        )
                     }
                 },
 
@@ -241,7 +253,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
 fn symbols_for_closure_captures<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: (LocalDefId, DefId),
+    def_id: (LocalDefId, LocalDefId),
 ) -> Vec<Symbol> {
     let typeck_results = tcx.typeck(def_id.0);
     let captures = typeck_results.closure_min_captures_flattened(def_id.1);

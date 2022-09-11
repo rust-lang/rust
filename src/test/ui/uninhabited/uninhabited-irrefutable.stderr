@@ -1,8 +1,8 @@
-error[E0005]: refutable pattern in local binding: `A(_)` not covered
+error[E0005]: refutable pattern in local binding: `Foo::A(_)` not covered
   --> $DIR/uninhabited-irrefutable.rs:27:9
    |
 LL |     let Foo::D(_y, _z) = x;
-   |         ^^^^^^^^^^^^^^ pattern `A(_)` not covered
+   |         ^^^^^^^^^^^^^^ pattern `Foo::A(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html

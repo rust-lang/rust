@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 struct Fat<T: ?Sized> {
     f1: isize,

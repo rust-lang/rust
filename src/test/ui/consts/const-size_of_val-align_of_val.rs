@@ -5,7 +5,7 @@
 
 use std::{mem, ptr};
 
-struct Foo(u32);
+struct Foo(#[allow(unused_tuple_struct_fields)] u32);
 
 #[derive(Clone, Copy)]
 struct Bar {

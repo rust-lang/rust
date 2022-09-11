@@ -45,8 +45,6 @@ pub enum NonMacroAttrKind {
     /// Single-segment custom attribute registered by a derive macro
     /// but used before that derive macro was expanded (deprecated).
     DeriveHelperCompat,
-    /// Single-segment custom attribute registered with `#[register_attr]`.
-    Registered,
 }
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
@@ -111,6 +109,8 @@ pub enum DefKind {
     InlineConst,
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
+    /// A return-position `impl Trait` in a trait definition
+    ImplTraitPlaceholder,
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
@@ -140,6 +140,7 @@ impl DefKind {
                 panic!("impossible struct constructor")
             }
             DefKind::OpaqueTy => "opaque type",
+            DefKind::ImplTraitPlaceholder => "opaque type in trait",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
@@ -219,7 +220,8 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl => None,
+            | DefKind::Impl
+            | DefKind::ImplTraitPlaceholder => None,
         }
     }
 
@@ -256,6 +258,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
+            | DefKind::ImplTraitPlaceholder
             | DefKind::Impl
             | DefKind::Field
             | DefKind::TyParam
@@ -310,6 +313,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
+
     /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
     /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
     ///
@@ -357,7 +361,8 @@ pub enum Res<Id = hir::HirId> {
     /// const fn baz<T>() -> usize { 10 }
     /// ```
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint:
+    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat
+    /// lint:
     /// ```
     /// fn foo<T>() {
     ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
@@ -372,6 +377,7 @@ pub enum Res<Id = hir::HirId> {
         /// from mentioning generics (i.e. when used in an anonymous constant).
         alias_to: Option<(DefId, bool)>,
     },
+
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
     ///
     /// **Belongs to the type namespace.**
@@ -385,6 +391,7 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// *See also [`Res::SelfTy`].*
     SelfCtor(DefId),
+
     /// A local variable or function parameter.
     ///
     /// **Belongs to the value namespace.**
@@ -455,7 +462,7 @@ impl PartialRes {
 
 /// Different kinds of symbols can coexist even if they share the same textual name.
 /// Therefore, they each have a separate universe (known as a "namespace").
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Namespace {
     /// The type namespace includes `struct`s, `enum`s, `union`s, `trait`s, and `mod`s
     /// (and, by extension, crates).
@@ -564,15 +571,11 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::DeriveHelper | NonMacroAttrKind::DeriveHelperCompat => {
                 "derive helper attribute"
             }
-            NonMacroAttrKind::Registered => "explicitly registered attribute",
         }
     }
 
     pub fn article(self) -> &'static str {
-        match self {
-            NonMacroAttrKind::Registered => "an",
-            _ => "a",
-        }
+        "a"
     }
 
     /// Users of some attributes cannot mark them as used, so they are considered always used.
@@ -581,7 +584,7 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool
             | NonMacroAttrKind::DeriveHelper
             | NonMacroAttrKind::DeriveHelperCompat => true,
-            NonMacroAttrKind::Builtin(..) | NonMacroAttrKind::Registered => false,
+            NonMacroAttrKind::Builtin(..) => false,
         }
     }
 }
@@ -713,7 +716,7 @@ impl<Id> Res<Id> {
 }
 
 /// Resolution for a lifetime appearing in a type.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LifetimeRes {
     /// Successfully linked the lifetime to a generic parameter.
     Param {
@@ -738,13 +741,8 @@ pub enum LifetimeRes {
         binder: NodeId,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution.  Shifting the work to the HIR lifetime resolver.
-    Anonymous {
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
-        /// Whether this lifetime was spelled or elided.
-        elided: bool,
-    },
+    /// late resolution.  Those lifetimes will be inferred by typechecking.
+    Infer,
     /// Explicit `'static` lifetime.
     Static,
     /// Resolution failure.

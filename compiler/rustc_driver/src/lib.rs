@@ -9,6 +9,8 @@
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -16,7 +18,7 @@ extern crate tracing;
 pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
+use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
@@ -29,7 +31,7 @@ use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_session::config::{nightly_options, CG_OPTIONS, DB_OPTIONS};
+use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts;
@@ -56,6 +58,12 @@ use std::time::Instant;
 
 pub mod args;
 pub mod pretty;
+mod session_diagnostics;
+
+use crate::session_diagnostics::{
+    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
+};
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -123,8 +131,7 @@ impl Callbacks for TimePassesCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // If a --prints=... option has been given, we don't print the "total"
         // time because it will mess up the --prints output. See #64339.
-        self.time_passes = config.opts.prints.is_empty()
-            && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
+        self.time_passes = config.opts.prints.is_empty() && config.opts.time_passes();
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
@@ -248,8 +255,8 @@ fn run_compiler(
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
                         let mut lint_store = rustc_lint::new_lint_store(
-                            sopts.debugging_opts.no_interleave_lints,
-                            compiler.session().unstable_options(),
+                            sopts.unstable_opts.no_interleave_lints,
+                            compiler.session().enable_internal_lints(),
                         );
                         let registered_lints =
                             if let Some(register_lints) = compiler.register_lints() {
@@ -342,7 +349,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.parse_only || sess.opts.debugging_opts.show_span.is_some() {
+            if sess.opts.unstable_opts.parse_only || sess.opts.unstable_opts.show_span.is_some() {
                 return early_exit();
             }
 
@@ -371,13 +378,13 @@ fn run_compiler(
 
             queries.global_ctxt()?;
 
-            if sess.opts.debugging_opts.no_analysis {
+            if sess.opts.unstable_opts.no_analysis {
                 return early_exit();
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(());
-                if sess.opts.debugging_opts.save_analysis {
+                if sess.opts.unstable_opts.save_analysis {
                     let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {
                         save::process_crate(
@@ -401,7 +408,7 @@ fn run_compiler(
 
             queries.ongoing_codegen()?;
 
-            if sess.opts.debugging_opts.print_type_sizes {
+            if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }
 
@@ -414,14 +421,14 @@ fn run_compiler(
             linker.link()?
         }
 
-        if sess.opts.debugging_opts.perf_stats {
+        if sess.opts.unstable_opts.perf_stats {
             sess.print_perf_stats();
         }
 
-        if sess.opts.debugging_opts.print_fuel.is_some() {
+        if sess.opts.unstable_opts.print_fuel.is_some() {
             eprintln!(
                 "Fuel used by {}: {}",
-                sess.opts.debugging_opts.print_fuel.as_ref().unwrap(),
+                sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
                 sess.print_fuel.load(SeqCst)
             );
         }
@@ -576,24 +583,41 @@ fn show_content_with_pager(content: &str) {
 }
 
 pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
-    if sess.opts.debugging_opts.link_only {
+    if sess.opts.unstable_opts.link_only {
         if let Input::File(file) = compiler.input() {
             // FIXME: #![crate_type] and #![crate_name] support not implemented yet
             sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to read rlink file: {}", err));
+                sess.emit_fatal(RlinkUnableToRead { err });
             });
             let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
                 Ok(codegen) => codegen,
-                Err(error) => {
-                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                Err(err) => {
+                    match err {
+                        CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),
+                        CodegenErrors::EmptyVersionNumber => {
+                            sess.emit_fatal(RLinkEmptyVersionNumber)
+                        }
+                        CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => {
+                            sess.emit_fatal(RLinkEncodingVersionMismatch {
+                                version_array,
+                                rlink_version,
+                            })
+                        }
+                        CodegenErrors::RustcVersionMismatch { rustc_version, current_version } => {
+                            sess.emit_fatal(RLinkRustcVersionMismatch {
+                                rustc_version,
+                                current_version,
+                            })
+                        }
+                    };
                 }
             };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
-            sess.fatal("rlink must be a file")
+            sess.emit_fatal(RlinkNotAFile {})
         }
         Compilation::Stop
     } else {
@@ -606,7 +630,7 @@ pub fn list_metadata(
     metadata_loader: &dyn MetadataLoader,
     input: &Input,
 ) -> Compilation {
-    if sess.opts.debugging_opts.ls {
+    if sess.opts.unstable_opts.ls {
         match *input {
             Input::File(ref ifile) => {
                 let path = &(*ifile);
@@ -928,7 +952,7 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable options:\n");
-    print_flag_list("-Z", config::DB_OPTIONS);
+    print_flag_list("-Z", config::Z_OPTIONS);
 }
 
 fn describe_codegen_flags() {
@@ -1000,7 +1024,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
             getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
                 .iter()
                 .map(|&(name, ..)| ('C', name))
-                .chain(DB_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
+                .chain(Z_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
                 .find(|&(_, name)| *opt == name.replace('_', "-"))
                 .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
             _ => None,
@@ -1071,7 +1095,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     Some(matches)
 }
 
-fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
+fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::AttrVec> {
     match input {
         Input::File(ifile) => rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess),
         Input::Str { name, input } => rustc_parse::parse_crate_attrs_from_source_str(
@@ -1095,22 +1119,25 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     while let Some(arg) = args.next() {
         if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|a| arg.starts_with(*a)) {
             let content = if arg.len() == a.len() {
+                // A space-separated option, like `-C incremental=foo` or `--crate-type rlib`
                 match args.next() {
                     Some(arg) => arg.to_string(),
                     None => continue,
                 }
             } else if arg.get(a.len()..a.len() + 1) == Some("=") {
+                // An equals option, like `--crate-type=rlib`
                 arg[a.len() + 1..].to_string()
             } else {
+                // A non-space option, like `-Cincremental=foo`
                 arg[a.len()..].to_string()
             };
-            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| content.starts_with(exc)) {
+            let option = content.split_once('=').map(|s| s.0).unwrap_or(&content);
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| option == *exc) {
                 excluded_cargo_defaults = true;
             } else {
                 result.push(a.to_string());
-                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| content.starts_with(*s))
-                {
-                    Some(s) => result.push(s.to_string()),
+                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
+                    Some(s) => result.push(format!("{}=[REDACTED]", s)),
                     None => result.push(content),
                 }
             }
@@ -1149,6 +1176,17 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
     LazyLock::new(|| {
         let hook = panic::take_hook();
         panic::set_hook(Box::new(|info| {
+            // If the error was caused by a broken pipe then this is not a bug.
+            // Write the error and return immediately. See #98700.
+            #[cfg(windows)]
+            if let Some(msg) = info.payload().downcast_ref::<String>() {
+                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
+                {
+                    early_error_no_abort(ErrorOutputType::default(), &msg);
+                    return;
+                }
+            };
+
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
             (*DEFAULT_HOOK)(info);
 

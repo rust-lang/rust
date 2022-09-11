@@ -1,6 +1,6 @@
 use crate::base::ModuleData;
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Inline, Item, ModSpans};
+use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
@@ -48,7 +48,7 @@ pub(crate) fn parse_external_mod(
     span: Span, // The span to blame on errors.
     module: &ModuleData,
     mut dir_ownership: DirOwnership,
-    attrs: &mut Vec<Attribute>,
+    attrs: &mut AttrVec,
 ) -> ParsedExternalMod {
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: Result<_, ModError<'_>> = try {
@@ -63,9 +63,9 @@ pub(crate) fn parse_external_mod(
 
         // Actually parse the external file as a module.
         let mut parser = new_parser_from_file(&sess.parse_sess, &mp.file_path, Some(span));
-        let (mut inner_attrs, items, inner_span) =
+        let (inner_attrs, items, inner_span) =
             parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
-        attrs.append(&mut inner_attrs);
+        attrs.extend(inner_attrs);
         (items, inner_span, mp.file_path)
     };
     // (1) ...instead, we return a dummy module.
@@ -218,10 +218,9 @@ pub fn default_submod_path<'a>(
         ""
     };
 
-    let mod_name = ident.name.to_string();
-    let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
+    let default_path_str = format!("{}{}.rs", relative_prefix, ident.name);
     let secondary_path_str =
-        format!("{}{}{}mod.rs", relative_prefix, mod_name, path::MAIN_SEPARATOR);
+        format!("{}{}{}mod.rs", relative_prefix, ident.name, path::MAIN_SEPARATOR);
     let default_path = dir_path.join(&default_path_str);
     let secondary_path = dir_path.join(&secondary_path_str);
     let default_exists = sess.source_map().file_exists(&default_path);

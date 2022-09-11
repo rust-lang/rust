@@ -15,89 +15,185 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     template: &[InlineAsmTemplatePiece],
     operands: &[InlineAsmOperand<'tcx>],
     options: InlineAsmOptions,
+    destination: Option<mir::BasicBlock>,
 ) {
     // FIXME add .eh_frame unwind info directives
 
-    if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
-        let true_ = fx.bcx.ins().iconst(types::I32, 1);
-        fx.bcx.ins().trapnz(true_, TrapCode::User(1));
-        return;
-    } else if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
-        && matches!(
-            template[1],
-            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
-        )
-        && template[2] == InlineAsmTemplatePiece::String("\n".to_string())
-        && template[3] == InlineAsmTemplatePiece::String("cpuid".to_string())
-        && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
-        && template[5] == InlineAsmTemplatePiece::String("xchgq %rbx, ".to_string())
-        && matches!(
-            template[6],
-            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
-        )
-    {
-        assert_eq!(operands.len(), 4);
-        let (leaf, eax_place) = match operands[1] {
-            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
-                assert_eq!(
-                    reg,
-                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax))
-                );
-                (
-                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
-                    crate::base::codegen_place(fx, out_place.unwrap()),
-                )
-            }
-            _ => unreachable!(),
-        };
-        let ebx_place = match operands[0] {
-            InlineAsmOperand::Out { reg, late: true, place } => {
-                assert_eq!(
-                    reg,
-                    InlineAsmRegOrRegClass::RegClass(InlineAsmRegClass::X86(
-                        X86InlineAsmRegClass::reg
-                    ))
-                );
-                crate::base::codegen_place(fx, place.unwrap())
-            }
-            _ => unreachable!(),
-        };
-        let (sub_leaf, ecx_place) = match operands[2] {
-            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
-                assert_eq!(
-                    reg,
-                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx))
-                );
-                (
-                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
-                    crate::base::codegen_place(fx, out_place.unwrap()),
-                )
-            }
-            _ => unreachable!(),
-        };
-        let edx_place = match operands[3] {
-            InlineAsmOperand::Out { reg, late: true, place } => {
-                assert_eq!(
-                    reg,
-                    InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx))
-                );
-                crate::base::codegen_place(fx, place.unwrap())
-            }
-            _ => unreachable!(),
-        };
+    if !template.is_empty() {
+        // Used by panic_abort
+        if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+            fx.bcx.ins().trap(TrapCode::User(1));
+            return;
+        }
 
-        let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, sub_leaf);
+        // Used by stdarch
+        if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
+            && matches!(
+                template[1],
+                InlineAsmTemplatePiece::Placeholder {
+                    operand_idx: 0,
+                    modifier: Some('r'),
+                    span: _
+                }
+            )
+            && template[2] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[3] == InlineAsmTemplatePiece::String("cpuid".to_string())
+            && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[5] == InlineAsmTemplatePiece::String("xchgq %rbx, ".to_string())
+            && matches!(
+                template[6],
+                InlineAsmTemplatePiece::Placeholder {
+                    operand_idx: 0,
+                    modifier: Some('r'),
+                    span: _
+                }
+            )
+        {
+            assert_eq!(operands.len(), 4);
+            let (leaf, eax_place) = match operands[1] {
+                InlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                    late: true,
+                    ref in_value,
+                    out_place: Some(out_place),
+                } => (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place),
+                ),
+                _ => unreachable!(),
+            };
+            let ebx_place = match operands[0] {
+                InlineAsmOperand::Out {
+                    reg:
+                        InlineAsmRegOrRegClass::RegClass(InlineAsmRegClass::X86(
+                            X86InlineAsmRegClass::reg,
+                        )),
+                    late: true,
+                    place: Some(place),
+                } => crate::base::codegen_place(fx, place),
+                _ => unreachable!(),
+            };
+            let (sub_leaf, ecx_place) = match operands[2] {
+                InlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                    late: true,
+                    ref in_value,
+                    out_place: Some(out_place),
+                } => (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place),
+                ),
+                _ => unreachable!(),
+            };
+            let edx_place = match operands[3] {
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                    late: true,
+                    place: Some(place),
+                } => crate::base::codegen_place(fx, place),
+                _ => unreachable!(),
+            };
 
-        eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-        ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-        ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-        edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
-        return;
-    } else if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") {
-        // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-        crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
-    } else if fx.tcx.symbol_name(fx.instance).name == "__alloca" {
-        crate::trap::trap_unimplemented(fx, "Alloca is not supported");
+            let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, sub_leaf);
+
+            eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
+            ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
+            ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
+            edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
+
+        // Used by compiler-builtins
+        if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") {
+            // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
+            crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
+            return;
+        } else if fx.tcx.symbol_name(fx.instance).name == "__alloca" {
+            crate::trap::trap_unimplemented(fx, "Alloca is not supported");
+            return;
+        }
+
+        // Used by measureme
+        if template[0] == InlineAsmTemplatePiece::String("xor %eax, %eax".to_string())
+            && template[1] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[2] == InlineAsmTemplatePiece::String("mov %rbx, ".to_string())
+            && matches!(
+                template[3],
+                InlineAsmTemplatePiece::Placeholder {
+                    operand_idx: 0,
+                    modifier: Some('r'),
+                    span: _
+                }
+            )
+            && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[5] == InlineAsmTemplatePiece::String("cpuid".to_string())
+            && template[6] == InlineAsmTemplatePiece::String("\n".to_string())
+            && template[7] == InlineAsmTemplatePiece::String("mov ".to_string())
+            && matches!(
+                template[8],
+                InlineAsmTemplatePiece::Placeholder {
+                    operand_idx: 0,
+                    modifier: Some('r'),
+                    span: _
+                }
+            )
+            && template[9] == InlineAsmTemplatePiece::String(", %rbx".to_string())
+        {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        } else if template[0] == InlineAsmTemplatePiece::String("rdpmc".to_string()) {
+            // Return zero dummy values for all performance counters
+            match operands[0] {
+                InlineAsmOperand::In {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                    value: _,
+                } => {}
+                _ => unreachable!(),
+            };
+            let lo = match operands[1] {
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                    late: true,
+                    place: Some(place),
+                } => crate::base::codegen_place(fx, place),
+                _ => unreachable!(),
+            };
+            let hi = match operands[2] {
+                InlineAsmOperand::Out {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                    late: true,
+                    place: Some(place),
+                } => crate::base::codegen_place(fx, place),
+                _ => unreachable!(),
+            };
+
+            let u32_layout = fx.layout_of(fx.tcx.types.u32);
+            let zero = fx.bcx.ins().iconst(types::I32, 0);
+            lo.write_cvalue(fx, CValue::by_val(zero, u32_layout));
+            hi.write_cvalue(fx, CValue::by_val(zero, u32_layout));
+
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        } else if template[0] == InlineAsmTemplatePiece::String("lock xadd ".to_string())
+            && matches!(
+                template[1],
+                InlineAsmTemplatePiece::Placeholder { operand_idx: 1, modifier: None, span: _ }
+            )
+            && template[2] == InlineAsmTemplatePiece::String(", (".to_string())
+            && matches!(
+                template[3],
+                InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: None, span: _ }
+            )
+            && template[4] == InlineAsmTemplatePiece::String(")".to_string())
+        {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
     }
 
     let mut inputs = Vec::new();
@@ -165,6 +261,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     }
 
     call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
+
+    match destination {
+        Some(destination) => {
+            let destination_block = fx.get_block(destination);
+            fx.bcx.ins().jump(destination_block, &[]);
+        }
+        None => {
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        }
+    }
 }
 
 struct InlineAssemblyGenerator<'a, 'tcx> {
@@ -627,7 +733,7 @@ fn call_inline_asm<'tcx>(
     inputs: Vec<(Size, Value)>,
     outputs: Vec<(Size, CPlace<'tcx>)>,
 ) {
-    let stack_slot = fx.bcx.func.create_stack_slot(StackSlotData {
+    let stack_slot = fx.bcx.func.create_sized_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
         size: u32::try_from(slot_size.bytes()).unwrap(),
     });

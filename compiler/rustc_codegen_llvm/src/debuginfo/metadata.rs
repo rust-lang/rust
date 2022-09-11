@@ -42,7 +42,6 @@ use rustc_span::{self, FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;
-use tracing::debug;
 
 use libc::{c_char, c_longlong, c_uint};
 use std::borrow::Cow;
@@ -51,7 +50,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::ptr;
-use tracing::instrument;
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -114,6 +112,7 @@ macro_rules! return_if_di_node_created_in_meantime {
 }
 
 /// Extract size and alignment from a TyAndLayout.
+#[inline]
 fn size_and_align_of<'tcx>(ty_and_layout: TyAndLayout<'tcx>) -> (Size, Align) {
     (ty_and_layout.size, ty_and_layout.align.abi)
 }
@@ -824,7 +823,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
         output_filenames
             .split_dwarf_path(
                 tcx.sess.split_debuginfo(),
-                tcx.sess.opts.debugging_opts.split_dwarf_kind,
+                tcx.sess.opts.unstable_opts.split_dwarf_kind,
                 Some(codegen_unit_name),
             )
             // We get a path relative to the working directory from split_dwarf_path
@@ -881,15 +880,15 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             split_name.len(),
             kind,
             0,
-            tcx.sess.opts.debugging_opts.split_dwarf_inlining,
+            tcx.sess.opts.unstable_opts.split_dwarf_inlining,
         );
 
-        if tcx.sess.opts.debugging_opts.profile {
+        if tcx.sess.opts.unstable_opts.profile {
             let cu_desc_metadata =
                 llvm::LLVMRustMetadataAsValue(debug_context.llcontext, unit_metadata);
             let default_gcda_path = &output_filenames.with_extension("gcda");
             let gcda_path =
-                tcx.sess.opts.debugging_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
+                tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
@@ -1420,7 +1419,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
         cx,
         type_map::stub(
             cx,
-            Stub::VtableTy { vtable_holder },
+            Stub::VTableTy { vtable_holder },
             unique_type_id,
             &vtable_type_name,
             (size, pointer_align),
@@ -1499,24 +1498,18 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
         // If there is not LTO and the visibility in public, we have to assume that the vtable can
         // be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
         (Lto::No | Lto::ThinLocal, Visibility::Public, _)
-        | (Lto::No, Visibility::Restricted(_) | Visibility::Invisible, false) => {
-            VCallVisibility::Public
-        }
+        | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
         // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
         // all known by the `LinkageUnit`.
         // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
         // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
         (Lto::Fat | Lto::Thin, Visibility::Public, _)
-        | (
-            Lto::ThinLocal | Lto::Thin | Lto::Fat,
-            Visibility::Restricted(_) | Visibility::Invisible,
-            false,
-        ) => VCallVisibility::LinkageUnit,
+        | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
+            VCallVisibility::LinkageUnit
+        }
         // If there is only one CGU, private vtables can only be seen by that CGU/translation unit
         // and therefore we know of all usages of functions in the vtable.
-        (_, Visibility::Restricted(_) | Visibility::Invisible, true) => {
-            VCallVisibility::TranslationUnit
-        }
+        (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
@@ -1559,7 +1552,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
     // LLVM at the moment.
-    if cx.sess().opts.debugging_opts.virtual_function_elimination && cx.sess().lto() == Lto::Fat {
+    if cx.sess().opts.unstable_opts.virtual_function_elimination && cx.sess().lto() == Lto::Fat {
         vcall_visibility_metadata(cx, ty, poly_trait_ref, vtable);
     }
 

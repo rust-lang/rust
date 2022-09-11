@@ -126,29 +126,26 @@ pub fn get_linker<'a>(
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
     match flavor {
-        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
-        }
-        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Gcc => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Ld if sess.target.os == "l4re" => {
+            Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
         | LinkerFlavor::Ld => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
+            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
-
-        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::L4Bender => Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>,
+        LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Bpf => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Ptx => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 
@@ -186,8 +183,6 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]);
     fn subsystem(&mut self, subsystem: &str);
-    fn group_start(&mut self);
-    fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
     fn add_no_exec(&mut self) {}
@@ -303,7 +298,7 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.debugging_opts.profile_sample_use {
+        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
             self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         self.linker_args(&[
@@ -325,7 +320,7 @@ impl<'a> GccLinker<'a> {
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
-            if self.sess.opts.cg.rpath || self.sess.opts.debugging_opts.osx_rpath_install_name {
+            if self.sess.opts.cg.rpath || self.sess.opts.unstable_opts.osx_rpath_install_name {
                 let mut rpath = OsString::from("@rpath/");
                 rpath.push(out_filename.file_name().unwrap());
                 self.linker_args(&[OsString::from("-install_name"), rpath]);
@@ -566,9 +561,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn no_gc_sections(&mut self) {
-        if self.sess.target.is_like_osx {
-            self.linker_arg("-no_dead_strip");
-        } else if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
+        if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
             self.linker_arg("--no-gc-sections");
         }
     }
@@ -640,9 +633,14 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility in object files typically takes care of this.
-        if crate_type == CrateType::Executable && self.sess.target.override_export_symbols.is_none()
-        {
-            return;
+        if crate_type == CrateType::Executable {
+            let should_export_executable_symbols =
+                self.sess.opts.unstable_opts.export_executable_symbols;
+            if self.sess.target.override_export_symbols.is_none()
+                && !should_export_executable_symbols
+            {
+                return;
+            }
         }
 
         // We manually create a list of exported symbols to ensure we don't expose any more.
@@ -653,9 +651,7 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        if crate_type == CrateType::ProcMacro {
-            return;
-        }
+        // FIXME(#99978) hide #[no_mangle] symbols for proc-macros
 
         let is_windows = self.sess.target.is_like_windows;
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
@@ -730,18 +726,6 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn reset_per_library_state(&mut self) {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-    }
-
-    fn group_start(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--start-group");
-        }
-    }
-
-    fn group_end(&mut self) {
-        if self.takes_hints() {
-            self.linker_arg("--end-group");
-        }
     }
 
     fn linker_plugin_lto(&mut self) {
@@ -969,7 +953,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
-            return;
+            let should_export_executable_symbols =
+                self.sess.opts.unstable_opts.export_executable_symbols;
+            if !should_export_executable_symbols {
+                return;
+            }
         }
 
         let path = tmpdir.join("lib.def");
@@ -1016,10 +1004,6 @@ impl<'a> Linker for MsvcLinker<'a> {
             self.cmd.arg("/ENTRY:mainCRTStartup");
         }
     }
-
-    // MSVC doesn't need group indicators
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
@@ -1162,10 +1146,6 @@ impl<'a> Linker for EmLinker<'a> {
     fn subsystem(&mut self, _subsystem: &str) {
         // noop
     }
-
-    // Appears not necessary on Emscripten
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
@@ -1342,10 +1322,6 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    // Not needed for now with LLD
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {
         // Do nothing for now
     }
@@ -1472,14 +1448,6 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn reset_per_library_state(&mut self) {
         self.hint_static(); // Reset to default before returning the composed command line.
-    }
-
-    fn group_start(&mut self) {
-        self.cmd.arg("--start-group");
-    }
-
-    fn group_end(&mut self) {
-        self.cmd.arg("--end-group");
     }
 
     fn linker_plugin_lto(&mut self) {}
@@ -1662,10 +1630,6 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {}
 
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
-
     fn linker_plugin_lto(&mut self) {}
 }
 
@@ -1774,10 +1738,6 @@ impl<'a> Linker for BpfLinker<'a> {
     }
 
     fn subsystem(&mut self, _subsystem: &str) {}
-
-    fn group_start(&mut self) {}
-
-    fn group_end(&mut self) {}
 
     fn linker_plugin_lto(&mut self) {}
 }

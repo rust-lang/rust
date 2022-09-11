@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
         sess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Result<(Vec<ast::Attribute>, Vec<ptr::P<ast::Item>>, Span), ParserError> {
+    ) -> Result<(ast::AttrVec, Vec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), path, Some(span));
             match parser.parse_mod(&TokenKind::Eof) {

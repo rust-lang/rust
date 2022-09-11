@@ -137,7 +137,7 @@ impl ConsoleTestState {
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
     let mut output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout()),
+        None => OutputLocation::Raw(io::stdout().lock()),
         Some(t) => OutputLocation::Pretty(t),
     };
 

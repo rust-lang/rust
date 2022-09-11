@@ -12,16 +12,14 @@ impl True for If<true> {}
 fn consume<T: 'static>(_val: T)
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
-    //~^ ERROR: overly complex generic constant
-    //~| ERROR: cannot call non-const operator in constants
+    //~^ ERROR: can't compare
 {
 }
 
 fn test<T: 'static>()
 where
     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
-    //~^ ERROR: overly complex generic constant
-    //~| ERROR: cannot call non-const operator in constants
+    //~^ ERROR: can't compare
 {
 }
 

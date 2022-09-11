@@ -3,9 +3,10 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
    |
 LL | union Foo<T: ?Sized> {
    |           - this type parameter needs to be `std::marker::Sized`
-LL |     value: T,
-   |            ^ doesn't have a size known at compile-time
+LL |     value: ManuallyDrop<T>,
+   |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = note: required because it appears within the type `ManuallyDrop<T>`
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -15,21 +16,22 @@ LL + union Foo<T> {
    |
 help: borrowed types always have a statically known size
    |
-LL |     value: &T,
+LL |     value: &ManuallyDrop<T>,
    |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
-LL |     value: Box<T>,
-   |            ++++ +
+LL |     value: Box<ManuallyDrop<T>>,
+   |            ++++               +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:9:12
    |
 LL | struct Foo2<T: ?Sized> {
    |             - this type parameter needs to be `std::marker::Sized`
-LL |     value: T,
-   |            ^ doesn't have a size known at compile-time
+LL |     value: ManuallyDrop<T>,
+   |            ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = note: required because it appears within the type `ManuallyDrop<T>`
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -39,21 +41,22 @@ LL + struct Foo2<T> {
    |
 help: borrowed types always have a statically known size
    |
-LL |     value: &T,
+LL |     value: &ManuallyDrop<T>,
    |            +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
-LL |     value: Box<T>,
-   |            ++++ +
+LL |     value: Box<ManuallyDrop<T>>,
+   |            ++++               +
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/union-sized-field.rs:15:11
    |
 LL | enum Foo3<T: ?Sized> {
    |           - this type parameter needs to be `std::marker::Sized`
-LL |     Value(T),
-   |           ^ doesn't have a size known at compile-time
+LL |     Value(ManuallyDrop<T>),
+   |           ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
+   = note: required because it appears within the type `ManuallyDrop<T>`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: consider removing the `?Sized` bound to make the type parameter `Sized`
@@ -63,12 +66,12 @@ LL + enum Foo3<T> {
    |
 help: borrowed types always have a statically known size
    |
-LL |     Value(&T),
+LL |     Value(&ManuallyDrop<T>),
    |           +
 help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
-LL |     Value(Box<T>),
-   |           ++++ +
+LL |     Value(Box<ManuallyDrop<T>>),
+   |           ++++               +
 
 error: aborting due to 3 previous errors
 

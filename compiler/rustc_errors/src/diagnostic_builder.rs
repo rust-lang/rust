@@ -12,7 +12,6 @@ use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
-use tracing::debug;
 
 /// Used for emitting structured error messages and other diagnostic information.
 ///
@@ -84,6 +83,13 @@ pub trait EmissionGuarantee: Sized {
     /// of `Self` without actually performing the emission.
     #[track_caller]
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
+
+    /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
+    #[track_caller]
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self>;
 }
 
 /// Private module for sealing the `IsError` helper trait.
@@ -166,6 +172,15 @@ impl EmissionGuarantee for ErrorGuaranteed {
             }
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_guaranteeing_error::<_, { Level::Error { lint: false } }>(
+            handler, msg,
+        )
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, ()> {
@@ -208,6 +223,13 @@ impl EmissionGuarantee for () {
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
     }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new(handler, Level::Warning(None), msg)
+    }
 }
 
 impl<'a> DiagnosticBuilder<'a, !> {
@@ -246,6 +268,13 @@ impl EmissionGuarantee for ! {
         }
         // Then fatally error, returning `!`
         crate::FatalError.raise()
+    }
+
+    fn make_diagnostic_builder(
+        handler: &Handler,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, Self> {
+        DiagnosticBuilder::new_fatal(handler, msg)
     }
 }
 
@@ -566,7 +595,7 @@ impl Drop for DiagnosticBuilderInner<'_> {
                         ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);
-                    panic!();
+                    panic!("error was constructed but not emitted");
                 }
             }
             // `.emit()` was previously called, or maybe we're during `.cancel()`.
@@ -595,6 +624,7 @@ macro_rules! error_code {
 pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a, G>);
 
 impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
+    #[rustc_lint_diagnostics]
     /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
     pub fn build(mut self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'a, G> {
         self.0.set_primary_message(msg);

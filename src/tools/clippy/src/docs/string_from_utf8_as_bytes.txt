@@ -1,0 +1,15 @@
+### What it does
+Check if the string is transformed to byte array and casted back to string.
+
+### Why is this bad?
+It's unnecessary, the string can be used directly.
+
+### Example
+```
+std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+```
+
+Use instead:
+```
+&"Hello World!"[6..11];
+```

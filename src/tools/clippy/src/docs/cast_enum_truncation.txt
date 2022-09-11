@@ -1,0 +1,12 @@
+### What it does
+Checks for casts from an enum type to an integral type which will definitely truncate the
+value.
+
+### Why is this bad?
+The resulting integral value will not match the value of the variant it came from.
+
+### Example
+```
+enum E { X = 256 };
+let _ = E::X as u8;
+```

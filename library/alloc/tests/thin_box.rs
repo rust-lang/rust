@@ -48,11 +48,11 @@ fn verify_aligned<T>(ptr: *const T) {
     // practice these checks are mostly just smoke-detectors for an extremely
     // broken `ThinBox` impl, since it's an extremely subtle piece of code.
     let ptr = core::hint::black_box(ptr);
-    let align = core::mem::align_of::<T>();
     assert!(
-        (ptr.addr() & (align - 1)) == 0 && !ptr.is_null(),
-        "misaligned ThinBox data; valid pointers to `{}` should be aligned to {align}: {ptr:p}",
-        core::any::type_name::<T>(),
+        ptr.is_aligned() && !ptr.is_null(),
+        "misaligned ThinBox data; valid pointers to `{ty}` should be aligned to {align}: {ptr:p}",
+        ty = core::any::type_name::<T>(),
+        align = core::mem::align_of::<T>(),
     );
 }
 

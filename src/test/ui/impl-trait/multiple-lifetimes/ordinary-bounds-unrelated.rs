@@ -26,7 +26,7 @@ where
     // 'a in ['d, 'e]
     // ```
     if condition() { a } else { b }
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
+    //~^ ERROR hidden type for `impl Trait<'d, 'e>` captures lifetime that does not appear in bounds
 }
 
 fn condition() -> bool {

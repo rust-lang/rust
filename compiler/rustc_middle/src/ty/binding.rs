@@ -1,6 +1,4 @@
-use rustc_hir::BindingAnnotation;
-use rustc_hir::BindingAnnotation::*;
-use rustc_hir::Mutability;
+use rustc_hir::{BindingAnnotation, ByRef, Mutability};
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Debug, Copy, HashStable)]
 pub enum BindingMode {
@@ -11,12 +9,10 @@ pub enum BindingMode {
 TrivialTypeTraversalAndLiftImpls! { BindingMode, }
 
 impl BindingMode {
-    pub fn convert(ba: BindingAnnotation) -> BindingMode {
-        match ba {
-            Unannotated => BindingMode::BindByValue(Mutability::Not),
-            Mutable => BindingMode::BindByValue(Mutability::Mut),
-            Ref => BindingMode::BindByReference(Mutability::Not),
-            RefMut => BindingMode::BindByReference(Mutability::Mut),
+    pub fn convert(BindingAnnotation(by_ref, mutbl): BindingAnnotation) -> BindingMode {
+        match by_ref {
+            ByRef::No => BindingMode::BindByValue(mutbl),
+            ByRef::Yes => BindingMode::BindByReference(mutbl),
         }
     }
 }

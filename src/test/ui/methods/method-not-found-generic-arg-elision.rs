@@ -61,13 +61,13 @@ impl Other {
     fn other(&self) {}
 }
 
-struct Struct<T>{
-    _phatom: PhantomData<T>
+struct Struct<T> {
+    _phatom: PhantomData<T>,
 }
 
 impl<T> Default for Struct<T> {
     fn default() -> Self {
-        Self{ _phatom: PhantomData }
+        Self { _phatom: PhantomData }
     }
 }
 
@@ -76,9 +76,9 @@ impl<T: Clone + Copy + PartialEq + Eq + PartialOrd + Ord> Struct<T> {
 }
 
 fn main() {
-    let point_f64 = Point{ x: 1_f64, y: 1_f64};
+    let point_f64 = Point { x: 1_f64, y: 1_f64 };
     let d = point_f64.distance();
-    let point_i32 = Point{ x: 1_i32, y: 1_i32};
+    let point_i32 = Point { x: 1_i32, y: 1_i32 };
     let d = point_i32.distance();
     //~^ ERROR no method named `distance` found for struct `Point<i32>
     let d = point_i32.other();
@@ -92,9 +92,9 @@ fn main() {
     wrapper.other();
     //~^ ERROR no method named `other` found for struct `Wrapper
     let boolean = true;
-    let wrapper = Wrapper2::<'_, _, 3> {x: &boolean};
+    let wrapper = Wrapper2::<'_, _, 3> { x: &boolean };
     wrapper.method();
-    //~^ ERROR no method named `method` found for struct `Wrapper2<'_, bool, 3_usize>
+    //~^ ERROR no method named `method` found for struct `Wrapper2<'_, bool, 3>
     wrapper.other();
     //~^ ERROR no method named `other` found for struct `Wrapper2
     let a = vec![1, 2, 3];

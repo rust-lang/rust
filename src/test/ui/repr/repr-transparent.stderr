@@ -34,7 +34,7 @@ error[E0084]: unsupported representation for zero-variant enum
 LL | #[repr(transparent)]
    | ^^^^^^^^^^^^^^^^^^^^
 LL | enum Void {}
-   | ------------ zero-variant enum
+   | --------- zero-variant enum
 
 error[E0731]: transparent enum needs exactly one variant, but has 0
   --> $DIR/repr-transparent.rs:45:1

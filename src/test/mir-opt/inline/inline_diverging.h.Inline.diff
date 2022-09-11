@@ -2,9 +2,9 @@
 + // MIR for `h` after Inline
   
   fn h() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline-diverging.rs:21:12: 21:12
-      let _1: (!, !);                      // in scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
-+     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-diverging.rs:+0:12: +0:12
+      let _1: (!, !);                      // in scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
++     let mut _2: fn() -> ! {sleep};       // in scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) { // at $DIR/inline-diverging.rs:22:5: 22:22
 +         debug f => _2;                   // in scope 1 at $DIR/inline-diverging.rs:26:36: 26:37
 +         let _3: !;                       // in scope 1 at $DIR/inline-diverging.rs:27:9: 27:10
@@ -32,10 +32,10 @@
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep); // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
-+         StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
-+         _2 = sleep;                      // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
+          StorageLive(_1);                 // scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
+-         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep); // scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
++         StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
++         _2 = sleep;                      // scope 0 at $DIR/inline-diverging.rs:+1:5: +1:22
                                            // mir::Constant
 -                                          // + span: $DIR/inline-diverging.rs:22:5: 22:15
 -                                          // + literal: Const { ty: fn(fn() -> ! {sleep}) -> (!, !) {call_twice::<!, fn() -> ! {sleep}>}, val: Value(<ZST>) }
@@ -51,10 +51,6 @@
 + 
 +     bb1: {
 +         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:39:5: 39:12
-+     }
-+ 
-+     bb2 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline-diverging.rs:21:1: 23:2
       }
   }
   

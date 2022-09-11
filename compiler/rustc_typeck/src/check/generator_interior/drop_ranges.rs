@@ -17,8 +17,7 @@ use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::check::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -38,7 +37,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    if fcx.sess().opts.debugging_opts.drop_tracking {
+    if fcx.sess().opts.unstable_opts.drop_tracking {
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
         let typeck_results = &fcx.typeck_results.borrow();

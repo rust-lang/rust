@@ -1,8 +1,8 @@
 // @has issue_31899/index.html
-// @has - 'Make this line a bit longer.'
-// @!has - 'rust rust-example-rendered'
-// @!has - 'use ndarray::arr2'
-// @!has - 'prohibited'
+// @hasraw - 'Make this line a bit longer.'
+// @!hasraw - 'rust rust-example-rendered'
+// @!hasraw - 'use ndarray::arr2'
+// @!hasraw - 'prohibited'
 
 /// A tuple or fixed size array that can be used to index an array.
 /// Make this line a bit longer.

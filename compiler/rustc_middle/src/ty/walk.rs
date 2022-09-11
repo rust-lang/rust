@@ -165,9 +165,9 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                         }
                     };
 
-                    substs.iter().rev().chain(opt_ty.map(|term| match term {
-                        ty::Term::Ty(ty) => ty.into(),
-                        ty::Term::Const(ct) => ct.into(),
+                    substs.iter().rev().chain(opt_ty.map(|term| match term.unpack() {
+                        ty::TermKind::Ty(ty) => ty.into(),
+                        ty::TermKind::Const(ct) => ct.into(),
                     }))
                 }));
             }

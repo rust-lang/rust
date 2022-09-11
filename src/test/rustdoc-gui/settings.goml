@@ -20,6 +20,8 @@ wait-for-css: ("#settings", {"display": "none"})
 // Let's click on it when the search results are displayed.
 focus: ".search-input"
 write: "test"
+// To be SURE that the search will be run.
+press-key: 'Enter'
 wait-for: "#alternative-display #search"
 click: "#settings-menu"
 wait-for-css: ("#settings", {"display": "block"})
@@ -145,3 +147,12 @@ assert-false: "noscript section"
 javascript: false
 reload:
 assert-css: ("noscript section", {"display": "block"})
+javascript: true
+
+// Check for the display on small screen
+show-text: true
+reload:
+size: (300, 1000)
+click: "#settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings .slider", {"width": "45px"}, ALL)

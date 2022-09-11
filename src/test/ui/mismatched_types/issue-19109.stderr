@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn function(t: &mut dyn Trait) {
    |                                - help: try adding a return type: `-> *mut dyn Trait`
 LL |     t as *mut dyn Trait
-   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found *-ptr
+   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found `*mut dyn Trait`
    |
    = note: expected unit type `()`
             found raw pointer `*mut dyn Trait`

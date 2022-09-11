@@ -41,7 +41,7 @@ mod ip;
 mod parser;
 mod tcp;
 #[cfg(test)]
-mod test;
+pub(crate) mod test;
 mod udp;
 
 /// Possible values which can be passed to the [`TcpStream::shutdown`] method.
@@ -67,15 +67,6 @@ pub enum Shutdown {
     /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
-}
-
-#[inline]
-const fn htons(i: u16) -> u16 {
-    i.to_be()
-}
-#[inline]
-const fn ntohs(i: u16) -> u16 {
-    u16::from_be(i)
 }
 
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>

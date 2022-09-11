@@ -111,6 +111,11 @@ impl Step for Std {
 
         builder.update_submodule(&Path::new("library").join("stdarch"));
 
+        // Profiler information requires LLVM's compiler-rt
+        if builder.config.profiler {
+            builder.update_submodule(&Path::new("src/llvm-project"));
+        }
+
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
@@ -649,6 +654,17 @@ impl Step for Rustc {
             && builder.config.rust_profile_generate.is_some()
         {
             panic!("Cannot use and generate PGO profiles at the same time");
+        }
+
+        // With LLD, we can use ICF (identical code folding) to reduce the executable size
+        // of librustc_driver/rustc and to improve i-cache utilization.
+        //
+        // -Wl,[link options] doesn't work on MSVC. However, /OPT:ICF (technically /OPT:REF,ICF)
+        // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
+        // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
+        // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
+        if builder.config.use_lld && !compiler.host.contains("msvc") {
+            cargo.rustflag("-Clink-args=-Wl,--icf=all");
         }
 
         let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
@@ -1265,7 +1281,9 @@ impl Step for Assemble {
                 compiler: build_compiler,
                 target: target_compiler.host,
             });
-            builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe("ld", target_compiler.host)));
+            for name in crate::LLD_FILE_NAMES {
+                builder.copy(&lld_wrapper_exe, &gcc_ld_dir.join(exe(name, target_compiler.host)));
+            }
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {

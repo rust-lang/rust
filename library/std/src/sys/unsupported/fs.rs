@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
@@ -16,6 +16,9 @@ pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {}
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
 
 pub struct FilePermissions(!);
 
@@ -84,6 +87,11 @@ impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
 }
 
 impl FileType {
@@ -206,7 +214,7 @@ impl File {
         self.0
     }
 
-    pub fn read_buf(&self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
         self.0
     }
 
@@ -235,6 +243,10 @@ impl File {
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
         self.0
     }
 }

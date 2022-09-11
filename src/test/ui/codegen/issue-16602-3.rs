@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #[derive(Debug)]
+#[allow(unused_tuple_struct_fields)]
 enum Foo {
     Bar(u32, u32),
     Baz(&'static u32, &'static u32)

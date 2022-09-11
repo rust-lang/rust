@@ -3,7 +3,7 @@
 
 fn f<T,>(_: T,) {}
 
-struct Foo<T,>(T);
+struct Foo<T,>(#[allow(unused_tuple_struct_fields)] T);
 
 struct Bar;
 
@@ -14,7 +14,7 @@ impl Bar {
 }
 
 enum Baz {
-    Qux(isize,),
+    Qux(#[allow(unused_tuple_struct_fields)] isize,),
 }
 
 #[allow(unused,)]

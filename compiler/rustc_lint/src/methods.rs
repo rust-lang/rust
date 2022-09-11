@@ -44,9 +44,13 @@ fn in_macro(span: Span) -> bool {
 
 fn first_method_call<'tcx>(
     expr: &'tcx Expr<'tcx>,
-) -> Option<(&'tcx PathSegment<'tcx>, &'tcx [Expr<'tcx>])> {
-    if let ExprKind::MethodCall(path, args, _) = &expr.kind {
-        if args.iter().any(|e| e.span.from_expansion()) { None } else { Some((path, *args)) }
+) -> Option<(&'tcx PathSegment<'tcx>, &'tcx Expr<'tcx>)> {
+    if let ExprKind::MethodCall(path, receiver, args, ..) = &expr.kind {
+        if args.iter().any(|e| e.span.from_expansion()) || receiver.span.from_expansion() {
+            None
+        } else {
+            Some((path, *receiver))
+        }
     } else {
         None
     }
@@ -59,15 +63,13 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
         }
 
         match first_method_call(expr) {
-            Some((path, args)) if path.ident.name == sym::as_ptr => {
-                let unwrap_arg = &args[0];
+            Some((path, unwrap_arg)) if path.ident.name == sym::as_ptr => {
                 let as_ptr_span = path.ident.span;
                 match first_method_call(unwrap_arg) {
-                    Some((path, args))
+                    Some((path, receiver))
                         if path.ident.name == sym::unwrap || path.ident.name == sym::expect =>
                     {
-                        let source_arg = &args[0];
-                        lint_cstring_as_ptr(cx, as_ptr_span, source_arg, unwrap_arg);
+                        lint_cstring_as_ptr(cx, as_ptr_span, receiver, unwrap_arg);
                     }
                     _ => return,
                 }

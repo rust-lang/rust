@@ -101,7 +101,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return span;
         }
 
-        if span.from_expansion() && !self.cx.sess().opts.debugging_opts.debug_macros {
+        if span.from_expansion() && !self.cx.sess().opts.unstable_opts.debug_macros {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.

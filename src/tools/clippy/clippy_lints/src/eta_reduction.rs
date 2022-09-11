@@ -7,7 +7,7 @@ use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, Param, PatKind, Unsafety};
+use rustc_hir::{Closure, Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
@@ -78,12 +78,12 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             return;
         }
         let body = match expr.kind {
-            ExprKind::Closure { body, .. } => cx.tcx.hir().body(body),
+            ExprKind::Closure(&Closure { body, .. }) => cx.tcx.hir().body(body),
             _ => return,
         };
         if body.value.span.from_expansion() {
             if body.params.is_empty() {
-                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, &body.value) {
+                if let Some(VecArgs::Vec(&[])) = higher::VecArgs::hir(cx, body.value) {
                     // replace `|| vec![]` with `Vec::new`
                     span_lint_and_sugg(
                         cx,
@@ -103,10 +103,10 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         let closure_ty = cx.typeck_results().expr_ty(expr);
 
         if_chain!(
-            if !is_adjusted(cx, &body.value);
+            if !is_adjusted(cx, body.value);
             if let ExprKind::Call(callee, args) = body.value.kind;
             if let ExprKind::Path(_) = callee.kind;
-            if check_inputs(cx, body.params, args);
+            if check_inputs(cx, body.params, None, args);
             let callee_ty = cx.typeck_results().expr_ty_adjusted(callee);
             let call_ty = cx.typeck_results().type_dependent_def_id(body.value.hir_id)
                 .map_or(callee_ty, |id| cx.tcx.type_of(id));
@@ -145,9 +145,9 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         );
 
         if_chain!(
-            if !is_adjusted(cx, &body.value);
-            if let ExprKind::MethodCall(path, args, _) = body.value.kind;
-            if check_inputs(cx, body.params, args);
+            if !is_adjusted(cx, body.value);
+            if let ExprKind::MethodCall(path, receiver, args, _) = body.value.kind;
+            if check_inputs(cx, body.params, Some(receiver), args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
             let substs = cx.typeck_results().node_substs(body.value.hir_id);
             let call_ty = cx.tcx.bound_type_of(method_def_id).subst(cx.tcx, substs);
@@ -167,12 +167,17 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     }
 }
 
-fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_>]) -> bool {
-    if params.len() != call_args.len() {
+fn check_inputs(
+    cx: &LateContext<'_>,
+    params: &[Param<'_>],
+    receiver: Option<&Expr<'_>>,
+    call_args: &[Expr<'_>],
+) -> bool {
+    if receiver.map_or(params.len() != call_args.len(), |_| params.len() != call_args.len() + 1) {
         return false;
     }
     let binding_modes = cx.typeck_results().pat_binding_modes();
-    std::iter::zip(params, call_args).all(|(param, arg)| {
+    let check_inputs = |param: &Param<'_>, arg| {
         match param.pat.kind {
             PatKind::Binding(_, id, ..) if path_to_local_id(arg, id) => {},
             _ => return false,
@@ -200,7 +205,8 @@ fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_
             },
             _ => false,
         }
-    })
+    };
+    std::iter::zip(params, receiver.into_iter().chain(call_args.iter())).all(|(param, arg)| check_inputs(param, arg))
 }
 
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tcx>) -> bool {
@@ -220,9 +226,11 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tc
 }
 
 fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
-    match cx.tcx.associated_item(method_def_id).container {
-        ty::TraitContainer(def_id) => cx.tcx.def_path_str(def_id),
-        ty::ImplContainer(def_id) => {
+    let assoc_item = cx.tcx.associated_item(method_def_id);
+    let def_id = assoc_item.container_id(cx.tcx);
+    match assoc_item.container {
+        ty::TraitContainer => cx.tcx.def_path_str(def_id),
+        ty::ImplContainer => {
             let ty = cx.tcx.type_of(def_id);
             match ty.kind() {
                 ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),

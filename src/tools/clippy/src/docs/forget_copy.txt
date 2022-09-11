@@ -1,0 +1,21 @@
+### What it does
+Checks for calls to `std::mem::forget` with a value that
+derives the Copy trait
+
+### Why is this bad?
+Calling `std::mem::forget` [does nothing for types that
+implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
+value will be copied and moved into the function on invocation.
+
+An alternative, but also valid, explanation is that Copy types do not
+implement
+the Drop trait, which means they have no destructors. Without a destructor,
+there
+is nothing for `std::mem::forget` to ignore.
+
+### Example
+```
+let x: i32 = 42; // i32 implements Copy
+std::mem::forget(x) // A copy of x is passed to the function, leaving the
+                    // original unaffected
+```

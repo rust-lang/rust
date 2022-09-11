@@ -2,9 +2,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/unsized-fn-param.rs:11:11
    |
 LL |     foo11("bar", &"baz");
-   |     ----- ^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |           ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
@@ -17,9 +15,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/unsized-fn-param.rs:13:19
    |
 LL |     foo12(&"bar", "baz");
-   |     -----         ^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |                   ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: required for the cast from `str` to the object type `dyn AsRef<Path>`
@@ -32,9 +28,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/unsized-fn-param.rs:16:11
    |
 LL |     foo21("bar", &"baz");
-   |     ----- ^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |           ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: required for the cast from `str` to the object type `dyn AsRef<str>`
@@ -47,9 +41,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/unsized-fn-param.rs:18:19
    |
 LL |     foo22(&"bar", "baz");
-   |     -----         ^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |                   ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
    = note: required for the cast from `str` to the object type `dyn AsRef<str>`

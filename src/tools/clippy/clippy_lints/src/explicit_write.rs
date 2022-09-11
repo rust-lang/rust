@@ -45,10 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, [write_call], _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, write_call, [], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, [write_recv, write_arg], _) = look_in_block(cx, &write_call.kind);
+            if let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = look_in_block(cx, &write_call.kind);
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
@@ -128,7 +128,7 @@ fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>)
         if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
 
         // Find id of the local we found in the block
-        if let PatKind::Binding(BindingAnnotation::Unannotated, local_hir_id, _ident, None) = local.pat.kind;
+        if let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind;
 
         // If those two are the same hir id
         if res_pat.hir_id == local_hir_id;

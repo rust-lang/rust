@@ -61,8 +61,8 @@ impl<'a> Cursor<'a> {
     }
 
     /// Returns amount of already consumed symbols.
-    pub(crate) fn len_consumed(&self) -> usize {
-        self.initial_len - self.chars.as_str().len()
+    pub(crate) fn len_consumed(&self) -> u32 {
+        (self.initial_len - self.chars.as_str().len()) as u32
     }
 
     /// Resets the number of bytes consumed to 0.

@@ -112,47 +112,32 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-/// The code common between processing `#![register_tool]` and `#![register_attr]`.
-fn registered_idents(
-    sess: &Session,
-    attrs: &[ast::Attribute],
-    attr_name: Symbol,
-    descr: &str,
-) -> FxHashSet<Ident> {
-    let mut registered = FxHashSet::default();
-    for attr in sess.filter_by_name(attrs, attr_name) {
+pub(crate) fn registered_tools(sess: &Session, attrs: &[ast::Attribute]) -> FxHashSet<Ident> {
+    let mut registered_tools = FxHashSet::default();
+    for attr in sess.filter_by_name(attrs, sym::register_tool) {
         for nested_meta in attr.meta_item_list().unwrap_or_default() {
             match nested_meta.ident() {
                 Some(ident) => {
-                    if let Some(old_ident) = registered.replace(ident) {
-                        let msg = format!("{} `{}` was already registered", descr, ident);
+                    if let Some(old_ident) = registered_tools.replace(ident) {
+                        let msg = format!("{} `{}` was already registered", "tool", ident);
                         sess.struct_span_err(ident.span, &msg)
                             .span_label(old_ident.span, "already registered here")
                             .emit();
                     }
                 }
                 None => {
-                    let msg = format!("`{}` only accepts identifiers", attr_name);
+                    let msg = format!("`{}` only accepts identifiers", sym::register_tool);
                     let span = nested_meta.span();
                     sess.struct_span_err(span, &msg).span_label(span, "not an identifier").emit();
                 }
             }
         }
     }
-    registered
-}
-
-pub(crate) fn registered_attrs_and_tools(
-    sess: &Session,
-    attrs: &[ast::Attribute],
-) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
-    let registered_attrs = registered_idents(sess, attrs, sym::register_attr, "attribute");
-    let mut registered_tools = registered_idents(sess, attrs, sym::register_tool, "tool");
     // We implicitly add `rustfmt` and `clippy` to known tools,
     // but it's not an error to register them explicitly.
     let predefined_tools = [sym::clippy, sym::rustfmt];
     registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
-    (registered_attrs, registered_tools)
+    registered_tools
 }
 
 // Some feature gates for inner attributes are reported as lints for backward compatibility.
@@ -325,7 +310,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                &format!("unused macro definition: `{}`", ident.as_str()),
+                &format!("unused macro definition: `{}`", ident.name),
             );
         }
         for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
@@ -341,7 +326,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 &format!(
                     "{} rule of macro `{}` is never used",
                     crate::diagnostics::ordinalize(arm_i + 1),
-                    ident.as_str()
+                    ident.name
                 ),
             );
         }
@@ -456,7 +441,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 }
                 PathResult::Indeterminate => indeterminate = true,
                 // We can only be sure that a path doesn't exist after having tested all the
-                // posibilities, only at that time we can return false.
+                // possibilities, only at that time we can return false.
                 PathResult::Failed { .. } => {}
                 PathResult::Module(_) => panic!("unexpected path resolution"),
             }
@@ -796,16 +781,23 @@ impl<'a> Resolver<'a> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
+            if let StabilityLevel::Unstable { reason, issue, is_soft, implied_by } = stability.level
+            {
                 let feature = stability.feature;
-                if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
+
+                let is_allowed = |feature| {
+                    self.active_features.contains(&feature) || span.allows_unstable(feature)
+                };
+                let allowed_by_implication =
+                    implied_by.map(|feature| is_allowed(feature)).unwrap_or(false);
+                if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
                         self.session,
                         feature,
-                        reason,
+                        reason.to_opt_reason(),
                         issue,
                         None,
                         is_soft,

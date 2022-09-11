@@ -5,7 +5,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
+use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
@@ -28,7 +28,6 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
-use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
@@ -107,7 +106,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
-            tcx.sess.opts.debugging_opts.split_dwarf_kind,
+            tcx.sess.opts.unstable_opts.split_dwarf_kind,
             Some(mod_name),
         )
     } else {
@@ -182,9 +181,9 @@ pub fn target_machine_factory(
     let use_softfp = sess.opts.cg.soft_float;
 
     let ffunction_sections =
-        sess.opts.debugging_opts.function_sections.unwrap_or(sess.target.function_sections);
+        sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections);
     let fdata_sections = ffunction_sections;
-    let funique_section_names = !sess.opts.debugging_opts.no_unique_section_names;
+    let funique_section_names = !sess.opts.unstable_opts.no_unique_section_names;
 
     let code_model = to_llvm_code_model(sess.code_model());
 
@@ -202,15 +201,15 @@ pub fn target_machine_factory(
     let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
     let trap_unreachable =
-        sess.opts.debugging_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
-    let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
+        sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
+    let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
     let relax_elf_relocations =
-        sess.opts.debugging_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
+        sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
     let use_init_array =
-        !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
+        !sess.opts.unstable_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
     let path_mapping = sess.source_map().path_mapping().clone();
 
@@ -304,7 +303,6 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_passes.as_ptr(),
                 remark_passes.len(),
             );
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
             DiagnosticHandlers { data, llcx, old_handler }
         }
     }
@@ -312,9 +310,7 @@ impl<'a> DiagnosticHandlers<'a> {
 
 impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
-        use std::ptr::null_mut;
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
             drop(Box::from_raw(self.data));
         }
@@ -340,16 +336,6 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
-}
-
-unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void, cookie: c_uint) {
-    if user.is_null() {
-        return;
-    }
-    let (cgcx, _) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &Handler));
-
-    let smdiag = llvm::diagnostic::SrcMgrDiagnostic::unpack(diag);
-    report_inline_asm(cgcx, smdiag.message, smdiag.level, cookie, smdiag.source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -423,6 +409,14 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
 }
 
+fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
+    if config.instrument_coverage {
+        Some(CString::new("default_%m_%p.profraw").unwrap())
+    } else {
+        None
+    }
+}
+
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
@@ -438,6 +432,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    let instr_profile_output_path = get_instr_profile_output_path(config);
     // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
     let sanitizer_options = if !is_lto {
         Some(llvm::SanitizerOptions {
@@ -488,6 +483,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
+        instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_gcov,
         pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.debug_info_for_profiling,
@@ -790,7 +786,7 @@ pub(crate) unsafe fn codegen(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
-            let thin = ThinBuffer::new(llmod);
+            let thin = ThinBuffer::new(llmod, config.emit_thin_lto);
             let data = thin.data();
 
             if let Some(bitcode_filename) = bc_out.file_name() {

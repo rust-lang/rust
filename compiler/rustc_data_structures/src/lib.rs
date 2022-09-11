@@ -28,6 +28,8 @@
 #![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -61,12 +63,10 @@ pub mod sip128;
 pub mod small_c_str;
 pub mod small_str;
 pub mod snapshot_map;
-pub mod stable_map;
 pub mod svh;
 pub use ena::snapshot_vec;
 pub mod memmap;
 pub mod sorted_map;
-pub mod stable_set;
 #[macro_use]
 pub mod stable_hasher;
 mod atomic_ref;
@@ -75,7 +75,6 @@ pub mod profiling;
 pub mod sharded;
 pub mod stack;
 pub mod sync;
-pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
 pub mod vec_linked_list;

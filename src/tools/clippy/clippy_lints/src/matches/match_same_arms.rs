@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
             normalized_pats[i + 1..]
                 .iter()
                 .enumerate()
-                .find_map(|(j, other)| pat.has_overlapping_values(other).then(|| i + 1 + j))
+                .find_map(|(j, other)| pat.has_overlapping_values(other).then_some(i + 1 + j))
                 .unwrap_or(normalized_pats.len())
         })
         .collect();
@@ -55,7 +55,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 .zip(forwards_blocking_idxs[..i].iter().copied().rev())
                 .skip_while(|&(_, forward_block)| forward_block > i)
                 .find_map(|((j, other), forward_block)| {
-                    (forward_block == i || pat.has_overlapping_values(other)).then(|| j)
+                    (forward_block == i || pat.has_overlapping_values(other)).then_some(j)
                 })
                 .unwrap_or(0)
         })
@@ -248,7 +248,7 @@ impl<'a> NormalizedPat<'a> {
                 } else {
                     (None, adt.non_enum_variant())
                 };
-                let (front, back) = match wild_idx {
+                let (front, back) = match wild_idx.as_opt_usize() {
                     Some(i) => pats.split_at(i),
                     None => (pats, [].as_slice()),
                 };
@@ -268,7 +268,7 @@ impl<'a> NormalizedPat<'a> {
                     ty::Tuple(subs) => subs.len(),
                     _ => return Self::Wild,
                 };
-                let (front, back) = match wild_idx {
+                let (front, back) = match wild_idx.as_opt_usize() {
                     Some(i) => pats.split_at(i),
                     None => (pats, [].as_slice()),
                 };
@@ -290,7 +290,7 @@ impl<'a> NormalizedPat<'a> {
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val),
                     LitKind::Bool(val) => Self::LitBool(val),
-                    LitKind::Float(..) | LitKind::Err(_) => Self::Wild,
+                    LitKind::Float(..) | LitKind::Err => Self::Wild,
                 },
                 _ => Self::Wild,
             },
@@ -365,7 +365,7 @@ impl<'a> NormalizedPat<'a> {
             (Self::Slice(pats, None), Self::Slice(front, Some(back)))
             | (Self::Slice(front, Some(back)), Self::Slice(pats, None)) => {
                 // Here `pats` is an exact size match. If the combined lengths of `front` and `back` are greater
-                // then the minium length required will be greater than the length of `pats`.
+                // then the minimum length required will be greater than the length of `pats`.
                 if pats.len() < front.len() + back.len() {
                     return false;
                 }

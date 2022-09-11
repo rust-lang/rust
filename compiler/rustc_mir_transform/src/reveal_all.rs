@@ -9,7 +9,7 @@ pub struct RevealAll;
 
 impl<'tcx> MirPass<'tcx> for RevealAll {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
+        sess.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for RevealAll {
         }
 
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        RevealAllVisitor { tcx, param_env }.visit_body(body);
+        RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
     }
 }
 

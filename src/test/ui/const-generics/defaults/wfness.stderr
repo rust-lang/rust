@@ -4,26 +4,29 @@ error[E0080]: evaluation of constant value failed
 LL | struct Ooopsies<const N: u8 = { u8::MAX + 1 }>;
    |                                 ^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
 
-error[E0277]: the trait bound `(): Trait<2_u8>` is not satisfied
-  --> $DIR/wfness.rs:6:47
+error[E0277]: the trait bound `(): Trait<2>` is not satisfied
+  --> $DIR/wfness.rs:8:9
    |
-LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
-   |                                               ^^^^^^^^ the trait `Trait<2_u8>` is not implemented for `()`
+LL |     (): Trait<N>;
+   |         ^^^^^^^^ the trait `Trait<2>` is not implemented for `()`
    |
-   = help: the trait `Trait<3_u8>` is implemented for `()`
+   = help: the trait `Trait<3>` is implemented for `()`
 
-error[E0277]: the trait bound `(): Trait<1_u8>` is not satisfied
-  --> $DIR/wfness.rs:14:13
+error[E0277]: the trait bound `(): Trait<1>` is not satisfied
+  --> $DIR/wfness.rs:18:13
    |
 LL | fn foo() -> DependentDefaultWfness {
-   |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<1_u8>` is not implemented for `()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<1>` is not implemented for `()`
    |
-   = help: the trait `Trait<3_u8>` is implemented for `()`
+   = help: the trait `Trait<3>` is implemented for `()`
 note: required by a bound in `WhereClause`
-  --> $DIR/wfness.rs:6:47
+  --> $DIR/wfness.rs:8:9
    |
-LL | struct WhereClause<const N: u8 = 2> where (): Trait<N>;
-   |                                               ^^^^^^^^ required by this bound in `WhereClause`
+LL | struct WhereClause<const N: u8 = 2>
+   |        ----------- required by a bound in this
+LL | where
+LL |     (): Trait<N>;
+   |         ^^^^^^^^ required by this bound in `WhereClause`
 
 error: aborting due to 3 previous errors
 

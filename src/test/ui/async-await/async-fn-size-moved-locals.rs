@@ -17,7 +17,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 const BIG_FUT_SIZE: usize = 1024;
-struct BigFut([u8; BIG_FUT_SIZE]);
+struct BigFut(#[allow(unused_tuple_struct_fields)] [u8; BIG_FUT_SIZE]);
 
 impl BigFut {
     fn new() -> Self {

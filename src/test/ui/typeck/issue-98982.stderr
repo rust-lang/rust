@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-98982.rs:2:5
+   |
+LL |   fn foo() -> i32 {
+   |               --- expected `i32` because of return type
+LL | /     for i in 0..0 {
+LL | |
+LL | |         return i;
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+   |
+note: the function expects a value to always be returned, but loops might run zero times
+  --> $DIR/issue-98982.rs:2:5
+   |
+LL |     for i in 0..0 {
+   |     ^^^^^^^^^^^^^ this might have zero elements to iterate on
+LL |
+LL |         return i;
+   |         -------- if the loop doesn't execute, this value would never get returned
+   = help: return a value for the case when the loop has zero elements to iterate on, or consider changing the return type to account for that possibility
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

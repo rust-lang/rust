@@ -9,7 +9,7 @@ use rustc_middle::ty::{EarlyBinder, Opaque, PredicateKind::Trait};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt;
-use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine};
+use rustc_trait_selection::traits::{self, FulfillmentError};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -80,9 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                 let span = decl.output.span();
                 let send_errors = cx.tcx.infer_ctxt().enter(|infcx| {
                     let cause = traits::ObligationCause::misc(span, hir_id);
-                    let mut fulfillment_cx = traits::FulfillmentContext::new();
-                    fulfillment_cx.register_bound(&infcx, cx.param_env, ret_ty, send_trait, cause);
-                    fulfillment_cx.select_all_or_error(&infcx)
+                    traits::fully_solve_bound(&infcx, cause, cx.param_env, ret_ty, send_trait)
                 });
                 if !send_errors.is_empty() {
                     span_lint_and_then(

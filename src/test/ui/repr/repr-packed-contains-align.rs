@@ -1,16 +1,19 @@
-#![feature(untagged_unions)]
 #![allow(dead_code)]
 
 #[repr(align(16))]
+#[derive(Clone, Copy)]
 struct SA(i32);
 
+#[derive(Clone, Copy)]
 struct SB(SA);
 
 #[repr(align(16))]
+#[derive(Clone, Copy)]
 union UA {
     i: i32
 }
 
+#[derive(Clone, Copy)]
 union UB {
     a: UA
 }

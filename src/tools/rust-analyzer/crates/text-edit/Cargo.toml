@@ -1,0 +1,14 @@
+[package]
+name = "text-edit"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+itertools = "0.10.3"
+text-size = "1.1.0"

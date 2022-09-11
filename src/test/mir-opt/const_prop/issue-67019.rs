@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // compile-flags: -Z mir-opt-level=3
 
 // This used to ICE in const-prop

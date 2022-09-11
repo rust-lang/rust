@@ -45,7 +45,7 @@ pub enum Constant {
     /// A reference
     Ref(Box<Constant>),
     /// A literal with syntax error.
-    Err(Symbol),
+    Err,
 }
 
 impl PartialEq for Constant {
@@ -118,9 +118,7 @@ impl Hash for Constant {
             Self::Ref(ref r) => {
                 r.hash(state);
             },
-            Self::Err(ref s) => {
-                s.hash(state);
-            },
+            Self::Err => {},
         }
     }
 }
@@ -194,7 +192,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
-        LitKind::Err(s) => Constant::Err(s),
+        LitKind::Err => Constant::Err,
     }
 }
 
@@ -619,32 +617,24 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
         },
         mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
-                ty::Float(FloatTy::F32) => match len.to_valtree().try_to_machine_usize(tcx) {
+                ty::Float(FloatTy::F32) => match len.kind().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * usize::try_from(len).unwrap()))
                         .to_owned()
-                        .chunks(4)
-                        .map(|chunk| {
-                            Some(Constant::F32(f32::from_le_bytes(
-                                chunk.try_into().expect("this shouldn't happen"),
-                            )))
-                        })
+                        .array_chunks::<4>()
+                        .map(|&chunk| Some(Constant::F32(f32::from_le_bytes(chunk))))
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
                     _ => None,
                 },
-                ty::Float(FloatTy::F64) => match len.to_valtree().try_to_machine_usize(tcx) {
+                ty::Float(FloatTy::F64) => match len.kind().try_to_machine_usize(tcx) {
                     Some(len) => alloc
                         .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * usize::try_from(len).unwrap()))
                         .to_owned()
-                        .chunks(8)
-                        .map(|chunk| {
-                            Some(Constant::F64(f64::from_le_bytes(
-                                chunk.try_into().expect("this shouldn't happen"),
-                            )))
-                        })
+                        .array_chunks::<8>()
+                        .map(|&chunk| Some(Constant::F64(f64::from_le_bytes(chunk))))
                         .collect::<Option<Vec<Constant>>>()
                         .map(Constant::Vec),
                     _ => None,

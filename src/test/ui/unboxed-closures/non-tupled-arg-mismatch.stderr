@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/non-tupled-arg-mismatch.rs:6:5
+   |
+LL |     a(|_: usize| {});
+   |     ^ types differ
+   |
+   = note: expected trait `Fn<usize>`
+              found trait `Fn<(usize,)>`
+note: required by a bound in `a`
+  --> $DIR/non-tupled-arg-mismatch.rs:3:9
+   |
+LL | fn a<F: Fn<usize>>(f: F) {}
+   |         ^^^^^^^^^ required by this bound in `a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -26,9 +26,9 @@ fn main() {
 
 ## Limitations
 
-Currently, this feature is only supported on `-windows-msvc` targets.  Non-Windows platforms don't have import
-libraries, and an incompatibility between LLVM and the BFD linker means that it is not currently supported on
-`-windows-gnu` targets.
+This feature is unstable for the `x86` architecture, and stable for all other architectures.
 
-On the `i686-pc-windows-msvc` target, this feature supports only the `cdecl`, `stdcall`, `system`, and `fastcall`
-calling conventions.
+This feature is only supported on Windows.
+
+On the `x86` architecture, this feature supports only the `cdecl`, `stdcall`, `system`, `fastcall`, and
+`vectorcall` calling conventions.

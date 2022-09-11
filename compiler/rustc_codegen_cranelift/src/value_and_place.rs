@@ -122,7 +122,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = match layout.abi {
                     Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
                     Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u16::try_from(count).unwrap())
+                        .by(u32::try_from(count).unwrap())
                         .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
@@ -324,7 +324,13 @@ impl<'tcx> CPlace<'tcx> {
             };
         }
 
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+        if layout.size.bytes() >= u64::from(u32::MAX - 16) {
+            fx.tcx
+                .sess
+                .fatal(&format!("values of type {} are too big to store on the stack", layout.ty));
+        }
+
+        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
             // specify stack slot alignment.
@@ -420,7 +426,7 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn write_cvalue(self, fx: &mut FunctionCx<'_, '_, 'tcx>, from: CValue<'tcx>) {
-        assert_assignable(fx, from.layout().ty, self.layout().ty);
+        assert_assignable(fx, from.layout().ty, self.layout().ty, 16);
 
         self.write_cvalue_maybe_transmute(fx, from, "write_cvalue");
     }
@@ -466,7 +472,7 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
                         // specify stack slot alignment.
@@ -513,7 +519,7 @@ impl<'tcx> CPlace<'tcx> {
                 if let ty::Array(element, len) = dst_layout.ty.kind() {
                     // Can only happen for vector types
                     let len =
-                        u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                        u32::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
                     let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
@@ -608,7 +614,7 @@ impl<'tcx> CPlace<'tcx> {
                     dst_align,
                     src_align,
                     true,
-                    MemFlags::trusted(),
+                    flags,
                 );
             }
             CValueInner::ByRef(_, Some(_)) => todo!(),
@@ -774,18 +780,25 @@ pub(crate) fn assert_assignable<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
+    limit: usize,
 ) {
+    if limit == 0 {
+        // assert_assignable exists solely to catch bugs in cg_clif. it isn't necessary for
+        // soundness. don't attempt to check deep types to avoid exponential behavior in certain
+        // cases.
+        return;
+    }
     match (from_ty.kind(), to_ty.kind()) {
         (ty::Ref(_, a, _), ty::Ref(_, b, _))
         | (
             ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
             ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
         ) => {
-            assert_assignable(fx, *a, *b);
+            assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
         | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, *a, *b);
+            assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
@@ -815,6 +828,17 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
+        (&ty::Tuple(types_a), &ty::Tuple(types_b)) => {
+            let mut types_a = types_a.iter();
+            let mut types_b = types_b.iter();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
         (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
             if adt_def_a.did() == adt_def_b.did() =>
         {
@@ -822,18 +846,37 @@ pub(crate) fn assert_assignable<'tcx>(
             let mut types_b = substs_b.types();
             loop {
                 match (types_a.next(), types_b.next()) {
-                    (Some(a), Some(b)) => assert_assignable(fx, a, b),
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
                     (None, None) => return,
                     (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
                 }
             }
         }
-        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b),
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
+        (&ty::Closure(def_id_a, substs_a), &ty::Closure(def_id_b, substs_b))
+            if def_id_a == def_id_b =>
+        {
+            let mut types_a = substs_a.types();
+            let mut types_b = substs_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (ty::Param(_), _) | (_, ty::Param(_)) if fx.tcx.sess.opts.unstable_opts.polymorphize => {
+            // No way to check if it is correct or not with polymorphization enabled
+        }
         _ => {
             assert_eq!(
-                from_ty, to_ty,
+                from_ty,
+                to_ty,
                 "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
-                from_ty, to_ty, fx,
+                from_ty.kind(),
+                to_ty.kind(),
+                fx,
             );
         }
     }

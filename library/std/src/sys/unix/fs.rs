@@ -2,7 +2,7 @@ use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
@@ -17,9 +17,10 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "android", target_os = "macos"))]
 use crate::sys::weak::weak;
 
 use libc::{c_int, mode_t};
@@ -27,6 +28,7 @@ use libc::{c_int, mode_t};
 #[cfg(any(
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
@@ -311,6 +313,9 @@ pub struct FilePermissions {
     mode: mode_t,
 }
 
+#[derive(Copy, Clone)]
+pub struct FileTimes([libc::timespec; 2]);
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
     mode: mode_t,
@@ -443,7 +448,8 @@ impl FileAttr {
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "macos",
-        target_os = "ios"
+        target_os = "ios",
+        target_os = "watchos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64))
@@ -453,7 +459,8 @@ impl FileAttr {
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "macos",
-        target_os = "ios"
+        target_os = "ios",
+        target_os = "watchos",
     )))]
     pub fn created(&self) -> io::Result<SystemTime> {
         cfg_has_statx! {
@@ -500,6 +507,50 @@ impl FilePermissions {
     }
     pub fn mode(&self) -> u32 {
         self.mode as u32
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.0[0] = t.t.to_timespec().expect("Invalid system time");
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.0[1] = t.t.to_timespec().expect("Invalid system time");
+    }
+}
+
+struct TimespecDebugAdapter<'a>(&'a libc::timespec);
+
+impl fmt::Debug for TimespecDebugAdapter<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("timespec")
+            .field("tv_sec", &self.0.tv_sec)
+            .field("tv_nsec", &self.0.tv_nsec)
+            .finish()
+    }
+}
+
+impl fmt::Debug for FileTimes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileTimes")
+            .field("accessed", &TimespecDebugAdapter(&self.0[0]))
+            .field("modified", &TimespecDebugAdapter(&self.0[1]))
+            .finish()
+    }
+}
+
+impl Default for FileTimes {
+    fn default() -> Self {
+        // Redox doesn't appear to support `UTIME_OMIT`, so we stub it out here, and always return
+        // an error in `set_times`.
+        // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
+        // the same as for Redox.
+        #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))]
+        let omit = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
+        let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
+        Self([omit; 2])
     }
 }
 
@@ -636,7 +687,11 @@ impl Iterator for ReadDir {
 impl Drop for Dir {
     fn drop(&mut self) {
         let r = unsafe { libc::closedir(self.0) };
-        debug_assert_eq!(r, 0);
+        assert!(
+            r == 0 || crate::io::Error::last_os_error().kind() == crate::io::ErrorKind::Interrupted,
+            "unexpected error during closedir: {:?}",
+            crate::io::Error::last_os_error()
+        );
     }
 }
 
@@ -707,6 +762,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "linux",
         target_os = "emscripten",
         target_os = "android",
@@ -737,6 +793,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -754,6 +811,7 @@ impl DirEntry {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -771,6 +829,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     )))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
@@ -782,6 +841,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     ))]
+    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
@@ -911,11 +971,11 @@ impl File {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -925,7 +985,7 @@ impl File {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
@@ -946,7 +1006,8 @@ impl File {
             target_os = "linux",
             target_os = "macos",
             target_os = "netbsd",
-            target_os = "openbsd"
+            target_os = "openbsd",
+            target_os = "watchos",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -976,8 +1037,8 @@ impl File {
         self.0.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        self.0.read_buf(buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.0.read_buf(cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -1020,6 +1081,50 @@ impl File {
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         cvt_r(|| unsafe { libc::fchmod(self.as_raw_fd(), perm.mode) })?;
         Ok(())
+    }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
+                // Redox doesn't appear to support `UTIME_OMIT`.
+                // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
+                // the same as for Redox.
+                drop(times);
+                Err(io::const_io_error!(
+                    io::ErrorKind::Unsupported,
+                    "setting file times not supported",
+                ))
+            } else if #[cfg(any(target_os = "android", target_os = "macos"))] {
+                // futimens requires macOS 10.13, and Android API level 19
+                cvt(unsafe {
+                    weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
+                    match futimens.get() {
+                        Some(futimens) => futimens(self.as_raw_fd(), times.0.as_ptr()),
+                        #[cfg(target_os = "macos")]
+                        None => {
+                            fn ts_to_tv(ts: &libc::timespec) -> libc::timeval {
+                                libc::timeval {
+                                    tv_sec: ts.tv_sec,
+                                    tv_usec: (ts.tv_nsec / 1000) as _
+                                }
+                            }
+                            let timevals = [ts_to_tv(&times.0[0]), ts_to_tv(&times.0[1])];
+                            libc::futimes(self.as_raw_fd(), timevals.as_ptr())
+                        }
+                        // futimes requires even newer Android.
+                        #[cfg(target_os = "android")]
+                        None => return Err(io::const_io_error!(
+                            io::ErrorKind::Unsupported,
+                            "setting file times requires Android API level >= 19",
+                        )),
+                    }
+                })?;
+                Ok(())
+            } else {
+                cvt(unsafe { libc::futimens(self.as_raw_fd(), times.0.as_ptr()) })?;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -1118,6 +1223,19 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
+        #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let info = Box::<libc::kinfo_file>::new_zeroed();
+            let mut info = unsafe { info.assume_init() };
+            info.kf_structsize = mem::size_of::<libc::kinfo_file>() as libc::c_int;
+            let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
+            if n == -1 {
+                return None;
+            }
+            let buf = unsafe { CStr::from_ptr(info.kf_path.as_mut_ptr()).to_bytes().to_vec() };
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
         #[cfg(target_os = "vxworks")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut buf = vec![0; libc::PATH_MAX as usize];
@@ -1134,6 +1252,7 @@ impl fmt::Debug for File {
             target_os = "linux",
             target_os = "macos",
             target_os = "vxworks",
+            all(target_os = "freebsd", target_arch = "x86_64"),
             target_os = "netbsd"
         )))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
@@ -1396,7 +1515,8 @@ fn open_to_and_set_permissions(
     target_os = "linux",
     target_os = "android",
     target_os = "macos",
-    target_os = "ios"
+    target_os = "ios",
+    target_os = "watchos",
 )))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (mut reader, reader_metadata) = open_from(from)?;
@@ -1423,7 +1543,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 

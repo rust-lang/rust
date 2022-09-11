@@ -65,8 +65,6 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
     ) -> Self {
-        debug!("Const::from_anon_const(def={:?})", def);
-
         let body_id = match tcx.hir().get_by_def_id(def.did) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
@@ -203,7 +201,7 @@ impl<'tcx> Const<'tcx> {
     pub fn to_valtree(self) -> ty::ValTree<'tcx> {
         match self.kind() {
             ty::ConstKind::Value(valtree) => valtree,
-            _ => bug!("expected ConstKind::Value"),
+            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
         }
     }
 

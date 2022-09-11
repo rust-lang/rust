@@ -1,8 +1,8 @@
 error[E0038]: the trait `X` cannot be made into an object
-  --> $DIR/object-safety-bounds.rs:7:11
+  --> $DIR/object-safety-bounds.rs:7:15
    |
 LL | fn f() -> Box<dyn X<U = u32>> {
-   |           ^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |               ^^^^^^^^^^^^^^ `X` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/object-safety-bounds.rs:4:13

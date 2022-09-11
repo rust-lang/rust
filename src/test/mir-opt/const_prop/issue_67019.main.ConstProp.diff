@@ -2,33 +2,33 @@
 + // MIR for `main` after ConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/issue-67019.rs:10:11: 10:11
-      let _1: ();                          // in scope 0 at $DIR/issue-67019.rs:11:5: 11:20
-      let mut _2: ((u8, u8),);             // in scope 0 at $DIR/issue-67019.rs:11:10: 11:19
-      let mut _3: (u8, u8);                // in scope 0 at $DIR/issue-67019.rs:11:11: 11:17
+      let mut _0: ();                      // return place in scope 0 at $DIR/issue-67019.rs:+0:11: +0:11
+      let _1: ();                          // in scope 0 at $DIR/issue-67019.rs:+1:5: +1:20
+      let mut _2: ((u8, u8),);             // in scope 0 at $DIR/issue-67019.rs:+1:10: +1:19
+      let mut _3: (u8, u8);                // in scope 0 at $DIR/issue-67019.rs:+1:11: +1:17
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
-          StorageLive(_2);                 // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
-          StorageLive(_3);                 // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          Deinit(_3);                      // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          (_3.0: u8) = const 1_u8;         // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          (_3.1: u8) = const 2_u8;         // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
-          Deinit(_2);                      // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
--         (_2.0: (u8, u8)) = move _3;      // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
-+         (_2.0: (u8, u8)) = const (1_u8, 2_u8); // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
-          StorageDead(_3);                 // scope 0 at $DIR/issue-67019.rs:11:18: 11:19
-          _1 = test(move _2) -> bb1;       // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
+          StorageLive(_1);                 // scope 0 at $DIR/issue-67019.rs:+1:5: +1:20
+          StorageLive(_2);                 // scope 0 at $DIR/issue-67019.rs:+1:10: +1:19
+          StorageLive(_3);                 // scope 0 at $DIR/issue-67019.rs:+1:11: +1:17
+          Deinit(_3);                      // scope 0 at $DIR/issue-67019.rs:+1:11: +1:17
+          (_3.0: u8) = const 1_u8;         // scope 0 at $DIR/issue-67019.rs:+1:11: +1:17
+          (_3.1: u8) = const 2_u8;         // scope 0 at $DIR/issue-67019.rs:+1:11: +1:17
+          Deinit(_2);                      // scope 0 at $DIR/issue-67019.rs:+1:10: +1:19
+-         (_2.0: (u8, u8)) = move _3;      // scope 0 at $DIR/issue-67019.rs:+1:10: +1:19
++         (_2.0: (u8, u8)) = const (1_u8, 2_u8); // scope 0 at $DIR/issue-67019.rs:+1:10: +1:19
+          StorageDead(_3);                 // scope 0 at $DIR/issue-67019.rs:+1:18: +1:19
+          _1 = test(move _2) -> bb1;       // scope 0 at $DIR/issue-67019.rs:+1:5: +1:20
                                            // mir::Constant
-                                           // + span: $DIR/issue-67019.rs:11:5: 11:9
+                                           // + span: $DIR/issue-67019.rs:12:5: 12:9
                                            // + literal: Const { ty: fn(((u8, u8),)) {test}, val: Value(<ZST>) }
       }
   
       bb1: {
-          StorageDead(_2);                 // scope 0 at $DIR/issue-67019.rs:11:19: 11:20
-          StorageDead(_1);                 // scope 0 at $DIR/issue-67019.rs:11:20: 11:21
-          nop;                             // scope 0 at $DIR/issue-67019.rs:10:11: 12:2
-          return;                          // scope 0 at $DIR/issue-67019.rs:12:2: 12:2
+          StorageDead(_2);                 // scope 0 at $DIR/issue-67019.rs:+1:19: +1:20
+          StorageDead(_1);                 // scope 0 at $DIR/issue-67019.rs:+1:20: +1:21
+          nop;                             // scope 0 at $DIR/issue-67019.rs:+0:11: +2:2
+          return;                          // scope 0 at $DIR/issue-67019.rs:+2:2: +2:2
       }
   }
   

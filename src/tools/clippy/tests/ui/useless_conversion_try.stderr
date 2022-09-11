@@ -62,7 +62,7 @@ LL |     let _: String = format!("Hello {}", "world").try_into().unwrap();
 error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:32:21
    |
-LL |     let _: String = "".to_owned().try_into().unwrap();
+LL |     let _: String = String::new().try_into().unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider removing `.try_into()`

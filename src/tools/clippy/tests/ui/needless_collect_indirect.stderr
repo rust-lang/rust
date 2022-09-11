@@ -125,5 +125,122 @@ LL ~
 LL ~         sample.iter().count()
    |
 
-error: aborting due to 9 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:127:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |             y.contains(&i);
+   |             -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             // Do lint
+LL ~             vec.iter().map(|k| k * k).any(|x| x == i);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:152:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |             y.contains(&n);
+   |             -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             // Do lint
+LL ~             vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:181:63
+   |
+LL |                 let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                               ^^^^^^^
+...
+LL |                 y.contains(&n);
+   |                 -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~                 
+LL |                 let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |                 // Do lint
+LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:217:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |                 y.contains(&n);
+   |                 -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             if n < 2 {
+LL |                 // Do lint
+LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:242:26
+   |
+LL |         let w = v.iter().collect::<Vec<_>>();
+   |                          ^^^^^^^
+LL |         // Do lint
+LL |         for _ in 0..w.len() {
+   |                     ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         for _ in 0..v.iter().count() {
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:264:30
+   |
+LL |         let mut w = v.iter().collect::<Vec<_>>();
+   |                              ^^^^^^^
+LL |         // Do lint
+LL |         while 1 == w.len() {
+   |                    ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         while 1 == v.iter().count() {
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:286:30
+   |
+LL |         let mut w = v.iter().collect::<Vec<_>>();
+   |                              ^^^^^^^
+LL |         // Do lint
+LL |         while let Some(i) = Some(w.len()) {
+   |                                  ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         while let Some(i) = Some(v.iter().count()) {
+   |
+
+error: aborting due to 16 previous errors
 

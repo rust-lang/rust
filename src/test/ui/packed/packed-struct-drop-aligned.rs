@@ -24,7 +24,7 @@ impl<'a> Drop for Aligned<'a> {
 }
 
 #[repr(transparent)]
-struct NotCopy(u8);
+struct NotCopy(#[allow(unused_tuple_struct_fields)] u8);
 
 #[repr(packed)]
 struct Packed<'a>(NotCopy, Aligned<'a>);

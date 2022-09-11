@@ -5,17 +5,13 @@
 //! The providers for the queries defined here can be found in
 //! `rustc_traits`.
 
+use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::struct_span_err;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_span::source_map::Span;
 use std::iter::FromIterator;
-use std::mem;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
@@ -121,15 +117,7 @@ pub struct DropckOutlivesResult<'tcx> {
 impl<'tcx> DropckOutlivesResult<'tcx> {
     pub fn report_overflows(&self, tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
         if let Some(overflow_ty) = self.overflows.get(0) {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0320,
-                "overflow while adding drop-check rules for {}",
-                ty,
-            );
-            err.note(&format!("overflowed on {}", overflow_ty));
-            err.emit();
+            tcx.sess.emit_err(DropCheckOverflow { span, ty, overflow_ty: *overflow_ty });
         }
     }
 
@@ -226,29 +214,9 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift, HashStable)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            OutlivesBound::RegionSubRegion(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubParam(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubProjection(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-        }
-    }
 }

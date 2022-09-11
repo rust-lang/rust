@@ -1,0 +1,18 @@
+### What it does
+Checks for for-loops that manually copy items between
+slices that could be optimized by having a memcpy.
+
+### Why is this bad?
+It is not as fast as a memcpy.
+
+### Example
+```
+for i in 0..src.len() {
+    dst[i + 64] = src[i];
+}
+```
+
+Use instead:
+```
+dst[64..(src.len() + 64)].clone_from_slice(&src[..]);
+```

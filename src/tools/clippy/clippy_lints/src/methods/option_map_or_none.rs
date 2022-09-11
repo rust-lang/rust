@@ -71,10 +71,10 @@ pub(super) fn check<'tcx>(
     if is_option {
         let self_snippet = snippet(cx, recv.span, "..");
         if_chain! {
-            if let hir::ExprKind::Closure { body, fn_decl_span, .. } = map_arg.kind;
+            if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = map_arg.kind;
             let arg_snippet = snippet(cx, fn_decl_span, "..");
             let body = cx.tcx.hir().body(body);
-            if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
+            if let Some((func, [arg_char])) = reduce_unit_expression(body.value);
             if let Some(id) = path_def_id(cx, func).map(|ctor_id| cx.tcx.parent(ctor_id));
             if Some(id) == cx.tcx.lang_items().option_some_variant();
             then {

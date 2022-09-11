@@ -18,11 +18,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally aborts compilation.
     pub fn require_lang_item(self, lang_item: LangItem, span: Option<Span>) -> DefId {
-        self.lang_items().require(lang_item).unwrap_or_else(|msg| {
+        self.lang_items().require(lang_item).unwrap_or_else(|err| {
             if let Some(span) = span {
-                self.sess.span_fatal(span, &msg)
+                self.sess.span_fatal(span, err.to_string())
             } else {
-                self.sess.fatal(&msg)
+                self.sess.fatal(err.to_string())
             }
         })
     }

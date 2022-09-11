@@ -5,25 +5,25 @@ LL | struct Foo;
    | ---------- method `bat` not found for this struct
 ...
 LL |     f.bat(1.0);
-   |       ^^^ help: there is an associated function with a similar name: `bar`
+   |       ^^^ help: there is a method with a similar name: `bar`
 
 error[E0599]: no method named `is_emtpy` found for struct `String` in the current scope
   --> $DIR/suggest-methods.rs:21:15
    |
 LL |     let _ = s.is_emtpy();
-   |               ^^^^^^^^ help: there is an associated function with a similar name: `is_empty`
+   |               ^^^^^^^^ help: there is a method with a similar name: `is_empty`
 
 error[E0599]: no method named `count_eos` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:25:19
    |
 LL |     let _ = 63u32.count_eos();
-   |                   ^^^^^^^^^ help: there is an associated function with a similar name: `count_zeros`
+   |                   ^^^^^^^^^ help: there is a method with a similar name: `count_zeros`
 
 error[E0599]: no method named `count_o` found for type `u32` in the current scope
   --> $DIR/suggest-methods.rs:28:19
    |
 LL |     let _ = 63u32.count_o();
-   |                   ^^^^^^^ help: there is an associated function with a similar name: `count_ones`
+   |                   ^^^^^^^ help: there is a method with a similar name: `count_ones`
 
 error: aborting due to 4 previous errors
 

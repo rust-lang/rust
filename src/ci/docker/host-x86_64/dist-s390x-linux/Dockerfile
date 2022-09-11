@@ -11,7 +11,6 @@ RUN sh /scripts/rustbuild-setup.sh
 USER rustbuild
 WORKDIR /tmp
 
-COPY host-x86_64/dist-s390x-linux/patches/ /tmp/patches/
 COPY host-x86_64/dist-s390x-linux/s390x-linux-gnu.config host-x86_64/dist-s390x-linux/build-s390x-toolchain.sh /tmp/
 RUN ./build-s390x-toolchain.sh
 
@@ -19,9 +18,6 @@ USER root
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin
 

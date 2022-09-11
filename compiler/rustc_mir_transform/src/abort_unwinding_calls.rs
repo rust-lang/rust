@@ -56,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         // example.
         let mut calls_to_terminate = Vec::new();
         let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks().iter_enumerated() {
+        for (id, block) in body.basic_blocks.iter_enumerated() {
             if block.is_cleanup {
                 continue;
             }
@@ -75,7 +75,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
                 }
                 TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
-                    tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Unwind
+                    tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
                         && layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {

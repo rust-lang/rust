@@ -1,4 +1,4 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:7:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
@@ -11,7 +11,7 @@ help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ++++
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:7:9
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
@@ -24,7 +24,7 @@ help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ++++
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:12:9
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
@@ -37,7 +37,7 @@ help: to declare that the `impl Trait` captures `'a`, you can add an explicit `'
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
    |                                                             ++++
 
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Iterator<Item = u32>` captures lifetime that does not appear in bounds
   --> $DIR/static-return-lifetime-infered.rs:12:9
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {

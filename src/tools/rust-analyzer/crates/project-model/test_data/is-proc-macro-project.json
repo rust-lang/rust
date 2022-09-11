@@ -1,0 +1,13 @@
+{
+    "sysroot_src": null,
+    "crates": [
+        {
+            "display_name": "is_proc_macro",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2018",
+            "deps": [],
+            "is_workspace_member": true,
+            "is_proc_macro": true
+        }
+    ]
+}

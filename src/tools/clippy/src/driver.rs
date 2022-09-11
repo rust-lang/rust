@@ -94,6 +94,8 @@ struct ClippyCallbacks {
 }
 
 impl rustc_driver::Callbacks for ClippyCallbacks {
+    // JUSTIFICATION: necessary in clippy driver to set `mir_opt_level`
+    #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
@@ -117,7 +119,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If
         // MIR passes can be enabled / disabled separately, we should figure out, what passes to
         // use for Clippy.
-        config.opts.debugging_opts.mir_opt_level = Some(0);
+        config.opts.unstable_opts.mir_opt_level = Some(0);
     }
 }
 

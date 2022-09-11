@@ -3,8 +3,9 @@ pub trait Parser {
     type Input;
 }
 
-pub struct Iter<P: Parser>(P, P::Input);
+pub struct Iter<P: Parser>(#[allow(unused_tuple_struct_fields)] P, P::Input);
 
+#[allow(unused_tuple_struct_fields)]
 pub struct Map<P, F>(P, F);
 impl<P, F> Parser for Map<P, F> where F: FnMut(P) {
     type Input = u8;

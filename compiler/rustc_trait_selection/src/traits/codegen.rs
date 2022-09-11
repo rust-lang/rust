@@ -3,9 +3,9 @@
 // seems likely that they should eventually be merged into more
 // general routines.
 
-use crate::infer::TyCtxtInferExt;
+use crate::infer::{DefiningAnchor, TyCtxtInferExt};
 use crate::traits::{
-    FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
+    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
     Unimplemented,
 };
 use rustc_middle::traits::CodegenObligationError;
@@ -18,19 +18,20 @@ use rustc_middle::ty::{self, TyCtxt};
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
-#[instrument(level = "debug", skip(tcx))]
-pub fn codegen_fulfill_obligation<'tcx>(
+pub fn codegen_select_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    tcx.infer_ctxt().enter(|infcx| {
+    let mut infcx_builder =
+        tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    infcx_builder.enter(|infcx| {
+        //~^ HACK `Bubble` is required for
+        // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
         let mut selcx = SelectionContext::new(&infcx);
 
         let obligation_cause = ObligationCause::dummy();
@@ -51,7 +52,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
         let impl_source = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
@@ -69,9 +70,9 @@ pub fn codegen_fulfill_obligation<'tcx>(
 
         // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
         // as they will get constrained elsewhere, too.
-        let _opaque_types = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
+        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-        debug!("Cache miss: {trait_ref:?} => {impl_source:?}");
         Ok(&*tcx.arena.alloc(impl_source))
     })
 }

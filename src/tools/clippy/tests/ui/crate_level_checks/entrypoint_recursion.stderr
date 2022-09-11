@@ -1,5 +1,5 @@
 error: recursing into entrypoint `a`
-  --> $DIR/entrypoint_recursion.rs:11:5
+  --> $DIR/entrypoint_recursion.rs:10:5
    |
 LL |     a();
    |     ^

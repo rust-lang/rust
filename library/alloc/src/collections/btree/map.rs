@@ -178,6 +178,8 @@ pub struct BTreeMap<
     length: usize,
     /// `ManuallyDrop` to control drop order (needs to be dropped after all the nodes).
     pub(super) alloc: ManuallyDrop<A>,
+    // For dropck; the `Box` avoids making the `Unpin` impl more strict than before
+    _marker: PhantomData<crate::boxed::Box<(K, V)>>,
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
@@ -185,6 +187,19 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V, A: Allocator + Clone> Drop for BTr
     fn drop(&mut self) {
         drop(unsafe { ptr::read(self) }.into_iter())
     }
+}
+
+// FIXME: This implementation is "wrong", but changing it would be a breaking change.
+// (The bounds of the automatic `UnwindSafe` implementation have been like this since Rust 1.50.)
+// Maybe we can fix it nonetheless with a crater run, or if the `UnwindSafe`
+// traits are deprecated, or disarmed (no longer causing hard errors) in the future.
+#[stable(feature = "btree_unwindsafe", since = "1.64.0")]
+impl<K, V, A: Allocator + Clone> core::panic::UnwindSafe for BTreeMap<K, V, A>
+where
+    A: core::panic::UnwindSafe,
+    K: core::panic::RefUnwindSafe,
+    V: core::panic::RefUnwindSafe,
+{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -204,6 +219,7 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
                         root: Some(Root::new(alloc.clone())),
                         length: 0,
                         alloc: ManuallyDrop::new(alloc),
+                        _marker: PhantomData,
                     };
 
                     {
@@ -567,7 +583,7 @@ impl<K, V> BTreeMap<K, V> {
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     #[must_use]
     pub const fn new() -> BTreeMap<K, V> {
-        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global) }
+        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(Global), _marker: PhantomData }
     }
 }
 
@@ -593,6 +609,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
             root: mem::replace(&mut self.root, None),
             length: mem::replace(&mut self.length, 0),
             alloc: self.alloc.clone(),
+            _marker: PhantomData,
         });
     }
 
@@ -615,7 +632,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
     pub fn new_in(alloc: A) -> BTreeMap<K, V, A> {
-        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc) }
+        BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }
 
@@ -1320,7 +1337,12 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
         self.length = new_left_len;
 
-        BTreeMap { root: Some(right_root), length: right_len, alloc: self.alloc.clone() }
+        BTreeMap {
+            root: Some(right_root),
+            length: right_len,
+            alloc: self.alloc.clone(),
+            _marker: PhantomData,
+        }
     }
 
     /// Creates an iterator that visits all elements (key-value pairs) in
@@ -1445,7 +1467,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         let mut root = Root::new(alloc.clone());
         let mut length = 0;
         root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, alloc.clone());
-        BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc) }
+        BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }
 

@@ -14,13 +14,18 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
-use tracing::debug;
-
 mod tokentrees;
 mod unescape_error_reporting;
 mod unicode_chars;
 
 use unescape_error_reporting::{emit_unescape_error, escaped_char};
+
+// This type is used a lot. Make sure it doesn't unintentionally get bigger.
+//
+// This assertion is in this crate, rather than in `rustc_lexer`, because that
+// crate cannot depend on `rustc_data_structures`.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -37,8 +42,7 @@ pub(crate) fn parse_token_trees<'a>(
     start_pos: BytePos,
     override_span: Option<Span>,
 ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
-    StringReader { sess, start_pos, pos: start_pos, end_src_index: src.len(), src, override_span }
-        .into_token_trees()
+    StringReader { sess, start_pos, pos: start_pos, src, override_span }.into_token_trees()
 }
 
 struct StringReader<'a> {
@@ -47,8 +51,6 @@ struct StringReader<'a> {
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
     pos: BytePos,
-    /// Stop reading src at this index.
-    end_src_index: usize,
     /// Source text to tokenize.
     src: &'a str,
     override_span: Option<Span>,
@@ -64,20 +66,17 @@ impl<'a> StringReader<'a> {
         let mut spacing = Spacing::Joint;
 
         // Skip `#!` at the start of the file
-        let start_src_index = self.src_index(self.pos);
-        let text: &str = &self.src[start_src_index..self.end_src_index];
-        let is_beginning_of_file = self.pos == self.start_pos;
-        if is_beginning_of_file {
-            if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-                self.pos = self.pos + BytePos::from_usize(shebang_len);
-                spacing = Spacing::Alone;
-            }
+        if self.pos == self.start_pos
+            && let Some(shebang_len) = rustc_lexer::strip_shebang(self.src)
+        {
+            self.pos = self.pos + BytePos::from_usize(shebang_len);
+            spacing = Spacing::Alone;
         }
 
         // Skip trivial (whitespace & comments) tokens
         loop {
             let start_src_index = self.src_index(self.pos);
-            let text: &str = &self.src[start_src_index..self.end_src_index];
+            let text: &str = &self.src[start_src_index..];
 
             if text.is_empty() {
                 let span = self.mk_sp(self.pos, self.pos);
@@ -87,7 +86,7 @@ impl<'a> StringReader<'a> {
             let token = rustc_lexer::first_token(text);
 
             let start = self.pos;
-            self.pos = self.pos + BytePos::from_usize(token.len);
+            self.pos = self.pos + BytePos(token.len);
 
             debug!("next_token: {:?}({:?})", token.kind, self.str_from(start));
 
@@ -239,7 +238,7 @@ impl<'a> StringReader<'a> {
                 token::Ident(sym, false)
             }
             rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
-                let suffix_start = start + BytePos(suffix_start as u32);
+                let suffix_start = start + BytePos(suffix_start);
                 let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
                 let suffix = if suffix_start < self.pos {
                     let string = self.str_from(suffix_start);
@@ -404,15 +403,21 @@ impl<'a> StringReader<'a> {
                 }
                 (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
             }
-            rustc_lexer::LiteralKind::RawStr { n_hashes, err } => {
-                self.report_raw_str_error(start, err);
-                let n = u32::from(n_hashes);
-                (token::StrRaw(n_hashes), Mode::RawStr, 2 + n, 1 + n) // r##" "##
+            rustc_lexer::LiteralKind::RawStr { n_hashes } => {
+                if let Some(n_hashes) = n_hashes {
+                    let n = u32::from(n_hashes);
+                    (token::StrRaw(n_hashes), Mode::RawStr, 2 + n, 1 + n) // r##" "##
+                } else {
+                    self.report_raw_str_error(start, 1);
+                }
             }
-            rustc_lexer::LiteralKind::RawByteStr { n_hashes, err } => {
-                self.report_raw_str_error(start, err);
-                let n = u32::from(n_hashes);
-                (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
+            rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
+                if let Some(n_hashes) = n_hashes {
+                    let n = u32::from(n_hashes);
+                    (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
+                } else {
+                    self.report_raw_str_error(start, 2);
+                }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 return if empty_int {
@@ -483,17 +488,17 @@ impl<'a> StringReader<'a> {
         &self.src[self.src_index(start)..self.src_index(end)]
     }
 
-    fn report_raw_str_error(&self, start: BytePos, opt_err: Option<RawStrError>) {
-        match opt_err {
-            Some(RawStrError::InvalidStarter { bad_char }) => {
+    fn report_raw_str_error(&self, start: BytePos, prefix_len: u32) -> ! {
+        match rustc_lexer::validate_raw_str(self.str_from(start), prefix_len) {
+            Err(RawStrError::InvalidStarter { bad_char }) => {
                 self.report_non_started_raw_string(start, bad_char)
             }
-            Some(RawStrError::NoTerminator { expected, found, possible_terminator_offset }) => self
+            Err(RawStrError::NoTerminator { expected, found, possible_terminator_offset }) => self
                 .report_unterminated_raw_string(start, expected, possible_terminator_offset, found),
-            Some(RawStrError::TooManyDelimiters { found }) => {
+            Err(RawStrError::TooManyDelimiters { found }) => {
                 self.report_too_many_hashes(start, found)
             }
-            None => (),
+            Ok(()) => panic!("no error found for supposedly invalid raw string literal"),
         }
     }
 
@@ -510,9 +515,9 @@ impl<'a> StringReader<'a> {
     fn report_unterminated_raw_string(
         &self,
         start: BytePos,
-        n_hashes: usize,
-        possible_offset: Option<usize>,
-        found_terminators: usize,
+        n_hashes: u32,
+        possible_offset: Option<u32>,
+        found_terminators: u32,
     ) -> ! {
         let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
             self.mk_sp(start, start),
@@ -525,7 +530,7 @@ impl<'a> StringReader<'a> {
         if n_hashes > 0 {
             err.note(&format!(
                 "this raw string should be terminated with `\"{}`",
-                "#".repeat(n_hashes)
+                "#".repeat(n_hashes as usize)
             ));
         }
 
@@ -536,7 +541,7 @@ impl<'a> StringReader<'a> {
             err.span_suggestion(
                 span,
                 "consider terminating the string here",
-                "#".repeat(n_hashes),
+                "#".repeat(n_hashes as usize),
                 Applicability::MaybeIncorrect,
             );
         }
@@ -637,7 +642,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn report_too_many_hashes(&self, start: BytePos, found: usize) -> ! {
+    fn report_too_many_hashes(&self, start: BytePos, found: u32) -> ! {
         self.fatal_span_(
             start,
             self.pos,

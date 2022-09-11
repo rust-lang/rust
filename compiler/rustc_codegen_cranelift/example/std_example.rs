@@ -128,6 +128,25 @@ fn main() {
         0 => loop {},
         v => panic(v),
     };
+
+    if black_box(false) {
+        // Based on https://github.com/rust-lang/rust/blob/2f320a224e827b400be25966755a621779f797cc/src/test/ui/debuginfo/debuginfo_with_uninhabitable_field_and_unsized.rs
+        let _ = Foo::<dyn Send>::new();
+
+        #[allow(dead_code)]
+        struct Foo<T: ?Sized> {
+            base: Never,
+            value: T,
+        }
+
+        impl<T: ?Sized> Foo<T> {
+            pub fn new() -> Box<Foo<T>> {
+                todo!()
+            }
+        }
+
+        enum Never {}
+    }
 }
 
 fn panic(_: u128) {

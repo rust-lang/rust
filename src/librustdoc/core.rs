@@ -32,7 +32,7 @@ use crate::formats::cache::Cache;
 use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
-pub(crate) use rustc_session::config::{DebuggingOptions, Input, Options};
+pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
 pub(crate) struct ResolverCaches {
     pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
@@ -81,6 +81,8 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
+    /// Used by `strip_private`.
+    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -155,7 +157,7 @@ pub(crate) fn new_handler(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
-    debugging_opts: &DebuggingOptions,
+    unstable_opts: &UnstableOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
@@ -169,11 +171,11 @@ pub(crate) fn new_handler(
                     None,
                     fallback_bundle,
                     short,
-                    debugging_opts.teach,
+                    unstable_opts.teach,
                     diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
         ErrorOutputType::Json { pretty, json_rendered } => {
@@ -191,14 +193,14 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                 )
-                .ui_testing(debugging_opts.ui_testing),
+                .ui_testing(unstable_opts.ui_testing),
             )
         }
     };
 
     rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        debugging_opts.diagnostic_handler_flags(true),
+        unstable_opts.diagnostic_handler_flags(true),
     )
 }
 
@@ -215,7 +217,7 @@ pub(crate) fn create_config(
         mut cfgs,
         check_cfgs,
         codegen_options,
-        debugging_opts,
+        unstable_opts,
         target,
         edition,
         maybe_sysroot,
@@ -266,7 +268,7 @@ pub(crate) fn create_config(
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
-        debugging_opts,
+        unstable_opts,
         error_format,
         diagnostic_width,
         edition,
@@ -311,7 +313,7 @@ pub(crate) fn create_config(
                 }
 
                 let hir = tcx.hir();
-                let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
+                let body = hir.body(hir.body_owned_by(def_id));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
@@ -381,14 +383,14 @@ pub(crate) fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        show_coverage,
     };
 
     // Small hack to force the Sized trait to be present.
     //
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
-        let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
-        sized_trait.is_auto = true;
+        let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         ctxt.external_traits
             .borrow_mut()
             .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });

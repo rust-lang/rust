@@ -55,11 +55,11 @@ use std::io::{BufWriter, Write};
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
-        if tcx.sess.opts.debugging_opts.dump_dep_graph {
+        if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
         }
 
-        if !tcx.sess.opts.debugging_opts.query_dep_graph {
+        if !tcx.sess.opts.unstable_opts.query_dep_graph {
             return;
         }
 
@@ -81,7 +81,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
 
         if !if_this_changed.is_empty() || !then_this_would_need.is_empty() {
             assert!(
-                tcx.sess.opts.debugging_opts.query_dep_graph,
+                tcx.sess.opts.unstable_opts.query_dep_graph,
                 "cannot use the `#[{}]` or `#[{}]` annotations \
                     without supplying `-Z query-dep-graph`",
                 sym::rustc_if_this_changed,

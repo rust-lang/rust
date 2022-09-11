@@ -86,9 +86,14 @@ tenth number: {}",
     println!("{:foo}", 1); //~ ERROR unknown format trait `foo`
     println!("{5} {:4$} {6:7$}", 1);
     //~^ ERROR invalid reference to positional arguments 4, 5, 6 and 7 (there is 1 argument)
+    let foo = 1;
+    println!("{foo:0$}");
+    //~^ ERROR invalid reference to positional argument 0 (no arguments were given)
 
     // We used to ICE here because we tried to unconditionally access the first argument, which
     // doesn't exist.
     println!("{:.*}");
     //~^ ERROR 2 positional arguments in format string, but no arguments were given
+    println!("{:.0$}");
+    //~^ ERROR 1 positional argument in format string, but no arguments were given
 }

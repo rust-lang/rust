@@ -35,7 +35,6 @@ use super::FnCtxt;
 use crate::expr_use_visitor as euv;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::UpvarRegion;
@@ -49,8 +48,7 @@ use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::stable_map::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
 
@@ -142,7 +140,7 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Closure { capture_clause, body: body_id, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
                 let body = self.fcx.tcx.hir().body(body_id);
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
@@ -187,6 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         };
+        let closure_def_id = closure_def_id.expect_local();
 
         let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
             self.closure_kind(closure_substs).is_none().then_some(closure_substs)
@@ -194,20 +193,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let local_def_id = closure_def_id.expect_local();
-
-        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
-        assert_eq!(body_owner_def_id.to_def_id(), closure_def_id);
+        assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             fcx: self,
-            closure_def_id: local_def_id,
+            closure_def_id,
             capture_information: Default::default(),
             fake_reads: Default::default(),
         };
         euv::ExprUseVisitor::new(
             &mut delegate,
             &self.infcx,
-            body_owner_def_id,
+            closure_def_id,
             self.param_env,
             &self.typeck_results.borrow(),
         )
@@ -225,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 
-        let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
+        let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
 
         if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
             self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
@@ -240,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for var_hir_id in upvars.keys() {
-                    let place = self.place_for_root_variable(local_def_id, *var_hir_id);
+                    let place = self.place_for_root_variable(closure_def_id, *var_hir_id);
 
                     debug!("seed place {:?}", place);
 
@@ -315,7 +311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
-        if self.tcx.sess.opts.debugging_opts.profile_closures {
+        if self.tcx.sess.opts.unstable_opts.profile_closures {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {
@@ -334,7 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Returns a list of `Ty`s for each upvar.
-    fn final_upvar_tys(&self, closure_id: DefId) -> Vec<Ty<'tcx>> {
+    fn final_upvar_tys(&self, closure_id: LocalDefId) -> Vec<Ty<'tcx>> {
         self.typeck_results
             .borrow()
             .closure_min_captures_flattened(closure_id)
@@ -512,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn compute_min_captures(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         capture_information: InferredCaptureInformation<'tcx>,
         closure_span: Span,
     ) {
@@ -731,7 +727,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `disjoint_capture_drop_reorder` if needed.
     fn perform_2229_migration_anaysis(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         body_id: hir::BodyId,
         capture_clause: hir::CaptureBy,
         span: Span,
@@ -747,8 +743,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (migration_string, migrated_variables_concat) =
                 migration_suggestion_for_2229(self.tcx, &need_migrations);
 
-            let closure_hir_id =
-                self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
             let closure_head_span = self.tcx.def_span(closure_def_id);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
@@ -949,7 +944,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
             hir::CaptureBy::Value => ty, // For move closure the capture kind should be by value
@@ -1059,15 +1054,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations_for_drop(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_span: Span,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
     ) -> Option<FxHashSet<UpvarMigrationInfo>> {
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
-        if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+        if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id)) {
             debug!("does not have significant drop");
             return None;
         }
@@ -1161,7 +1156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn compute_2229_migrations(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
@@ -1222,7 +1217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Combine all the reasons of why the root variable should be captured as a result of
                 // auto trait implementation issues
-                auto_trait_migration_reasons.extend(capture_trait_reasons.clone());
+                auto_trait_migration_reasons.extend(capture_trait_reasons.iter().copied());
 
                 diagnostics_info.push(MigrationLintNote {
                     captures_info,
@@ -1344,14 +1339,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// implements Drop which will be affected since `y` isn't completely captured.
     fn has_significant_drop_outside_of_captures(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_span: Span,
         base_path_ty: Ty<'tcx>,
         captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
-        let needs_drop = |ty: Ty<'tcx>| {
-            ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
-        };
+        let needs_drop =
+            |ty: Ty<'tcx>| ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id));
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
@@ -1361,7 +1355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     drop_trait,
                     ty,
                     ty_params,
-                    self.tcx.param_env(closure_def_id.expect_local()),
+                    self.tcx.param_env(closure_def_id),
                 )
                 .must_apply_modulo_regions()
         };
@@ -1519,13 +1513,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn should_log_capture_analysis(&self, closure_def_id: DefId) -> bool {
-        self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
+    fn should_log_capture_analysis(&self, closure_def_id: LocalDefId) -> bool {
+        self.tcx.has_attr(closure_def_id.to_def_id(), sym::rustc_capture_analysis)
     }
 
     fn log_capture_analysis_first_pass(
         &self,
-        closure_def_id: rustc_hir::def_id::DefId,
+        closure_def_id: LocalDefId,
         capture_information: &InferredCaptureInformation<'tcx>,
         closure_span: Span,
     ) {
@@ -1544,7 +1538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn log_closure_min_capture_info(&self, closure_def_id: DefId, closure_span: Span) {
+    fn log_closure_min_capture_info(&self, closure_def_id: LocalDefId, closure_span: Span) {
         if self.should_log_capture_analysis(closure_def_id) {
             if let Some(min_captures) =
                 self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
@@ -2030,6 +2024,10 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
     tcx: TyCtxt<'_>,
     closure_id: hir::HirId,
 ) -> bool {
+    if tcx.sess.rust_2021() {
+        return false;
+    }
+
     let (level, _) =
         tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
 

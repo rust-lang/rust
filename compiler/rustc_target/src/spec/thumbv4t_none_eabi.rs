@@ -4,11 +4,21 @@
 //!
 //! Please ping @Lokathor if changes are needed.
 //!
-//! This target profile assumes that you have the ARM binutils in your path (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free for all major OSes from the ARM developer's website, and they may also be available in your system's package manager. Unfortunately, the standard linker that Rust uses (`lld`) only supports as far back as `ARMv5TE`, so we must use the GNU `ld` linker.
+//! This target profile assumes that you have the ARM binutils in your path
+//! (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free
+//! for all major OSes from the ARM developer's website, and they may also be
+//! available in your system's package manager. Unfortunately, the standard
+//! linker that Rust uses (`lld`) only supports as far back as `ARMv5TE`, so we
+//! must use the GNU `ld` linker.
 //!
-//! **Important:** This target profile **does not** specify a linker script. You just get the default link script when you build a binary for this target. The default link script is very likely wrong, so you should use `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
+//! **Important:** This target profile **does not** specify a linker script. You
+//! just get the default link script when you build a binary for this target.
+//! The default link script is very likely wrong, so you should use
+//! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{cvs, LinkerFlavor, Target, TargetOptions};
+use crate::spec::{
+    cvs, FramePointer, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
@@ -37,7 +47,17 @@ pub fn target() -> Target {
             asm_args: cvs!["-mthumb-interwork", "-march=armv4t", "-mlittle-endian",],
 
             // minimum extra features, these cannot be disabled via -C
-            features: "+soft-float,+strict-align".into(),
+            // Also force-enable 32-bit atomics, which allows the use of atomic load/store only.
+            // The resulting atomics are ABI incompatible with atomics backed by libatomic.
+            features: "+soft-float,+strict-align,+atomics-32".into(),
+
+            panic_strategy: PanicStrategy::Abort,
+            relocation_model: RelocModel::Static,
+            // suggested from thumb_base, rust-lang/rust#44993.
+            emit_debug_gdb_scripts: false,
+            // suggested from thumb_base, with no-os gcc/clang use 8-bit enums
+            c_enum_min_bits: 8,
+            frame_pointer: FramePointer::MayOmit,
 
             main_needs_argc_argv: false,
 

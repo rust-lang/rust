@@ -18,7 +18,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ValTree`.
 pub enum ValTree<'tcx> {
-    /// ZSTs, integers, `bool`, `char` are represented as scalars.
+    /// integers, `bool`, `char` are represented as scalars.
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
     /// of these types have the same representation.
     Leaf(ScalarInt),
@@ -27,8 +27,11 @@ pub enum ValTree<'tcx> {
     // dont use SliceOrStr for now
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
+    ///
     /// Enums are represented by storing their discriminant as a field, followed by all
     /// the fields of the variant.
+    ///
+    /// ZST types are represented as an empty slice.
     Branch(&'tcx [ValTree<'tcx>]),
 }
 
@@ -80,33 +83,25 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     /// Get the values inside the ValTree as a slice of bytes. This only works for
-    /// constants with types &str and &[u8].
+    /// constants with types &str, &[u8], or [u8; _].
     pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
         match ty.kind() {
             ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
-                ty::Str => {
-                    let leafs = self
-                        .unwrap_branch()
-                        .into_iter()
-                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
-                        .collect::<Vec<_>>();
-
-                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
-                }
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {
-                    let leafs = self
-                        .unwrap_branch()
-                        .into_iter()
-                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
-                        .collect::<Vec<_>>();
-
-                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
-                }
-                _ => {}
+                // `&str` can be interpreted as raw bytes
+                ty::Str => {}
+                // `&[u8]` can be interpreted as raw bytes
+                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
+                // other `&_` can't be interpreted as raw bytes
+                _ => return None,
             },
-            _ => {}
+            // `[u8; N]` can be interpreted as raw bytes
+            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
+            // Otherwise, type cannot be interpreted as raw bytes
+            _ => return None,
         }
 
-        None
+        Some(tcx.arena.alloc_from_iter(
+            self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().try_to_u8().unwrap()),
+        ))
     }
 }

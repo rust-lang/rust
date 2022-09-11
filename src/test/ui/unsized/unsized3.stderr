@@ -79,14 +79,12 @@ LL | fn f5<Y: ?Sized>(x: &Y) {}
    |        ++++++++
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:40:8
+  --> $DIR/unsized3.rs:40:5
    |
 LL | fn f9<X: ?Sized>(x1: Box<S<X>>) {
    |       - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(*x1, 34));
-   |     -- ^^^^^^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |     ^^ doesn't have a size known at compile-time
    |
 note: required because it appears within the type `S<X>`
   --> $DIR/unsized3.rs:28:8
@@ -106,9 +104,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
 LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
    |        - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(32, *x1));
-   |     --  ^^^^^^^^^ doesn't have a size known at compile-time
-   |     |
-   |     required by a bound introduced by this call
+   |         ^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required because it appears within the type `S<X>`
   --> $DIR/unsized3.rs:28:8

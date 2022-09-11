@@ -129,6 +129,7 @@ trigger_files = [
 
     # Internal tooling
     "src/etc/htmldocck.py",
+    "src/etc/check_missing_items.py",
     "src/tools/jsondocck",
     "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
@@ -136,6 +137,15 @@ trigger_files = [
 ]
 exclude_labels = [
     "T-*",
+]
+
+[autolabel."A-rustdoc-json"]
+trigger_files = [
+    "src/etc/check_missing_items.py",
+    "src/librustdoc/json/",
+    "src/rustdoc-json-types",
+    "src/test/rustdoc-json",
+    "src/tools/jsondocck",
 ]
 
 [autolabel."T-compiler"]
@@ -176,6 +186,20 @@ trigger_files = [
 trigger_files = [
     "src/ci",
     "src/tools/bump-stage0",
+]
+
+[autolabel."A-translation"]
+trigger_files = [
+    "compiler/rustc_error_messages",
+    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_macros/src/diagnostics"
+]
+
+[autolabel."A-query-system"]
+trigger_files = [
+    "compiler/rustc_query_system",
+    "compiler/rustc_query_impl",
+    "compiler/rustc_macros/src/query.rs"
 ]
 
 [notify-zulip."I-prioritize"]
@@ -292,9 +316,6 @@ Examples of `T-libs-api` changes:
 * Changing observable runtime behavior of library APIs
 """
 
-[mentions."library/proc_macro/src/bridge"]
-cc = ["@rust-lang/wg-rls-2"]
-
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
 
@@ -323,6 +344,7 @@ otherwise, make sure you bump the `FORMAT_VERSION` constant.
 cc = [
     "@CraftSpider",
     "@aDotInTheVoid",
+    "@Enselic",
 ]
 
 [mentions."src/tools/cargo"]
@@ -340,4 +362,16 @@ cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
-cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval"]
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakaras"]
+
+[mentions."compiler/rustc_error_messages"]
+message = "`rustc_error_messages` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_errors/src/translation.rs"]
+message = "`rustc_errors::translation` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_macros/src/diagnostics"]
+message = "`rustc_macros::diagnostics` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]

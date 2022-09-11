@@ -1,0 +1,19 @@
+### What it does
+This lint checks for `.to_string()` method calls on values of type `String`.
+
+### Why is this bad?
+The `to_string` method is also used on other types to convert them to a string.
+When called on a `String` it only clones the `String`, which can be better expressed with `.clone()`.
+
+### Example
+```
+// example code where clippy issues a warning
+let msg = String::from("Hello World");
+let _ = msg.to_string();
+```
+Use instead:
+```
+// example code which does not raise clippy warning
+let msg = String::from("Hello World");
+let _ = msg.clone();
+```

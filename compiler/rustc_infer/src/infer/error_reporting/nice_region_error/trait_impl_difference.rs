@@ -2,17 +2,17 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::{SubregionOrigin, Subtype};
-use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
+use crate::infer::Subtype;
+use crate::traits::ObligationCauseCode::CompareImplItemObligation;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
@@ -22,38 +22,22 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let error = self.error.as_ref()?;
         debug!("try_report_impl_not_conforming_to_trait {:?}", error);
         if let RegionResolutionError::SubSupConflict(
-                _, var_origin, sub_origin, _sub, sup_origin, _sup, _,
+                _,
+                var_origin,
+                sub_origin,
+                _sub,
+                sup_origin,
+                _sup,
+                _,
             ) = error.clone()
-            && let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin)
-            && let (
-                sub_expected_found @ Some((sub_expected, sub_found)),
-                sup_expected_found @ Some(_),
-                CompareImplMethodObligation { trait_item_def_id, .. },
-            ) = (sub_trace.values.ty(), sup_trace.values.ty(), sub_trace.cause.code())
+            && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
+            && let sub_expected_found @ Some((sub_expected, sub_found)) = sub_trace.values.ty()
+            && let sup_expected_found @ Some(_) = sup_trace.values.ty()
+            && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
             && sup_expected_found == sub_expected_found
         {
-            let guar = self.emit_err(
-                var_origin.span(),
-                sub_expected,
-                sub_found,
-                *trait_item_def_id,
-            );
-            return Some(guar);
-        }
-        if let RegionResolutionError::ConcreteFailure(origin, _, _)
-            | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
-            && let SubregionOrigin::CompareImplTypeObligation {
-                span,
-                impl_item_def_id,
-                trait_item_def_id,
-            } = origin
-        {
-            let guar = self.emit_associated_type_err(
-                span,
-                self.infcx.tcx.item_name(impl_item_def_id.to_def_id()),
-                impl_item_def_id,
-                trait_item_def_id,
-            );
+            let guar =
+                self.emit_err(var_origin.span(), sub_expected, sub_found, *trait_item_def_id);
             return Some(guar);
         }
         None
@@ -147,25 +131,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         err.emit()
     }
-
-    fn emit_associated_type_err(
-        &self,
-        span: Span,
-        item_name: Symbol,
-        impl_item_def_id: LocalDefId,
-        trait_item_def_id: DefId,
-    ) -> ErrorGuaranteed {
-        let impl_sp = self.tcx().def_span(impl_item_def_id);
-        let trait_sp = self.tcx().def_span(trait_item_def_id);
-        let mut err = self
-            .tcx()
-            .sess
-            .struct_span_err(span, &format!("`impl` associated type signature for `{}` doesn't match `trait` associated type signature", item_name));
-        err.span_label(impl_sp, "found");
-        err.span_label(trait_sp, "expected");
-
-        err.emit()
-    }
 }
 
 struct TypeParamSpanVisitor<'tcx> {
@@ -189,16 +154,11 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                 [segment]
-                    if segment
-                        .res
-                        .map(|res| {
-                            matches!(
-                                res,
-                                Res::SelfTy { trait_: _, alias_to: _ }
-                                    | Res::Def(hir::def::DefKind::TyParam, _)
-                            )
-                        })
-                        .unwrap_or(false) =>
+                    if matches!(
+                        segment.res,
+                        Res::SelfTy { trait_: _, alias_to: _ }
+                            | Res::Def(hir::def::DefKind::TyParam, _)
+                    ) =>
                 {
                     self.types.push(path.span);
                 }

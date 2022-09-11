@@ -82,5 +82,17 @@ error: Unclosed HTML comment
 LL | /// <!--
    |     ^^^
 
-error: aborting due to 13 previous errors
+error: unopened HTML tag `unopened-tag`
+  --> $DIR/invalid-html-tags.rs:114:26
+   |
+LL | /// Web Components style </unopened-tag>
+   |                          ^^^^^^^^^^^^^^^
+
+error: unclosed HTML tag `dashed-tags`
+  --> $DIR/invalid-html-tags.rs:112:26
+   |
+LL | /// Web Components style <dashed-tags>
+   |                          ^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
 

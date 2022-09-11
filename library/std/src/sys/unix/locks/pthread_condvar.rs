@@ -37,6 +37,7 @@ impl Condvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "l4re",
         target_os = "android",
         target_os = "redox"
@@ -58,6 +59,7 @@ impl Condvar {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "l4re",
         target_os = "android",
         target_os = "redox",
@@ -102,6 +104,7 @@ impl Condvar {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "android",
         target_os = "espidf",
         target_os = "horizon"
@@ -135,6 +138,7 @@ impl Condvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "android",
         target_os = "espidf",
         target_os = "horizon"
@@ -168,7 +172,7 @@ impl Condvar {
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = Instant::now();
         let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
-        debug_assert_eq!(r, 0);
+        assert_eq!(r, 0, "unexpected error: {:?}", crate::io::Error::last_os_error());
 
         let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
         let extra = (nsec / 1_000_000_000) as libc::time_t;

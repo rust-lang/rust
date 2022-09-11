@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `impl Send: Duh` is not satisfied
-  --> $DIR/nested-return-type2-tait3.rs:25:13
+  --> $DIR/nested-return-type2-tait3.rs:26:5
    |
-LL | fn foo() -> Traitable {
-   |             ^^^^^^^^^ the trait `Duh` is not implemented for `impl Send`
+LL |     || 42
+   |     ^^^^^ the trait `Duh` is not implemented for `impl Send`
    |
    = help: the trait `Duh` is implemented for `i32`
-note: required because of the requirements on the impl of `Trait` for `[closure@$DIR/nested-return-type2-tait3.rs:27:5: 27:7]`
+note: required for `[closure@$DIR/nested-return-type2-tait3.rs:26:5: 26:7]` to implement `Trait`
   --> $DIR/nested-return-type2-tait3.rs:14:31
    |
 LL | impl<R: Duh, F: FnMut() -> R> Trait for F {

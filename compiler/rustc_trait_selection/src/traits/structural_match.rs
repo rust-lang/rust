@@ -1,33 +1,14 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::ObligationCause;
-use crate::traits::{self, TraitEngine};
+use crate::traits::{TraitEngine, TraitEngineExt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use std::ops::ControlFlow;
-
-#[derive(Debug)]
-pub struct NonStructuralMatchTy<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub kind: NonStructuralMatchTyKind<'tcx>,
-}
-
-#[derive(Debug)]
-pub enum NonStructuralMatchTyKind<'tcx> {
-    Adt(AdtDef<'tcx>),
-    Param,
-    Dynamic,
-    Foreign,
-    Opaque,
-    Closure,
-    Generator,
-    Projection,
-    Float,
-}
 
 /// This method traverses the structure of `ty`, trying to find an
 /// instance of an ADT (i.e. struct or enum) that doesn't implement
@@ -54,15 +35,28 @@ pub enum NonStructuralMatchTyKind<'tcx> {
 /// For more background on why Rust has this requirement, and issues
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
-///
-/// The floats_allowed flag is used to deny constants in floating point
 pub fn search_for_structural_match_violation<'tcx>(
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    floats_allowed: bool,
-) -> Option<NonStructuralMatchTy<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), floats_allowed })
+) -> Option<Ty<'tcx>> {
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: false })
+        .break_value()
+}
+
+/// This method traverses the structure of `ty`, trying to find any
+/// types that are not allowed to be used in a const generic.
+///
+/// This is either because the type does not implement `StructuralEq`
+/// and `StructuralPartialEq`, or because the type is intentionally
+/// not supported in const generics (such as floats and raw pointers,
+/// which are allowed in match blocks).
+pub fn search_for_adt_const_param_violation<'tcx>(
+    span: Span,
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Ty<'tcx>> {
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: true })
         .break_value()
 }
 
@@ -78,7 +72,7 @@ fn type_marked_structural<'tcx>(
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> bool {
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
@@ -125,7 +119,10 @@ struct Search<'tcx> {
     /// we will not recur on them again.
     seen: FxHashSet<hir::def_id::DefId>,
 
-    floats_allowed: bool,
+    // Additionally deny things that have been allowed in patterns,
+    // but are not allowed in adt const params, such as floats and
+    // fn ptrs.
+    adt_const_param: bool,
 }
 
 impl<'tcx> Search<'tcx> {
@@ -135,7 +132,7 @@ impl<'tcx> Search<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
-    type BreakTy = NonStructuralMatchTy<'tcx>;
+    type BreakTy = Ty<'tcx>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("Search visiting ty: {:?}", ty);
@@ -143,51 +140,27 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
         let (adt_def, substs) = match *ty.kind() {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
-                let kind = NonStructuralMatchTyKind::Param;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Dynamic(..) => {
-                let kind = NonStructuralMatchTyKind::Dynamic;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Foreign(_) => {
-                let kind = NonStructuralMatchTyKind::Foreign;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Opaque(..) => {
-                let kind = NonStructuralMatchTyKind::Opaque;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Projection(..) => {
-                let kind = NonStructuralMatchTyKind::Projection;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Closure(..) => {
-                let kind = NonStructuralMatchTyKind::Closure;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Generator(..) | ty::GeneratorWitness(..) => {
-                let kind = NonStructuralMatchTyKind::Generator;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
-            ty::RawPtr(..) => {
-                // structural-match ignores substructure of
-                // `*const _`/`*mut _`, so skip `super_visit_with`.
-                //
-                // For example, if you have:
-                // ```
-                // struct NonStructural;
-                // #[derive(PartialEq, Eq)]
-                // struct T(*const NonStructural);
-                // const C: T = T(std::ptr::null());
-                // ```
-                //
-                // Even though `NonStructural` does not implement `PartialEq`,
-                // structural equality on `T` does not recur into the raw
-                // pointer. Therefore, one can still use `C` in a pattern.
-                return ControlFlow::CONTINUE;
-            }
-            ty::FnDef(..) | ty::FnPtr(..) => {
+            ty::FnDef(..) => {
                 // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 return ControlFlow::CONTINUE;
@@ -206,14 +179,41 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 return ControlFlow::CONTINUE;
             }
 
-            ty::Float(_) => {
-                if self.floats_allowed {
+            ty::FnPtr(..) => {
+                if !self.adt_const_param {
                     return ControlFlow::CONTINUE;
                 } else {
-                    return ControlFlow::Break(NonStructuralMatchTy {
-                        ty,
-                        kind: NonStructuralMatchTyKind::Float,
-                    });
+                    return ControlFlow::Break(ty);
+                }
+            }
+
+            ty::RawPtr(..) => {
+                if !self.adt_const_param {
+                    // structural-match ignores substructure of
+                    // `*const _`/`*mut _`, so skip `super_visit_with`.
+                    //
+                    // For example, if you have:
+                    // ```
+                    // struct NonStructural;
+                    // #[derive(PartialEq, Eq)]
+                    // struct T(*const NonStructural);
+                    // const C: T = T(std::ptr::null());
+                    // ```
+                    //
+                    // Even though `NonStructural` does not implement `PartialEq`,
+                    // structural equality on `T` does not recur into the raw
+                    // pointer. Therefore, one can still use `C` in a pattern.
+                    return ControlFlow::CONTINUE;
+                } else {
+                    return ControlFlow::Break(ty);
+                }
+            }
+
+            ty::Float(_) => {
+                if !self.adt_const_param {
+                    return ControlFlow::CONTINUE;
+                } else {
+                    return ControlFlow::Break(ty);
                 }
             }
 
@@ -239,8 +239,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
 
         if !self.type_marked_structural(ty) {
             debug!("Search found ty: {:?}", ty);
-            let kind = NonStructuralMatchTyKind::Adt(adt_def);
-            return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+            return ControlFlow::Break(ty);
         }
 
         // structural-match does not care about the

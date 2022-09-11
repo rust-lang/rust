@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::{get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, ExprKind, StmtKind};
+use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{GenericPredicates, PredicateKind, ProjectionPredicate, TraitPredicate};
@@ -116,7 +116,7 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if_chain! {
-        if let ExprKind::Closure { body, fn_decl_span, .. } = arg.kind;
+        if let ExprKind::Closure(&Closure { body, fn_decl_span, .. }) = arg.kind;
         if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind();
         let ret_ty = substs.as_closure().sig().output();
         let ty = cx.tcx.erase_late_bound_regions(ret_ty);
@@ -144,11 +144,12 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
 
 impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::MethodCall(_, args, _) = expr.kind {
+        if let ExprKind::MethodCall(_, receiver, args, _) = expr.kind {
             let arg_indices = get_args_to_check(cx, expr);
+            let args = std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>();
             for (i, trait_name) in arg_indices {
                 if i < args.len() {
-                    match check_arg(cx, &args[i]) {
+                    match check_arg(cx, args[i]) {
                         Some((span, None)) => {
                             span_lint(
                                 cx,

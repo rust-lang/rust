@@ -144,6 +144,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
+    debug!(?assumptions_in_impl_context, ?dtor_predicates.predicates);
+
     let self_param_env = tcx.param_env(self_type_did);
 
     // An earlier version of this code attempted to do this checking
@@ -318,8 +320,8 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
         // Anonymizing the LBRs is necessary to solve (Issue #59497).
         // After we do so, it should be totally fine to skip the binders.
-        let anon_a = self.tcx.anonymize_late_bound_regions(a);
-        let anon_b = self.tcx.anonymize_late_bound_regions(b);
+        let anon_a = self.tcx.anonymize_bound_vars(a);
+        let anon_b = self.tcx.anonymize_bound_vars(b);
         self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
 
         Ok(a)

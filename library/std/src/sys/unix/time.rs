@@ -141,7 +141,7 @@ impl From<libc::timespec> for Timespec {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 mod inner {
     use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
@@ -257,7 +257,7 @@ mod inner {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
 mod inner {
     use crate::fmt;
     use crate::mem::MaybeUninit;

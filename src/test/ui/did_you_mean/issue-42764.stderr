@@ -25,6 +25,11 @@ error[E0308]: mismatched types
    |
 LL |     let _c = Context { wrapper: Payload{} };
    |                                 ^^^^^^^^^ expected struct `Wrapper`, found struct `Payload`
+   |
+help: try wrapping the expression in `Wrapper`
+   |
+LL |     let _c = Context { wrapper: Wrapper { payload: Payload{} } };
+   |                                 ++++++++++++++++++           +
 
 error: aborting due to 2 previous errors
 

@@ -19,7 +19,8 @@ trait Trait2<'a, 'b> {
 // since for it to be WF, we would need to know that `'y: 'x`, but we
 // do not infer that.
 fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
-    //~^ the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
+    //~^ ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
+    //~| ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
 {
 }
 

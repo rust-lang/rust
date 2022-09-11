@@ -3,12 +3,16 @@ use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::common::{span_invalid_monomorphization_error, IntPredicate};
 use crate::glue;
+use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::{
+    call::{FnAbi, PassMode},
+    WrappingRange,
+};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -73,10 +77,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
-            sym::assume => {
-                bx.assume(args[0].immediate());
-                return;
-            }
             sym::abort => {
                 bx.abort();
                 return;
@@ -101,6 +101,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
+            }
+            sym::vtable_size | sym::vtable_align => {
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
+                    _ => bug!(),
+                };
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                if name == sym::vtable_align {
+                    // Alignment is always nonzero.
+                    bx.range_metadata(value, WrappingRange { start: 1, end: !0 });
+                };
+                value
             }
             sym::pref_align_of
             | sym::needs_drop
@@ -537,14 +551,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    bx.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    bx.icmp(IntPredicate::IntNE, a, b)
-                }
+                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
@@ -579,8 +589,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(&ty));
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
+                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {

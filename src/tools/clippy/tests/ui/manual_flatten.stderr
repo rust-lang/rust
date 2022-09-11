@@ -167,5 +167,33 @@ LL | |             println!("{:?}", n);
 LL | |         }
    | |_________^
 
-error: aborting due to 8 previous errors
+error: unnecessary `if let` since only the `Some` variant of the iterator element is used
+  --> $DIR/manual_flatten.rs:116:5
+   |
+LL | /     for n in vec![
+LL | |         Some(1),
+LL | |         Some(2),
+LL | |         Some(3)
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: remove the `if let` statement in the for loop and then...
+  --> $DIR/manual_flatten.rs:121:9
+   |
+LL | /         if let Some(n) = n {
+LL | |             println!("{:?}", n);
+LL | |         }
+   | |_________^
+help: try
+   |
+LL ~     for n in vec![
+LL +         Some(1),
+LL +         Some(2),
+LL +         Some(3)
+LL ~     ].iter().flatten() {
+   |
+
+error: aborting due to 9 previous errors
 

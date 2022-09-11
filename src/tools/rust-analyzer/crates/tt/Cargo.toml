@@ -1,0 +1,15 @@
+[package]
+name = "tt"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+smol_str = "0.1.23"
+
+stdx = { path = "../stdx", version = "0.0.0" }

@@ -16,7 +16,7 @@ LL |     (|| {})(|| {
 help: remove the extra argument
    |
 LL |     (|| {})();
-   |     ~~~~~~~~~
+   |            ~~
 
 error: aborting due to previous error
 

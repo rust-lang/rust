@@ -12,6 +12,8 @@ The target names follow this format: `$ARCH-unknown-openbsd`, where `$ARCH` spec
 |--------------------------------|-------------|------------------|
 | `aarch64-unknown-openbsd`      | libc++      | [64-bit ARM systems](https://www.openbsd.org/arm64.html)  |
 | `i686-unknown-openbsd`         | libc++      | [Standard PC and clones based on the Intel i386 architecture and compatible processors](https://www.openbsd.org/i386.html) |
+| `powerpc64-unknown-openbsd`    | libc++      | [IBM POWER-based PowerNV systems](https://www.openbsd.org/powerpc64.html) |
+| `riscv64gc-unknown-openbsd`    | libc++      | [64-bit RISC-V systems](https://www.openbsd.org/riscv64.html) |
 | `sparc64-unknown-openbsd`      | estdc++     | [Sun UltraSPARC and Fujitsu SPARC64 systems](https://www.openbsd.org/sparc64.html) |
 | `x86_64-unknown-openbsd`       | libc++      | [AMD64-based systems](https://www.openbsd.org/amd64.html) |
 

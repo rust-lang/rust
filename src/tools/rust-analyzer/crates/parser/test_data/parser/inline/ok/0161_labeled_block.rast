@@ -1,0 +1,28 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          BLOCK_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'label"
+              COLON ":"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

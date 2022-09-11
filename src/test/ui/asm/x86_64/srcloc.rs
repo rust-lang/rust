@@ -120,5 +120,12 @@ fn main() {
         //~^^^^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction2'
         //~^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction3'
         //~^^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction4'
+
+        asm!(
+            "",
+            "\n",
+            "invalid_instruction"
+        );
+        //~^^ ERROR: invalid instruction mnemonic 'invalid_instruction'
     }
 }

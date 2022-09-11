@@ -6,7 +6,7 @@ use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProce
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
@@ -58,19 +58,6 @@ pub struct FulfillmentContext<'tcx> {
 
     relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
 
-    // Should this fulfillment context register type-lives-for-region
-    // obligations on its parent infcx? In some cases, region
-    // obligations are either already known to hold (normalization) or
-    // hopefully verified elsewhere (type-impls-bound), and therefore
-    // should not be checked.
-    //
-    // Note that if we are normalizing a type that we already
-    // know is well-formed, there should be no harm setting this
-    // to true - all the region variables should be determinable
-    // using the RFC 447 rules, which don't depend on
-    // type-lives-for-region constraints, and because the type
-    // is well-formed, the constraints should hold.
-    register_region_obligations: bool,
     // Is it OK to register obligations into this infcx inside
     // an infcx snapshot?
     //
@@ -103,7 +90,6 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
-            register_region_obligations: true,
             usable_in_snapshot: false,
         }
     }
@@ -112,17 +98,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
-            register_region_obligations: true,
             usable_in_snapshot: true,
-        }
-    }
-
-    pub fn new_ignoring_regions() -> FulfillmentContext<'tcx> {
-        FulfillmentContext {
-            predicates: ObligationForest::new(),
-            relationships: FxHashMap::default(),
-            register_region_obligations: false,
-            usable_in_snapshot: false,
         }
     }
 
@@ -132,10 +108,8 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         let _enter = span.enter();
 
         // Process pending obligations.
-        let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut FulfillProcessor {
-            selcx,
-            register_region_obligations: self.register_region_obligations,
-        });
+        let outcome: Outcome<_, _> =
+            self.predicates.process_obligations(&mut FulfillProcessor { selcx });
 
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
@@ -161,7 +135,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    #[tracing::instrument(level = "debug", skip(self, infcx, param_env, cause))]
+    #[instrument(level = "debug", skip(self, infcx, param_env, cause))]
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -239,7 +213,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
 struct FulfillProcessor<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
-    register_region_obligations: bool,
 }
 
 fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligation<'_>> {
@@ -295,6 +268,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is called much less often than `needs_process_obligation`, so we
     /// never inline it.
     #[inline(never)]
+    #[instrument(level = "debug", skip(self, pending_obligation))]
     fn process_obligation(
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
@@ -303,7 +277,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
-        debug!(?obligation, "process_obligation pre-resolve");
+        debug!(?obligation, "pre-resolve");
 
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
@@ -311,8 +285,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         let obligation = &pending_obligation.obligation;
-
-        debug!(?obligation, ?obligation.cause, "process_obligation");
 
         let infcx = self.selcx.infcx();
 
@@ -386,19 +358,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {
-                    match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
-                        Ok(()) => ProcessResult::Changed(vec![]),
-                        Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                    if infcx.considering_regions || data.has_placeholders() {
+                        infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
+
+                    ProcessResult::Changed(vec![])
                 }
 
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
-                    if self.register_region_obligations {
-                        self.selcx.infcx().register_region_obligation_with_cause(
-                            t_a,
-                            r_b,
-                            &obligation.cause,
-                        );
+                    if infcx.considering_regions {
+                        infcx.register_region_obligation_with_cause(t_a, r_b, &obligation.cause);
                     }
                     ProcessResult::Changed(vec![])
                 }
@@ -603,7 +572,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.selcx.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }
@@ -628,6 +597,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
     }
 
+    #[inline(never)]
     fn process_backedge<'c, I>(
         &mut self,
         cycle: I,

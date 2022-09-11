@@ -88,15 +88,9 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // shouldn't be implemented when it is hidden in docs
                             return;
                         }
-                        if impl_item
-                            .generics
-                            .params
-                            .iter()
-                            .any(|gen| matches!(gen.kind, hir::GenericParamKind::Type { .. }))
-                        {
-                            // when the result of `new()` depends on a type parameter we should not require
-                            // an
-                            // impl of `Default`
+                        if !impl_item.generics.params.is_empty() {
+                            // when the result of `new()` depends on a parameter we should not require
+                            // an impl of `Default`
                             return;
                         }
                         if_chain! {

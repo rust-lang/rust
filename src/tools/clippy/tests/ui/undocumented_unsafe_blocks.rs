@@ -250,6 +250,11 @@ fn from_proc_macro() {
     proc_macro_unsafe::unsafe_block!(token);
 }
 
+fn in_closure(x: *const u32) {
+    // Safety: reason
+    let _ = || unsafe { *x };
+}
+
 // Invalid comments
 
 #[rustfmt::skip]
@@ -351,9 +356,9 @@ mod unsafe_impl_smoke_test {
 
     #[rustfmt::skip]
     mod sub_mod2 {
-        // 
+        //
         // SAFETY: ok
-        // 
+        //
 
         unsafe impl B for (u32) {}
         unsafe trait B {}

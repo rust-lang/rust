@@ -620,4 +620,11 @@ fn should_trigger_lint_without_significant_drop_in_arm() {
     };
 }
 
+fn should_not_trigger_on_significant_iterator_drop() {
+    let lines = std::io::stdin().lines();
+    for line in lines {
+        println!("foo: {}", line.unwrap());
+    }
+}
+
 fn main() {}

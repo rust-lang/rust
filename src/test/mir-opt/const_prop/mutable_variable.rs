@@ -1,3 +1,4 @@
+// unit-test
 // compile-flags: -O
 
 // EMIT_MIR mutable_variable.main.ConstProp.diff

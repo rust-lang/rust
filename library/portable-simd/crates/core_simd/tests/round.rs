@@ -59,7 +59,7 @@ macro_rules! float_rounding_test {
                     const MAX_REPRESENTABLE_VALUE: Scalar =
                         (ALL_MANTISSA_BITS << (core::mem::size_of::<Scalar>() * 8 - <Scalar>::MANTISSA_DIGITS as usize - 1)) as Scalar;
 
-                    let mut runner = proptest::test_runner::TestRunner::default();
+                    let mut runner = test_helpers::make_runner();
                     runner.run(
                         &test_helpers::array::UniformArrayStrategy::new(-MAX_REPRESENTABLE_VALUE..MAX_REPRESENTABLE_VALUE),
                         |x| {

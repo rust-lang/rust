@@ -2,7 +2,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArg, Subst, UserSelfTy, UserSubsts};
@@ -120,6 +120,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         EarlyBinder(value).subst(self.tcx(), substs)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn relate_mir_and_user_ty(
         &mut self,
         mir_ty: Ty<'tcx>,
@@ -132,8 +133,8 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
 
         let ty = tcx.type_of(def_id);
         let ty = self.subst(ty, substs);
-        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
+        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
         self.relate(mir_ty, Variance::Invariant, ty)?;
 
@@ -144,7 +145,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         // outlives" error messages.
         let instantiated_predicates =
             self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
-        debug!(?instantiated_predicates.predicates);
+        debug!(?instantiated_predicates);
         for instantiated_predicate in instantiated_predicates.predicates {
             let instantiated_predicate = self.normalize(instantiated_predicate);
             self.prove_predicate(instantiated_predicate, span);
@@ -258,10 +259,15 @@ fn type_op_prove_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
-        type_op_prove_predicate_with_cause(infcx, fulfill_cx, key, ObligationCause::dummy());
-        Ok(())
-    })
+    // HACK This bubble is required for this test to pass:
+    // impl-trait/issue-99642.rs
+    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_canonical_trait_query(
+        &canonicalized,
+        |infcx, fulfill_cx, key| {
+            type_op_prove_predicate_with_cause(infcx, fulfill_cx, key, ObligationCause::dummy());
+            Ok(())
+        },
+    )
 }
 
 /// The core of the `type_op_prove_predicate` query: for diagnostics purposes in NLL HRTB errors,

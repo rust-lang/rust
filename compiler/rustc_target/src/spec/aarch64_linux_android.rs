@@ -17,6 +17,7 @@ pub fn target() -> Target {
             supported_sanitizers: SanitizerSet::CFI
                 | SanitizerSet::HWADDRESS
                 | SanitizerSet::MEMTAG
+                | SanitizerSet::SHADOWCALLSTACK
                 | SanitizerSet::ADDRESS,
             ..super::android_base::opts()
         },

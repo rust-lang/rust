@@ -1,13 +1,11 @@
-use crate::dep_graph::DepContext;
+use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
-use rustc_hir::def::DefKind;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level,
-};
-use rustc_session::Session;
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level};
+use rustc_hir::def::DefKind;
+use rustc_session::{Session, SessionDiagnostic};
 use rustc_span::Span;
 
 use std::hash::Hash;
@@ -536,51 +534,45 @@ pub(crate) fn report_cycle<'a>(
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
-    let fix_span = |span: Span, query: &QueryStackFrame| {
-        sess.source_map().guess_head_span(query.default_span(span))
-    };
+    let span = stack[0].query.default_span(stack[1 % stack.len()].span);
 
-    let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
-    let mut err =
-        struct_span_err!(sess, span, E0391, "cycle detected when {}", stack[0].query.description);
+    let mut cycle_stack = Vec::new();
+
+    use crate::error::StackCount;
+    let stack_count = if stack.len() == 1 { StackCount::Single } else { StackCount::Multiple };
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
-        let span = fix_span(stack[(i + 1) % stack.len()].span, query);
-        err.span_note(span, &format!("...which requires {}...", query.description));
+        let span = query.default_span(stack[(i + 1) % stack.len()].span);
+        cycle_stack.push(CycleStack { span, desc: query.description.to_owned() });
     }
 
-    if stack.len() == 1 {
-        err.note(&format!("...which immediately requires {} again", stack[0].query.description));
-    } else {
-        err.note(&format!(
-            "...which again requires {}, completing the cycle",
-            stack[0].query.description
-        ));
-    }
-
-    if stack.iter().all(|entry| {
-        entry
-            .query
-            .def_kind
-            .map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias | DefKind::TraitAlias))
-    }) {
-        if stack.iter().all(|entry| {
-            entry.query.def_kind.map_or(false, |def_kind| matches!(def_kind, DefKind::TyAlias))
-        }) {
-            err.note("type aliases cannot be recursive");
-            err.help("consider using a struct, enum, or union instead to break the cycle");
-            err.help("see <https://doc.rust-lang.org/reference/types.html#recursive-types> for more information");
-        } else {
-            err.note("trait aliases cannot be recursive");
-        }
-    }
-
+    let mut cycle_usage = None;
     if let Some((span, query)) = usage {
-        err.span_note(fix_span(span, &query), &format!("cycle used when {}", query.description));
+        cycle_usage = Some(crate::error::CycleUsage {
+            span: query.default_span(span),
+            usage: query.description,
+        });
     }
 
-    err
+    let alias = if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TyAlias)) {
+        Some(crate::error::Alias::Ty)
+    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
+        Some(crate::error::Alias::Trait)
+    } else {
+        None
+    };
+
+    let cycle_diag = crate::error::Cycle {
+        span,
+        cycle_stack,
+        stack_bottom: stack[0].query.description.to_owned(),
+        alias,
+        cycle_usage: cycle_usage,
+        stack_count,
+    };
+
+    cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
 pub fn print_query_stack<CTX: QueryContext>(
@@ -606,8 +598,7 @@ pub fn print_query_stack<CTX: QueryContext>(
             Level::FailureNote,
             &format!("#{} [{}] {}", i, query_info.query.name, query_info.query.description),
         );
-        diag.span =
-            tcx.dep_context().sess().source_map().guess_head_span(query_info.job.span).into();
+        diag.span = query_info.job.span.into();
         handler.force_print_diagnostic(diag);
 
         current_query = query_info.job.parent;

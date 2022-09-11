@@ -90,7 +90,7 @@ NATIVE_STATICLIB = $(TMPDIR)/$(call NATIVE_STATICLIB_FILE,$(1))
 OUT_EXE=-Fe:`cygpath -w $(TMPDIR)/$(call BIN,$(1))` \
 	-Fo:`cygpath -w $(TMPDIR)/$(1).obj`
 else
-COMPILE_OBJ = $(CC) -c -o $(1) $(2)
+COMPILE_OBJ = $(CC) -v -c -o $(1) $(2)
 COMPILE_OBJ_CXX = $(CXX) -c -o $(1) $(2)
 NATIVE_STATICLIB_FILE = lib$(1).a
 NATIVE_STATICLIB = $(call STATICLIB,$(1))

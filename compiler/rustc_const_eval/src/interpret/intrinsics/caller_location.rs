@@ -28,7 +28,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let mut source_info = *frame.body.source_info(loc);
 
             // If this is a `Call` terminator, use the `fn_span` instead.
-            let block = &frame.body.basic_blocks()[loc.block];
+            let block = &frame.body.basic_blocks[loc.block];
             if loc.statement_index == block.statements.len() {
                 debug!(
                     "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
@@ -79,8 +79,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         filename: Symbol,
         line: u32,
         col: u32,
-    ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let loc_details = &self.tcx.sess.opts.debugging_opts.location_detail;
+    ) -> MPlaceTy<'tcx, M::Provenance> {
+        let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
         let file = if loc_details.file {
             self.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
         } else {
@@ -123,7 +123,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
-    pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::PointerTag> {
+    pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::Provenance> {
         let (file, line, column) = self.location_triple_for_span(span);
         self.alloc_caller_location(file, line, column)
     }

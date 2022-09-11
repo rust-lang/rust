@@ -388,6 +388,7 @@ impl PartialEq<&str> for TargetSelection {
 pub struct Target {
     /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
+    pub llvm_has_rust_patches: Option<bool>,
     /// Some(path to FileCheck) if one was specified.
     pub llvm_filecheck: Option<PathBuf>,
     pub llvm_libunwind: Option<LlvmLibunwind>,
@@ -411,7 +412,11 @@ pub struct Target {
 impl Target {
     pub fn from_triple(triple: &str) -> Self {
         let mut target: Self = Default::default();
-        if triple.contains("-none") || triple.contains("nvptx") {
+        if triple.contains("-none")
+            || triple.contains("nvptx")
+            || triple.contains("switch")
+            || triple.contains("-uefi")
+        {
             target.no_std = true;
         }
         target
@@ -729,6 +734,7 @@ define_config! {
         default_linker: Option<PathBuf> = "default-linker",
         linker: Option<String> = "linker",
         llvm_config: Option<String> = "llvm-config",
+        llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         android_ndk: Option<String> = "android-ndk",
@@ -986,42 +992,7 @@ impl Config {
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    // This is currently all tier 1 targets and tier 2 targets with host tools
-                    // (since others may not have CI artifacts)
-                    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
-                    // FIXME: this is duplicated in bootstrap.py
-                    let supported_platforms = [
-                        // tier 1
-                        "aarch64-unknown-linux-gnu",
-                        "i686-pc-windows-gnu",
-                        "i686-pc-windows-msvc",
-                        "i686-unknown-linux-gnu",
-                        "x86_64-unknown-linux-gnu",
-                        "x86_64-apple-darwin",
-                        "x86_64-pc-windows-gnu",
-                        "x86_64-pc-windows-msvc",
-                        // tier 2 with host tools
-                        "aarch64-apple-darwin",
-                        "aarch64-pc-windows-msvc",
-                        "aarch64-unknown-linux-musl",
-                        "arm-unknown-linux-gnueabi",
-                        "arm-unknown-linux-gnueabihf",
-                        "armv7-unknown-linux-gnueabihf",
-                        "mips-unknown-linux-gnu",
-                        "mips64-unknown-linux-gnuabi64",
-                        "mips64el-unknown-linux-gnuabi64",
-                        "mipsel-unknown-linux-gnu",
-                        "powerpc-unknown-linux-gnu",
-                        "powerpc64-unknown-linux-gnu",
-                        "powerpc64le-unknown-linux-gnu",
-                        "riscv64gc-unknown-linux-gnu",
-                        "s390x-unknown-linux-gnu",
-                        "x86_64-unknown-freebsd",
-                        "x86_64-unknown-illumos",
-                        "x86_64-unknown-linux-musl",
-                        "x86_64-unknown-netbsd",
-                    ];
-                    supported_platforms.contains(&&*config.build.triple)
+                    crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => false,
@@ -1140,6 +1111,7 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_config {
                     target.llvm_config = Some(config.src.join(s));
                 }
+                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
@@ -1172,6 +1144,7 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.build.triple;
+            let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let mut build_target = config
                 .target_config
                 .entry(config.build)
@@ -1179,7 +1152,6 @@ impl Config {
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
         }
@@ -1308,6 +1280,13 @@ impl Config {
         git
     }
 
+    pub(crate) fn artifact_channel(&self, commit: &str) -> String {
+        let mut channel = self.git();
+        channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+        let channel = output(&mut channel);
+        channel.trim().to_owned()
+    }
+
     /// Try to find the relative path of `bindir`, otherwise return it in full.
     pub fn bindir_relative(&self) -> &Path {
         let bindir = &self.bindir;
@@ -1434,7 +1413,11 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(LlvmLibunwind::No)
+            .unwrap_or(if target.contains("fuchsia") {
+                LlvmLibunwind::InTree
+            } else {
+                LlvmLibunwind::No
+            })
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
@@ -1450,7 +1433,7 @@ fn set<T>(field: &mut T, val: Option<T>) {
 
 fn threads_from_config(v: u32) -> u32 {
     match v {
-        0 => num_cpus::get() as u32,
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
         n => n,
     }
 }
@@ -1543,8 +1526,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    // FIXME: support downloading artifacts from the beta channel
-    const CHANNEL: &str = "nightly";
+    let channel = builder.config.artifact_channel(commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");
@@ -1553,13 +1535,13 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
         }
-        let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rust-std-{channel}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
         download_ci_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rustc-{channel}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));

@@ -16,15 +16,27 @@ click: (10, 10)
 wait-for: "html:not(.expanded)"
 assert: "nav.sidebar"
 
+// Checking that only the path to the current file is "open".
+goto: file://|DOC_PATH|/src/lib2/another_folder/sub_mod/mod.rs.html
+// First we expand the sidebar again.
+click: (10, 10)
+// We wait for the sidebar to be expanded.
+wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "300px"})
+assert: "//*[@class='dir-entry' and @open]/*[text()='lib2']"
+assert: "//*[@class='dir-entry' and @open]/*[text()='another_folder']"
+assert: "//*[@class='dir-entry' and @open]/*[text()='sub_mod']"
+// Only "another_folder" should be "open" in "lib2".
+assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
+// All other trees should be collapsed.
+assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@open)]", 5)
+
 // We now switch to mobile mode.
 size: (600, 600)
-// We check that the sidebar has the expected width (0).
-assert-css: ("nav.sidebar", {"width": "0px"})
-// We expand the sidebar.
-click: "#sidebar-toggle"
-assert-css: (".source-sidebar-expanded nav.sidebar", {"width": "600px"})
+wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "600px"})
 // We collapse the sidebar.
 click: (10, 10)
+// We check that the sidebar has the expected width (0).
+assert-css: ("nav.sidebar", {"width": "0px"})
 // We ensure that the class has been removed.
 assert-false: ".source-sidebar-expanded"
 assert: "nav.sidebar"

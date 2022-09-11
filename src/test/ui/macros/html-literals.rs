@@ -88,6 +88,7 @@ pub fn main() {
     );
 }
 
+#[allow(unused_tuple_struct_fields)]
 enum HTMLFragment {
     tag(String, Vec<HTMLFragment> ),
     text(String),

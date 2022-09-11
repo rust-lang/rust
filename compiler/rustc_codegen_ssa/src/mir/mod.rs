@@ -3,7 +3,6 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable, TypeVisitable};
-use rustc_symbol_mangling::typeid_for_fnabi;
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -151,13 +150,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut bx = Bx::build(cx, start_llbb);
 
-    if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
+    if mir.basic_blocks.iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
     }
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     let cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>> = mir
-        .basic_blocks()
+        .basic_blocks
         .indices()
         .map(|bb| if bb == mir::START_BLOCK { Some(start_llbb) } else { None })
         .collect();
@@ -173,8 +172,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         unreachable_block: None,
         double_unwind_guard: None,
         cleanup_kinds,
-        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
-        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks().len()),
+        landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
+        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
         locals: IndexVec::new(),
         debug_context,
         per_local_var_debug_info: None,
@@ -192,7 +191,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 // errored or at least linted
                 ErrorHandled::Reported(_) | ErrorHandled::Linted => {}
                 ErrorHandled::TooGeneric => {
-                    span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
+                    span_bug!(const_.span, "codegen encountered polymorphic constant: {:?}", err)
                 }
             }
         }
@@ -247,13 +246,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     for (bb, _) in traversal::reverse_postorder(&mir) {
         fx.codegen_block(bb);
     }
-
-    // For backends that support CFI using type membership (i.e., testing whether a given  pointer
-    // is associated with a type identifier).
-    if cx.tcx().sess.is_sanitizer_cfi_enabled() {
-        let typeid = typeid_for_fnabi(cx.tcx(), fn_abi);
-        bx.type_metadata(llfn, typeid);
-    }
 }
 
 /// Produces, for each argument, a `Value` pointing at the
@@ -291,7 +283,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 for i in 0..tupled_arg_tys.len() {
                     let arg = &fx.fn_abi.args[idx];
                     idx += 1;
-                    if arg.pad.is_some() {
+                    if let PassMode::Cast(_, true) = arg.mode {
                         llarg_idx += 1;
                     }
                     let pr_field = place.project_field(bx, i);
@@ -317,7 +309,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let arg = &fx.fn_abi.args[idx];
             idx += 1;
-            if arg.pad.is_some() {
+            if let PassMode::Cast(_, true) = arg.mode {
                 llarg_idx += 1;
             }
 

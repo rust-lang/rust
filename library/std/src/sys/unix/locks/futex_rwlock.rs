@@ -54,7 +54,7 @@ fn is_read_lockable(state: u32) -> bool {
     // We don't allow read-locking if there's readers waiting, even if the lock is unlocked
     // and there's no writers waiting. The only situation when this happens is after unlocking,
     // at which point the unlocking thread might be waking up writers, which have priority over readers.
-    // The unlocking thread will clear the readers waiting bit and wake up readers, if necssary.
+    // The unlocking thread will clear the readers waiting bit and wake up readers, if necessary.
     state & MASK < MAX_READERS && !has_readers_waiting(state) && !has_writers_waiting(state)
 }
 

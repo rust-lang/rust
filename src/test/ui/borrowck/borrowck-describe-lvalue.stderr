@@ -36,6 +36,10 @@ LL | |                 }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |                move || {
+   |                ++++
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:37:9
@@ -196,7 +200,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 LL |         match v {
 LL |             &[x @ ..] => println!("{:?}", x),
-   |               ^^^^^^ use of borrowed `v`
+   |               ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -208,7 +212,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[_, x @ ..] => println!("{:?}", x),
-   |                  ^^^^^^ use of borrowed `v`
+   |                  ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -220,7 +224,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[x @ .., _] => println!("{:?}", x),
-   |               ^^^^^^ use of borrowed `v`
+   |               ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here
@@ -232,7 +236,7 @@ LL |         let x = &mut v;
    |                 ------ borrow of `v` occurs here
 ...
 LL |             &[_, x @ .., _] => println!("{:?}", x),
-   |                  ^^^^^^ use of borrowed `v`
+   |                  ^ use of borrowed `v`
 ...
 LL |         drop(x);
    |              - borrow later used here

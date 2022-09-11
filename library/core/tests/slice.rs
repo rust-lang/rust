@@ -410,6 +410,50 @@ fn test_chunks_mut_zip() {
 }
 
 #[test]
+fn test_chunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_chunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
+}
+
+#[test]
 fn test_chunks_exact_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.chunks_exact(3);
@@ -1145,6 +1189,28 @@ fn test_rchunks_exact_mut_zip() {
         }
     }
     assert_eq!(v1, [0, 16, 17, 22, 23]);
+}
+
+#[test]
+fn chunks_mut_are_send_and_sync() {
+    use std::cell::Cell;
+    use std::slice::{ChunksExactMut, ChunksMut, RChunksExactMut, RChunksMut};
+    use std::sync::MutexGuard;
+
+    fn assert_send_and_sync()
+    where
+        ChunksMut<'static, Cell<i32>>: Send,
+        ChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        ChunksExactMut<'static, Cell<i32>>: Send,
+        ChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksMut<'static, Cell<i32>>: Send,
+        RChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksExactMut<'static, Cell<i32>>: Send,
+        RChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+    {
+    }
+
+    assert_send_and_sync();
 }
 
 #[test]

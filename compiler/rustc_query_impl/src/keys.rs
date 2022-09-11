@@ -6,7 +6,7 @@ use rustc_middle::mir;
 use rustc_middle::traits;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -182,6 +182,16 @@ impl Key for (DefId, LocalDefId) {
 }
 
 impl Key for (LocalDefId, DefId) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
+impl Key for (LocalDefId, LocalDefId) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -376,6 +386,16 @@ impl<'tcx> Key for ty::Const<'tcx> {
 }
 
 impl<'tcx> Key for Ty<'tcx> {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl<'tcx> Key for TyAndLayout<'tcx> {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true

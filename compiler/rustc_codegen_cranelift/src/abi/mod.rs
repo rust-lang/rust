@@ -4,6 +4,7 @@ mod comments;
 mod pass_mode;
 mod returning;
 
+use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_target::abi::call::{Conv, FnAbi};
@@ -69,7 +70,17 @@ pub(crate) fn import_function<'tcx>(
 ) -> FuncId {
     let name = tcx.symbol_name(inst).name;
     let sig = get_function_sig(tcx, module.isa().triple(), inst);
-    module.declare_function(name, Linkage::Import, &sig).unwrap()
+    match module.declare_function(name, Linkage::Import, &sig) {
+        Ok(func_id) => func_id,
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{name}` as function, but it was already declared as static"
+        )),
+        Err(ModuleError::IncompatibleSignature(_, prev_sig, new_sig)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{name}` with signature {new_sig:?}, \
+             but it was already declared with signature {prev_sig:?}"
+        )),
+        Err(err) => Err::<_, _>(err).unwrap(),
+    }
 }
 
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
@@ -182,6 +193,15 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     let fn_abi = fx.fn_abi.take().unwrap();
+
+    // FIXME implement variadics in cranelift
+    if fn_abi.c_variadic {
+        fx.tcx.sess.span_fatal(
+            fx.mir.span,
+            "Defining variadic functions is not yet supported by Cranelift",
+        );
+    }
+
     let mut arg_abis_iter = fn_abi.args.iter();
 
     let func_params = fx
@@ -322,7 +342,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let ret_place = codegen_place(fx, destination);
 
-    // Handle special calls like instrinsics and empty drop glue.
+    // Handle special calls like intrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
         let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
             .unwrap()
@@ -376,9 +396,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         RevealAllLayoutCx(fx.tcx).fn_abi_of_fn_ptr(fn_ty.fn_sig(fx.tcx), extra_args)
     };
 
-    let is_cold = instance
-        .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
-        .unwrap_or(false);
+    let is_cold = if fn_sig.abi == Abi::RustCold {
+        true
+    } else {
+        instance
+            .map(|inst| {
+                fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD)
+            })
+            .unwrap_or(false)
+    };
     if is_cold {
         fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         if let Some(destination_block) = target {

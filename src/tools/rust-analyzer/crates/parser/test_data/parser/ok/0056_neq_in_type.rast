@@ -1,0 +1,65 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        IF_EXPR
+          IF_KW "if"
+          WHITESPACE " "
+          BIN_EXPR
+            CAST_EXPR
+              METHOD_CALL_EXPR
+                LITERAL
+                  FLOAT_NUMBER "1.0f32"
+                DOT "."
+                NAME_REF
+                  IDENT "floor"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i64"
+            WHITESPACE " "
+            NEQ "!="
+            WHITESPACE " "
+            CAST_EXPR
+              METHOD_CALL_EXPR
+                LITERAL
+                  FLOAT_NUMBER "1.0f32"
+                DOT "."
+                NAME_REF
+                  IDENT "floor"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i64"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

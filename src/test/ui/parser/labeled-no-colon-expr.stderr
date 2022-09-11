@@ -1,5 +1,5 @@
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:4:5
+  --> $DIR/labeled-no-colon-expr.rs:2:5
    |
 LL |     'l0 while false {}
    |     ----^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     'l0 while false {}
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:5:5
+  --> $DIR/labeled-no-colon-expr.rs:3:5
    |
 LL |     'l1 for _ in 0..1 {}
    |     ----^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     'l1 for _ in 0..1 {}
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:6:5
+  --> $DIR/labeled-no-colon-expr.rs:4:5
    |
 LL |     'l2 loop {}
    |     ----^^^^^^^
@@ -32,7 +32,7 @@ LL |     'l2 loop {}
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:7:5
+  --> $DIR/labeled-no-colon-expr.rs:5:5
    |
 LL |     'l3 {}
    |     ----^^
@@ -43,7 +43,7 @@ LL |     'l3 {}
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/labeled-no-colon-expr.rs:8:9
+  --> $DIR/labeled-no-colon-expr.rs:6:9
    |
 LL |     'l4 0;
    |         ^ expected `while`, `for`, `loop` or `{` after a label
@@ -55,7 +55,7 @@ LL +     0;
    |
 
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:8:9
+  --> $DIR/labeled-no-colon-expr.rs:6:9
    |
 LL |     'l4 0;
    |     ----^
@@ -66,7 +66,7 @@ LL |     'l4 0;
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/labeled-no-colon-expr.rs:13:17
+  --> $DIR/labeled-no-colon-expr.rs:11:17
    |
 LL |             'l5 $b;
    |             ----^^
@@ -79,7 +79,7 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: labeled expression must be followed by `:`
-  --> $DIR/labeled-no-colon-expr.rs:16:8
+  --> $DIR/labeled-no-colon-expr.rs:14:8
    |
 LL |             'l5 $b;
    |             ---- help: add `:` after the label

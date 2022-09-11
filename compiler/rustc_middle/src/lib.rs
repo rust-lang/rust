@@ -26,7 +26,6 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
-#![feature(backtrace)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
@@ -87,6 +86,7 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub(crate) mod error;
 pub mod hir;
 pub mod infer;
 pub mod lint;
@@ -96,6 +96,7 @@ pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+mod values;
 
 pub mod util {
     pub mod bug;

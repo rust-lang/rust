@@ -2,13 +2,13 @@
 + // MIR for `main` after DestinationPropagation
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/union.rs:8:11: 8:11
-      let _1: main::Un;                    // in scope 0 at $DIR/union.rs:13:9: 13:11
-      let mut _2: u32;                     // in scope 0 at $DIR/union.rs:13:23: 13:28
-      let _3: ();                          // in scope 0 at $DIR/union.rs:15:5: 15:27
-      let mut _4: u32;                     // in scope 0 at $DIR/union.rs:15:10: 15:26
+      let mut _0: ();                      // return place in scope 0 at $DIR/union.rs:+0:11: +0:11
+      let _1: main::Un;                    // in scope 0 at $DIR/union.rs:+5:9: +5:11
+      let mut _2: u32;                     // in scope 0 at $DIR/union.rs:+5:23: +5:28
+      let _3: ();                          // in scope 0 at $DIR/union.rs:+7:5: +7:27
+      let mut _4: u32;                     // in scope 0 at $DIR/union.rs:+7:10: +7:26
       scope 1 {
-          debug un => _1;                  // in scope 1 at $DIR/union.rs:13:9: 13:11
+          debug un => _1;                  // in scope 1 at $DIR/union.rs:+5:9: +5:11
           scope 2 {
           }
           scope 3 (inlined std::mem::drop::<u32>) { // at $DIR/union.rs:15:5: 15:27
@@ -17,25 +17,25 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/union.rs:13:9: 13:11
-          StorageLive(_2);                 // scope 0 at $DIR/union.rs:13:23: 13:28
-          _2 = val() -> bb1;               // scope 0 at $DIR/union.rs:13:23: 13:28
+          StorageLive(_1);                 // scope 0 at $DIR/union.rs:+5:9: +5:11
+          StorageLive(_2);                 // scope 0 at $DIR/union.rs:+5:23: +5:28
+          _2 = val() -> bb1;               // scope 0 at $DIR/union.rs:+5:23: +5:28
                                            // mir::Constant
                                            // + span: $DIR/union.rs:13:23: 13:26
                                            // + literal: Const { ty: fn() -> u32 {val}, val: Value(<ZST>) }
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/union.rs:13:14: 13:30
-          nop;                             // scope 0 at $DIR/union.rs:13:14: 13:30
-          StorageDead(_2);                 // scope 0 at $DIR/union.rs:13:29: 13:30
-          StorageLive(_3);                 // scope 1 at $DIR/union.rs:15:5: 15:27
-          StorageLive(_4);                 // scope 1 at $DIR/union.rs:15:10: 15:26
-          nop;                             // scope 2 at $DIR/union.rs:15:19: 15:24
-          StorageDead(_4);                 // scope 1 at $DIR/union.rs:15:26: 15:27
-          StorageDead(_3);                 // scope 1 at $DIR/union.rs:15:27: 15:28
-          StorageDead(_1);                 // scope 0 at $DIR/union.rs:16:1: 16:2
-          return;                          // scope 0 at $DIR/union.rs:16:2: 16:2
+          nop;                             // scope 0 at $DIR/union.rs:+5:14: +5:30
+          nop;                             // scope 0 at $DIR/union.rs:+5:14: +5:30
+          StorageDead(_2);                 // scope 0 at $DIR/union.rs:+5:29: +5:30
+          StorageLive(_3);                 // scope 1 at $DIR/union.rs:+7:5: +7:27
+          StorageLive(_4);                 // scope 1 at $DIR/union.rs:+7:10: +7:26
+          nop;                             // scope 2 at $DIR/union.rs:+7:19: +7:24
+          StorageDead(_4);                 // scope 1 at $DIR/union.rs:+7:26: +7:27
+          StorageDead(_3);                 // scope 1 at $DIR/union.rs:+7:27: +7:28
+          StorageDead(_1);                 // scope 0 at $DIR/union.rs:+8:1: +8:2
+          return;                          // scope 0 at $DIR/union.rs:+8:2: +8:2
       }
   }
   

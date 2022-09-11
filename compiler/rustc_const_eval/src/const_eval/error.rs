@@ -10,12 +10,12 @@ use rustc_span::{Span, Symbol};
 use super::InterpCx;
 use crate::interpret::{
     struct_error, ErrorHandled, FrameInfo, InterpError, InterpErrorInfo, Machine, MachineStopType,
+    UnsupportedOpInfo,
 };
 
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
-    NeedsRfc(String),
     ConstAccessesStatic,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
@@ -42,9 +42,6 @@ impl fmt::Display for ConstEvalErrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::ConstEvalErrKind::*;
         match *self {
-            NeedsRfc(ref msg) => {
-                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
-            }
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {
                 write!(f, "modifying a static's initial value from another static's initializer")
@@ -152,6 +149,18 @@ impl<'tcx> ConstEvalErr<'tcx> {
             trace!("reporting const eval failure at {:?}", self.span);
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
+            }
+            // Add some more context for select error types.
+            match self.error {
+                InterpError::Unsupported(
+                    UnsupportedOpInfo::ReadPointerAsBytes
+                    | UnsupportedOpInfo::PartialPointerOverwrite(_)
+                    | UnsupportedOpInfo::PartialPointerCopy(_),
+                ) => {
+                    err.help("this code performed an operation that depends on the underlying bytes representing a pointer");
+                    err.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
+                }
+                _ => {}
             }
             // Add spans for the stacktrace. Don't print a single-line backtrace though.
             if self.stacktrace.len() > 1 {

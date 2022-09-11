@@ -3,7 +3,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -107,6 +107,7 @@ fn do_orphan_check_impl<'tcx>(
         Err(err) => emit_orphan_check_error(
             tcx,
             sp,
+            item.span,
             tr.path.span,
             trait_ref.self_ty(),
             impl_.self_ty.span,
@@ -207,6 +208,7 @@ fn do_orphan_check_impl<'tcx>(
 fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
+    full_impl_span: Span,
     trait_span: Span,
     self_ty: Ty<'tcx>,
     self_ty_span: Span,
@@ -247,8 +249,20 @@ fn emit_orphan_check_error<'tcx>(
                     ty::Slice(_) => (this, " because slices are always foreign"),
                     ty::Array(..) => (this, " because arrays are always foreign"),
                     ty::Tuple(..) => (this, " because tuples are always foreign"),
+                    ty::RawPtr(ptr_ty) => {
+                        emit_newtype_suggestion_for_raw_ptr(
+                            full_impl_span,
+                            self_ty,
+                            self_ty_span,
+                            ptr_ty,
+                            &mut err,
+                        );
+
+                        (format!("`{}`", ty), " because raw pointers are always foreign")
+                    }
                     _ => (format!("`{}`", ty), ""),
                 };
+
                 let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                 if *is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
@@ -328,6 +342,27 @@ fn emit_orphan_check_error<'tcx>(
             }
         }
     })
+}
+
+fn emit_newtype_suggestion_for_raw_ptr(
+    full_impl_span: Span,
+    self_ty: Ty<'_>,
+    self_ty_span: Span,
+    ptr_ty: &ty::TypeAndMut<'_>,
+    diag: &mut Diagnostic,
+) {
+    if !self_ty.needs_subst() {
+        let mut_key = if ptr_ty.mutbl == rustc_middle::mir::Mutability::Mut { "mut " } else { "" };
+        let msg_sugg = "consider introducing a new wrapper type".to_owned();
+        let sugg = vec![
+            (
+                full_impl_span.shrink_to_lo(),
+                format!("struct WrapperType(*{}{});\n\n", mut_key, ptr_ty.ty),
+            ),
+            (self_ty_span, "WrapperType".to_owned()),
+        ];
+        diag.multipart_suggestion(msg_sugg, sugg, rustc_errors::Applicability::MaybeIncorrect);
+    }
 }
 
 /// Lint impls of auto traits if they are likely to have

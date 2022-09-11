@@ -3,11 +3,18 @@
 #![feature(let_else)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![feature(never_type)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
+#[macro_use]
+extern crate tracing;
 
 mod dump_visitor;
 mod dumper;
 #[macro_use]
 mod span_utils;
+mod errors;
 mod sig;
 
 use rustc_ast as ast;
@@ -44,8 +51,6 @@ use rls_data::{
     Analysis, Def, DefKind, ExternalCrateData, GlobalCrateId, Impl, ImplKind, MacroRef, Ref,
     RefKind, Relation, RelationKind, SpanData,
 };
-
-use tracing::{debug, error, info};
 
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -564,8 +569,8 @@ impl<'tcx> SaveContext<'tcx> {
                     return None;
                 };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
-                    ty::ImplContainer(_) => (Some(method_id), None),
-                    ty::TraitContainer(_) => (None, Some(method_id)),
+                    ty::ImplContainer => (Some(method_id), None),
+                    ty::TraitContainer => (None, Some(method_id)),
                 };
                 let sub_span = seg.ident.span;
                 filter!(self.span_utils, sub_span);
@@ -591,13 +596,14 @@ impl<'tcx> SaveContext<'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
-            Node::PathSegment(seg) => match seg.res {
-                Some(res) if res != Res::Err => res,
-                _ => {
+            Node::PathSegment(seg) => {
+                if seg.res != Res::Err {
+                    seg.res
+                } else {
                     let parent_node = self.tcx.hir().get_parent_node(hir_id);
                     self.get_path_res(parent_node)
                 }
-            },
+            }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
                 self.typeck_results().qpath_res(qpath, hir_id)
@@ -643,7 +649,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_path_segment_data(&self, path_seg: &hir::PathSegment<'_>) -> Option<Ref> {
-        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id?)
+        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id)
     }
 
     pub fn get_path_segment_data_with_id(
@@ -679,6 +685,7 @@ impl<'tcx> SaveContext<'tcx> {
                 | HirDefKind::AssocTy
                 | HirDefKind::Trait
                 | HirDefKind::OpaqueTy
+                | HirDefKind::ImplTraitPlaceholder
                 | HirDefKind::TyParam,
                 def_id,
             ) => Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) }),
@@ -697,7 +704,7 @@ impl<'tcx> SaveContext<'tcx> {
             }
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
-                    if self.tcx.associated_item(decl_id).defaultness.has_value() {
+                    if self.tcx.impl_defaultness(decl_id).has_value() {
                         Some(decl_id)
                     } else {
                         None
@@ -860,23 +867,12 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
             hir::PatKind::TupleStruct(ref path, ..) | hir::PatKind::Path(ref path) => {
                 self.collected_paths.push((p.hir_id, path));
             }
-            hir::PatKind::Binding(bm, _, ident, _) => {
+            hir::PatKind::Binding(hir::BindingAnnotation(_, mutbl), _, ident, _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
                     ident, p.span, ident.span
                 );
-                let immut = match bm {
-                    // Even if the ref is mut, you can't change the ref, only
-                    // the data pointed at, so showing the initialising expression
-                    // is still worthwhile.
-                    hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Ref => {
-                        hir::Mutability::Not
-                    }
-                    hir::BindingAnnotation::Mutable | hir::BindingAnnotation::RefMut => {
-                        hir::Mutability::Mut
-                    }
-                };
-                self.collected_idents.push((p.hir_id, ident, immut));
+                self.collected_idents.push((p.hir_id, ident, mutbl));
             }
             _ => {}
         }
@@ -928,7 +924,7 @@ impl<'a> DumpHandler<'a> {
         info!("Writing output to {}", file_name.display());
 
         let output_file = BufWriter::new(File::create(&file_name).unwrap_or_else(|e| {
-            sess.fatal(&format!("Could not open {}: {}", file_name.display(), e))
+            sess.emit_fatal(errors::CouldNotOpen { file_name: file_name.as_path(), err: e })
         }));
 
         (output_file, file_name)

@@ -289,8 +289,6 @@ impl Step for Cargo {
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
         cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
-        // Disable a test that has issues with mingw.
-        cargo.env("CARGO_TEST_DISABLE_GIT_CLI", "1");
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
@@ -302,53 +300,60 @@ impl Step for Cargo {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Rls {
+pub struct RustAnalyzer {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Step for Rls {
+impl Step for RustAnalyzer {
     type Output = ();
     const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rls")
+        run.path("src/tools/rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rls { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
     }
 
-    /// Runs `cargo test` for the rls.
+    /// Runs `cargo test` for rust-analyzer
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let build_result =
-            builder.ensure(tool::Rls { compiler, target: self.host, extra_features: Vec::new() });
-        if build_result.is_none() {
-            eprintln!("failed to test rls: could not build");
-            return;
-        }
+        builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
 
+        let workspace_path = "src/tools/rust-analyzer";
+        // until the whole RA test suite runs on `i686`, we only run
+        // `proc-macro-srv` tests
+        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolRustc,
+            Mode::ToolStd,
             host,
             "test",
-            "src/tools/rls",
-            SourceType::Submodule,
-            &[],
+            crate_path,
+            SourceType::InTree,
+            &["sysroot-abi".to_owned()],
         );
+
+        let dir = builder.src.join(workspace_path);
+        // needed by rust-analyzer to find its own text fixtures, cf.
+        // https://github.com/rust-analyzer/expect-test/issues/33
+        cargo.env("CARGO_WORKSPACE_DIR", &dir);
+
+        // RA's test suite tries to write to the source directory, that can't
+        // work in Rust CI
+        cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
-        if try_run(builder, &mut cargo.into()) {
-            builder.save_toolstate("rls", ToolState::TestPass);
-        }
+        builder.run(&mut cargo.into());
     }
 }
 
@@ -475,6 +480,9 @@ impl Step for Miri {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+        // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
+        // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
+        let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
         let miri =
             builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
@@ -483,6 +491,10 @@ impl Step for Miri {
             target: self.host,
             extra_features: Vec::new(),
         });
+        // The stdlib we need might be at a different stage. And just asking for the
+        // sysroot does not seem to populate it, so we do that first.
+        builder.ensure(compile::Std::new(compiler_std, host));
+        let sysroot = builder.sysroot(compiler_std);
         if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
             let mut cargo =
                 builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
@@ -562,8 +574,13 @@ impl Step for Miri {
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
+            cargo.env("MIRI_HOST_SYSROOT", sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI", miri);
+            // propagate --bless
+            if builder.config.cmd.bless() {
+                cargo.env("MIRI_BLESS", "Gesundheit");
+            }
 
             cargo.arg("--").args(builder.config.cmd.test_args());
 
@@ -837,7 +854,10 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
         .output()
         .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
         .unwrap_or(String::new());
-    lines.lines().find_map(|l| l.split(":browser-ui-test@").skip(1).next()).map(|v| v.to_owned())
+    lines
+        .lines()
+        .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
+        .map(|v| v.to_owned())
 }
 
 fn get_browser_ui_test_version(npm: &Path) -> Option<String> {
@@ -855,6 +875,11 @@ fn compare_browser_ui_test_version(installed_version: &str, src: &Path) {
                     "⚠️ Installed version of browser-ui-test (`{}`) is different than the \
                      one used in the CI (`{}`)",
                     installed_version, v
+                );
+                eprintln!(
+                    "You can install this version using `npm update browser-ui-test` or by using \
+                     `npm install browser-ui-test@{}`",
+                    v,
                 );
             }
         }
@@ -1318,9 +1343,13 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
         }
 
-        if mode == "run-make" && suite.ends_with("fulldeps") {
+        if mode == "run-make" {
             let rust_demangler = builder
-                .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
+                .ensure(tool::RustDemangler {
+                    compiler,
+                    target: compiler.host,
+                    extra_features: Vec::new(),
+                })
                 .expect("in-tree tool");
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
@@ -1418,6 +1447,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--run-clang-based-tests-with").arg(clang_exe);
         }
 
+        for exclude in &builder.config.exclude {
+            cmd.arg("--skip");
+            cmd.arg(&exclude.path);
+        }
+
         // Get paths from cmd args
         let paths = match &builder.config.cmd {
             Subcommand::Test { ref paths, .. } => &paths[..],
@@ -1432,7 +1466,15 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         test_args.append(&mut builder.config.cmd.test_args());
 
-        cmd.args(&test_args);
+        // On Windows, replace forward slashes in test-args by backslashes
+        // so the correct filters are passed to libtest
+        if cfg!(windows) {
+            let test_args_win: Vec<String> =
+                test_args.iter().map(|s| s.replace("/", "\\")).collect();
+            cmd.args(&test_args_win);
+        } else {
+            cmd.args(&test_args);
+        }
 
         if builder.is_verbose() {
             cmd.arg("--verbose");
@@ -2434,6 +2476,43 @@ impl Step for TierCheck {
 
         builder.info("platform support check");
         try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ReplacePlaceholderTest;
+
+impl Step for ReplacePlaceholderTest {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    /// Ensure the version placeholder replacement tool builds
+    fn run(self, builder: &Builder<'_>) {
+        builder.info("build check for version replacement placeholder");
+
+        // Test the version placeholder replacement tool itself.
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/replace-version-placeholder",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/replace-version-placeholder")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
     }
 }
 

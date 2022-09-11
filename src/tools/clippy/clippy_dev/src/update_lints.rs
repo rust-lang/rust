@@ -3,7 +3,7 @@ use aho_corasick::AhoCorasickBuilder;
 use indoc::writedoc;
 use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::fs::{self, OpenOptions};
@@ -124,6 +124,8 @@ fn generate_lint_files(
     let content = gen_lint_group_list("all", all_group_lints);
     process_file("clippy_lints/src/lib.register_all.rs", update_mode, &content);
 
+    update_docs(update_mode, &usable_lints);
+
     for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter().chain(internal_lints)) {
         let content = gen_lint_group_list(&lint_group, lints.iter());
         process_file(
@@ -138,6 +140,62 @@ fn generate_lint_files(
 
     let content = gen_renamed_lints_test(renamed_lints);
     process_file("tests/ui/rename.rs", update_mode, &content);
+}
+
+fn update_docs(update_mode: UpdateMode, usable_lints: &[Lint]) {
+    replace_region_in_file(update_mode, Path::new("src/docs.rs"), "docs! {\n", "\n}\n", |res| {
+        for name in usable_lints.iter().map(|lint| lint.name.clone()).sorted() {
+            writeln!(res, r#"    "{name}","#).unwrap();
+        }
+    });
+
+    if update_mode == UpdateMode::Check {
+        let mut extra = BTreeSet::new();
+        let mut lint_names = usable_lints
+            .iter()
+            .map(|lint| lint.name.clone())
+            .collect::<BTreeSet<_>>();
+        for file in std::fs::read_dir("src/docs").unwrap() {
+            let filename = file.unwrap().file_name().into_string().unwrap();
+            if let Some(name) = filename.strip_suffix(".txt") {
+                if !lint_names.remove(name) {
+                    extra.insert(name.to_string());
+                }
+            }
+        }
+
+        let failed = print_lint_names("extra lint docs:", &extra) | print_lint_names("missing lint docs:", &lint_names);
+
+        if failed {
+            exit_with_failure();
+        }
+    } else {
+        if std::fs::remove_dir_all("src/docs").is_err() {
+            eprintln!("could not remove src/docs directory");
+        }
+        if std::fs::create_dir("src/docs").is_err() {
+            eprintln!("could not recreate src/docs directory");
+        }
+    }
+    for lint in usable_lints {
+        process_file(
+            Path::new("src/docs").join(lint.name.clone() + ".txt"),
+            update_mode,
+            &lint.documentation,
+        );
+    }
+}
+
+fn print_lint_names(header: &str, lints: &BTreeSet<String>) -> bool {
+    if lints.is_empty() {
+        return false;
+    }
+    println!("{}", header);
+    for lint in lints.iter().sorted() {
+        println!("    {}", lint);
+    }
+    println!();
+    true
 }
 
 pub fn print_lints() {
@@ -418,7 +476,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
             .expect("failed to find `impl_lint_pass` terminator");
 
         impl_lint_pass_end += impl_lint_pass_start;
-        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(&lint_name_upper) {
+        if let Some(lint_name_pos) = content[impl_lint_pass_start..impl_lint_pass_end].find(lint_name_upper) {
             let mut lint_name_end = impl_lint_pass_start + (lint_name_pos + lint_name_upper.len());
             for c in content[lint_name_end..impl_lint_pass_end].chars() {
                 // Remove trailing whitespace
@@ -451,7 +509,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                 }
 
                 let mut content =
-                    fs::read_to_string(&path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
+                    fs::read_to_string(path).unwrap_or_else(|_| panic!("failed to read `{}`", path.to_string_lossy()));
 
                 eprintln!(
                     "warn: you will have to manually remove any code related to `{}` from `{}`",
@@ -553,7 +611,7 @@ fn replace_ident_like(contents: &str, replacements: &[(&str, &str)]) -> Option<S
         pos = m.end();
     }
     result.push_str(&contents[pos..]);
-    edited.then(|| result)
+    edited.then_some(result)
 }
 
 fn round_to_fifty(count: usize) -> usize {
@@ -589,17 +647,26 @@ struct Lint {
     desc: String,
     module: String,
     declaration_range: Range<usize>,
+    documentation: String,
 }
 
 impl Lint {
     #[must_use]
-    fn new(name: &str, group: &str, desc: &str, module: &str, declaration_range: Range<usize>) -> Self {
+    fn new(
+        name: &str,
+        group: &str,
+        desc: &str,
+        module: &str,
+        declaration_range: Range<usize>,
+        documentation: String,
+    ) -> Self {
         Self {
             name: name.to_lowercase(),
             group: group.into(),
             desc: remove_line_splices(desc),
             module: module.into(),
             declaration_range,
+            documentation,
         }
     }
 
@@ -824,17 +891,19 @@ macro_rules! match_tokens {
     }
 }
 
-struct LintDeclSearchResult<'a> {
-    token_kind: TokenKind,
-    content: &'a str,
-    range: Range<usize>,
+pub(crate) use match_tokens;
+
+pub(crate) struct LintDeclSearchResult<'a> {
+    pub token_kind: TokenKind,
+    pub content: &'a str,
+    pub range: Range<usize>,
 }
 
 /// Parse a source file looking for `declare_clippy_lint` macro invocations.
 fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -850,27 +919,35 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
          }| token_kind == &TokenKind::Ident && *content == "declare_clippy_lint",
     ) {
         let start = range.start;
-
-        let mut iter = iter
-            .by_ref()
-            .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
+        let mut docs = String::with_capacity(128);
+        let mut iter = iter.by_ref().filter(|t| !matches!(t.token_kind, TokenKind::Whitespace));
         // matches `!{`
         match_tokens!(iter, Bang OpenBrace);
-        match iter.next() {
-            // #[clippy::version = "version"] pub
-            Some(LintDeclSearchResult {
-                token_kind: TokenKind::Pound,
-                ..
-            }) => {
-                match_tokens!(iter, OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket Ident);
-            },
-            // pub
-            Some(LintDeclSearchResult {
-                token_kind: TokenKind::Ident,
-                ..
-            }) => (),
-            _ => continue,
+        let mut in_code = false;
+        while let Some(t) = iter.next() {
+            match t.token_kind {
+                TokenKind::LineComment { .. } => {
+                    if let Some(line) = t.content.strip_prefix("/// ").or_else(|| t.content.strip_prefix("///")) {
+                        if line.starts_with("```") {
+                            docs += "```\n";
+                            in_code = !in_code;
+                        } else if !(in_code && line.starts_with("# ")) {
+                            docs += line;
+                            docs.push('\n');
+                        }
+                    }
+                },
+                TokenKind::Pound => {
+                    match_tokens!(iter, OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket Ident);
+                    break;
+                },
+                TokenKind::Ident => {
+                    break;
+                },
+                _ => {},
+            }
         }
+        docs.pop(); // remove final newline
 
         let (name, group, desc) = match_tokens!(
             iter,
@@ -888,7 +965,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
             ..
         }) = iter.next()
         {
-            lints.push(Lint::new(name, group, desc, module, start..range.end));
+            lints.push(Lint::new(name, group, desc, module, start..range.end, docs));
         }
     }
 }
@@ -897,7 +974,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
 fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -944,7 +1021,7 @@ fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
     for line in contents.lines() {
         let mut offset = 0usize;
         let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len;
+            let range = offset..offset + t.len as usize;
             offset = range.end;
 
             LintDeclSearchResult {
@@ -975,7 +1052,11 @@ fn remove_line_splices(s: &str) -> String {
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{}`", s));
     let mut res = String::with_capacity(s.len());
-    unescape::unescape_literal(s, unescape::Mode::Str, &mut |range, _| res.push_str(&s[range]));
+    unescape::unescape_literal(s, unescape::Mode::Str, &mut |range, ch| {
+        if ch.is_ok() {
+            res.push_str(&s[range]);
+        }
+    });
     res
 }
 
@@ -1114,6 +1195,7 @@ mod tests {
                 "\"really long text\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
             Lint::new(
                 "doc_markdown",
@@ -1121,6 +1203,7 @@ mod tests {
                 "\"single line\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
         ];
         assert_eq!(expected, result);
@@ -1160,6 +1243,7 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
             Lint::new(
                 "should_assert_eq2",
@@ -1167,6 +1251,7 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
             Lint::new(
                 "should_assert_eq2",
@@ -1174,6 +1259,7 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
         ];
         let expected = vec![Lint::new(
@@ -1182,6 +1268,7 @@ mod tests {
             "\"abc\"",
             "module_name",
             Range::default(),
+            String::new(),
         )];
         assert_eq!(expected, Lint::usable_lints(&lints));
     }
@@ -1189,22 +1276,51 @@ mod tests {
     #[test]
     fn test_by_lint_group() {
         let lints = vec![
-            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
+            Lint::new(
+                "should_assert_eq",
+                "group1",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+                String::new(),
+            ),
             Lint::new(
                 "should_assert_eq2",
                 "group2",
                 "\"abc\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             ),
-            Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
+            Lint::new(
+                "incorrect_match",
+                "group1",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+                String::new(),
+            ),
         ];
         let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
         expected.insert(
             "group1".to_string(),
             vec![
-                Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-                Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
+                Lint::new(
+                    "should_assert_eq",
+                    "group1",
+                    "\"abc\"",
+                    "module_name",
+                    Range::default(),
+                    String::new(),
+                ),
+                Lint::new(
+                    "incorrect_match",
+                    "group1",
+                    "\"abc\"",
+                    "module_name",
+                    Range::default(),
+                    String::new(),
+                ),
             ],
         );
         expected.insert(
@@ -1215,6 +1331,7 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
+                String::new(),
             )],
         );
         assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
@@ -1253,9 +1370,30 @@ mod tests {
     #[test]
     fn test_gen_lint_group_list() {
         let lints = vec![
-            Lint::new("abc", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new("internal", "internal_style", "\"abc\"", "module_name", Range::default()),
+            Lint::new(
+                "abc",
+                "group1",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+                String::new(),
+            ),
+            Lint::new(
+                "should_assert_eq",
+                "group1",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+                String::new(),
+            ),
+            Lint::new(
+                "internal",
+                "internal_style",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+                String::new(),
+            ),
         ];
         let expected = GENERATED_FILE_COMMENT.to_string()
             + &[

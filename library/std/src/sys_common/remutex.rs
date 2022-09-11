@@ -1,13 +1,11 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
+use super::mutex as sys;
 use crate::cell::UnsafeCell;
-use crate::marker::PhantomPinned;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::pin::Pin;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use crate::sys::locks as sys;
 
 /// A re-entrant mutual exclusion
 ///
@@ -41,11 +39,10 @@ use crate::sys::locks as sys;
 /// synchronization is left to the mutex, making relaxed memory ordering for
 /// the `owner` field fine in all cases.
 pub struct ReentrantMutex<T> {
-    mutex: sys::Mutex,
+    mutex: sys::MovableMutex,
     owner: AtomicUsize,
     lock_count: UnsafeCell<u32>,
     data: T,
-    _pinned: PhantomPinned,
 }
 
 unsafe impl<T: Send> Send for ReentrantMutex<T> {}
@@ -68,37 +65,20 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    lock: Pin<&'a ReentrantMutex<T>>,
+    lock: &'a ReentrantMutex<T>,
 }
 
 impl<T> !Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
-    ///
-    /// # Unsafety
-    ///
-    /// This function is unsafe because it is required that `init` is called
-    /// once this mutex is in its final resting place, and only then are the
-    /// lock/unlock methods safe.
-    pub const unsafe fn new(t: T) -> ReentrantMutex<T> {
+    pub const fn new(t: T) -> ReentrantMutex<T> {
         ReentrantMutex {
-            mutex: sys::Mutex::new(),
+            mutex: sys::MovableMutex::new(),
             owner: AtomicUsize::new(0),
             lock_count: UnsafeCell::new(0),
             data: t,
-            _pinned: PhantomPinned,
         }
-    }
-
-    /// Initializes this mutex so it's ready for use.
-    ///
-    /// # Unsafety
-    ///
-    /// Unsafe to call more than once, and must be called after this will no
-    /// longer move in memory.
-    pub unsafe fn init(self: Pin<&mut Self>) {
-        self.get_unchecked_mut().mutex.init()
     }
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
@@ -113,15 +93,14 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(self: Pin<&Self>) -> ReentrantMutexGuard<'_, T> {
+    pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
         let this_thread = current_thread_unique_ptr();
-        // Safety: We only touch lock_count when we own the lock,
-        // and since self is pinned we can safely call the lock() on the mutex.
+        // Safety: We only touch lock_count when we own the lock.
         unsafe {
             if self.owner.load(Relaxed) == this_thread {
                 self.increment_lock_count();
             } else {
-                self.mutex.lock();
+                self.mutex.raw_lock();
                 self.owner.store(this_thread, Relaxed);
                 debug_assert_eq!(*self.lock_count.get(), 0);
                 *self.lock_count.get() = 1;
@@ -142,10 +121,9 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(self: Pin<&Self>) -> Option<ReentrantMutexGuard<'_, T>> {
+    pub fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
         let this_thread = current_thread_unique_ptr();
-        // Safety: We only touch lock_count when we own the lock,
-        // and since self is pinned we can safely call the try_lock on the mutex.
+        // Safety: We only touch lock_count when we own the lock.
         unsafe {
             if self.owner.load(Relaxed) == this_thread {
                 self.increment_lock_count();
@@ -179,12 +157,12 @@ impl<T> Deref for ReentrantMutexGuard<'_, T> {
 impl<T> Drop for ReentrantMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
-        // Safety: We own the lock, and the lock is pinned.
+        // Safety: We own the lock.
         unsafe {
             *self.lock.lock_count.get() -= 1;
             if *self.lock.lock_count.get() == 0 {
                 self.lock.owner.store(0, Relaxed);
-                self.lock.mutex.unlock();
+                self.lock.mutex.raw_unlock();
             }
         }
     }

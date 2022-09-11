@@ -8,10 +8,11 @@
 //! * Functions called by the compiler itself.
 
 use crate::def_id::DefId;
+use crate::errors::LangItemError;
 use crate::{MethodKind, Target};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -115,9 +116,9 @@ macro_rules! language_item_table {
 
             /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
             /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
-            /// returns an error message as a string.
-            pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-                self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
+            /// returns an error encapsulating the `LangItem`.
+            pub fn require(&self, it: LangItem) -> Result<DefId, LangItemError> {
+                self.items[it as usize].ok_or_else(|| LangItemError(it))
             }
 
             /// Returns the [`DefId`]s of all lang items in a group.
@@ -134,8 +135,8 @@ macro_rules! language_item_table {
         }
 
         /// A mapping from the name of the lang item to its order and the form it must be of.
-        pub static ITEM_REFS: LazyLock<FxHashMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
-            let mut item_refs = FxHashMap::default();
+        pub static ITEM_REFS: LazyLock<FxIndexMap<Symbol, (usize, Target)>> = LazyLock::new(|| {
+            let mut item_refs = FxIndexMap::default();
             $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
             item_refs
         });
@@ -191,6 +192,10 @@ language_item_table! {
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
 
+    // language items relating to transmutability
+    TransmuteOpts,           sym::transmute_opts,      transmute_opts,             Target::Struct,         GenericRequirement::Exact(0);
+    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(3);
+
     Add(Op),                 sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
     Sub(Op),                 sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);
     Mul(Op),                 sym::mul,                 mul_trait,                  Target::Trait,          GenericRequirement::Exact(1);
@@ -233,7 +238,6 @@ language_item_table! {
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
     GeneratorState,          sym::generator_state,     gen_state,                  Target::Enum,           GenericRequirement::None;
     Generator,               sym::generator,           gen_trait,                  Target::Trait,          GenericRequirement::Minimum(1);
-    GeneratorReturn,         sym::generator_return,    generator_return,           Target::AssocTy,        GenericRequirement::None;
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
@@ -264,8 +268,6 @@ language_item_table! {
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
     Oom,                     sym::oom,                 oom,                        Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
-    ConstEvalSelect,         sym::const_eval_select,   const_eval_select,          Target::Fn,             GenericRequirement::Exact(4);
-    ConstConstEvalSelect,    sym::const_eval_select_ct,const_eval_select_ct,       Target::Fn,             GenericRequirement::Exact(4);
 
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
 

@@ -4,9 +4,8 @@
 #![no_std]
 #![no_core]
 
-// @has glob_import.json
-// @has - "$.index[*][?(@.name=='glob')]"
-// @has - "$.index[*][?(@.kind=='import')].inner.name" \"*\"
+// @has "$.index[*][?(@.name=='glob')]"
+// @has "$.index[*][?(@.kind=='import')].inner.name" \"*\"
 
 
 mod m1 {

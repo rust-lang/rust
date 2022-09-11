@@ -1,0 +1,19 @@
+[package]
+name = "parser"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+drop_bomb = "0.1.5"
+rustc_lexer = { version = "725.0.0", package = "rustc-ap-rustc_lexer" }
+limit = { path = "../limit", version = "0.0.0" }
+
+[dev-dependencies]
+expect-test = "1.4.0"
+sourcegen = { path = "../sourcegen" }

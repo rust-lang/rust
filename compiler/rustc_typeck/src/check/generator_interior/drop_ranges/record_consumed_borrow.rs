@@ -4,7 +4,7 @@ use crate::{
     expr_use_visitor::{self, ExprUseVisitor},
 };
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::hir::place::{PlaceBase, Projection, ProjectionKind};
 use rustc_middle::ty::{ParamEnv, TyCtxt};
@@ -72,9 +72,8 @@ impl<'tcx> ExprUseDelegate<'tcx> {
     }
 
     fn mark_consumed(&mut self, consumer: HirId, target: TrackedValue) {
-        if !self.places.consumed.contains_key(&consumer) {
-            self.places.consumed.insert(consumer, <_>::default());
-        }
+        self.places.consumed.entry(consumer).or_insert_with(|| <_>::default());
+
         debug!(?consumer, ?target, "mark_consumed");
         self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }
@@ -160,8 +159,8 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         bk: rustc_middle::ty::BorrowKind,
     ) {
         debug!(
-            "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
-            borrow_kind={bk:?}"
+            "borrow: place_with_id = {place_with_id:#?}, diag_expr_id={diag_expr_id:#?}, \
+            borrow_kind={bk:#?}"
         );
 
         self.borrow_place(place_with_id);

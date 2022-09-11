@@ -212,7 +212,7 @@ note: the lint level is defined here
 LL | #![warn(unused_attributes, unknown_lints)]
    |         ^^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` only has an effect on items
+warning: `#[automatically_derived]` only has an effect on implementation blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:266:1
    |
 LL | #[automatically_derived]
@@ -259,7 +259,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[no_std]
    | ^^^^^^^^^
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:453:1
    |
 LL |   #[cold]
@@ -272,7 +272,7 @@ LL | |     mod inner { #![cold] }
 ...  |
 LL | |
 LL | | }
-   | |_- not a function
+   | |_- not a function definition
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
@@ -399,7 +399,7 @@ warning: `#[proc_macro_derive]` only has an effect on functions
 LL | #![proc_macro_derive()]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
    |
 LL | #![cold]
@@ -515,25 +515,25 @@ warning: `#[path]` only has an effect on modules
 LL |     #[path = "3800"] impl S { }
    |     ^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` only has an effect on items
+warning: `#[automatically_derived]` only has an effect on implementation blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:269:17
    |
 LL |     mod inner { #![automatically_derived] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` only has an effect on items
+warning: `#[automatically_derived]` only has an effect on implementation blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:272:5
    |
 LL |     #[automatically_derived] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` only has an effect on items
+warning: `#[automatically_derived]` only has an effect on implementation blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:275:5
    |
 LL |     #[automatically_derived] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` only has an effect on items
+warning: `#[automatically_derived]` only has an effect on implementation blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:278:5
    |
 LL |     #[automatically_derived] type T = S;
@@ -743,35 +743,35 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[no_std] impl S { }
    |     ^^^^^^^^^
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:459:17
    |
 LL |     mod inner { #![cold] }
-   |     ------------^^^^^^^^-- not a function
+   |     ------------^^^^^^^^-- not a function definition
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:466:5
    |
 LL |     #[cold] struct S;
-   |     ^^^^^^^ --------- not a function
+   |     ^^^^^^^ --------- not a function definition
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:471:5
    |
 LL |     #[cold] type T = S;
-   |     ^^^^^^^ ----------- not a function
+   |     ^^^^^^^ ----------- not a function definition
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: attribute should be applied to a function
+warning: attribute should be applied to a function definition
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:476:5
    |
 LL |     #[cold] impl S { }
-   |     ^^^^^^^ ---------- not a function
+   |     ^^^^^^^ ---------- not a function definition
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
@@ -923,7 +923,7 @@ warning: `#[must_use]` has no effect when applied to a type alias
 LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
 
-warning: `#[must_use]` has no effect when applied to an item
+warning: `#[must_use]` has no effect when applied to an implementation block
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:614:5
    |
 LL |     #[must_use] impl S { }

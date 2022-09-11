@@ -1,5 +1,5 @@
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:57:5
+  --> $DIR/unit_arg.rs:63:5
    |
 LL | /     foo({
 LL | |         1;
@@ -20,7 +20,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:60:5
+  --> $DIR/unit_arg.rs:66:5
    |
 LL |     foo(foo(1));
    |     ^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:61:5
+  --> $DIR/unit_arg.rs:67:5
    |
 LL | /     foo({
 LL | |         foo(1);
@@ -54,7 +54,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:66:5
+  --> $DIR/unit_arg.rs:72:5
    |
 LL | /     b.bar({
 LL | |         1;
@@ -74,7 +74,7 @@ LL ~     b.bar(());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:69:5
+  --> $DIR/unit_arg.rs:75:5
    |
 LL |     taking_multiple_units(foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:70:5
+  --> $DIR/unit_arg.rs:76:5
    |
 LL | /     taking_multiple_units(foo(0), {
 LL | |         foo(1);
@@ -110,7 +110,7 @@ LL ~     taking_multiple_units((), ());
    |
 
 error: passing unit values to a function
-  --> $DIR/unit_arg.rs:74:5
+  --> $DIR/unit_arg.rs:80:5
    |
 LL | /     taking_multiple_units(
 LL | |         {
@@ -146,7 +146,7 @@ LL ~     );
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:85:13
+  --> $DIR/unit_arg.rs:91:13
    |
 LL |     None.or(Some(foo(2)));
    |             ^^^^^^^^^^^^
@@ -160,7 +160,7 @@ LL ~     });
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:88:5
+  --> $DIR/unit_arg.rs:94:5
    |
 LL |     foo(foo(()));
    |     ^^^^^^^^^^^^
@@ -172,7 +172,7 @@ LL ~     foo(());
    |
 
 error: passing a unit value to a function
-  --> $DIR/unit_arg.rs:125:5
+  --> $DIR/unit_arg.rs:131:5
    |
 LL |     Some(foo(1))
    |     ^^^^^^^^^^^^

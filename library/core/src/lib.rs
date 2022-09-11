@@ -93,6 +93,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![allow(incomplete_features)]
 //
 // Library features:
 #![feature(const_align_offset)]
@@ -105,6 +106,7 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_char_convert)]
 #![feature(const_clone)]
+#![feature(const_cmp)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_float_bits_conv)]
@@ -129,7 +131,6 @@
 #![feature(const_replace)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
@@ -142,12 +143,14 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
+#![feature(const_unicode_case_lookup)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
+#![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
@@ -159,10 +162,12 @@
 //
 // Language features:
 #![feature(abi_unadjusted)]
+#![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
@@ -191,7 +196,6 @@
 #![feature(never_type)]
 #![feature(no_core)]
 #![feature(no_coverage)] // rust-lang/rust#84605
-#![feature(no_niche)] // rust-lang/rust#68303
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]
@@ -301,6 +305,8 @@ pub mod clone;
 pub mod cmp;
 pub mod convert;
 pub mod default;
+#[cfg(not(bootstrap))]
+pub mod error;
 pub mod marker;
 pub mod ops;
 

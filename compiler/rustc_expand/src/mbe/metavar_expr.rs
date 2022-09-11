@@ -106,13 +106,13 @@ fn parse_depth<'sess>(
     let Some(tt) = iter.next() else { return Ok(0) };
     let TokenTree::Token(token::Token {
         kind: token::TokenKind::Literal(lit), ..
-    }) = tt else {
+    }, _) = tt else {
         return Err(sess.span_diagnostic.struct_span_err(
             span,
             "meta-variable expression depth must be a literal"
         ));
     };
-    if let Ok(lit_kind) = LitKind::from_lit_token(*lit)
+    if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind
         && let Ok(n_usize) = usize::try_from(n_u128)
     {
@@ -130,7 +130,7 @@ fn parse_ident<'sess>(
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, Ident> {
-    if let Some(tt) = iter.next() && let TokenTree::Token(token) = tt {
+    if let Some(tt) = iter.next() && let TokenTree::Token(token, _) = tt {
         if let Some((elem, false)) = token.ident() {
             return Ok(elem);
         }
@@ -153,7 +153,7 @@ fn parse_ident<'sess>(
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut CursorRef<'_>) -> bool {
-    if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. })) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(token::Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
         let _ = iter.next();
         return true;
     }

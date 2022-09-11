@@ -1,7 +1,6 @@
 // check-pass
 // aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
-#![feature(no_niche)]
 #![warn(clashing_extern_declarations)]
 
 mod redeclared_different_signature {
@@ -400,9 +399,8 @@ mod hidden_niche {
         #[repr(transparent)]
         struct Transparent { x: NonZeroUsize }
 
-        #[repr(no_niche)]
         #[repr(transparent)]
-        struct TransparentNoNiche { y: NonZeroUsize }
+        struct TransparentNoNiche { y: UnsafeCell<NonZeroUsize> }
 
         extern "C" {
             fn hidden_niche_transparent() -> Option<Transparent>;

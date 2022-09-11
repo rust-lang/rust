@@ -19,21 +19,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
         &self,
         cv: mir::ConstantKind<'tcx>,
         id: hir::HirId,
         span: Span,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
-        let pat = self.tcx.infer_ctxt().enter(|infcx| {
+    ) -> Box<Pat<'tcx>> {
+        self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
             convert.to_pat(cv, mir_structural_match_violation)
-        });
-
-        debug!(?pat);
-        pat
+        })
     }
 }
 
@@ -120,37 +117,35 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
-        traits::search_for_structural_match_violation(self.span, self.tcx(), ty, true).map(
-            |non_sm_ty| {
-                with_no_trimmed_paths!(match non_sm_ty.kind {
-                    traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
-                    traits::NonStructuralMatchTyKind::Dynamic => {
-                        "trait objects cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTyKind::Opaque => {
-                        "opaque types cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTyKind::Closure => {
-                        "closures cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTyKind::Generator => {
-                        "generators cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTyKind::Float => {
-                        "floating-point numbers cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTyKind::Param => {
-                        bug!("use of a constant whose type is a parameter inside a pattern")
-                    }
-                    traits::NonStructuralMatchTyKind::Projection => {
-                        bug!("use of a constant whose type is a projection inside a pattern")
-                    }
-                    traits::NonStructuralMatchTyKind::Foreign => {
-                        bug!("use of a value of a foreign type inside a pattern")
-                    }
-                })
-            },
-        )
+        traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
+            with_no_trimmed_paths!(match non_sm_ty.kind() {
+                ty::Adt(adt, _) => self.adt_derive_msg(*adt),
+                ty::Dynamic(..) => {
+                    "trait objects cannot be used in patterns".to_string()
+                }
+                ty::Opaque(..) => {
+                    "opaque types cannot be used in patterns".to_string()
+                }
+                ty::Closure(..) => {
+                    "closures cannot be used in patterns".to_string()
+                }
+                ty::Generator(..) | ty::GeneratorWitness(..) => {
+                    "generators cannot be used in patterns".to_string()
+                }
+                ty::Float(..) => {
+                    "floating-point numbers cannot be used in patterns".to_string()
+                }
+                ty::FnPtr(..) => {
+                    "function pointers cannot be used in patterns".to_string()
+                }
+                ty::RawPtr(..) => {
+                    "raw pointers cannot be used in patterns".to_string()
+                }
+                _ => {
+                    bug!("use of a value of `{non_sm_ty}` inside a pattern")
+                }
+            })
+        })
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
@@ -161,7 +156,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         &mut self,
         cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
+    ) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
@@ -170,7 +165,14 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // once indirect_structural_match is a full fledged error, this
         // level of indirection can be eliminated
 
-        let inlined_const_as_pat = self.recur(cv, mir_structural_match_violation).unwrap();
+        let inlined_const_as_pat =
+            self.recur(cv, mir_structural_match_violation).unwrap_or_else(|_| {
+                Box::new(Pat {
+                    span: self.span,
+                    ty: cv.ty(),
+                    kind: PatKind::Constant { value: cv },
+                })
+            });
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
@@ -271,7 +273,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         &self,
         cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Result<Pat<'tcx>, FallbackToConstRef> {
+    ) -> Result<Box<Pat<'tcx>>, FallbackToConstRef> {
         let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
@@ -398,7 +400,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     .map(|val| self.recur(*val, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
-                suffix: Vec::new(),
+                suffix: Box::new([]),
             },
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // These are not allowed and will error elsewhere anyway.
@@ -425,8 +427,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Array {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Array {
                                 prefix: tcx
                                     .destructure_mir_constant(param_env, array)
                                     .fields
@@ -434,11 +436,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
                             ty: *pointee_ty,
-                        },
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -451,8 +453,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Slice {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Slice {
                                 prefix: tcx
                                     .destructure_mir_constant(param_env, array)
                                     .fields
@@ -460,11 +462,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                     .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
                             ty: tcx.mk_slice(elem_ty),
-                        },
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -598,6 +600,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             );
         }
 
-        Ok(Pat { span, ty: cv.ty(), kind: Box::new(kind) })
+        Ok(Box::new(Pat { span, ty: cv.ty(), kind }))
     }
 }

@@ -56,10 +56,6 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
-// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -77,6 +73,10 @@
 ))]
 #![no_std]
 #![needs_allocator]
+// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
+// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
+// rustc itself never sets the feature, so this line has no affect there.
+#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 //
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -86,10 +86,10 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
-#![cfg_attr(not(no_global_oom_handling), feature(alloc_c_string))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
+#![feature(array_into_iter_constructors)]
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
@@ -106,13 +106,13 @@
 #![feature(const_maybe_uninit_write)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
-#![feature(core_c_str)]
 #![feature(core_intrinsics)]
-#![feature(core_ffi_c)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
+#![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
@@ -120,15 +120,21 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
+#![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
+#![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_uninit_array)]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
+#![feature(pointer_byte_offsets)]
+#![cfg_attr(not(bootstrap), feature(provide_any))]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
+#![feature(saturating_int_impl)]
 #![feature(set_ptr_value)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_group_by)]
@@ -143,6 +149,7 @@
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(utf8_chunks)]
 #![feature(std_internals)]
 //
 // Language features:
@@ -176,6 +183,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
+#![feature(with_negative_coherence)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

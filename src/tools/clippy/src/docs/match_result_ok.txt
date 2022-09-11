@@ -1,0 +1,27 @@
+### What it does
+Checks for unnecessary `ok()` in `while let`.
+
+### Why is this bad?
+Calling `ok()` in `while let` is unnecessary, instead match
+on `Ok(pat)`
+
+### Example
+```
+while let Some(value) = iter.next().ok() {
+    vec.push(value)
+}
+
+if let Some(value) = iter.next().ok() {
+    vec.push(value)
+}
+```
+Use instead:
+```
+while let Ok(value) = iter.next() {
+    vec.push(value)
+}
+
+if let Ok(value) = iter.next() {
+       vec.push(value)
+}
+```

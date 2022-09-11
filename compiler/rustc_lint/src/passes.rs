@@ -5,23 +5,19 @@ use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 #[macro_export]
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
-            fn check_param(a: &$hir hir::Param<$hir>);
             fn check_body(a: &$hir hir::Body<$hir>);
             fn check_body_post(a: &$hir hir::Body<$hir>);
-            fn check_name(a: Span, b: Symbol);
             fn check_crate();
             fn check_crate_post();
             fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
-            fn check_mod_post(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
-            fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);
             fn check_item_post(a: &$hir hir::Item<$hir>);
             fn check_local(a: &$hir hir::Local<$hir>);
@@ -33,11 +29,8 @@ macro_rules! late_lint_methods {
             fn check_expr(a: &$hir hir::Expr<$hir>);
             fn check_expr_post(a: &$hir hir::Expr<$hir>);
             fn check_ty(a: &$hir hir::Ty<$hir>);
-            fn check_infer(a: &$hir hir::InferArg);
-            fn check_generic_arg(a: &$hir hir::GenericArg<$hir>);
             fn check_generic_param(a: &$hir hir::GenericParam<$hir>);
             fn check_generics(a: &$hir hir::Generics<$hir>);
-            fn check_where_predicate(a: &$hir hir::WherePredicate<$hir>);
             fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>, b: hir::TraitBoundModifier);
             fn check_fn(
                 a: rustc_hir::intravisit::FnKind<$hir>,
@@ -45,23 +38,12 @@ macro_rules! late_lint_methods {
                 c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId);
-            fn check_fn_post(
-                a: rustc_hir::intravisit::FnKind<$hir>,
-                b: &$hir hir::FnDecl<$hir>,
-                c: &$hir hir::Body<$hir>,
-                d: Span,
-                e: hir::HirId
-            );
             fn check_trait_item(a: &$hir hir::TraitItem<$hir>);
-            fn check_trait_item_post(a: &$hir hir::TraitItem<$hir>);
             fn check_impl_item(a: &$hir hir::ImplItem<$hir>);
             fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
             fn check_struct_def(a: &$hir hir::VariantData<$hir>);
-            fn check_struct_def_post(a: &$hir hir::VariantData<$hir>);
             fn check_field_def(a: &$hir hir::FieldDef<$hir>);
             fn check_variant(a: &$hir hir::Variant<$hir>);
-            fn check_variant_post(a: &$hir hir::Variant<$hir>);
-            fn check_lifetime(a: &$hir hir::Lifetime);
             fn check_path(a: &$hir hir::Path<$hir>, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
 
@@ -161,44 +143,24 @@ macro_rules! early_lint_methods {
             fn check_ident(a: Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
-            fn check_foreign_item(a: &ast::ForeignItem);
-            fn check_foreign_item_post(a: &ast::ForeignItem);
             fn check_item(a: &ast::Item);
             fn check_item_post(a: &ast::Item);
             fn check_local(a: &ast::Local);
             fn check_block(a: &ast::Block);
-            fn check_block_post(a: &ast::Block);
             fn check_stmt(a: &ast::Stmt);
             fn check_arm(a: &ast::Arm);
             fn check_pat(a: &ast::Pat);
-            fn check_anon_const(a: &ast::AnonConst);
             fn check_pat_post(a: &ast::Pat);
             fn check_expr(a: &ast::Expr);
-            fn check_expr_post(a: &ast::Expr);
             fn check_ty(a: &ast::Ty);
             fn check_generic_arg(a: &ast::GenericArg);
             fn check_generic_param(a: &ast::GenericParam);
             fn check_generics(a: &ast::Generics);
-            fn check_where_predicate(a: &ast::WherePredicate);
-            fn check_poly_trait_ref(a: &ast::PolyTraitRef,
-                                    b: &ast::TraitBoundModifier);
+            fn check_poly_trait_ref(a: &ast::PolyTraitRef);
             fn check_fn(a: rustc_ast::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
-            fn check_fn_post(
-                a: rustc_ast::visit::FnKind<'_>,
-                c: Span,
-                d: ast::NodeId
-            );
             fn check_trait_item(a: &ast::AssocItem);
-            fn check_trait_item_post(a: &ast::AssocItem);
             fn check_impl_item(a: &ast::AssocItem);
-            fn check_impl_item_post(a: &ast::AssocItem);
-            fn check_struct_def(a: &ast::VariantData);
-            fn check_struct_def_post(a: &ast::VariantData);
-            fn check_field_def(a: &ast::FieldDef);
             fn check_variant(a: &ast::Variant);
-            fn check_variant_post(a: &ast::Variant);
-            fn check_lifetime(a: &ast::Lifetime);
-            fn check_path(a: &ast::Path, b: ast::NodeId);
             fn check_attribute(a: &ast::Attribute);
             fn check_mac_def(a: &ast::MacroDef, b: ast::NodeId);
             fn check_mac(a: &ast::MacCall);
@@ -281,6 +243,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
-pub type LateLintPassObject =
-    Box<dyn for<'tcx> LateLintPass<'tcx> + sync::Send + sync::Sync + 'static>;
+pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + 'static>;
+pub type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + sync::Send + 'tcx>;

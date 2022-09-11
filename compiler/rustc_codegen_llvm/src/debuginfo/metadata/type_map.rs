@@ -47,6 +47,8 @@ pub(super) enum UniqueTypeId<'tcx> {
     VariantPart(Ty<'tcx>, private::HiddenZst),
     /// The ID for the artificial struct type describing a single enum variant.
     VariantStructType(Ty<'tcx>, VariantIdx, private::HiddenZst),
+    /// The ID for the additional wrapper struct type describing an enum variant in CPP-like mode.
+    VariantStructTypeCppLikeWrapper(Ty<'tcx>, VariantIdx, private::HiddenZst),
     /// The ID of the artificial type we create for VTables.
     VTableTy(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>, private::HiddenZst),
 }
@@ -69,6 +71,15 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ) -> Self {
         debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
+    }
+
+    pub fn for_enum_variant_struct_type_wrapper(
+        tcx: TyCtxt<'tcx>,
+        enum_ty: Ty<'tcx>,
+        variant_idx: VariantIdx,
+    ) -> Self {
+        debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
 
     pub fn for_vtable_ty(
@@ -146,7 +157,7 @@ impl<'ll> DINodeCreationResult<'ll> {
 pub enum Stub<'ll> {
     Struct,
     Union,
-    VtableTy { vtable_holder: &'ll DIType },
+    VTableTy { vtable_holder: &'ll DIType },
 }
 
 pub struct StubInfo<'ll, 'tcx> {
@@ -180,9 +191,9 @@ pub(super) fn stub<'ll, 'tcx>(
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let metadata = match kind {
-        Stub::Struct | Stub::VtableTy { .. } => {
+        Stub::Struct | Stub::VTableTy { .. } => {
             let vtable_holder = match kind {
-                Stub::VtableTy { vtable_holder } => Some(vtable_holder),
+                Stub::VTableTy { vtable_holder } => Some(vtable_holder),
                 _ => None,
             };
             unsafe {

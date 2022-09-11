@@ -122,6 +122,7 @@ fn if_let_result() {
     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
     // Input type mismatch, don't trigger
+    #[allow(clippy::question_mark)]
     let _: Result<i32, i32> = if let Err(e) = Ok(1) { Err(e) } else { x };
 }
 
@@ -240,6 +241,52 @@ impl Tr for Result<i32, i32> {
             Ok(x) => Ok(x),
             Err(e) => Err(e),
         }
+    }
+}
+
+mod issue9084 {
+    fn wildcard_if() {
+        let mut some_bool = true;
+        let e = Some(1);
+
+        // should lint
+        let _ = match e {
+            _ if some_bool => e,
+            _ => e,
+        };
+
+        // should lint
+        let _ = match e {
+            Some(i) => Some(i),
+            _ if some_bool => e,
+            _ => e,
+        };
+
+        // should not lint
+        let _ = match e {
+            _ if some_bool => e,
+            _ => Some(2),
+        };
+
+        // should not lint
+        let _ = match e {
+            Some(i) => Some(i + 1),
+            _ if some_bool => e,
+            _ => e,
+        };
+
+        // should not lint (guard has side effects)
+        let _ = match e {
+            Some(i) => Some(i),
+            _ if {
+                some_bool = false;
+                some_bool
+            } =>
+            {
+                e
+            },
+            _ => e,
+        };
     }
 }
 

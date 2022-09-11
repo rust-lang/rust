@@ -147,7 +147,9 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Array(l), Array(r)) | (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
         (Call(lc, la), Call(rc, ra)) => eq_expr(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
-        (MethodCall(lc, la, _), MethodCall(rc, ra, _)) => eq_path_seg(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
+        (MethodCall(lc, ls, la, _), MethodCall(rc, rs, ra, _)) => {
+            eq_path_seg(lc, rc) && eq_expr(ls, rs) && over(la, ra, |l, r| eq_expr(l, r))
+        },
         (Binary(lo, ll, lr), Binary(ro, rl, rr)) => lo.node == ro.node && eq_expr(ll, rl) && eq_expr(lr, rr),
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
         (Lit(l), Lit(r)) => l.kind == r.kind,
@@ -168,8 +170,13 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
-        (Closure(lc, la, lm, lf, lb, _), Closure(rc, ra, rm, rf, rb, _)) => {
-            lc == rc && la.is_async() == ra.is_async() && lm == rm && eq_fn_decl(lf, rf) && eq_expr(lb, rb)
+        (Closure(lb, lc, la, lm, lf, le, _), Closure(rb, rc, ra, rm, rf, re, _)) => {
+            eq_closure_binder(lb, rb)
+                && lc == rc
+                && la.is_async() == ra.is_async()
+                && lm == rm
+                && eq_fn_decl(lf, rf)
+                && eq_expr(le, re)
         },
         (Async(lc, _, lb), Async(rc, _, rb)) => lc == rc && eq_block(lb, rb),
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
@@ -561,6 +568,16 @@ pub fn eq_fn_decl(l: &FnDecl, r: &FnDecl) -> bool {
         })
 }
 
+pub fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {
+    match (l, r) {
+        (ClosureBinder::NotPresent, ClosureBinder::NotPresent) => true,
+        (ClosureBinder::For { generic_params: lp, .. }, ClosureBinder::For { generic_params: rp, .. }) => {
+            lp.len() == rp.len() && std::iter::zip(lp.iter(), rp.iter()).all(|(l, r)| eq_generic_param(l, r))
+        },
+        _ => false,
+    }
+}
+
 pub fn eq_fn_ret_ty(l: &FnRetTy, r: &FnRetTy) -> bool {
     match (l, r) {
         (FnRetTy::Default(_), FnRetTy::Default(_)) => true,
@@ -601,7 +618,7 @@ pub fn eq_ext(l: &Extern, r: &Extern) -> bool {
     use Extern::*;
     match (l, r) {
         (None, None) | (Implicit(_), Implicit(_)) => true,
-        (Explicit(l,_), Explicit(r,_)) => eq_str_lit(l, r),
+        (Explicit(l, _), Explicit(r, _)) => eq_str_lit(l, r),
         _ => false,
     }
 }
@@ -678,7 +695,7 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l, _), Normal(r, _)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
+            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_mac_args(&l.item.args, &r.item.args),
             _ => false,
         }
 }

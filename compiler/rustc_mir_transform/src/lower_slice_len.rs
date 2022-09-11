@@ -11,7 +11,7 @@ pub struct LowerSliceLenCalls;
 
 impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.mir_opt_level() > 0
+        sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -50,11 +50,7 @@ impl OverlayKind {
             OverlayKind::RustDemangler => {
                 &["src/tools/rust-demangler/README.md", "LICENSE-APACHE", "LICENSE-MIT"]
             }
-            OverlayKind::RLS => &[
-                "src/tools/rls/README.md",
-                "src/tools/rls/LICENSE-APACHE",
-                "src/tools/rls/LICENSE-MIT",
-            ],
+            OverlayKind::RLS => &["src/tools/rls/README.md", "LICENSE-APACHE", "LICENSE-MIT"],
             OverlayKind::RustAnalyzer => &[
                 "src/tools/rust-analyzer/README.md",
                 "src/tools/rust-analyzer/LICENSE-APACHE",
@@ -78,7 +74,7 @@ impl OverlayKind {
             OverlayKind::Rustfmt => {
                 builder.rustfmt_info.version(builder, &builder.release_num("rustfmt"))
             }
-            OverlayKind::RLS => builder.rls_info.version(builder, &builder.release_num("rls")),
+            OverlayKind::RLS => builder.release(&builder.release_num("rls")),
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),

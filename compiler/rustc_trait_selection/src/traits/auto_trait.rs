@@ -3,13 +3,14 @@
 
 use super::*;
 
+use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{Region, RegionVid, Term};
+use rustc_middle::ty::{Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
@@ -205,10 +206,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // At this point, we already have all of the bounds we need. FulfillmentContext is used
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
-            let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
-            let errors = fulfill.select_all_or_error(&infcx);
-
+            let errors =
+                super::fully_solve_bound(&infcx, ObligationCause::dummy(), full_env, ty, trait_did);
             if !errors.is_empty() {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, errors);
             }
@@ -343,7 +342,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = impl_source.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.borrow_nested_obligations().iter().cloned();
 
                     if !self.evaluate_nested_obligations(
                         ty,
@@ -613,7 +612,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Term::Ty(ty) = p.term().skip_binder() {
+        if let Some(ty) = p.term().skip_binder().ty() {
             matches!(ty.kind(), ty::Projection(proj) if proj == &p.skip_binder().projection_ty)
         } else {
             false
@@ -793,9 +792,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::RegionOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
-                    if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
-                        return false;
-                    }
+                    select.infcx().region_outlives_predicate(&dummy_cause, binder)
                 }
                 ty::PredicateKind::TypeOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
@@ -834,8 +831,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let def_id = unevaluated.def.did;
-                                    let reported = tcx.sess.struct_span_err(tcx.def_span(def_id), &format!("unable to construct a constant value for the unevaluated constant {:?}", unevaluated)).emit();
-
+                                    let reported =
+                                        tcx.sess.emit_err(UnableToConstructConstantValue {
+                                            span: tcx.def_span(def_id),
+                                            unevaluated,
+                                        });
                                     Err(ErrorHandled::Reported(reported))
                                 }
                                 Err(err) => Err(err),

@@ -14,7 +14,6 @@ python3 "$X_PY" test --stage 2 --no-fail-fast \
     src/doc/rust-by-example \
     src/doc/embedded-book \
     src/doc/edition-guide \
-    src/tools/rls \
     src/tools/miri \
 
 set -e

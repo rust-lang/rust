@@ -114,23 +114,20 @@ pub fn prebuilt_llvm_config(
     Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
 }
 
-pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
-    let config = &builder.config;
-    if !config.llvm_from_ci {
-        return;
-    }
+/// This retrieves the LLVM sha we *want* to use, according to git history.
+pub(crate) fn detect_llvm_sha(config: &crate::config::Config) -> String {
     let mut rev_list = config.git();
     rev_list.args(&[
         PathBuf::from("rev-list"),
-        format!("--author={}", builder.config.stage0_metadata.config.git_merge_commit_email).into(),
+        format!("--author={}", config.stage0_metadata.config.git_merge_commit_email).into(),
         "-n1".into(),
         "--first-parent".into(),
         "HEAD".into(),
         "--".into(),
-        builder.src.join("src/llvm-project"),
-        builder.src.join("src/bootstrap/download-ci-llvm-stamp"),
+        config.src.join("src/llvm-project"),
+        config.src.join("src/bootstrap/download-ci-llvm-stamp"),
         // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-        builder.src.join("src/version"),
+        config.src.join("src/version"),
     ]);
     let llvm_sha = output(&mut rev_list);
     let llvm_sha = llvm_sha.trim();
@@ -143,8 +140,82 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
         panic!();
     }
 
+    llvm_sha.to_owned()
+}
+
+/// Returns whether the CI-found LLVM is currently usable.
+///
+/// This checks both the build triple platform to confirm we're usable at all,
+/// and then verifies if the current HEAD matches the detected LLVM SHA head,
+/// in which case LLVM is indicated as not available.
+pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool) -> bool {
+    // This is currently all tier 1 targets and tier 2 targets with host tools
+    // (since others may not have CI artifacts)
+    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+    let supported_platforms = [
+        // tier 1
+        "aarch64-unknown-linux-gnu",
+        "i686-pc-windows-gnu",
+        "i686-pc-windows-msvc",
+        "i686-unknown-linux-gnu",
+        "x86_64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-gnu",
+        "x86_64-pc-windows-msvc",
+        // tier 2 with host tools
+        "aarch64-apple-darwin",
+        "aarch64-pc-windows-msvc",
+        "aarch64-unknown-linux-musl",
+        "arm-unknown-linux-gnueabi",
+        "arm-unknown-linux-gnueabihf",
+        "armv7-unknown-linux-gnueabihf",
+        "mips-unknown-linux-gnu",
+        "mips64-unknown-linux-gnuabi64",
+        "mips64el-unknown-linux-gnuabi64",
+        "mipsel-unknown-linux-gnu",
+        "powerpc-unknown-linux-gnu",
+        "powerpc64-unknown-linux-gnu",
+        "powerpc64le-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-gnu",
+        "s390x-unknown-linux-gnu",
+        "x86_64-unknown-freebsd",
+        "x86_64-unknown-illumos",
+        "x86_64-unknown-linux-musl",
+        "x86_64-unknown-netbsd",
+    ];
+    if !supported_platforms.contains(&&*config.build.triple) {
+        return false;
+    }
+
+    let triple = &*config.build.triple;
+    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
+        // No alt builder for aarch64-unknown-linux-gnu today.
+        return false;
+    }
+
+    if crate::util::CiEnv::is_ci() {
+        let llvm_sha = detect_llvm_sha(config);
+        let head_sha = output(config.git().arg("rev-parse").arg("HEAD"));
+        let head_sha = head_sha.trim();
+        if llvm_sha == head_sha {
+            eprintln!(
+                "Detected LLVM as non-available: running in CI and modified LLVM in this change"
+            );
+            return false;
+        }
+    }
+
+    true
+}
+
+pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
+    let config = &builder.config;
+    if !config.llvm_from_ci {
+        return;
+    }
     let llvm_root = config.ci_llvm_root();
     let llvm_stamp = llvm_root.join(".llvm-stamp");
+    let llvm_sha = detect_llvm_sha(&config);
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);
@@ -189,7 +260,8 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     } else {
         &builder.config.stage0_metadata.config.artifacts_server
     };
-    let filename = format!("rust-dev-nightly-{}.tar.xz", builder.build.build.triple);
+    let channel = builder.config.artifact_channel(llvm_sha);
+    let filename = format!("rust-dev-{}-{}.tar.xz", channel, builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
         let help_on_error = "error: failed to download llvm from ci
@@ -324,6 +396,9 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
 
+        // Disable zstd to avoid a dependency on libzstd.so.
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
+
         if target != "aarch64-apple-darwin" && !target.contains("windows") {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
@@ -344,13 +419,6 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        if builder.config.llvm_thin_lto {
-            cfg.define("LLVM_ENABLE_LTO", "Thin");
-            if !target.contains("apple") {
-                cfg.define("LLVM_ENABLE_LLD", "ON");
-            }
-        }
-
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
@@ -364,12 +432,13 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if target.starts_with("riscv") && !target.contains("freebsd") {
+        if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd")
+        {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
             // detect this. Therefore it is set manually here.
-            // FreeBSD uses Clang as its system compiler and
+            // Some BSD uses Clang as its system compiler and
             // provides no libatomic in its base system so does
             // not want this.
             ldflags.exe.push(" -latomic");
@@ -462,15 +531,8 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        if let Some(ref linker) = builder.config.llvm_use_linker {
-            cfg.define("LLVM_USE_LINKER", linker);
-        }
-
-        if builder.config.llvm_allow_old_toolchain {
-            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
-        }
-
         configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
             cfg.define(key, val);
@@ -525,11 +587,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 12 {
+        if major >= 13 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=12.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=13.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -576,7 +638,7 @@ fn configure_cmake(
 
         if target.contains("darwin") {
             // Make sure that CMake does not build universal binaries on macOS.
-            // Explicitly specifiy the one single target architecture.
+            // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
                 // macOS uses a different name for building arm64
                 cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");
@@ -730,6 +792,25 @@ fn configure_cmake(
     }
 }
 
+fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmake::Config) {
+    // ThinLTO is only available when building with LLVM, enabling LLD is required.
+    // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+    if builder.config.llvm_thin_lto {
+        cfg.define("LLVM_ENABLE_LTO", "Thin");
+        if !target.contains("apple") {
+            cfg.define("LLVM_ENABLE_LLD", "ON");
+        }
+    }
+
+    if let Some(ref linker) = builder.config.llvm_use_linker {
+        cfg.define("LLVM_USE_LINKER", linker);
+    }
+
+    if builder.config.llvm_allow_old_toolchain {
+        cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
+    }
+}
+
 // Adapted from https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2347-L2365
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
@@ -793,6 +874,7 @@ impl Step for Lld {
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_llvm(builder, target, &mut cfg);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -823,10 +905,6 @@ impl Step for Lld {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
-
-        if builder.config.llvm_allow_old_toolchain {
-            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
-        }
 
         // While we're using this horrible workaround to shim the execution of
         // llvm-config, let's just pile on more. I can't seem to figure out how

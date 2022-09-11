@@ -4,13 +4,12 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::ParameterizedOverTcx;
-use rustc_serialize::opaque::MemEncoder;
-use rustc_serialize::Encoder;
+use rustc_serialize::opaque::FileEncoder;
+use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use tracing::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
@@ -51,7 +50,7 @@ macro_rules! fixed_size_enum {
                 }
                 match b[0] - 1 {
                     $(${index()} => Some($($pat)*),)*
-                    _ => panic!("Unexpected ImplPolarity code: {:?}", b[0]),
+                    _ => panic!("Unexpected {} code: {:?}", stringify!($ty), b[0]),
                 }
             }
 
@@ -91,6 +90,7 @@ fixed_size_enum! {
         ( AnonConst                                )
         ( InlineConst                              )
         ( OpaqueTy                                 )
+        ( ImplTraitPlaceholder                     )
         ( Field                                    )
         ( LifetimeParam                            )
         ( GlobalAsm                                )
@@ -141,7 +141,22 @@ fixed_size_enum! {
     }
 }
 
-// We directly encode `DefPathHash` because a `Lazy` would encur a 25% cost.
+fixed_size_enum! {
+    ty::AssocItemContainer {
+        ( TraitContainer )
+        ( ImplContainer  )
+    }
+}
+
+fixed_size_enum! {
+    MacroKind {
+        ( Attr   )
+        ( Bang   )
+        ( Derive )
+    }
+}
+
+// We directly encode `DefPathHash` because a `LazyValue` would incur a 25% cost.
 impl FixedSizeEncoding for Option<DefPathHash> {
     type ByteArray = [u8; 16];
 
@@ -159,7 +174,7 @@ impl FixedSizeEncoding for Option<DefPathHash> {
     }
 }
 
-// We directly encode RawDefId because using a `Lazy` would incur a 50% overhead in the worst case.
+// We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
 impl FixedSizeEncoding for Option<RawDefId> {
     type ByteArray = [u8; 8];
 
@@ -281,7 +296,7 @@ where
         Some(value).write_to_bytes(&mut self.blocks[i]);
     }
 
-    pub(crate) fn encode<const N: usize>(&self, buf: &mut MemEncoder) -> LazyTable<I, T>
+    pub(crate) fn encode<const N: usize>(&self, buf: &mut FileEncoder) -> LazyTable<I, T>
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {

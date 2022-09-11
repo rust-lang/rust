@@ -18,6 +18,8 @@
 //! lexeme types.
 //!
 //! [`rustc_parse::lexer`]: ../rustc_parse/lexer/index.html
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
@@ -38,18 +40,17 @@ use std::convert::TryFrom;
 #[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
-    pub len: usize,
+    pub len: u32,
 }
 
 impl Token {
-    fn new(kind: TokenKind, len: usize) -> Token {
+    fn new(kind: TokenKind, len: u32) -> Token {
         Token { kind, len }
     }
 }
 
 /// Enum representing common lexeme types.
-// perf note: Changing all `usize` to `u32` doesn't change performance. See #77629
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     // Multi-char tokens:
     /// "// comment"
@@ -76,7 +77,7 @@ pub enum TokenKind {
     /// tokens.
     UnknownPrefix,
     /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
-    Literal { kind: LiteralKind, suffix_start: usize },
+    Literal { kind: LiteralKind, suffix_start: u32 },
     /// "'a"
     Lifetime { starts_with_number: bool },
 
@@ -140,7 +141,7 @@ pub enum TokenKind {
     Unknown,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocStyle {
     Outer,
     Inner,
@@ -160,26 +161,24 @@ pub enum LiteralKind {
     Str { terminated: bool },
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a"
-    RawStr { n_hashes: u8, err: Option<RawStrError> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
-    RawByteStr { n_hashes: u8, err: Option<RawStrError> },
+    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a". `None` indicates
+    /// an invalid literal.
+    RawStr { n_hashes: Option<u8> },
+    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a". `None`
+    /// indicates an invalid literal.
+    RawByteStr { n_hashes: Option<u8> },
 }
 
-/// Error produced validating a raw string. Represents cases like:
-/// - `r##~"abcde"##`: `InvalidStarter`
-/// - `r###"abcde"##`: `NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
-/// - Too many `#`s (>255): `TooManyDelimiters`
-// perf note: It doesn't matter that this makes `Token` 36 bytes bigger. See #77629
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RawStrError {
-    /// Non `#` characters exist between `r` and `"` eg. `r#~"..`
+    /// Non `#` characters exist between `r` and `"`, e.g. `r##~"abcde"##`
     InvalidStarter { bad_char: char },
-    /// The string was never terminated. `possible_terminator_offset` is the number of characters after `r` or `br` where they
-    /// may have intended to terminate it.
-    NoTerminator { expected: usize, found: usize, possible_terminator_offset: Option<usize> },
+    /// The string was not terminated, e.g. `r###"abcde"##`.
+    /// `possible_terminator_offset` is the number of characters after `r` or
+    /// `br` where they may have intended to terminate it.
+    NoTerminator { expected: u32, found: u32, possible_terminator_offset: Option<u32> },
     /// More than 255 `#`s exist.
-    TooManyDelimiters { found: usize },
+    TooManyDelimiters { found: u32 },
 }
 
 /// Base of numeric literal encoding according to its prefix.
@@ -221,9 +220,23 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 }
 
 /// Parses the first token from the provided input string.
+#[inline]
 pub fn first_token(input: &str) -> Token {
     debug_assert!(!input.is_empty());
     Cursor::new(input).advance_token()
+}
+
+/// Validates a raw string literal. Used for getting more information about a
+/// problem with a `RawStr`/`RawByteStr` with a `None` field.
+#[inline]
+pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError> {
+    debug_assert!(!input.is_empty());
+    let mut cursor = Cursor::new(input);
+    // Move past the leading `r` or `br`.
+    for _ in 0..prefix_len {
+        cursor.bump().unwrap();
+    }
+    cursor.raw_double_quoted_string(prefix_len).map(|_| ())
 }
 
 /// Creates an iterator that produces tokens from the input string.
@@ -315,12 +328,12 @@ impl Cursor<'_> {
             'r' => match (self.first(), self.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
-                    let (n_hashes, err) = self.raw_double_quoted_string(1);
+                    let res = self.raw_double_quoted_string(1);
                     let suffix_start = self.len_consumed();
-                    if err.is_none() {
+                    if res.is_ok() {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawStr { n_hashes, err };
+                    let kind = RawStr { n_hashes: res.ok() };
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident_or_unknown_prefix(),
@@ -350,12 +363,12 @@ impl Cursor<'_> {
                 }
                 ('r', '"') | ('r', '#') => {
                     self.bump();
-                    let (n_hashes, err) = self.raw_double_quoted_string(2);
+                    let res = self.raw_double_quoted_string(2);
                     let suffix_start = self.len_consumed();
-                    if err.is_none() {
+                    if res.is_ok() {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawByteStr { n_hashes, err };
+                    let kind = RawByteStr { n_hashes: res.ok() };
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident_or_unknown_prefix(),
@@ -698,19 +711,18 @@ impl Cursor<'_> {
     }
 
     /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.
-    fn raw_double_quoted_string(&mut self, prefix_len: usize) -> (u8, Option<RawStrError>) {
+    fn raw_double_quoted_string(&mut self, prefix_len: u32) -> Result<u8, RawStrError> {
         // Wrap the actual function to handle the error with too many hashes.
         // This way, it eats the whole raw string.
-        let (n_hashes, err) = self.raw_string_unvalidated(prefix_len);
+        let n_hashes = self.raw_string_unvalidated(prefix_len)?;
         // Only up to 255 `#`s are allowed in raw strings
         match u8::try_from(n_hashes) {
-            Ok(num) => (num, err),
-            // We lie about the number of hashes here :P
-            Err(_) => (0, Some(RawStrError::TooManyDelimiters { found: n_hashes })),
+            Ok(num) => Ok(num),
+            Err(_) => Err(RawStrError::TooManyDelimiters { found: n_hashes }),
         }
     }
 
-    fn raw_string_unvalidated(&mut self, prefix_len: usize) -> (usize, Option<RawStrError>) {
+    fn raw_string_unvalidated(&mut self, prefix_len: u32) -> Result<u32, RawStrError> {
         debug_assert!(self.prev() == 'r');
         let start_pos = self.len_consumed();
         let mut possible_terminator_offset = None;
@@ -729,7 +741,7 @@ impl Cursor<'_> {
             Some('"') => (),
             c => {
                 let c = c.unwrap_or(EOF_CHAR);
-                return (n_start_hashes, Some(RawStrError::InvalidStarter { bad_char: c }));
+                return Err(RawStrError::InvalidStarter { bad_char: c });
             }
         }
 
@@ -739,14 +751,11 @@ impl Cursor<'_> {
             self.eat_while(|c| c != '"');
 
             if self.is_eof() {
-                return (
-                    n_start_hashes,
-                    Some(RawStrError::NoTerminator {
-                        expected: n_start_hashes,
-                        found: max_hashes,
-                        possible_terminator_offset,
-                    }),
-                );
+                return Err(RawStrError::NoTerminator {
+                    expected: n_start_hashes,
+                    found: max_hashes,
+                    possible_terminator_offset,
+                });
             }
 
             // Eat closing double quote.
@@ -764,7 +773,7 @@ impl Cursor<'_> {
             }
 
             if n_end_hashes == n_start_hashes {
-                return (n_start_hashes, None);
+                return Ok(n_start_hashes);
             } else if n_end_hashes > max_hashes {
                 // Keep track of possible terminators to give a hint about
                 // where there might be a missing terminator

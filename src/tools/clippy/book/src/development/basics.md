@@ -4,8 +4,8 @@ This document explains the basics for hacking on Clippy. Besides others, this
 includes how to build and test Clippy. For a more in depth description on the
 codebase take a look at [Adding Lints] or [Common Tools].
 
-[Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
-[Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
+[Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md
+[Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md
 
 - [Basics for hacking on Clippy](#basics-for-hacking-on-clippy)
   - [Get the Code](#get-the-code)
@@ -59,7 +59,7 @@ cargo uitest
 # only run UI tests starting with `test_`
 TESTNAME="test_" cargo uitest
 # only run dogfood tests
-cargo test --test dogfood
+cargo dev dogfood
 ```
 
 If the output of a [UI test] differs from the expected output, you can update
@@ -91,10 +91,14 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
+# deprecate a lint and attempt to remove code relating to it
+cargo dev deprecate
 # automatically formatting all code before each commit
 cargo dev setup git-hook
 # (experimental) Setup Clippy to work with IntelliJ-Rust
 cargo dev setup intellij
+# runs the `dogfood` tests
+cargo dev dogfood
 ```
 
 More about intellij command usage and reasons

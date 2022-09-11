@@ -152,7 +152,7 @@ impl Buffer {
     }
 }
 
-fn comma_sep<T: fmt::Display>(
+pub(crate) fn comma_sep<T: fmt::Display>(
     items: impl Iterator<Item = T>,
     space_after_comma: bool,
 ) -> impl fmt::Display {
@@ -349,8 +349,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
         let where_preds = comma_sep(where_predicates, false);
         let clause = if f.alternate() {
             if ending == Ending::Newline {
-                // add a space so stripping <br> tags and breaking spaces still renders properly
-                format!(" where{where_preds}, ")
+                format!(" where{where_preds},")
             } else {
                 format!(" where{where_preds}")
             }
@@ -364,20 +363,16 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
             if ending == Ending::Newline {
                 let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
-                // add a space so stripping <br> tags and breaking spaces still renders properly
-                write!(
-                    clause,
-                    " <span class=\"where fmt-newline\">where{where_preds},&nbsp;</span>"
-                )?;
+                write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
                 clause
             } else {
                 // insert a <br> tag after a single space but before multiple spaces at the start
                 if indent == 0 {
-                    format!(" <br><span class=\"where\">where{where_preds}</span>")
+                    format!("<br><span class=\"where\">where{where_preds}</span>")
                 } else {
                     let mut clause = br_with_padding;
                     clause.truncate(clause.len() - 5 * "&nbsp;".len());
-                    write!(clause, " <span class=\"where\">where{where_preds}</span>")?;
+                    write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
                     clause
                 }
             }
@@ -1079,7 +1074,12 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref assoc, ref self_type, ref trait_, should_show_cast } => {
+        clean::QPath(box clean::QPathData {
+            ref assoc,
+            ref self_type,
+            ref trait_,
+            should_show_cast,
+        }) => {
             if f.alternate() {
                 if should_show_cast {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
@@ -1165,10 +1165,43 @@ impl clean::Impl {
 
             if let clean::Type::Tuple(types) = &self.for_ &&
                 let [clean::Type::Generic(name)] = &types[..] &&
-                (self.kind.is_tuple_variadic() || self.kind.is_auto()) {
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
+            } else if let clean::BareFunction(bare_fn) = &self.for_ &&
+                let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
+                // Hardcoded anchor library/core/src/primitive_docs.rs
+                // Link should match `# Trait implementations`
+
+                let hrtb = bare_fn.print_hrtb_with_space(cx);
+                let unsafety = bare_fn.unsafety.print_with_space();
+                let abi = print_abi_with_space(bare_fn.abi);
+                if f.alternate() {
+                    write!(
+                        f,
+                        "{hrtb:#}{unsafety}{abi:#}",
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "{hrtb}{unsafety}{abi}",
+                    )?;
+                }
+                let ellipsis = if bare_fn.decl.c_variadic {
+                    ", ..."
+                } else {
+                    ""
+                };
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
+                // Write output.
+                if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
+                    write!(f, " -> ")?;
+                    fmt_type(ty, f, use_absolute, cx)?;
+                }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
@@ -1272,22 +1305,19 @@ impl clean::FnDecl {
     ///   <br>Used to determine line-wrapping.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
-    /// * `asyncness`: Whether the function is async or not.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
         &'a self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| self.inner_full_print(header_len, indent, asyncness, f, cx))
+        display_fn(move |f| self.inner_full_print(header_len, indent, f, cx))
     }
 
     fn inner_full_print(
         &self,
         header_len: usize,
         indent: usize,
-        asyncness: hir::IsAsync,
         f: &mut fmt::Formatter<'_>,
         cx: &Context<'_>,
     ) -> fmt::Result {
@@ -1352,15 +1382,9 @@ impl clean::FnDecl {
             args_plain.push_str(", ...");
         }
 
-        let arrow_plain;
-        let arrow = if let hir::IsAsync::Async = asyncness {
-            let output = self.sugared_async_return_type();
-            arrow_plain = format!("{:#}", output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", output.print(cx)) }
-        } else {
-            arrow_plain = format!("{:#}", self.output.print(cx));
-            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) }
-        };
+        let arrow_plain = format!("{:#}", self.output.print(cx));
+        let arrow =
+            if f.alternate() { arrow_plain.clone() } else { format!("{}", self.output.print(cx)) };
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {

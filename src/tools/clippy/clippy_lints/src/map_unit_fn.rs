@@ -97,11 +97,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Tuple(slice) => slice.is_empty(),
-        ty::Never => true,
-        _ => false,
-    }
+    ty.is_unit() || ty.is_never()
 }
 
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
@@ -169,7 +165,7 @@ fn unit_closure<'tcx>(
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if_chain! {
-        if let hir::ExprKind::Closure { fn_decl, body, .. } = expr.kind;
+        if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = expr.kind;
         let body = cx.tcx.hir().body(body);
         let body_expr = &body.value;
         if fn_decl.inputs.len() == 1;
@@ -204,8 +200,13 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     )
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
-    let var_arg = &map_args[0];
+fn lint_map_unit_fn(
+    cx: &LateContext<'_>,
+    stmt: &hir::Stmt<'_>,
+    expr: &hir::Expr<'_>,
+    map_args: (&hir::Expr<'_>, &[hir::Expr<'_>]),
+) {
+    let var_arg = &map_args.0;
 
     let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::Option) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
@@ -214,7 +215,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     } else {
         return;
     };
-    let fn_arg = &map_args[1];
+    let fn_arg = &map_args.1[0];
 
     if is_unit_function(cx, fn_arg) {
         let mut applicability = Applicability::MachineApplicable;

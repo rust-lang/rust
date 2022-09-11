@@ -41,31 +41,26 @@
 
 // cdb-command: g
 // cdb-command: dx b
-// cdb-check: b                : Unresumed [Type: enum$<generator_objects::main::generator_env$0>]
-// cdb-check:    [variant]        : Unresumed
+// cdb-check: b                : Unresumed [Type: enum2$<generator_objects::main::generator_env$0>]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
 
 // cdb-command: g
 // cdb-command: dx b
-// cdb-check: b                : Suspend0 [Type: enum$<generator_objects::main::generator_env$0>]
-// cdb-check:    [variant]        : Suspend0
+// cdb-check: b                : Suspend0 [Type: enum2$<generator_objects::main::generator_env$0>]
 // cdb-check:    [+0x[...]] c                : 6 [Type: int]
 // cdb-check:    [+0x[...]] d                : 7 [Type: int]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
 
 // cdb-command: g
 // cdb-command: dx b
-// cdb-check: b                : Suspend1 [Type: enum$<generator_objects::main::generator_env$0>]
-// cdb-check:    [variant]        : Suspend1
+// cdb-check: b                : Suspend1 [Type: enum2$<generator_objects::main::generator_env$0>]
 // cdb-check:    [+0x[...]] c                : 7 [Type: int]
 // cdb-check:    [+0x[...]] d                : 8 [Type: int]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
 // cdb-command: g
 // cdb-command: dx b
-// cdb-check: b                : Returned [Type: enum$<generator_objects::main::generator_env$0>]
-// cdb-check:    [<Raw View>]     [Type: enum$<generator_objects::main::generator_env$0>]
-// cdb-check:    [variant]        : Returned
+// cdb-check: b                : Returned [Type: enum2$<generator_objects::main::generator_env$0>]
 // cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]

@@ -1,0 +1,17 @@
+[package]
+name = "proc-macro-srv-cli"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[dependencies]
+proc-macro-srv = { version = "0.0.0", path = "../proc-macro-srv" }
+
+[features]
+sysroot-abi = ["proc-macro-srv/sysroot-abi"]
+
+[[bin]]
+name = "rust-analyzer-proc-macro-srv"
+path = "src/main.rs"

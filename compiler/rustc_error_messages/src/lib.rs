@@ -2,6 +2,11 @@
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
+#[macro_use]
+extern crate tracing;
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
@@ -14,7 +19,6 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use tracing::{instrument, trace};
 
 #[cfg(not(parallel_compiler))]
 use std::cell::LazyCell as Lazy;
@@ -31,14 +35,32 @@ pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
 fluent_messages! {
+    ast_lowering => "../locales/en-US/ast_lowering.ftl",
+    ast_passes => "../locales/en-US/ast_passes.ftl",
+    attr => "../locales/en-US/attr.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
+    driver => "../locales/en-US/driver.ftl",
     expand => "../locales/en-US/expand.ftl",
+    session => "../locales/en-US/session.ftl",
+    interface => "../locales/en-US/interface.ftl",
+    infer => "../locales/en-US/infer.ftl",
     lint => "../locales/en-US/lint.ftl",
+    middle => "../locales/en-US/middle.ftl",
+    monomorphize => "../locales/en-US/monomorphize.ftl",
+    metadata => "../locales/en-US/metadata.ftl",
     parser => "../locales/en-US/parser.ftl",
+    passes => "../locales/en-US/passes.ftl",
+    plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
+    query_system => "../locales/en-US/query_system.ftl",
+    trait_selection => "../locales/en-US/trait_selection.ftl",
+    save_analysis => "../locales/en-US/save_analysis.ftl",
+    ty_utils => "../locales/en-US/ty_utils.ftl",
     typeck => "../locales/en-US/typeck.ftl",
+    mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
+    symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
@@ -298,7 +320,7 @@ impl DiagnosticMessage {
     /// - If `self` is non-translatable then return `self`'s message.
     pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
         let attr = match sub {
-            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s.clone()),
+            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s),
             SubdiagnosticMessage::FluentIdentifier(id) => {
                 return DiagnosticMessage::FluentIdentifier(id, None);
             }

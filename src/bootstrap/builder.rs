@@ -601,6 +601,7 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
+                tool::RustAnalyzerProcMacroSrv,
                 tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
@@ -621,6 +622,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
+                check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap
             ),
@@ -645,9 +647,10 @@ impl<'a> Builder<'a> {
                 test::CrateRustdocJsonTypes,
                 test::Linkcheck,
                 test::TierCheck,
+                test::ReplacePlaceholderTest,
                 test::Cargotest,
                 test::Cargo,
-                test::Rls,
+                test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::RunMakeFullDeps,
@@ -733,7 +736,6 @@ impl<'a> Builder<'a> {
                 install::Docs,
                 install::Std,
                 install::Cargo,
-                install::Rls,
                 install::RustAnalyzer,
                 install::Rustfmt,
                 install::RustDemangler,
@@ -743,7 +745,12 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest, run::BumpStage0),
+            Kind::Run => describe!(
+                run::ExpandYamlAnchors,
+                run::BuildManifest,
+                run::BumpStage0,
+                run::ReplaceVersionPlaceholder,
+            ),
             // These commands either don't use paths, or they're special-cased in Build::build()
             Kind::Clean | Kind::Format | Kind::Setup => vec![],
         }
@@ -939,7 +946,7 @@ impl<'a> Builder<'a> {
         };
         patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
         if !fname.extension().map_or(false, |ext| ext == "so") {
-            // Finally, set the corret .interp for binaries
+            // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
             // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
             let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
@@ -955,7 +962,7 @@ impl<'a> Builder<'a> {
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // While bootstrap itself only supports http and https downloads, downstream forks might
         // need to download components from other protocols. The match allows them adding more
-        // protocols without worrying about merge conficts if we change the HTTP implementation.
+        // protocols without worrying about merge conflicts if we change the HTTP implementation.
         match url.split_once("://").map(|(proto, _)| proto) {
             Some("http") | Some("https") => {
                 self.download_http_with_retries(&tempfile, url, help_on_error)
@@ -1468,45 +1475,39 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
-        // is made to work with `--check-cfg` which is currently not easly possible until cargo
-        // get some support for setting `--check-cfg` within build script, it's the least invasive
-        // hack that still let's us have cfg checking for the vast majority of the codebase.
-        if stage != 0 {
-            // Enable cfg checking of cargo features for everything but std and also enable cfg
-            // checking of names and values.
-            //
-            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-            // backtrace, core_simd, std_float, ...), those dependencies have their own
-            // features but cargo isn't involved in the #[path] process and so cannot pass the
-            // complete list of features, so for that reason we don't enable checking of
-            // features for std crates.
-            cargo.arg(if mode != Mode::Std {
-                "-Zcheck-cfg=names,values,features"
-            } else {
-                "-Zcheck-cfg=names,values"
-            });
+        // Enable cfg checking of cargo features for everything but std and also enable cfg
+        // checking of names and values.
+        //
+        // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+        // backtrace, core_simd, std_float, ...), those dependencies have their own
+        // features but cargo isn't involved in the #[path] process and so cannot pass the
+        // complete list of features, so for that reason we don't enable checking of
+        // features for std crates.
+        cargo.arg(if mode != Mode::Std {
+            "-Zcheck-cfg=names,values,output,features"
+        } else {
+            "-Zcheck-cfg=names,values,output"
+        });
 
-            // Add extra cfg not defined in/by rustc
-            //
-            // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
-            // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-            // `rustflags` without `cargo` making it required.
-            rustflags.arg("-Zunstable-options");
-            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-                if *restricted_mode == None || *restricted_mode == Some(mode) {
-                    // Creating a string of the values by concatenating each value:
-                    // ',"tvos","watchos"' or '' (nothing) when there are no values
-                    let values = match values {
-                        Some(values) => values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>(),
-                        None => String::new(),
-                    };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
+        // Add extra cfg not defined in/by rustc
+        //
+        // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+        // `rustflags` without `cargo` making it required.
+        rustflags.arg("-Zunstable-options");
+        for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+            if *restricted_mode == None || *restricted_mode == Some(mode) {
+                // Creating a string of the values by concatenating each value:
+                // ',"tvos","watchos"' or '' (nothing) when there are no values
+                let values = match values {
+                    Some(values) => values
+                        .iter()
+                        .map(|val| [",", "\"", val, "\""])
+                        .flatten()
+                        .collect::<String>(),
+                    None => String::new(),
+                };
+                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
 
@@ -1557,7 +1558,7 @@ impl<'a> Builder<'a> {
             Mode::ToolStd => {
                 // Right now this is just compiletest and a few other tools that build on stable.
                 // Allow them to use `feature(test)`, but nothing else.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace");
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace,proc_macro_internals,proc_macro_diagnostic,proc_macro_span");
             }
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
         }
@@ -1762,22 +1763,21 @@ impl<'a> Builder<'a> {
             },
         );
 
-        if !target.contains("windows") {
-            let needs_unstable_opts = target.contains("linux")
-                || target.contains("windows")
-                || target.contains("bsd")
-                || target.contains("dragonfly")
-                || target.contains("illumos");
+        let split_debuginfo_is_stable = target.contains("linux")
+            || target.contains("apple")
+            || (target.contains("msvc")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Packed)
+            || (target.contains("windows")
+                && self.config.rust_split_debuginfo == SplitDebuginfo::Off);
 
-            if needs_unstable_opts {
-                rustflags.arg("-Zunstable-options");
-            }
-            match self.config.rust_split_debuginfo {
-                SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
-                SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
-                SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
-            };
+        if !split_debuginfo_is_stable {
+            rustflags.arg("-Zunstable-options");
         }
+        match self.config.rust_split_debuginfo {
+            SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
+            SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
+            SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
+        };
 
         if self.config.cmd.bless() {
             // Bless `expect!` tests.
@@ -1852,7 +1852,7 @@ impl<'a> Builder<'a> {
         // so we can't use it by default in general, but we can use it for tools
         // and our own internal libraries.
         if !mode.must_support_dlopen() && !target.triple.starts_with("powerpc-") {
-            rustflags.arg("-Ztls-model=initial-exec");
+            cargo.env("RUSTC_TLS_MODEL_INITIAL_EXEC", "1");
         }
 
         if self.config.incremental {

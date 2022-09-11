@@ -48,7 +48,7 @@ cfg_if! {
         /// the native atomic types.
         /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
         /// as it's not intended to be used separately.
-        #[derive(Debug)]
+        #[derive(Debug, Default)]
         pub struct Atomic<T: Copy>(Cell<T>);
 
         impl<T: Copy> Atomic<T> {
@@ -56,9 +56,7 @@ cfg_if! {
             pub fn new(v: T) -> Self {
                 Atomic(Cell::new(v))
             }
-        }
 
-        impl<T: Copy> Atomic<T> {
             #[inline]
             pub fn into_inner(self) -> T {
                 self.0.into_inner()
@@ -146,7 +144,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub fn par_for_each_in<T: IntoIterator>(t: T, for_each: impl Fn(T::Item) + Sync + Send) {
+        pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
             let mut panic = None;

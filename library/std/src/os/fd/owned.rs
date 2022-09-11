@@ -104,7 +104,8 @@ impl BorrowedFd<'_> {
         #[cfg(target_os = "espidf")]
         let cmd = libc::F_DUPFD;
 
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
+        // Avoid using file descriptors below 3 as they are used for stdio
+        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) })?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
@@ -356,7 +357,7 @@ impl From<OwnedFd> for crate::net::UdpSocket {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 /// This impl allows implementing traits that require `AsFd` on Arc.
 /// ```
 /// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
@@ -379,7 +380,7 @@ impl<T: AsFd> AsFd for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 impl<T: AsFd> AsFd for Box<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {

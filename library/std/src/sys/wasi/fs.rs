@@ -3,7 +3,7 @@
 use super::fd::WasiFd;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::raw::c_int;
@@ -63,6 +63,12 @@ pub struct FilePermissions {
     readonly: bool,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: Option<wasi::Timestamp>,
+    modified: Option<wasi::Timestamp>,
+}
+
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct FileType {
     bits: wasi::Filetype,
@@ -109,6 +115,16 @@ impl FilePermissions {
 
     pub fn set_readonly(&mut self, readonly: bool) {
         self.readonly = readonly;
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t.to_wasi_timestamp_or_panic());
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t.to_wasi_timestamp_or_panic());
     }
 }
 
@@ -423,8 +439,8 @@ impl File {
         true
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -457,6 +473,15 @@ impl File {
         // Permissions haven't been fully figured out in wasi yet, so this is
         // likely temporary
         unsupported()
+    }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        self.fd.filestat_set_times(
+            times.accessed.unwrap_or(0),
+            times.modified.unwrap_or(0),
+            times.accessed.map_or(0, |_| wasi::FSTFLAGS_ATIM)
+                | times.modified.map_or(0, |_| wasi::FSTFLAGS_MTIM),
+        )
     }
 
     pub fn read_link(&self, file: &Path) -> io::Result<PathBuf> {

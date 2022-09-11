@@ -108,3 +108,9 @@ pub fn j() {}
 /// <Vec<_> shouldn't warn!
 /// ``````
 pub fn k() {}
+
+/// Web Components style <dashed-tags>
+//~^ ERROR unclosed HTML tag `dashed-tags`
+/// Web Components style </unopened-tag>
+//~^ ERROR unopened HTML tag `unopened-tag`
+pub fn m() {}

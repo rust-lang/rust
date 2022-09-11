@@ -80,6 +80,7 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
 }
 
+#[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum Subcommand {
     Build {
@@ -115,7 +116,6 @@ pub enum Subcommand {
         compare_mode: Option<String>,
         pass: Option<String>,
         run: Option<String>,
-        skip: Vec<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -220,7 +220,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         let j_msg = format!(
             "number of jobs to run in parallel; \
              defaults to {} (this host's logical CPU count)",
-            num_cpus::get()
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
         );
         opts.optopt("j", "jobs", &j_msg, "JOBS");
         opts.optflag("h", "help", "print this help message");
@@ -568,7 +568,6 @@ Arguments:
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
                 run: matches.opt_str("run"),
-                skip: matches.opt_strs("skip"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -622,15 +621,6 @@ Arguments:
                 Subcommand::Setup { profile }
             }
         };
-
-        if let Subcommand::Check { .. } = &cmd {
-            if matches.opt_str("keep-stage").is_some()
-                || matches.opt_str("keep-stage-std").is_some()
-            {
-                eprintln!("--keep-stage not yet supported for x.py check");
-                crate::detail_exit(1);
-            }
-        }
 
         Flags {
             verbose: matches.opt_count("verbose"),
@@ -715,16 +705,6 @@ impl Subcommand {
 
     pub fn test_args(&self) -> Vec<&str> {
         let mut args = vec![];
-
-        match *self {
-            Subcommand::Test { ref skip, .. } => {
-                for s in skip {
-                    args.push("--skip");
-                    args.push(s.as_str());
-                }
-            }
-            _ => (),
-        };
 
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {

@@ -17,6 +17,7 @@ rustc_attr = { path = "../rustc_attr" }
 rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_expand = { path = "../rustc_expand" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
@@ -46,7 +47,6 @@ rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
-tempfile = "3.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

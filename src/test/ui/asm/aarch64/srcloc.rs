@@ -118,5 +118,12 @@ fn main() {
         //~^^^^^^^^^^ ERROR: unrecognized instruction mnemonic
         //~^^^^^^^ ERROR: unrecognized instruction mnemonic
         //~^^^^^^^^ ERROR: unrecognized instruction mnemonic
+
+        asm!(
+            "",
+            "\n",
+            "invalid_instruction"
+        );
+        //~^^ ERROR: unrecognized instruction mnemonic
     }
 }

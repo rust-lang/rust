@@ -1,7 +1,11 @@
 // run-rustfix
+// aux-build:macro_rules.rs
 
 #![allow(unused_variables, dead_code, clippy::derive_partial_eq_without_eq)]
 #![warn(clippy::equatable_if_let)]
+
+#[macro_use]
+extern crate macro_rules;
 
 use std::cmp::Ordering;
 
@@ -75,4 +79,6 @@ fn main() {
     if let m1!(x) = "abc" {
         println!("OK");
     }
+
+    equatable_if_let!(a);
 }

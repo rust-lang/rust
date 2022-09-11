@@ -114,5 +114,5 @@ LL |     3_999_999_999usize as f64;
    |
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
-error: aborting due to 20 previous errors
+error: aborting due to 18 previous errors
 

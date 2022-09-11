@@ -20,7 +20,8 @@
 #![feature(negative_impls)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
-#![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -74,8 +75,6 @@ use md5::Digest;
 use md5::Md5;
 use sha1::Sha1;
 use sha2::Sha256;
-
-use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -663,6 +662,16 @@ impl Span {
         Some(self)
     }
 
+    /// Like `find_ancestor_inside`, but specifically for when spans might not
+    /// overlaps. Take care when using this, and prefer `find_ancestor_inside`
+    /// when you know that the spans are nested (modulo macro expansion).
+    pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
+        while !Span::eq_ctxt(self, other) {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
+    }
+
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().edition()
@@ -1095,10 +1104,8 @@ pub enum ExternalSource {
     Unneeded,
     Foreign {
         kind: ExternalSourceKind,
-        /// This SourceFile's byte-offset within the source_map of its original crate.
-        original_start_pos: BytePos,
-        /// The end of this SourceFile within the source_map of its original crate.
-        original_end_pos: BytePos,
+        /// Index of the file inside metadata.
+        metadata_index: u32,
     },
 }
 
@@ -2029,9 +2036,9 @@ impl InnerSpan {
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
-    /// Accesses `sess.opts.debugging_opts.incremental_ignore_spans` since
+    /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
     /// we don't have easy access to a `Session`
-    fn debug_opts_incremental_ignore_spans(&self) -> bool;
+    fn unstable_opts_incremental_ignore_spans(&self) -> bool;
     fn def_span(&self, def_id: LocalDefId) -> Span;
     fn span_data_to_lines_and_cols(
         &mut self,

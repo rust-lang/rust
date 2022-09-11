@@ -519,12 +519,14 @@ unsafe impl const SliceIndex<str> for ops::RangeToInclusive<usize> {
 ///     type Err = ParseIntError;
 ///
 ///     fn from_str(s: &str) -> Result<Self, Self::Err> {
-///         let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
-///                                  .split(',')
-///                                  .collect();
+///         let (x, y) = s
+///             .strip_prefix('(')
+///             .and_then(|s| s.strip_suffix(')'))
+///             .and_then(|s| s.split_once(','))
+///             .unwrap();
 ///
-///         let x_fromstr = coords[0].parse::<i32>()?;
-///         let y_fromstr = coords[1].parse::<i32>()?;
+///         let x_fromstr = x.parse::<i32>()?;
+///         let y_fromstr = y.parse::<i32>()?;
 ///
 ///         Ok(Point { x: x_fromstr, y: y_fromstr })
 ///     }

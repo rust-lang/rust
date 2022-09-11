@@ -1,11 +1,7 @@
 use super::{StringReader, UnmatchedBrace};
 
 use rustc_ast::token::{self, Delimiter, Token};
-use rustc_ast::tokenstream::{
-    DelimSpan,
-    Spacing::{self, *},
-    TokenStream, TokenTree, TreeAndSpacing,
-};
+use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
@@ -77,7 +73,7 @@ impl<'a> TokenTreesReader<'a> {
         }
     }
 
-    fn parse_token_tree(&mut self) -> PResult<'a, TreeAndSpacing> {
+    fn parse_token_tree(&mut self) -> PResult<'a, TokenTree> {
         let sm = self.string_reader.sess.source_map();
 
         match self.token.kind {
@@ -223,7 +219,7 @@ impl<'a> TokenTreesReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(delim_span, delim, tts).into())
+                Ok(TokenTree::Delimited(delim_span, delim, tts))
             }
             token::CloseDelim(delim) => {
                 // An unexpected closing delimiter (i.e., there is no
@@ -258,12 +254,12 @@ impl<'a> TokenTreesReader<'a> {
                 Err(err)
             }
             _ => {
-                let tt = TokenTree::Token(self.token.take());
+                let tok = self.token.take();
                 let mut spacing = self.bump();
                 if !self.token.is_op() {
-                    spacing = Alone;
+                    spacing = Spacing::Alone;
                 }
-                Ok((tt, spacing))
+                Ok(TokenTree::Token(tok, spacing))
             }
         }
     }
@@ -277,20 +273,21 @@ impl<'a> TokenTreesReader<'a> {
 
 #[derive(Default)]
 struct TokenStreamBuilder {
-    buf: Vec<TreeAndSpacing>,
+    buf: Vec<TokenTree>,
 }
 
 impl TokenStreamBuilder {
-    fn push(&mut self, (tree, joint): TreeAndSpacing) {
-        if let Some((TokenTree::Token(prev_token), Joint)) = self.buf.last()
-            && let TokenTree::Token(token) = &tree
+    #[inline(always)]
+    fn push(&mut self, tree: TokenTree) {
+        if let Some(TokenTree::Token(prev_token, Spacing::Joint)) = self.buf.last()
+            && let TokenTree::Token(token, joint) = &tree
             && let Some(glued) = prev_token.glue(token)
         {
             self.buf.pop();
-            self.buf.push((TokenTree::Token(glued), joint));
-            return;
+            self.buf.push(TokenTree::Token(glued, *joint));
+        } else {
+            self.buf.push(tree)
         }
-        self.buf.push((tree, joint))
     }
 
     fn into_token_stream(self) -> TokenStream {

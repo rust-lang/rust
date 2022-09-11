@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferTy,
+    visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferConst, InferTy,
     PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 
@@ -82,15 +82,18 @@ pub trait IsSuggestable<'tcx> {
     /// meaningful rendered suggestions when pretty-printed. We leave some
     /// nonsense, such as region vars, since those render as `'_` and are
     /// usually okay to reinterpret as elided lifetimes.
-    fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool;
+    ///
+    /// Only if `infer_suggestable` is true, we consider type and const
+    /// inference variables to be suggestable.
+    fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool;
 }
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
     T: TypeVisitable<'tcx>,
 {
-    fn is_suggestable(self, tcx: TyCtxt<'tcx>) -> bool {
-        self.visit_with(&mut IsSuggestableVisitor { tcx }).is_continue()
+    fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
+        self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
     }
 }
 
@@ -99,13 +102,25 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     generics: &hir::Generics<'_>,
     err: &mut Diagnostic,
     trait_pred: PolyTraitPredicate<'tcx>,
+    associated_ty: Option<(&'static str, Ty<'tcx>)>,
 ) -> bool {
-    if !trait_pred.is_suggestable(tcx) {
+    if !trait_pred.is_suggestable(tcx, false) {
         return false;
     }
 
     let param_name = trait_pred.skip_binder().self_ty().to_string();
-    let constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let mut constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+
+    if let Some((name, term)) = associated_ty {
+        // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
+        // That should be extracted into a helper function.
+        if constraint.ends_with('>') {
+            constraint = format!("{}, {} = {}>", &constraint[..constraint.len() - 1], name, term);
+        } else {
+            constraint.push_str(&format!("<{} = {}>", name, term));
+        }
+    }
+
     let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
 
     // Skip, there is a param named Self
@@ -393,7 +408,7 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             ) => {
                 self.0.push(ty);
             }
-            hir::TyKind::OpaqueDef(item_id, _) => {
+            hir::TyKind::OpaqueDef(item_id, _, _) => {
                 self.0.push(ty);
                 let item = self.1.item(item_id);
                 hir::intravisit::walk_item(self, item);
@@ -419,6 +434,7 @@ impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
 
 pub struct IsSuggestableVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    infer_suggestable: bool,
 }
 
 impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
@@ -426,6 +442,8 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
+            Infer(InferTy::TyVar(_)) if self.infer_suggestable => {}
+
             FnDef(..)
             | Closure(..)
             | Infer(..)
@@ -479,6 +497,8 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.kind() {
+            ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => {}
+
             ConstKind::Infer(..)
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(..)

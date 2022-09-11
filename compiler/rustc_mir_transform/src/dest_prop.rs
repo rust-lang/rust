@@ -122,7 +122,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
         //
         // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
+        sess.opts.unstable_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -150,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             def_id,
             body.local_decls.len(),
             relevant,
-            body.basic_blocks().len()
+            body.basic_blocks.len()
         );
         if relevant > MAX_LOCALS {
             warn!(
@@ -159,11 +159,11 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             );
             return;
         }
-        if body.basic_blocks().len() > MAX_BLOCKS {
+        if body.basic_blocks.len() > MAX_BLOCKS {
             warn!(
                 "too many blocks in {:?} ({}, max is {}), not optimizing",
                 def_id,
-                body.basic_blocks().len(),
+                body.basic_blocks.len(),
                 MAX_BLOCKS
             );
             return;
@@ -537,7 +537,7 @@ impl<'a> Conflicts<'a> {
             | StatementKind::FakeRead(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }

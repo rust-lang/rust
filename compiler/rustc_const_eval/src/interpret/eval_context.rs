@@ -2,10 +2,8 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
-use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
@@ -16,7 +14,6 @@ use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
@@ -24,7 +21,7 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
-    Scalar, ScalarMaybeUninit, StackPopJump,
+    Scalar, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -84,7 +81,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
+pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +102,7 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: PlaceTy<'tcx, Tag>,
+    pub return_place: PlaceTy<'tcx, Prov>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -114,7 +111,7 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
     /// Do *not* access this directly; always go through the machine hook!
-    pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
+    pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -142,7 +139,7 @@ pub struct FrameInfo<'tcx> {
 }
 
 /// Unwind information.
-#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum StackPopUnwind {
     /// The cleanup block.
     Cleanup(mir::BasicBlock),
@@ -152,7 +149,7 @@ pub enum StackPopUnwind {
     NotAllowed,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
+#[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -168,17 +165,16 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, Debug, PartialEq, Eq, HashStable)]
-pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
-    pub value: LocalValue<Tag>,
+#[derive(Clone, Debug)]
+pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
+    pub value: LocalValue<Prov>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
-    #[stable_hasher(ignore)]
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Debug)] // Miri debug-prints these
-pub enum LocalValue<Tag: Provenance = AllocId> {
+#[derive(Copy, Clone, Debug)] // Miri debug-prints these
+pub enum LocalValue<Prov: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.
@@ -186,16 +182,13 @@ pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This is an optimization over just always having a pointer here;
     /// we can thus avoid doing an allocation when the local just stores
     /// immediate values *and* never has its address taken.
-    Live(Operand<Tag>),
+    Live(Operand<Prov>),
 }
 
-impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
+impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
-    ///
-    /// Note: This may only be invoked from the `Machine::access_local` hook and not from
-    /// anywhere else. You may be invalidating machine invariants if you do!
     #[inline]
-    pub fn access(&self) -> InterpResult<'tcx, &Operand<Tag>> {
+    pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -208,7 +201,7 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
     #[inline]
-    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Tag>> {
+    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -216,8 +209,8 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag: Provenance> Frame<'mir, 'tcx, Tag> {
-    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Tag, Extra> {
+impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
+    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Prov, Extra> {
         Frame {
             body: self.body,
             instance: self.instance,
@@ -231,7 +224,7 @@ impl<'mir, 'tcx, Tag: Provenance> Frame<'mir, 'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
     /// If this is `Err`, we are not currently executing any particular statement in
@@ -426,14 +419,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
+    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>] {
         M::stack(self)
     }
 
     #[inline(always)]
     pub(crate) fn stack_mut(
         &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>> {
+    ) -> &mut Vec<Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>> {
         M::stack_mut(self)
     }
 
@@ -445,12 +438,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
+    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
         self.stack().last().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
         self.stack_mut().last_mut().expect("no call frames exist")
     }
 
@@ -507,7 +500,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// stack frame), to bring it into the proper environment for this interpreter.
     pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
+        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
     ) -> Result<T, InterpError<'tcx>> {
         frame
@@ -544,7 +537,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn layout_of_local(
         &self,
-        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
+        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -573,7 +566,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: &MemPlaceMeta<M::PointerTag>,
+        metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
@@ -633,9 +626,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = self.scalar_to_ptr(metadata.unwrap_meta())?;
+                let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
+                Ok(Some(self.get_vtable_size_and_align(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
@@ -659,7 +652,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: &MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
@@ -669,7 +662,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: &PlaceTy<'tcx, M::PointerTag>,
+        return_place: &PlaceTy<'tcx, M::Provenance>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -678,7 +671,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place: *return_place,
+            return_place: return_place.clone(),
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -786,7 +779,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
+                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
                 Err(_) => true,
             }
         );
@@ -799,7 +792,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let op = self
                 .local_to_op(self.frame(), mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
-            let dest = self.frame().return_place;
+            let dest = self.frame().return_place.clone();
             let err = self.copy_op(&op, &dest, /*allow_transmute*/ true);
             trace!("return value: {:?}", self.dump_place(*dest));
             // We delay actually short-circuiting on this error until *after* the stack frame is
@@ -895,7 +888,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
+    fn deallocate_local(&mut self, local: LocalValue<M::Provenance>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type. Hence we can `unwrap`.
@@ -913,7 +906,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
         // `self.param_env`, that would mean we invoke the query to evaluate the static
@@ -931,7 +924,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(&self, place: Place<M::PointerTag>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+    pub fn dump_place(&self, place: Place<M::Provenance>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
         PlacePrinter { ecx: self, place }
     }
 
@@ -960,7 +953,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 /// Helper struct for the `dump_place` function.
 pub struct PlacePrinter<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     ecx: &'a InterpCx<'mir, 'tcx, M>,
-    place: Place<M::PointerTag>,
+    place: Place<M::Provenance>,
 }
 
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
@@ -987,7 +980,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                             " by {} ref {:?}:",
                             match mplace.meta {
                                 MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
-                                MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
+                                MemPlaceMeta::None => String::new(),
                             },
                             mplace.ptr,
                         )?;
@@ -995,16 +988,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(fmt, " {:?}", val)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val {
+                        if let Scalar::Ptr(ptr, _size) = val {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(fmt, " ({:?}, {:?})", val1, val2)?;
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val1 {
+                        if let Scalar::Ptr(ptr, _size) = val1 {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _size)) = val2 {
+                        if let Scalar::Ptr(ptr, _size) = val2 {
                             allocs.push(ptr.provenance.get_alloc_id());
                         }
                     }
@@ -1019,33 +1012,5 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                 ptr => write!(fmt, " integral by ref: {:?}", ptr),
             },
         }
-    }
-}
-
-impl<'ctx, 'mir, 'tcx, Tag: Provenance, Extra> HashStable<StableHashingContext<'ctx>>
-    for Frame<'mir, 'tcx, Tag, Extra>
-where
-    Extra: HashStable<StableHashingContext<'ctx>>,
-    Tag: HashStable<StableHashingContext<'ctx>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
-        // Exhaustive match on fields to make sure we forget no field.
-        let Frame {
-            body,
-            instance,
-            return_to_block,
-            return_place,
-            locals,
-            loc,
-            extra,
-            tracing_span: _,
-        } = self;
-        body.hash_stable(hcx, hasher);
-        instance.hash_stable(hcx, hasher);
-        return_to_block.hash_stable(hcx, hasher);
-        return_place.hash_stable(hcx, hasher);
-        locals.hash_stable(hcx, hasher);
-        loc.hash_stable(hcx, hasher);
-        extra.hash_stable(hcx, hasher);
     }
 }

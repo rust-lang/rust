@@ -3,13 +3,15 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{
-    get_enclosing_loop_or_closure, is_refutable, is_trait_method, match_def_path, paths, visitors::is_res_used,
+    get_enclosing_loop_or_multi_call_closure, is_refutable, is_trait_method, match_def_path, paths,
+    visitors::is_res_used,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Closure, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{symbol::sym, Symbol};
 
@@ -21,7 +23,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Res::Def(_, pat_did) = pat_path.res;
         if match_def_path(cx, pat_did, &paths::OPTION_SOME);
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, [iter_expr], _) = let_expr.kind;
+        if let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind;
         if method_name.ident.name == sym::next;
         if is_trait_method(cx, let_expr, sym::Iterator);
         if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
@@ -220,7 +222,7 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
                 if let Some(e) = e {
                     self.visit_expr(e);
                 }
-            } else if let ExprKind::Closure { body: id, .. } = e.kind {
+            } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                 if is_res_used(self.cx, self.iter_expr.path, id) {
                     self.uses_iter = true;
                 }
@@ -249,6 +251,11 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         used_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
+        type NestedFilter = OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if self.used_iter {
                 return;
@@ -260,7 +267,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
                     if let Some(e) = e {
                         self.visit_expr(e);
                     }
-                } else if let ExprKind::Closure { body: id, .. } = e.kind {
+                } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                     self.used_iter = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);
@@ -283,6 +290,11 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         used_after: bool,
     }
     impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
+        type NestedFilter = OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
         fn visit_local(&mut self, l: &'tcx Local<'_>) {
             if !self.after_loop {
                 l.pat.each_binding_or_first(&mut |_, id, _, _| {
@@ -307,7 +319,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
                     if let Some(e) = e {
                         self.visit_expr(e);
                     }
-                } else if let ExprKind::Closure { body: id, .. } = e.kind {
+                } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                     self.used_after = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);
@@ -320,10 +332,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         }
     }
 
-    if let Some(e) = get_enclosing_loop_or_closure(cx.tcx, loop_expr) {
-        // The iterator expression will be used on the next iteration (for loops), or on the next call (for
-        // closures) unless it is declared within the enclosing expression. TODO: Check for closures
-        // used where an `FnOnce` type is expected.
+    if let Some(e) = get_enclosing_loop_or_multi_call_closure(cx, loop_expr) {
         let local_id = match iter_expr.path {
             Res::Local(id) => id,
             _ => return true,
@@ -347,7 +356,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             after_loop: false,
             used_iter: false,
         };
-        v.visit_expr(&cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
+        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
         v.used_iter
     }
 }

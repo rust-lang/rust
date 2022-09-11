@@ -39,7 +39,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx));
         sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
 
-        if sess.opts.debugging_opts.incremental_info {
+        if sess.opts.unstable_opts.incremental_info {
             tcx.dep_graph.print_incremental_info()
         }
 
@@ -182,7 +182,7 @@ pub fn build_dep_graph(
         prev_graph,
         prev_work_products,
         encoder,
-        sess.opts.debugging_opts.query_dep_graph,
-        sess.opts.debugging_opts.incremental_info,
+        sess.opts.unstable_opts.query_dep_graph,
+        sess.opts.unstable_opts.incremental_info,
     ))
 }

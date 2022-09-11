@@ -164,7 +164,7 @@ fn range_shadow_multi_pats() {
 
 fn misc() {
     enum Foo {
-        Bar(usize, bool)
+        Bar(#[allow(unused_tuple_struct_fields)] usize, bool)
     }
     // This test basically mimics how trace_macros! macro is implemented,
     // which is a rare combination of vector patterns, multiple wild-card

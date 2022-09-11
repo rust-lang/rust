@@ -1,5 +1,5 @@
 use crate::base;
-use crate::common::CodegenCx;
+use crate::common::{self, CodegenCx};
 use crate::debuginfo;
 use crate::llvm::{self, True};
 use crate::llvm_util;
@@ -23,16 +23,15 @@ use rustc_target::abi::{
     AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
 use std::ops::Range;
-use tracing::debug;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
-    // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`,
-    // so `range` must be within the bounds of `alloc` and not contain or overlap a relocation.
+    // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`, so `range`
+    // must be within the bounds of `alloc` and not contain or overlap a pointer provenance.
     fn append_chunks_of_init_and_uninit_bytes<'ll, 'a, 'b>(
         llvals: &mut Vec<&'ll Value>,
         cx: &'a CodegenCx<'ll, 'b>,
@@ -64,7 +63,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
             // See https://github.com/rust-lang/rust/issues/84565.
             1
         } else {
-            cx.sess().opts.debugging_opts.uninit_const_chunk_threshold
+            cx.sess().opts.unstable_opts.uninit_const_chunk_threshold
         };
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
@@ -79,12 +78,12 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.provenance().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // This `inspect` is okay since we have checked that there is no provenance, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
             // (we inspect the result after interpreter execution).
             append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, next_offset..offset);
@@ -93,7 +92,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
             dl.endian,
             // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
             // affect interpreter execution (we inspect the result after interpreter execution),
-            // and we properly interpret the relocation as a relocation pointer offset.
+            // and we properly interpret the provenance as a relocation pointer offset.
             alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
         )
         .expect("const_alloc_to_llvm: could not read relocation pointer")
@@ -101,7 +100,9 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
 
         let address_space = match cx.tcx.global_alloc(alloc_id) {
             GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) => AddressSpace::DATA,
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
+                AddressSpace::DATA
+            }
         };
 
         llvals.push(cx.scalar_to_backend(
@@ -119,7 +120,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
     if alloc.len() >= next_offset {
         let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all relocations, it is
+        // This `inspect` is okay since we have check that it is after all provenance, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
         // inspect the result after interpreter execution).
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
@@ -158,7 +159,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: &str,
-    span_def_id: DefId,
+    def_id: DefId,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
@@ -173,7 +174,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
             cx.sess().span_fatal(
-                cx.tcx.def_span(span_def_id),
+                cx.tcx.def_span(def_id),
                 "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
             )
         };
@@ -192,7 +193,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             real_name.push_str(sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
                 cx.sess().span_fatal(
-                    cx.tcx.def_span(span_def_id),
+                    cx.tcx.def_span(def_id),
                     &format!("symbol `{}` is already defined", &sym),
                 )
             });
@@ -200,6 +201,10 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             llvm::LLVMSetInitializer(g2, g1);
             g2
         }
+    } else if cx.tcx.sess.target.arch == "x86" &&
+        let Some(dllimport) = common::get_dllimport(cx.tcx, def_id, sym)
+    {
+        cx.declare_global(&common::i686_decorated_name(&dllimport, common::is_mingw_gnu_toolchain(&cx.tcx.sess.target), true), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -473,7 +478,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 //
                 // We could remove this hack whenever we decide to drop macOS 10.10 support.
                 if self.tcx.sess.target.is_like_osx {
-                    // The `inspect` method is okay here because we checked relocations, and
+                    // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state
                     // (not as part of the interpreter execution).
                     //
@@ -481,7 +486,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     // happens to be zero. Instead, we should only check the value of defined bytes
                     // and set all undefined bytes to zero if this allocation is headed for the
                     // BSS.
-                    let all_bytes_are_zero = alloc.relocations().is_empty()
+                    let all_bytes_are_zero = alloc.provenance().is_empty()
                         && alloc
                             .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
                             .iter()
@@ -505,9 +510,9 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                         section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
-                    assert!(alloc.relocations().is_empty());
+                    assert!(alloc.provenance().is_empty());
 
-                    // The `inspect` method is okay here because we checked relocations, and
+                    // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state (not
                     // as part of the interpreter execution).
                     let bytes =
@@ -535,10 +540,20 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
                 // The semantics of #[used] in Rust only require the symbol to make it into the
                 // object file. It is explicitly allowed for the linker to strip the symbol if it
-                // is dead. As such, use llvm.compiler.used instead of llvm.used.
+                // is dead, which means we are allowed use `llvm.compiler.used` instead of
+                // `llvm.used` here.
+                //
                 // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
                 // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
-                // in some versions of the gold linker.
+                // in the handling of `.init_array` (the static constructor list) in versions of
+                // the gold linker (prior to the one released with binutils 2.36).
+                //
+                // That said, we only ever emit these when compiling for ELF targets, unless
+                // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
+                // on other targets, in particular MachO targets have *their* static constructor
+                // lists broken if `llvm.compiler.used` is emitted rather than llvm.used. However,
+                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_typeck`,
+                // so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {

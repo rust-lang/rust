@@ -690,7 +690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         drops.add_entry(block, drop_idx);
 
-        // `build_drop_tree` doesn't have access to our source_info, so we
+        // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::Resume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
@@ -722,7 +722,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         drops.add_entry(block, drop_idx);
 
-        // `build_drop_tree` doesn't have access to our source_info, so we
+        // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::Resume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);

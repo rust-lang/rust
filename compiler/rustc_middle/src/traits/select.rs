@@ -109,6 +109,10 @@ pub enum SelectionCandidate<'tcx> {
         /// `false` if there are no *further* obligations.
         has_nested: bool,
     },
+
+    /// Implementation of transmutability trait.
+    TransmutabilityCandidate,
+
     ParamCandidate(ty::PolyTraitPredicate<'tcx>),
     ImplCandidate(DefId),
     AutoImplCandidate(DefId),

@@ -6,9 +6,11 @@ use std::io::ErrorKind;
 use std::process::Command;
 
 fn main() {
-    assert_eq!(Command::new("nonexistent")
-                   .spawn()
-                   .unwrap_err()
-                   .kind(),
-               ErrorKind::NotFound);
+    let result = Command::new("nonexistent").spawn().unwrap_err().kind();
+
+    assert!(matches!(
+        result,
+        // Under WSL with appendWindowsPath=true, this fails with PermissionDenied
+        ErrorKind::NotFound | ErrorKind::PermissionDenied
+    ));
 }

@@ -1,5 +1,4 @@
 // run-rustfix
-#![feature(label_break_value)]
 fn main() {
     let _ = 1 + 1; //~ ERROR expected `while`, `for`, `loop` or `{` after a label
 

@@ -112,6 +112,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
+use config::Target;
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
 
@@ -185,6 +186,9 @@ const LLVM_TOOLS: &[&str] = &[
     "llc",           // used to compile LLVM bytecode
     "opt",           // used to optimize LLVM bytecode
 ];
+
+/// LLD file names for all flavors.
+const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
 pub const VERSION: usize = 2;
 
@@ -273,7 +277,6 @@ pub struct Build {
     bootstrap_out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
-    rls_info: channel::GitInfo,
     rust_analyzer_info: channel::GitInfo,
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
@@ -396,18 +399,22 @@ impl Build {
         let src = config.src.clone();
         let out = config.out.clone();
 
+        #[cfg(unix)]
+        // keep this consistent with the equivalent check in x.py:
+        // https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/bootstrap.py#L796-L797
         let is_sudo = match env::var_os("SUDO_USER") {
-            Some(sudo_user) => match env::var_os("USER") {
-                Some(user) => user != sudo_user,
-                None => false,
-            },
+            Some(_sudo_user) => {
+                let uid = unsafe { libc::getuid() };
+                uid == 0
+            }
             None => false,
         };
+        #[cfg(not(unix))]
+        let is_sudo = false;
 
         let ignore_git = config.ignore_git;
         let rust_info = channel::GitInfo::new(ignore_git, &src);
         let cargo_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rls"));
         let rust_analyzer_info =
             channel::GitInfo::new(ignore_git, &src.join("src/tools/rust-analyzer"));
         let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
@@ -485,7 +492,6 @@ impl Build {
 
             rust_info,
             cargo_info,
-            rls_info,
             rust_analyzer_info,
             clippy_info,
             miri_info,
@@ -537,7 +543,6 @@ impl Build {
         let rust_submodules = [
             "src/tools/rust-installer",
             "src/tools/cargo",
-            "src/tools/rls",
             "src/tools/miri",
             "library/backtrace",
             "library/stdarch",
@@ -624,20 +629,6 @@ impl Build {
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
     pub fn maybe_update_submodules(&self) {
-        // WARNING: keep this in sync with the submodules hard-coded in bootstrap.py
-        let mut bootstrap_submodules: Vec<&str> = vec![
-            "src/tools/rust-installer",
-            "src/tools/cargo",
-            "src/tools/rls",
-            "src/tools/miri",
-            "library/backtrace",
-            "library/stdarch",
-        ];
-        // As in bootstrap.py, we include `rust-analyzer` if `build.vendor` was set in
-        // `config.toml`.
-        if self.config.vendor {
-            bootstrap_submodules.push("src/tools/rust-analyzer");
-        }
         // Avoid running git when there isn't a git checkout.
         if !self.config.submodules(&self.rust_info) {
             return;
@@ -653,10 +644,8 @@ impl Build {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
             let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
-            // avoid updating submodules twice
-            if !bootstrap_submodules.iter().any(|&p| Path::new(p) == submodule)
-                && channel::GitInfo::new(false, submodule).is_git()
-            {
+            // Don't update the submodule unless it's already been cloned.
+            if channel::GitInfo::new(false, submodule).is_git() {
                 self.update_submodule(submodule);
             }
         }
@@ -854,12 +843,13 @@ impl Build {
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
-        if self.config.llvm_from_ci && target == self.config.build {
-            return true;
-        }
-
         match self.config.target_config.get(&target) {
-            Some(ref c) => c.llvm_config.is_none(),
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            Some(Target { llvm_config, .. }) => {
+                // If the user set llvm-config we assume Rust is not patched,
+                // but first check to see if it was configured by llvm-from-ci.
+                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
+            }
             None => true,
         }
     }
@@ -1024,7 +1014,9 @@ impl Build {
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
-        self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
+        self.config.jobs.unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
+        })
     }
 
     fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
@@ -1647,14 +1639,12 @@ fn chmod(_path: &Path, _perms: u32) {}
 /// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
 /// If the test is running and code is an error code, it will cause a panic.
 fn detail_exit(code: i32) -> ! {
-    // Successful exit
-    if code == 0 {
-        std::process::exit(0);
-    }
-    if cfg!(test) {
+    // if in test and code is an error code, panic with status code provided
+    if cfg!(test) && code != 0 {
         panic!("status code: {}", code);
     } else {
-        std::panic::resume_unwind(Box::new(code));
+        //otherwise,exit with provided status code
+        std::process::exit(code);
     }
 }
 

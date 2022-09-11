@@ -5,7 +5,7 @@ set -ex
 source shared.sh
 
 BINUTILS=2.32
-GCC=5.3.0
+GCC=8.3.0
 TARGET=powerpc64le-linux-gnu
 SYSROOT=/usr/local/$TARGET/sysroot
 
@@ -32,7 +32,7 @@ popd
 # Next, download and build binutils.
 mkdir binutils-$TARGET
 pushd binutils-$TARGET
-curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.bz2 | tar xjf -
+curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.xz | tar xJf -
 mkdir binutils-build
 cd binutils-build
 hide_output ../binutils-$BINUTILS/configure --target=$TARGET --with-sysroot=$SYSROOT
@@ -44,7 +44,7 @@ rm -rf binutils-$TARGET
 # Finally, download and build gcc.
 mkdir gcc-$TARGET
 pushd gcc-$TARGET
-curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.bz2 | tar xjf -
+curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | tar xJf -
 cd gcc-$GCC
 hide_output ./contrib/download_prerequisites
 

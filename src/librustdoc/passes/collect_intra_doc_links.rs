@@ -4,7 +4,10 @@
 
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
+use rustc_data_structures::{
+    fx::{FxHashMap, FxHashSet},
+    intern::Interned,
+};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
@@ -220,6 +223,9 @@ enum MalformedGenerics {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum UrlFragment {
     Item(DefId),
+    /// A part of a page that isn't a rust item.
+    ///
+    /// Eg: `[Vector Examples](std::vec::Vec#examples)`
     UserWritten(String),
 }
 
@@ -231,7 +237,7 @@ impl UrlFragment {
             &UrlFragment::Item(def_id) => {
                 let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
-                        if tcx.associated_item(def_id).defaultness.has_value() {
+                        if tcx.impl_defaultness(def_id).has_value() {
                             "method."
                         } else {
                             "tymethod."
@@ -474,7 +480,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // If there's no `::`, it's not an associated item.
             // So we can be sure that `rustc_resolve` was accurate when it said it wasn't resolved.
             .ok_or_else(|| {
-                debug!("found no `::`, assumming {} was correctly not in scope", item_name);
+                debug!("found no `::`, assuming {} was correctly not in scope", item_name);
                 UnresolvedPath {
                     item_id,
                     module_id,
@@ -747,7 +753,7 @@ fn resolve_associated_trait_item<'a>(
 ///
 /// This is just a wrapper around [`TyCtxt::impl_item_implementor_ids()`] and
 /// [`TyCtxt::associated_item()`] (with some helpful logging added).
-#[instrument(level = "debug", skip(tcx))]
+#[instrument(level = "debug", skip(tcx), ret)]
 fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
@@ -757,9 +763,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
     debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
     debug!(?impl_assoc_id);
-    let impl_assoc = tcx.associated_item(impl_assoc_id);
-    debug!(?impl_assoc);
-    Some(impl_assoc)
+    Some(tcx.associated_item(impl_assoc_id))
 }
 
 /// Given a type, return all trait impls in scope in `module` for that type.
@@ -1126,7 +1130,7 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    did: res.def_id(self.cx.tcx),
+                    page_id: res.def_id(self.cx.tcx),
                     fragment,
                 })
             }
@@ -1145,11 +1149,12 @@ impl LinkCollector<'_, '_> {
                     item,
                     &diag_info,
                 )?;
-                let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
+
+                let page_id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink {
                     link: ori_link.link.clone(),
                     link_text: link_text.clone(),
-                    did: id,
+                    page_id,
                     fragment,
                 })
             }
@@ -1253,7 +1258,7 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: ResolutionInfo,
         diag: DiagnosticInfo<'_>,
-        // If errors are cached then they are only reported on first ocurrence
+        // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
@@ -1804,8 +1809,8 @@ fn resolution_failure(
                                 }
                                 return;
                             }
-                            Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
-                            | Static(_) => "associated item",
+                            Trait | TyAlias | ForeignTy | OpaqueTy | ImplTraitPlaceholder
+                            | TraitAlias | TyParam | Static(_) => "associated item",
                             Impl | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {

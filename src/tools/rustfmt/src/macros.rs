@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{Cursor, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{Cursor, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{
@@ -682,7 +682,7 @@ struct MacroArgParser {
 
 fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
-        TokenTree::Token(ref t) => t.clone(),
+        TokenTree::Token(ref t, _) => t.clone(),
         TokenTree::Delimited(delim_span, delim, _) => Token {
             kind: TokenKind::CloseDelim(delim),
             span: delim_span.close,
@@ -737,10 +737,13 @@ impl MacroArgParser {
 
     fn add_meta_variable(&mut self, iter: &mut Cursor) -> Option<()> {
         match iter.next() {
-            Some(TokenTree::Token(Token {
-                kind: TokenKind::Ident(name, _),
-                ..
-            })) => {
+            Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Ident(name, _),
+                    ..
+                },
+                _,
+            )) => {
                 self.result.push(ParsedMacroArg {
                     kind: MacroArgKind::MetaVariable(name, self.buf.clone()),
                 });
@@ -777,21 +780,30 @@ impl MacroArgParser {
             }
 
             match tok {
-                TokenTree::Token(Token {
-                    kind: TokenKind::BinOp(BinOpToken::Plus),
-                    ..
-                })
-                | TokenTree::Token(Token {
-                    kind: TokenKind::Question,
-                    ..
-                })
-                | TokenTree::Token(Token {
-                    kind: TokenKind::BinOp(BinOpToken::Star),
-                    ..
-                }) => {
+                TokenTree::Token(
+                    Token {
+                        kind: TokenKind::BinOp(BinOpToken::Plus),
+                        ..
+                    },
+                    _,
+                )
+                | TokenTree::Token(
+                    Token {
+                        kind: TokenKind::Question,
+                        ..
+                    },
+                    _,
+                )
+                | TokenTree::Token(
+                    Token {
+                        kind: TokenKind::BinOp(BinOpToken::Star),
+                        ..
+                    },
+                    _,
+                ) => {
                     break;
                 }
-                TokenTree::Token(ref t) => {
+                TokenTree::Token(ref t, _) => {
                     buffer.push_str(&pprust::token_to_string(t));
                 }
                 _ => return None,
@@ -859,10 +871,13 @@ impl MacroArgParser {
 
         while let Some(tok) = iter.next() {
             match tok {
-                TokenTree::Token(Token {
-                    kind: TokenKind::Dollar,
-                    span,
-                }) => {
+                TokenTree::Token(
+                    Token {
+                        kind: TokenKind::Dollar,
+                        span,
+                    },
+                    _,
+                ) => {
                     // We always want to add a separator before meta variables.
                     if !self.buf.is_empty() {
                         self.add_separator();
@@ -875,13 +890,16 @@ impl MacroArgParser {
                         span,
                     };
                 }
-                TokenTree::Token(Token {
-                    kind: TokenKind::Colon,
-                    ..
-                }) if self.is_meta_var => {
+                TokenTree::Token(
+                    Token {
+                        kind: TokenKind::Colon,
+                        ..
+                    },
+                    _,
+                ) if self.is_meta_var => {
                     self.add_meta_variable(&mut iter)?;
                 }
-                TokenTree::Token(ref t) => self.update_buffer(t),
+                TokenTree::Token(ref t, _) => self.update_buffer(t),
                 TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {
@@ -1123,12 +1141,15 @@ impl MacroParser {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
         };
-        let args = TokenStream::new(vec![(tok, Spacing::Joint)]);
+        let args = TokenStream::new(vec![tok]);
         match self.toks.next()? {
-            TokenTree::Token(Token {
-                kind: TokenKind::FatArrow,
-                ..
-            }) => {}
+            TokenTree::Token(
+                Token {
+                    kind: TokenKind::FatArrow,
+                    ..
+                },
+                _,
+            ) => {}
             _ => return None,
         }
         let (mut hi, body, whole_body) = match self.toks.next()? {
@@ -1147,10 +1168,13 @@ impl MacroParser {
                 )
             }
         };
-        if let Some(TokenTree::Token(Token {
-            kind: TokenKind::Semi,
-            span,
-        })) = self.toks.look_ahead(0)
+        if let Some(TokenTree::Token(
+            Token {
+                kind: TokenKind::Semi,
+                span,
+            },
+            _,
+        )) = self.toks.look_ahead(0)
         {
             hi = span.hi();
             self.toks.next();

@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(const_ptr_offset_from)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(ptr_sub_ptr)]
 

@@ -1,5 +1,5 @@
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:257:19
+  --> $DIR/undocumented_unsafe_blocks.rs:262:19
    |
 LL |     /* Safety: */ unsafe {}
    |                   ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     /* Safety: */ unsafe {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:261:5
+  --> $DIR/undocumented_unsafe_blocks.rs:266:5
    |
 LL |     unsafe {}
    |     ^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     unsafe {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:265:14
+  --> $DIR/undocumented_unsafe_blocks.rs:270:14
    |
 LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    |              ^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:265:29
+  --> $DIR/undocumented_unsafe_blocks.rs:270:29
    |
 LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    |                             ^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:265:48
+  --> $DIR/undocumented_unsafe_blocks.rs:270:48
    |
 LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    |                                                ^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:269:18
+  --> $DIR/undocumented_unsafe_blocks.rs:274:18
    |
 LL |     let _ = (42, unsafe {}, "test", unsafe {});
    |                  ^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     let _ = (42, unsafe {}, "test", unsafe {});
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:269:37
+  --> $DIR/undocumented_unsafe_blocks.rs:274:37
    |
 LL |     let _ = (42, unsafe {}, "test", unsafe {});
    |                                     ^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     let _ = (42, unsafe {}, "test", unsafe {});
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:273:14
+  --> $DIR/undocumented_unsafe_blocks.rs:278:14
    |
 LL |     let _ = *unsafe { &42 };
    |              ^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     let _ = *unsafe { &42 };
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:278:19
+  --> $DIR/undocumented_unsafe_blocks.rs:283:19
    |
 LL |     let _ = match unsafe {} {
    |                   ^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     let _ = match unsafe {} {
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:284:14
+  --> $DIR/undocumented_unsafe_blocks.rs:289:14
    |
 LL |     let _ = &unsafe {};
    |              ^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     let _ = &unsafe {};
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:288:14
+  --> $DIR/undocumented_unsafe_blocks.rs:293:14
    |
 LL |     let _ = [unsafe {}; 5];
    |              ^^^^^^^^^
@@ -88,7 +88,7 @@ LL |     let _ = [unsafe {}; 5];
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:292:13
+  --> $DIR/undocumented_unsafe_blocks.rs:297:13
    |
 LL |     let _ = unsafe {};
    |             ^^^^^^^^^
@@ -96,7 +96,7 @@ LL |     let _ = unsafe {};
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:302:8
+  --> $DIR/undocumented_unsafe_blocks.rs:307:8
    |
 LL |     t!(unsafe {});
    |        ^^^^^^^^^
@@ -104,7 +104,7 @@ LL |     t!(unsafe {});
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:308:13
+  --> $DIR/undocumented_unsafe_blocks.rs:313:13
    |
 LL |             unsafe {}
    |             ^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     t!();
    = note: this error originates in the macro `t` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:316:5
+  --> $DIR/undocumented_unsafe_blocks.rs:321:5
    |
 LL |     unsafe {} // SAFETY:
    |     ^^^^^^^^^
@@ -124,7 +124,7 @@ LL |     unsafe {} // SAFETY:
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:320:5
+  --> $DIR/undocumented_unsafe_blocks.rs:325:5
    |
 LL |     unsafe {
    |     ^^^^^^^^
@@ -132,7 +132,7 @@ LL |     unsafe {
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:330:5
+  --> $DIR/undocumented_unsafe_blocks.rs:335:5
    |
 LL |     unsafe {};
    |     ^^^^^^^^^
@@ -140,7 +140,7 @@ LL |     unsafe {};
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe block missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:334:20
+  --> $DIR/undocumented_unsafe_blocks.rs:339:20
    |
 LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:341:5
+  --> $DIR/undocumented_unsafe_blocks.rs:346:5
    |
 LL |     unsafe impl A for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ LL |     unsafe impl A for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:348:9
+  --> $DIR/undocumented_unsafe_blocks.rs:353:9
    |
 LL |         unsafe impl B for (u32) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -164,7 +164,7 @@ LL |         unsafe impl B for (u32) {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:369:13
+  --> $DIR/undocumented_unsafe_blocks.rs:374:13
    |
 LL |             unsafe impl T for $t {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL |     no_safety_comment!(());
    = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:394:13
+  --> $DIR/undocumented_unsafe_blocks.rs:399:13
    |
 LL |             unsafe impl T for $t {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -188,7 +188,7 @@ LL |     no_safety_comment!(());
    = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:402:5
+  --> $DIR/undocumented_unsafe_blocks.rs:407:5
    |
 LL |     unsafe impl T for (i32) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -196,7 +196,7 @@ LL |     unsafe impl T for (i32) {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:394:13
+  --> $DIR/undocumented_unsafe_blocks.rs:399:13
    |
 LL |             unsafe impl T for $t {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -208,7 +208,7 @@ LL |     no_safety_comment!(u32);
    = note: this error originates in the macro `no_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:408:5
+  --> $DIR/undocumented_unsafe_blocks.rs:413:5
    |
 LL |     unsafe impl T for (bool) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -216,7 +216,7 @@ LL |     unsafe impl T for (bool) {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:454:5
+  --> $DIR/undocumented_unsafe_blocks.rs:459:5
    |
 LL |     unsafe impl NoComment for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -224,7 +224,7 @@ LL |     unsafe impl NoComment for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:458:19
+  --> $DIR/undocumented_unsafe_blocks.rs:463:19
    |
 LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -232,7 +232,7 @@ LL |     /* SAFETY: */ unsafe impl InlineComment for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:462:5
+  --> $DIR/undocumented_unsafe_blocks.rs:467:5
    |
 LL |     unsafe impl TrailingComment for () {} // SAFETY:
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -240,7 +240,7 @@ LL |     unsafe impl TrailingComment for () {} // SAFETY:
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:467:5
+  --> $DIR/undocumented_unsafe_blocks.rs:472:5
    |
 LL |     unsafe impl Interference for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -248,7 +248,7 @@ LL |     unsafe impl Interference for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:474:5
+  --> $DIR/undocumented_unsafe_blocks.rs:479:5
    |
 LL |     unsafe impl ImplInFn for () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -256,7 +256,7 @@ LL |     unsafe impl ImplInFn for () {}
    = help: consider adding a safety comment on the preceding line
 
 error: unsafe impl missing a safety comment
-  --> $DIR/undocumented_unsafe_blocks.rs:483:1
+  --> $DIR/undocumented_unsafe_blocks.rs:488:1
    |
 LL | unsafe impl CrateRoot for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -14,13 +14,13 @@ LL |     format!("{:X}", "3");
              NonZeroI8
              NonZeroIsize
            and 21 others
-   = note: required because of the requirements on the impl of `UpperHex` for `&str`
+   = note: required for `&str` to implement `UpperHex`
 note: required by a bound in `ArgumentV1::<'a>::new_upper_hex`
   --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
 LL |     arg_new!(new_upper_hex, UpperHex);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ArgumentV1::<'a>::new_upper_hex`
-   = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `arg_new` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

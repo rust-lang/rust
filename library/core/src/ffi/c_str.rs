@@ -2,6 +2,7 @@ use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
 use crate::fmt::{self, Write};
+use crate::intrinsics;
 use crate::ops;
 use crate::slice;
 use crate::slice::memchr;
@@ -65,9 +66,9 @@ use crate::str;
 /// extern "C" { fn my_string() -> *const c_char; }
 ///
 /// fn my_string_safe() -> String {
-///     unsafe {
-///         CStr::from_ptr(my_string()).to_string_lossy().into_owned()
-///     }
+///     let cstr = unsafe { CStr::from_ptr(my_string()) };
+///     // Get copy-on-write Cow<'_, str>, then guarantee a freshly-owned String allocation
+///     String::from_utf8_lossy(cstr.to_bytes()).to_string()
 /// }
 ///
 /// println!("string: {}", my_string_safe());
@@ -76,7 +77,7 @@ use crate::str;
 /// [str]: prim@str "str"
 #[derive(Hash)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
@@ -108,7 +109,7 @@ pub struct CStr {
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
@@ -384,21 +385,42 @@ impl CStr {
     #[must_use]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
+    #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // We're in a const fn, so this is the best we can do
-        debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
-        // SAFETY: Calling an inner function with the same prerequisites.
-        unsafe { Self::_from_bytes_with_nul_unchecked(bytes) }
-    }
+        #[inline]
+        fn rt_impl(bytes: &[u8]) -> &CStr {
+            // Chance at catching some UB at runtime with debug builds.
+            debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
 
-    #[inline]
-    const unsafe fn _from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // SAFETY: Casting to CStr is safe because its internal representation
-        // is a [u8] too (safe only inside std).
-        // Dereferencing the obtained pointer is safe because it comes from a
-        // reference. Making a reference is then safe because its lifetime
-        // is bound by the lifetime of the given `bytes`.
-        unsafe { &*(bytes as *const [u8] as *const CStr) }
+            // SAFETY: Casting to CStr is safe because its internal representation
+            // is a [u8] too (safe only inside std).
+            // Dereferencing the obtained pointer is safe because it comes from a
+            // reference. Making a reference is then safe because its lifetime
+            // is bound by the lifetime of the given `bytes`.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        const fn const_impl(bytes: &[u8]) -> &CStr {
+            // Saturating so that an empty slice panics in the assert with a good
+            // message, not here due to underflow.
+            let mut i = bytes.len().saturating_sub(1);
+            assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
+
+            // Ending null byte exists, skip to the rest.
+            while i != 0 {
+                i -= 1;
+                let byte = bytes[i];
+                assert!(byte != 0, "input contained interior nul");
+            }
+
+            // SAFETY: See `rt_impl` cast.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        // SAFETY: The const and runtime versions have identical behavior
+        // unless the safety contract of `from_bytes_with_nul_unchecked` is
+        // violated, which is UB.
+        unsafe { intrinsics::const_eval_select((bytes,), const_impl, rt_impl) }
     }
 
     /// Returns the inner pointer to this C string.

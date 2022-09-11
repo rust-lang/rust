@@ -4,10 +4,8 @@
 // `target-cpu` compiler flags to opt-in more hardware-specific
 // features.
 
-use super::{
-    CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, RelroLevel, StackProbeType,
-    Target, TargetOptions,
-};
+use super::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy};
+use super::{RelroLevel, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
@@ -18,7 +16,6 @@ pub fn target() -> Target {
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        relocation_model: RelocModel::Pic,
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".into()),
         features:

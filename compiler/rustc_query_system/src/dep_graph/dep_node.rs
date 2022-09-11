@@ -79,8 +79,8 @@ impl<K: DepKind> DepNode<K> {
         #[cfg(debug_assertions)]
         {
             if !tcx.fingerprint_style(kind).reconstructible()
-                && (tcx.sess().opts.debugging_opts.incremental_info
-                    || tcx.sess().opts.debugging_opts.query_dep_graph)
+                && (tcx.sess().opts.unstable_opts.incremental_info
+                    || tcx.sess().opts.unstable_opts.query_dep_graph)
             {
                 tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
             }

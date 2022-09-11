@@ -13,9 +13,6 @@
 [submodule "src/doc/book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
-[submodule "src/tools/rls"]
-	path = src/tools/rls
-	url = https://github.com/rust-lang/rls.git
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/rust-lang/miri.git
@@ -34,13 +31,10 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/14.0-2022-06-20
+	branch = rustc/15.0-2022-08-09
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
-[submodule "src/tools/rust-analyzer"]
-	path = src/tools/rust-analyzer
-	url = https://github.com/rust-analyzer/rust-analyzer.git
 [submodule "library/backtrace"]
 	path = library/backtrace
 	url = https://github.com/rust-lang/backtrace-rs.git

@@ -5,12 +5,11 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
-    self, FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext,
+    self, ImplSource, Obligation, ObligationCause, SelectionContext,
 };
 
 use super::ConstCx;
@@ -96,13 +95,13 @@ impl Qualif for HasMutInterior {
     }
 
     fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
+        _cx: &ConstCx<'_, 'tcx>,
         adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        Some(adt.did()) == cx.tcx.lang_items().unsafe_cell_type()
+        adt.is_unsafe_cell()
     }
 }
 
@@ -189,15 +188,8 @@ impl Qualif for NeedsNonConstDrop {
                 return false;
             }
 
-            // If we successfully found one, then select all of the predicates
-            // implied by our const drop impl.
-            let mut fcx = FulfillmentContext::new();
-            for nested in impl_src.nested_obligations() {
-                fcx.register_predicate_obligation(&infcx, nested);
-            }
-
             // If we had any errors, then it's bad
-            !fcx.select_all_or_error(&infcx).is_empty()
+            !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
         })
     }
 
@@ -226,7 +218,7 @@ impl Qualif for CustomEq {
         // because that component may be part of an enum variant (e.g.,
         // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
         // structural-match (`Option::None`).
-        traits::search_for_structural_match_violation(cx.body.span, cx.tcx, ty, true).is_some()
+        traits::search_for_structural_match_violation(cx.body.span, cx.tcx, ty).is_some()
     }
 
     fn in_adt_inherently<'tcx>(
@@ -259,6 +251,8 @@ where
         Rvalue::Discriminant(place) | Rvalue::Len(place) => {
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
+
+        Rvalue::CopyForDeref(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
         Rvalue::Use(operand)
         | Rvalue::Repeat(operand, _)

@@ -57,7 +57,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure { ref fn_decl, body, fn_decl_span, movability, .. } => {
+            hir::ExprKind::Closure(&hir::Closure {
+                ref fn_decl,
+                body,
+                fn_decl_span,
+                movability,
+                ..
+            }) => {
                 let cx = if let Some(Movability::Static) = movability {
                     AsyncClosure(fn_decl_span)
                 } else {

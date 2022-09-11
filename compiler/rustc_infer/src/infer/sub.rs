@@ -4,6 +4,7 @@ use super::SubregionOrigin;
 use crate::infer::combine::ConstEquateRelation;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::Obligation;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::TyVar;
@@ -141,17 +142,27 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                     Ok(infcx.tcx.mk_ty_var(var))
                 };
                 let (a, b) = if self.a_is_expected { (a, b) } else { (b, a) };
-                let (a, b) = match (a.kind(), b.kind()) {
+                let (ga, gb) = match (a.kind(), b.kind()) {
                     (&ty::Opaque(..), _) => (a, generalize(b, true)?),
                     (_, &ty::Opaque(..)) => (generalize(a, false)?, b),
                     _ => unreachable!(),
                 };
                 self.fields.obligations.extend(
                     infcx
-                        .handle_opaque_type(a, b, true, &self.fields.trace.cause, self.param_env())?
+                        .handle_opaque_type(ga, gb, true, &self.fields.trace.cause, self.param_env())
+                        // Don't leak any generalized type variables out of this
+                        // subtyping relation in the case of a type error.
+                        .map_err(|err| {
+                            let (ga, gb) = self.fields.infcx.resolve_vars_if_possible((ga, gb));
+                            if let TypeError::Sorts(sorts) = err && sorts.expected == ga && sorts.found == gb {
+                                TypeError::Sorts(ExpectedFound { expected: a, found: b })
+                            } else {
+                                err
+                            }
+                        })?
                         .obligations,
                 );
-                Ok(a)
+                Ok(ga)
             }
 
             _ => {

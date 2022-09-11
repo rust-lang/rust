@@ -13,6 +13,7 @@ use rustc_span::{
     symbol::{sym, Ident, Symbol},
     Span,
 };
+use thin_vec::thin_vec;
 
 pub(super) struct Context<'cx, 'a> {
     // An optimization.
@@ -116,7 +117,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.item(
                 self.span,
                 Ident::empty(),
-                vec![self.cx.attribute(attr::mk_list_item(
+                thin_vec![self.cx.attribute(attr::mk_list_item(
                     Ident::new(sym::allow, self.span),
                     vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
                 ))],
@@ -152,7 +153,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_panic(&self, expr_str: &str, panic_path: Path) -> P<Expr> {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
-            TokenTree::token(
+            TokenTree::token_alone(
                 token::Literal(token::Lit {
                     kind: token::LitKind::Str,
                     symbol: Symbol::intern(&if self.fmt_string.is_empty() {
@@ -167,17 +168,17 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 }),
                 self.span,
             ),
-            TokenTree::token(token::Comma, self.span),
+            TokenTree::token_alone(token::Comma, self.span),
         ];
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
-                TokenTree::token(token::Ident(cap.ident.name, false), cap.ident.span),
-                TokenTree::token(token::Comma, self.span),
+                TokenTree::token_alone(token::Ident(cap.ident.name, false), cap.ident.span),
+                TokenTree::token_alone(token::Comma, self.span),
             ]
         });
         self.cx.expr(
             self.span,
-            ExprKind::MacCall(MacCall {
+            ExprKind::MacCall(P(MacCall {
                 path: panic_path,
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(self.span),
@@ -185,7 +186,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     initial.into_iter().chain(captures).collect::<TokenStream>(),
                 )),
                 prior_type_ascription: None,
-            }),
+            })),
         )
     }
 
@@ -240,8 +241,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::MethodCall(_, ref mut local_exprs, _) => {
-                for local_expr in local_exprs.iter_mut().skip(1) {
+            ExprKind::MethodCall(_, _,ref mut local_exprs, _) => {
+                for local_expr in local_exprs.iter_mut() {
                     self.manage_cond_expr(local_expr);
                 }
             }
@@ -294,7 +295,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Block(_, _)
             | ExprKind::Box(_)
             | ExprKind::Break(_, _)
-            | ExprKind::Closure(_, _, _, _, _, _)
+            | ExprKind::Closure(_, _, _, _, _, _, _)
             | ExprKind::ConstBlock(_)
             | ExprKind::Continue(_)
             | ExprKind::Err
@@ -377,14 +378,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     id: DUMMY_NODE_ID,
                     ident: Ident::new(sym::try_capture, self.span),
                 },
-                vec![
-                    expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
-                    expr_addr_of_mut(
-                        self.cx,
-                        self.span,
-                        self.cx.expr_path(Path::from_ident(capture)),
-                    ),
-                ],
+                expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
+                vec![expr_addr_of_mut(
+                    self.cx,
+                    self.span,
+                    self.cx.expr_path(Path::from_ident(capture)),
+                )],
                 self.span,
             ))
             .add_trailing_semicolon();
@@ -442,10 +441,11 @@ fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {
 fn expr_method_call(
     cx: &ExtCtxt<'_>,
     path: PathSegment,
+    receiver: P<Expr>,
     args: Vec<P<Expr>>,
     span: Span,
 ) -> P<Expr> {
-    cx.expr(span, ExprKind::MethodCall(path, args, span))
+    cx.expr(span, ExprKind::MethodCall(path, receiver, args, span))
 }
 
 fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {

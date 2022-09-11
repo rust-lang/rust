@@ -20,14 +20,14 @@ pub fn expand_concat_idents<'cx>(
     for (i, e) in tts.into_trees().enumerate() {
         if i & 1 == 1 {
             match e {
-                TokenTree::Token(Token { kind: token::Comma, .. }) => {}
+                TokenTree::Token(Token { kind: token::Comma, .. }, _) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma");
                     return DummyResult::any(sp);
                 }
             }
         } else {
-            if let TokenTree::Token(token) = e {
+            if let TokenTree::Token(token, _) = e {
                 if let Some((ident, _)) = token.ident() {
                     res_str.push_str(ident.name.as_str());
                     continue;

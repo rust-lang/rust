@@ -11,7 +11,7 @@ pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    let new = tcx.anonymize_late_bound_regions(pred.kind());
+    let new = tcx.anonymize_bound_vars(pred.kind());
     tcx.reuse_or_mk_predicate(pred, new)
 }
 
@@ -145,7 +145,12 @@ impl<'tcx> Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(pred, _)| {
+                let obligations = predicates.predicates.iter().map(|&(mut pred, _)| {
+                    // when parent predicate is non-const, elaborate it to non-const predicates.
+                    if data.constness == ty::BoundConstness::NotConst {
+                        pred = pred.without_const(tcx);
+                    }
+
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                         obligation.param_env,
@@ -329,7 +334,7 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
 
     std::iter::from_fn(move || {
         while let Some(trait_ref) = stack.pop() {
-            let anon_trait_ref = tcx.anonymize_late_bound_regions(trait_ref);
+            let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
             if visited.insert(anon_trait_ref) {
                 let super_predicates = tcx.super_predicates_that_define_assoc_type((
                     trait_ref.def_id(),

@@ -1,0 +1,8 @@
+# for this file to take effect make sure you use git ^2.23 and
+# add ignoreFile to your git configuration:
+# ```
+# git config --global blame.ignoreRevsFile .git-blame-ignore-revs
+# ```
+
+# prettier format
+f247090558c9ba3c551566eae5882b7ca865225f

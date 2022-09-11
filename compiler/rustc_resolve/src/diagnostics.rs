@@ -25,7 +25,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
-use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::late::{PatternSource, Rib};
@@ -163,7 +162,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block(..) => "block",
+            ModuleKind::Block => "block",
         };
 
         let old_noun = match old_binding.is_import() {
@@ -508,10 +507,10 @@ impl<'a> Resolver<'a> {
                     E0401,
                     "can't use generic parameters from outer function",
                 );
-                err.span_label(span, "use of generic parameter from outer function".to_string());
+                err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
-                match outer_res {
+                let def_id = match outer_res {
                     Res::SelfTy { trait_: maybe_trait_defid, alias_to: maybe_impl_defid } => {
                         if let Some(impl_span) =
                             maybe_impl_defid.and_then(|(def_id, _)| self.opt_span(def_id))
@@ -536,11 +535,13 @@ impl<'a> Resolver<'a> {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
+                        def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
+                        def_id
                     }
                     _ => {
                         bug!(
@@ -548,29 +549,23 @@ impl<'a> Resolver<'a> {
                             DefKind::TyParam or DefKind::ConstParam"
                         );
                     }
-                }
+                };
 
-                if has_generic_params == HasGenericParams::Yes {
+                if let HasGenericParams::Yes(span) = has_generic_params {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = "try using a local generic parameter instead";
-                    if let Some((sugg_span, snippet)) = sm.generate_local_type_param_snippet(span) {
-                        // Suggest the modification to the user
-                        err.span_suggestion(
-                            sugg_span,
-                            sugg_msg,
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if let Some(sp) = sm.generate_fn_name_span(span) {
-                        err.span_label(
-                            sp,
-                            "try adding a local generic parameter in this method instead"
-                                .to_string(),
-                        );
+                    let name = self.opt_name(def_id).unwrap_or(sym::T);
+                    let (span, snippet) = if span.is_empty() {
+                        let snippet = format!("<{}>", name);
+                        (span, snippet)
                     } else {
-                        err.help("try using a local generic parameter instead");
-                    }
+                        let span = sm.span_through_char(span, '<').shrink_to_hi();
+                        let snippet = format!("{}, ", name);
+                        (span, snippet)
+                    };
+                    // Suggest the modification to the user
+                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
                 }
 
                 err
@@ -990,7 +985,7 @@ impl<'a> Resolver<'a> {
                     E0735,
                     "generic parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, "`Self` in generic parameter default".to_string());
+                err.span_label(span, "`Self` in generic parameter default");
                 err
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
@@ -1175,16 +1170,6 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
-                }
-                Scope::RegisteredAttrs => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
-                    if filter_fn(res) {
-                        suggestions.extend(
-                            this.registered_attrs
-                                .iter()
-                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
-                        );
-                    }
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -1408,7 +1393,7 @@ impl<'a> Resolver<'a> {
 
         // If only some candidates are accessible, take just them
         if !candidates.iter().all(|v: &ImportSuggestion| !v.accessible) {
-            candidates = candidates.into_iter().filter(|x| x.accessible).collect();
+            candidates.retain(|x| x.accessible)
         }
 
         candidates
@@ -1588,11 +1573,7 @@ impl<'a> Resolver<'a> {
         };
         let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
             LOCAL_CRATE => self.opt_span(def_id),
-            _ => Some(
-                self.session
-                    .source_map()
-                    .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
-            ),
+            _ => Some(self.cstore().get_span_untracked(def_id, self.session)),
         });
         if let Some(def_span) = def_span {
             if span.overlaps(def_span) {
@@ -1627,7 +1608,7 @@ impl<'a> Resolver<'a> {
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
-                    suggestion.candidate.as_str(),
+                    suggestion.candidate,
                 ),
             );
         }
@@ -2024,7 +2005,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -2059,12 +2040,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
@@ -2078,7 +2059,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
@@ -2086,12 +2067,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                vec![
+                Some(
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>"
                         .to_string(),
-                ],
+                ),
             ))
         } else {
             None
@@ -2109,12 +2090,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing external crate name if that resolves to an correct module.
@@ -2131,7 +2112,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -2152,7 +2133,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 name, path, result
             );
             if let PathResult::Module(..) = result {
-                return Some((path, Vec::new()));
+                return Some((path, None));
             }
         }
 
@@ -2176,7 +2157,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
-    ) -> Option<(Option<Suggestion>, Vec<String>)> {
+    ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
             return None;
         };
@@ -2288,12 +2269,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 String::from("a macro with this name exists at the root of the crate"),
                 Applicability::MaybeIncorrect,
             ));
-            let note = vec![
-                "this could be because a macro annotated with `#[macro_export]` will be exported \
-                 at the root of the crate instead of the module where it is defined"
-                    .to_string(),
-            ];
-            Some((suggestion, note))
+            Some((suggestion, Some("this could be because a macro annotated with `#[macro_export]` will be exported \
+            at the root of the crate instead of the module where it is defined"
+               .to_string())))
         } else {
             None
         }
@@ -2552,12 +2530,15 @@ fn show_candidates(
                 Applicability::MaybeIncorrect,
             );
             if let [first, .., last] = &path[..] {
-                err.span_suggestion_verbose(
-                    first.ident.span.until(last.ident.span),
-                    &format!("if you import `{}`, refer to it directly", last.ident),
-                    "",
-                    Applicability::Unspecified,
-                );
+                let sp = first.ident.span.until(last.ident.span);
+                if sp.can_be_used_for_suggestions() {
+                    err.span_suggestion_verbose(
+                        sp,
+                        &format!("if you import `{}`, refer to it directly", last.ident),
+                        "",
+                        Applicability::Unspecified,
+                    );
+                }
             }
         } else {
             msg.push(':');
@@ -2603,12 +2584,12 @@ fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _, _)| descr == descr_first)
             {
-                descr_first.to_string()
+                descr_first
             } else {
-                "item".to_string()
+                "item"
             };
             let plural_descr =
-                if descr.ends_with("s") { format!("{}es", descr) } else { format!("{}s", descr) };
+                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
 
             let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
             let mut has_colon = false;

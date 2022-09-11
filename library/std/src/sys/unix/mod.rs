@@ -44,12 +44,13 @@ pub mod thread_parker;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
-pub fn init(argc: isize, argv: *const *const u8) {}
+pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+// See `fn init()` in `library/std/src/rt.rs` for docs on `sigpipe`.
+pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
@@ -61,8 +62,9 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     // want!
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
-    // to prevent this problem.
-    reset_sigpipe();
+    // to prevent this problem. Add `#[unix_sigpipe = "..."]` above `fn main()` to
+    // alter this behavior.
+    reset_sigpipe(sigpipe);
 
     stack_overflow::init();
     args::init(argc, argv);
@@ -86,6 +88,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
             // The poll on Darwin doesn't set POLLNVAL for closed fds.
             target_os = "macos",
             target_os = "ios",
+            target_os = "watchos",
             target_os = "redox",
             target_os = "l4re",
             target_os = "horizon",
@@ -150,9 +153,31 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
         }
     }
 
-    unsafe fn reset_sigpipe() {
+    unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
         #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
-        rtassert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
+        {
+            // We don't want to add this as a public type to libstd, nor do we
+            // want to `include!` a file from the compiler (which would break
+            // Miri and xargo for example), so we choose to duplicate these
+            // constants from `compiler/rustc_session/src/config/sigpipe.rs`.
+            // See the other file for docs. NOTE: Make sure to keep them in
+            // sync!
+            mod sigpipe {
+                pub const INHERIT: u8 = 1;
+                pub const SIG_IGN: u8 = 2;
+                pub const SIG_DFL: u8 = 3;
+            }
+
+            let handler = match sigpipe {
+                sigpipe::INHERIT => None,
+                sigpipe::SIG_IGN => Some(libc::SIG_IGN),
+                sigpipe::SIG_DFL => Some(libc::SIG_DFL),
+                _ => unreachable!(),
+            };
+            if let Some(handler) = handler {
+                rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+            }
+        }
     }
 }
 
@@ -294,8 +319,10 @@ pub fn abort_internal() -> ! {
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
-        #[link(name = "dl")]
-        #[link(name = "log")]
+        #[link(name = "dl", kind = "static", modifiers = "-bundle",
+            cfg(target_feature = "crt-static"))]
+        #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
+        #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]
@@ -329,7 +356,7 @@ cfg_if::cfg_if! {
         // See #41582 and https://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
         #[link(name = "resolv")]
         extern "C" {}
-    } else if #[cfg(target_os = "ios")] {
+    } else if #[cfg(any(target_os = "ios", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Security", kind = "framework")]

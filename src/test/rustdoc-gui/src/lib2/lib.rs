@@ -2,6 +2,9 @@
 
 #![feature(doc_cfg)]
 
+pub mod another_folder;
+pub mod another_mod;
+
 pub mod module {
     pub mod sub_module {
         pub mod sub_sub_module {
@@ -27,10 +30,13 @@ impl Foo {
     pub fn a_method(&self) {}
 }
 
+#[doc(cfg(feature = "foo-method"))]
+#[deprecated = "Whatever [`Foo::a_method`](#method.a_method)"]
 pub trait Trait {
     type X;
     const Y: u32;
 
+    #[deprecated = "Whatever [`Foo`](#tadam)"]
     fn foo() {}
 }
 
@@ -137,3 +143,40 @@ pub struct LongItemInfo2;
 /// Some docs.
 #[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
 impl SimpleTrait for LongItemInfo2 {}
+
+pub struct WhereWhitespace<T>;
+
+impl<T> WhereWhitespace<T> {
+    pub fn new<F>(f: F) -> Self
+    where
+        F: FnMut() -> i32,
+    {}
+}
+
+impl<K, T> Whitespace<&K> for WhereWhitespace<T>
+where
+    K: std::fmt::Debug,
+{
+    type Output = WhereWhitespace<T>;
+    fn index(&self, _key: &K) -> &Self::Output {
+        self
+    }
+}
+
+pub trait Whitespace<Idx>
+where
+    Idx: ?Sized,
+{
+    type Output;
+    fn index(&self, index: Idx) -> &Self::Output;
+}
+
+pub struct ItemInfoAlignmentTest;
+
+impl ItemInfoAlignmentTest {
+    /// This method has docs
+    #[deprecated]
+    pub fn foo() {}
+    #[deprecated]
+    pub fn bar() {}
+}

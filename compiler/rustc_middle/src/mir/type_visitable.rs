@@ -78,6 +78,10 @@ impl<'tcx> TypeVisitable<'tcx> for Rvalue<'tcx> {
         use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => op.visit_with(visitor),
+            CopyForDeref(ref place) => {
+                let op = &Operand::Copy(*place);
+                op.visit_with(visitor)
+            }
             Repeat(ref op, _) => op.visit_with(visitor),
             ThreadLocalRef(did) => did.visit_with(visitor),
             Ref(region, _, ref place) => {

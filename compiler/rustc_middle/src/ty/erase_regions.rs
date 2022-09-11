@@ -49,7 +49,7 @@ impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let u = self.tcx.anonymize_late_bound_regions(t);
+        let u = self.tcx.anonymize_bound_vars(t);
         u.super_fold_with(self)
     }
 

@@ -11,7 +11,6 @@ use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
-use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 
 use core::intrinsics;
@@ -162,6 +161,14 @@ impl<'tcx> GenericArg<'tcx> {
                 ))),
                 _ => intrinsics::unreachable(),
             }
+        }
+    }
+
+    /// Unpack the `GenericArg` as a region when it is known certainly to be a region.
+    pub fn expect_region(self) -> ty::Region<'tcx> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(lt) => lt,
+            _ => bug!("expected a region, but found another kind"),
         }
     }
 
@@ -525,6 +532,7 @@ struct SubstFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+    #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -540,6 +548,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        #[cold]
+        #[inline(never)]
+        fn region_param_out_of_range(data: ty::EarlyBoundRegion) -> ! {
+            bug!(
+                "Region parameter out of range when substituting in region {} (index={})",
+                data.name,
+                data.index
+            )
+        }
+
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
@@ -550,14 +568,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
-                    _ => {
-                        let msg = format!(
-                            "Region parameter out of range \
-                             when substituting in region {} (index={})",
-                            data.name, data.index
-                        );
-                        span_bug!(DUMMY_SP, "{}", msg);
-                    }
+                    _ => region_param_out_of_range(data),
                 }
             }
             _ => r,
@@ -595,32 +606,36 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         let opt_ty = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ty = match opt_ty {
             Some(GenericArgKind::Type(ty)) => ty,
-            Some(kind) => {
-                span_bug!(
-                    DUMMY_SP,
-                    "expected type for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting, substs={:?}",
-                    p,
-                    source_ty,
-                    p.index,
-                    kind,
-                    self.substs,
-                );
-            }
-            None => {
-                span_bug!(
-                    DUMMY_SP,
-                    "type parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting, substs={:?}",
-                    p,
-                    source_ty,
-                    p.index,
-                    self.substs,
-                );
-            }
+            Some(kind) => self.type_param_expected(p, source_ty, kind),
+            None => self.type_param_out_of_range(p, source_ty),
         };
 
         self.shift_vars_through_binders(ty)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn type_param_expected(&self, p: ty::ParamTy, ty: Ty<'tcx>, kind: GenericArgKind<'tcx>) -> ! {
+        bug!(
+            "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting, substs={:?}",
+            p,
+            ty,
+            p.index,
+            kind,
+            self.substs,
+        )
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn type_param_out_of_range(&self, p: ty::ParamTy, ty: Ty<'tcx>) -> ! {
+        bug!(
+            "type parameter `{:?}` ({:?}/{}) out of range when substituting, substs={:?}",
+            p,
+            ty,
+            p.index,
+            self.substs,
+        )
     }
 
     fn const_for_param(&self, p: ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -628,32 +643,41 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         let opt_ct = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ct = match opt_ct {
             Some(GenericArgKind::Const(ct)) => ct,
-            Some(kind) => {
-                span_bug!(
-                    DUMMY_SP,
-                    "expected const for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting substs={:?}",
-                    p,
-                    source_ct,
-                    p.index,
-                    kind,
-                    self.substs,
-                );
-            }
-            None => {
-                span_bug!(
-                    DUMMY_SP,
-                    "const parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting substs={:?}",
-                    p,
-                    source_ct,
-                    p.index,
-                    self.substs,
-                );
-            }
+            Some(kind) => self.const_param_expected(p, source_ct, kind),
+            None => self.const_param_out_of_range(p, source_ct),
         };
 
         self.shift_vars_through_binders(ct)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn const_param_expected(
+        &self,
+        p: ty::ParamConst,
+        ct: ty::Const<'tcx>,
+        kind: GenericArgKind<'tcx>,
+    ) -> ! {
+        bug!(
+            "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting substs={:?}",
+            p,
+            ct,
+            p.index,
+            kind,
+            self.substs,
+        )
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn const_param_out_of_range(&self, p: ty::ParamConst, ct: ty::Const<'tcx>) -> ! {
+        bug!(
+            "const parameter `{:?}` ({:?}/{}) out of range when substituting substs={:?}",
+            p,
+            ct,
+            p.index,
+            self.substs,
+        )
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs

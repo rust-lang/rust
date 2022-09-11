@@ -1,5 +1,5 @@
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
@@ -9,7 +9,6 @@ use rustc_session::lint;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
-use rustc_trait_selection::infer::InferCtxtExt;
 
 use super::FnCtxt;
 
@@ -98,12 +97,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         err.emit();
     }
+}
+
+pub struct InlineAsmCtxt<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    get_operand_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+}
+
+impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
+    pub fn new_global_asm(tcx: TyCtxt<'tcx>) -> Self {
+        InlineAsmCtxt {
+            tcx,
+            param_env: ty::ParamEnv::empty(),
+            get_operand_ty: Box::new(|e| bug!("asm operand in global asm: {e:?}")),
+        }
+    }
+
+    pub fn new_in_fn(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        get_operand_ty: impl Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+    ) -> Self {
+        InlineAsmCtxt { tcx, param_env, get_operand_ty: Box::new(get_operand_ty) }
+    }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
         // on those, so just erase them before querying.
-        if self.tcx.erase_regions(ty).is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
+        if ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
             return true;
         }
         if let ty::Foreign(..) = ty.kind() {
@@ -116,27 +139,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         idx: usize,
         reg: InlineAsmRegOrRegClass,
-        expr: &hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
         template: &[InlineAsmTemplatePiece],
         is_input: bool,
-        tied_input: Option<(&hir::Expr<'tcx>, Option<InlineAsmType>)>,
+        tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
         target_features: &FxHashSet<Symbol>,
     ) -> Option<InlineAsmType> {
-        // Check the type against the allowed types for inline asm.
-        let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
-        let ty = self.resolve_vars_if_possible(ty);
+        let ty = (self.get_operand_ty)(expr);
+        if ty.has_infer_types_or_consts() {
+            bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
+        }
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
             64 => InlineAsmType::I64,
             _ => unreachable!(),
         };
-
-        // Expect types to be fully resolved, no const or type variables.
-        if ty.has_infer_types_or_consts() {
-            assert!(self.is_tainted_by_errors());
-            return None;
-        }
 
         let asm_ty = match *ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
@@ -203,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, DUMMY_SP) {
+        if !ty.is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{ty}` does not implement the Copy trait"));
@@ -224,8 +242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
 
-                let in_expr_ty = self.typeck_results.borrow().expr_ty_adjusted(in_expr);
-                let in_expr_ty = self.resolve_vars_if_possible(in_expr_ty);
+                let in_expr_ty = (self.get_operand_ty)(in_expr);
                 err.span_label(in_expr.span, &format!("type `{in_expr_ty}`"));
                 err.span_label(expr.span, &format!("type `{ty}`"));
                 err.note(
@@ -316,10 +333,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut err = lint.build(msg);
                         err.span_label(expr.span, "for this argument");
                         err.help(&format!(
-                            "use the `{suggested_modifier}` modifier to have the register formatted as `{suggested_result}`",
+                            "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}`",
                         ));
                         err.help(&format!(
-                            "or use the `{default_modifier}` modifier to keep the default formatting of `{default_result}`",
+                            "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
                         err.emit();
                     },

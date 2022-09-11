@@ -12,7 +12,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use tracing::debug;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -51,22 +50,8 @@ fn typeck_results_of_method_fn<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
 ) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
-    // FIXME(rustdoc): Lints which use this function use typecheck results which can cause
-    // `rustdoc` to error if there are resolution failures.
-    //
-    // As internal lints are currently always run if there are `unstable_options`, they are added
-    // to the lint store of rustdoc. Internal lints are also not used via the `lint_mod` query.
-    // Crate lints run outside of a query so rustdoc currently doesn't disable them.
-    //
-    // Instead of relying on this, either change crate lints to a query disabled by rustdoc, only
-    // run internal lints if the user is explicitly opting in or figure out a different way to
-    // avoid running lints for rustdoc.
-    if cx.tcx.sess.opts.actually_rustdoc {
-        return None;
-    }
-
     match expr.kind {
-        ExprKind::MethodCall(segment, _, _)
+        ExprKind::MethodCall(segment, ..)
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
         {
             Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))
@@ -133,8 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         _: rustc_hir::HirId,
     ) {
         if let Some(segment) = path.segments.iter().nth_back(1)
-        && let Some(res) = &segment.res
-        && lint_ty_kind_usage(cx, res)
+        && lint_ty_kind_usage(cx, &segment.res)
         {
             let span = path.span.with_hi(
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
@@ -407,8 +391,14 @@ impl LateLintPass<'_> for Diagnostics {
             return;
         }
 
+        let mut found_parent_with_attr = false;
         let mut found_impl = false;
-        for (_, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+        for (hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+            if let Some(owner_did) = hir_id.as_owner() {
+                found_parent_with_attr = found_parent_with_attr
+                    || cx.tcx.has_attr(owner_did.to_def_id(), sym::rustc_lint_diagnostics);
+            }
+
             debug!(?parent);
             if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent &&
                 let Impl { of_trait: Some(of_trait), .. } = impl_ &&
@@ -421,7 +411,7 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_impl);
-        if !found_impl {
+        if !found_parent_with_attr && !found_impl {
             cx.struct_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, |lint| {
                 lint.build(fluent::lint::diag_out_of_impl).emit();
             })
@@ -439,10 +429,45 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_diagnostic_message);
-        if !found_diagnostic_message {
+        if !found_parent_with_attr && !found_diagnostic_message {
             cx.struct_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, |lint| {
                 lint.build(fluent::lint::untranslatable_diag).emit();
             })
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::BAD_OPT_ACCESS,
+    Deny,
+    "prevent using options by field access when there is a wrapper function",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(BadOptAccess => [ BAD_OPT_ACCESS ]);
+
+impl LateLintPass<'_> for BadOptAccess {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let ExprKind::Field(base, target) = expr.kind else { return };
+        let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
+        // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
+        // avoided.
+        if !cx.tcx.has_attr(adt_def.did(), sym::rustc_lint_opt_ty) {
+            return;
+        }
+
+        for field in adt_def.all_fields() {
+            if field.name == target.name &&
+                let Some(attr) = cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access) &&
+                let Some(items) = attr.meta_item_list()  &&
+                let Some(item) = items.first()  &&
+                let Some(literal) = item.literal()  &&
+                let ast::LitKind::Str(val, _) = literal.kind
+            {
+                cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, |lint| {
+                    lint.build(val.as_str()).emit(); }
+                );
+            }
         }
     }
 }

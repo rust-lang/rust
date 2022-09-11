@@ -25,7 +25,7 @@ impl<A1, A2, A3> Impl<A1, A2, A3> {
 
 // test for #8601
 
-enum Type<T> { Constant(T) }
+enum Type<T> { Constant(#[allow(unused_tuple_struct_fields)] T) }
 
 trait Trait<K,V> {
     fn method(&self, _: Type<(K,V)>) -> isize;

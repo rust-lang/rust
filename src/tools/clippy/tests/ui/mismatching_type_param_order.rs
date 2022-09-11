@@ -1,5 +1,5 @@
 #![warn(clippy::mismatching_type_param_order)]
-#![allow(clippy::blacklisted_name)]
+#![allow(clippy::disallowed_names)]
 
 fn main() {
     struct Foo<A, B> {
@@ -57,4 +57,8 @@ fn main() {
         B: Copy,
     {
     }
+
+    // if the types are complicated, do not lint
+    impl<K, V, B> Foo<(K, V), B> {}
+    impl<K, V, A> Foo<(K, V), A> {}
 }

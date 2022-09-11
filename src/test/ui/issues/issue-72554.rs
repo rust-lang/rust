@@ -1,9 +1,12 @@
 use std::collections::BTreeSet;
 
 #[derive(Hash)]
-pub enum ElemDerived { //~ ERROR recursive type `ElemDerived` has infinite size
+pub enum ElemDerived {
+    //~^ ERROR recursive type `ElemDerived` has infinite size
+    //~| ERROR cycle detected when computing drop-check constraints for `ElemDerived`
     A(ElemDerived)
 }
+
 
 pub enum Elem {
     Derived(ElemDerived)

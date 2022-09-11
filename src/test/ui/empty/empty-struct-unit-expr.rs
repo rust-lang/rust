@@ -12,10 +12,10 @@ enum E {
 }
 
 fn main() {
-    let e2 = Empty2(); //~ ERROR expected function, found `Empty2`
+    let e2 = Empty2(); //~ ERROR expected function, found struct `Empty2`
     let e4 = E::Empty4();
     //~^ ERROR expected function, found enum variant `E::Empty4` [E0618]
-    let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
+    let xe2 = XEmpty2(); //~ ERROR expected function, found struct `XEmpty2`
     let xe4 = XE::XEmpty4();
     //~^ ERROR expected function, found enum variant `XE::XEmpty4` [E0618]
 }

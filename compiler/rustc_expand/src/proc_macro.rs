@@ -4,14 +4,41 @@ use crate::proc_macro_server;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::ForceCollect;
+use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{Span, DUMMY_SP};
 
-const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
+struct CrossbeamMessagePipe<T> {
+    tx: crossbeam_channel::Sender<T>,
+    rx: crossbeam_channel::Receiver<T>,
+}
+
+impl<T> pm::bridge::server::MessagePipe<T> for CrossbeamMessagePipe<T> {
+    fn new() -> (Self, Self) {
+        let (tx1, rx1) = crossbeam_channel::bounded(1);
+        let (tx2, rx2) = crossbeam_channel::bounded(1);
+        (CrossbeamMessagePipe { tx: tx1, rx: rx2 }, CrossbeamMessagePipe { tx: tx2, rx: rx1 })
+    }
+
+    fn send(&mut self, value: T) {
+        self.tx.send(value).unwrap();
+    }
+
+    fn recv(&mut self) -> Option<T> {
+        self.rx.recv().ok()
+    }
+}
+
+fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
+    pm::bridge::server::MaybeCrossThread::<CrossbeamMessagePipe<_>>::new(
+        ecx.sess.opts.unstable_opts.proc_macro_execution_strategy
+            == ProcMacroExecutionStrategy::CrossThread,
+    )
+}
 
 pub struct BangProcMacro {
     pub client: pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>,
@@ -30,8 +57,9 @@ impl base::BangProcMacro for BangProcMacro {
             });
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
+        let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace).map_err(|e| {
+        self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
             let mut err = ecx.struct_span_err(span, "proc macro panicked");
             if let Some(s) = e.as_str() {
                 err.help(&format!("message: {}", s));
@@ -59,16 +87,17 @@ impl base::AttrProcMacro for AttrProcMacro {
             });
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
+        let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
-        self.client
-            .run(&EXEC_STRATEGY, server, annotation, annotated, proc_macro_backtrace)
-            .map_err(|e| {
+        self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
+            |e| {
                 let mut err = ecx.struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
                 err.emit()
-            })
+            },
+        )
     }
 }
 
@@ -94,7 +123,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Annotatable::Stmt(stmt) => token::NtStmt(stmt),
                 _ => unreachable!(),
             };
-            TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
+            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
         } else {
             item.to_tokens()
         };
@@ -105,8 +134,9 @@ impl MultiItemModifier for DeriveProcMacro {
                     recorder.record_arg_with_span(ecx.expansion_descr(), span);
                 });
             let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
+            let strategy = exec_strategy(ecx);
             let server = proc_macro_server::Rustc::new(ecx);
-            match self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace) {
+            match self.client.run(&strategy, server, input, proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {
                     let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");

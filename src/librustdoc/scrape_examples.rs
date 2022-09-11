@@ -143,8 +143,7 @@ where
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
-        let owner = hir.local_def_id_to_hir_id(ex.hir_id.owner);
-        if hir.maybe_body_owned_by(owner).is_none() {
+        if hir.maybe_body_owned_by(ex.hir_id.owner).is_none() {
             return;
         }
 
@@ -160,7 +159,7 @@ where
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(path, _, call_span) => {
+            hir::ExprKind::MethodCall(path, _, _, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
@@ -304,6 +303,12 @@ pub(crate) fn run(
         let mut calls = FxHashMap::default();
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
+
+        // The visitor might have found a type error, which we need to
+        // promote to a fatal error
+        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+            return Err(String::from("Compilation failed, aborting rustdoc"));
+        }
 
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {

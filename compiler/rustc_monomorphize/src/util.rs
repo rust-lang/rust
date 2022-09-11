@@ -13,12 +13,12 @@ pub(crate) fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: In
         .append(true)
         .open(&format!("closure_profile_{}.csv", std::process::id()))
     else {
-        eprintln!("Cound't open file for writing closure profile");
+        eprintln!("Couldn't open file for writing closure profile");
         return;
     };
 
-    let closure_def_id = closure_instance.def_id();
-    let typeck_results = tcx.typeck(closure_def_id.expect_local());
+    let closure_def_id = closure_instance.def_id().expect_local();
+    let typeck_results = tcx.typeck(closure_def_id);
 
     if typeck_results.closure_size_eval.contains_key(&closure_def_id) {
         let param_env = ty::ParamEnv::reveal_all();

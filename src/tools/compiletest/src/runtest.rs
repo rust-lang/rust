@@ -13,7 +13,6 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::read2::read2_abbreviated;
-use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
@@ -648,8 +647,6 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_cdb_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
-
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
@@ -695,7 +692,12 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+            match DebuggerCommands::parse_from(
+                &self.testpaths.file,
+                self.config,
+                prefixes,
+                self.revision,
+            ) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -756,8 +758,6 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
-
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
@@ -783,7 +783,12 @@ impl<'test> TestCx<'test> {
         };
 
         let DebuggerCommands { commands, check_lines, breakpoint_lines } =
-            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+            match DebuggerCommands::parse_from(
+                &self.testpaths.file,
+                self.config,
+                prefixes,
+                self.revision,
+            ) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -1005,8 +1010,6 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_lldb_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
-
         if self.config.lldb_python_dir.is_none() {
             self.fatal("Can't run LLDB test because LLDB's python path is not set.");
         }
@@ -1059,7 +1062,12 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
+            match DebuggerCommands::parse_from(
+                &self.testpaths.file,
+                self.config,
+                prefixes,
+                self.revision,
+            ) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -1095,6 +1103,7 @@ impl<'test> TestCx<'test> {
             "^(core::([a-z_]+::)+)Ref<.+>$",
             "^(core::([a-z_]+::)+)RefMut<.+>$",
             "^(core::([a-z_]+::)+)RefCell<.+>$",
+            "^core::num::([a-z_]+::)*NonZero.+$",
         ];
 
         script_str
@@ -1694,7 +1703,7 @@ impl<'test> TestCx<'test> {
 
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         let aux_dir = self.build_all_auxiliary(&mut rustc);
-        self.props.unset_rustc_env.clone().iter().fold(&mut rustc, |rustc, v| rustc.env_remove(v));
+        self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
             rustc,
@@ -1951,6 +1960,7 @@ impl<'test> TestCx<'test> {
                     "-Zdump-mir=all",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
+                    "-Zmir-pretty-relative-line-numbers=yes",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);
@@ -2006,11 +2016,14 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
             }
-            Some(CompareMode::SplitDwarf) => {
+            Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
+            Some(CompareMode::SplitDwarf) => {
+                rustc.args(&["-Csplit-debuginfo=unpacked"]);
+            }
             Some(CompareMode::SplitDwarfSingle) => {
-                rustc.args(&["-Csplit-debuginfo=packed", "-Zunstable-options"]);
+                rustc.args(&["-Csplit-debuginfo=packed"]);
             }
             None => {}
         }
@@ -3117,7 +3130,7 @@ impl<'test> TestCx<'test> {
         output_kind: TestOutput,
         explicit_format: bool,
     ) -> usize {
-        let stderr_bits = format!("{}.stderr", get_pointer_width(&self.config.target));
+        let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
                 {
@@ -3392,7 +3405,7 @@ impl<'test> TestCx<'test> {
 
         let mut bit_width = String::new();
         if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
-            bit_width = format!(".{}", get_pointer_width(&self.config.target));
+            bit_width = format!(".{}bit", self.config.get_pointer_width());
         }
 
         if self.config.bless {
@@ -3752,7 +3765,7 @@ impl<'test> TestCx<'test> {
 
     fn delete_file(&self, file: &PathBuf) {
         if !file.exists() {
-            // Deleting a nonexistant file would error.
+            // Deleting a nonexistent file would error.
             return;
         }
         if let Err(e) = fs::remove_file(file) {

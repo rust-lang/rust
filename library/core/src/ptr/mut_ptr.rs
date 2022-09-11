@@ -35,7 +35,10 @@ impl<T: ?Sized> *mut T {
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *mut u8).guaranteed_eq(null_mut())
+        match (self as *mut u8).guaranteed_eq(null_mut()) {
+            None => false,
+            Some(res) => res,
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -96,11 +99,13 @@ impl<T: ?Sized> *mut T {
     /// refactored.
     ///
     /// While not strictly required (`*mut T` coerces to `*const T`), this is provided for symmetry
-    /// with `as_mut()` on `*const T` and may have documentation value if used instead of implicit
+    /// with [`cast_mut`] on `*const T` and may have documentation value if used instead of implicit
     /// coercion.
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
-    pub const fn as_const(self) -> *const T {
+    ///
+    /// [`cast_mut`]: #method.cast_mut
+    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn cast_const(self) -> *const T {
         self as _
     }
 
@@ -158,7 +163,7 @@ impl<T: ?Sized> *mut T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -253,7 +258,7 @@ impl<T: ?Sized> *mut T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -289,7 +294,7 @@ impl<T: ?Sized> *mut T {
     /// For the mutable counterpart see [`as_mut`].
     ///
     /// [`as_uninit_ref`]: #method.as_uninit_ref-1
-    /// [`as_mut`]: #method.as_mut-1
+    /// [`as_mut`]: #method.as_mut
     ///
     /// # Safety
     ///
@@ -459,6 +464,7 @@ impl<T: ?Sized> *mut T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset(self, count: isize) -> *mut T
     where
         T: Sized,
@@ -483,6 +489,7 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
         let this = unsafe { self.cast::<u8>().offset(count).cast::<()>() };
@@ -569,6 +576,21 @@ impl<T: ?Sized> *mut T {
             self.cast::<u8>().wrapping_offset(count).cast::<()>(),
             metadata(self),
         )
+    }
+
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *mut T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask) as *mut ();
+        from_raw_parts_mut::<T>(this, metadata(self))
     }
 
     /// Returns `None` if the pointer is null, or else returns a unique reference to
@@ -678,20 +700,16 @@ impl<T: ?Sized> *mut T {
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
-    /// At runtime this function behaves like `self == other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be equal.
-    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
+    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_ne`]: #method.guaranteed_ne
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -700,29 +718,25 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_eq(self, other: *mut T) -> bool
+    pub const fn guaranteed_eq(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
+        (self as *const T).guaranteed_eq(other as _)
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `self != other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
-    /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// it is not always possible to determine inequality of two pointers, so this function may
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
+    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_eq`]: #method.guaranteed_eq
-    ///
-    /// The return value may change depending on the compiler version and unsafe code might not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -731,11 +745,11 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const unsafe fn guaranteed_ne(self, other: *mut T) -> bool
+    pub const fn guaranteed_ne(self, other: *mut T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_ne(self as *const _, other as *const _)
+        (self as *const T).guaranteed_ne(other as _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -820,8 +834,9 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
@@ -842,6 +857,7 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset_from(self, origin: *const T) -> isize {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
         unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
@@ -911,6 +927,7 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
     #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
     where
         T: Sized,
@@ -974,6 +991,7 @@ impl<T: ?Sized> *mut T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -996,6 +1014,7 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
         let this = unsafe { self.cast::<u8>().add(count).cast::<()>() };
@@ -1058,6 +1077,7 @@ impl<T: ?Sized> *mut T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
     where
         T: Sized,
@@ -1081,6 +1101,7 @@ impl<T: ?Sized> *mut T {
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
         let this = unsafe { self.cast::<u8>().sub(count).cast::<()>() };
@@ -1256,6 +1277,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read(self) -> T
     where
         T: Sized,
@@ -1276,6 +1298,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn read_volatile(self) -> T
     where
         T: Sized,
@@ -1295,6 +1318,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
@@ -1314,6 +1338,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -1333,6 +1358,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -1352,6 +1378,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_from(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -1371,6 +1398,7 @@ impl<T: ?Sized> *mut T {
     #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -1400,6 +1428,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write(self, val: T)
     where
         T: Sized,
@@ -1418,6 +1447,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1438,6 +1468,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
@@ -1457,6 +1488,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
     #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
@@ -1523,20 +1555,23 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let mut x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_mut_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     *u16_ptr = 0;
+    ///
+    ///     assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -1592,11 +1627,8 @@ impl<T: ?Sized> *mut T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 

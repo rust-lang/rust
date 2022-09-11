@@ -2,16 +2,16 @@
 + // MIR for `hello` after ConstProp
   
   fn hello() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
-      let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:+0:14: +0:14
+      let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
       let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
+-         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
+-         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
++         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
++         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:+1:8: +1:21
       }
   
       bb1: {
@@ -26,9 +26,9 @@
       }
   
       bb2: {
-          nop;                             // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
-          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:14:5: 14:6
-          return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
+          nop;                             // scope 0 at $DIR/control-flow-simplification.rs:+3:6: +3:6
+          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:+3:5: +3:6
+          return;                          // scope 0 at $DIR/control-flow-simplification.rs:+4:2: +4:2
       }
   }
   

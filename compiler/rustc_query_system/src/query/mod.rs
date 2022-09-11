@@ -12,15 +12,14 @@ pub use self::caches::{
 };
 
 mod config;
-pub use self::config::{QueryConfig, QueryDescription, QueryVtable};
+pub use self::config::{QueryConfig, QueryDescription, QueryVTable};
 
-use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
-
+use crate::dep_graph::{DepContext, DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 /// Description of a frame in the query stack.
 ///
@@ -119,7 +118,12 @@ pub trait QueryContext: HasDepContext {
     fn start_query<R>(
         &self,
         token: QueryJobId,
+        depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
+
+    fn depth_limit_error(&self) {
+        self.dep_context().sess().emit_fatal(crate::error::QueryOverflow);
+    }
 }

@@ -34,43 +34,43 @@ LL | fn bar() {}
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:34:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | mod another {}
-   | -------------- not a function
+   | -------------- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:39:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | const FOO: usize = 7;
-   | --------------------- not a function
+   | --------------------- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:44:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct Foo;
-   | ----------- not a function
+   | ----------- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:49:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | enum Bar {}
-   | ----------- not a function
+   | ----------- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:54:1
    |
 LL |   #[target_feature(enable = "sse2")]
@@ -81,16 +81,16 @@ LL | |
 LL | |     f1: u16,
 LL | |     f2: u16,
 LL | | }
-   | |_- not a function
+   | |_- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:62:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | trait Baz {}
-   | ------------ not a function
+   | ------------ not a function definition
 
 error: cannot use `#[inline(always)]` with `#[target_feature]`
   --> $DIR/invalid-attribute.rs:67:1
@@ -98,7 +98,7 @@ error: cannot use `#[inline(always)]` with `#[target_feature]`
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:85:5
    |
 LL |       #[target_feature(enable = "sse2")]
@@ -108,16 +108,16 @@ LL | /     unsafe {
 LL | |         foo();
 LL | |         bar();
 LL | |     }
-   | |_____- not a function
+   | |_____- not a function definition
 
-error: attribute should be applied to a function
+error: attribute should be applied to a function definition
   --> $DIR/invalid-attribute.rs:93:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     || {};
-   |     ----- not a function
+   |     ----- not a function definition
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:77:5

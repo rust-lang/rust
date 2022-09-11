@@ -4,6 +4,29 @@ use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+const OPTIONAL_COMPONENTS: &[&str] = &[
+    "x86",
+    "arm",
+    "aarch64",
+    "amdgpu",
+    "avr",
+    "m68k",
+    "mips",
+    "powerpc",
+    "systemz",
+    "jsbackend",
+    "webassembly",
+    "msp430",
+    "sparc",
+    "nvptx",
+    "hexagon",
+    "riscv",
+    "bpf",
+];
+
+const REQUIRED_COMPONENTS: &[&str] =
+    &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "coverage", "instrumentation"];
+
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
     // possibly overridden by `configure --enable-llvm-link-shared`.
@@ -76,6 +99,10 @@ fn output(cmd: &mut Command) -> String {
 }
 
 fn main() {
+    for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
+        println!("cargo:rustc-check-cfg=values(llvm_component,\"{}\")", component);
+    }
+
     if tracked_env_var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
         return;
@@ -131,42 +158,11 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let optional_components = &[
-        "x86",
-        "arm",
-        "aarch64",
-        "amdgpu",
-        "avr",
-        "m68k",
-        "mips",
-        "powerpc",
-        "systemz",
-        "jsbackend",
-        "webassembly",
-        "msp430",
-        "sparc",
-        "nvptx",
-        "hexagon",
-        "riscv",
-        "bpf",
-    ];
-
-    let required_components = &[
-        "ipo",
-        "bitreader",
-        "bitwriter",
-        "linker",
-        "asmparser",
-        "lto",
-        "coverage",
-        "instrumentation",
-    ];
-
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
-    components.retain(|c| optional_components.contains(c) || required_components.contains(c));
+    components.retain(|c| OPTIONAL_COMPONENTS.contains(c) || REQUIRED_COMPONENTS.contains(c));
 
-    for component in required_components {
+    for component in REQUIRED_COMPONENTS {
         if !components.contains(component) {
             panic!("require llvm component {} but wasn't found", component);
         }
@@ -246,6 +242,13 @@ fn main() {
         println!("cargo:rustc-link-lib=uuid");
     } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
         println!("cargo:rustc-link-lib=z");
+    } else if target.starts_with("arm")
+        || target.starts_with("mips-")
+        || target.starts_with("mipsel-")
+        || target.starts_with("powerpc-")
+    {
+        // 32-bit targets need to link libatomic.
+        println!("cargo:rustc-link-lib=atomic");
     }
     cmd.args(&components);
 
@@ -339,10 +342,10 @@ fn main() {
     };
 
     // RISC-V GCC erroneously requires libatomic for sub-word
-    // atomic operations. FreeBSD uses Clang as its system
+    // atomic operations. Some BSD uses Clang as its system
     // compiler and provides no libatomic in its base system so
     // does not want this.
-    if !target.contains("freebsd") && target.starts_with("riscv") {
+    if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd") {
         println!("cargo:rustc-link-lib=atomic");
     }
 

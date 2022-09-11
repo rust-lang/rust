@@ -4,9 +4,11 @@
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVtable};
+use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
+use crate::values::Value;
+use crate::HandleCycleError;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
@@ -14,7 +16,6 @@ use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -24,6 +25,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use std::ptr;
+use thin_vec::ThinVec;
 
 pub struct QueryState<K> {
     #[cfg(parallel_compiler)]
@@ -118,17 +120,44 @@ where
 fn mk_cycle<CTX, V, R>(
     tcx: CTX,
     error: CycleError,
-    handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
+    handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
     CTX: QueryContext,
-    V: std::fmt::Debug,
+    V: std::fmt::Debug + Value<CTX::DepContext>,
     R: Clone,
 {
     let error = report_cycle(tcx.dep_context().sess(), error);
-    let value = handle_cycle_error(tcx, error);
+    let value = handle_cycle_error(*tcx.dep_context(), error, handler);
     cache.store_nocache(value)
+}
+
+fn handle_cycle_error<CTX, V>(
+    tcx: CTX,
+    mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
+    handler: HandleCycleError,
+) -> V
+where
+    CTX: DepContext,
+    V: Value<CTX>,
+{
+    use HandleCycleError::*;
+    match handler {
+        Error => {
+            error.emit();
+            Value::from_cycle_error(tcx)
+        }
+        Fatal => {
+            error.emit();
+            tcx.sess().abort_if_errors();
+            unreachable!()
+        }
+        DelayBug => {
+            error.delay_as_bug();
+            Value::from_cycle_error(tcx)
+        }
+    }
 }
 
 impl<'tcx, K> JobOwner<'tcx, K>
@@ -331,11 +360,12 @@ fn try_execute_query<CTX, C>(
     span: Span,
     key: C::Key,
     dep_node: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
+    query: &QueryVTable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
+    C::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
@@ -368,7 +398,7 @@ fn execute_job<CTX, K, V>(
     tcx: CTX,
     key: K,
     mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
     job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
 where
@@ -381,7 +411,9 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job_id, None, || query.compute(*tcx.dep_context(), key));
+        let result = tcx.start_query(job_id, query.depth_limit, None, || {
+            query.compute(*tcx.dep_context(), key)
+        });
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
@@ -394,7 +426,7 @@ where
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = tcx.start_query(job_id, None, || {
+        if let Some(ret) = tcx.start_query(job_id, false, None, || {
             try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query)
         }) {
             return ret;
@@ -404,18 +436,20 @@ where
     let prof_timer = tcx.dep_context().profiler().query_provider();
     let diagnostics = Lock::new(ThinVec::new());
 
-    let (result, dep_node_index) = tcx.start_query(job_id, Some(&diagnostics), || {
-        if query.anon {
-            return dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
-                query.compute(*tcx.dep_context(), key)
-            });
-        }
+    let (result, dep_node_index) =
+        tcx.start_query(job_id, query.depth_limit, Some(&diagnostics), || {
+            if query.anon {
+                return dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
+                    query.compute(*tcx.dep_context(), key)
+                });
+            }
 
-        // `to_dep_node` is expensive for some `DepKind`s.
-        let dep_node = dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
+            // `to_dep_node` is expensive for some `DepKind`s.
+            let dep_node =
+                dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
 
-        dep_graph.with_task(dep_node, *tcx.dep_context(), key, query.compute, query.hash_result)
-    });
+            dep_graph.with_task(dep_node, *tcx.dep_context(), key, query.compute, query.hash_result)
+        });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -437,7 +471,7 @@ fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
     key: &K,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> Option<(V, DepNodeIndex)>
 where
     K: Clone,
@@ -467,7 +501,7 @@ where
 
         if let Some(result) = result {
             if std::intrinsics::unlikely(
-                tcx.dep_context().sess().opts.debugging_opts.query_dep_graph,
+                tcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
                 dep_graph.mark_debug_loaded_from_disk(*dep_node)
             }
@@ -486,7 +520,7 @@ where
             // give us some coverage of potential bugs though.
             let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
             if std::intrinsics::unlikely(
-                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich,
+                try_verify || tcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
@@ -530,7 +564,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) where
     CTX: QueryContext,
 {
@@ -614,16 +648,12 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
     if old_in_panic {
-        sess.struct_err(
-            "internal compiler error: re-entrant incremental verify failure, suppressing message",
-        )
-        .emit();
+        sess.emit_err(crate::error::Reentrant);
     } else {
-        sess.struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
-                .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
-                .note("Please follow the instructions below to create a bug report with the provided information")
-                .note("See <https://github.com/rust-lang/rust/issues/84970> for more information")
-                .emit();
+        sess.emit_err(crate::error::IncrementCompilation {
+            run_cmd,
+            dep_node: format!("{:?}", dep_node),
+        });
         panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
     }
 
@@ -642,7 +672,7 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
 fn ensure_must_run<CTX, K, V>(
     tcx: CTX,
     key: &K,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> (bool, Option<DepNode<CTX::DepKind>>)
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
@@ -686,6 +716,7 @@ pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> 
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     let query = Q::make_vtable(tcx, &key);
@@ -718,6 +749,7 @@ pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, dep_node: DepNode<CTX::DepKind
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
+    Q::Value: Value<CTX::DepContext>,
     CTX: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.

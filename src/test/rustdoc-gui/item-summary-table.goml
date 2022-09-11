@@ -3,4 +3,4 @@ goto: file://|DOC_PATH|/lib2/summary_table/index.html
 // We check that we picked the right item first.
 assert-text: (".item-table .item-left", "Foo")
 // Then we check that its summary is empty.
-assert-text: (".item-table .item-right", "")
+assert-false: ".item-table .item-right"

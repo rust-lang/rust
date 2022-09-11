@@ -1,0 +1,18 @@
+SOURCE_FILE
+  ERROR
+    IF_KW "if"
+  WHITESPACE " "
+  ERROR
+    MATCH_KW "match"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+error 0: expected an item
+error 3: expected an item

@@ -1,12 +1,12 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
-
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_clone(
     cx: &mut ExtCtxt<'_>,
@@ -68,10 +68,9 @@ pub fn expand_deriving_clone(
     }
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(clone::Clone),
         additional_bounds: bounds,
         generics: Bounds::empty(),
@@ -148,7 +147,7 @@ fn cs_clone_simple(
             ),
         }
     }
-    BlockOrExpr::new_mixed(stmts, cx.expr_deref(trait_span, cx.expr_self(trait_span)))
+    BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
 fn cs_clone(
@@ -161,7 +160,7 @@ fn cs_clone(
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
     let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
-        let args = vec![cx.expr_addr_of(field.span, field.self_expr.clone())];
+        let args = vec![field.self_expr.clone()];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
@@ -177,9 +176,7 @@ fn cs_clone(
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumNonMatchingCollapsed(..) => {
-            cx.span_bug(trait_span, &format!("non-matching enum variants in `derive({})`", name,))
-        }
+        EnumTag(..) => cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,)),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
         }

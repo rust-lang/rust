@@ -1,11 +1,11 @@
-error[E0271]: type mismatch resolving `<fn() -> impl Future<Output = ()> {test} as FnOnce<()>>::Output == Pin<Box<(dyn Future<Output = ()> + 'static)>>`
-  --> $DIR/issue-98604.rs:11:5
+error[E0271]: expected `fn() -> impl Future<Output = ()> {test}` to be a fn item that returns `Pin<Box<(dyn Future<Output = ()> + 'static)>>`, but it returns `impl Future<Output = ()>`
+  --> $DIR/issue-98604.rs:9:5
    |
 LL |     Box::new(test) as AsyncFnPtr;
    |     ^^^^^^^^^^^^^^ expected struct `Pin`, found opaque type
    |
 note: while checking the return type of the `async fn`
-  --> $DIR/issue-98604.rs:7:17
+  --> $DIR/issue-98604.rs:5:17
    |
 LL | async fn test() {}
    |                 ^ checked the `Output` of this `async fn`, found opaque type

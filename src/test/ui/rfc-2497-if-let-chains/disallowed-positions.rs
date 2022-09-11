@@ -53,6 +53,8 @@ fn _if() {
     //~| ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
     //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
 }
 
 fn _while() {
@@ -82,6 +84,8 @@ fn _while() {
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
+    //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
 }
 
@@ -142,6 +146,7 @@ fn nested_within_if_expr() {
     //~| ERROR expected expression, found `let` statement
     if true || (true && let 0 = 0) {}
     //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
     let mut x = true;
     if x = let 0 = 0 {}
@@ -233,6 +238,7 @@ fn nested_within_while_expr() {
     //~| ERROR expected expression, found `let` statement
     while true || (true && let 0 = 0) {}
     //~^ ERROR `let` expressions are not supported here
+    //~| ERROR expected expression, found `let` statement
 
     let mut x = true;
     while x = let 0 = 0 {}
@@ -384,16 +390,19 @@ fn inside_const_generic_arguments() {
     if let A::<{
         true && let 1 = 1
         //~^ ERROR `let` expressions are not supported here
+        //~| ERROR expected expression, found `let` statement
     }>::O = 5 {}
 
     while let A::<{
         true && let 1 = 1
         //~^ ERROR `let` expressions are not supported here
+        //~| ERROR expected expression, found `let` statement
     }>::O = 5 {}
 
     if A::<{
         true && let 1 = 1
         //~^ ERROR `let` expressions are not supported here
+        //~| ERROR expected expression, found `let` statement
     }>::O == 5 {}
 
     // In the cases above we have `ExprKind::Block` to help us out.
@@ -405,7 +414,8 @@ fn inside_const_generic_arguments() {
     if A::<
         true && let 1 = 1
         //~^ ERROR `let` expressions are not supported here
-        //~| ERROR  expressions must be enclosed in braces
+        //~| ERROR expressions must be enclosed in braces
+        //~| ERROR expected expression, found `let` statement
     >::O == 5 {}
 }
 

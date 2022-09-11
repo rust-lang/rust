@@ -105,7 +105,7 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
             CanonicalVarKind::Const(..) => true,
-            CanonicalVarKind::PlaceholderConst(_) => false,
+            CanonicalVarKind::PlaceholderConst(_, _) => false,
         }
     }
 }
@@ -133,7 +133,7 @@ pub enum CanonicalVarKind<'tcx> {
     Const(ty::UniverseIndex, Ty<'tcx>),
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(ty::PlaceholderConst<'tcx>),
+    PlaceholderConst(ty::PlaceholderConst<'tcx>, Ty<'tcx>),
 }
 
 impl<'tcx> CanonicalVarKind<'tcx> {
@@ -148,7 +148,7 @@ impl<'tcx> CanonicalVarKind<'tcx> {
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
             CanonicalVarKind::Const(ui, _) => ui,
-            CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.universe,
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe,
         }
     }
 }

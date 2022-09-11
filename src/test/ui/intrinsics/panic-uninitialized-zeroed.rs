@@ -57,6 +57,13 @@ enum LR_NonZero {
 
 struct ZeroSized;
 
+#[allow(dead_code)]
+#[repr(i32)]
+enum ZeroIsValid {
+    Zero(u8) = 0,
+    One(NonNull<()>) = 1,
+}
+
 fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
     let err = panic::catch_unwind(op).err();
     assert_eq!(
@@ -152,33 +159,12 @@ fn main() {
             "attempted to zero-initialize type `*const dyn core::marker::Send`, which is invalid"
         );
 
-        /* FIXME(#66151) we conservatively do not error here yet.
-        test_panic_msg(
-            || mem::uninitialized::<LR_NonZero>(),
-            "attempted to leave type `LR_NonZero` uninitialized, which is invalid"
-        );
-        test_panic_msg(
-            || mem::zeroed::<LR_NonZero>(),
-            "attempted to zero-initialize type `LR_NonZero`, which is invalid"
-        );
-
-        test_panic_msg(
-            || mem::uninitialized::<ManuallyDrop<LR_NonZero>>(),
-            "attempted to leave type `std::mem::ManuallyDrop<LR_NonZero>` uninitialized, \
-             which is invalid"
-        );
-        test_panic_msg(
-            || mem::zeroed::<ManuallyDrop<LR_NonZero>>(),
-            "attempted to zero-initialize type `std::mem::ManuallyDrop<LR_NonZero>`, \
-             which is invalid"
-        );
-        */
-
         test_panic_msg(
             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
             "attempted to leave type `(core::ptr::non_null::NonNull<u32>, u32, u32)` uninitialized, \
                 which is invalid"
         );
+
         test_panic_msg(
             || mem::zeroed::<(NonNull<u32>, u32, u32)>(),
             "attempted to zero-initialize type `(core::ptr::non_null::NonNull<u32>, u32, u32)`, \
@@ -197,10 +183,22 @@ fn main() {
         );
 
         test_panic_msg(
+            || mem::uninitialized::<LR_NonZero>(),
+            "attempted to leave type `LR_NonZero` uninitialized, which is invalid"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<ManuallyDrop<LR_NonZero>>(),
+            "attempted to leave type `core::mem::manually_drop::ManuallyDrop<LR_NonZero>` uninitialized, \
+             which is invalid"
+        );
+
+        test_panic_msg(
             || mem::uninitialized::<NoNullVariant>(),
             "attempted to leave type `NoNullVariant` uninitialized, \
                 which is invalid"
         );
+
         test_panic_msg(
             || mem::zeroed::<NoNullVariant>(),
             "attempted to zero-initialize type `NoNullVariant`, \
@@ -212,10 +210,12 @@ fn main() {
             || mem::uninitialized::<bool>(),
             "attempted to leave type `bool` uninitialized, which is invalid"
         );
+
         test_panic_msg(
             || mem::uninitialized::<LR>(),
             "attempted to leave type `LR` uninitialized, which is invalid"
         );
+
         test_panic_msg(
             || mem::uninitialized::<ManuallyDrop<LR>>(),
             "attempted to leave type `core::mem::manually_drop::ManuallyDrop<LR>` uninitialized, which is invalid"
@@ -229,6 +229,7 @@ fn main() {
         let _val = mem::zeroed::<Option<&'static i32>>();
         let _val = mem::zeroed::<MaybeUninit<NonNull<u32>>>();
         let _val = mem::zeroed::<[!; 0]>();
+        let _val = mem::zeroed::<ZeroIsValid>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
         let _val = mem::uninitialized::<[!; 0]>();
         let _val = mem::uninitialized::<()>();
@@ -259,12 +260,33 @@ fn main() {
                 || mem::zeroed::<[NonNull<()>; 1]>(),
                 "attempted to zero-initialize type `[core::ptr::non_null::NonNull<()>; 1]`, which is invalid"
             );
+
+            // FIXME(#66151) we conservatively do not error here yet (by default).
+            test_panic_msg(
+                || mem::zeroed::<LR_NonZero>(),
+                "attempted to zero-initialize type `LR_NonZero`, which is invalid"
+            );
+
+            test_panic_msg(
+                || mem::zeroed::<ManuallyDrop<LR_NonZero>>(),
+                "attempted to zero-initialize type `core::mem::manually_drop::ManuallyDrop<LR_NonZero>`, \
+                 which is invalid"
+            );
         } else {
             // These are UB because they have not been officially blessed, but we await the resolution
             // of <https://github.com/rust-lang/unsafe-code-guidelines/issues/71> before doing
             // anything about that.
             let _val = mem::uninitialized::<i32>();
             let _val = mem::uninitialized::<*const ()>();
+
+            // These are UB, but best to test them to ensure we don't become unintentionally
+            // stricter.
+
+            // It's currently unchecked to create invalid enums and values inside arrays.
+            let _val = mem::zeroed::<LR_NonZero>();
+            let _val = mem::zeroed::<[LR_NonZero; 1]>();
+            let _val = mem::zeroed::<[NonNull<()>; 1]>();
+            let _val = mem::uninitialized::<[NonNull<()>; 1]>();
         }
     }
 }

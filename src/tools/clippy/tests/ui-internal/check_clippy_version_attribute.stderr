@@ -16,8 +16,8 @@ note: the lint level is defined here
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::invalid_clippy_version_attribute)]` implied by `#[deny(clippy::internal)]`
-   = help: please use a valid sematic version, see `doc/adding_lints.md`
-   = note: this error originates in the macro `$crate::declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = help: please use a valid semantic version, see `doc/adding_lints.md`
+   = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this item has an invalid `clippy::version` attribute
   --> $DIR/check_clippy_version_attribute.rs:48:1
@@ -31,8 +31,8 @@ LL | |     report_in_external_macro: true
 LL | | }
    | |_^
    |
-   = help: please use a valid sematic version, see `doc/adding_lints.md`
-   = note: this error originates in the macro `$crate::declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = help: please use a valid semantic version, see `doc/adding_lints.md`
+   = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this lint is missing the `clippy::version` attribute or version value
   --> $DIR/check_clippy_version_attribute.rs:59:1
@@ -48,7 +48,7 @@ LL | | }
    |
    = note: `#[deny(clippy::missing_clippy_version_attribute)]` implied by `#[deny(clippy::internal)]`
    = help: please use a `clippy::version` attribute, see `doc/adding_lints.md`
-   = note: this error originates in the macro `$crate::declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this lint is missing the `clippy::version` attribute or version value
   --> $DIR/check_clippy_version_attribute.rs:67:1
@@ -62,7 +62,7 @@ LL | | }
    | |_^
    |
    = help: please use a `clippy::version` attribute, see `doc/adding_lints.md`
-   = note: this error originates in the macro `$crate::declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

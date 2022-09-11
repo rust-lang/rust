@@ -1,0 +1,204 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      R_ANGLE ">"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      LIFETIME
+        LIFETIME_IDENT "'a"
+      WHITESPACE " "
+      PAREN_TYPE
+        L_PAREN "("
+        DYN_TRAIT_TYPE
+          DYN_KW "dyn"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Send"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Sync"
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PTR_TYPE
+      STAR "*"
+      CONST_KW "const"
+      WHITESPACE " "
+      PAREN_TYPE
+        L_PAREN "("
+        DYN_TRAIT_TYPE
+          DYN_KW "dyn"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Send"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Sync"
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      RET_TYPE
+        THIN_ARROW "->"
+        WHITESPACE " "
+        PAREN_TYPE
+          L_PAREN "("
+          DYN_TRAIT_TYPE
+            DYN_KW "dyn"
+            WHITESPACE " "
+            TYPE_BOUND_LIST
+              TYPE_BOUND
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Send"
+              WHITESPACE " "
+              PLUS "+"
+              WHITESPACE " "
+              TYPE_BOUND
+                LIFETIME
+                  LIFETIME_IDENT "'static"
+          R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "b"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          CAST_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              REF_EXPR
+                AMP "&"
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "a"
+              R_PAREN ")"
+            WHITESPACE " "
+            AS_KW "as"
+            WHITESPACE " "
+            REF_TYPE
+              AMP "&"
+              PAREN_TYPE
+                L_PAREN "("
+                DYN_TRAIT_TYPE
+                  DYN_KW "dyn"
+                  WHITESPACE " "
+                  TYPE_BOUND_LIST
+                    TYPE_BOUND
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Add"
+                            GENERIC_ARG_LIST
+                              L_ANGLE "<"
+                              TYPE_ARG
+                                PATH_TYPE
+                                  PATH
+                                    PATH_SEGMENT
+                                      NAME_REF
+                                        IDENT "Other"
+                              COMMA ","
+                              WHITESPACE " "
+                              ASSOC_TYPE_ARG
+                                NAME_REF
+                                  IDENT "Output"
+                                WHITESPACE " "
+                                EQ "="
+                                WHITESPACE " "
+                                PATH_TYPE
+                                  PATH
+                                    PATH_SEGMENT
+                                      NAME_REF
+                                        IDENT "Addable"
+                              R_ANGLE ">"
+                    WHITESPACE " "
+                    PLUS "+"
+                    WHITESPACE " "
+                    TYPE_BOUND
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Other"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -20,9 +20,10 @@ pub(super) fn check<'tcx>(
 ) {
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
+    let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
 
-    if is_option || is_result {
-        if let hir::ExprKind::Closure { body, .. } = arg.kind {
+    if is_option || is_result || is_bool {
+        if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
             let body = cx.tcx.hir().body(body);
             let body_expr = &body.value;
 
@@ -33,8 +34,10 @@ pub(super) fn check<'tcx>(
             if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
                 let msg = if is_option {
                     "unnecessary closure used to substitute value for `Option::None`"
-                } else {
+                } else if is_result {
                     "unnecessary closure used to substitute value for `Result::Err`"
+                } else {
+                    "unnecessary closure used with `bool::then`"
                 };
                 let applicability = if body
                     .params
@@ -51,7 +54,7 @@ pub(super) fn check<'tcx>(
                 // This is a duplicate of what's happening in clippy_lints::methods::method_call,
                 // which isn't ideal, We want to get the method call span,
                 // but prefer to avoid changing the signature of the function itself.
-                if let hir::ExprKind::MethodCall(_, _, span) = expr.kind {
+                if let hir::ExprKind::MethodCall(.., span) = expr.kind {
                     span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
                         diag.span_suggestion(
                             span,

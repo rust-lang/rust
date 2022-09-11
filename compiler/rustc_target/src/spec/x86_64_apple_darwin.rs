@@ -2,11 +2,12 @@ use crate::spec::TargetOptions;
 use crate::spec::{FramePointer, LinkerFlavor, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
-    let mut base = super::apple_base::opts("macos");
+    let arch = "x86_64";
+    let mut base = super::apple_base::opts("macos", arch, "");
     base.cpu = "core2".into();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.frame_pointer = FramePointer::Always;
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64", "-arch", "x86_64"]);
+    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
     base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
@@ -16,7 +17,6 @@ pub fn target() -> Target {
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
     // correctly, we do too.
-    let arch = "x86_64";
     let llvm_target = super::apple_base::macos_llvm_target(&arch);
 
     Target {

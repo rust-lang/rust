@@ -5,6 +5,7 @@
 trait Device {
     type Resources;
 }
+#[allow(unused_tuple_struct_fields)]
 struct Foo<D, R>(D, R);
 
 trait Tr {

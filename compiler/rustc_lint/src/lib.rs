@@ -42,16 +42,20 @@
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
+#[macro_use]
+extern crate tracing;
 
 mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
 mod enum_intrinsics_non_enums;
+mod errors;
 mod expect;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
+mod let_underscore;
 mod levels;
 mod methods;
 mod non_ascii_idents;
@@ -75,7 +79,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
@@ -83,6 +87,7 @@ use builtin::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use hidden_unicode_codepoints::*;
 use internal::*;
+use let_underscore::*;
 use methods::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -130,6 +135,7 @@ macro_rules! early_lint_passes {
                 UnusedBraces: UnusedBraces,
                 UnusedImportBraces: UnusedImportBraces,
                 UnsafeCode: UnsafeCode,
+                SpecialModuleName: SpecialModuleName,
                 AnonymousParameters: AnonymousParameters,
                 EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
                 NonCamelCaseTypes: NonCamelCaseTypes,
@@ -140,6 +146,7 @@ macro_rules! early_lint_passes {
                 IncompleteFeatures: IncompleteFeatures,
                 RedundantSemicolons: RedundantSemicolons,
                 UnusedDocComment: UnusedDocComment,
+                UnexpectedCfgs: UnexpectedCfgs,
             ]
         );
     };
@@ -185,6 +192,7 @@ macro_rules! late_lint_mod_passes {
                 VariantSizeDifferences: VariantSizeDifferences,
                 BoxPointers: BoxPointers,
                 PathStatements: PathStatements,
+                LetUnderscore: LetUnderscore,
                 // Depends on referenced function signatures in expressions
                 UnusedResults: UnusedResults,
                 NonUpperCaseGlobals: NonUpperCaseGlobals,
@@ -252,26 +260,41 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         )
     }
 
-    macro_rules! register_pass {
+    macro_rules! register_early_pass {
         ($method:ident, $ty:ident, $constructor:expr) => {
             store.register_lints(&$ty::get_lints());
             store.$method(|| Box::new($constructor));
         };
     }
 
-    macro_rules! register_passes {
+    macro_rules! register_late_pass {
+        ($method:ident, $ty:ident, $constructor:expr) => {
+            store.register_lints(&$ty::get_lints());
+            store.$method(|_| Box::new($constructor));
+        };
+    }
+
+    macro_rules! register_early_passes {
         ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
             $(
-                register_pass!($method, $passes, $constructor);
+                register_early_pass!($method, $passes, $constructor);
+            )*
+        )
+    }
+
+    macro_rules! register_late_passes {
+        ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
+            $(
+                register_late_pass!($method, $passes, $constructor);
             )*
         )
     }
 
     if no_interleave_lints {
-        pre_expansion_lint_passes!(register_passes, register_pre_expansion_pass);
-        early_lint_passes!(register_passes, register_early_pass);
-        late_lint_passes!(register_passes, register_late_pass);
-        late_lint_mod_passes!(register_passes, register_late_mod_pass);
+        pre_expansion_lint_passes!(register_early_passes, register_pre_expansion_pass);
+        early_lint_passes!(register_early_passes, register_early_pass);
+        late_lint_passes!(register_late_passes, register_late_pass);
+        late_lint_mod_passes!(register_late_passes, register_late_mod_pass);
     } else {
         store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
         store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
@@ -310,6 +333,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS
     );
+
+    add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
 
     add_lint_group!(
         "rust_2018_idioms",
@@ -500,17 +525,23 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|| Box::new(DefaultHashTypes));
+    store.register_late_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::get_lints());
-    store.register_late_pass(|| Box::new(QueryStability));
+    store.register_late_pass(|_| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|| Box::new(ExistingDocKeyword));
+    store.register_late_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|| Box::new(TyTyKind));
+    store.register_late_pass(|_| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
-    store.register_late_pass(|| Box::new(Diagnostics));
+    store.register_late_pass(|_| Box::new(Diagnostics));
+    store.register_lints(&BadOptAccess::get_lints());
+    store.register_late_pass(|_| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::get_lints());
-    store.register_late_pass(|| Box::new(PassByValue));
+    store.register_late_pass(|_| Box::new(PassByValue));
+    // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
+    // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
+    // these lints will trigger all of the time - change this once migration to diagnostic structs
+    // and translation is completed
     store.register_group(
         false,
         "rustc::internal",
@@ -523,6 +554,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(EXISTING_DOC_KEYWORD),
+            LintId::of(BAD_OPT_ACCESS),
         ],
     );
 }

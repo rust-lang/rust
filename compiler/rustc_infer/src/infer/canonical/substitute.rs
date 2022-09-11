@@ -7,7 +7,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -71,21 +71,21 @@ where
     if var_values.var_values.is_empty() {
         value
     } else {
-        let fld_r = |br: ty::BoundRegion| match var_values.var_values[br.var].unpack() {
-            GenericArgKind::Lifetime(l) => l,
-            r => bug!("{:?} is a region but value is {:?}", br, r),
+        let delegate = FnMutDelegate {
+            regions: |br: ty::BoundRegion| match var_values.var_values[br.var].unpack() {
+                GenericArgKind::Lifetime(l) => l,
+                r => bug!("{:?} is a region but value is {:?}", br, r),
+            },
+            types: |bound_ty: ty::BoundTy| match var_values.var_values[bound_ty.var].unpack() {
+                GenericArgKind::Type(ty) => ty,
+                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
+            },
+            consts: |bound_ct: ty::BoundVar, _| match var_values.var_values[bound_ct].unpack() {
+                GenericArgKind::Const(ct) => ct,
+                c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
+            },
         };
 
-        let fld_t = |bound_ty: ty::BoundTy| match var_values.var_values[bound_ty.var].unpack() {
-            GenericArgKind::Type(ty) => ty,
-            r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
-        };
-
-        let fld_c = |bound_ct: ty::BoundVar, _| match var_values.var_values[bound_ct].unpack() {
-            GenericArgKind::Const(ct) => ct,
-            c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
-        };
-
-        tcx.replace_escaping_bound_vars_uncached(value, fld_r, fld_t, fld_c)
+        tcx.replace_escaping_bound_vars_uncached(value, delegate)
     }
 }

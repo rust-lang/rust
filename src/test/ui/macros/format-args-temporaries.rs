@@ -20,10 +20,6 @@ impl<'a> Drop for MutexGuard<'a> {
     }
 }
 
-impl<'a> MutexGuard<'a> {
-    fn write_fmt(&self, _args: fmt::Arguments) {}
-}
-
 impl<'a> Display for MutexGuard<'a> {
     fn fmt(&self, _formatter: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
@@ -31,18 +27,6 @@ impl<'a> Display for MutexGuard<'a> {
 }
 
 fn main() {
-    let _write = {
-        let out = Mutex;
-        let mutex = Mutex;
-        write!(out.lock(), "{}", mutex.lock()) /* no semicolon */
-    };
-
-    let _writeln = {
-        let out = Mutex;
-        let mutex = Mutex;
-        writeln!(out.lock(), "{}", mutex.lock()) /* no semicolon */
-    };
-
     let _print = {
         let mutex = Mutex;
         print!("{}", mutex.lock()) /* no semicolon */

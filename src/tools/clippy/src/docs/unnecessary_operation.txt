@@ -1,0 +1,12 @@
+### What it does
+Checks for expression statements that can be reduced to a
+sub-expression.
+
+### Why is this bad?
+Expressions by themselves often have no side-effects.
+Having such expressions reduces readability.
+
+### Example
+```
+compute_array()[0];
+```

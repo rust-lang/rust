@@ -139,8 +139,8 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
-            let (addrp, len) = addr.into_inner();
-            cvt(libc::connect(self.as_raw_fd(), addrp, len))
+            let (addr, len) = addr.into_inner();
+            cvt(libc::connect(self.as_raw_fd(), addr.as_ptr(), len))
         };
         self.set_nonblocking(false)?;
 
@@ -393,6 +393,17 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn set_quickack(&self, quickack: bool) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK, quickack as c_int)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux",))]
+    pub fn quickack(&self) -> io::Result<bool> {
+        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_QUICKACK)?;
+        Ok(raw != 0)
+    }
+
+    #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
     }
@@ -425,6 +436,17 @@ impl Socket {
         // FIONBIO is inadequate for sockets on illumos/Solaris, so use the
         // fcntl(F_[GS]ETFL)-based method provided by FileDesc instead.
         self.0.set_nonblocking(nonblocking)
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))]
+    pub fn set_mark(&self, mark: u32) -> io::Result<()> {
+        #[cfg(target_os = "linux")]
+        let option = libc::SO_MARK;
+        #[cfg(target_os = "freebsd")]
+        let option = libc::SO_USER_COOKIE;
+        #[cfg(target_os = "openbsd")]
+        let option = libc::SO_RTABLE;
+        setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

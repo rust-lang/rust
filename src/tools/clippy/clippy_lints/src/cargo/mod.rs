@@ -1,3 +1,8 @@
+mod common_metadata;
+mod feature_name;
+mod multiple_crate_versions;
+mod wildcard_dependencies;
+
 use cargo_metadata::MetadataCommand;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_lint_allowed;
@@ -5,11 +10,6 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::DUMMY_SP;
-
-mod common_metadata;
-mod feature_name;
-mod multiple_crate_versions;
-mod wildcard_dependencies;
 
 declare_clippy_lint! {
     /// ### What it does

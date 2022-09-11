@@ -1,21 +1,21 @@
 // MIR for `test2` after Inline
 
 fn test2(_1: &dyn X) -> bool {
-    debug x => _1;                       // in scope 0 at $DIR/inline-trait-method_2.rs:4:10: 4:11
-    let mut _0: bool;                    // return place in scope 0 at $DIR/inline-trait-method_2.rs:4:24: 4:28
-    let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-    let mut _3: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+    debug x => _1;                       // in scope 0 at $DIR/inline-trait-method_2.rs:+0:10: +0:11
+    let mut _0: bool;                    // return place in scope 0 at $DIR/inline-trait-method_2.rs:+0:24: +0:28
+    let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
+    let mut _3: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
     scope 1 (inlined test) {             // at $DIR/inline-trait-method_2.rs:5:5: 5:12
         debug x => _2;                   // in scope 1 at $DIR/inline-trait-method_2.rs:9:9: 9:10
         let mut _4: &dyn X;              // in scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:10
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-        StorageLive(_3);                 // scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-        _3 = &(*_1);                     // scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-        _2 = move _3 as &dyn X (Pointer(Unsize)); // scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-        StorageDead(_3);                 // scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
+        StorageLive(_2);                 // scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
+        StorageLive(_3);                 // scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
+        _3 = &(*_1);                     // scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
+        _2 = move _3 as &dyn X (Pointer(Unsize)); // scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
+        StorageDead(_3);                 // scope 0 at $DIR/inline-trait-method_2.rs:+1:10: +1:11
         StorageLive(_4);                 // scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:10
         _4 = _2;                         // scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:10
         _0 = <dyn X as X>::y(move _4) -> bb1; // scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:10
@@ -26,11 +26,7 @@ fn test2(_1: &dyn X) -> bool {
 
     bb1: {
         StorageDead(_4);                 // scope 1 at $DIR/inline-trait-method_2.rs:10:9: 10:10
-        StorageDead(_2);                 // scope 0 at $DIR/inline-trait-method_2.rs:5:11: 5:12
-        return;                          // scope 0 at $DIR/inline-trait-method_2.rs:6:2: 6:2
-    }
-
-    bb2 (cleanup): {
-        resume;                          // scope 0 at $DIR/inline-trait-method_2.rs:4:1: 6:2
+        StorageDead(_2);                 // scope 0 at $DIR/inline-trait-method_2.rs:+1:11: +1:12
+        return;                          // scope 0 at $DIR/inline-trait-method_2.rs:+2:2: +2:2
     }
 }

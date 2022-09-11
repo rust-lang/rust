@@ -1,0 +1,23 @@
+### What it does
+Checks for the use of `.extend(s.chars())` where s is a
+`&str` or `String`.
+
+### Why is this bad?
+`.push_str(s)` is clearer
+
+### Example
+```
+let abc = "abc";
+let def = String::from("def");
+let mut s = String::new();
+s.extend(abc.chars());
+s.extend(def.chars());
+```
+The correct use would be:
+```
+let abc = "abc";
+let def = String::from("def");
+let mut s = String::new();
+s.push_str(abc);
+s.push_str(&def);
+```

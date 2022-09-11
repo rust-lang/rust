@@ -1,4 +1,4 @@
-error[E0308]: mismatched types
+error[E0308]: const not compatible with trait
   --> $DIR/trait-associated-constant.rs:21:5
    |
 LL |     const AC: Option<&'c str> = None;

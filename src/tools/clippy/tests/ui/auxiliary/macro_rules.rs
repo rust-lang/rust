@@ -135,3 +135,8 @@ macro_rules! manual_rem_euclid {
         let _: i32 = ((value % 4) + 4) % 4;
     };
 }
+
+#[macro_export]
+macro_rules! equatable_if_let {
+    ($a:ident) => {{ if let 2 = $a {} }};
+}

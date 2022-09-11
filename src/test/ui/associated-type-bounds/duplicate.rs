@@ -1,8 +1,8 @@
 #![feature(associated_type_bounds)]
 #![feature(type_alias_impl_trait)]
-#![feature(untagged_unions)]
 
 use std::iter;
+use std::mem::ManuallyDrop;
 
 struct SI1<T: Iterator<Item: Copy, Item: Send>> {
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
@@ -74,36 +74,36 @@ where
 
 union UI1<T: Iterator<Item: Copy, Item: Send>> {
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-    f: T,
+    f: ManuallyDrop<T>,
 }
 union UI2<T: Iterator<Item: Copy, Item: Copy>> {
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-    f: T,
+    f: ManuallyDrop<T>,
 }
 union UI3<T: Iterator<Item: 'static, Item: 'static>> {
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
-    f: T,
+    f: ManuallyDrop<T>,
 }
 union UW1<T>
 where
     T: Iterator<Item: Copy, Item: Send>,
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 {
-    f: T,
+    f: ManuallyDrop<T>,
 }
 union UW2<T>
 where
     T: Iterator<Item: Copy, Item: Copy>,
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 {
-    f: T,
+    f: ManuallyDrop<T>,
 }
 union UW3<T>
 where
     T: Iterator<Item: 'static, Item: 'static>,
     //~^ ERROR the value of the associated type `Item` (from trait `Iterator`) is already specified [E0719]
 {
-    f: T,
+    f: ManuallyDrop<T>,
 }
 
 fn FI1<T: Iterator<Item: Copy, Item: Send>>() {}

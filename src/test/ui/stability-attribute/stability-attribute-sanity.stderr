@@ -14,7 +14,7 @@ error[E0541]: unknown meta item 'reason'
   --> $DIR/stability-attribute-sanity.rs:8:42
    |
 LL |     #[stable(feature = "a", since = "b", reason)]
-   |                                          ^^^^^^ expected one of `since`, `note`
+   |                                          ^^^^^^ expected one of `feature`, `since`
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:11:29

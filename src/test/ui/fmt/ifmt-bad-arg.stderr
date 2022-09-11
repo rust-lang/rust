@@ -251,13 +251,35 @@ LL |     println!("{5} {:4$} {6:7$}", 1);
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
+error: invalid reference to positional argument 0 (no arguments were given)
+  --> $DIR/ifmt-bad-arg.rs:90:15
+   |
+LL |     println!("{foo:0$}");
+   |               ^^^^^--^
+   |                    |
+   |                    this width flag expects an `usize` argument at position 0, but no arguments were given
+   |
+   = note: positional arguments are zero-based
+   = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
+
 error: 2 positional arguments in format string, but no arguments were given
-  --> $DIR/ifmt-bad-arg.rs:92:15
+  --> $DIR/ifmt-bad-arg.rs:95:15
    |
 LL |     println!("{:.*}");
    |               ^^--^
    |                 |
    |                 this precision flag adds an extra required argument at position 0, which is why there are 2 arguments expected
+   |
+   = note: positional arguments are zero-based
+   = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ifmt-bad-arg.rs:97:15
+   |
+LL |     println!("{:.0$}");
+   |               ^^---^
+   |                 |
+   |                 this precision flag expects an `usize` argument at position 0, but no arguments were given
    |
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
@@ -308,7 +330,7 @@ note: associated function defined here
    |
 LL |     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
    |            ^^^^^^^^^^
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/ifmt-bad-arg.rs:81:35
@@ -326,9 +348,9 @@ note: associated function defined here
    |
 LL |     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
    |            ^^^^^^^^^^
-   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 36 previous errors
+error: aborting due to 38 previous errors
 
 Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

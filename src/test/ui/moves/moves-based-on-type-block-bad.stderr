@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of `hellothere.x.0` which is behind a shared reference
+error[E0507]: cannot move out of `hellothere.x` as enum variant `Bar` which is behind a shared reference
   --> $DIR/moves-based-on-type-block-bad.rs:22:19
    |
 LL |             match hellothere.x {

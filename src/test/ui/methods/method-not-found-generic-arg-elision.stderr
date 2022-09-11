@@ -50,14 +50,14 @@ LL | struct Wrapper<T>(T);
 LL |     wrapper.other();
    |             ^^^^^ method not found in `Wrapper<bool>`
 
-error[E0599]: no method named `method` found for struct `Wrapper2<'_, bool, 3_usize>` in the current scope
+error[E0599]: no method named `method` found for struct `Wrapper2<'_, bool, 3>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:96:13
    |
 LL | struct Wrapper2<'a, T, const C: usize> {
    | -------------------------------------- method `method` not found for this struct
 ...
 LL |     wrapper.method();
-   |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
+   |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3>`
    |
    = note: the method was found for
            - `Wrapper2<'a, i8, C>`
@@ -71,7 +71,7 @@ LL | struct Wrapper2<'a, T, const C: usize> {
    | -------------------------------------- method `other` not found for this struct
 ...
 LL |     wrapper.other();
-   |             ^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
+   |             ^^^^^ method not found in `Wrapper2<'_, bool, 3>`
 
 error[E0599]: no method named `not_found` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:101:7
@@ -82,7 +82,7 @@ LL |     a.not_found();
 error[E0599]: the method `method` exists for struct `Struct<f64>`, but its trait bounds were not satisfied
   --> $DIR/method-not-found-generic-arg-elision.rs:104:7
    |
-LL | struct Struct<T>{
+LL | struct Struct<T> {
    | ---------------- method `method` not found for this struct
 ...
 LL |     s.method();

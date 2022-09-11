@@ -1,0 +1,21 @@
+error[E0658]: use of unstable library feature 'foobar'
+  --> $DIR/stability-attribute-implies-no-feature.rs:7:40
+   |
+LL | use stability_attribute_implies::{foo, foobar};
+   |                                        ^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(foobar)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'foobar'
+  --> $DIR/stability-attribute-implies-no-feature.rs:12:5
+   |
+LL |     foobar();
+   |     ^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(foobar)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

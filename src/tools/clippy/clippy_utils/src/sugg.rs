@@ -2,13 +2,14 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite};
+use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{ExprKind, HirId, MutTy, TyKind};
+use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
@@ -18,7 +19,6 @@ use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::fmt::{Display, Write as _};
-use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
@@ -315,6 +315,12 @@ impl<'a> Sugg<'a> {
         Sugg::NonParen(Cow::Owned(format!("{{ {} }}", self)))
     }
 
+    /// Convenience method to prefix the expression with the `async` keyword.
+    /// Can be used after `blockify` to create an async block.
+    pub fn asyncify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("async {}", self)))
+    }
+
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
@@ -367,12 +373,14 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         | AssocOp::LessEqual
         | AssocOp::NotEqual
         | AssocOp::Greater
-        | AssocOp::GreaterEqual => format!(
-            "{} {} {}",
-            lhs,
-            op.to_ast_binop().expect("Those are AST ops").to_string(),
-            rhs
-        ),
+        | AssocOp::GreaterEqual => {
+            format!(
+                "{} {} {}",
+                lhs,
+                op.to_ast_binop().expect("Those are AST ops").to_string(),
+                rhs
+            )
+        },
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::AssignOp(op) => {
             format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
@@ -790,7 +798,7 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure { fn_decl, body, .. } = closure.kind {
+    if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
@@ -861,23 +869,37 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 
     /// indicates whether the function from `parent_expr` takes its args by double reference
     fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
-        let (call_args, inputs) = match parent_expr.kind {
-            ExprKind::MethodCall(_, call_args, _) => {
-                if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
-                    (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
+        let ty = match parent_expr.kind {
+            ExprKind::MethodCall(_, receiver, call_args, _) => {
+                if let Some(sig) = self
+                    .cx
+                    .typeck_results()
+                    .type_dependent_def_id(parent_expr.hir_id)
+                    .map(|did| self.cx.tcx.fn_sig(did).skip_binder())
+                {
+                    std::iter::once(receiver)
+                        .chain(call_args.iter())
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .map(|i| sig.inputs()[i])
                 } else {
                     return false;
                 }
             },
             ExprKind::Call(func, call_args) => {
-                let typ = self.cx.typeck_results().expr_ty(func);
-                (call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs())
+                if let Some(sig) = expr_sig(self.cx, func) {
+                    call_args
+                        .iter()
+                        .position(|arg| arg.hir_id == cmt_hir_id)
+                        .and_then(|i| sig.input(i))
+                        .map(ty::Binder::skip_binder)
+                } else {
+                    return false;
+                }
             },
             _ => return false,
         };
 
-        iter::zip(call_args, inputs)
-            .any(|(arg, ty)| arg.hir_id == cmt_hir_id && matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+        ty.map_or(false, |ty| matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
     }
 }
 
@@ -913,14 +935,14 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                     match &parent_expr.kind {
                         // given expression is the self argument and will be handled completely by the compiler
                         // i.e.: `|x| x.is_something()`
-                        ExprKind::MethodCall(_, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                        ExprKind::MethodCall(_, self_expr, ..) if self_expr.hir_id == cmt.hir_id => {
                             let _ = write!(self.suggestion_start, "{}{}", start_snip, ident_str_with_proj);
                             self.next_pos = span.hi();
                             return;
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, [_, call_args @ ..], _) => {
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [call_args @ ..], _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 

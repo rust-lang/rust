@@ -103,7 +103,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 })
             }),
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { body, movability, .. },
+                kind: hir::ExprKind::Closure(hir::Closure { body, movability, .. }),
                 ..
             }) => self.describe_generator(*body).or_else(|| {
                 Some(if movability.is_some() { "an async closure" } else { "a closure" })
@@ -143,7 +143,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         if let ObligationCauseCode::ItemObligation(item)
-        | ObligationCauseCode::BindingObligation(item, _) = *obligation.cause.code()
+        | ObligationCauseCode::BindingObligation(item, _)
+        | ObligationCauseCode::ExprItemObligation(item, ..)
+        | ObligationCauseCode::ExprBindingObligation(item, ..) = *obligation.cause.code()
         {
             // FIXME: maybe also have some way of handling methods
             // from other traits? That would require name resolution,
@@ -223,8 +225,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}]"))));
+                    flags.push((sym::_Self, Some(format!("[{}]", self.tcx.type_of(def.did())))));
                 }
                 if aty.is_integral() {
                     flags.push((sym::_Self, Some("[{integral}]".to_string())));
@@ -242,10 +243,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}; _]"))));
+                    let def_ty = self.tcx.type_of(def.did());
+                    flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
                     if let Some(n) = len {
-                        flags.push((sym::_Self, Some(format!("[{type_string}; {n}]"))));
+                        flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));
                     }
                 }
                 if aty.is_integral() {

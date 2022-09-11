@@ -9,7 +9,7 @@ pub trait UnifyKey {
     fn dummy(&self) { }
 }
 
-pub struct Node<K:UnifyKey>(K, K::Value);
+pub struct Node<K:UnifyKey>(#[allow(unused_tuple_struct_fields)] K, K::Value);
 
 fn foo<K : UnifyKey<Value=Option<V>>,V : Clone>(node: &Node<K>) -> Option<V> {
     node.1.clone()

@@ -1,4 +1,4 @@
-//! Constants specific to the `f64` double-precision floating point type.
+//! Constants for the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type][f64].*
 //!
@@ -393,7 +393,7 @@ impl f64 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// Note that IEEE-754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -624,7 +624,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// positive sign bit and positive infinity. Note that IEEE-754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
@@ -655,7 +655,7 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// negative sign bit and negative infinity. Note that IEEE-754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
@@ -686,6 +686,106 @@ impl f64 {
     #[doc(hidden)]
     pub fn is_negative(self) -> bool {
         self.is_sign_negative()
+    }
+
+    /// Returns the least number greater than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f64`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`NEG_INFINITY`], this returns [`MIN`];
+    ///  - if `self` is `-TINY`, this returns -0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `TINY`;
+    ///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
+    ///  - otherwise the unique least value greater than `self` is returned.
+    ///
+    /// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_up().next_down()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// // f64::EPSILON is the difference between 1.0 and the next number up.
+    /// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+    /// // But not for most numbers.
+    /// assert!(0.1f64.next_up() < 0.1 + f64::EPSILON);
+    /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_up(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const TINY_BITS: u64 = 0x1; // Smallest positive f64.
+        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            TINY_BITS
+        } else if bits == abs {
+            bits + 1
+        } else {
+            bits - 1
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Returns the greatest number less than `self`.
+    ///
+    /// Let `TINY` be the smallest representable positive `f64`. Then,
+    ///  - if `self.is_nan()`, this returns `self`;
+    ///  - if `self` is [`INFINITY`], this returns [`MAX`];
+    ///  - if `self` is `TINY`, this returns 0.0;
+    ///  - if `self` is -0.0 or +0.0, this returns `-TINY`;
+    ///  - if `self` is [`MIN`] or [`NEG_INFINITY`], this returns [`NEG_INFINITY`];
+    ///  - otherwise the unique greatest value less than `self` is returned.
+    ///
+    /// The identity `x.next_down() == -(-x).next_up()` holds for all non-NaN `x`. When `x`
+    /// is finite `x == x.next_down().next_up()` also holds.
+    ///
+    /// ```rust
+    /// #![feature(float_next_up_down)]
+    /// let x = 1.0f64;
+    /// // Clamp value into range [0, 1).
+    /// let clamped = x.clamp(0.0, 1.0f64.next_down());
+    /// assert!(clamped < 1.0);
+    /// assert_eq!(clamped.next_up(), 1.0);
+    /// ```
+    ///
+    /// [`NEG_INFINITY`]: Self::NEG_INFINITY
+    /// [`INFINITY`]: Self::INFINITY
+    /// [`MIN`]: Self::MIN
+    /// [`MAX`]: Self::MAX
+    #[unstable(feature = "float_next_up_down", issue = "91399")]
+    #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
+    pub const fn next_down(self) -> Self {
+        // We must use strictly integer arithmetic to prevent denormals from
+        // flushing to zero after an arithmetic operation on some platforms.
+        const NEG_TINY_BITS: u64 = 0x8000_0000_0000_0001; // Smallest (in magnitude) negative f64.
+        const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
+
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = bits & CLEAR_SIGN_MASK;
+        let next_bits = if abs == 0 {
+            NEG_TINY_BITS
+        } else if bits == abs {
+            bits - 1
+        } else {
+            bits + 1
+        };
+        Self::from_bits(next_bits)
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -926,10 +1026,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_f64_to_u64 = |rt| unsafe { mem::transmute::<f64, u64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_f64_to_u64(rt: f64) -> u64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<f64, u64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f64_to_u64) }
     }
@@ -1019,10 +1123,14 @@ impl f64 {
                 }
             }
         }
-        // SAFETY: `u64` is a plain old datatype so we can always... uh...
-        // ...look, just pretend you forgot what you just read.
-        // Stability concerns.
-        let rt_u64_to_f64 = |rt| unsafe { mem::transmute::<u64, f64>(rt) };
+
+        #[inline(always)] // See https://github.com/rust-lang/compiler-builtins/issues/491
+        fn rt_u64_to_f64(rt: u64) -> f64 {
+            // SAFETY: `u64` is a plain old datatype so we can always... uh...
+            // ...look, just pretend you forgot what you just read.
+            // Stability concerns.
+            unsafe { mem::transmute::<u64, f64>(rt) }
+        }
         // SAFETY: We use internal implementations that either always work or fail at compile time.
         unsafe { intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64) }
     }
@@ -1280,15 +1388,14 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
-    pub fn clamp(self, min: f64, max: f64) -> f64 {
+    pub fn clamp(mut self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
+        if self < min {
+            self = min;
         }
-        if x > max {
-            x = max;
+        if self > max {
+            self = max;
         }
-        x
+        self
     }
 }

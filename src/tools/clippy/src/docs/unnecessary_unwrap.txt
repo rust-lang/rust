@@ -1,0 +1,20 @@
+### What it does
+Checks for calls of `unwrap[_err]()` that cannot fail.
+
+### Why is this bad?
+Using `if let` or `match` is more idiomatic.
+
+### Example
+```
+if option.is_some() {
+    do_something_with(option.unwrap())
+}
+```
+
+Could be written:
+
+```
+if let Some(value) = option {
+    do_something_with(value)
+}
+```

@@ -41,9 +41,9 @@ fn python() -> &'static str {
     } else if python2 {
         PYTHON2
     } else {
-        // We would have returned early if we found that python is installed ...
-        // maybe this should panic with an error instead?
-        PYTHON
+        // Python was not found on path, so exit
+        eprintln!("Unable to find python in your PATH. Please check it is installed.");
+        process::exit(1);
     }
 }
 

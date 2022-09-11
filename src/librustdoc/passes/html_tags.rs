@@ -94,6 +94,14 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
     if current_pos == end_pos { None } else { Some(current_pos) }
 }
 
+fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
+    // https://spec.commonmark.org/0.30/#raw-html
+    //
+    // > A tag name consists of an ASCII letter followed by zero or more ASCII letters, digits, or
+    // > hyphens (-).
+    c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
+}
+
 fn extract_html_tag(
     tags: &mut Vec<(String, Range<usize>)>,
     text: &str,
@@ -117,7 +125,7 @@ fn extract_html_tag(
         // Checking if this is a closing tag (like `</a>` for `<a>`).
         if c == '/' && tag_name.is_empty() {
             is_closing = true;
-        } else if c.is_ascii_alphanumeric() {
+        } else if is_valid_for_html_tag_name(c, tag_name.is_empty()) {
             tag_name.push(c);
         } else {
             if !tag_name.is_empty() {

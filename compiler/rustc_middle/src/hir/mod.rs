@@ -44,6 +44,7 @@ pub struct ModuleItems {
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+    body_owners: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -156,8 +157,9 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(id.expect_local());
-        if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
+        let def_id = id.expect_local();
+        let hir_id = hir.local_def_id_to_hir_id(def_id);
+        if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
             tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),

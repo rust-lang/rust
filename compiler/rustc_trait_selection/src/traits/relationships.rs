@@ -31,14 +31,14 @@ pub(crate) fn update<'tcx, T>(
             obligation
                 .predicate
                 .kind()
-                .map_bound(|_| {
+                .rebind(
                     // (*) binder moved here
                     ty::PredicateKind::Trait(ty::TraitPredicate {
                         trait_ref,
                         constness: tpred.constness,
                         polarity: tpred.polarity,
                     })
-                })
+                )
                 .to_predicate(infcx.tcx),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.

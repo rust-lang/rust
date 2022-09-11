@@ -23,7 +23,7 @@ impl Clone for Liar {
 
 /// This struct is actually Copy... at least, it thinks it is!
 #[derive(Copy, Clone)]
-struct Innocent(Liar);
+struct Innocent(#[allow(unused_tuple_struct_fields)] Liar);
 
 impl Innocent {
     fn new() -> Self {

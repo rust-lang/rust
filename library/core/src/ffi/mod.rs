@@ -14,7 +14,7 @@ use crate::marker::PhantomData;
 use crate::num::*;
 use crate::ops::{Deref, DerefMut};
 
-#[unstable(feature = "core_c_str", issue = "94079")]
+#[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
 
 mod c_str;
@@ -26,7 +26,7 @@ macro_rules! type_alias_no_nz {
     } => {
         #[doc = include_str!($Docfile)]
         $( $Cfg )*
-        #[unstable(feature = "core_ffi_c", issue = "94501")]
+        #[stable(feature = "core_ffi_c", since = "1.64.0")]
         pub type $Alias = $Real;
     }
 }

@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: Get` is not satisfied
-  --> $DIR/associated-types-no-suitable-bound.rs:11:21
+  --> $DIR/associated-types-no-suitable-bound.rs:11:5
    |
 LL |     fn uhoh<T>(foo: <T as Get>::Value) {}
-   |                     ^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `T`
    |
 help: consider restricting type parameter `T`
    |

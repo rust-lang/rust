@@ -43,7 +43,7 @@ pub fn check_for_loop_iter(
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             let snippet = if_chain! {
-                if let ExprKind::MethodCall(maybe_iter_method_name, [collection], _) = receiver.kind;
+                if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind;
                 if maybe_iter_method_name.ident.name == sym::iter;
 
                 if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);

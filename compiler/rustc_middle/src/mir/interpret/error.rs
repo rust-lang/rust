@@ -1,7 +1,7 @@
 use super::{AllocId, AllocRange, ConstAlloc, Pointer, Scalar};
 
 use crate::mir::interpret::ConstValue;
-use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty, ValTree};
+use crate::ty::{layout, query::TyCtxtAt, tls, Ty, ValTree};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
@@ -219,7 +219,7 @@ pub struct ScalarSizeMismatch {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-pub enum UndefinedBehaviorInfo<'tcx> {
+pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
     /// Unreachable code was executed.
@@ -241,12 +241,6 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
     InvalidMeta(&'static str),
-    /// Invalid drop function in vtable.
-    InvalidVtableDropFn(FnSig<'tcx>),
-    /// Invalid size in a vtable: too large.
-    InvalidVtableSize,
-    /// Invalid alignment in a vtable: too large, or not a power of 2.
-    InvalidVtableAlignment(String),
     /// Reading a C string that does not end within its allocation.
     UnterminatedCString(Pointer),
     /// Dereferencing a dangling pointer after it got freed.
@@ -271,6 +265,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     WriteToReadOnly(AllocId),
     // Trying to access the data behind a function pointer.
     DerefFunctionPointer(AllocId),
+    // Trying to access the data behind a vtable pointer.
+    DerefVTablePointer(AllocId),
     /// The value validity check found a problem.
     /// Should only be thrown by `validity.rs` and always point out which part of the value
     /// is the problem.
@@ -288,6 +284,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidTag(Scalar),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
+    /// Using a pointer-not-to-a-vtable as vtable pointer.
+    InvalidVTablePointer(Pointer),
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
@@ -300,7 +298,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     UninhabitedEnumVariantWritten,
 }
 
-impl fmt::Display for UndefinedBehaviorInfo<'_> {
+impl fmt::Display for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
@@ -315,14 +313,6 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {msg}"),
-            InvalidVtableDropFn(sig) => write!(
-                f,
-                "invalid drop function signature: got {sig}, expected exactly one argument which must be a pointer type",
-            ),
-            InvalidVtableSize => {
-                write!(f, "invalid vtable: size is bigger than largest supported object")
-            }
-            InvalidVtableAlignment(msg) => write!(f, "invalid vtable: alignment {msg}"),
             UnterminatedCString(p) => write!(
                 f,
                 "reading a null-terminated string starting at {p:?} with no null found before end of allocation",
@@ -359,6 +349,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             ),
             WriteToReadOnly(a) => write!(f, "writing to {a:?} which is read-only"),
             DerefFunctionPointer(a) => write!(f, "accessing {a:?} which contains a function"),
+            DerefVTablePointer(a) => write!(f, "accessing {a:?} which contains a vtable"),
             ValidationFailure { path: None, msg } => {
                 write!(f, "constructing invalid value: {msg}")
             }
@@ -374,6 +365,9 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidTag(val) => write!(f, "enum value has invalid tag: {val:x}"),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {p:?} as function pointer but it does not point to a function")
+            }
+            InvalidVTablePointer(p) => {
+                write!(f, "using {p:?} as vtable pointer but it does not point to a vtable")
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {err}"),
             InvalidUninitBytes(Some((alloc, info))) => write!(
@@ -407,14 +401,18 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
-    /// Encountered a pointer where we needed raw bytes.
-    ReadPointerAsBytes,
     /// Overwriting parts of a pointer; the resulting state cannot be represented in our
     /// `Allocation` data structure. See <https://github.com/rust-lang/miri/issues/2181>.
     PartialPointerOverwrite(Pointer<AllocId>),
+    /// Attempting to `copy` parts of a pointer to somewhere else; the resulting state cannot be
+    /// represented in our `Allocation` data structure. See
+    /// <https://github.com/rust-lang/miri/issues/2181>.
+    PartialPointerCopy(Pointer<AllocId>),
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
+    /// Encountered a pointer where we needed raw bytes.
+    ReadPointerAsBytes,
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
@@ -426,10 +424,13 @@ impl fmt::Display for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{msg}"),
-            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
             PartialPointerOverwrite(ptr) => {
                 write!(f, "unable to overwrite parts of a pointer in memory at {ptr:?}")
             }
+            PartialPointerCopy(ptr) => {
+                write!(f, "unable to copy parts of a pointer from memory at {ptr:?}")
+            }
+            ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes"),
             ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({did:?})"),
             ReadExternStatic(did) => write!(f, "cannot read from extern static ({did:?})"),
         }
@@ -494,7 +495,7 @@ impl dyn MachineStopType {
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
-    UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
+    UndefinedBehavior(UndefinedBehaviorInfo),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo),

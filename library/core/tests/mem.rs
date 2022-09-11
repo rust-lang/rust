@@ -98,6 +98,46 @@ fn test_transmute_copy() {
 }
 
 #[test]
+fn test_transmute_copy_shrink() {
+    assert_eq!(0_u8, unsafe { transmute_copy(&0_u64) });
+}
+
+#[test]
+fn test_transmute_copy_unaligned() {
+    #[repr(C)]
+    #[derive(Default)]
+    struct Unaligned {
+        a: u8,
+        b: [u8; 8],
+    }
+
+    let u = Unaligned::default();
+    assert_eq!(0_u64, unsafe { transmute_copy(&u.b) });
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn test_transmute_copy_grow_panics() {
+    use std::panic;
+
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
+        let _unused: u64 = transmute_copy(&1_u8);
+    }));
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| {
+                    if *s == "cannot transmute_copy if U is larger than T" { Ok(s) } else { Err(s) }
+                })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+        }
+    }
+}
+
+#[test]
 #[allow(dead_code)]
 fn test_discriminant_send_sync() {
     enum Regular {

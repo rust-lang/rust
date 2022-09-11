@@ -2,8 +2,9 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
+    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
+    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -11,7 +12,6 @@ use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -22,6 +22,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
+use thin_vec::ThinVec;
 
 #[cfg(test)]
 mod tests;
@@ -36,7 +37,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
-    let mut module = module.clean(cx);
+    let mut module = clean_doc_module(&module, cx);
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {
@@ -69,7 +70,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
             )
         }));
         m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem(kw), cx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
         }));
     }
 
@@ -85,14 +86,14 @@ pub(crate) fn substs_to_args<'tcx>(
         Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
     ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
         GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(lt.clean(cx).unwrap_or(Lifetime::elided())))
+            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
         GenericArgKind::Type(_) if skip_first => {
             skip_first = false;
             None
         }
-        GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
-        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
+        GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(ty, cx, None))),
+        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx)))),
     }));
     ret_val
 }
@@ -101,7 +102,7 @@ fn external_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
     let args = substs_to_args(cx, substs, has_self);
@@ -110,8 +111,8 @@ fn external_generic_args<'tcx>(
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
+                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -129,7 +130,7 @@ pub(super) fn external_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
@@ -235,8 +236,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
-                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
+                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
                 inline::print_inlined_const(cx.tcx, def.did)
             };
@@ -261,7 +261,11 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     }
 }
 
-pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+pub(crate) fn print_evaluated_const(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+    underscores_and_type: bool,
+) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
@@ -269,7 +273,7 @@ pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<St
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
                 let const_ = mir::ConstantKind::from_value(val, ty);
-                Some(print_const_with_custom_print_scalar(tcx, const_))
+                Some(print_const_with_custom_print_scalar(tcx, const_, underscores_and_type))
             }
             _ => None,
         }
@@ -302,23 +306,35 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: mir::ConstantKind<'_>) -> String {
+fn print_const_with_custom_print_scalar(
+    tcx: TyCtxt<'_>,
+    ct: mir::ConstantKind<'_>,
+    underscores_and_type: bool,
+) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct, ct.ty().kind()) {
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            if underscores_and_type {
+                format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            } else {
+                int.to_string()
+            }
         }
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = tcx.lift(ct.ty()).unwrap();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
-            format!(
-                "{}{}",
-                format_integer_with_underscore_sep(&sign_extended_data.to_string()),
-                i.name_str()
-            )
+            if underscores_and_type {
+                format!(
+                    "{}{}",
+                    format_integer_with_underscore_sep(&sign_extended_data.to_string()),
+                    i.name_str()
+                )
+            } else {
+                sign_extended_data.to_string()
+            }
         }
         _ => ct.to_string(),
     }
@@ -495,8 +511,8 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         | Res::Err => return res.def_id(),
         Res::Def(
             TyParam | ConstParam | Ctor(..) | ExternCrate | Use | ForeignMod | AnonConst
-            | InlineConst | OpaqueTy | Field | LifetimeParam | GlobalAsm | Impl | Closure
-            | Generator,
+            | InlineConst | OpaqueTy | ImplTraitPlaceholder | Field | LifetimeParam | GlobalAsm
+            | Impl | Closure | Generator,
             id,
         ) => return id,
     };

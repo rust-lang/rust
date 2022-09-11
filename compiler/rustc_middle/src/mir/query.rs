@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, ConstantKind, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -35,7 +35,6 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -78,11 +77,6 @@ impl UnsafetyViolationDetails {
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
-            AssignToDroppingUnionField => (
-                "assignment to union field that might need dropping",
-                "the previous content of the field will be dropped, which causes undefined \
-                 behavior if the field was not properly initialized",
-            ),
             AccessToUnionField => (
                 "access to union field",
                 "the field may not be properly initialized: using uninitialized data will cause \
@@ -121,21 +115,6 @@ pub enum UnusedUnsafe {
     /// `unsafe` block nested under another (used) `unsafe` block
     /// > ``… because it's nested under this `unsafe` block``
     InUnsafeBlock(hir::HirId),
-    /// `unsafe` block nested under `unsafe fn`
-    /// > ``… because it's nested under this `unsafe fn` ``
-    ///
-    /// the second HirId here indicates the first usage of the `unsafe` block,
-    /// which allows retrieval of the LintLevelSource for why that operation would
-    /// have been permitted without the block
-    InUnsafeFn(hir::HirId, hir::HirId),
-}
-
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
-pub enum UsedUnsafeBlockData {
-    SomeDisallowedInUnsafeFn,
-    // the HirId here indicates the first usage of the `unsafe` block
-    // (i.e. the one that's first encountered in the MIR traversal of the unsafety check)
-    AllAllowedInUnsafeFn(hir::HirId),
 }
 
 #[derive(TyEncodable, TyDecodable, HashStable, Debug)]
@@ -144,10 +123,7 @@ pub struct UnsafetyCheckResult {
     pub violations: Vec<UnsafetyViolation>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    ///
-    /// The keys are the used `unsafe` blocks, the UnusedUnsafeKind indicates whether
-    /// or not any of the usages happen at a place that doesn't allow `unsafe_op_in_unsafe_fn`.
-    pub used_unsafe_blocks: FxHashMap<hir::HirId, UsedUnsafeBlockData>,
+    pub used_unsafe_blocks: FxHashSet<hir::HirId>,
 
     /// This is `Some` iff the item is not a closure.
     pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
@@ -241,7 +217,7 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,

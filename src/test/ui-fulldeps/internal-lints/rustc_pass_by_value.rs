@@ -93,7 +93,7 @@ impl CustomStruct {
 
     fn test_alias(
         value: CustomAlias,
-        reference: &CustomAlias, //~ ERROR passing `CustomAlias<>` by reference
+        reference: &CustomAlias, //~ ERROR passing `CustomAlias<'_>` by reference
     ) {
     }
 }

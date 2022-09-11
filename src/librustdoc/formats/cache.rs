@@ -227,7 +227,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let clean::TraitItem(ref t) = *item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| {
                 clean::TraitWithExtraInfo {
-                    trait_: t.clone(),
+                    trait_: *t.clone(),
                     is_notable: item.attrs.has_doc_flag(sym::notable_trait),
                 }
             });
@@ -413,7 +413,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::TyAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem(..) => {
+            | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -536,7 +536,7 @@ enum ParentStackItem {
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
         match &*item.kind {
-            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
+            clean::ItemKind::ImplItem(box clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),
                     trait_: trait_.clone(),

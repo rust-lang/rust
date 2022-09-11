@@ -335,7 +335,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     match expr.kind {
         // Manually recurse over closures and inline consts, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure { body, .. }
+        hir::ExprKind::Closure(&hir::Closure { body, .. })
         | hir::ExprKind::ConstBlock(hir::AnonConst { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
@@ -460,6 +460,7 @@ fn resolve_local<'tcx>(
     visitor: &mut RegionResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
+    els: Option<&'tcx hir::Block<'tcx>>,
 ) {
     debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
@@ -537,12 +538,17 @@ fn resolve_local<'tcx>(
         }
     }
 
-    // Make sure we visit the initializer first, so expr_and_pat_count remains correct
+    // Make sure we visit the initializer first, so expr_and_pat_count remains correct.
+    // The correct order, as shared between generator_interior, drop_ranges and intravisitor,
+    // is to walk initializer, followed by pattern bindings, finally followed by the `else` block.
     if let Some(expr) = init {
         visitor.visit_expr(expr);
     }
     if let Some(pat) = pat {
         visitor.visit_pat(pat);
+    }
+    if let Some(els) = els {
+        visitor.visit_block(els);
     }
 
     /// Returns `true` if `pat` match the `P&` non-terminal.
@@ -581,8 +587,7 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::BindingAnnotation::Ref, ..)
-            | PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
+            PatKind::Binding(hir::BindingAnnotation(hir::ByRef::Yes, _), ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
@@ -601,10 +606,7 @@ fn resolve_local<'tcx>(
             PatKind::Box(ref subpat) => is_binding_pat(&subpat),
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(
-                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                ..,
-            )
+            | PatKind::Binding(hir::BindingAnnotation(hir::ByRef::No, _), ..)
             | PatKind::Wild
             | PatKind::Path(_)
             | PatKind::Lit(_)
@@ -764,7 +766,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             // (i.e., `'static`), which means that after `g` returns, it drops,
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
-            resolve_local(self, None, Some(&body.value));
+            resolve_local(self, None, Some(&body.value), None);
         }
 
         if body.generator_kind.is_some() {
@@ -791,7 +793,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         resolve_expr(self, ex);
     }
     fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init);
+        resolve_local(self, Some(&l.pat), l.init, l.els)
     }
 }
 
@@ -808,8 +810,7 @@ pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
+    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),

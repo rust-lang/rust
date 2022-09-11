@@ -116,7 +116,7 @@ warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:118:22
    |
 LL |     println!("{:p}", &take_generic_array::<u32, 4>);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_array` to obtain a function pointer: `take_generic_array::<u32, 4_usize> as fn(_)`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `take_generic_array` to obtain a function pointer: `take_generic_array::<u32, 4> as fn(_)`
 
 warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:120:22
@@ -128,7 +128,7 @@ warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:122:22
    |
 LL |     println!("{:p}", &multiple_generic_arrays::<u32, f32, 4, 8>);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic_arrays` to obtain a function pointer: `multiple_generic_arrays::<u32, f32, 4_usize, 8_usize> as fn(_, _)`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: cast `multiple_generic_arrays` to obtain a function pointer: `multiple_generic_arrays::<u32, f32, 4, 8> as fn(_, _)`
 
 warning: taking a reference to a function item does not give a function pointer
   --> $DIR/function-item-references.rs:124:22

@@ -1,15 +1,12 @@
 use crate::infer::canonical::query_response;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::engine::TraitEngineExt as _;
+use crate::traits;
 use crate::traits::query::type_op::TypeOpOutput;
 use crate::traits::query::Fallible;
-use crate::traits::TraitEngine;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
-use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::DUMMY_SP;
 
 use std::fmt;
-use std::rc::Rc;
 
 pub struct CustomTypeOp<F, G> {
     closure: F,
@@ -63,8 +60,6 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
 ) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
-    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-
     // During NLL, we expect that nobody will register region
     // obligations **except** as part of a custom type op (and, at the
     // end of each custom type op, we scrape out the region
@@ -78,8 +73,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
-    fulfill_cx.register_predicate_obligations(infcx, obligations);
-    let errors = fulfill_cx.select_all_or_error(infcx);
+    let errors = traits::fully_solve_obligations(infcx, obligations);
     if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
@@ -109,7 +103,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
         Ok((
             TypeOpOutput {
                 output: value,
-                constraints: Some(Rc::new(region_constraints)),
+                constraints: Some(infcx.tcx.arena.alloc(region_constraints)),
                 error_info: None,
             },
             region_constraint_data,

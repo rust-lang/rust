@@ -31,9 +31,13 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
+#if LLVM_VERSION_GE(15, 0)
+#include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
+#endif
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
+#include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
 #include "llvm/Transforms/Instrumentation.h"
@@ -89,23 +93,6 @@ extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
   timeTraceProfilerCleanup();
 }
 
-enum class LLVMRustPassKind {
-  Other,
-  Function,
-  Module,
-};
-
-static LLVMRustPassKind toRust(PassKind Kind) {
-  switch (Kind) {
-  case PT_Function:
-    return LLVMRustPassKind::Function;
-  case PT_Module:
-    return LLVMRustPassKind::Module;
-  default:
-    return LLVMRustPassKind::Other;
-  }
-}
-
 extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
 #if LLVM_VERSION_LT(15, 0)
   StringRef SR(PassName);
@@ -147,7 +134,12 @@ extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool 
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
-      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+#if LLVM_VERSION_GE(14, 0)
+      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel, /*EagerChecks=*/true}
+#else
+      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}
+#endif
+  ));
 #else
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
@@ -169,12 +161,6 @@ extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
 #else
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
-}
-
-extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
-  assert(RustPass);
-  Pass *Pass = unwrap(RustPass);
-  return toRust(Pass->getPassKind());
 }
 
 extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
@@ -844,7 +830,8 @@ LLVMRustOptimizeWithNewPassManager(
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
-    bool InstrumentCoverage, bool InstrumentGCOV,
+    bool InstrumentCoverage, const char *InstrProfileOutput,
+    bool InstrumentGCOV,
     const char *PGOSampleUsePath, bool DebugInfoForProfiling,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
@@ -891,19 +878,11 @@ LLVMRustOptimizeWithNewPassManager(
                         PGOOptions::NoCSAction, DebugInfoForProfiling);
   }
 
-#if LLVM_VERSION_GE(13, 0)
   PassBuilder PB(TM, PTO, PGOOpt, &PIC);
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
-#else
-  PassBuilder PB(DebugPassManager, TM, PTO, PGOOpt, &PIC);
-  LoopAnalysisManager LAM(DebugPassManager);
-  FunctionAnalysisManager FAM(DebugPassManager);
-  CGSCCAnalysisManager CGAM(DebugPassManager);
-  ModuleAnalysisManager MAM(DebugPassManager);
-#endif
 
   FAM.registerPass([&] { return PB.buildDefaultAAPipeline(); });
 
@@ -944,8 +923,11 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (InstrumentCoverage) {
     PipelineStartEPCallbacks.push_back(
-      [](ModulePassManager &MPM, OptimizationLevel Level) {
+      [InstrProfileOutput](ModulePassManager &MPM, OptimizationLevel Level) {
         InstrProfOptions Options;
+        if (InstrProfileOutput) {
+          Options.InstrProfileOutput = InstrProfileOutput;
+        }
         MPM.addPass(InstrProfiling(Options, false));
       }
     );
@@ -953,18 +935,28 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (SanitizerOptions) {
     if (SanitizerOptions->SanitizeMemory) {
+#if LLVM_VERSION_GE(14, 0)
+      MemorySanitizerOptions Options(
+          SanitizerOptions->SanitizeMemoryTrackOrigins,
+          SanitizerOptions->SanitizeMemoryRecover,
+          /*CompileKernel=*/false,
+          /*EagerChecks=*/true);
+#else
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
           SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false);
+#endif
       OptimizerLastEPCallbacks.push_back(
         [Options](ModulePassManager &MPM, OptimizationLevel Level) {
-#if LLVM_VERSION_GE(14, 0)
+#if LLVM_VERSION_GE(14, 0) && LLVM_VERSION_LT(16, 0)
           MPM.addPass(ModuleMemorySanitizerPass(Options));
 #else
           MPM.addPass(MemorySanitizerPass(Options));
 #endif
+#if LLVM_VERSION_LT(16, 0)
           MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
+#endif
         }
       );
     }
@@ -995,7 +987,11 @@ LLVMRustOptimizeWithNewPassManager(
             /*UseAfterScope=*/true,
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
+#if LLVM_VERSION_LT(16, 0)
           MPM.addPass(ModuleAddressSanitizerPass(opts));
+#else
+          MPM.addPass(AddressSanitizerPass(opts));
+#endif
 #else
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
@@ -1037,11 +1033,7 @@ LLVMRustOptimizeWithNewPassManager(
     }
   }
 
-#if LLVM_VERSION_GE(13, 0)
   ModulePassManager MPM;
-#else
-  ModulePassManager MPM(DebugPassManager);
-#endif
   bool NeedThinLTOBufferPasses = UseThinLTOBuffers;
   if (!NoPrepopulatePasses) {
     // The pre-link pipelines don't support O0 and require using budilO0DefaultPipeline() instead.
@@ -1456,17 +1448,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
 
-#if LLVM_VERSION_GE(13,0)
   // Uses FromPrevailing visibility scheme which works for many binary
   // formats. We probably could and should use ELF visibility scheme for many of
   // our targets, however.
   lto::Config conf;
   thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-#else
-  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
-                                  Ret->GUIDPreservedSymbols);
-#endif
+
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
   // summaries in the index, and we basically just only want to ensure that dead
@@ -1603,28 +1591,6 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
   return true;
 }
 
-extern "C" typedef void (*LLVMRustModuleNameCallback)(void*, // payload
-                                                      const char*, // importing module name
-                                                      const char*); // imported module name
-
-// Calls `module_name_callback` for each module import done by ThinLTO.
-// The callback is provided with regular null-terminated C strings.
-extern "C" void
-LLVMRustGetThinLTOModules(const LLVMRustThinLTOData *data,
-                                LLVMRustModuleNameCallback module_name_callback,
-                                void* callback_payload) {
-  for (const auto& importing_module : data->ImportLists) {
-    const std::string importing_module_id = importing_module.getKey().str();
-    const auto& imports = importing_module.getValue();
-    for (const auto& imported_module : imports) {
-      const std::string imported_module_id = imported_module.getKey().str();
-      module_name_callback(callback_payload,
-                           importing_module_id.c_str(),
-                           imported_module_id.c_str());
-    }
-  }
-}
-
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -1638,14 +1604,36 @@ struct LLVMRustThinLTOBuffer {
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     raw_string_ostream OS(Ret->data);
     {
-      legacy::PassManager PM;
-      PM.add(createWriteThinLTOBitcodePass(OS));
-      PM.run(*unwrap(M));
+      if (is_thin) {
+#if LLVM_VERSION_LT(15, 0)
+        legacy::PassManager PM;
+        PM.add(createWriteThinLTOBitcodePass(OS));
+        PM.run(*unwrap(M));
+#else
+        PassBuilder PB;
+        LoopAnalysisManager LAM;
+        FunctionAnalysisManager FAM;
+        CGSCCAnalysisManager CGAM;
+        ModuleAnalysisManager MAM;
+        PB.registerModuleAnalyses(MAM);
+        PB.registerCGSCCAnalyses(CGAM);
+        PB.registerFunctionAnalyses(FAM);
+        PB.registerLoopAnalyses(LAM);
+        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+        ModulePassManager MPM;
+        MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
+        MPM.run(*unwrap(M), MAM);
+#endif
+      } else {
+        legacy::PassManager PM;
+        PM.add(createBitcodeWriterPass(OS));
+        PM.run(*unwrap(M));
+      }
     }
   }
   return Ret.release();
@@ -1715,7 +1703,7 @@ LLVMRustGetBitcodeSliceFromObjectData(const char *data,
 // Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
 // the comment in `back/lto.rs` for why this exists.
 extern "C" void
-LLVMRustLTOGetDICompileUnit(LLVMModuleRef Mod,
+LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
                                 DICompileUnit **A,
                                 DICompileUnit **B) {
   Module *M = unwrap(Mod);
@@ -1733,7 +1721,7 @@ LLVMRustLTOGetDICompileUnit(LLVMModuleRef Mod,
 // Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
 // the comment in `back/lto.rs` for why this exists.
 extern "C" void
-LLVMRustLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
+LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   Module *M = unwrap(Mod);
 
   // If the original source module didn't have a `DICompileUnit` then try to

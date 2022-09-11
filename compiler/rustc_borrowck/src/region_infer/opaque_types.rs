@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
@@ -15,6 +15,8 @@ use rustc_middle::ty::{
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::TraitEngineExt as _;
+
+use crate::session_diagnostics::ConstNotUsedTraitAlias;
 
 use super::RegionInferenceContext;
 
@@ -58,13 +60,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Calling `universal_upper_bound` for such a region gives `fr_fn_body`,
     /// which has no `external_name` in which case we use `'empty` as the
     /// region to pass to `infer_opaque_definition_from_instantiation`.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "debug", skip(self, infcx), ret)]
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
-    ) -> VecMap<DefId, OpaqueHiddenType<'tcx>> {
-        let mut result: VecMap<DefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+    ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
+        let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
@@ -107,7 +109,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
-                        .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
+                        .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
 
@@ -235,7 +237,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
         debug!(?id_substs);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
             substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
@@ -246,7 +248,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // after producing an error for each of them.
         let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
-            def_id,
+            opaque_type_key,
             map,
             instantiated_ty.ty,
             instantiated_ty.span,
@@ -268,60 +270,66 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // This logic duplicates most of `check_opaque_meets_bounds`.
             // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
             let param_env = self.tcx.param_env(def_id);
-            let body_id = self.tcx.local_def_id_to_hir_id(def_id.as_local().unwrap());
-            self.tcx.infer_ctxt().enter(move |infcx| {
-                // Require the hidden type to be well-formed with only the generics of the opaque type.
-                // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-                // hidden type is well formed even without those bounds.
-                let predicate =
-                    ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-                        .to_predicate(infcx.tcx);
-                let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+            let body_id = self.tcx.local_def_id_to_hir_id(def_id);
+            // HACK This bubble is required for this tests to pass:
+            // type-alias-impl-trait/issue-67844-nested-opaque.rs
+            self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter(
+                move |infcx| {
+                    // Require the hidden type to be well-formed with only the generics of the opaque type.
+                    // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+                    // hidden type is well formed even without those bounds.
+                    let predicate =
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
+                            .to_predicate(infcx.tcx);
+                    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
 
-                // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
-                // the bounds that the function supplies.
-                match infcx.register_hidden_type(
-                    OpaqueTypeKey { def_id, substs: id_substs },
-                    ObligationCause::misc(instantiated_ty.span, body_id),
-                    param_env,
-                    definition_ty,
-                    origin,
-                ) {
-                    Ok(infer_ok) => {
-                        for obligation in infer_ok.obligations {
-                            fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                    // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
+                    // the bounds that the function supplies.
+                    match infcx.register_hidden_type(
+                        OpaqueTypeKey { def_id, substs: id_substs },
+                        ObligationCause::misc(instantiated_ty.span, body_id),
+                        param_env,
+                        definition_ty,
+                        origin,
+                    ) {
+                        Ok(infer_ok) => {
+                            for obligation in infer_ok.obligations {
+                                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                            }
+                        }
+                        Err(err) => {
+                            infcx
+                                .report_mismatched_types(
+                                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                                    self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
+                                    definition_ty,
+                                    err,
+                                )
+                                .emit();
                         }
                     }
-                    Err(err) => {
-                        infcx
-                            .report_mismatched_types(
-                                &ObligationCause::misc(instantiated_ty.span, body_id),
-                                self.tcx.mk_opaque(def_id, id_substs),
-                                definition_ty,
-                                err,
-                            )
-                            .emit();
+
+                    fulfillment_cx.register_predicate_obligation(
+                        &infcx,
+                        Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
+                    );
+
+                    // Check that all obligations are satisfied by the implementation's
+                    // version.
+                    let errors = fulfillment_cx.select_all_or_error(&infcx);
+
+                    // This is still required for many(half of the tests in ui/type-alias-impl-trait)
+                    // tests to pass
+                    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+                    if errors.is_empty() {
+                        definition_ty
+                    } else {
+                        infcx.report_fulfillment_errors(&errors, None, false);
+                        self.tcx.ty_error()
                     }
-                }
-
-                fulfillment_cx.register_predicate_obligation(
-                    &infcx,
-                    Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
-                );
-
-                // Check that all obligations are satisfied by the implementation's
-                // version.
-                let errors = fulfillment_cx.select_all_or_error(&infcx);
-
-                let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-
-                if errors.is_empty() {
-                    definition_ty
-                } else {
-                    infcx.report_fulfillment_errors(&errors, None, false);
-                    self.tcx.ty_error()
-                }
-            })
+                },
+            )
         } else {
             definition_ty
         }
@@ -423,9 +431,9 @@ fn check_opaque_type_parameter_valid(
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    opaque_type_def_id: DefId,
+    key: ty::OpaqueTypeKey<'tcx>,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
-    map_missing_regions_to_empty: bool,
+    do_not_error: bool,
 
     /// initially `Some`, set to `None` once error has been reported
     hidden_ty: Option<Ty<'tcx>>,
@@ -437,34 +445,24 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        opaque_type_def_id: DefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
-        Self {
-            tcx,
-            opaque_type_def_id,
-            map,
-            map_missing_regions_to_empty: false,
-            hidden_ty: Some(hidden_ty),
-            span,
-        }
+        Self { tcx, key, map, do_not_error: false, hidden_ty: Some(hidden_ty), span }
     }
 
-    fn fold_kind_mapping_missing_regions_to_empty(
-        &mut self,
-        kind: GenericArg<'tcx>,
-    ) -> GenericArg<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
-        self.map_missing_regions_to_empty = true;
+    fn fold_kind_no_missing_regions_error(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
+        assert!(!self.do_not_error);
+        self.do_not_error = true;
         let kind = kind.fold_with(self);
-        self.map_missing_regions_to_empty = false;
+        self.do_not_error = false;
         kind
     }
 
     fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
-        assert!(!self.map_missing_regions_to_empty);
+        assert!(!self.do_not_error);
         kind.fold_with(self)
     }
 }
@@ -488,9 +486,9 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             ty::ReErased => return r,
 
             // The regions that we expect from borrow checking.
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
+            ty::ReEarlyBound(_) | ty::ReFree(_) => {}
 
-            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) => {
+            ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.
@@ -498,22 +496,23 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
         }
 
-        let generics = self.tcx().generics_of(self.opaque_type_def_id);
+        let generics = self.tcx().generics_of(self.key.def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None if self.map_missing_regions_to_empty => self.tcx.lifetimes.re_root_empty,
+            None if self.do_not_error => self.tcx.lifetimes.re_static,
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
-                        self.tcx.def_span(self.opaque_type_def_id),
+                        self.tcx.def_span(self.key.def_id),
                         hidden_ty,
                         r,
+                        self.key,
                     )
                     .emit();
                 }
-                self.tcx.lifetimes.re_root_empty
+                self.tcx.lifetimes.re_static
             }
             None => {
                 self.tcx
@@ -565,7 +564,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        self.fold_kind_no_missing_regions_error(kind)
                     } else {
                         // ...but not elsewhere.
                         self.fold_kind_normally(kind)
@@ -580,7 +579,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 let substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
                     if index < generics.parent_count {
                         // Accommodate missing regions in the parent kinds...
-                        self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        self.fold_kind_no_missing_regions_error(kind)
                     } else {
                         // ...but not elsewhere.
                         self.fold_kind_normally(kind)
@@ -632,17 +631,10 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {:?}", u),
                     None => {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                self.span,
-                                &format!(
-                                    "const parameter `{}` is part of concrete type but not \
-                                          used in parameter list for the `impl Trait` type alias",
-                                    ct
-                                ),
-                            )
-                            .emit();
+                        self.tcx.sess.emit_err(ConstNotUsedTraitAlias {
+                            ct: ct.to_string(),
+                            span: self.span,
+                        });
 
                         self.tcx().const_error(ct.ty())
                     }

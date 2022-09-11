@@ -1,10 +1,17 @@
 error[E0277]: `Rc<()>` cannot be sent between threads safely
-  --> $DIR/no-send-res-ports.rs:25:5
+  --> $DIR/no-send-res-ports.rs:25:19
    |
-LL |     thread::spawn(move|| {
-   |     ^^^^^^^^^^^^^ ------ within this `[closure@$DIR/no-send-res-ports.rs:25:19: 25:25]`
-   |     |
-   |     `Rc<()>` cannot be sent between threads safely
+LL |       thread::spawn(move|| {
+   |       ------------- ^-----
+   |       |             |
+   |  _____|_____________within this `[closure@$DIR/no-send-res-ports.rs:25:19: 25:25]`
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         let y = x;
+LL | |         println!("{:?}", y);
+LL | |     });
+   | |_____^ `Rc<()>` cannot be sent between threads safely
    |
    = help: within `[closure@$DIR/no-send-res-ports.rs:25:19: 25:25]`, the trait `Send` is not implemented for `Rc<()>`
 note: required because it appears within the type `Port<()>`

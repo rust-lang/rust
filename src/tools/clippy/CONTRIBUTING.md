@@ -16,7 +16,6 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [The Clippy book](#the-clippy-book)
   - [High level approach](#high-level-approach)
   - [Finding something to fix/improve](#finding-something-to-fiximprove)
-  - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
     - [IntelliJ Rust](#intellij-rust)
     - [Rust Analyzer](#rust-analyzer)
@@ -31,10 +30,10 @@ All contributors are expected to follow the [Rust Code of Conduct].
 ## The Clippy book
 
 If you're new to Clippy and don't know where to start the [Clippy book] includes
-a developer guide and is a good place to start your journey.
+a [developer guide] and is a good place to start your journey.
 
-<!-- FIXME: Link to the deployed book, once it is deployed through CI -->
-[Clippy book]: book/src
+[Clippy book]: https://doc.rust-lang.org/nightly/clippy/index.html
+[developer guide]: https://doc.rust-lang.org/nightly/clippy/development/index.html
 
 ## High level approach
 
@@ -115,11 +114,11 @@ As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy u
 using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippy's `Cargo.toml.`
 You will require a `nightly` toolchain with the `rustc-dev` component installed.
 Make sure that in the `rust-analyzer` configuration, you set
-```
-{ "rust-analyzer.rustcSource": "discover" }
+```json
+{ "rust-analyzer.rustc.source": "discover" }
 ```
 and
-```
+```json
 { "rust-analyzer.updates.channel": "nightly" }
 ```
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also

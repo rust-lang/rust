@@ -1,11 +1,14 @@
+use crate::infer::outlives::components::{compute_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::subst::{GenericArg, Subst};
+use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, Ty, TyCtxt};
+
+use smallvec::smallvec;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
@@ -47,50 +50,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         }
     }
 
-    fn type_bound(
-        &self,
-        ty: Ty<'tcx>,
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> VerifyBound<'tcx> {
-        match *ty.kind() {
-            ty::Param(p) => self.param_bound(p),
-            ty::Projection(data) => self.projection_bound(data, visited),
-            ty::FnDef(_, substs) => {
-                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
-                // This is inconsistent with `ty::Adt` (including all substs),
-                // but consistent with previous (accidental) behavior.
-                // See https://github.com/rust-lang/rust/issues/70917
-                // for further background and discussion.
-                let mut bounds = substs
-                    .iter()
-                    .filter_map(|child| match child.unpack() {
-                        GenericArgKind::Type(ty) => Some(self.type_bound(ty, visited)),
-                        GenericArgKind::Lifetime(_) => None,
-                        GenericArgKind::Const(_) => Some(self.recursive_bound(child, visited)),
-                    })
-                    .filter(|bound| {
-                        // Remove bounds that must hold, since they are not interesting.
-                        !bound.must_hold()
-                    });
-
-                match (bounds.next(), bounds.next()) {
-                    (Some(first), None) => first,
-                    (first, second) => VerifyBound::AllBounds(
-                        first.into_iter().chain(second).chain(bounds).collect(),
-                    ),
-                }
-            }
-            _ => self.recursive_bound(ty.into(), visited),
-        }
-    }
-
+    #[instrument(level = "debug", skip(self))]
     fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
-        debug!("param_bound(param_ty={:?})", param_ty);
-
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
         let declared_bounds_from_env = self.declared_generic_bounds_from_env(param_ty);
+        debug!(?declared_bounds_from_env);
         let mut param_bounds = vec![];
         for declared_bound in declared_bounds_from_env {
             let bound_region = declared_bound.map_bound(|outlives| outlives.1);
@@ -99,6 +65,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 param_bounds.push(VerifyBound::OutlivedBy(region));
             } else {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
+                debug!("found that {param_ty:?} outlives any lifetime, returning empty vector");
                 return VerifyBound::AllBounds(vec![]);
             }
         }
@@ -106,6 +73,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
         if let Some(r) = self.implicit_region_bound {
+            debug!("adding implicit region bound of {r:?}");
             param_bounds.push(VerifyBound::OutlivedBy(r));
         }
 
@@ -188,27 +156,24 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .map(|r| VerifyBound::OutlivedBy(r));
 
         // see the extensive comment in projection_must_outlive
-        let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
-        let recursive_bound = self.recursive_bound(ty.into(), visited);
+        let recursive_bound = {
+            let mut components = smallvec![];
+            let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
+            compute_components_recursive(self.tcx, ty.into(), &mut components, visited);
+            self.bound_from_components(&components, visited)
+        };
 
         VerifyBound::AnyBound(env_bounds.chain(trait_bounds).collect()).or(recursive_bound)
     }
 
-    fn recursive_bound(
+    fn bound_from_components(
         &self,
-        parent: GenericArg<'tcx>,
+        components: &[Component<'tcx>],
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
-        let mut bounds = parent
-            .walk_shallow(visited)
-            .filter_map(|child| match child.unpack() {
-                GenericArgKind::Type(ty) => Some(self.type_bound(ty, visited)),
-                GenericArgKind::Lifetime(lt) => {
-                    // Ignore late-bound regions.
-                    if !lt.is_late_bound() { Some(VerifyBound::OutlivedBy(lt)) } else { None }
-                }
-                GenericArgKind::Const(_) => Some(self.recursive_bound(child, visited)),
-            })
+        let mut bounds = components
+            .iter()
+            .map(|component| self.bound_from_single_component(component, visited))
             .filter(|bound| {
                 // Remove bounds that must hold, since they are not interesting.
                 !bound.must_hold()
@@ -218,6 +183,32 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             (Some(first), None) => first,
             (first, second) => {
                 VerifyBound::AllBounds(first.into_iter().chain(second).chain(bounds).collect())
+            }
+        }
+    }
+
+    fn bound_from_single_component(
+        &self,
+        component: &Component<'tcx>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
+    ) -> VerifyBound<'tcx> {
+        match *component {
+            Component::Region(lt) => VerifyBound::OutlivedBy(lt),
+            Component::Param(param_ty) => self.param_bound(param_ty),
+            Component::Projection(projection_ty) => self.projection_bound(projection_ty, visited),
+            Component::EscapingProjection(ref components) => {
+                self.bound_from_components(components, visited)
+            }
+            Component::UnresolvedInferenceVariable(v) => {
+                // ignore this, we presume it will yield an error
+                // later, since if a type variable is not resolved by
+                // this point it never will be
+                self.tcx.sess.delay_span_bug(
+                    rustc_span::DUMMY_SP,
+                    &format!("unresolved inference variable in outlives: {:?}", v),
+                );
+                // add a bound that never holds
+                VerifyBound::AnyBound(vec![])
             }
         }
     }
@@ -270,16 +261,17 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // The problem is that the type of `x` is `&'a A`. To be
         // well-formed, then, A must outlive `'a`, but we don't know that
         // this holds from first principles.
-        let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
-            debug!(
-                "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
-                (r, p)
-            );
-            let p_ty = p.to_ty(tcx);
-            let erased_p_ty = self.tcx.erase_regions(p_ty);
-            (erased_p_ty == erased_ty)
-                .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
-        });
+        let from_region_bound_pairs =
+            self.region_bound_pairs.iter().filter_map(|&OutlivesPredicate(p, r)| {
+                debug!(
+                    "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
+                    (r, p)
+                );
+                let p_ty = p.to_ty(tcx);
+                let erased_p_ty = self.tcx.erase_regions(p_ty);
+                (erased_p_ty == erased_ty)
+                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
+            });
 
         param_bounds
             .chain(from_region_bound_pairs)

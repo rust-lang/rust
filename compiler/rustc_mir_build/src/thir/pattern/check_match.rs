@@ -21,12 +21,12 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span};
+use rustc_span::{BytePos, Span};
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
-        Some(id) => tcx.hir().body_owned_by(tcx.hir().local_def_id_to_hir_id(id)),
+        Some(def_id) => tcx.hir().body_owned_by(def_id),
     };
 
     let pattern_arena = TypedArena::default();
@@ -77,6 +77,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
 
     fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
         intravisit::walk_local(self, loc);
+        let els = loc.els;
+        if let Some(init) = loc.init && els.is_some() {
+            self.check_let(&loc.pat, init, loc.span);
+        }
 
         let (msg, sp) = match loc.source {
             hir::LocalSource::Normal => ("local binding", Some(loc.span)),
@@ -84,7 +88,9 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
-        self.check_irrefutable(&loc.pat, msg, sp);
+        if els.is_none() {
+            self.check_irrefutable(&loc.pat, msg, sp);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -843,22 +849,22 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
         [.., prev, last] if prev.span.eq_ctxt(last.span) => {
-            if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
-                let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
-                    && last.span.eq_ctxt(last.body.span)
-                {
-                    ""
-                } else {
-                    ","
-                };
+            let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
+                && last.span.eq_ctxt(last.body.span)
+            {
+                ""
+            } else {
+                ","
+            };
+            let spacing = if sm.is_multiline(prev.span.between(last.span)) {
+                sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
+            } else {
+                Some(" ".to_string())
+            };
+            if let Some(spacing) = spacing {
                 suggestion = Some((
                     last.span.shrink_to_hi(),
-                    format!(
-                        "{}{}{} => todo!()",
-                        comma,
-                        snippet.strip_prefix(',').unwrap_or(&snippet),
-                        pattern
-                    ),
+                    format!("{}{}{} => todo!()", comma, spacing, pattern),
                 ));
             }
         }
@@ -945,7 +951,7 @@ fn adt_defined_here<'p, 'tcx>(
         let mut span: MultiSpan =
             if spans.is_empty() { def_span.into() } else { spans.clone().into() };
 
-        span.push_span_label(def_span, String::new());
+        span.push_span_label(def_span, "");
         for pat in spans {
             span.push_span_label(pat, "not covered");
         }
@@ -1125,17 +1131,16 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
         }) if Some(*hir_id) == pat_id => {
             return LetSource::IfLetGuard;
         }
-        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(DesugaringKind::LetElse) = expn_data.kind {
-                return LetSource::LetElse(expn_data.call_site);
-            }
-        }
         _ => {}
     }
 
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
+    if let hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) =
+        parent_parent_node
+    {
+        return LetSource::LetElse(*span);
+    }
 
     let parent_parent_parent = hir.get_parent_node(parent_parent);
     let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);

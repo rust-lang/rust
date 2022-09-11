@@ -1,4 +1,12 @@
+// Seemingly inconsequential code changes to this file can lead to measurable
+// performance impact on compilation times, due at least in part to the fact
+// that the layout code gets called from many instantiations of the various
+// collections, resulting in having to optimize down excess IR multiple times.
+// Your performance intuition is useless. Run perf.
+
 use crate::cmp;
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt;
 use crate::mem::{self, ValidAlign};
 use crate::ptr::NonNull;
@@ -62,6 +70,12 @@ impl Layout {
             return Err(LayoutError);
         }
 
+        // SAFETY: just checked that align is a power of two.
+        Layout::from_size_valid_align(size, unsafe { ValidAlign::new_unchecked(align) })
+    }
+
+    #[inline(always)]
+    const fn max_size_for_align(align: ValidAlign) -> usize {
         // (power-of-two implies align != 0.)
 
         // Rounded up size is:
@@ -76,13 +90,18 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        if size > isize::MAX as usize - (align - 1) {
+        isize::MAX as usize - (align.as_usize() - 1)
+    }
+
+    /// Internal helper constructor to skip revalidating alignment validity.
+    #[inline]
+    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
+        if size > Self::max_size_for_align(align) {
             return Err(LayoutError);
         }
 
-        // SAFETY: the conditions for `from_size_align_unchecked` have been
-        // checked above.
-        unsafe { Ok(Layout::from_size_align_unchecked(size, align)) }
+        // SAFETY: Layout::size invariants checked above.
+        Ok(Layout { size, align })
     }
 
     /// Creates a layout, bypassing all checks.
@@ -96,8 +115,8 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        // SAFETY: the caller must ensure that `align` is a power of two.
-        Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
+        // SAFETY: the caller is required to uphold the preconditions.
+        unsafe { Layout { size, align: ValidAlign::new_unchecked(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
@@ -116,7 +135,7 @@ impl Layout {
                   without modifying the layout"]
     #[inline]
     pub const fn align(&self) -> usize {
-        self.align.as_nonzero().get()
+        self.align.as_usize()
     }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
@@ -126,10 +145,9 @@ impl Layout {
     #[inline]
     pub const fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        // SAFETY: the align is guaranteed by Rust to be a power of two and
-        // the size+align combo is guaranteed to fit in our address space. As a
-        // result use the unchecked constructor here to avoid inserting code
-        // that panics if it isn't optimized well enough.
+        // SAFETY: if the type is instantiated, rustc already ensures that its
+        // layout is valid. Use the unchecked constructor to avoid inserting a
+        // panicking codepath that needs to be optimized out.
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
@@ -141,7 +159,6 @@ impl Layout {
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        debug_assert!(Layout::from_size_align(size, align).is_ok());
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
@@ -176,7 +193,6 @@ impl Layout {
     pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
         let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
-        debug_assert!(Layout::from_size_align(size, align).is_ok());
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
@@ -280,8 +296,7 @@ impl Layout {
         // > less than or equal to `isize::MAX`)
         let new_size = self.size() + pad;
 
-        // SAFETY: self.align is already known to be valid and new_size has been
-        // padded already.
+        // SAFETY: padded size is guaranteed to not exceed `isize::MAX`.
         unsafe { Layout::from_size_align_unchecked(new_size, self.align()) }
     }
 
@@ -304,7 +319,7 @@ impl Layout {
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
 
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_align(alloc_size, self.align()).map(|layout| (layout, padded_size))
+        Layout::from_size_valid_align(alloc_size, self.align).map(|layout| (layout, padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -355,14 +370,14 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
-        let new_align = cmp::max(self.align(), next.align());
+        let new_align = cmp::max(self.align, next.align);
         let pad = self.padding_needed_for(next.align());
 
         let offset = self.size().checked_add(pad).ok_or(LayoutError)?;
         let new_size = offset.checked_add(next.size()).ok_or(LayoutError)?;
 
         // The safe constructor is called here to enforce the isize size limit.
-        let layout = Layout::from_size_align(new_size, new_align)?;
+        let layout = Layout::from_size_valid_align(new_size, new_align)?;
         Ok((layout, offset))
     }
 
@@ -383,7 +398,7 @@ impl Layout {
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_align(size, self.align())
+        Layout::from_size_valid_align(size, self.align)
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -397,18 +412,38 @@ impl Layout {
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_align(new_size, self.align())
+        Layout::from_size_valid_align(new_size, self.align)
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
     ///
-    /// On arithmetic overflow, returns `LayoutError`.
+    /// On arithmetic overflow or when the total size would exceed
+    /// `isize::MAX`, returns `LayoutError`.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
-        let array_size = mem::size_of::<T>().checked_mul(n).ok_or(LayoutError)?;
-        // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_align(array_size, mem::align_of::<T>())
+        // Reduce the amount of code we need to monomorphize per `T`.
+        return inner(mem::size_of::<T>(), ValidAlign::of::<T>(), n);
+
+        #[inline]
+        fn inner(element_size: usize, align: ValidAlign, n: usize) -> Result<Layout, LayoutError> {
+            // We need to check two things about the size:
+            //  - That the total size won't overflow a `usize`, and
+            //  - That the total size still fits in an `isize`.
+            // By using division we can check them both with a single threshold.
+            // That'd usually be a bad idea, but thankfully here the element size
+            // and alignment are constants, so the compiler will fold all of it.
+            if element_size != 0 && n > Layout::max_size_for_align(align) / element_size {
+                return Err(LayoutError);
+            }
+
+            let array_size = element_size * n;
+
+            // SAFETY: We just checked above that the `array_size` will not
+            // exceed `isize::MAX` even when rounded up to the alignment.
+            // And `ValidAlign` guarantees it's a power of two.
+            unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
+        }
     }
 }
 
@@ -427,6 +462,10 @@ pub type LayoutErr = LayoutError;
 #[non_exhaustive]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutError;
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+impl Error for LayoutError {}
 
 // (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]

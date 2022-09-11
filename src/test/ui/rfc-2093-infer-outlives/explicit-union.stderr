@@ -1,5 +1,5 @@
 error: rustc_outlives
-  --> $DIR/explicit-union.rs:5:1
+  --> $DIR/explicit-union.rs:4:1
    |
 LL | union Foo<'b, U: Copy> {
    | ^^^^^^^^^^^^^^^^^^^^^^

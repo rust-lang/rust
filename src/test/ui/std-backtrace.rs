@@ -7,8 +7,6 @@
 // compile-flags:-g
 // compile-flags:-Cstrip=none
 
-#![feature(backtrace)]
-
 use std::env;
 use std::process::Command;
 use std::str;

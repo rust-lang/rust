@@ -16,9 +16,8 @@ impl NodeCounter {
 }
 
 impl<'ast> Visitor<'ast> for NodeCounter {
-    fn visit_ident(&mut self, ident: Ident) {
+    fn visit_ident(&mut self, _ident: Ident) {
         self.count += 1;
-        walk_ident(self, ident);
     }
     fn visit_foreign_item(&mut self, i: &ForeignItem) {
         self.count += 1;
@@ -80,9 +79,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef, m: &TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef) {
         self.count += 1;
-        walk_poly_trait_ref(self, t, m)
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &VariantData) {
         self.count += 1;
@@ -92,15 +91,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_field_def(self, s)
     }
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &EnumDef,
-        generics: &Generics,
-        item_id: NodeId,
-        _: Span,
-    ) {
+    fn visit_enum_def(&mut self, enum_definition: &EnumDef) {
         self.count += 1;
-        walk_enum_def(self, enum_definition, generics, item_id)
+        walk_enum_def(self, enum_definition)
     }
     fn visit_variant(&mut self, v: &Variant) {
         self.count += 1;

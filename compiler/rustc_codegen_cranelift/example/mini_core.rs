@@ -458,7 +458,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 
 #[lang = "panic"]
 #[track_caller]
-pub fn panic(_msg: &str) -> ! {
+pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const i8);
         intrinsics::abort();
@@ -497,7 +497,7 @@ pub trait Deref {
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonNull<T: ?Sized>(pub *mut T);
+pub struct NonNull<T: ?Sized>(pub *const T);
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
@@ -521,7 +521,7 @@ impl<T: ?Sized> Drop for Box<T> {
     }
 }
 
-impl<T> Deref for Box<T> {
+impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -535,7 +535,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, _alloc: ()) {
     libc::free(ptr.pointer.0 as *mut u8);
 }
 
@@ -575,11 +575,19 @@ pub mod intrinsics {
 }
 
 pub mod libc {
+    // With the new Universal CRT, msvc has switched to all the printf functions being inline wrapper
+    // functions. legacy_stdio_definitions.lib which provides the printf wrapper functions as normal
+    // symbols to link against.
+    #[cfg_attr(unix, link(name = "c"))]
+    #[cfg_attr(target_env="msvc", link(name="legacy_stdio_definitions"))]
+    extern "C" {
+        pub fn printf(format: *const i8, ...) -> i32;
+    }
+
     #[cfg_attr(unix, link(name = "c"))]
     #[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
     extern "C" {
         pub fn puts(s: *const i8) -> i32;
-        pub fn printf(format: *const i8, ...) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
         pub fn free(ptr: *mut u8);
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);

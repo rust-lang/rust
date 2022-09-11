@@ -100,8 +100,8 @@ if isLinux; then
     cp -r /tmp/rustc-perf $RUSTC_PERF
     chown -R $(whoami): $RUSTC_PERF
 else
-    # rustc-perf version from 2022-05-18
-    PERF_COMMIT=f66cc8f3e04392b0e2fd811f21fd1ece6ebaded3
+    # rustc-perf version from 2022-07-22
+    PERF_COMMIT=3c253134664fdcba862c539d37f0de18557a9a4c
     retry curl -LS -o $PGO_TMP/perf.zip \
         https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
         cd $PGO_TMP && unzip -q perf.zip && \
@@ -195,3 +195,7 @@ rm -r $BUILD_ARTIFACTS/llvm $BUILD_ARTIFACTS/lld
 $@ \
     --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
     --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+
+echo "Rustc binary size"
+ls -la ./build/$PGO_HOST/stage2/bin
+ls -la ./build/$PGO_HOST/stage2/lib

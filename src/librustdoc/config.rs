@@ -12,7 +12,7 @@ use rustc_session::config::{
 };
 use rustc_session::config::{get_cmd_lint_options, nightly_options};
 use rustc_session::config::{
-    CodegenOptions, DebuggingOptions, ErrorOutputType, Externs, JsonUnusedExterns,
+    CodegenOptions, ErrorOutputType, Externs, JsonUnusedExterns, UnstableOptions,
 };
 use rustc_session::getopts;
 use rustc_session::lint::Level;
@@ -91,10 +91,10 @@ pub(crate) struct Options {
     pub(crate) codegen_options: CodegenOptions,
     /// Codegen options strings to hand to the compiler.
     pub(crate) codegen_options_strs: Vec<String>,
-    /// Debugging (`-Z`) options to pass to the compiler.
-    pub(crate) debugging_opts: DebuggingOptions,
-    /// Debugging (`-Z`) options strings to pass to the compiler.
-    pub(crate) debugging_opts_strs: Vec<String>,
+    /// Unstable (`-Z`) options to pass to the compiler.
+    pub(crate) unstable_opts: UnstableOptions,
+    /// Unstable (`-Z`) options strings to pass to the compiler.
+    pub(crate) unstable_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -181,7 +181,7 @@ impl fmt::Debug for Options {
             .field("cfgs", &self.cfgs)
             .field("check-cfgs", &self.check_cfgs)
             .field("codegen_options", &"...")
-            .field("debugging_options", &"...")
+            .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("maybe_sysroot", &self.maybe_sysroot)
@@ -331,7 +331,7 @@ impl Options {
 
         let z_flags = matches.opt_strs("Z");
         if z_flags.iter().any(|x| *x == "help") {
-            print_flag_list("-Z", config::DB_OPTIONS);
+            print_flag_list("-Z", config::Z_OPTIONS);
             return Err(0);
         }
         let c_flags = matches.opt_strs("C");
@@ -347,9 +347,9 @@ impl Options {
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(matches, error_format);
-        let debugging_opts = DebuggingOptions::build(matches, error_format);
+        let unstable_opts = UnstableOptions::build(matches, error_format);
 
-        let diag = new_handler(error_format, None, diagnostic_width, &debugging_opts);
+        let diag = new_handler(error_format, None, diagnostic_width, &unstable_opts);
 
         // check for deprecated options
         check_deprecated_options(matches, &diag);
@@ -454,7 +454,7 @@ impl Options {
             .iter()
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
-        let externs = parse_externs(matches, &debugging_opts, error_format);
+        let externs = parse_externs(matches, &unstable_opts, error_format);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
@@ -670,7 +670,7 @@ impl Options {
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
-        let debugging_opts_strs = matches.opt_strs("Z");
+        let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -711,8 +711,8 @@ impl Options {
             check_cfgs,
             codegen_options,
             codegen_options_strs,
-            debugging_opts,
-            debugging_opts_strs,
+            unstable_opts,
+            unstable_opts_strs,
             target,
             edition,
             maybe_sysroot,

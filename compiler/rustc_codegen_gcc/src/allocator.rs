@@ -117,7 +117,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
 
     let name = OomStrategy::SYMBOL.to_string();
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
-    let value = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let value = tcx.sess.opts.unstable_opts.oom.should_panic();
     let value = context.new_rvalue_from_int(i8, value as i32);
     global.global_set_initializer_rvalue(value);
 }

@@ -94,11 +94,11 @@ error: passing `CustomStruct` by reference
 LL |         reference: &CustomStruct,
    |                    ^^^^^^^^^^^^^ help: try passing by value: `CustomStruct`
 
-error: passing `CustomAlias<>` by reference
+error: passing `CustomAlias<'_>` by reference
   --> $DIR/rustc_pass_by_value.rs:96:20
    |
 LL |         reference: &CustomAlias,
-   |                    ^^^^^^^^^^^^ help: try passing by value: `CustomAlias<>`
+   |                    ^^^^^^^^^^^^ help: try passing by value: `CustomAlias<'_>`
 
 error: passing `WithParameters<T, 1>` by reference
   --> $DIR/rustc_pass_by_value.rs:110:20

@@ -1,13 +1,16 @@
-// Caveats - gdb prints any 8-bit value (meaning rust I8 and u8 values)
-// as its numerical value along with its associated ASCII char, there
-// doesn't seem to be any way around this. Also, gdb doesn't know
-// about UTF-32 character encoding and will print a rust char as only
-// its numerical value.
+// Caveat - gdb doesn't know about UTF-32 character encoding and will print a
+// rust char as only its numerical value.
 
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+// min-gdb-version: 8.0
+
+// revisions: lto no-lto
 
 // compile-flags:-g
+
+// [lto] compile-flags:-C lto
+// [lto] no-prefer-dynamic
+
 // gdb-command:run
 // gdbg-command:print 'basic_types_globals::B'
 // gdbr-command:print B
@@ -16,9 +19,9 @@
 // gdbr-command:print I
 // gdb-check:$2 = -1
 // gdbg-command:print 'basic_types_globals::C'
-// gdbr-command:print C
+// gdbr-command:print/d C
 // gdbg-check:$3 = 97
-// gdbr-check:$3 = 97 'a'
+// gdbr-check:$3 = 97
 // gdbg-command:print/d 'basic_types_globals::I8'
 // gdbr-command:print I8
 // gdb-check:$4 = 68

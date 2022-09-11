@@ -25,15 +25,18 @@ extern "Rust" {
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in libstd (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
-    // The rustc fork of LLVM also special-cases these function names to be able to optimize them
+    // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
     // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+    #[rustc_deallocator]
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+    #[rustc_reallocator]
     #[rustc_allocator_nounwind]
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
+    #[rustc_allocator_zeroed]
     #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
@@ -70,11 +73,14 @@ pub use std::alloc::Global;
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc, dealloc, Layout};
+/// use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();
 ///     let ptr = alloc(layout);
+///     if ptr.is_null() {
+///         handle_alloc_error(layout);
+///     }
 ///
 ///     *(ptr as *mut u16) = 42;
 ///     assert_eq!(*(ptr as *mut u16), 42);

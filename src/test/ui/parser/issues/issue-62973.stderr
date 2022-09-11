@@ -20,15 +20,23 @@ LL |
 LL |
    |  ^
 
-error: expected one of `,` or `}`, found `{`
+error: expected one of `,`, `:`, or `}`, found `{`
   --> $DIR/issue-62973.rs:6:8
    |
 LL | fn p() { match s { v, E { [) {) }
-   |        ^       -       -^ expected one of `,` or `}`
-   |        |       |       |
-   |        |       |       help: `}` may belong here
+   |        ^       -        ^ expected one of `,`, `:`, or `}`
+   |        |       |
    |        |       while parsing this struct
    |        unclosed delimiter
+   |
+help: `}` may belong here
+   |
+LL | fn p() { match s { v, E} { [) {) }
+   |                        +
+help: try naming a field
+   |
+LL | fn p() { match s { v, E: E { [) {) }
+   |                       ++
 
 error: struct literals are not allowed here
   --> $DIR/issue-62973.rs:6:16

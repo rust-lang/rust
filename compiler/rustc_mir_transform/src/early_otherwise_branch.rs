@@ -95,7 +95,7 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3 && sess.opts.debugging_opts.unsound_mir_opts
+        sess.mir_opt_level() >= 3 && sess.opts.unstable_opts.unsound_mir_opts
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -104,8 +104,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let mut should_cleanup = false;
 
         // Also consider newly generated bbs in the same pass
-        for i in 0..body.basic_blocks().len() {
-            let bbs = body.basic_blocks();
+        for i in 0..body.basic_blocks.len() {
+            let bbs = &*body.basic_blocks;
             let parent = BasicBlock::from_usize(i);
             let Some(opt_data) = evaluate_candidate(tcx, body, parent) else {
                 continue
@@ -316,7 +316,7 @@ fn evaluate_candidate<'tcx>(
     body: &Body<'tcx>,
     parent: BasicBlock,
 ) -> Option<OptimizationData<'tcx>> {
-    let bbs = body.basic_blocks();
+    let bbs = &body.basic_blocks;
     let TerminatorKind::SwitchInt {
         targets,
         switch_ty: parent_ty,

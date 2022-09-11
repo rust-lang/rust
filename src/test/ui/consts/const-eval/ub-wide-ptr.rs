@@ -61,7 +61,8 @@ const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::
 const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
 const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -107,7 +108,8 @@ const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
 const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -116,24 +118,32 @@ const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 // bad trait object
 const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 // bad trait object
 const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| does not point to a vtable
 const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| does not point to a vtable
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| does not point to a vtable
 const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a vtable
 
 // bad data *inside* the trait object
 const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a boolean
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };

@@ -12,7 +12,7 @@ LL | fn one_arg(_a: i32) {}
 help: provide the argument
    |
 LL |   one_arg(/* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~
+   |          ~~~~~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:14:3
@@ -28,7 +28,7 @@ LL | fn two_same(_a: i32, _b: i32) {}
 help: provide the arguments
    |
 LL |   two_same(/* i32 */, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:15:3
@@ -44,7 +44,7 @@ LL | fn two_same(_a: i32, _b: i32) {}
 help: provide the argument
    |
 LL |   two_same(1, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:16:3
@@ -60,7 +60,7 @@ LL | fn two_diff(_a: i32, _b: f32) {}
 help: provide the arguments
    |
 LL |   two_diff(/* i32 */, /* f32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:17:3
@@ -76,7 +76,7 @@ LL | fn two_diff(_a: i32, _b: f32) {}
 help: provide the argument
    |
 LL |   two_diff(1, /* f32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:18:3
@@ -92,7 +92,7 @@ LL | fn two_diff(_a: i32, _b: f32) {}
 help: provide the argument
    |
 LL |   two_diff(/* i32 */, 1.0);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~
+   |           ~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:21:3
@@ -108,7 +108,7 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
 help: provide the arguments
    |
 LL |   three_same(/* i32 */, /* i32 */, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:22:3
@@ -124,7 +124,7 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
 help: provide the arguments
    |
 LL |   three_same(1, /* i32 */, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:23:3
@@ -140,7 +140,7 @@ LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
 help: provide the argument
    |
 LL |   three_same(1, 1, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:26:3
@@ -156,7 +156,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the argument
    |
 LL |   three_diff(/* i32 */, 1.0, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:27:3
@@ -172,7 +172,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the argument
    |
 LL |   three_diff(1, /* f32 */, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:28:3
@@ -188,7 +188,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the argument
    |
 LL |   three_diff(1, 1.0, /* &str */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:29:3
@@ -204,7 +204,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the arguments
    |
 LL |   three_diff(/* i32 */, /* f32 */, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:30:3
@@ -223,7 +223,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the arguments
    |
 LL |   three_diff(/* i32 */, 1.0, /* &str */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 3 arguments but 1 argument was supplied
   --> $DIR/missing_arguments.rs:31:3
@@ -239,7 +239,7 @@ LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
 help: provide the arguments
    |
 LL |   three_diff(1, /* f32 */, /* &str */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 4 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:34:3
@@ -255,7 +255,7 @@ LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
 help: provide the arguments
    |
 LL |   four_repeated(/* i32 */, /* f32 */, /* f32 */, /* &str */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 4 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:35:3
@@ -271,7 +271,7 @@ LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
 help: provide the arguments
    |
 LL |   four_repeated(1, /* f32 */, /* f32 */, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 5 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:38:3
@@ -287,7 +287,7 @@ LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
 help: provide the arguments
    |
 LL |   complex(/* i32 */, /* f32 */, /* i32 */, /* f32 */, /* &str */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 5 arguments but 2 arguments were supplied
   --> $DIR/missing_arguments.rs:39:3
@@ -303,7 +303,7 @@ LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
 help: provide the arguments
    |
 LL |   complex(1, /* f32 */, /* i32 */, /* f32 */, "");
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 19 previous errors
 

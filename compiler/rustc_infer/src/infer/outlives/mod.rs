@@ -9,7 +9,7 @@ pub mod verify;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
 
-#[instrument(level = "debug", skip(param_env))]
+#[instrument(level = "debug", skip(param_env), ret)]
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {

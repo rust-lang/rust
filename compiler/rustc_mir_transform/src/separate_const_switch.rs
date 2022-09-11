@@ -62,7 +62,7 @@ impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
 pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
     let mut new_blocks: SmallVec<[(BasicBlock, BasicBlock); 6]> = SmallVec::new();
     let predecessors = body.basic_blocks.predecessors();
-    'block_iter: for (block_id, block) in body.basic_blocks().iter_enumerated() {
+    'block_iter: for (block_id, block) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::SwitchInt {
             discr: Operand::Copy(switch_place) | Operand::Move(switch_place),
             ..
@@ -90,7 +90,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
 
                 let mut predecessors_left = predecessors[block_id].len();
                 'predec_iter: for predecessor_id in predecessors[block_id].iter().copied() {
-                    let predecessor = &body.basic_blocks()[predecessor_id];
+                    let predecessor = &body.basic_blocks[predecessor_id];
 
                     // First we make sure the predecessor jumps
                     // in a reasonable way
@@ -218,6 +218,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                         // These rvalues move the place to track
                         Rvalue::Cast(_, Operand::Copy(place) | Operand::Move(place), _)
                         | Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+                        | Rvalue::CopyForDeref(place)
                         | Rvalue::UnaryOp(_, Operand::Copy(place) | Operand::Move(place))
                         | Rvalue::Discriminant(place) => tracked_place = place,
                     }
@@ -248,7 +249,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::CopyNonOverlapping(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
         }
     }
@@ -279,6 +280,7 @@ fn find_determining_place<'tcx>(
                     // that may be const in the predecessor
                     Rvalue::Use(Operand::Move(new) | Operand::Copy(new))
                     | Rvalue::UnaryOp(_, Operand::Copy(new) | Operand::Move(new))
+                    | Rvalue::CopyForDeref(new)
                     | Rvalue::Cast(_, Operand::Move(new) | Operand::Copy(new), _)
                     | Rvalue::Repeat(Operand::Move(new) | Operand::Copy(new), _)
                     | Rvalue::Discriminant(new)
@@ -315,7 +317,7 @@ fn find_determining_place<'tcx>(
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
-            | StatementKind::CopyNonOverlapping(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
 
             // If the discriminant is set, it is always set

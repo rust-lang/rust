@@ -6,8 +6,8 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    Body, CastKind, NonDivergingIntrinsic, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind,
+    Terminator, TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
@@ -55,7 +55,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
-    for bb in body.basic_blocks() {
+    for bb in body.basic_blocks.iter() {
         check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
@@ -124,6 +124,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             check_place(tcx, *place, span, body)
         },
+        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(
@@ -211,11 +212,16 @@ fn check_statement<'tcx>(
             check_place(tcx, **place, span, body)
         },
 
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(tcx, op, span, body),
+
+        StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
+            rustc_middle::mir::CopyNonOverlapping { dst, src, count },
+        )) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;
             check_operand(tcx, count, span, body)
         },
+
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
@@ -353,7 +359,7 @@ fn check_terminator<'a, 'tcx>(
 fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).map_or(true, |const_stab| {
-            if let rustc_attr::StabilityLevel::Stable { since } = const_stab.level {
+            if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.

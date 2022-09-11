@@ -2,16 +2,14 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability, StashKey};
+use rustc_feature::Features;
 use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
-use rustc_feature::{Features, GateIssue};
-use rustc_session::parse::{feature_err, feature_err_issue};
+use rustc_session::parse::{feature_err, feature_warn};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-
-use tracing::debug;
 
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
@@ -20,9 +18,7 @@ macro_rules! gate_feature_fn {
         let has_feature: bool = has_feature(visitor.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
-            feature_err_issue(&visitor.sess.parse_sess, name, span, GateIssue::Language, explain)
-                .help(help)
-                .emit();
+            feature_err(&visitor.sess.parse_sess, name, span, explain).help(help).emit();
         }
     }};
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
@@ -31,8 +27,19 @@ macro_rules! gate_feature_fn {
         let has_feature: bool = has_feature(visitor.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable($name) {
-            feature_err_issue(&visitor.sess.parse_sess, name, span, GateIssue::Language, explain)
-                .emit();
+            feature_err(&visitor.sess.parse_sess, name, span, explain).emit();
+        }
+    }};
+    (future_incompatible; $visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
+        let (visitor, has_feature, span, name, explain) =
+            (&*$visitor, $has_feature, $span, $name, $explain);
+        let has_feature: bool = has_feature(visitor.features);
+        debug!(
+            "gate_feature(feature = {:?}, span = {:?}); has? {} (future_incompatible)",
+            name, span, has_feature
+        );
+        if !has_feature && !span.allows_unstable($name) {
+            feature_warn(&visitor.sess.parse_sess, name, span, explain);
         }
     }};
 }
@@ -43,6 +50,9 @@ macro_rules! gate_feature_post {
     };
     ($visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
         gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
+    };
+    (future_incompatible; $visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
+        gate_feature_fn!(future_incompatible; $visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
     };
 }
 
@@ -62,9 +72,9 @@ impl<'a> PostExpansionVisitor<'a> {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
         if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped.as_str() {
+            match symbol_unescaped {
                 // Stable
-                "Rust" | "C" => {}
+                sym::Rust | sym::C => {}
                 abi => gate_feature_post!(
                     &self,
                     const_extern_fn,
@@ -274,10 +284,12 @@ impl<'a> PostExpansionVisitor<'a> {
                 );
             }
             abi => {
-                self.sess.parse_sess.span_diagnostic.delay_span_bug(
-                    span,
-                    &format!("unrecognized ABI not caught in lowering: {}", abi),
-                );
+                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                    self.sess.parse_sess.span_diagnostic.delay_span_bug(
+                        span,
+                        &format!("unrecognized ABI not caught in lowering: {}", abi),
+                    );
+                }
             }
         }
     }
@@ -402,8 +414,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
 
-                if nested_meta.has_name(sym::tuple_variadic) {
-                    let msg = "`#[doc(tuple_variadic)]` is meant for internal use only";
+                if nested_meta.has_name(sym::fake_variadic) {
+                    let msg = "`#[doc(fake_variadic)]` is meant for internal use only";
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
             }
@@ -415,6 +427,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 || attr.has_name(sym::stable)
                 || attr.has_name(sym::rustc_const_unstable)
                 || attr.has_name(sym::rustc_const_stable)
+                || attr.has_name(sym::rustc_default_body_unstable)
             {
                 struct_span_err!(
                     self.sess,
@@ -575,6 +588,31 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
+        if let ast::StmtKind::Semi(expr) = &stmt.kind
+            && let ast::ExprKind::Assign(lhs, _, _) = &expr.kind
+            && let ast::ExprKind::Type(..) = lhs.kind
+            && self.sess.parse_sess.span_diagnostic.err_count() == 0
+            && !self.features.type_ascription
+            && !lhs.span.allows_unstable(sym::type_ascription)
+        {
+            // When we encounter a statement of the form `foo: Ty = val;`, this will emit a type
+            // ascription error, but the likely intention was to write a `let` statement. (#78907).
+            feature_err(
+                &self.sess.parse_sess,
+                sym::type_ascription,
+                lhs.span,
+                "type ascription is experimental",
+            ).span_suggestion_verbose(
+                lhs.span.shrink_to_lo(),
+                "you might have meant to introduce a new binding",
+                "let ".to_string(),
+                Applicability::MachineApplicable,
+            ).emit();
+        }
+        visit::walk_stmt(self, stmt);
+    }
+
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Box(_) => {
@@ -586,27 +624,26 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
             ast::ExprKind::Type(..) => {
-                // To avoid noise about type ascription in common syntax errors, only emit if it
-                // is the *only* error.
                 if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
+                    // To avoid noise about type ascription in common syntax errors,
+                    // only emit if it is the *only* error.
                     gate_feature_post!(
                         &self,
                         type_ascription,
                         e.span,
                         "type ascription is experimental"
                     );
+                } else {
+                    // And if it isn't, cancel the early-pass warning.
+                    self.sess
+                        .parse_sess
+                        .span_diagnostic
+                        .steal_diagnostic(e.span, StashKey::EarlySyntaxWarning)
+                        .map(|err| err.cancel());
                 }
             }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
-            }
-            ast::ExprKind::Block(_, Some(label)) => {
-                gate_feature_post!(
-                    &self,
-                    label_break_value,
-                    label.ident.span,
-                    "labels on blocks are unstable"
-                );
             }
             _ => {}
         }
@@ -744,6 +781,11 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
+    gate_all!(
+        closure_lifetime_binder,
+        "`for<...>` binders for closures are experimental",
+        "consider removing `for<...>`"
+    );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
@@ -756,14 +798,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
+    // We emit an early future-incompatible warning for these.
+    // New syntax gates should go above here to get a hard error gate.
     macro_rules! gate_all {
         ($gate:ident, $msg:literal) => {
-            // FIXME(eddyb) do something more useful than always
-            // disabling these uses of early feature-gatings.
-            if false {
-                for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
-                    gate_feature_post!(&visitor, $gate, *span, $msg);
-                }
+            for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
+                gate_feature_post!(future_incompatible; &visitor, $gate, *span, $msg);
             }
         };
     }
@@ -774,13 +814,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(label_break_value, "labels on blocks are unstable");
     gate_all!(box_syntax, "box expression syntax is experimental; you can call `Box::new` instead");
-    // To avoid noise about type ascription in common syntax errors,
-    // only emit if it is the *only* error. (Also check it last.)
-    if sess.parse_sess.span_diagnostic.err_count() == 0 {
-        gate_all!(type_ascription, "type ascription is experimental");
-    }
+    gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
@@ -789,8 +824,6 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
     // checks if `#![feature]` has been used to enable any lang feature
     // does not check the same for lib features unless there's at least one
     // declared lang feature
-    use rustc_errors::Applicability;
-
     if !sess.opts.unstable_features.is_nightly_build() {
         let lang_features = &sess.features_untracked().declared_lang_features;
         if lang_features.len() == 0 {

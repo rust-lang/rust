@@ -12,7 +12,11 @@
 #![feature(let_else)]
 #![recursion_limit = "256"]
 
+#[macro_use]
+extern crate tracing;
+
 pub mod ast_validation;
+mod errors;
 pub mod feature_gate;
 pub mod node_count;
 pub mod show_span;

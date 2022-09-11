@@ -227,6 +227,10 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("zhinxmin", Some(sym::riscv_target_feature)),
     ("zfh", Some(sym::riscv_target_feature)),
     ("zfhmin", Some(sym::riscv_target_feature)),
+    ("zba", Some(sym::riscv_target_feature)),
+    ("zbb", Some(sym::riscv_target_feature)),
+    ("zbc", Some(sym::riscv_target_feature)),
+    ("zbs", Some(sym::riscv_target_feature)),
     ("zbkb", Some(sym::riscv_target_feature)),
     ("zbkc", Some(sym::riscv_target_feature)),
     ("zbkx", Some(sym::riscv_target_feature)),
@@ -249,6 +253,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("bulk-memory", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
+    ("sign-ext", Some(sym::wasm_target_feature)),
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];

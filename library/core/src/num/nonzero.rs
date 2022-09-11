@@ -39,6 +39,7 @@ macro_rules! nonzero_integers {
             #[repr(transparent)]
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
+            #[rustc_diagnostic_item = stringify!($Ty)]
             pub struct $Ty($Int);
 
             impl $Ty {
@@ -55,7 +56,7 @@ macro_rules! nonzero_integers {
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
-                        core::intrinsics::assert_unsafe_precondition!(n != 0);
+                        core::intrinsics::assert_unsafe_precondition!((n: $Int) => n != 0);
                         Self(n)
                     }
                 }
@@ -308,8 +309,8 @@ macro_rules! nonzero_unsigned_operations {
     ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
             impl $Ty {
-                /// Add an unsigned integer to a non-zero value.
-                /// Check for overflow and return [`None`] on overflow
+                /// Adds an unsigned integer to a non-zero value.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 ///
@@ -345,7 +346,7 @@ macro_rules! nonzero_unsigned_operations {
                     }
                 }
 
-                /// Add an unsigned integer to a non-zero value.
+                /// Adds an unsigned integer to a non-zero value.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -376,7 +377,7 @@ macro_rules! nonzero_unsigned_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
 
-                /// Add an unsigned integer to a non-zero value,
+                /// Adds an unsigned integer to a non-zero value,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -408,7 +409,7 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Returns the smallest power of two greater than or equal to n.
-                /// Check for overflow and return [`None`]
+                /// Checks for overflow and returns [`None`]
                 /// if the next power of two is greater than the type’s maximum value.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
@@ -449,7 +450,7 @@ macro_rules! nonzero_unsigned_operations {
                 /// Returns the base 2 logarithm of the number, rounded down.
                 ///
                 /// This is the same operation as
-                #[doc = concat!("[`", stringify!($Int), "::log2`],")]
+                #[doc = concat!("[`", stringify!($Int), "::ilog2`],")]
                 /// except that it has no failure cases to worry about
                 /// since this value can never be zero.
                 ///
@@ -459,22 +460,22 @@ macro_rules! nonzero_unsigned_operations {
                 /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().log2(), 2);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().log2(), 3);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().log2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().ilog2(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
                 /// ```
                 #[unstable(feature = "int_log", issue = "70887")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
-                pub const fn log2(self) -> u32 {
+                pub const fn ilog2(self) -> u32 {
                     Self::BITS - 1 - self.leading_zeros()
                 }
 
                 /// Returns the base 10 logarithm of the number, rounded down.
                 ///
                 /// This is the same operation as
-                #[doc = concat!("[`", stringify!($Int), "::log10`],")]
+                #[doc = concat!("[`", stringify!($Int), "::ilog10`],")]
                 /// except that it has no failure cases to worry about
                 /// since this value can never be zero.
                 ///
@@ -484,15 +485,15 @@ macro_rules! nonzero_unsigned_operations {
                 /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().log10(), 1);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().log10(), 2);")]
-                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().log10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().ilog10(), 1);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
                 /// ```
                 #[unstable(feature = "int_log", issue = "70887")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
-                pub const fn log10(self) -> u32 {
+                pub const fn ilog10(self) -> u32 {
                     super::int_log10::$Int(self.0)
                 }
             }
@@ -544,7 +545,7 @@ macro_rules! nonzero_signed_operations {
                 }
 
                 /// Checked absolute value.
-                /// Check for overflow and returns [`None`] if
+                /// Checks for overflow and returns [`None`] if
                 #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
                 /// The result cannot be zero.
                 ///
@@ -739,8 +740,8 @@ macro_rules! nonzero_unsigned_signed_operations {
     ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
-                /// Multiply two non-zero integers together.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Multiplies two non-zero integers together.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
@@ -776,7 +777,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     }
                 }
 
-                /// Multiply two non-zero integers together.
+                /// Multiplies two non-zero integers together.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
@@ -808,7 +809,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
 
-                /// Multiply two non-zero integers together,
+                /// Multiplies two non-zero integers together,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -848,8 +849,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
 
-                /// Raise non-zero value to an integer power.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Raises non-zero value to an integer power.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples

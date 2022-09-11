@@ -45,7 +45,7 @@ declare_clippy_lint! {
     ///    let mut vec: Vec<MaybeUninit<T>> = Vec::with_capacity(1000);
     ///    vec.set_len(1000);  // `MaybeUninit` can be uninitialized
     ///    ```
-    /// 3. If you are on nightly, `Vec::spare_capacity_mut()` is available:
+    /// 3. If you are on 1.60.0 or later, `Vec::spare_capacity_mut()` is available:
     ///    ```rust,ignore
     ///    let mut vec: Vec<u8> = Vec::with_capacity(1000);
     ///    let remaining = vec.spare_capacity_mut();  // `&mut [MaybeUninit<u8>]`
@@ -177,7 +177,7 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
                     });
                 }
             },
-            ExprKind::MethodCall(path, [self_expr, _], _) if is_reserve(cx, path, self_expr) => {
+            ExprKind::MethodCall(path, self_expr, [_], _) if is_reserve(cx, path, self_expr) => {
                 return Some(TargetVec {
                     location: VecLocation::Expr(self_expr),
                     init_kind: None,
@@ -211,7 +211,7 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
         }
     });
     match expr.kind {
-        ExprKind::MethodCall(path, [self_expr, _], _) => {
+        ExprKind::MethodCall(path, self_expr, [_], _) => {
             let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
             if is_type_diagnostic_item(cx, self_type, sym::Vec) && path.ident.name.as_str() == "set_len" {
                 Some((self_expr, expr.span))

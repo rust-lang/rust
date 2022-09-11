@@ -191,15 +191,20 @@ LL |     let _ = Foo { bar: Some(bar) };
    |                   ++++++++++   +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:81:16
+  --> $DIR/compatible-variants.rs:80:16
    |
 LL |     let a: A = B::Fst;
    |            -   ^^^^^^ expected enum `A`, found enum `B`
    |            |
    |            expected due to this
+   |
+help: try wrapping the expression in `A::B`
+   |
+LL |     let a: A = A::B { b: B::Fst };
+   |                +++++++++        +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:87:17
+  --> $DIR/compatible-variants.rs:86:17
    |
 LL |     let a: A2 = B::Fst;
    |            --   ^^^^^^ expected struct `A2`, found enum `B`

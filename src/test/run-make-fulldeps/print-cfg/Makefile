@@ -1,6 +1,6 @@
 # needs-llvm-components: x86 arm
 
--include ../tools.mk
+include ../tools.mk
 
 all: default
 	$(RUSTC) --target x86_64-pc-windows-gnu --print cfg | $(CGREP) windows

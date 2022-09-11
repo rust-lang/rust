@@ -8,6 +8,7 @@ use std::sync::OnceLock as OnceCell;
 use std::{cmp, fmt, iter};
 
 use arrayvec::ArrayVec;
+use thin_vec::ThinVec;
 
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
@@ -15,7 +16,6 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -34,10 +34,10 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 
 use crate::clean::cfg::Cfg;
+use crate::clean::clean_visibility;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
-use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -121,10 +121,6 @@ pub(crate) struct Crate {
     /// Only here so that they can be filtered through the rustdoc passes.
     pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
 }
-
-// `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Crate, 72);
 
 impl Crate {
     pub(crate) fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
@@ -389,10 +385,6 @@ impl fmt::Debug for Item {
     }
 }
 
-// `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 56);
-
 pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::new(def_id.as_local().map_or_else(
         || tcx.def_span(def_id),
@@ -423,29 +415,28 @@ impl Item {
             .unwrap_or(false)
     }
 
-    pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Span {
+    pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &*self.kind {
             ItemKind::StrippedItem(k) => k,
             _ => &*self.kind,
         };
         match kind {
-            ItemKind::ModuleItem(Module { span, .. }) => *span,
-            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
-            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => None,
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
-                    rustc_span(impl_id, tcx)
+                    Some(rustc_span(impl_id, tcx))
                 } else {
                     panic!("blanket impl item has non-blanket ID")
                 }
             }
-            _ => {
-                self.item_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
-            }
+            _ => self.item_id.as_def_id().map(|did| rustc_span(did, tcx)),
         }
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
-        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span(tcx).inner())
+        crate::passes::span_of_attrs(&self.attrs)
+            .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
@@ -477,7 +468,7 @@ impl Item {
             def_id,
             name,
             kind,
-            Box::new(ast_attrs.clean(cx)),
+            Box::new(Attributes::from_ast(ast_attrs)),
             cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
@@ -491,19 +482,18 @@ impl Item {
         cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
-        trace!("name={:?}, def_id={:?}", name, def_id);
+        trace!("name={:?}, def_id={:?} cfg={:?}", name, def_id, cfg);
 
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
         // keywords and primitives that they are documenting are public.
-        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
-        {
+        let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
             Visibility::Public
         } else {
-            cx.tcx.visibility(def_id).clean(cx)
+            clean_visibility(cx.tcx.visibility(def_id))
         };
 
-        Item { item_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
+        Item { item_id: def_id.into(), kind: Box::new(kind), name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -520,7 +510,7 @@ impl Item {
             .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, page_id: did, ref fragment }| {
                 debug!(?did);
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
@@ -731,25 +721,25 @@ pub(crate) enum ItemKind {
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
-    FunctionItem(Function),
+    FunctionItem(Box<Function>),
     ModuleItem(Module),
-    TypedefItem(Typedef),
+    TypedefItem(Box<Typedef>),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
-    TraitItem(Trait),
+    TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
-    ImplItem(Impl),
+    ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Function),
+    TyMethodItem(Box<Function>),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
     /// Compared to [TyMethodItem], it also contains a method body.
-    MethodItem(Function, Option<hir::Defaultness>),
+    MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Function),
+    ForeignFunctionItem(Box<Function>),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     /// `type`s from an extern block
@@ -766,10 +756,10 @@ pub(crate) enum ItemKind {
     /// The bounds may be non-empty if there is a `where` clause.
     TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Typedef, Vec<GenericBound>),
+    AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem(Symbol),
+    KeywordItem,
 }
 
 impl ItemKind {
@@ -808,8 +798,33 @@ impl ItemKind {
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
-            | KeywordItem(_) => [].iter(),
+            | KeywordItem => [].iter(),
         }
+    }
+
+    /// Returns `true` if this item does not appear inside an impl block.
+    pub(crate) fn is_non_assoc(&self) -> bool {
+        matches!(
+            self,
+            StructItem(_)
+                | UnionItem(_)
+                | EnumItem(_)
+                | TraitItem(_)
+                | ModuleItem(_)
+                | ExternCrateItem { .. }
+                | FunctionItem(_)
+                | TypedefItem(_)
+                | OpaqueTyItem(_)
+                | StaticItem(_)
+                | ConstantItem(_)
+                | TraitAliasItem(_)
+                | ForeignFunctionItem(_)
+                | ForeignStaticItem(_)
+                | ForeignTypeItem
+                | MacroItem(_)
+                | ProcMacroItem(_)
+                | PrimitiveItem(_)
+        )
     }
 }
 
@@ -829,8 +844,6 @@ pub(crate) trait AttributesExt {
     fn span(&self) -> Option<rustc_span::Span>;
 
     fn inner_docs(&self) -> bool;
-
-    fn other_attrs(&self) -> Vec<ast::Attribute>;
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
@@ -856,10 +869,6 @@ impl AttributesExt for [ast::Attribute] {
     /// FIXME(#78591): Support both inner and outer attributes on the same item.
     fn inner_docs(&self) -> bool {
         self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
-    }
-
-    fn other_attrs(&self) -> Vec<ast::Attribute> {
-        self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
@@ -990,10 +999,6 @@ pub(crate) struct DocFragment {
     pub(crate) kind: DocFragmentKind,
     pub(crate) indent: usize,
 }
-
-// `DocFragment` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(DocFragment, 32);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum DocFragmentKind {
@@ -1129,7 +1134,10 @@ pub(crate) struct ItemLink {
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: String,
-    pub(crate) did: DefId,
+    /// The `DefId` of the Item whose **HTML Page** contains the item being
+    /// linked to. This will be different to `item_id` on item's that don't
+    /// have their own page, such as struct fields and enum variants.
+    pub(crate) page_id: DefId,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<UrlFragment>,
 }
@@ -1150,7 +1158,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: Vec<ast::Attribute>,
+    pub(crate) other_attrs: ast::AttrVec,
 }
 
 impl Attributes {
@@ -1174,14 +1182,16 @@ impl Attributes {
         false
     }
 
-    pub(crate) fn from_ast(
+    pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
+        Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
+    }
+
+    pub(crate) fn from_ast_with_additional(
         attrs: &[ast::Attribute],
-        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+        (additional_attrs, def_id): (&[ast::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
-        let attrs1 = additional_attrs
-            .into_iter()
-            .flat_map(|(attrs, def_id)| attrs.iter().map(move |attr| (attr, Some(def_id))));
+        let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
         let attrs2 = attrs.iter().map(|attr| (attr, None));
         Attributes::from_ast_iter(attrs1.chain(attrs2), false)
     }
@@ -1191,7 +1201,7 @@ impl Attributes {
         doc_only: bool,
     ) -> Attributes {
         let mut doc_strings = Vec::new();
-        let mut other_attrs = Vec::new();
+        let mut other_attrs = ast::AttrVec::new();
         for (attr, parent_module) in attrs {
             if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
                 trace!("got doc_str={doc_str:?}");
@@ -1296,7 +1306,7 @@ impl GenericBound {
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, did, false, vec![], empty);
+        let path = external_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait { trait_: path, generic_params: Vec::new() },
@@ -1378,10 +1388,6 @@ pub(crate) struct GenericParamDef {
     pub(crate) name: Symbol,
     pub(crate) kind: GenericParamDefKind,
 }
-
-// `GenericParamDef` is used in many places. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericParamDef, 56);
 
 impl GenericParamDef {
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
@@ -1514,11 +1520,19 @@ impl FnRetTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Trait {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) def_id: DefId,
     pub(crate) items: Vec<Item>,
     pub(crate) generics: Generics,
     pub(crate) bounds: Vec<GenericBound>,
-    pub(crate) is_auto: bool,
+}
+
+impl Trait {
+    pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.trait_is_auto(self.def_id)
+    }
+    pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
+        tcx.trait_def(self.def_id).unsafety
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1564,13 +1578,7 @@ pub(crate) enum Type {
     BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
-    QPath {
-        assoc: Box<PathSegment>,
-        self_type: Box<Type>,
-        /// FIXME: compute this field on demand.
-        should_show_cast: bool,
-        trait_: Path,
-    },
+    QPath(Box<QPathData>),
 
     /// A type that is inferred: `_`
     Infer,
@@ -1578,10 +1586,6 @@ pub(crate) enum Type {
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
 }
-
-// `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 72);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1672,8 +1676,8 @@ impl Type {
     }
 
     pub(crate) fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        if let QPath { self_type, trait_, assoc, .. } = self {
-            Some((self_type, trait_.def_id(), *assoc.clone()))
+        if let QPath(box QPathData { self_type, trait_, assoc, .. }) = self {
+            Some((self_type, trait_.def_id(), assoc.clone()))
         } else {
             None
         }
@@ -1697,7 +1701,7 @@ impl Type {
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
+            QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
         cache.and_then(|c| Primitive(t).def_id(c))
@@ -1709,6 +1713,15 @@ impl Type {
     pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct QPathData {
+    pub assoc: PathSegment,
+    pub self_type: Type,
+    /// FIXME: compute this field on demand.
+    pub should_show_cast: bool,
+    pub trait_: Path,
 }
 
 /// A primitive (aka, builtin) type.
@@ -1841,7 +1854,7 @@ impl PrimitiveType {
                 Reference => [RefSimplifiedType(Mutability::Not), RefSimplifiedType(Mutability::Mut)].into_iter().collect(),
                 // FIXME: This will be wrong if we ever add inherent impls
                 // for function pointers.
-                Fn => ArrayVec::new(),
+                Fn => single(FunctionSimplifiedType(1)),
                 Never => single(NeverSimplifiedType),
             }
         })
@@ -2088,7 +2101,7 @@ impl Enum {
 
 #[derive(Clone, Debug)]
 pub(crate) enum Variant {
-    CLike,
+    CLike(Option<Discriminant>),
     Tuple(Vec<Item>),
     Struct(VariantStruct),
 }
@@ -2097,8 +2110,28 @@ impl Variant {
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
         match *self {
             Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
-            Self::CLike | Self::Tuple(_) => None,
+            Self::CLike(..) | Self::Tuple(_) => None,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Discriminant {
+    // In the case of cross crate re-exports, we don't have the nessesary information
+    // to reconstruct the expression of the discriminant, only the value.
+    pub(super) expr: Option<BodyId>,
+    pub(super) value: DefId,
+}
+
+impl Discriminant {
+    /// Will be `None` in the case of cross-crate reexports, and may be
+    /// simplified
+    pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        self.expr.map(|body| print_const_expr(tcx, body))
+    }
+    /// Will always be a machine readable number, without underscores or suffixes.
+    pub(crate) fn value(&self, tcx: TyCtxt<'_>) -> String {
+        print_evaluated_const(tcx, self.value, false).unwrap()
     }
 }
 
@@ -2118,14 +2151,6 @@ impl Span {
 
     pub(crate) fn inner(&self) -> rustc_span::Span {
         self.0
-    }
-
-    pub(crate) fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
-    }
-
-    pub(crate) fn is_dummy(&self) -> bool {
-        self.0.is_dummy()
     }
 
     pub(crate) fn filename(&self, sess: &Session) -> FileName {
@@ -2168,8 +2193,8 @@ impl Path {
     pub(crate) fn whole_name(&self) -> String {
         self.segments
             .iter()
-            .map(|s| if s.name == kw::PathRoot { String::new() } else { s.name.to_string() })
-            .intersperse("::".into())
+            .map(|s| if s.name == kw::PathRoot { "" } else { s.name.as_str() })
+            .intersperse("::")
             .collect()
     }
 
@@ -2219,32 +2244,17 @@ pub(crate) enum GenericArg {
     Infer,
 }
 
-// `GenericArg` can occur many times in a single `Path`, so make sure it
-// doesn't increase in size unexpectedly.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
     AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
     Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
-// `GenericArgs` is in every `PathSegment`, so its size can significantly
-// affect rustdoc's memory usage.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 32);
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
     pub(crate) name: Symbol,
     pub(crate) args: GenericArgs,
 }
-
-// `PathSegment` usually occurs multiple times in every `Path`, so its size can
-// significantly affect rustdoc's memory usage.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 40);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Typedef {
@@ -2351,7 +2361,7 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id)
+                print_evaluated_const(tcx, def_id, true)
             }
         }
     }
@@ -2394,7 +2404,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
-    TupleVaradic,
+    FakeVaradic,
     Blanket(Box<Type>),
 }
 
@@ -2407,8 +2417,8 @@ impl ImplKind {
         matches!(self, ImplKind::Blanket(_))
     }
 
-    pub(crate) fn is_tuple_variadic(&self) -> bool {
-        matches!(self, ImplKind::TupleVaradic)
+    pub(crate) fn is_fake_variadic(&self) -> bool {
+        matches!(self, ImplKind::FakeVaradic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {
@@ -2515,4 +2525,22 @@ impl SubstParam {
     pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
         if let Self::Lifetime(lt) = self { Some(lt) } else { None }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(Crate, 72); // frequently moved by-value
+    static_assert_size!(DocFragment, 32);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(GenericArg, 56);
+    static_assert_size!(GenericArgs, 32);
+    static_assert_size!(GenericParamDef, 56);
+    static_assert_size!(Item, 56);
+    static_assert_size!(ItemKind, 96);
+    static_assert_size!(PathSegment, 40);
+    static_assert_size!(Type, 56);
 }

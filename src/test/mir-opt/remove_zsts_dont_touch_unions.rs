@@ -1,4 +1,4 @@
-// compile-flags: -Zmir-opt-level=3
+// unit-test: RemoveZsts
 
 // Ensure RemoveZsts doesn't remove ZST assignments to union fields,
 // which causes problems in Miri.

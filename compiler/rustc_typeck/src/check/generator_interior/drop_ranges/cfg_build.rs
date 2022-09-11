@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
@@ -33,7 +33,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
-    if let Some(filename) = &tcx.sess.opts.debugging_opts.dump_drop_tracking_cfg {
+    if let Some(filename) = &tcx.sess.opts.unstable_opts.dump_drop_tracking_cfg {
         super::cfg_visualize::write_graph_to_file(&drop_range_visitor.drop_ranges, filename, tcx);
     }
 
@@ -256,6 +256,8 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::TypeBinding(..)
                 | hir::Node::TraitRef(..)
                 | hir::Node::Pat(..)
+                | hir::Node::PatField(..)
+                | hir::Node::ExprField(..)
                 | hir::Node::Arm(..)
                 | hir::Node::Local(..)
                 | hir::Node::Ctor(..)
@@ -432,7 +434,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
                 self.handle_uninhabited_return(expr);
             }
-            ExprKind::MethodCall(_, exprs, _) => {
+            ExprKind::MethodCall(_, receiver, exprs, _) => {
+                self.visit_expr(receiver);
                 for expr in exprs {
                     self.visit_expr(expr);
                 }

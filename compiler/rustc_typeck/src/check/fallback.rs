@@ -1,9 +1,8 @@
 use crate::check::FnCtxt;
 use rustc_data_structures::{
-    fx::FxHashMap,
+    fx::{FxHashMap, FxHashSet},
     graph::WithSuccessors,
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
-    stable_set::FxHashSet,
 };
 use rustc_middle::ty::{self, Ty};
 
@@ -219,9 +218,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .diverging_type_vars
             .borrow()
             .iter()
-            .map(|&ty| self.infcx.shallow_resolve(ty))
+            .map(|&ty| self.shallow_resolve(ty))
             .filter_map(|ty| ty.ty_vid())
-            .map(|vid| self.infcx.root_var(vid))
+            .map(|vid| self.root_var(vid))
             .collect();
         debug!(
             "calculate_diverging_fallback: diverging_type_vars={:?}",
@@ -237,7 +236,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut diverging_vids = vec![];
         let mut non_diverging_vids = vec![];
         for unsolved_vid in unsolved_vids {
-            let root_vid = self.infcx.root_var(unsolved_vid);
+            let root_vid = self.root_var(unsolved_vid);
             debug!(
                 "calculate_diverging_fallback: unsolved_vid={:?} root_vid={:?} diverges={:?}",
                 unsolved_vid,
@@ -272,7 +271,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // variables. (Note that this set consists of "root variables".)
         let mut roots_reachable_from_non_diverging = DepthFirstSearch::new(&coercion_graph);
         for &non_diverging_vid in &non_diverging_vids {
-            let root_vid = self.infcx.root_var(non_diverging_vid);
+            let root_vid = self.root_var(non_diverging_vid);
             if roots_reachable_from_diverging.visited(root_vid) {
                 continue;
             }
@@ -295,7 +294,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         diverging_fallback.reserve(diverging_vids.len());
         for &diverging_vid in &diverging_vids {
             let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
-            let root_vid = self.infcx.root_var(diverging_vid);
+            let root_vid = self.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
@@ -303,7 +302,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
 
             for (vid, rel) in relationships.iter() {
-                if self.infcx.root_var(*vid) == root_vid {
+                if self.root_var(*vid) == root_vid {
                     relationship.self_in_trait |= rel.self_in_trait;
                     relationship.output |= rel.output;
                 }
@@ -388,12 +387,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             })
             .collect();
         debug!("create_coercion_graph: coercion_edges={:?}", coercion_edges);
-        let num_ty_vars = self.infcx.num_ty_vars();
+        let num_ty_vars = self.num_ty_vars();
         VecGraph::new(num_ty_vars, coercion_edges)
     }
 
     /// If `ty` is an unresolved type variable, returns its root vid.
     fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
-        Some(self.infcx.root_var(self.infcx.shallow_resolve(ty).ty_vid()?))
+        Some(self.root_var(self.shallow_resolve(ty).ty_vid()?))
     }
 }

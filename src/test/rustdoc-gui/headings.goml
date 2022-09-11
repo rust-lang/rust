@@ -150,15 +150,109 @@ assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
 assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "20px"})
 assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
 
-goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+// Checking colors now.
 show-text: true
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+assert-css: (
+    ".top-doc .docblock h2",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "1px solid rgb(221, 221, 221)"},
+)
+assert-css: (
+    ".top-doc .docblock h3",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "1px solid rgb(221, 221, 221)"},
+)
+assert-css: (
+    ".top-doc .docblock h4",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "1px solid rgb(221, 221, 221)"},
+)
+assert-css: (
+    ".top-doc .docblock h5",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+)
+assert-css: (
+    "#implementations-list .docblock h4",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+)
+assert-css: (
+    "#implementations-list .docblock h5",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+)
+assert-css: (
+    "#implementations-list .docblock h6",
+    {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
+)
 
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "dark"}
 reload:
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+assert-css: (
+    ".top-doc .docblock h2",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "1px solid rgb(210, 210, 210)"},
+)
+assert-css: (
+    ".top-doc .docblock h3",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "1px solid rgb(210, 210, 210)"},
+)
+assert-css: (
+    ".top-doc .docblock h4",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "1px solid rgb(210, 210, 210)"},
+)
+assert-css: (
+    ".top-doc .docblock h5",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+)
+assert-css: (
+    "#implementations-list .docblock h4",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+)
+assert-css: (
+    "#implementations-list .docblock h5",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+)
+assert-css: (
+    "#implementations-list .docblock h6",
+    {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
+)
 
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme": "ayu"}
 reload:
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+assert-css: (
+    ".top-doc .docblock h2",
+    {"color": "rgb(255, 255, 255)", "border-bottom": "1px solid rgb(92, 103, 115)"},
+)
+assert-css: (
+    ".top-doc .docblock h2",
+    {"color": "rgb(255, 255, 255)", "border-bottom": "1px solid rgb(92, 103, 115)"},
+)
+assert-css: (
+    ".top-doc .docblock h4",
+    {"color": "rgb(255, 255, 255)", "border-bottom": "1px solid rgb(92, 103, 115)"},
+)
+assert-css: (
+    ".top-doc .docblock h5",
+    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+)
+assert-css: (
+    "#implementations-list .docblock h4",
+    {"color": "rgb(255, 255, 255)", "border-bottom": "0px none rgb(92, 103, 115)"},
+)
+assert-css: (
+    "#implementations-list .docblock h5",
+    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+)
+assert-css: (
+    "#implementations-list .docblock h6",
+    {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
+)
+
+local-storage: {"rustdoc-theme": "light"}
+goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
+
+local-storage: {"rustdoc-theme": "dark"}
+reload:
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
+
+local-storage: {"rustdoc-theme": "ayu"}
+reload:
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)

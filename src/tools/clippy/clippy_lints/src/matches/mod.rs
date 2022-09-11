@@ -1,13 +1,3 @@
-use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
-use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
-use rustc_lexer::{tokenize, TokenKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{Span, SpanData, SyntaxContext};
-
 mod collapsible_match;
 mod infallible_destructuring_match;
 mod manual_map;
@@ -30,6 +20,16 @@ mod significant_drop_in_scrutinee;
 mod single_match;
 mod try_err;
 mod wild_in_or_pats;
+
+use clippy_utils::source::{snippet_opt, walk_span_to_context};
+use clippy_utils::{higher, in_constant, is_span_match, meets_msrv, msrvs};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_lexer::{tokenize, TokenKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{Span, SpanData, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -793,18 +793,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// match mutex.lock().unwrap().foo() {
@@ -815,22 +810,17 @@ declare_clippy_lint! {
     /// };
     ///
     /// println!("All done!");
-    ///
     /// ```
     /// Use instead:
     /// ```rust
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// let is_foo = mutex.lock().unwrap().foo();
@@ -845,7 +835,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub SIGNIFICANT_DROP_IN_SCRUTINEE,
-    suspicious,
+    nursery,
     "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
 }
 
@@ -959,7 +949,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if source == MatchSource::Normal && !span_starts_with(cx, expr.span, "match") {
+            if source == MatchSource::Normal && !is_span_match(cx, expr.span) {
                 return;
             }
             if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {
@@ -1041,7 +1031,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        self.infallible_destructuring_match_linted |= infallible_destructuring_match::check(cx, local);
+        self.infallible_destructuring_match_linted |=
+            local.els.is_none() && infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
@@ -1061,7 +1052,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     let start = scrutinee_span.hi();
     let mut arm_spans = arms.iter().map(|arm| {
         let data = arm.span.data();
-        (data.ctxt == SyntaxContext::root()).then(|| (data.lo, data.hi))
+        (data.ctxt == SyntaxContext::root()).then_some((data.lo, data.hi))
     });
     let end = e.span.hi();
 
@@ -1095,7 +1086,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
             parent: None,
         }
         .span();
-        (!span_contains_cfg(cx, span)).then(|| next_start).ok_or(())
+        (!span_contains_cfg(cx, span)).then_some(next_start).ok_or(())
     });
     match found {
         Ok(start) => {
@@ -1121,7 +1112,7 @@ fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
     let mut pos = 0usize;
     let mut iter = tokenize(&snip).map(|t| {
         let start = pos;
-        pos += t.len;
+        pos += t.len as usize;
         (t.kind, start..pos)
     });
 

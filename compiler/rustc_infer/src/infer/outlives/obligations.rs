@@ -68,6 +68,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
@@ -91,12 +92,14 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
+        debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
                 cause.span,
                 sup_type,
                 match cause.code().peel_derives() {
-                    ObligationCauseCode::BindingObligation(_, span) => Some(*span),
+                    ObligationCauseCode::BindingObligation(_, span)
+                    | ObligationCauseCode::ExprBindingObligation(_, span, ..) => Some(*span),
                     _ => None,
                 },
             )
@@ -110,6 +113,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    /// NOTE: Prefer using [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// instead of calling this directly.
+    ///
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth. This function must be
@@ -161,8 +167,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
     }
 
+    /// Processes registered region obliations and resolves regions, reporting
+    /// any errors if any were raised. Prefer using this function over manually
+    /// calling `resolve_regions_and_report_errors`.
     pub fn check_region_obligations_and_report_errors(
         &self,
+        generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         self.process_registered_region_obligations(
@@ -170,7 +180,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             outlives_env.param_env,
         );
 
-        self.resolve_regions_and_report_errors(outlives_env)
+        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 
@@ -239,14 +249,13 @@ where
     /// - `origin`, the reason we need this constraint
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
+    #[instrument(level = "debug", skip(self))]
     pub fn type_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        debug!("type_must_outlive(ty={:?}, region={:?}, origin={:?})", ty, region, origin);
-
         assert!(!ty.has_escaping_bound_vars());
 
         let mut components = smallvec![];
@@ -304,7 +313,7 @@ where
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
-    #[tracing::instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn projection_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,

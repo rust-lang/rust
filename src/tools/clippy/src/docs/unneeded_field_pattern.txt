@@ -1,0 +1,26 @@
+### What it does
+Checks for structure field patterns bound to wildcards.
+
+### Why is this bad?
+Using `..` instead is shorter and leaves the focus on
+the fields that are actually bound.
+
+### Example
+```
+let f = Foo { a: 0, b: 0, c: 0 };
+
+match f {
+    Foo { a: _, b: 0, .. } => {},
+    Foo { a: _, b: _, c: _ } => {},
+}
+```
+
+Use instead:
+```
+let f = Foo { a: 0, b: 0, c: 0 };
+
+match f {
+    Foo { b: 0, .. } => {},
+    Foo { .. } => {},
+}
+```

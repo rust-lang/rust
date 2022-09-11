@@ -10,6 +10,10 @@ because that's clearly a non-descriptive name.
 - [Adding a new lint](#adding-a-new-lint)
   - [Setup](#setup)
   - [Getting Started](#getting-started)
+    - [Defining Our Lint](#defining-our-lint)
+      - [Standalone](#standalone)
+      - [Specific Type](#specific-type)
+      - [Tests Location](#tests-location)
   - [Testing](#testing)
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
@@ -36,17 +40,38 @@ See the [Basics](basics.md#get-the-code) documentation.
 ## Getting Started
 
 There is a bit of boilerplate code that needs to be set up when creating a new
-lint. Fortunately, you can use the clippy dev tools to handle this for you. We
+lint. Fortunately, you can use the Clippy dev tools to handle this for you. We
 are naming our new lint `foo_functions` (lints are generally written in snake
-case), and we don't need type information so it will have an early pass type
-(more on this later on). If you're not sure if the name you chose fits the lint,
-take a look at our [lint naming guidelines][lint_naming]. To get started on this
-lint you can run `cargo dev new_lint --name=foo_functions --pass=early
---category=pedantic` (category will default to nursery if not provided). This
-command will create two files: `tests/ui/foo_functions.rs` and
-`clippy_lints/src/foo_functions.rs`, as well as [registering the
-lint](#lint-registration). For cargo lints, two project hierarchies (fail/pass)
-will be created by default under `tests/ui-cargo`.
+case), and we don't need type information, so it will have an early pass type
+(more on this later). If you're unsure if the name you chose fits the lint,
+take a look at our [lint naming guidelines][lint_naming].
+
+## Defining Our Lint
+To get started, there are two ways to define our lint.
+
+### Standalone
+Command: `cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
+(category will default to nursery if not provided)
+
+This command will create a new file: `clippy_lints/src/foo_functions.rs`, as well
+as [register the lint](#lint-registration).
+
+### Specific Type
+Command: `cargo dev new_lint --name=foo_functions --type=functions --category=pedantic`
+
+This command will create a new file: `clippy_lints/src/{type}/foo_functions.rs`.
+
+Notice how this command has a `--type` flag instead of `--pass`. Unlike a standalone
+definition, this lint won't be registered in the traditional sense. Instead, you will
+call your lint from within the type's lint pass, found in `clippy_lints/src/{type}/mod.rs`.
+
+A "type" is just the name of a directory in `clippy_lints/src`, like `functions` in
+the example command. These are groupings of lints with common behaviors, so if your
+lint falls into one, it would be best to add it to that type.
+
+### Tests Location
+Both commands will create a file: `tests/ui/foo_functions.rs`. For cargo lints,
+two project hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 

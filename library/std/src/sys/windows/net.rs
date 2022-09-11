@@ -143,8 +143,8 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let result = {
-            let (addrp, len) = addr.into_inner();
-            let result = unsafe { c::connect(self.as_raw_socket(), addrp, len) };
+            let (addr, len) = addr.into_inner();
+            let result = unsafe { c::connect(self.as_raw_socket(), addr.as_ptr(), len) };
             cvt(result).map(drop)
         };
         self.set_nonblocking(false)?;

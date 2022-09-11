@@ -1,0 +1,38 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LOOP_EXPR
+          LOOP_KW "loop"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                CONTINUE_EXPR
+                  CONTINUE_KW "continue"
+                SEMICOLON ";"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                CONTINUE_EXPR
+                  CONTINUE_KW "continue"
+                  WHITESPACE " "
+                  LIFETIME
+                    LIFETIME_IDENT "'l"
+                SEMICOLON ";"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

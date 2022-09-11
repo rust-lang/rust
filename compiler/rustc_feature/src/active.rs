@@ -148,6 +148,8 @@ declare_features! (
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
     (active, allow_internal_unstable, "1.0.0", None, None),
+    /// Allows using anonymous lifetimes in argument-position impl-trait.
+    (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
     /// Outputs useful `assert!` messages
@@ -156,9 +158,6 @@ declare_features! (
     (active, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (active, lang_items, "1.0.0", None, None),
-    /// Allows `#[repr(no_niche)]` (an implementation detail of `rustc`,
-    /// it is not on path for eventual stabilization).
-    (active, no_niche, "1.42.0", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
@@ -331,6 +330,8 @@ declare_features! (
     (active, cfg_target_thread_local, "1.7.0", Some(29594), None),
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
+    /// Allows `for<...>` on closures and generators.
+    (active, closure_lifetime_binder, "1.64.0", Some(97362), None),
     /// Allows `#[track_caller]` on closures and generators.
     (active, closure_track_caller, "1.57.0", Some(87417), None),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
@@ -419,8 +420,6 @@ declare_features! (
     (active, intra_doc_pointers, "1.51.0", Some(80896), None),
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
-    /// Allows `'a: { break 'a; }`.
-    (active, label_break_value, "1.28.0", Some(48594), None),
     // Allows setting the threshold for the `large_assignments` lint.
     (active, large_assignments, "1.52.0", Some(83518), None),
     /// Allows `if/while p && let q = r && ...` chains.
@@ -479,17 +478,17 @@ declare_features! (
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
     /// Allows the use of raw-dylibs (RFC 2627).
-    (incomplete, raw_dylib, "1.40.0", Some(58713), None),
+    (active, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
-    /// Allows using the `#[register_attr]` attribute.
-    (active, register_attr, "1.41.0", Some(66080), None),
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
     /// Allows the `#[repr(i128)]` attribute for enums.
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
+    /// Allows return-position `impl Trait` in traits.
+    (incomplete, return_position_impl_trait_in_trait, "CURRENT_RUSTC_VERSION", Some(91611), None),
     /// Allows `extern "rust-cold"`.
     (active, rust_cold_cc, "1.63.0", Some(97544), None),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -522,19 +521,14 @@ declare_features! (
     /// Allows creation of instances of a struct by moving fields that have
     /// not changed from prior instances of the same struct (RFC #2528)
     (active, type_changing_struct_update, "1.58.0", Some(86555), None),
+    /// Enables rustc to generate code that instructs libstd to NOT ignore SIGPIPE.
+    (active, unix_sigpipe, "CURRENT_RUSTC_VERSION", Some(97889), None),
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055), None),
     /// Allows unsized tuple coercion.
     (active, unsized_tuple_coercion, "1.20.0", Some(42877), None),
-    /// Allows `union`s to implement `Drop`. Moreover, `union`s may now include fields
-    /// that don't implement `Copy` as long as they don't have any drop glue.
-    /// This is checked recursively. On encountering type variable where no progress can be made,
-    /// `T: Copy` is used as a substitute for "no drop glue".
-    ///
-    /// NOTE: A limited form of `union U { ... }` was accepted in 1.19.0.
-    (active, untagged_unions, "1.13.0", Some(55149), None),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (active, used_with_arg, "1.60.0", Some(93798), None),
     /// Allows `extern "wasm" fn`

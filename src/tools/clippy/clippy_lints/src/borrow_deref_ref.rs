@@ -22,29 +22,24 @@ declare_clippy_lint! {
     /// ```
     /// let x = &12;
     /// let addr_x = &x as *const _ as usize;
-    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggerd.
+    /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggered.
     ///                                         // But if we fix it, assert will fail.
     /// assert_ne!(addr_x, addr_y);
     /// ```
     ///
     /// ### Example
     /// ```rust
-    /// fn foo(_x: &str) {}
-    ///
     /// let s = &String::new();
     ///
     /// let a: &String = &* s;
-    /// foo(&*s);
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # fn foo(_x: &str) {}
     /// # let s = &String::new();
     /// let a: &String = s;
-    /// foo(&**s);
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.63.0"]
     pub BORROW_DEREF_REF,
     complexity,
     "deref on an immutable reference returns the same type as itself"

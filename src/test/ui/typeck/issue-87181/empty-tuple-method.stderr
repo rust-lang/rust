@@ -2,11 +2,9 @@ error[E0599]: no method named `foo` found for fn item `fn() -> Foo {Foo}` in the
   --> $DIR/empty-tuple-method.rs:12:15
    |
 LL |     thing.bar.foo();
-   |     --------- ^^^ method not found in `fn() -> Foo {Foo}`
-   |     |
-   |     this is the constructor of a struct
+   |               ^^^ method not found in `fn() -> Foo {Foo}`
    |
-help: call the constructor
+help: use parentheses to instantiate this tuple struct
    |
 LL |     (thing.bar)().foo();
    |     +         +++

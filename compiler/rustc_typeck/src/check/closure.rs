@@ -4,6 +4,7 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::rustc_middle::ty::subst::Subst;
+use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -58,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_closure(expr, expected_kind, decl, body, gen, expected_sig)
     }
 
-    #[instrument(skip(self, expr, body, decl), level = "debug")]
+    #[instrument(skip(self, expr, body, decl), level = "debug", ret)]
     fn check_closure(
         &self,
         expr: &hir::Expr<'_>,
@@ -96,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
         );
 
-        let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+        let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::ClosureSynthetic,
             span: self.tcx.hir().span(expr.hir_id),
         });
@@ -141,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Create a type variable (for now) to represent the closure kind.
             // It will be unified during the upvar inference phase (`upvar.rs`)
-            None => self.infcx.next_ty_var(TypeVariableOrigin {
+            None => self.next_ty_var(TypeVariableOrigin {
                 // FIXME(eddyb) distinguish closure kind inference variables from the rest.
                 kind: TypeVariableOriginKind::ClosureSynthetic,
                 span: expr.span,
@@ -158,11 +159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         );
 
-        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs);
-
-        debug!(?expr.hir_id, ?closure_type);
-
-        closure_type
+        self.tcx.mk_closure(expr_def_id.to_def_id(), closure_substs.substs)
     }
 
     /// Given the expected type, figures out what it can about this closure we
@@ -182,9 +179,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::PredicateKind::Projection(proj_predicate) => self
                             .deduce_sig_from_projection(
                                 Some(span.0),
-                                pred.0.kind().rebind(
-                                    pred.map_bound(|_| proj_predicate).subst(self.tcx, substs),
-                                ),
+                                pred.0
+                                    .kind()
+                                    .rebind(pred.rebind(proj_predicate).subst(self.tcx, substs)),
                             ),
                         _ => None,
                     });
@@ -262,7 +259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
     /// know that.
-    #[instrument(level = "debug", skip(self, cause_span))]
+    #[instrument(level = "debug", skip(self, cause_span), ret)]
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
@@ -317,7 +314,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Unsafety::Normal,
             Abi::Rust,
         ));
-        debug!(?sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -531,7 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // [c1]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341089706
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
-        self.infcx.commit_if_ok(|_| {
+        self.commit_if_ok(|_| {
             let mut all_obligations = vec![];
 
             // The liberated version of this signature should be a subtype
@@ -544,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let supplied_ty = self.infcx.replace_bound_vars_with_fresh_vars(
+                let supplied_ty = self.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     supplied_sig.inputs().rebind(supplied_ty),
@@ -557,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let supplied_output_ty = self.infcx.replace_bound_vars_with_fresh_vars(
+            let supplied_output_ty = self.replace_bound_vars_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),
@@ -576,7 +572,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// types that the user gave into a signature.
     ///
     /// Also, record this closure signature for later.
-    #[instrument(skip(self, decl, body), level = "debug")]
+    #[instrument(skip(self, decl, body), level = "debug", ret)]
     fn supplied_sig_of_closure(
         &self,
         hir_id: hir::HirId,
@@ -629,8 +625,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bound_vars,
         );
 
-        debug!(?result);
-
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
@@ -643,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// user specified. The "desugared" return type is an `impl
     /// Future<Output = T>`, so we do this by searching through the
     /// obligations to extract the `T`.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn deduce_future_output_from_obligations(
         &self,
         expr_def_id: DefId,
@@ -687,9 +681,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|e| e.map_bound(|e| *e).transpose_tuple2())
                 .find_map(|(p, s)| get_future_output(p.subst(self.tcx, substs), s.0))?,
             ty::Error(_) => return None,
+            ty::Projection(proj)
+                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            {
+                self.tcx
+                    .bound_explicit_item_bounds(proj.item_def_id)
+                    .transpose_iter()
+                    .map(|e| e.map_bound(|e| *e).transpose_tuple2())
+                    .find_map(|(p, s)| get_future_output(p.subst(self.tcx, proj.substs), s.0))?
+            }
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
-                "async fn generator return type not an inference variable"
+                "async fn generator return type not an inference variable: {ret_ty}"
             ),
         };
 
@@ -704,7 +707,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         self.register_predicates(obligations);
 
-        debug!("deduce_future_output_from_obligations: output_ty={:?}", output_ty);
         Some(output_ty)
     }
 

@@ -115,7 +115,7 @@ impl Node {
         matches!(self, Node::Trait(..))
     }
 
-    /// Trys to find the associated item that implements `trait_item_def_id`
+    /// Tries to find the associated item that implements `trait_item_def_id`
     /// defined in this node.
     ///
     /// If this returns `None`, the item can potentially still be found in
@@ -217,7 +217,7 @@ impl<'tcx> Ancestors<'tcx> {
         self.find_map(|node| {
             if let Some(item) = node.item(tcx, trait_item_def_id) {
                 if finalizing_node.is_none() {
-                    let is_specializable = item.defaultness.is_default()
+                    let is_specializable = item.defaultness(tcx).is_default()
                         || tcx.impl_defaultness(node.def_id()).is_default();
 
                     if !is_specializable {

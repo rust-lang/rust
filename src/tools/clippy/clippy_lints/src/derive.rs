@@ -15,7 +15,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
     self, Binder, BoundConstness, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef,
-    Ty, TyCtxt, Visibility,
+    Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -189,7 +189,7 @@ declare_clippy_lint! {
     ///     i_am_eq_too: Vec<String>,
     /// }
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
     style,
     "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
@@ -464,7 +464,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
     if_chain! {
         if let ty::Adt(adt, substs) = ty.kind();
-        if cx.tcx.visibility(adt.did()) == Visibility::Public;
+        if cx.tcx.visibility(adt.did()).is_public();
         if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
@@ -516,7 +516,10 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
         tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
                 tcx.mk_predicate(Binder::dummy(PredicateKind::Trait(TraitPredicate {
-                    trait_ref: TraitRef::new(eq_trait_id, tcx.mk_substs([tcx.mk_param_from_def(param)].into_iter())),
+                    trait_ref: TraitRef::new(
+                        eq_trait_id,
+                        tcx.mk_substs(std::iter::once(tcx.mk_param_from_def(param))),
+                    ),
                     constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,
                 })))

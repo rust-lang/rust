@@ -7,7 +7,7 @@ use crate::spec::Target;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::iter::Step;
-use std::num::NonZeroUsize;
+use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
@@ -69,34 +69,46 @@ impl Default for TargetDataLayout {
     }
 }
 
+pub enum TargetDataLayoutErrors<'a> {
+    InvalidAddressSpace { addr_space: &'a str, cause: &'a str, err: ParseIntError },
+    InvalidBits { kind: &'a str, bit: &'a str, cause: &'a str, err: ParseIntError },
+    MissingAlignment { cause: &'a str },
+    InvalidAlignment { cause: &'a str, err: String },
+    InconsistentTargetArchitecture { dl: &'a str, target: &'a str },
+    InconsistentTargetPointerWidth { pointer_size: u64, target: u32 },
+    InvalidBitsSize { err: String },
+}
+
 impl TargetDataLayout {
-    pub fn parse(target: &Target) -> Result<TargetDataLayout, String> {
+    pub fn parse<'a>(target: &'a Target) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
         // Parse an address space index from a string.
-        let parse_address_space = |s: &str, cause: &str| {
+        let parse_address_space = |s: &'a str, cause: &'a str| {
             s.parse::<u32>().map(AddressSpace).map_err(|err| {
-                format!("invalid address space `{}` for `{}` in \"data-layout\": {}", s, cause, err)
+                TargetDataLayoutErrors::InvalidAddressSpace { addr_space: s, cause, err }
             })
         };
 
         // Parse a bit count from a string.
-        let parse_bits = |s: &str, kind: &str, cause: &str| {
-            s.parse::<u64>().map_err(|err| {
-                format!("invalid {} `{}` for `{}` in \"data-layout\": {}", kind, s, cause, err)
+        let parse_bits = |s: &'a str, kind: &'a str, cause: &'a str| {
+            s.parse::<u64>().map_err(|err| TargetDataLayoutErrors::InvalidBits {
+                kind,
+                bit: s,
+                cause,
+                err,
             })
         };
 
         // Parse a size string.
-        let size = |s: &str, cause: &str| parse_bits(s, "size", cause).map(Size::from_bits);
+        let size = |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
 
         // Parse an alignment string.
-        let align = |s: &[&str], cause: &str| {
+        let align = |s: &[&'a str], cause: &'a str| {
             if s.is_empty() {
-                return Err(format!("missing alignment for `{}` in \"data-layout\"", cause));
+                return Err(TargetDataLayoutErrors::MissingAlignment { cause });
             }
             let align_from_bits = |bits| {
-                Align::from_bits(bits).map_err(|err| {
-                    format!("invalid alignment for `{}` in \"data-layout\": {}", cause, err)
-                })
+                Align::from_bits(bits)
+                    .map_err(|err| TargetDataLayoutErrors::InvalidAlignment { cause, err })
             };
             let abi = parse_bits(s[0], "alignment", cause)?;
             let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
@@ -158,25 +170,24 @@ impl TargetDataLayout {
 
         // Perform consistency checks against the Target information.
         if dl.endian != target.endian {
-            return Err(format!(
-                "inconsistent target specification: \"data-layout\" claims \
-                 architecture is {}-endian, while \"target-endian\" is `{}`",
-                dl.endian.as_str(),
-                target.endian.as_str(),
-            ));
+            return Err(TargetDataLayoutErrors::InconsistentTargetArchitecture {
+                dl: dl.endian.as_str(),
+                target: target.endian.as_str(),
+            });
         }
 
         let target_pointer_width: u64 = target.pointer_width.into();
         if dl.pointer_size.bits() != target_pointer_width {
-            return Err(format!(
-                "inconsistent target specification: \"data-layout\" claims \
-                 pointers are {}-bit, while \"target-pointer-width\" is `{}`",
-                dl.pointer_size.bits(),
-                target.pointer_width
-            ));
+            return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+                pointer_size: dl.pointer_size.bits(),
+                target: target.pointer_width,
+            });
         }
 
-        dl.c_enum_min_size = Integer::from_size(Size::from_bits(target.c_enum_min_bits))?;
+        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(target.c_enum_min_bits)) {
+            Ok(bits) => bits,
+            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
+        };
 
         Ok(dl)
     }
@@ -508,6 +519,7 @@ impl fmt::Debug for Align {
 
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
+    pub const MAX: Align = Align { pow2: 29 };
 
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, String> {
@@ -540,7 +552,7 @@ impl Align {
         if bytes != 1 {
             return Err(not_power_of_2(align));
         }
-        if pow2 > 29 {
+        if pow2 > Self::MAX.pow2 {
             return Err(too_large(align));
         }
 
@@ -1129,7 +1141,7 @@ pub enum TagEncoding {
 
     /// Niche (values invalid for a type) encoding the discriminant:
     /// Discriminant and variant index coincide.
-    /// The variant `dataful_variant` contains a niche at an arbitrary
+    /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
     /// `(d - niche_variants.start).wrapping_add(niche_start)`.
@@ -1138,7 +1150,7 @@ pub enum TagEncoding {
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     Niche {
-        dataful_variant: VariantIdx,
+        untagged_variant: VariantIdx,
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
     },
@@ -1279,13 +1291,14 @@ impl<'a> fmt::Debug for LayoutS<'a> {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
+        let LayoutS { size, align, abi, fields, largest_niche, variants } = self;
         f.debug_struct("Layout")
-            .field("fields", &self.fields)
-            .field("variants", &self.variants)
-            .field("abi", &self.abi)
-            .field("largest_niche", &self.largest_niche)
-            .field("align", &self.align)
-            .field("size", &self.size)
+            .field("size", size)
+            .field("align", align)
+            .field("abi", abi)
+            .field("fields", fields)
+            .field("largest_niche", largest_niche)
+            .field("variants", variants)
             .finish()
     }
 }
@@ -1350,15 +1363,19 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PointerKind {
     /// Most general case, we know no restrictions to tell LLVM.
-    Shared,
+    SharedMutable,
 
-    /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
+    /// `&T` where `T` contains no `UnsafeCell`, is `dereferenceable`, `noalias` and `readonly`.
     Frozen,
 
-    /// `&mut T` which is `noalias` but not `readonly`.
+    /// `&mut T` which is `dereferenceable` and `noalias` but not `readonly`.
     UniqueBorrowed,
 
-    /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
+    /// `&mut !Unpin`, which is `dereferenceable` but neither `noalias` nor `readonly`.
+    UniqueBorrowedPinned,
+
+    /// `Box<T>`, which is `noalias` (even on return types, unlike the above) but neither `readonly`
+    /// nor `dereferenceable`.
     UniqueOwned,
 }
 
@@ -1372,7 +1389,7 @@ pub struct PointeeInfo {
 
 /// Used in `might_permit_raw_init` to indicate the kind of initialisation
 /// that is checked to be valid
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum InitKind {
     Zero,
     Uninit,
@@ -1487,14 +1504,18 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     ///
     /// `init_kind` indicates if the memory is zero-initialized or left uninitialized.
     ///
-    /// `strict` is an opt-in debugging flag added in #97323 that enables more checks.
+    /// This code is intentionally conservative, and will not detect
+    /// * zero init of an enum whose 0 variant does not allow zero initialization
+    /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
+    /// * Any form of invalid value being made inside an array (unless the value is uninhabited)
     ///
-    /// This is conservative: in doubt, it will answer `true`.
+    /// A strict form of these checks that uses const evaluation exists in
+    /// `rustc_const_eval::might_permit_raw_init`, and a tracking issue for making these checks
+    /// stricter is <https://github.com/rust-lang/rust/issues/66151>.
     ///
-    /// FIXME: Once we removed all the conservatism, we could alternatively
-    /// create an all-0/all-undef constant and run the const value validator to see if
-    /// this is a valid value for the given type.
-    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind, strict: bool) -> bool
+    /// FIXME: Once all the conservatism is removed from here, and the checks are ran by default,
+    /// we can use the const evaluation checks always instead.
+    pub fn might_permit_raw_init<C>(self, cx: &C, init_kind: InitKind) -> bool
     where
         Self: Copy,
         Ty: TyAbiInterface<'a, C>,
@@ -1507,13 +1528,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     s.valid_range(cx).contains(0)
                 }
                 InitKind::Uninit => {
-                    if strict {
-                        // The type must be allowed to be uninit (which means "is a union").
-                        s.is_uninit_valid()
-                    } else {
-                        // The range must include all values.
-                        s.is_always_valid(cx)
-                    }
+                    // The range must include all values.
+                    s.is_always_valid(cx)
                 }
             }
         };
@@ -1534,19 +1550,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         // If we have not found an error yet, we need to recursively descend into fields.
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
-            FieldsShape::Array { count, .. } => {
+            FieldsShape::Array { .. } => {
                 // FIXME(#66151): For now, we are conservative and do not check arrays by default.
-                if strict
-                    && *count > 0
-                    && !self.field(cx, 0).might_permit_raw_init(cx, init_kind, strict)
-                {
-                    // Found non empty array with a type that is unhappy about this kind of initialization
-                    return false;
-                }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind, strict) {
+                    if !self.field(cx, idx).might_permit_raw_init(cx, init_kind) {
                         // We found a field that is unhappy with this kind of initialization.
                         return false;
                     }

@@ -12,6 +12,7 @@ pub fn f() {}
 pub fn g() {}
 
 #[cfg(feature = "rand")]
+//~^ WARNING unexpected `cfg` condition value
 pub fn h() {}
 
 pub fn main() {}

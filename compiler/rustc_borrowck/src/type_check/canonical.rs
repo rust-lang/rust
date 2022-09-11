@@ -24,7 +24,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// **Any `rustc_infer::infer` operations that might generate region
     /// constraints should occur within this method so that those
     /// constraints can be properly localized!**
-    #[instrument(skip(self, category, op), level = "trace")]
+    #[instrument(skip(self, op), level = "trace")]
     pub(super) fn fully_perform_op<R, Op>(
         &mut self,
         locations: Locations,
@@ -39,7 +39,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let TypeOpOutput { output, constraints, error_info } = op.fully_perform(self.infcx)?;
 
-        if let Some(data) = &constraints {
+        if let Some(data) = constraints {
             self.push_region_constraints(locations, category, data);
         }
 
@@ -90,12 +90,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
-        self.prove_predicates(
-            Some(ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
+        self.prove_predicate(
+            ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::NotConst,
                 polarity: ty::ImplPolarity::Positive,
-            }))),
+            }))
+            .to_predicate(self.tcx()),
             locations,
             category,
         );

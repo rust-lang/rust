@@ -142,17 +142,6 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (13, 0, 0) {
-        if sess.target.arch == "powerpc64" {
-            target_data_layout = target_data_layout.replace("-S128", "");
-        }
-        if sess.target.arch == "wasm32" {
-            target_data_layout = "e-m:e-p:32:32-i64:64-n32:64-S128".to_string();
-        }
-        if sess.target.arch == "wasm64" {
-            target_data_layout = "e-m:e-p:64:64-i64:64-n32:64-S128".to_string();
-        }
-    }
     if llvm_version < (14, 0, 0) {
         if sess.target.llvm_target == "i686-pc-windows-msvc"
             || sess.target.llvm_target == "i586-pc-windows-msvc"
@@ -275,7 +264,7 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.debugging_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch != "aarch64" {
             sess.err("-Zbranch-protection is only supported on aarch64");
         } else {
@@ -308,7 +297,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
-    if let CFProtection::Branch | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -316,7 +305,7 @@ pub unsafe fn create_module<'ll>(
             1,
         )
     }
-    if let CFProtection::Return | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -325,7 +314,7 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
-    if sess.opts.debugging_opts.virtual_function_elimination {
+    if sess.opts.unstable_opts.virtual_function_elimination {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
@@ -897,6 +886,9 @@ impl<'ll> CodegenCx<'ll, '_> {
             ifn!("llvm.dbg.declare", fn(t_metadata, t_metadata) -> void);
             ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
+
+        ifn!("llvm.ptrmask", fn(i8p, t_isize) -> i8p);
+
         None
     }
 

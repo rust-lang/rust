@@ -3,11 +3,10 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-
-use rustc_data_structures::stable_map::FxHashMap;
+use hir::def_id::LocalDefId;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
@@ -16,6 +15,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -192,6 +192,27 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    // (ouz-a 1005988): Normally `[T] : std::ops::Index<usize>` should be normalized
+    // into [T] but currently `Where` clause stops the normalization process for it,
+    // here we compare types of expr and base in a code without `Where` clause they would be equal
+    // if they are not we don't modify the expr, hence we bypass the ICE
+    fn is_builtin_index(
+        &mut self,
+        typeck_results: &TypeckResults<'tcx>,
+        e: &hir::Expr<'_>,
+        base_ty: Ty<'tcx>,
+        index_ty: Ty<'tcx>,
+    ) -> bool {
+        if let Some(elem_ty) = base_ty.builtin_index() {
+            let Some(exp_ty) = typeck_results.expr_ty_opt(e) else {return false;};
+            let resolved_exp_ty = self.resolve(exp_ty, &e.span);
+
+            elem_ty == resolved_exp_ty && index_ty == self.fcx.tcx.types.usize
+        } else {
+            false
+        }
+    }
+
     // Similar to operators, indexing is always assumed to be overloaded
     // Here, correct cases where an indexing expression can be simplified
     // to use builtin indexing because the index type is known to be
@@ -222,8 +243,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     )
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
+                let resolved_base_ty = self.resolve(*base_ty, &base.span);
 
-                if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
+                if self.is_builtin_index(&typeck_results, e, resolved_base_ty, index_ty) {
                     // Remove the method call record
                     typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     typeck_results.node_substs_mut().remove(e.hir_id);
@@ -263,7 +285,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_index_builtin_expr(e);
 
         match e.kind {
-            hir::ExprKind::Closure { body, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);
@@ -290,6 +312,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
         intravisit::walk_expr(self, e);
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        match &p.kind {
+            hir::GenericParamKind::Lifetime { .. } => {
+                // Nothing to write back here
+            }
+            hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
+                self.tcx().sess.delay_span_bug(p.span, format!("unexpected generic param: {p:?}"));
+            }
+        }
     }
 
     fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
@@ -347,14 +380,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn eval_closure_size(&mut self) {
-        let mut res: FxHashMap<DefId, ClosureSizeProfileData<'tcx>> = Default::default();
-        for (closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
-            let closure_hir_id =
-                self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+        let mut res: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>> = Default::default();
+        for (&closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
+            let closure_hir_id = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
 
             let data = self.resolve(*data, &closure_hir_id);
 
-            res.insert(*closure_def_id, data);
+            res.insert(closure_def_id, data);
         }
 
         self.typeck_results.closure_size_eval = res;
@@ -364,7 +396,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             self.fcx.typeck_results.borrow().closure_min_captures.len(),
             Default::default(),
         );
-        for (closure_def_id, root_min_captures) in
+        for (&closure_def_id, root_min_captures) in
             self.fcx.typeck_results.borrow().closure_min_captures.iter()
         {
             let mut root_var_map_wb = ty::RootVariableMinCaptureList::with_capacity_and_hasher(
@@ -376,7 +408,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .iter()
                     .map(|captured_place| {
                         let locatable = captured_place.info.path_expr_id.unwrap_or_else(|| {
-                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local())
+                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id)
                         });
 
                         self.resolve(captured_place.clone(), &locatable)
@@ -384,7 +416,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .collect();
                 root_var_map_wb.insert(*var_hir_id, min_list_wb);
             }
-            min_captures_wb.insert(*closure_def_id, root_var_map_wb);
+            min_captures_wb.insert(closure_def_id, root_var_map_wb);
         }
 
         self.typeck_results.closure_min_captures = min_captures_wb;
@@ -392,21 +424,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_fake_reads_map(&mut self) {
         let mut resolved_closure_fake_reads: FxHashMap<
-            DefId,
+            LocalDefId,
             Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
         > = Default::default();
-        for (closure_def_id, fake_reads) in
+        for (&closure_def_id, fake_reads) in
             self.fcx.typeck_results.borrow().closure_fake_reads.iter()
         {
             let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
             for (place, cause, hir_id) in fake_reads.iter() {
-                let locatable =
-                    self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+                let locatable = self.tcx().hir().local_def_id_to_hir_id(closure_def_id);
 
                 let resolved_fake_read = self.resolve(place.clone(), &locatable);
                 resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
             }
-            resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
+            resolved_closure_fake_reads.insert(closure_def_id, resolved_fake_reads);
         }
         self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
     }
@@ -470,7 +501,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-            for mut diag in errors_buffer.drain(..) {
+            for mut diag in errors_buffer {
                 self.tcx().sess.diagnostic().emit_diagnostic(&mut diag);
             }
         }
@@ -509,13 +540,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
                     let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
                     struct RecursionChecker {
-                        def_id: DefId,
+                        def_id: LocalDefId,
                     }
                     impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
                         type BreakTy = ();
                         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                             if let ty::Opaque(def_id, _) = *t.kind() {
-                                if def_id == self.def_id {
+                                if def_id == self.def_id.to_def_id() {
                                     return ControlFlow::Break(());
                                 }
                             }
@@ -747,7 +778,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // (e.g. keep `for<'a>` named `for<'a>`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                EraseEarlyRegions { tcx: self.infcx.tcx }.fold_ty(t)
+                EraseEarlyRegions { tcx: self.tcx }.fold_ty(t)
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
@@ -765,7 +796,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match self.infcx.fully_resolve(ct) {
-            Ok(ct) => self.infcx.tcx.erase_regions(ct),
+            Ok(ct) => self.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 self.report_const_error(ct);

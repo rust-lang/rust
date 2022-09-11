@@ -29,19 +29,17 @@ use rustc_middle::ty::{
     ToPredicate, Ty, UserType,
 };
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{self, BytePos, Span};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
-    WellFormedLoc,
+    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
 };
 
 use std::collections::hash_map::Entry;
-use std::iter;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -85,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_vars_with_obligations_and_mutate_fulfillment(ty, |_| {})
     }
 
-    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug")]
+    #[instrument(skip(self, mutate_fulfillment_errors), level = "debug", ret)]
     pub(in super::super) fn resolve_vars_with_obligations_and_mutate_fulfillment(
         &self,
         mut ty: Ty<'tcx>,
@@ -109,15 +107,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false, mutate_fulfillment_errors);
-        ty = self.resolve_vars_if_possible(ty);
-
-        debug!(?ty);
-        ty
+        self.resolve_vars_if_possible(ty)
     }
 
     pub(in super::super) fn record_deferred_call_resolution(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         r: DeferredCallResolution<'tcx>,
     ) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
@@ -126,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn remove_deferred_call_resolutions(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
@@ -188,12 +183,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !method.substs.is_empty() {
             let method_generics = self.tcx.generics_of(method.def_id);
             if !method_generics.params.is_empty() {
-                let user_type_annotation = self.infcx.probe(|_| {
+                let user_type_annotation = self.probe(|_| {
                     let user_substs = UserSubsts {
                         substs: InternalSubsts::for_item(self.tcx, method.def_id, |param, _| {
                             let i = param.index as usize;
                             if i < method_generics.parent_count {
-                                self.infcx.var_for_def(DUMMY_SP, param)
+                                self.var_for_def(DUMMY_SP, param)
                             } else {
                                 method.substs[i]
                             }
@@ -201,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         user_self_ty: None, // not relevant here
                     };
 
-                    self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
+                    self.canonicalize_user_type_annotation(UserType::TypeOf(
                         method.def_id,
                         user_substs,
                     ))
@@ -239,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((substs, user_self_ty)) {
-            let canonicalized = self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
+            let canonicalized = self.canonicalize_user_type_annotation(UserType::TypeOf(
                 def_id,
                 UserSubsts { substs, user_self_ty },
             ));
@@ -375,29 +370,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (result, spans)
     }
 
-    /// Convenience method which tracks extra diagnostic information for normalization
-    /// that occurs as a result of WF checking. The `hir_id` is the `HirId` of the hir item
-    /// whose type is being wf-checked - this is used to construct a more precise span if
-    /// an error occurs.
-    ///
-    /// It is never necessary to call this method - calling `normalize_associated_types_in` will
-    /// just result in a slightly worse diagnostic span, and will still be sound.
-    pub(in super::super) fn normalize_associated_types_in_wf<T>(
-        &self,
-        span: Span,
-        value: T,
-        loc: WellFormedLoc,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.inh.normalize_associated_types_in_with_cause(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(Some(loc))),
-            self.param_env,
-            value,
-        )
-    }
-
     pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -437,6 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
                         .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                    output_ty: None,
                 },
             ),
             self.param_env,
@@ -505,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         if Self::can_contain_user_lifetime_bounds(ty) {
-            let c_ty = self.infcx.canonicalize_response(UserType::Ty(ty));
+            let c_ty = self.canonicalize_response(UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
@@ -522,13 +495,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
+        let span = self.tcx.hir().span(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
-        self.register_wf_obligation(
-            c.into(),
-            self.tcx.hir().span(ast_c.hir_id),
-            ObligationCauseCode::WellFormed(None),
-        );
-        c
+        self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
+        self.normalize_associated_types_in(span, c)
     }
 
     pub fn const_arg_to_const(
@@ -642,9 +612,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
-        let errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
+        let mut errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
 
         if !errors.is_empty() {
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
@@ -658,6 +629,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
+            self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
             self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);
         }
     }
@@ -786,12 +758,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
-                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
-                    if let ty::Opaque(def_id, _) = *ty.kind() {
-                        if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
-                            return None;
-                        }
-                    }
+                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
+                    && let ty::Opaque(def_id, _) = *ty.kind()
+                    && let Some(def_id) = def_id.as_local()
+                    && self.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                    return None;
                 }
             }
         }
@@ -852,27 +823,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.bound_type_of(def_id)
         };
-        let substs = self.infcx.fresh_substs_for_item(span, def_id);
+        let substs = self.fresh_substs_for_item(span, def_id);
         let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
-        self.add_required_obligations_with_code(
-            span,
-            def_id,
-            &substs,
-            match lang_item {
-                hir::LangItem::IntoFutureIntoFuture => {
-                    ObligationCauseCode::AwaitableExpr(expr_hir_id)
-                }
-                hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
-                    ObligationCauseCode::ForLoopIterator
-                }
-                hir::LangItem::TryTraitFromOutput
-                | hir::LangItem::TryTraitFromResidual
-                | hir::LangItem::TryTraitBranch => ObligationCauseCode::QuestionMark,
-                _ => traits::ItemObligation(def_id),
-            },
-        );
+
+        let code = match lang_item {
+            hir::LangItem::IntoFutureIntoFuture => {
+                Some(ObligationCauseCode::AwaitableExpr(expr_hir_id))
+            }
+            hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
+                Some(ObligationCauseCode::ForLoopIterator)
+            }
+            hir::LangItem::TryTraitFromOutput
+            | hir::LangItem::TryTraitFromResidual
+            | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
+            _ => None,
+        };
+        if let Some(code) = code {
+            self.add_required_obligations_with_code(span, def_id, substs, move |_, _| code.clone());
+        } else {
+            self.add_required_obligations_for_hir(span, def_id, substs, hir_id);
+        }
+
         (Res::Def(def_kind, def_id), ty)
     }
 
@@ -1011,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if found != self.tcx.types.unit {
             return;
         }
-        if let ExprKind::MethodCall(path_segment, [rcvr, ..], _) = expr.kind {
+        if let ExprKind::MethodCall(path_segment, rcvr, ..) = expr.kind {
             if self
                 .typeck_results
                 .borrow()
@@ -1083,84 +1056,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ));
     }
 
-    pub(in super::super) fn could_remove_semicolon(
-        &self,
-        blk: &'tcx hir::Block<'tcx>,
-        expected_ty: Ty<'tcx>,
-    ) -> Option<(Span, StatementAsExpression)> {
-        // Be helpful when the user wrote `{... expr;}` and
-        // taking the `;` off is enough to fix the error.
-        let last_stmt = blk.stmts.last()?;
-        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
-            return None;
-        };
-        let last_expr_ty = self.node_ty(last_expr.hir_id);
-        let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
-            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
-                if last_def_id == exp_def_id =>
-            {
-                StatementAsExpression::CorrectType
-            }
-            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
-                debug!(
-                    "both opaque, likely future {:?} {:?} {:?} {:?}",
-                    last_def_id, last_bounds, exp_def_id, exp_bounds
-                );
-
-                let last_local_id = last_def_id.as_local()?;
-                let exp_local_id = exp_def_id.as_local()?;
-
-                match (
-                    &self.tcx.hir().expect_item(last_local_id).kind,
-                    &self.tcx.hir().expect_item(exp_local_id).kind,
-                ) {
-                    (
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
-                        match (left, right) {
-                            (
-                                hir::GenericBound::Trait(tl, ml),
-                                hir::GenericBound::Trait(tr, mr),
-                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
-                            {
-                                true
-                            }
-                            (
-                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
-                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
-                                // FIXME: consider the bounds!
-                                debug!("{:?} {:?}", argsl, argsr);
-                                true
-                            }
-                            _ => false,
-                        }
-                    }) =>
-                    {
-                        StatementAsExpression::NeedsBoxing
-                    }
-                    _ => StatementAsExpression::CorrectType,
-                }
-            }
-            _ => StatementAsExpression::CorrectType,
-        };
-        if (matches!(last_expr_ty.kind(), ty::Error(_))
-            || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err())
-            && matches!(needs_box, StatementAsExpression::CorrectType)
-        {
-            return None;
-        }
-        let span = if last_stmt.span.from_expansion() {
-            let mac_call = original_sp(last_stmt.span, blk.span);
-            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
-        } else {
-            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
-        };
-        Some((span, needs_box))
-    }
-
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     #[instrument(skip(self, span), level = "debug")]
@@ -1193,13 +1088,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
-                let container = tcx.associated_item(def_id).container;
-                debug!(?def_id, ?container);
+                let assoc_item = tcx.associated_item(def_id);
+                let container = assoc_item.container;
+                let container_id = assoc_item.container_id(tcx);
+                debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
+                    ty::TraitContainer => {
+                        callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
                     }
-                    ty::ImplContainer(impl_def_id) => {
+                    ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. It this came from an
@@ -1207,7 +1104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
                             let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
-                            user_self_ty = Some(UserSelfTy { impl_def_id, self_ty });
+                            user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
                 }
@@ -1460,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
-        self.add_required_obligations(span, def_id, &substs);
+        self.add_required_obligations_for_hir(span, def_id, &substs, hir_id);
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
@@ -1497,32 +1394,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Add all the obligations that are required, substituting and normalized appropriately.
-    pub(crate) fn add_required_obligations(
+    pub(crate) fn add_required_obligations_for_hir(
         &self,
         span: Span,
         def_id: DefId,
-        substs: &SubstsRef<'tcx>,
+        substs: SubstsRef<'tcx>,
+        hir_id: hir::HirId,
     ) {
-        self.add_required_obligations_with_code(
-            span,
-            def_id,
-            substs,
-            traits::ItemObligation(def_id),
-        )
+        self.add_required_obligations_with_code(span, def_id, substs, |idx, span| {
+            if span.is_dummy() {
+                ObligationCauseCode::ExprItemObligation(def_id, hir_id, idx)
+            } else {
+                ObligationCauseCode::ExprBindingObligation(def_id, span, hir_id, idx)
+            }
+        })
     }
 
-    #[tracing::instrument(level = "debug", skip(self, span, def_id, substs))]
+    #[instrument(level = "debug", skip(self, code, span, def_id, substs))]
     fn add_required_obligations_with_code(
         &self,
         span: Span,
         def_id: DefId,
-        substs: &SubstsRef<'tcx>,
-        code: ObligationCauseCode<'tcx>,
+        substs: SubstsRef<'tcx>,
+        code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
         let (bounds, _) = self.instantiate_bounds(span, def_id, &substs);
 
         for obligation in traits::predicates_for_generics(
-            traits::ObligationCause::new(span, self.body_id, code),
+            |idx, predicate_span| {
+                traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
+            },
             self.param_env,
             bounds,
         ) {

@@ -1,0 +1,16 @@
+### What it does
+Checks for usage of `iter().next()` on a Slice or an Array
+
+### Why is this bad?
+These can be shortened into `.get()`
+
+### Example
+```
+a[2..].iter().next();
+b.iter().next();
+```
+should be written as:
+```
+a.get(2);
+b.get(0);
+```

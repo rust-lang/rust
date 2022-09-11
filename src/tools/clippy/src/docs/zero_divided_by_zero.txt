@@ -1,0 +1,15 @@
+### What it does
+Checks for `0.0 / 0.0`.
+
+### Why is this bad?
+It's less readable than `f32::NAN` or `f64::NAN`.
+
+### Example
+```
+let nan = 0.0f32 / 0.0;
+```
+
+Use instead:
+```
+let nan = f32::NAN;
+```

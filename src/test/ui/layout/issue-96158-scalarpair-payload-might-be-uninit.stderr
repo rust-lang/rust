@@ -1,76 +1,8 @@
 error: layout_of(MissingPayloadField) = Layout {
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
-           variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               tag_encoding: Direct,
-               tag_field: 0,
-               variants: [
-                   Layout {
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           memory_index: [
-                               0,
-                           ],
-                       },
-                       variants: Single {
-                           index: 0,
-                       },
-                       abi: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
-                       ),
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(2 bytes),
-                   },
-                   Layout {
-                       fields: Arbitrary {
-                           offsets: [],
-                           memory_index: [],
-                       },
-                       variants: Single {
-                           index: 1,
-                       },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(1 bytes),
-                   },
-               ],
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
            },
            abi: ScalarPair(
                Initialized {
@@ -87,6 +19,14 @@ error: layout_of(MissingPayloadField) = Layout {
                    ),
                },
            ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -97,26 +37,6 @@ error: layout_of(MissingPayloadField) = Layout {
                    valid_range: 0..=1,
                },
            ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
-           },
-           size: Size(2 bytes),
-       }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
-   |
-LL | pub enum MissingPayloadField {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: layout_of(CommonPayloadField) = Layout {
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -129,6 +49,26 @@ error: layout_of(CommonPayloadField) = Layout {
                tag_field: 0,
                variants: [
                    Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
                                Size(1 bytes),
@@ -137,68 +77,42 @@ error: layout_of(CommonPayloadField) = Layout {
                                0,
                            ],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 0,
                        },
-                       abi: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
-                       ),
-                       largest_niche: None,
+                   },
+                   Layout {
+                       size: Size(1 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size(2 bytes),
-                   },
-                   Layout {
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(1 bytes),
-                           ],
-                           memory_index: [
-                               0,
-                           ],
+                       abi: Aggregate {
+                           sized: true,
                        },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
                        variants: Single {
                            index: 1,
                        },
-                       abi: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
-                       ),
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(2 bytes),
                    },
                ],
+           },
+       }
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
+   |
+LL | pub enum MissingPayloadField {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(CommonPayloadField) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
            },
            abi: ScalarPair(
                Initialized {
@@ -216,6 +130,14 @@ error: layout_of(CommonPayloadField) = Layout {
                    valid_range: 0..=255,
                },
            ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -226,26 +148,6 @@ error: layout_of(CommonPayloadField) = Layout {
                    valid_range: 0..=1,
                },
            ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
-           },
-           size: Size(2 bytes),
-       }
-  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
-   |
-LL | pub enum CommonPayloadField {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -258,6 +160,27 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                tag_field: 0,
                variants: [
                    Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=255,
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
                                Size(1 bytes),
@@ -266,9 +189,17 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                                0,
                            ],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 0,
                        },
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
                        abi: ScalarPair(
                            Initialized {
                                value: Int(
@@ -277,21 +208,14 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                                ),
                                valid_range: 0..=1,
                            },
-                           Union {
+                           Initialized {
                                value: Int(
                                    I8,
                                    false,
                                ),
+                               valid_range: 0..=255,
                            },
                        ),
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(2 bytes),
-                   },
-                   Layout {
                        fields: Arbitrary {
                            offsets: [
                                Size(1 bytes),
@@ -300,32 +224,24 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                                0,
                            ],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 1,
                        },
-                       abi: ScalarPair(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
-                       ),
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(2 bytes),
                    },
                ],
+           },
+       }
+  --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
+   |
+LL | pub enum CommonPayloadField {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
            },
            abi: ScalarPair(
                Initialized {
@@ -342,6 +258,14 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    ),
                },
            ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -352,11 +276,87 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    valid_range: 0..=1,
                },
            ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=1,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                   },
+                   Layout {
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 1,
+                       },
+                   },
+               ],
            },
-           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
@@ -364,6 +364,26 @@ LL | pub enum CommonPayloadFieldIsMaybeUninit {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheFirst) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: ScalarPair(
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=4,
+               },
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
+           ),
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -372,6 +392,16 @@ error: layout_of(NicheFirst) = Layout {
                    0,
                ],
            },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=4,
+               },
+           ),
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -381,25 +411,17 @@ error: layout_of(NicheFirst) = Layout {
                    valid_range: 0..=4,
                },
                tag_encoding: Niche {
-                   dataful_variant: 0,
+                   untagged_variant: 0,
                    niche_variants: 1..=2,
                    niche_start: 3,
                },
                tag_field: 0,
                variants: [
                    Layout {
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                               Size(1 bytes),
-                           ],
-                           memory_index: [
-                               0,
-                               1,
-                           ],
-                       },
-                       variants: Single {
-                           index: 0,
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
                        },
                        abi: ScalarPair(
                            Initialized {
@@ -417,6 +439,16 @@ error: layout_of(NicheFirst) = Layout {
                                valid_range: 0..=255,
                            },
                        ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(1 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                               1,
+                           ],
+                       },
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
@@ -427,80 +459,48 @@ error: layout_of(NicheFirst) = Layout {
                                valid_range: 0..=2,
                            },
                        ),
+                       variants: Single {
+                           index: 0,
+                       },
+                   },
+                   Layout {
+                       size: Size(0 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size(2 bytes),
-                   },
-                   Layout {
+                       abi: Aggregate {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 1,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
+                   },
+                   Layout {
+                       size: Size(0 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size(0 bytes),
-                   },
-                   Layout {
+                       abi: Aggregate {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 2,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(0 bytes),
                    },
                ],
            },
-           abi: ScalarPair(
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
-           ),
-           largest_niche: Some(
-               Niche {
-                   offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-           ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
-           },
-           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
@@ -508,6 +508,26 @@ LL | pub enum NicheFirst {
    | ^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheSecond) = Layout {
+           size: Size(2 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: ScalarPair(
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=4,
+               },
+           ),
            fields: Arbitrary {
                offsets: [
                    Size(1 bytes),
@@ -516,6 +536,16 @@ error: layout_of(NicheSecond) = Layout {
                    0,
                ],
            },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(1 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=4,
+               },
+           ),
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -525,25 +555,17 @@ error: layout_of(NicheSecond) = Layout {
                    valid_range: 0..=4,
                },
                tag_encoding: Niche {
-                   dataful_variant: 0,
+                   untagged_variant: 0,
                    niche_variants: 1..=2,
                    niche_start: 3,
                },
                tag_field: 0,
                variants: [
                    Layout {
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(0 bytes),
-                               Size(1 bytes),
-                           ],
-                           memory_index: [
-                               0,
-                               1,
-                           ],
-                       },
-                       variants: Single {
-                           index: 0,
+                       size: Size(2 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
                        },
                        abi: ScalarPair(
                            Initialized {
@@ -561,6 +583,16 @@ error: layout_of(NicheSecond) = Layout {
                                valid_range: 0..=2,
                            },
                        ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(1 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                               1,
+                           ],
+                       },
                        largest_niche: Some(
                            Niche {
                                offset: Size(1 bytes),
@@ -571,80 +603,48 @@ error: layout_of(NicheSecond) = Layout {
                                valid_range: 0..=2,
                            },
                        ),
+                       variants: Single {
+                           index: 0,
+                       },
+                   },
+                   Layout {
+                       size: Size(0 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size(2 bytes),
-                   },
-                   Layout {
+                       abi: Aggregate {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 1,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
+                   },
+                   Layout {
+                       size: Size(0 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       size: Size(0 bytes),
-                   },
-                   Layout {
+                       abi: Aggregate {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 2,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(0 bytes),
                    },
                ],
            },
-           abi: ScalarPair(
-               Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
-               Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-           ),
-           largest_niche: Some(
-               Niche {
-                   offset: Size(1 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-           ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
-           },
-           size: Size(2 bytes),
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |

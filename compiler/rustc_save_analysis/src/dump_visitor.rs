@@ -44,8 +44,6 @@ use rls_data::{
     RefKind, Relation, RelationKind, SpanData,
 };
 
-use tracing::{debug, error};
-
 #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5213
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -82,14 +80,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     pub fn new(save_ctxt: SaveContext<'tcx>) -> DumpVisitor<'tcx> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         let dumper = Dumper::new(save_ctxt.config.clone());
-        DumpVisitor {
-            tcx: save_ctxt.tcx,
-            save_ctxt,
-            dumper,
-            span: span_utils,
-            // mac_defs: FxHashSet::default(),
-            // macro_calls: FxHashSet::default(),
-        }
+        DumpVisitor { tcx: save_ctxt.tcx, save_ctxt, dumper, span: span_utils }
     }
 
     pub fn analysis(&self) -> &rls_data::Analysis {
@@ -812,6 +803,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         ex: &'tcx hir::Expr<'tcx>,
         seg: &'tcx hir::PathSegment<'tcx>,
+        receiver: &'tcx hir::Expr<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) {
         debug!("process_method_call {:?} {:?}", ex, ex.span);
@@ -832,6 +824,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         // walk receiver and args
+        self.visit_expr(receiver);
         walk_list!(self, visit_expr, args);
     }
 
@@ -921,7 +914,10 @@ impl<'tcx> DumpVisitor<'tcx> {
                     _,
                 )
                 | Res::SelfTy { .. } => {
-                    self.dump_path_segment_ref(id, &hir::PathSegment::from_ident(ident));
+                    self.dump_path_segment_ref(
+                        id,
+                        &hir::PathSegment::new(ident, hir::HirId::INVALID, Res::Err),
+                    );
                 }
                 def => {
                     error!("unexpected definition kind when processing collected idents: {:?}", def)
@@ -981,7 +977,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.process_macro_use(trait_item.span);
         match trait_item.kind {
             hir::TraitItemKind::Const(ref ty, body) => {
-                let body = body.map(|b| &self.tcx.hir().body(b).value);
+                let body = body.map(|b| self.tcx.hir().body(b).value);
                 let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
                     trait_item.def_id,
@@ -1325,7 +1321,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                         }),
                 }
             }
-            hir::TyKind::OpaqueDef(item_id, _) => {
+            hir::TyKind::OpaqueDef(item_id, _, _) => {
                 let item = self.tcx.hir().item(item_id);
                 self.nest_typeck_results(item_id.def_id, |v| v.visit_item(item));
             }
@@ -1349,7 +1345,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *rest)
             }
-            hir::ExprKind::MethodCall(ref seg, args, _) => self.process_method_call(ex, seg, args),
+            hir::ExprKind::MethodCall(ref seg, receiver, args, _) => {
+                self.process_method_call(ex, seg, receiver, args)
+            }
             hir::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
@@ -1360,7 +1358,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Closure { ref fn_decl, body, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, .. }) => {
                 let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types
@@ -1425,9 +1423,10 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         self.process_macro_use(l.span);
         self.process_var_decl(&l.pat);
 
-        // Just walk the initializer and type (don't want to walk the pattern again).
+        // Just walk the initializer, the else branch and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
+        walk_list!(self, visit_block, l.els);
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {

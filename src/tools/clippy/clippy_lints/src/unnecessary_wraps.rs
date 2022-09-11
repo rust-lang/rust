@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Check if all return expression respect the following condition and collect them.
         let mut suggs = Vec::new();
-        let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
+        let can_sugg = find_all_ret_expressions(cx, body.value, |ret_expr| {
             if_chain! {
                 if !ret_expr.span.from_expansion();
                 // Check if a function call.
@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                         (
                             ret_expr.span,
                             if inner_type.is_unit() {
-                                "".to_string()
+                                String::new()
                             } else {
                                 snippet(cx, arg.span.source_callsite(), "..").to_string()
                             }

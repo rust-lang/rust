@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(call NATIVE_STATICLIB,define-foo)
 	$(RUSTC) -ldefine-foo use-foo.rs

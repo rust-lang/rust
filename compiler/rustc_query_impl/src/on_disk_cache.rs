@@ -9,7 +9,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
-use rustc_middle::thir;
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
@@ -23,8 +22,9 @@ use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
-use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, SourceFile, Span};
+use rustc_span::{CachingSourceMapView, Symbol};
+use std::collections::hash_map::Entry;
 use std::io;
 use std::mem;
 
@@ -38,6 +38,11 @@ const TAG_RELATIVE_SPAN: u8 = 2;
 
 const TAG_SYNTAX_CONTEXT: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
+
+// Tags for encoding Symbol's
+const SYMBOL_STR: u8 = 0;
+const SYMBOL_OFFSET: u8 = 1;
+const SYMBOL_PREINTERNED: u8 = 2;
 
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -255,6 +260,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
                 hygiene_context: &hygiene_encode_context,
+                symbol_table: Default::default(),
             };
 
             // Encode query results.
@@ -715,6 +721,40 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
     }
 }
 
+// copy&paste impl from rustc_metadata
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        let tag = d.read_u8();
+
+        match tag {
+            SYMBOL_STR => {
+                let s = d.read_str();
+                Symbol::intern(s)
+            }
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = d.read_usize();
+                let old_pos = d.opaque.position();
+
+                // move to str ofset and read
+                d.opaque.set_position(pos);
+                let s = d.read_str();
+                let sym = Symbol::intern(s);
+
+                // restore position
+                d.opaque.set_position(old_pos);
+
+                sym
+            }
+            SYMBOL_PREINTERNED => {
+                let symbol_index = d.read_u32();
+                Symbol::new_from_decoded(symbol_index)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         let stable_id = StableCrateId::decode(d);
@@ -766,7 +806,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -816,6 +856,7 @@ pub struct CacheEncoder<'a, 'tcx> {
     source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: &'a HygieneEncodeContext,
+    symbol_table: FxHashMap<Symbol, usize>,
 }
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
@@ -897,6 +938,32 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Span {
         line_lo.encode(s);
         col_lo.encode(s);
         len.encode(s);
+    }
+}
+
+// copy&paste impl from rustc_metadata
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Symbol {
+    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
+        // if symbol preinterned, emit tag and symbol index
+        if self.is_preinterned() {
+            s.encoder.emit_u8(SYMBOL_PREINTERNED);
+            s.encoder.emit_u32(self.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match s.symbol_table.entry(*self) {
+                Entry::Vacant(o) => {
+                    s.encoder.emit_u8(SYMBOL_STR);
+                    let pos = s.encoder.position();
+                    o.insert(pos);
+                    s.emit_str(self.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = o.get().clone();
+                    s.emit_u8(SYMBOL_OFFSET);
+                    s.emit_usize(x);
+                }
+            }
+        }
     }
 }
 
