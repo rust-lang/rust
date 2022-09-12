@@ -1,0 +1,38 @@
+### What it does
+Checks for `match` with identical arm bodies.
+
+### Why is this bad?
+This is probably a copy & paste error. If arm bodies
+are the same on purpose, you can factor them
+[using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
+
+### Known problems
+False positive possible with order dependent `match`
+(see issue
+[#860](https://github.com/rust-lang/rust-clippy/issues/860)).
+
+### Example
+```
+match foo {
+    Bar => bar(),
+    Quz => quz(),
+    Baz => bar(), // <= oops
+}
+```
+
+This should probably be
+```
+match foo {
+    Bar => bar(),
+    Quz => quz(),
+    Baz => baz(), // <= fixed
+}
+```
+
+or if the original code was not a typo:
+```
+match foo {
+    Bar | Baz => bar(), // <= shows the intent better
+    Quz => quz(),
+}
+```

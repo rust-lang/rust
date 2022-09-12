@@ -61,7 +61,8 @@ const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::
 const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
 const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -107,7 +108,8 @@ const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
 const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -145,11 +147,9 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-//~^ ERROR evaluation of constant value failed
-//~| null pointer
+//~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 
 // Const eval fails for these, so they need to be statics to error.

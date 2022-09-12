@@ -1,23 +1,14 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/link-ordinal-and-name.rs:1:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: cannot use `#[link_name]` with `#[link_ordinal]`
-  --> $DIR/link-ordinal-and-name.rs:7:5
+  --> $DIR/link-ordinal-and-name.rs:6:5
    |
 LL |     #[link_ordinal(42)]
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: cannot use `#[link_name]` with `#[link_ordinal]`
-  --> $DIR/link-ordinal-and-name.rs:11:5
+  --> $DIR/link-ordinal-and-name.rs:10:5
    |
 LL |     #[link_ordinal(5)]
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 

@@ -1,0 +1,47 @@
+### What it does
+Checks for `new` not returning a type that contains `Self`.
+
+### Why is this bad?
+As a convention, `new` methods are used to make a new
+instance of a type.
+
+### Example
+In an impl block:
+```
+impl Foo {
+    fn new() -> NotAFoo {
+    }
+}
+```
+
+```
+struct Bar(Foo);
+impl Foo {
+    // Bad. The type name must contain `Self`
+    fn new() -> Bar {
+    }
+}
+```
+
+```
+impl Foo {
+    // Good. Return type contains `Self`
+    fn new() -> Result<Foo, FooError> {
+    }
+}
+```
+
+Or in a trait definition:
+```
+pub trait Trait {
+    // Bad. The type name must contain `Self`
+    fn new();
+}
+```
+
+```
+pub trait Trait {
+    // Good. Return type contains `Self`
+    fn new() -> Self;
+}
+```

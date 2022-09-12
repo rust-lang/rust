@@ -35,10 +35,7 @@
 //! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
 //! the time being.
 
-use std::{
-    collections::{HashMap, VecDeque},
-    convert::TryInto,
-};
+use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
 use tt::TokenId;

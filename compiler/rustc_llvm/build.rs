@@ -242,6 +242,13 @@ fn main() {
         println!("cargo:rustc-link-lib=uuid");
     } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
         println!("cargo:rustc-link-lib=z");
+    } else if target.starts_with("arm")
+        || target.starts_with("mips-")
+        || target.starts_with("mipsel-")
+        || target.starts_with("powerpc-")
+    {
+        // 32-bit targets need to link libatomic.
+        println!("cargo:rustc-link-lib=atomic");
     }
     cmd.args(&components);
 
@@ -335,10 +342,10 @@ fn main() {
     };
 
     // RISC-V GCC erroneously requires libatomic for sub-word
-    // atomic operations. FreeBSD uses Clang as its system
+    // atomic operations. Some BSD uses Clang as its system
     // compiler and provides no libatomic in its base system so
     // does not want this.
-    if !target.contains("freebsd") && target.starts_with("riscv") {
+    if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd") {
         println!("cargo:rustc-link-lib=atomic");
     }
 

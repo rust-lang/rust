@@ -1,5 +1,5 @@
 // Ensure that the compiler include the blanklet implementation suggestion
-// when inside a `impl` statment are used two local traits.
+// when inside a `impl` statement are used two local traits.
 //
 // edition:2021
 use std::fmt;

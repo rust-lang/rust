@@ -1,8 +1,10 @@
 error[E0277]: expected a `Fn<(<_ as ATC<'a>>::Type,)>` closure, found `F`
-  --> $DIR/issue-62529-3.rs:25:9
+  --> $DIR/issue-62529-3.rs:25:14
    |
 LL |         call(f, ());
-   |         ^^^^ expected an `Fn<(<_ as ATC<'a>>::Type,)>` closure, found `F`
+   |         ---- ^ expected an `Fn<(<_ as ATC<'a>>::Type,)>` closure, found `F`
+   |         |
+   |         required by a bound introduced by this call
    |
    = note: expected a closure with arguments `((),)`
               found a closure with arguments `(<_ as ATC<'a>>::Type,)`

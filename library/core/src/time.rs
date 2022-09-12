@@ -318,19 +318,11 @@ impl Duration {
     /// assert_eq!(duration.as_secs(), 5);
     /// ```
     ///
-    /// To determine the total number of seconds represented by the `Duration`,
-    /// use `as_secs` in combination with [`subsec_nanos`]:
+    /// To determine the total number of seconds represented by the `Duration`
+    /// including the fractional part, use [`as_secs_f64`] or [`as_secs_f32`]
     ///
-    /// ```
-    /// use std::time::Duration;
-    ///
-    /// let duration = Duration::new(5, 730023852);
-    ///
-    /// assert_eq!(5.730023852,
-    ///            duration.as_secs() as f64
-    ///            + duration.subsec_nanos() as f64 * 1e-9);
-    /// ```
-    ///
+    /// [`as_secs_f64`]: Duration::as_secs_f64
+    /// [`as_secs_f32`]: Duration::as_secs_f32
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
@@ -1143,7 +1135,7 @@ impl fmt::Debug for Duration {
                     // 2. The postfix: can be "µs" so we have to count UTF8 characters.
                     let mut actual_w = prefix.len() + postfix.chars().count();
                     // 3. The integer part:
-                    if let Some(log) = integer_part.checked_log10() {
+                    if let Some(log) = integer_part.checked_ilog10() {
                         // integer_part is > 0, so has length log10(x)+1
                         actual_w += 1 + log as usize;
                     } else {
@@ -1288,7 +1280,7 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // f32 does not have enough presicion to trigger the second branch
+            // f32 does not have enough precision to trigger the second branch
             // since it can not represent numbers between 0.999_999_940_395 and 1.0.
             let nanos = nanos + add_ns as u32;
             if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) { (0, nanos) } else { (1, 0) }
@@ -1307,9 +1299,9 @@ macro_rules! try_from_secs {
             let rem_msb = nanos_tmp & rem_msb_mask == 0;
             let add_ns = !(rem_msb || (is_even && is_tie));
 
-            // f32 does not have enough presicion to trigger the second branch.
+            // f32 does not have enough precision to trigger the second branch.
             // For example, it can not represent numbers between 1.999_999_880...
-            // and 2.0. Bigger values result in even smaller presicion of the
+            // and 2.0. Bigger values result in even smaller precision of the
             // fractional part.
             let nanos = nanos + add_ns as u32;
             if ($mant_bits == 23) || (nanos != NANOS_PER_SEC) {

@@ -103,47 +103,9 @@ fn foo(f: Struct) {
 }
 
 #[test]
-fn functional_update() {
-    // FIXME: This should filter out all completions that do not have the type `Foo`
-    check(
-        r#"
-//- minicore:default
-struct Foo { foo1: u32, foo2: u32 }
-impl Default for Foo {
-    fn default() -> Self { loop {} }
-}
+fn in_functional_update() {
+    cov_mark::check!(functional_update);
 
-fn main() {
-    let thing = 1;
-    let foo = Foo { foo1: 0, foo2: 0 };
-    let foo2 = Foo { thing, $0 }
-}
-"#,
-        expect![[r#"
-            fd ..Default::default()
-            fd foo1                 u32
-            fd foo2                 u32
-        "#]],
-    );
-    check(
-        r#"
-//- minicore:default
-struct Foo { foo1: u32, foo2: u32 }
-impl Default for Foo {
-    fn default() -> Self { loop {} }
-}
-
-fn main() {
-    let thing = 1;
-    let foo = Foo { foo1: 0, foo2: 0 };
-    let foo2 = Foo { thing, .$0 }
-}
-"#,
-        expect![[r#"
-            fd ..Default::default()
-            sn ..
-        "#]],
-    );
     check(
         r#"
 //- minicore:default
@@ -188,6 +150,56 @@ fn main() {
 "#,
         expect![[r#"
             fn default() (as Default) fn() -> Self
+        "#]],
+    );
+}
+
+#[test]
+fn functional_update_no_dot() {
+    cov_mark::check!(functional_update_field);
+    // FIXME: This should filter out all completions that do not have the type `Foo`
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, $0 }
+}
+"#,
+        expect![[r#"
+            fd ..Default::default()
+            fd foo1                 u32
+            fd foo2                 u32
+        "#]],
+    );
+}
+
+#[test]
+fn functional_update_one_dot() {
+    cov_mark::check!(functional_update_one_dot);
+    check(
+        r#"
+//- minicore:default
+struct Foo { foo1: u32, foo2: u32 }
+impl Default for Foo {
+    fn default() -> Self { loop {} }
+}
+
+fn main() {
+    let thing = 1;
+    let foo = Foo { foo1: 0, foo2: 0 };
+    let foo2 = Foo { thing, .$0 }
+}
+"#,
+        expect![[r#"
+            fd ..Default::default()
+            sn ..
         "#]],
     );
 }

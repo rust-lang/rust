@@ -104,7 +104,6 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 }
 
 /// See `ParamEnv` struct definition for details.
-#[instrument(level = "debug", skip(tcx))]
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
@@ -348,7 +347,7 @@ fn instance_def_size_estimate<'tcx>(
     match instance_def {
         InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
             let mir = tcx.instance_mir(instance_def);
-            mir.basic_blocks().iter().map(|bb| bb.statements.len() + 1).sum()
+            mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
         }
         // Estimate the size of other compiler-generated shims to be 1.
         _ => 1,
@@ -410,7 +409,6 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
-#[instrument(level = "debug", skip(tcx))]
 pub fn conservative_is_privately_uninhabited_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env_and: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,

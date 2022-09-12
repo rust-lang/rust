@@ -53,7 +53,7 @@ impl<F> R<F> { fn new(f: F) -> Self { R { w: 0, f } } }
 // * local/field: Is the structure in a local or a field
 // * fully/partial/void: Are we fully initializing it before using any part?
 //                       Is whole type empty due to a void component?
-// * init/reinit: First initialization, or did we previously inititalize and then move out?
+// * init/reinit: First initialization, or did we previously initialize and then move out?
 // * struct/tuple: Is this a struct or a (X, Y).
 //
 // As a shorthand for the cases above, adding a numeric summary to

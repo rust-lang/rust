@@ -1,8 +1,10 @@
 error[E0277]: a value of type `Bar` cannot be built from an iterator over elements of type `_`
-  --> $DIR/branches.rs:19:28
+  --> $DIR/branches.rs:19:9
    |
 LL |         std::iter::empty().collect()
-   |                            ^^^^^^^ value of type `Bar` cannot be built from `std::iter::Iterator<Item=_>`
+   |         ^^^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
+   |         |
+   |         value of type `Bar` cannot be built from `std::iter::Iterator<Item=_>`
    |
    = help: the trait `FromIterator<_>` is not implemented for `Bar`
 note: required by a bound in `collect`

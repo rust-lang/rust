@@ -10,8 +10,8 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
@@ -57,8 +57,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::{cmp, fmt, ptr};
-use tracing::debug;
+use std::{fmt, ptr};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
@@ -108,7 +107,6 @@ enum Scope<'a> {
     // The node ID is for reporting the `PROC_MACRO_DERIVE_RESOLUTION_FALLBACK`
     // lint if it should be reported.
     Module(Module<'a>, Option<NodeId>),
-    RegisteredAttrs,
     MacroUsePrelude,
     BuiltinAttrs,
     ExternPrelude,
@@ -165,30 +163,11 @@ enum ImplTraitContext {
     Universal(LocalDefId),
 }
 
-#[derive(Eq)]
 struct BindingError {
     name: Symbol,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
     could_be_path: bool,
-}
-
-impl PartialOrd for BindingError {
-    fn partial_cmp(&self, other: &BindingError) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for BindingError {
-    fn eq(&self, other: &BindingError) -> bool {
-        self.name == other.name
-    }
-}
-
-impl Ord for BindingError {
-    fn cmp(&self, other: &BindingError) -> cmp::Ordering {
-        self.name.cmp(&other.name)
-    }
 }
 
 enum ResolutionError<'a> {
@@ -650,7 +629,7 @@ pub struct NameBinding<'a> {
     ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
     expansion: LocalExpnId,
     span: Span,
-    vis: ty::Visibility,
+    vis: ty::Visibility<DefId>,
 }
 
 pub trait ToNameBinding<'a> {
@@ -847,7 +826,7 @@ impl<'a> NameBinding<'a> {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct ExternPreludeEntry<'a> {
     extern_crate_item: Option<&'a NameBinding<'a>>,
     pub introduced_by_item: bool,
@@ -913,11 +892,6 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes>,
-    /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
-    /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
-    /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
-    /// field from the original parameter 'a to the new parameter 'a1.
-    generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
     /// Lifetime parameters that lowering will have to introduce.
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
@@ -976,7 +950,6 @@ pub struct Resolver<'a> {
     /// A small map keeping true kinds of built-in macros that appear to be fn-like on
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
-    registered_attrs: FxHashSet<Ident>,
     registered_tools: RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
     macro_map: FxHashMap<DefId, MacroData>,
@@ -1020,7 +993,7 @@ pub struct Resolver<'a> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: DefIdMap<(Res, ty::Visibility, Vec<ty::Visibility>)>,
+    struct_constructors: DefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
@@ -1252,8 +1225,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let (registered_attrs, registered_tools) =
-            macros::registered_attrs_and_tools(session, &krate.attrs);
+        let registered_tools = macros::registered_tools(session, &krate.attrs);
 
         let features = session.features_untracked();
 
@@ -1281,7 +1253,6 @@ impl<'a> Resolver<'a> {
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
-            generics_def_id_map: Vec::new(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             reexport_map: FxHashMap::default(),
@@ -1318,7 +1289,6 @@ impl<'a> Resolver<'a> {
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
-            registered_attrs,
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
@@ -1447,7 +1417,6 @@ impl<'a> Resolver<'a> {
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
-            generics_def_id_map: self.generics_def_id_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             node_id_to_def_id: self.node_id_to_def_id,
@@ -1491,7 +1460,6 @@ impl<'a> Resolver<'a> {
             import_res_map: self.import_res_map.clone(),
             label_res_map: self.label_res_map.clone(),
             lifetimes_res_map: self.lifetimes_res_map.clone(),
-            generics_def_id_map: self.generics_def_id_map.clone(),
             extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
             next_node_id: self.next_node_id.clone(),
             node_id_to_def_id: self.node_id_to_def_id.clone(),
@@ -1817,7 +1785,11 @@ impl<'a> Resolver<'a> {
         self.pat_span_map.insert(node, span);
     }
 
-    fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
+    fn is_accessible_from(
+        &self,
+        vis: ty::Visibility<impl Into<DefId>>,
+        module: Module<'a>,
+    ) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self)
     }
 
@@ -1871,10 +1843,8 @@ impl<'a> Resolver<'a> {
                     self.crate_loader.maybe_process_path_extern(ident.name)?
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
-                Some(
-                    (crate_root, ty::Visibility::Public, DUMMY_SP, LocalExpnId::ROOT)
-                        .to_name_binding(self.arenas),
-                )
+                let vis = ty::Visibility::<LocalDefId>::Public;
+                Some((crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas))
             }
         })
     }
@@ -1942,6 +1912,16 @@ impl<'a> Resolver<'a> {
         def_id.as_local().map(|def_id| self.source_span[def_id])
     }
 
+    /// Retrieves the name of the given `DefId`.
+    #[inline]
+    pub fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
+        let def_key = match def_id.as_local() {
+            Some(def_id) => self.definitions.def_key(def_id),
+            None => self.cstore().def_key(def_id),
+        };
+        def_key.get_opt_name()
+    }
+
     /// Checks if an expression refers to a function marked with
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
@@ -1981,7 +1961,7 @@ impl<'a> Resolver<'a> {
                         _ => panic!("invalid arg index"),
                     }
                 }
-                // Cache the lookup to avoid parsing attributes for an iterm multiple times.
+                // Cache the lookup to avoid parsing attributes for an item multiple times.
                 self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
                 return Some(ret);
             }
@@ -2010,6 +1990,24 @@ impl<'a> Resolver<'a> {
             self.record_use(ident, name_binding, false);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
+    }
+
+    // Items that go to reexport table encoded to metadata and visible through it to other crates.
+    fn is_reexport(&self, binding: &NameBinding<'a>) -> Option<def::Res<!>> {
+        // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+        // into the crate root to actual `NameBindingKind::Import`.
+        if binding.is_import()
+            || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+        {
+            let res = binding.res().expect_non_local();
+            // Ambiguous imports are treated as errors at this point and are
+            // not exposed to other crates (see #36837 for more details).
+            if res != def::Res::Err && !binding.is_ambiguity() {
+                return Some(res);
+            }
+        }
+
+        return None;
     }
 }
 

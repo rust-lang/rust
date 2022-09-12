@@ -162,12 +162,18 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
    |
 LL |     fn in_return() -> impl Debug;
    |                       ^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `impl` method return
   --> $DIR/where-allowed.rs:125:34
    |
 LL |     fn in_trait_impl_return() -> impl Debug { () }
    |                                  ^^^^^^^^^^
+   |
+   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `extern fn` param
   --> $DIR/where-allowed.rs:138:33

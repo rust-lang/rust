@@ -33,16 +33,12 @@
           StorageDead(_3);                 // scope 1 at $DIR/derefer_test.rs:+2:28: +2:29
           StorageLive(_4);                 // scope 2 at $DIR/derefer_test.rs:+3:9: +3:10
 -         _4 = &mut ((*(_2.1: &mut (i32, i32))).0: i32); // scope 2 at $DIR/derefer_test.rs:+3:13: +3:26
-+         StorageLive(_6);                 // scope 2 at $DIR/derefer_test.rs:+3:13: +3:26
 +         _6 = deref_copy (_2.1: &mut (i32, i32)); // scope 2 at $DIR/derefer_test.rs:+3:13: +3:26
 +         _4 = &mut ((*_6).0: i32);        // scope 2 at $DIR/derefer_test.rs:+3:13: +3:26
-+         StorageDead(_6);                 // scope 3 at $DIR/derefer_test.rs:+4:9: +4:10
           StorageLive(_5);                 // scope 3 at $DIR/derefer_test.rs:+4:9: +4:10
 -         _5 = &mut ((*(_2.1: &mut (i32, i32))).1: i32); // scope 3 at $DIR/derefer_test.rs:+4:13: +4:26
-+         StorageLive(_7);                 // scope 3 at $DIR/derefer_test.rs:+4:13: +4:26
 +         _7 = deref_copy (_2.1: &mut (i32, i32)); // scope 3 at $DIR/derefer_test.rs:+4:13: +4:26
 +         _5 = &mut ((*_7).1: i32);        // scope 3 at $DIR/derefer_test.rs:+4:13: +4:26
-+         StorageDead(_7);                 // scope 0 at $DIR/derefer_test.rs:+0:11: +5:2
           _0 = const ();                   // scope 0 at $DIR/derefer_test.rs:+0:11: +5:2
           StorageDead(_5);                 // scope 3 at $DIR/derefer_test.rs:+5:1: +5:2
           StorageDead(_4);                 // scope 2 at $DIR/derefer_test.rs:+5:1: +5:2

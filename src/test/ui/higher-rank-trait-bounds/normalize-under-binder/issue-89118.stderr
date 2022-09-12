@@ -4,7 +4,7 @@ error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
 LL |     C: StackContext,
    |        ^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
    |
-note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>`
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
@@ -24,7 +24,7 @@ error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
 LL | impl<C> EthernetWorker<C> {}
    |         ^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
    |
-note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>`
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
@@ -44,7 +44,7 @@ error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
 LL |     type Handler = Ctx<C::Dispatcher>;
    |                    ^^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
    |
-note: required because of the requirements on the impl of `for<'a> BufferUdpStateContext<&'a ()>` for `Ctx<()>`
+note: required for `Ctx<()>` to implement `for<'a> BufferUdpStateContext<&'a ()>`
   --> $DIR/issue-89118.rs:5:23
    |
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}

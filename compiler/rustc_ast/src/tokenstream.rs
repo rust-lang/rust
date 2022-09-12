@@ -426,7 +426,8 @@ impl TokenStream {
         let attr_annotated = if attrs.is_empty() {
             tokens.create_token_stream()
         } else {
-            let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
+            let attr_data =
+                AttributesData { attrs: attrs.iter().cloned().collect(), tokens: tokens.clone() };
             AttrAnnotatedTokenStream::new(vec![(
                 AttrAnnotatedTokenTree::Attributes(attr_data),
                 Spacing::Alone,
@@ -555,7 +556,7 @@ impl TokenStreamBuilder {
 
                 // Get the first stream, which will become the result stream.
                 // If it's `None`, create an empty stream.
-                let mut iter = streams.drain(..);
+                let mut iter = streams.into_iter();
                 let mut res_stream_lrc = iter.next().unwrap().0;
 
                 // Append the subsequent elements to the result stream, after

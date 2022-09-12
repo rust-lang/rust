@@ -3,7 +3,7 @@
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -63,7 +63,7 @@ pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'
 pub fn parse_crate_attrs_from_file<'a>(
     input: &Path,
     sess: &'a ParseSess,
-) -> PResult<'a, Vec<ast::Attribute>> {
+) -> PResult<'a, ast::AttrVec> {
     let mut parser = new_parser_from_file(sess, input, None);
     parser.parse_inner_attributes()
 }
@@ -80,7 +80,7 @@ pub fn parse_crate_attrs_from_source_str(
     name: FileName,
     source: String,
     sess: &ParseSess,
-) -> PResult<'_, Vec<ast::Attribute>> {
+) -> PResult<'_, ast::AttrVec> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 

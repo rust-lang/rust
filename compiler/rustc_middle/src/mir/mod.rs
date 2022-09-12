@@ -128,8 +128,20 @@ pub trait MirPass<'tcx> {
 
 impl MirPhase {
     /// Gets the index of the current MirPhase within the set of all `MirPhase`s.
+    ///
+    /// FIXME(JakobDegen): Return a `(usize, usize)` instead.
     pub fn phase_index(&self) -> usize {
-        *self as usize
+        const BUILT_PHASE_COUNT: usize = 1;
+        const ANALYSIS_PHASE_COUNT: usize = 2;
+        match self {
+            MirPhase::Built => 1,
+            MirPhase::Analysis(analysis_phase) => {
+                1 + BUILT_PHASE_COUNT + (*analysis_phase as usize)
+            }
+            MirPhase::Runtime(runtime_phase) => {
+                1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
+            }
+        }
     }
 }
 
@@ -332,11 +344,6 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        &self.basic_blocks
-    }
-
-    #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         self.basic_blocks.as_mut()
     }
@@ -490,7 +497,7 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
 
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.basic_blocks()[index]
+        &self.basic_blocks[index]
     }
 }
 
@@ -831,10 +838,6 @@ pub struct LocalDecl<'tcx> {
     /// ```
     pub source_info: SourceInfo,
 }
-
-// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics and for
 /// classifying variables into local variables, statics, etc, which is needed e.g.
@@ -1310,10 +1313,6 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
-// `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 32);
-
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
@@ -1363,13 +1362,7 @@ impl Debug for Statement<'_> {
                 write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)
             }
             Coverage(box ref coverage) => write!(fmt, "Coverage::{:?}", coverage.kind),
-            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
-                ref src,
-                ref dst,
-                ref count,
-            }) => {
-                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
-            }
+            Intrinsic(box ref intrinsic) => write!(fmt, "{intrinsic}"),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1450,7 +1443,7 @@ pub struct PlaceRef<'tcx> {
 // Once we stop implementing `Ord` for `DefId`,
 // this impl will be unnecessary. Until then, we'll
 // leave this impl in place to prevent re-adding a
-// dependnecy on the `Ord` impl for `DefId`
+// dependency on the `Ord` impl for `DefId`
 impl<'tcx> !PartialOrd for PlaceRef<'tcx> {}
 
 impl<'tcx> Place<'tcx> {
@@ -1471,7 +1464,9 @@ impl<'tcx> Place<'tcx> {
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
         // To make sure this is not accidently used in wrong mir phase
-        debug_assert!(!self.projection[1..].contains(&PlaceElem::Deref));
+        debug_assert!(
+            self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
+        );
         self.projection.first() == Some(&PlaceElem::Deref)
     }
 
@@ -1531,6 +1526,7 @@ impl<'tcx> Place<'tcx> {
 }
 
 impl From<Local> for Place<'_> {
+    #[inline]
     fn from(local: Local) -> Self {
         Place { local, projection: List::empty() }
     }
@@ -2259,7 +2255,7 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id), param_env)
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     pub fn from_inline_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = match tcx.hir().get(hir_id) {
@@ -2297,21 +2293,18 @@ impl<'tcx> ConstantKind<'tcx> {
         let substs =
             ty::InlineConstSubsts::new(tcx, ty::InlineConstSubstsParts { parent_substs, ty })
                 .substs;
-        let uneval_const = tcx.mk_const(ty::ConstS {
+        debug_assert!(!substs.has_free_regions());
+        Self::Ty(tcx.mk_const(ty::ConstS {
             kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: ty::WithOptConstParam::unknown(def_id).to_global(),
                 substs,
                 promoted: None,
             }),
             ty,
-        });
-        debug!(?uneval_const);
-        debug_assert!(!uneval_const.has_free_regions());
-
-        Self::Ty(uneval_const)
+        }))
     }
 
-    #[instrument(skip(tcx), level = "debug")]
+    #[instrument(skip(tcx), level = "debug", ret)]
     fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -2394,24 +2387,21 @@ impl<'tcx> ConstantKind<'tcx> {
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
             Ok(val) => {
-                debug!("evaluated const value: {:?}", val);
+                debug!("evaluated const value");
                 Self::Val(val, ty)
             }
             Err(_) => {
                 debug!("error encountered during evaluation");
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
-                let ty_const = tcx.mk_const(ty::ConstS {
+                Self::Ty(tcx.mk_const(ty::ConstS {
                     kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: def.to_global(),
                         substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                         promoted: None,
                     }),
                     ty,
-                });
-                debug!(?ty_const);
-
-                Self::Ty(ty_const)
+                }))
             }
         }
     }
@@ -2691,8 +2681,8 @@ fn pretty_print_const_value<'tcx>(
                 match inner.kind() {
                     ty::Slice(t) => {
                         if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and there are
-                            // no relocations (we have an active slice reference here). We don't use
+                            // The `inspect` here is okay since we checked the bounds, and `u8` carries
+                            // no provenance (we have an active slice reference here). We don't use
                             // this result to affect interpreter execution.
                             let byte_str = data
                                 .inner()
@@ -2702,8 +2692,8 @@ fn pretty_print_const_value<'tcx>(
                         }
                     }
                     ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
+                        // The `inspect` here is okay since we checked the bounds, and `str` carries
+                        // no provenance (we have an active `str` reference here). We don't use this
                         // result to affect interpreter execution.
                         let slice = data
                             .inner()
@@ -2718,7 +2708,7 @@ fn pretty_print_const_value<'tcx>(
                 let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
-                let byte_str = alloc.inner().get_bytes(&tcx, range).unwrap();
+                let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();
                 fmt.write_str("*")?;
                 pretty_print_byte_str(fmt, byte_str)?;
                 return Ok(());
@@ -2897,4 +2887,18 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(LocalDecl<'_>, 56);
+    static_assert_size!(Statement<'_>, 32);
+    static_assert_size!(StatementKind<'_>, 16);
+    static_assert_size!(Terminator<'_>, 112);
+    static_assert_size!(TerminatorKind<'_>, 96);
 }

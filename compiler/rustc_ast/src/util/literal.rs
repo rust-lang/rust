@@ -9,7 +9,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use std::ascii;
-use tracing::debug;
 
 pub enum LitError {
     NotLiteral,
@@ -23,7 +22,7 @@ pub enum LitError {
 
 impl LitKind {
     /// Converts literal token into a semantic literal.
-    pub fn from_lit_token(lit: token::Lit) -> Result<LitKind, LitError> {
+    pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
         if suffix.is_some() && !kind.may_have_suffix() {
             return Err(LitError::InvalidSuffix);
@@ -146,14 +145,14 @@ impl LitKind {
 
                 LitKind::ByteStr(bytes.into())
             }
-            token::Err => LitKind::Err(symbol),
+            token::Err => LitKind::Err,
         })
     }
 
     /// Attempts to recover a token from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn to_lit_token(&self) -> token::Lit {
+    pub fn to_token_lit(&self) -> token::Lit {
         let (kind, symbol, suffix) = match *self {
             LitKind::Str(symbol, ast::StrStyle::Cooked) => {
                 // Don't re-intern unless the escaped string is different.
@@ -199,7 +198,9 @@ impl LitKind {
                 let symbol = if value { kw::True } else { kw::False };
                 (token::Bool, symbol, None)
             }
-            LitKind::Err(symbol) => (token::Err, symbol, None),
+            // This only shows up in places like `-Zunpretty=hir` output, so we
+            // don't bother to produce something useful.
+            LitKind::Err => (token::Err, Symbol::intern("<bad-literal>"), None),
         };
 
         token::Lit::new(kind, symbol, suffix)
@@ -208,8 +209,8 @@ impl LitKind {
 
 impl Lit {
     /// Converts literal token into an AST literal.
-    pub fn from_lit_token(token: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token, kind: LitKind::from_lit_token(token)?, span })
+    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
+        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
     }
 
     /// Converts arbitrary token into an AST literal.
@@ -232,21 +233,21 @@ impl Lit {
             _ => return Err(LitError::NotLiteral),
         };
 
-        Lit::from_lit_token(lit, token.span)
+        Lit::from_token_lit(lit, token.span)
     }
 
     /// Attempts to recover an AST literal from semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
     pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token: kind.to_lit_token(), kind, span }
+        Lit { token_lit: kind.to_token_lit(), kind, span }
     }
 
     /// Losslessly convert an AST literal into a token.
     pub fn to_token(&self) -> Token {
-        let kind = match self.token.kind {
-            token::Bool => token::Ident(self.token.symbol, false),
-            _ => token::Literal(self.token),
+        let kind = match self.token_lit.kind {
+            token::Bool => token::Ident(self.token_lit.symbol, false),
+            _ => token::Literal(self.token_lit),
         };
         Token::new(kind, self.span)
     }

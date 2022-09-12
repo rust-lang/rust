@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 #![feature(unboxed_closures, fn_traits)]
 
 // Test that unboxing shim for calling rust-call ABI methods through a
@@ -35,12 +34,12 @@ impl FnOnce<(u32,u32)> for Foo {
 }
 
 fn main() {
-    let mut f = box Foo { foo: 42 } as Box<dyn FnMut() -> u32>;
+    let mut f = Box::new(Foo { foo: 42 }) as Box<dyn FnMut() -> u32>;
     assert_eq!(f.call_mut(()), 42);
 
-    let mut f = box Foo { foo: 40 } as Box<dyn FnMut(u32) -> u32>;
+    let mut f = Box::new(Foo { foo: 40 }) as Box<dyn FnMut(u32) -> u32>;
     assert_eq!(f.call_mut((2,)), 42);
 
-    let mut f = box Foo { foo: 40 } as Box<dyn FnMut(u32, u32) -> u32>;
+    let mut f = Box::new(Foo { foo: 40 }) as Box<dyn FnMut(u32, u32) -> u32>;
     assert_eq!(f.call_mut((1, 1)), 42);
 }

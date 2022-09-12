@@ -5,6 +5,11 @@ LL |     if foo == y {}
    |        --- ^^ - _
    |        |
    |        for<'r> fn(&'r i32) -> &'r i32 {foo}
+   |
+help: use parentheses to call this function
+   |
+LL |     if foo(/* &i32 */) == y {}
+   |           ++++++++++++
 
 error: aborting due to previous error
 

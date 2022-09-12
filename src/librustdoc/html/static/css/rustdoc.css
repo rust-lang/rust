@@ -197,26 +197,19 @@ h4.code-header {
 	position: relative;
 }
 
-div.impl-items > div {
-	padding-left: 0;
-}
-
 h1, h2, h3, h4, h5, h6,
 .sidebar,
 .mobile-topbar,
 a.source,
 .search-input,
 .search-results .result-name,
-.content table td:first-child > a,
 .item-left > a,
 .out-of-band,
 span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
-div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
-#main-content > .since,
 #help-button > button,
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
@@ -354,19 +347,10 @@ img {
 	max-width: 100%;
 }
 
-li {
-	position: relative;
-}
-
 .source .content {
 	max-width: none;
 	overflow: visible;
 	margin-left: 0px;
-}
-
-nav.sub {
-	position: relative;
-	font-size: 1rem;
 }
 
 .sub-container {
@@ -608,17 +592,8 @@ h2.location a {
 	margin: 0;
 }
 
-#search {
-	position: relative;
-}
-
 .search-loading {
 	text-align: center;
-}
-
-#results > table {
-	width: 100%;
-	table-layout: fixed;
 }
 
 .content > .example-wrap pre.line-numbers {
@@ -638,9 +613,6 @@ h2.location a {
 }
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short p {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin: 0;
@@ -672,7 +644,7 @@ h2.location a {
 	position: relative;
 }
 
-.docblock > :not(.information):not(.more-examples-toggle) {
+.docblock > :not(.more-examples-toggle):not(.example-wrap) {
 	max-width: 100%;
 	overflow-x: auto;
 }
@@ -693,8 +665,13 @@ h2.location a {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
 	overflow-wrap: break-word;
+	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+	   more aggressively when we want them to. */
 	overflow-wrap: anywhere;
+	background-color: var(--main-background-color);
 }
 
 .in-band > code, .in-band > .code-header {
@@ -709,11 +686,8 @@ pre, .rustdoc.source .example-wrap {
 #main-content {
 	position: relative;
 }
-#main-content > .since {
-	top: inherit;
-}
 
-.content table:not(.table-display) {
+.content table {
 	border-spacing: 0 5px;
 }
 .content td { vertical-align: top; }
@@ -731,33 +705,19 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table td {
 	padding: .5em;
-	border: 1px dashed;
+	border: 1px dashed var(--border-color);
 }
 
 .docblock table th {
 	padding: .5em;
 	text-align: left;
-	border: 1px solid;
-}
-
-.fields + table {
-	margin-bottom: 1em;
+	border: 1px solid var(--border-color);
 }
 
 .content .item-list {
 	list-style-type: none;
 	padding: 0;
 }
-
-.content .multi-column {
-	-moz-column-count: 5;
-	-moz-column-gap: 2.5em;
-	-webkit-column-count: 5;
-	-webkit-column-gap: 2.5em;
-	column-count: 5;
-	column-gap: 2.5em;
-}
-.content .multi-column li { width: 100%; display: inline-block; }
 
 .content > .methods > .method {
 	font-size: 1rem;
@@ -769,25 +729,6 @@ pre, .rustdoc.source .example-wrap {
 .content .where.fmt-newline {
 	display: block;
 	font-size: 0.875rem;
-}
-
-.content .methods > div:not(.notable-traits):not(.method) {
-	margin-left: 40px;
-	margin-bottom: 15px;
-}
-
-.content .docblock > .impl-items {
-	margin-left: 20px;
-	margin-top: -34px;
-}
-.content .docblock >.impl-items .table-display {
-	margin: 0;
-}
-.content .docblock >.impl-items table td {
-	padding: 0;
-}
-.content .docblock > .impl-items .table-display, .impl-items table td {
-	border: none;
 }
 
 .item-info {
@@ -803,24 +744,8 @@ pre, .rustdoc.source .example-wrap {
 	margin-left: 24px;
 }
 
-.sub-variant > div > .item-info {
-	margin-top: initial;
-}
-
 .content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
-}
-
-.content .impl-items > .item-info {
-	margin-left: 40px;
-}
-
-.methods > .item-info, .content .impl-items > .item-info {
-	margin-top: -8px;
-}
-
-.impl-items {
-	flex-basis: 100%;
 }
 
 #main-content > .item-info {
@@ -829,25 +754,13 @@ pre, .rustdoc.source .example-wrap {
 }
 
 nav.sub {
+	position: relative;
+	font-size: 1rem;
 	flex-grow: 1;
 	margin-bottom: 25px;
 }
 .source nav.sub {
 	margin-left: 32px;
-}
-nav.main {
-	padding: 20px 0;
-	text-align: center;
-}
-nav.main .current {
-	border-top: 1px solid;
-	border-bottom: 1px solid;
-}
-nav.main .separator {
-	border: 1px solid;
-	display: inline-block;
-	height: 23px;
-	margin: 0 20px;
 }
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
@@ -942,40 +855,77 @@ table,
 	position: relative;
 	display: flex;
 	height: 34px;
+	margin-top: 4px;
 }
 .search-container > * {
 	height: 100%;
 }
 .search-results-title {
-	display: inline;
+	margin-top: 0;
+	white-space: nowrap;
+	/* flex layout allows shrinking the <select> appropriately if it becomes too large */
+	display: inline-flex;
+	max-width: 100%;
+	/* make things look like in a line, despite the fact that we're using a layout
+	with boxes (i.e. from the flex layout) */
+	align-items: baseline;
 }
-#search-settings {
-	font-size: 1.5rem;
-	font-weight: 500;
-	margin-bottom: 20px;
+#crate-search-div {
+	display: inline-block;
+	/* ensures that 100% in properties of #crate-search-div:after
+	are relative to the size of this div */
+	position: relative;
+	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
+	min-width: 5em;
 }
 #crate-search {
 	min-width: 115px;
-	margin-top: 5px;
-	padding-left: 0.15em;
+	padding: 0;
+	/* keep these two in sync with "@-moz-document url-prefix()" below */
+	padding-left: 4px;
 	padding-right: 23px;
-	border: 1px solid;
+	/* prevents the <select> from overflowing the containing div in case it's shrunk */
+	max-width: 100%;
+	/* contents can overflow because of max-width limit, then show ellipsis */
+	text-overflow: ellipsis;
+	border: 1px solid var(--border-color);
 	border-radius: 4px;
 	outline: none;
 	cursor: pointer;
 	-moz-appearance: none;
 	-webkit-appearance: none;
 	/* Removes default arrow from firefox */
-	background-repeat: no-repeat;
-	background-color: transparent;
-	background-size: 20px;
-	background-position: calc(100% - 1px) 56%;
-	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
-	max-width: 100%;
-	text-overflow: ellipsis;
+	text-indent: 0.01px;
+	background-color: var(--main-background-color);
 }
-.search-container {
-	margin-top: 4px;
+/* cancel stylistic differences in padding in firefox
+for "appearance: none"-style (or equivalent) <select>s */
+@-moz-document url-prefix() {
+	#crate-search {
+		padding-left: 0px; /* == 4px - 4px */
+		padding-right: 19px; /* == 23px - 4px */
+	}
+}
+/* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
+so that we can apply CSS-filters to change the arrow color in themes */
+#crate-search-div::after {
+	/* lets clicks through! */
+	pointer-events: none;
+	/* completely covers the underlying div */
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	content: "";
+	background-repeat: no-repeat;
+	background-size: 20px;
+	background-position: calc(100% - 2px) 56%;
+	/* image is black color, themes should apply a "filter" property to change the color */
+	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
+}
+#crate-search > option {
+	font-size: 1rem;
 }
 .search-input {
 	/* Override Normalize.css: it has a rule that sets
@@ -988,11 +938,15 @@ table,
 	-moz-box-sizing: border-box !important;
 	box-sizing: border-box !important;
 	outline: none;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
 	width: 100%;
+	background-color: var(--button-background-color);
+}
+.search-input:focus {
+	border-color: var(--search-input-focused-border-color);
 }
 
 .search-results {
@@ -1015,7 +969,6 @@ table,
 
 .search-results > a {
 	display: block;
-	width: 100%;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
@@ -1048,7 +1001,7 @@ table,
 	display: block;
 	margin-top: 7px;
 	border-radius: 3px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	font-size: 1rem;
 }
 
@@ -1057,7 +1010,7 @@ table,
 	content: '';
 	position: absolute;
 	right: 11px;
-	border: solid;
+	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
 	display: inline-block;
 	padding: 4px;
@@ -1093,13 +1046,13 @@ table,
 	text-align: center;
 	display: block;
 	margin: 10px 0;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
 #help-button span.bottom {
 	clear: both;
-	border-top: 1px solid;
+	border-top: 1px solid var(--border-color);
 }
 .side-by-side {
 	text-align: initial;
@@ -1133,6 +1086,7 @@ table,
 
 .stab .emoji {
 	font-size: 1.25rem;
+	margin-right: 0.3rem;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1170,24 +1124,19 @@ table,
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
+	float: right;
 }
+
+.rightside:not(a),
+.out-of-band {
+	color: var(--right-side-color);
+}
+
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
-}
-
-.rightside {
-	float: right;
-}
-
-.variants_table {
-	width: 100%;
-}
-
-.variants_table tbody tr td:first-child {
-	width: 1%; /* make the variant name as small as possible */
 }
 
 td.summary-column {
@@ -1200,6 +1149,100 @@ td.summary-column {
 
 pre.rust .question-mark {
 	font-weight: bold;
+}
+
+.example-wrap.compile_fail,
+.example-wrap.should_panic {
+	border-left: 2px solid var(--codeblock-error-color);
+}
+
+.ignore.example-wrap {
+	border-left: 2px solid var(--codeblock-ignore-color);
+}
+
+.example-wrap.compile_fail:hover,
+.example-wrap.should_panic:hover {
+	border-left: 2px solid var(--codeblock-error-hover-color);
+}
+
+.example-wrap.ignore:hover {
+	border-left: 2px solid var(--codeblock-ignore-hover-color);
+}
+
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip {
+	color: var(--codeblock-error-color);
+}
+
+.example-wrap.ignore .tooltip {
+	color:  var(--codeblock-ignore-color);
+}
+
+.example-wrap.compile_fail:hover .tooltip,
+.example-wrap.should_panic:hover .tooltip {
+	color: var(--codeblock-error-hover-color);
+}
+
+.example-wrap.ignore:hover .tooltip {
+	color: var(--codeblock-ignore-hover-color);
+}
+
+.example-wrap .tooltip {
+	position: absolute;
+	display: block;
+	cursor: pointer;
+	left: -25px;
+	top: 5px;
+}
+
+.example-wrap .tooltip::after {
+	display: none;
+	text-align: center;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	font-size: 1rem;
+	border: 1px solid var(--border-color);
+	position: absolute;
+	width: max-content;
+	top: -2px;
+	z-index: 1;
+}
+
+.example-wrap .tooltip::before {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 16px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	display: none;
+	z-index: 1;
+}
+
+.example-wrap.ignore .tooltip::after {
+	content: "This example is not tested";
+}
+.example-wrap.compile_fail .tooltip::after {
+	content: "This example deliberately fails to compile";
+}
+.example-wrap.should_panic .tooltip::after {
+	content: "This example panics";
+}
+.example-wrap.edition .tooltip::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
+	display: inline;
+}
+
+.example-wrap.compile_fail .tooltip,
+.example-wrap.should_panic .tooltip,
+.example-wrap.ignore .tooltip {
+	font-weight: bold;
+	font-size: 1.25rem;
 }
 
 a.test-arrow {
@@ -1216,12 +1259,13 @@ a.test-arrow {
 .example-wrap:hover .test-arrow {
 	visibility: visible;
 }
-a.test-arrow:hover{
+a.test-arrow:hover {
 	text-decoration: none;
 }
 
 .code-attribute {
 	font-weight: 300;
+	color: var(--code-attribute-color);
 }
 
 .item-spacer {
@@ -1258,73 +1302,12 @@ h3.variant {
 	margin-left: 24px;
 }
 
-.toggle-label {
-	display: inline-block;
-	margin-left: 4px;
-	margin-top: 3px;
-}
-
 :target > code, :target > .code-header {
 	opacity: 1;
 }
 
 :target {
 	padding-right: 3px;
-}
-
-.information {
-	position: absolute;
-	left: -25px;
-	margin-top: 7px;
-	z-index: 1;
-}
-
-.tooltip {
-	position: relative;
-	display: inline-block;
-	cursor: pointer;
-}
-
-.tooltip::after {
-	display: none;
-	text-align: center;
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	font-size: 1rem;
-}
-
-.tooltip.ignore::after {
-	content: "This example is not tested";
-}
-.tooltip.compile_fail::after {
-	content: "This example deliberately fails to compile";
-}
-.tooltip.should_panic::after {
-	content: "This example panics";
-}
-.tooltip.edition::after {
-	content: "This code runs with edition " attr(data-edition);
-}
-
-.tooltip::before {
-	content: " ";
-	position: absolute;
-	top: 50%;
-	left: 16px;
-	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
-	display: none;
-}
-
-.tooltip:hover::before, .tooltip:hover::after {
-	display: inline;
-}
-
-.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
-	font-weight: bold;
-	font-size: 1.25rem;
 }
 
 .notable-traits-tooltip {
@@ -1368,7 +1351,7 @@ h3.variant {
 	display: block;
 }
 
-.notable-traits .docblock code.content{
+.notable-traits .docblock code.content {
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
@@ -1457,7 +1440,7 @@ pre.rust {
 #source-sidebar > .title {
 	font-size: 1.5rem;
 	text-align: center;
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
 #sidebar-toggle > button {
@@ -1483,23 +1466,29 @@ pre.rust {
 	outline: none;
 }
 
-#copy-path {
-	height: 34px;
-}
 #settings-menu > a, #help-button > button, #copy-path {
 	padding: 5px;
 	width: 33px;
-	border: 1px solid;
+	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	cursor: pointer;
 }
-#settings-menu {
-	padding: 0;
-}
+
 #settings-menu > a, #help-button > button {
 	padding: 5px;
 	height: 100%;
 	display: block;
+	background-color: var(--button-background-color);
+}
+
+#copy-path {
+	color: var(--copy-path-button-color);
+}
+#copy-path > img {
+	filter: var(--copy-path-img-filter);
+}
+#copy-path:hover > img {
+	filter: var(--copy-path-img-hover-filter);
 }
 
 @keyframes rotating {
@@ -1542,35 +1531,12 @@ input:checked + .slider {
 }
 
 #copy-path {
-	background: initial;
+	height: 34px;
+	background-color: var(--main-background-color);
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
-}
-
-#theme-choices {
-	display: none;
-	position: absolute;
-	left: 0;
-	top: 28px;
-	border: 1px solid;
-	border-radius: 3px;
-	z-index: 1;
-	cursor: pointer;
-}
-
-#theme-choices > button {
-	border: none;
-	width: 100%;
-	padding: 4px 8px;
-	text-align: center;
-	background: rgba(0,0,0,0);
-	overflow-wrap: normal;
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top: 1px solid;
 }
 
 kbd {
@@ -1579,46 +1545,9 @@ kbd {
 	font: 15px monospace;
 	line-height: 10px;
 	vertical-align: middle;
-	border: solid 1px;
+	border: solid 1px var(--border-color);
 	border-radius: 3px;
 	cursor: default;
-}
-
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
-}
-
-#implementations-list > h3 > span.in-band {
-	width: 100%;
-}
-
-.table-display {
-	width: 100%;
-	border: 0;
-	border-collapse: collapse;
-	border-spacing: 0;
-	font-size: 1rem;
-}
-
-.table-display tr td:first-child {
-	padding-right: 0;
-}
-
-.table-display tr td:last-child {
-	float: right;
-}
-.table-display .out-of-band {
-	position: relative;
-	font-size: 1.125rem;
-	display: block;
-}
-
-.table-display td:hover .anchor {
-	display: block;
-	top: 2px;
-	left: -5px;
 }
 
 #main-content > ul {
@@ -1679,6 +1608,12 @@ details.rustdoc-toggle > summary::before {
 	display: inline-block;
 	vertical-align: middle;
 	opacity: .5;
+}
+
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before,
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: var(--toggles-color);
 }
 
 /* Screen readers see the text version at the end the line.
@@ -1785,7 +1720,7 @@ in storage.js plus the media query with (max-width: 700px)
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.docblock > .information:first-child > .tooltip {
+	.docblock > .example-wrap:first-child .tooltip {
 		margin-top: 16px;
 	}
 
@@ -1826,7 +1761,6 @@ in storage.js plus the media query with (min-width: 701px)
 		padding-top: 0px;
 	}
 
-	.rustdoc,
 	.main-heading {
 		flex-direction: column;
 	}
@@ -1850,10 +1784,6 @@ in storage.js plus the media query with (min-width: 701px)
 	.sidebar .sidebar-logo,
 	.sidebar .location {
 		display: none;
-	}
-
-	.sidebar-elems {
-		margin-top: 1em;
 	}
 
 	.sidebar {
@@ -1949,11 +1879,8 @@ in storage.js plus the media query with (min-width: 701px)
 	}
 
 	.sidebar-elems {
+		margin-top: 1em;
 		background-color: var(--sidebar-background-color);
-	}
-
-	.source nav:not(.sidebar).sub {
-		margin-left: 32px;
 	}
 
 	.content {
@@ -2092,6 +2019,11 @@ in storage.js plus the media query with (min-width: 701px)
 	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
 	}
+
+	/* Align summary-nested and unnested item-info gizmos. */
+	.content .impl-items > .item-info {
+		margin-left: 34px;
+	}
 }
 
 @media print {
@@ -2113,11 +2045,6 @@ in storage.js plus the media query with (min-width: 701px)
 @media (max-width: 464px) {
 	#titles, #titles > button {
 		height: 73px;
-	}
-
-	#main-content > table:not(.table-display) td {
-		word-break: break-word;
-		width: 50%;
 	}
 
 	#crate-search {

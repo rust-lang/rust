@@ -12,7 +12,7 @@ use syntax::{
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Find matching brace**
+// | VS Code | **rust-analyzer: Find matching brace**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113065573-04298180-91b1-11eb-8dec-d4e2a202f304.gif[]

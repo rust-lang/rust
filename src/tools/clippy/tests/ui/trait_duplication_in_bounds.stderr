@@ -1,167 +1,56 @@
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:7:15
+error: these bounds contain repeated elements
+  --> $DIR/trait_duplication_in_bounds.rs:5:15
    |
-LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |               ^^^^^
+LL | fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
    |
 note: the lint level is defined here
-  --> $DIR/trait_duplication_in_bounds.rs:1:9
+  --> $DIR/trait_duplication_in_bounds.rs:2:9
    |
 LL | #![deny(clippy::trait_duplication_in_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:7:23
-   |
-LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
-   |                       ^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:36:15
-   |
-LL |         Self: Default;
-   |               ^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:50:15
-   |
-LL |         Self: Default + Clone;
-   |               ^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:56:15
-   |
-LL |         Self: Default + Clone;
-   |               ^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:56:25
-   |
-LL |         Self: Default + Clone;
-   |                         ^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:59:15
-   |
-LL |         Self: Default;
-   |               ^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in trait declaration
-  --> $DIR/trait_duplication_in_bounds.rs:94:15
-   |
-LL |         Self: Iterator<Item = Foo>,
-   |               ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:103:19
-   |
-LL |     fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
-   |                   ^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:103:19
-   |
-LL |     fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:109:12
-   |
-LL |         T: Clone + Clone + Clone + Copy,
-   |            ^^^^^
-   |
-   = help: consider removing this trait bound
 
 error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:109:12
+  --> $DIR/trait_duplication_in_bounds.rs:11:8
+   |
+LL |     T: Clone + Clone + Clone + Copy,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
+
+error: these bounds contain repeated elements
+  --> $DIR/trait_duplication_in_bounds.rs:39:26
+   |
+LL | trait BadSelfTraitBound: Clone + Clone + Clone {
+   |                          ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
+
+error: these where clauses contain repeated elements
+  --> $DIR/trait_duplication_in_bounds.rs:46:15
+   |
+LL |         Self: Clone + Clone + Clone;
+   |               ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
+
+error: these bounds contain repeated elements
+  --> $DIR/trait_duplication_in_bounds.rs:60:24
+   |
+LL | trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
+
+error: these where clauses contain repeated elements
+  --> $DIR/trait_duplication_in_bounds.rs:67:12
    |
 LL |         T: Clone + Clone + Clone + Copy,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:137:30
+  --> $DIR/trait_duplication_in_bounds.rs:100:19
    |
-LL |     trait BadSelfTraitBound: Clone + Clone + Clone {
-   |                              ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
-
-error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:144:19
-   |
-LL |             Self: Clone + Clone + Clone;
-   |                   ^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone`
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:158:28
-   |
-LL |     trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
-   |                            ^^^^^
-   |
-   = help: consider removing this trait bound
+LL | fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `GenericTrait<u64> + GenericTrait<u32>`
 
 error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:158:28
+  --> $DIR/trait_duplication_in_bounds.rs:108:22
    |
-LL |     trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
+LL | fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::clone::Clone + foo::Clone`
 
-error: these where clauses contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:165:16
-   |
-LL |             T: Clone + Clone + Clone + Copy,
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + Copy`
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:195:24
-   |
-LL |     fn good_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
-   |                        ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:199:23
-   |
-LL |     fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
-   |                       ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:199:23
-   |
-LL |     fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `GenericTrait<u32> + GenericTrait<u64>`
-
-error: this trait bound is already specified in the where clause
-  --> $DIR/trait_duplication_in_bounds.rs:207:26
-   |
-LL |     fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
-   |                          ^^^^^^^^^^^^^^^^^
-   |
-   = help: consider removing this trait bound
-
-error: these bounds contain repeated elements
-  --> $DIR/trait_duplication_in_bounds.rs:207:26
-   |
-LL |     fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Clone + foo::Clone`
-
-error: aborting due to 22 previous errors
+error: aborting due to 8 previous errors
 

@@ -1,0 +1,12 @@
+### What it does
+Checks for names that are very similar and thus confusing.
+
+### Why is this bad?
+It's hard to distinguish between names that differ only
+by a single character.
+
+### Example
+```
+let checked_exp = something;
+let checked_expr = something_else;
+```

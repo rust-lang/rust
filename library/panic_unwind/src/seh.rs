@@ -256,7 +256,7 @@ cfg_if::cfg_if! {
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    use core::intrinsics::atomic_store;
+    use core::intrinsics::atomic_store_seqcst;
 
     // _CxxThrowException executes entirely on this stack frame, so there's no
     // need to otherwise transfer `data` to the heap. We just pass a stack
@@ -288,20 +288,23 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
-    atomic_store(&mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32, ptr!(exception_cleanup) as u32);
-    atomic_store(
+    atomic_store_seqcst(
+        &mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32,
+        ptr!(exception_cleanup) as u32,
+    );
+    atomic_store_seqcst(
         &mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
         ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32,
     );
-    atomic_store(
+    atomic_store_seqcst(
         &mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0] as *mut _ as *mut u32,
         ptr!(&CATCHABLE_TYPE as *const _) as u32,
     );
-    atomic_store(
+    atomic_store_seqcst(
         &mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
         ptr!(&TYPE_DESCRIPTOR as *const _) as u32,
     );
-    atomic_store(
+    atomic_store_seqcst(
         &mut CATCHABLE_TYPE.copyFunction as *mut _ as *mut u32,
         ptr!(exception_copy) as u32,
     );
@@ -322,14 +325,4 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
         let exception = &mut *(payload as *mut Exception);
         exception.data.take().unwrap()
     }
-}
-
-// This is required by the compiler to exist (e.g., it's a lang item), but
-// it's never actually called by the compiler because __C_specific_handler
-// or _except_handler3 is the personality function that is always used.
-// Hence this is just an aborting stub.
-#[lang = "eh_personality"]
-#[cfg(not(test))]
-fn rust_eh_personality() {
-    core::intrinsics::abort()
 }

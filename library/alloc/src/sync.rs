@@ -2763,3 +2763,25 @@ fn data_offset_align(align: usize) -> usize {
     let layout = Layout::new::<ArcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
 }
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "arc_error", since = "1.52.0")]
+impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        core::error::Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn core::error::Error> {
+        core::error::Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        core::error::Error::source(&**self)
+    }
+
+    fn provide<'a>(&'a self, req: &mut core::any::Demand<'a>) {
+        core::error::Error::provide(&**self, req);
+    }
+}

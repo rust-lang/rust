@@ -25,7 +25,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
-use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::late::{PatternSource, Rib};
@@ -511,7 +510,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
-                match outer_res {
+                let def_id = match outer_res {
                     Res::SelfTy { trait_: maybe_trait_defid, alias_to: maybe_impl_defid } => {
                         if let Some(impl_span) =
                             maybe_impl_defid.and_then(|(def_id, _)| self.opt_span(def_id))
@@ -536,11 +535,13 @@ impl<'a> Resolver<'a> {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
+                        def_id
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
                         if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
+                        def_id
                     }
                     _ => {
                         bug!(
@@ -548,28 +549,23 @@ impl<'a> Resolver<'a> {
                             DefKind::TyParam or DefKind::ConstParam"
                         );
                     }
-                }
+                };
 
-                if has_generic_params == HasGenericParams::Yes {
+                if let HasGenericParams::Yes(span) = has_generic_params {
                     // Try to retrieve the span of the function signature and generate a new
                     // message with a local type or const parameter.
                     let sugg_msg = "try using a local generic parameter instead";
-                    if let Some((sugg_span, snippet)) = sm.generate_local_type_param_snippet(span) {
-                        // Suggest the modification to the user
-                        err.span_suggestion(
-                            sugg_span,
-                            sugg_msg,
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
-                    } else if let Some(sp) = sm.generate_fn_name_span(span) {
-                        err.span_label(
-                            sp,
-                            "try adding a local generic parameter in this method instead",
-                        );
+                    let name = self.opt_name(def_id).unwrap_or(sym::T);
+                    let (span, snippet) = if span.is_empty() {
+                        let snippet = format!("<{}>", name);
+                        (span, snippet)
                     } else {
-                        err.help("try using a local generic parameter instead");
-                    }
+                        let span = sm.span_through_char(span, '<').shrink_to_hi();
+                        let snippet = format!("{}, ", name);
+                        (span, snippet)
+                    };
+                    // Suggest the modification to the user
+                    err.span_suggestion(span, sugg_msg, snippet, Applicability::MaybeIncorrect);
                 }
 
                 err
@@ -1175,16 +1171,6 @@ impl<'a> Resolver<'a> {
                 Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
-                Scope::RegisteredAttrs => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
-                    if filter_fn(res) {
-                        suggestions.extend(
-                            this.registered_attrs
-                                .iter()
-                                .map(|ident| TypoSuggestion::typo_from_res(ident.name, res)),
-                        );
-                    }
-                }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
@@ -1407,7 +1393,7 @@ impl<'a> Resolver<'a> {
 
         // If only some candidates are accessible, take just them
         if !candidates.iter().all(|v: &ImportSuggestion| !v.accessible) {
-            candidates = candidates.into_iter().filter(|x| x.accessible).collect();
+            candidates.retain(|x| x.accessible)
         }
 
         candidates
@@ -2544,12 +2530,15 @@ fn show_candidates(
                 Applicability::MaybeIncorrect,
             );
             if let [first, .., last] = &path[..] {
-                err.span_suggestion_verbose(
-                    first.ident.span.until(last.ident.span),
-                    &format!("if you import `{}`, refer to it directly", last.ident),
-                    "",
-                    Applicability::Unspecified,
-                );
+                let sp = first.ident.span.until(last.ident.span);
+                if sp.can_be_used_for_suggestions() {
+                    err.span_suggestion_verbose(
+                        sp,
+                        &format!("if you import `{}`, refer to it directly", last.ident),
+                        "",
+                        Applicability::Unspecified,
+                    );
+                }
             }
         } else {
             msg.push(':');

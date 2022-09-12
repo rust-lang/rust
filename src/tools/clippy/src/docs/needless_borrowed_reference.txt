@@ -1,0 +1,30 @@
+### What it does
+Checks for bindings that destructure a reference and borrow the inner
+value with `&ref`.
+
+### Why is this bad?
+This pattern has no effect in almost all cases.
+
+### Known problems
+In some cases, `&ref` is needed to avoid a lifetime mismatch error.
+Example:
+```
+fn foo(a: &Option<String>, b: &Option<String>) {
+    match (a, b) {
+        (None, &ref c) | (&ref c, None) => (),
+        (&Some(ref c), _) => (),
+    };
+}
+```
+
+### Example
+```
+let mut v = Vec::<String>::new();
+v.iter_mut().filter(|&ref a| a.is_empty());
+```
+
+Use instead:
+```
+let mut v = Vec::<String>::new();
+v.iter_mut().filter(|a| a.is_empty());
+```

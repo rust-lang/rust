@@ -245,8 +245,8 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
     match expr.kind {
         ExprKind::MethodCall(
             _,
+            map,
             [
-                map,
                 Expr {
                     kind: ExprKind::AddrOf(_, _, key),
                     span: key_span,
@@ -280,7 +280,7 @@ struct InsertExpr<'tcx> {
     value: &'tcx Expr<'tcx>,
 }
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
-    if let ExprKind::MethodCall(_, [map, key, value], _) = expr.kind {
+    if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
         if match_def_path(cx, id, &paths::BTREEMAP_INSERT) || match_def_path(cx, id, &paths::HASHMAP_INSERT) {
             Some(InsertExpr { map, key, value })

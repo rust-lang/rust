@@ -9,20 +9,26 @@ LL |     let _ = x.ln() / y.ln();
 error: log base can be expressed more clearly
   --> $DIR/floating_point_logbase.rs:8:13
    |
+LL |     let _ = (x as f32).ln() / y.ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x as f32).log(y)`
+
+error: log base can be expressed more clearly
+  --> $DIR/floating_point_logbase.rs:9:13
+   |
 LL |     let _ = x.log2() / y.log2();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: log base can be expressed more clearly
-  --> $DIR/floating_point_logbase.rs:9:13
+  --> $DIR/floating_point_logbase.rs:10:13
    |
 LL |     let _ = x.log10() / y.log10();
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
 error: log base can be expressed more clearly
-  --> $DIR/floating_point_logbase.rs:10:13
+  --> $DIR/floating_point_logbase.rs:11:13
    |
 LL |     let _ = x.log(5f32) / y.log(5f32);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

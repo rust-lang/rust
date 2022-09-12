@@ -61,11 +61,11 @@ impl UnsafeMessage {
     }
 }
 
-fn create_jit_module<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn create_jit_module(
+    tcx: TyCtxt<'_>,
     backend_config: &BackendConfig,
     hotswap: bool,
-) -> (JITModule, CodegenCx<'tcx>) {
+) -> (JITModule, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
     let imported_symbols = load_imported_symbols_for_jit(tcx.sess, crate_info);
 
@@ -111,6 +111,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         &backend_config,
         matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
     );
+    let mut cached_context = Context::new();
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(());
     let mono_items = cgus
@@ -128,11 +129,19 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                 MonoItem::Fn(inst) => match backend_config.codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
-                        cx.tcx.sess.time("codegen fn", || {
-                            crate::base::codegen_fn(&mut cx, &mut jit_module, inst)
+                        tcx.sess.time("codegen fn", || {
+                            crate::base::codegen_and_compile_fn(
+                                tcx,
+                                &mut cx,
+                                &mut cached_context,
+                                &mut jit_module,
+                                inst,
+                            )
                         });
                     }
-                    CodegenMode::JitLazy => codegen_shim(&mut cx, &mut jit_module, inst),
+                    CodegenMode::JitLazy => {
+                        codegen_shim(tcx, &mut cx, &mut cached_context, &mut jit_module, inst)
+                    }
                 },
                 MonoItem::Static(def_id) => {
                     crate::constant::codegen_static(tcx, &mut jit_module, def_id);
@@ -259,7 +268,15 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
                 false,
                 Symbol::intern("dummy_cgu_name"),
             );
-            tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, jit_module, instance));
+            tcx.sess.time("codegen fn", || {
+                crate::base::codegen_and_compile_fn(
+                    tcx,
+                    &mut cx,
+                    &mut Context::new(),
+                    jit_module,
+                    instance,
+                )
+            });
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions();
@@ -334,9 +351,13 @@ fn load_imported_symbols_for_jit(
     imported_symbols
 }
 
-fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: Instance<'tcx>) {
-    let tcx = cx.tcx;
-
+fn codegen_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cx: &mut CodegenCx,
+    cached_context: &mut Context,
+    module: &mut JITModule,
+    inst: Instance<'tcx>,
+) {
     let pointer_type = module.target_config().pointer_type();
 
     let name = tcx.symbol_name(inst).name;
@@ -357,8 +378,9 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
         )
         .unwrap();
 
-    cx.cached_context.clear();
-    let trampoline = &mut cx.cached_context.func;
+    let context = cached_context;
+    context.clear();
+    let trampoline = &mut context.func;
     trampoline.signature = sig.clone();
 
     let mut builder_ctx = FunctionBuilderContext::new();
@@ -381,5 +403,6 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
     let ret_vals = trampoline_builder.func.dfg.inst_results(call_inst).to_vec();
     trampoline_builder.ins().return_(&ret_vals);
 
-    module.define_function(func_id, &mut cx.cached_context).unwrap();
+    module.define_function(func_id, context).unwrap();
+    cx.unwind_context.add_function(func_id, context, module.isa());
 }

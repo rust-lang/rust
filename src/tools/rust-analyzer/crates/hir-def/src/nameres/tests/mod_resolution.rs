@@ -127,15 +127,31 @@ mod r#async;
 use self::r#async::Bar;
 
 //- /async.rs
+mod foo;
+mod r#async;
 pub struct Bar;
+
+//- /async/foo.rs
+pub struct Foo;
+
+//- /async/async.rs
+pub struct Baz;
 "#,
         expect![[r#"
             crate
             Bar: t v
-            async: t
+            r#async: t
 
-            crate::async
+            crate::r#async
             Bar: t v
+            foo: t
+            r#async: t
+
+            crate::r#async::foo
+            Foo: t v
+
+            crate::r#async::r#async
+            Baz: t v
         "#]],
     );
 }

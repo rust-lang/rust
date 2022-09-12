@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/normalize-fn-sig.rs:14:22
+   |
+LL |     needs_i32_ref_fn(foo::<()>);
+   |     ---------------- ^^^^^^^^^ expected `&i32`, found `i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `fn(&'static i32, i32)`
+                 found fn item `fn(i32, &'static i32) {foo::<()>}`
+note: function defined here
+  --> $DIR/normalize-fn-sig.rs:11:4
+   |
+LL | fn needs_i32_ref_fn(_: fn(&'static i32, i32)) {}
+   |    ^^^^^^^^^^^^^^^^ ------------------------
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

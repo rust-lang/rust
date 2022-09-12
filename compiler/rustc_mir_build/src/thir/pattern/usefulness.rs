@@ -364,8 +364,8 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Clone)]
-struct PatStack<'p, 'tcx> {
-    pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
+pub(crate) struct PatStack<'p, 'tcx> {
+    pub(crate) pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
@@ -403,6 +403,21 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         })
     }
 
+    // Recursively expand all patterns into their subpatterns and push each `PatStack` to matrix.
+    fn expand_and_extend<'a>(&'a self, matrix: &mut Matrix<'p, 'tcx>) {
+        if !self.is_empty() && self.head().is_or_pat() {
+            for pat in self.head().iter_fields() {
+                let mut new_patstack = PatStack::from_pattern(pat);
+                new_patstack.pats.extend_from_slice(&self.pats[1..]);
+                if !new_patstack.is_empty() && new_patstack.head().is_or_pat() {
+                    new_patstack.expand_and_extend(matrix);
+                } else if !new_patstack.is_empty() {
+                    matrix.push(new_patstack);
+                }
+            }
+        }
+    }
+
     /// This computes `S(self.head().ctor(), self)`. See top of the file for explanations.
     ///
     /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
@@ -436,7 +451,7 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 /// A 2D matrix.
 #[derive(Clone)]
 pub(super) struct Matrix<'p, 'tcx> {
-    patterns: Vec<PatStack<'p, 'tcx>>,
+    pub patterns: Vec<PatStack<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -453,7 +468,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
-            self.patterns.extend(row.expand_or_pat());
+            row.expand_and_extend(self);
         } else {
             self.patterns.push(row);
         }
@@ -739,8 +754,8 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     hir_id: HirId,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 ) {
-    let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
     cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, |build| {
+        let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
         let mut lint = build.build("some variants are not matched explicitly");
         lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
         lint.help(
@@ -776,7 +791,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(level = "debug", skip(cx, matrix, hir_id))]
+#[instrument(level = "debug", skip(cx, matrix, hir_id), ret)]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -902,7 +917,6 @@ fn is_useful<'p, 'tcx>(
         v.head().set_reachable();
     }
 
-    debug!(?ret);
     ret
 }
 

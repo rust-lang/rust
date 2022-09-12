@@ -1,0 +1,20 @@
+### What it does
+Checks for a raw slice being cast to a slice pointer
+
+### Why is this bad?
+This can result in multiple `&mut` references to the same location when only a pointer is
+required.
+`ptr::slice_from_raw_parts` is a safe alternative that doesn't require
+the same [safety requirements] to be upheld.
+
+### Example
+```
+let _: *const [u8] = std::slice::from_raw_parts(ptr, len) as *const _;
+let _: *mut [u8] = std::slice::from_raw_parts_mut(ptr, len) as *mut _;
+```
+Use instead:
+```
+let _: *const [u8] = std::ptr::slice_from_raw_parts(ptr, len);
+let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
+```
+[safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety

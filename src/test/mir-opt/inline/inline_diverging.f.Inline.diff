@@ -18,7 +18,7 @@
 +     }
 + 
 +     bb1: {
-+         goto -> bb1;                     // scope 1 at $DIR/inline-diverging.rs:+32:5: +32:12
++         goto -> bb1;                     // scope 1 at $DIR/inline-diverging.rs:39:5: 39:12
       }
   }
   

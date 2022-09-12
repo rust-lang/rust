@@ -88,11 +88,12 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::MethodCall(_, args, _) => {
+            hir::ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.typeck_results.type_dependent_def_id(expr.hir_id).unwrap();
                 let base_type = self.cx.tcx.type_of(def_id);
 
                 if type_is_unsafe_function(self.cx, base_type) {
+                    self.check_arg(receiver);
                     for arg in args {
                         self.check_arg(arg);
                     }

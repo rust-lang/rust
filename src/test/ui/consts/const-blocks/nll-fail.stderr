@@ -4,7 +4,7 @@ error[E0277]: the trait bound `Bar: Copy` is not satisfied
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                      ^ the trait `Copy` is not implemented for `Bar`
    |
-   = note: required because of the requirements on the impl of `Copy` for `Option<Bar>`
+   = note: required for `Option<Bar>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |
@@ -17,7 +17,7 @@ error[E0277]: the trait bound `Bar: Copy` is not satisfied
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                      ^ the trait `Copy` is not implemented for `Bar`
    |
-   = note: required because of the requirements on the impl of `Copy` for `Option<Bar>`
+   = note: required for `Option<Bar>` to implement `Copy`
    = note: the `Copy` trait is required because this value will be copied for each element of the array
 help: consider annotating `Bar` with `#[derive(Copy)]`
    |

@@ -144,6 +144,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;
 
+    debug!(?assumptions_in_impl_context, ?dtor_predicates.predicates);
+
     let self_param_env = tcx.param_env(self_type_did);
 
     // An earlier version of this code attempted to do this checking

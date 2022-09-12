@@ -167,4 +167,29 @@ fn main() {
             _ => false,
         };
     }
+
+    let x = ' ';
+    // ignore if match block contains comment
+    let _line_comments = match x {
+        // numbers are bad!
+        '1' | '2' | '3' => true,
+        // spaces are very important to be true.
+        ' ' => true,
+        // as are dots
+        '.' => true,
+        _ => false,
+    };
+
+    let _block_comments = match x {
+        /* numbers are bad!
+         */
+        '1' | '2' | '3' => true,
+        /* spaces are very important to be true.
+         */
+        ' ' => true,
+        /* as are dots
+         */
+        '.' => true,
+        _ => false,
+    };
 }

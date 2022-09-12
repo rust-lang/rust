@@ -77,10 +77,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let llval = match name {
-            sym::assume => {
-                bx.assume(args[0].immediate());
-                return;
-            }
             sym::abort => {
                 bx.abort();
                 return;
@@ -555,14 +551,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+            sym::ptr_guaranteed_cmp => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
-                if name == sym::ptr_guaranteed_eq {
-                    bx.icmp(IntPredicate::IntEQ, a, b)
-                } else {
-                    bx.icmp(IntPredicate::IntNE, a, b)
-                }
+                bx.icmp(IntPredicate::IntEQ, a, b)
             }
 
             sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
@@ -597,8 +589,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(&ty));
+            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
+                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {

@@ -166,7 +166,7 @@ macro_rules! int_base {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")] impl fmt::Binary for isize {
-    fn fmt(&self , f: &mut fmt::Formatter< '_>) -> fmt::Result {
+    fn fmt(&self , f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Binary.fmt_int(*self as usize, f)
     }
 }
@@ -724,7 +724,7 @@ macro_rules! delegate_impl {
         }
     }
 }
-impl <> Data for & 'amut G where G: Data {}
+impl <> Data for &'amut G where G: Data {}
 "##]],
     );
 }

@@ -51,12 +51,14 @@ const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value
 
 const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
 
 const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
 const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
 //~^ ERROR it is undefined behavior to use this value
 const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };

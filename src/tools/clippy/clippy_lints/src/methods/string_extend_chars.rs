@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         return;
     }
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
-        let target = &arglists[0][0];
+        let target = &arglists[0].0;
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
         let ref_str = if *self_ty.kind() == ty::Str {
             ""

@@ -21,8 +21,8 @@ mod single_match;
 mod try_err;
 mod wild_in_or_pats;
 
-use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
+use clippy_utils::source::{snippet_opt, walk_span_to_context};
+use clippy_utils::{higher, in_constant, is_span_match, meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -835,7 +835,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub SIGNIFICANT_DROP_IN_SCRUTINEE,
-    suspicious,
+    nursery,
     "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
 }
 
@@ -949,7 +949,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if source == MatchSource::Normal && !span_starts_with(cx, expr.span, "match") {
+            if source == MatchSource::Normal && !is_span_match(cx, expr.span) {
                 return;
             }
             if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {

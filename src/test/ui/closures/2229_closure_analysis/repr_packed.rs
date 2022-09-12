@@ -31,7 +31,7 @@ fn test_alignment_not_affected() {
     c();
 }
 
-// `String`, `u16` are not aligned at a one byte boundry and are thus affected by repr(packed).
+// `String`, `u16` are not aligned at a one byte boundary and are thus affected by repr(packed).
 //
 // Here we test that the closure doesn't capture a reference point to `foo.x` but
 // rather capture `foo` entirely.

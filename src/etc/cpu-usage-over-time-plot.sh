@@ -15,7 +15,7 @@
 # Improvements to this script are greatly appreciated!
 
 if [[ $# != 2 ]]; then
-    echo "expected 2 arguments, recieved $#"
+    echo "expected 2 arguments, received $#"
     echo "example usage: './src/etc/cpu-usage-over-time-plot.sh \
 7737e0b5c4103216d6fd8cf941b7ab9bdbaace7c \
 x86_64-gnu'"

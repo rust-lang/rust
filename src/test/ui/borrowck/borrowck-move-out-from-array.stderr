@@ -34,7 +34,7 @@ error[E0382]: use of partially moved value: `a`
 LL |     let [_x, _, _] = a;
    |          -- value partially moved here
 LL |     let [_y @ .., _, _] = a;
-   |          ^^^^^^^ value used here after partial move
+   |          ^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 
@@ -44,7 +44,7 @@ error[E0382]: use of partially moved value: `a`
 LL |     let [.., _x] = a;
    |              -- value partially moved here
 LL |     let [_, _, _y @ ..] = a;
-   |                ^^^^^^^ value used here after partial move
+   |                ^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 
@@ -54,7 +54,7 @@ error[E0382]: use of partially moved value: `a`
 LL |     let [(_x, _), _, _] = a;
    |           -- value partially moved here
 LL |     let [_y @ .., _, _] = a;
-   |          ^^^^^^^ value used here after partial move
+   |          ^^ value used here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
 
@@ -64,7 +64,7 @@ error[E0382]: use of partially moved value: `a`
 LL |     let [.., (_x, _)] = a;
    |               -- value partially moved here
 LL |     let [_, _, _y @ ..] = a;
-   |                ^^^^^^^ value used here after partial move
+   |                ^^ value used here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
 
@@ -72,7 +72,7 @@ error[E0382]: use of moved value: `a[..].0`
   --> $DIR/borrowck-move-out-from-array.rs:54:11
    |
 LL |     let [_y @ .., _, _] = a;
-   |          ------- value moved here
+   |          -- value moved here
 LL |     let [(_x, _), _, _] = a;
    |           ^^ value used here after move
    |
@@ -82,7 +82,7 @@ error[E0382]: use of moved value: `a[..].0`
   --> $DIR/borrowck-move-out-from-array.rs:60:15
    |
 LL |     let [_, _, _y @ ..] = a;
-   |                ------- value moved here
+   |                -- value moved here
 LL |     let [.., (_x, _)] = a;
    |               ^^ value used here after move
    |
@@ -92,9 +92,9 @@ error[E0382]: use of partially moved value: `a`
   --> $DIR/borrowck-move-out-from-array.rs:68:13
    |
 LL |     let [x @ .., _] = a;
-   |          ------ value partially moved here
+   |          - value partially moved here
 LL |     let [_, _y @ ..] = a;
-   |             ^^^^^^^ value used here after partial move
+   |             ^^ value used here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 

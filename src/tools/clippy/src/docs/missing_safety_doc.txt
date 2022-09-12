@@ -1,0 +1,26 @@
+### What it does
+Checks for the doc comments of publicly visible
+unsafe functions and warns if there is no `# Safety` section.
+
+### Why is this bad?
+Unsafe functions should document their safety
+preconditions, so that users can be sure they are using them safely.
+
+### Examples
+```
+/// This function should really be documented
+pub unsafe fn start_apocalypse(u: &mut Universe) {
+    unimplemented!();
+}
+```
+
+At least write a line about safety:
+
+```
+/// # Safety
+///
+/// This function should not be called before the horsemen are ready.
+pub unsafe fn start_apocalypse(u: &mut Universe) {
+    unimplemented!();
+}
+```

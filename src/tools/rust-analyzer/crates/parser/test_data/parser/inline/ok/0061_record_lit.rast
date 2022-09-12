@@ -40,6 +40,26 @@ SOURCE_FILE
                     PATH_SEGMENT
                       NAME_REF
                         IDENT "x"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "x"
               COMMA ","
               WHITESPACE " "
               RECORD_EXPR_FIELD
@@ -96,6 +116,35 @@ SOURCE_FILE
                 ARG_LIST
                   L_PAREN "("
                   R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        COLON2 "::"
+                        NAME_REF
+                          IDENT "default"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
               WHITESPACE " "
               R_CURLY "}"
           SEMICOLON ";"

@@ -8,7 +8,6 @@ use rustc_hir::definitions::*;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use tracing::debug;
 
 pub(crate) fn collect_definitions(
     resolver: &mut Resolver<'_>,

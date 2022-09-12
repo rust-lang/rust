@@ -16,8 +16,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
@@ -30,8 +30,8 @@ use rustc_trait_selection::traits::{
 use std::cmp::Ordering;
 use std::iter;
 
-use super::probe::{Mode, ProbeScope};
-use super::{super::suggest_call_constructor, CandidateSource, MethodError, NoMatchData};
+use super::probe::{IsSuggestion, Mode, ProbeScope};
+use super::{CandidateSource, MethodError, NoMatchData};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -95,7 +95,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<&'tcx [hir::Expr<'tcx>]>,
+        args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -363,44 +363,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                if self.is_fn_ty(rcvr_ty, span) {
-                    if let SelfSource::MethodCall(expr) = source {
-                        let suggest = if let ty::FnDef(def_id, _) = rcvr_ty.kind() {
-                            if let Some(local_id) = def_id.as_local() {
-                                let hir_id = tcx.hir().local_def_id_to_hir_id(local_id);
-                                let node = tcx.hir().get(hir_id);
-                                let fields = node.tuple_fields();
-                                if let Some(fields) = fields
-                                    && let Some(DefKind::Ctor(of, _)) = self.tcx.opt_def_kind(local_id) {
-                                        Some((fields.len(), of))
-                                } else {
-                                    None
-                                }
-                            } else {
-                                // The logic here isn't smart but `associated_item_def_ids`
-                                // doesn't work nicely on local.
-                                if let DefKind::Ctor(of, _) = tcx.def_kind(def_id) {
-                                    let parent_def_id = tcx.parent(*def_id);
-                                    Some((tcx.associated_item_def_ids(parent_def_id).len(), of))
-                                } else {
-                                    None
-                                }
-                            }
-                        } else {
-                            None
-                        };
-
-                        // If the function is a tuple constructor, we recommend that they call it
-                        if let Some((fields, kind)) = suggest {
-                            suggest_call_constructor(expr.span, kind, fields, &mut err);
-                        } else {
-                            // General case
-                            err.span_label(
-                                expr.span,
-                                "this is a function, perhaps you wish to call it",
-                            );
-                        }
-                    }
+                if let SelfSource::MethodCall(rcvr_expr) = source {
+                    self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
+                        let call_expr = self
+                            .tcx
+                            .hir()
+                            .expect_expr(self.tcx.hir().get_parent_node(rcvr_expr.hir_id));
+                        let probe = self.lookup_probe(
+                            span,
+                            item_name,
+                            output_ty,
+                            call_expr,
+                            ProbeScope::AllTraits,
+                        );
+                        probe.is_ok()
+                    });
                 }
 
                 let mut custom_span_label = false;
@@ -904,7 +881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                let label_span_not_found = |err: &mut DiagnosticBuilder<'_, _>| {
+                let label_span_not_found = |err: &mut Diagnostic| {
                     if unsatisfied_predicates.is_empty() {
                         err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
                         let is_string_or_ref_str = match actual.kind() {
@@ -1000,7 +977,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     label_span_not_found(&mut err);
                 }
 
-                self.check_for_field_method(&mut err, source, span, actual, item_name);
+                // Don't suggest (for example) `expr.field.method()` if `expr.method()`
+                // doesn't exist due to unsatisfied predicates.
+                if unsatisfied_predicates.is_empty() {
+                    self.check_for_field_method(&mut err, source, span, actual, item_name);
+                }
 
                 self.check_for_unwrap_self(&mut err, source, span, actual, item_name);
 
@@ -1017,7 +998,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         rcvr_ty,
                         item_name,
-                        args.map(|args| args.len()),
+                        args.map(|(_, args)| args.len() + 1),
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
@@ -1062,18 +1043,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // that had unsatisfied trait bounds
                     if unsatisfied_predicates.is_empty() {
                         let def_kind = lev_candidate.kind.as_def_kind();
-                        err.span_suggestion(
-                            span,
-                            &format!(
-                                "there is {} {} with a similar name",
-                                def_kind.article(),
-                                def_kind.descr(lev_candidate.def_id),
-                            ),
-                            lev_candidate.name,
-                            Applicability::MaybeIncorrect,
-                        );
+                        // Methods are defined within the context of a struct and their first parameter is always self,
+                        // which represents the instance of the struct the method is being called on
+                        // Associated functions don’t take self as a parameter and
+                        // they are not methods because they don’t have an instance of the struct to work with.
+                        if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
+                            err.span_suggestion(
+                                span,
+                                &format!("there is a method with a similar name",),
+                                lev_candidate.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_suggestion(
+                                span,
+                                &format!(
+                                    "there is {} {} with a similar name",
+                                    def_kind.article(),
+                                    def_kind.descr(lev_candidate.def_id),
+                                ),
+                                lev_candidate.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 }
+
+                self.check_for_deref_method(&mut err, source, rcvr_ty, item_name);
 
                 return Some(err);
             }
@@ -1150,7 +1146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
         item_name: Ident,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
     ) -> bool {
         let tcx = self.tcx;
         let field_receiver = self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
@@ -1165,7 +1161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module(self.body_id).to_def_id();
+            let scope = tcx.parent_module(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
@@ -1282,7 +1278,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // local binding
                     if let hir::def::Res::Local(hir_id) = path.res {
                         let span = tcx.hir().span(hir_id);
-                        let snippet = tcx.sess.source_map().span_to_snippet(span);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                         let parent_node =
@@ -1292,7 +1287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             concrete_type,
                         );
 
-                        match (filename, parent_node, snippet) {
+                        match (filename, parent_node) {
                             (
                                 FileName::Real(_),
                                 Node::Local(hir::Local {
@@ -1300,14 +1295,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ty,
                                     ..
                                 }),
-                                Ok(ref snippet),
                             ) => {
+                                let type_span = ty.map(|ty| ty.span.with_lo(span.hi())).unwrap_or(span.shrink_to_hi());
                                 err.span_suggestion(
                                     // account for `let x: _ = 42;`
-                                    //                  ^^^^
-                                    span.to(ty.as_ref().map(|ty| ty.span).unwrap_or(span)),
+                                    //                   ^^^
+                                    type_span,
                                     &msg,
-                                    format!("{}: {}", snippet, concrete_type),
+                                    format!(": {concrete_type}"),
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -1327,55 +1322,82 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_for_field_method(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: SelfSource<'tcx>,
         span: Span,
         actual: Ty<'tcx>,
         item_name: Ident,
     ) {
         if let SelfSource::MethodCall(expr) = source
-            && let Some((fields, substs)) = self.get_field_candidates(span, actual)
+        && let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id()
+        && let Some((fields, substs)) =
+            self.get_field_candidates_considering_privacy(span, actual, mod_id)
         {
             let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
-            for candidate_field in fields.iter() {
-                if let Some(field_path) = self.check_for_nested_field_satisfying(
-                    span,
-                    &|_, field_ty| {
-                        self.lookup_probe(
-                            span,
-                            item_name,
-                            field_ty,
-                            call_expr,
-                            ProbeScope::AllTraits,
-                        )
-                        .is_ok()
-                    },
-                    candidate_field,
-                    substs,
-                    vec![],
-                    self.tcx.parent_module(expr.hir_id).to_def_id(),
-                ) {
-                    let field_path_str = field_path
+
+            let lang_items = self.tcx.lang_items();
+            let never_mention_traits = [
+                lang_items.clone_trait(),
+                lang_items.deref_trait(),
+                lang_items.deref_mut_trait(),
+                self.tcx.get_diagnostic_item(sym::AsRef),
+                self.tcx.get_diagnostic_item(sym::AsMut),
+                self.tcx.get_diagnostic_item(sym::Borrow),
+                self.tcx.get_diagnostic_item(sym::BorrowMut),
+            ];
+            let candidate_fields: Vec<_> = fields
+                .filter_map(|candidate_field| {
+                    self.check_for_nested_field_satisfying(
+                        span,
+                        &|_, field_ty| {
+                            self.lookup_probe(
+                                span,
+                                item_name,
+                                field_ty,
+                                call_expr,
+                                ProbeScope::TraitsInScope,
+                            )
+                            .map_or(false, |pick| {
+                                !never_mention_traits
+                                    .iter()
+                                    .flatten()
+                                    .any(|def_id| self.tcx.parent(pick.item.def_id) == *def_id)
+                            })
+                        },
+                        candidate_field,
+                        substs,
+                        vec![],
+                        mod_id,
+                    )
+                })
+                .map(|field_path| {
+                    field_path
                         .iter()
                         .map(|id| id.name.to_ident_string())
                         .collect::<Vec<String>>()
-                        .join(".");
-                    debug!("field_path_str: {:?}", field_path_str);
+                        .join(".")
+                })
+                .collect();
 
-                    err.span_suggestion_verbose(
-                        item_name.span.shrink_to_lo(),
-                        "one of the expressions' fields has a method of the same name",
-                        format!("{field_path_str}."),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+            let len = candidate_fields.len();
+            if len > 0 {
+                err.span_suggestions(
+                    item_name.span.shrink_to_lo(),
+                    format!(
+                        "{} of the expressions' fields {} a method of the same name",
+                        if len > 1 { "some" } else { "one" },
+                        if len > 1 { "have" } else { "has" },
+                    ),
+                    candidate_fields.iter().map(|path| format!("{path}.")),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }
 
     fn check_for_unwrap_self(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: SelfSource<'tcx>,
         span: Span,
         actual: Ty<'tcx>,
@@ -1628,6 +1650,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("#[derive({})]\n", traits),
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    fn check_for_deref_method(
+        &self,
+        err: &mut Diagnostic,
+        self_source: SelfSource<'tcx>,
+        rcvr_ty: Ty<'tcx>,
+        item_name: Ident,
+    ) {
+        let SelfSource::QPath(ty) = self_source else { return; };
+        for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
+            if let Ok(pick) = self.probe_for_name(
+                ty.span,
+                Mode::Path,
+                item_name,
+                IsSuggestion(true),
+                deref_ty,
+                ty.hir_id,
+                ProbeScope::TraitsInScope,
+            ) {
+                if deref_ty.is_suggestable(self.tcx, true)
+                    // If this method receives `&self`, then the provided
+                    // argument _should_ coerce, so it's valid to suggest
+                    // just changing the path.
+                    && pick.item.fn_has_self_parameter
+                    && let Some(self_ty) =
+                        self.tcx.fn_sig(pick.item.def_id).inputs().skip_binder().get(0)
+                    && self_ty.is_ref()
+                {
+                    let suggested_path = match deref_ty.kind() {
+                        ty::Bool
+                        | ty::Char
+                        | ty::Int(_)
+                        | ty::Uint(_)
+                        | ty::Float(_)
+                        | ty::Adt(_, _)
+                        | ty::Str
+                        | ty::Projection(_)
+                        | ty::Param(_) => format!("{deref_ty}"),
+                        _ => format!("<{deref_ty}>"),
+                    };
+                    err.span_suggestion_verbose(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                        suggested_path,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_note(
+                        ty.span,
+                        format!("the function `{item_name}` is implemented on `{deref_ty}`"),
+                    );
+                }
+                return;
+            }
         }
     }
 
@@ -2232,7 +2310,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
-    args: Option<&'tcx [hir::Expr<'tcx>]>,
+    args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
@@ -2244,7 +2322,7 @@ fn print_disambiguation_help<'tcx>(
     fn_has_self_parameter: bool,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let (span, sugg) = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
+    let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args))) = (kind, args) {
         let args = format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {
@@ -2252,7 +2330,8 @@ fn print_disambiguation_help<'tcx>(
             } else {
                 ""
             },
-            args.iter()
+            std::iter::once(receiver)
+                .chain(args.iter())
                 .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {
                     applicability = Applicability::HasPlaceholders;
                     "_".to_owned()

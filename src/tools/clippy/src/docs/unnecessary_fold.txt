@@ -1,0 +1,17 @@
+### What it does
+Checks for using `fold` when a more succinct alternative exists.
+Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
+`sum` or `product`.
+
+### Why is this bad?
+Readability.
+
+### Example
+```
+(0..3).fold(false, |acc, x| acc || x > 2);
+```
+
+Use instead:
+```
+(0..3).any(|x| x > 2);
+```

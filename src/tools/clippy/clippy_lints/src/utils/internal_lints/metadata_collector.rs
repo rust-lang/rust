@@ -619,7 +619,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
             if_chain! {
                 // item validation
                 if is_lint_ref_type(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
@@ -644,7 +644,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
 
             if_chain! {
                 if is_deprecated_lint(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // Metadata the little we can get from a deprecated lint
@@ -797,7 +797,7 @@ fn get_lint_group_and_level_or_lint(
     let result = cx.lint_store.check_lint_name(
         lint_name,
         Some(sym::clippy),
-        &[Ident::with_dummy_span(sym::clippy)].into_iter().collect(),
+        &std::iter::once(Ident::with_dummy_span(sym::clippy)).collect(),
     );
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
@@ -1145,8 +1145,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     self.add_single_span_suggestion();
                 }
             },
-            ExprKind::MethodCall(path, arg, _arg_span) => {
-                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&arg[0]));
+            ExprKind::MethodCall(path, recv, _, _arg_span) => {
+                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
                 if match_type(self.cx, self_ty, &paths::DIAGNOSTIC_BUILDER) {
                     let called_method = path.ident.name.as_str().to_string();
                     for (method_name, is_multi_part) in &SUGGESTION_DIAGNOSTIC_BUILDER_METHODS {

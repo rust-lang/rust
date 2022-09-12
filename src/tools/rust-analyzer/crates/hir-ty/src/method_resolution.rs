@@ -336,7 +336,7 @@ impl InherentImpls {
     }
 }
 
-pub fn inherent_impl_crates_query(
+pub(crate) fn inherent_impl_crates_query(
     db: &dyn HirDatabase,
     krate: CrateId,
     fp: TyFingerprint,
@@ -417,6 +417,55 @@ pub fn def_crates(
         }
         _ => return None,
     }
+}
+
+pub fn lang_names_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, Name)> {
+    use hir_expand::name;
+    use syntax::ast::{ArithOp, BinaryOp, CmpOp, Ordering};
+    Some(match op {
+        BinaryOp::LogicOp(_) => return None,
+        BinaryOp::ArithOp(aop) => match aop {
+            ArithOp::Add => (name!(add), name!(add)),
+            ArithOp::Mul => (name!(mul), name!(mul)),
+            ArithOp::Sub => (name!(sub), name!(sub)),
+            ArithOp::Div => (name!(div), name!(div)),
+            ArithOp::Rem => (name!(rem), name!(rem)),
+            ArithOp::Shl => (name!(shl), name!(shl)),
+            ArithOp::Shr => (name!(shr), name!(shr)),
+            ArithOp::BitXor => (name!(bitxor), name!(bitxor)),
+            ArithOp::BitOr => (name!(bitor), name!(bitor)),
+            ArithOp::BitAnd => (name!(bitand), name!(bitand)),
+        },
+        BinaryOp::Assignment { op: Some(aop) } => match aop {
+            ArithOp::Add => (name!(add_assign), name!(add_assign)),
+            ArithOp::Mul => (name!(mul_assign), name!(mul_assign)),
+            ArithOp::Sub => (name!(sub_assign), name!(sub_assign)),
+            ArithOp::Div => (name!(div_assign), name!(div_assign)),
+            ArithOp::Rem => (name!(rem_assign), name!(rem_assign)),
+            ArithOp::Shl => (name!(shl_assign), name!(shl_assign)),
+            ArithOp::Shr => (name!(shr_assign), name!(shr_assign)),
+            ArithOp::BitXor => (name!(bitxor_assign), name!(bitxor_assign)),
+            ArithOp::BitOr => (name!(bitor_assign), name!(bitor_assign)),
+            ArithOp::BitAnd => (name!(bitand_assign), name!(bitand_assign)),
+        },
+        BinaryOp::CmpOp(cop) => match cop {
+            CmpOp::Eq { negated: false } => (name!(eq), name!(eq)),
+            CmpOp::Eq { negated: true } => (name!(ne), name!(eq)),
+            CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
+                (name!(le), name!(partial_ord))
+            }
+            CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
+                (name!(lt), name!(partial_ord))
+            }
+            CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
+                (name!(ge), name!(partial_ord))
+            }
+            CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
+                (name!(gt), name!(partial_ord))
+            }
+        },
+        BinaryOp::Assignment { op: None } => return None,
+    })
 }
 
 /// Look up the method with the given name.
@@ -1015,6 +1064,14 @@ pub fn resolve_indexing_op(
     None
 }
 
+macro_rules! check_that {
+    ($cond:expr) => {
+        if !$cond {
+            return false;
+        }
+    };
+}
+
 fn is_valid_candidate(
     table: &mut InferenceTable<'_>,
     name: Option<&Name>,
@@ -1023,54 +1080,10 @@ fn is_valid_candidate(
     self_ty: &Ty,
     visible_from_module: Option<ModuleId>,
 ) -> bool {
-    macro_rules! check_that {
-        ($cond:expr) => {
-            if !$cond {
-                return false;
-            }
-        };
-    }
-
     let db = table.db;
     match item {
         AssocItemId::FunctionId(m) => {
-            let data = db.function_data(m);
-
-            check_that!(name.map_or(true, |n| n == &data.name));
-            check_that!(visible_from_module.map_or(true, |from_module| {
-                let v = db.function_visibility(m).is_visible_from(db.upcast(), from_module);
-                if !v {
-                    cov_mark::hit!(autoderef_candidate_not_visible);
-                }
-                v
-            }));
-
-            table.run_in_snapshot(|table| {
-                let subst = TyBuilder::subst_for_def(db, m).fill_with_inference_vars(table).build();
-                let expect_self_ty = match m.lookup(db.upcast()).container {
-                    ItemContainerId::TraitId(_) => {
-                        subst.at(Interner, 0).assert_ty_ref(Interner).clone()
-                    }
-                    ItemContainerId::ImplId(impl_id) => {
-                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
-                    }
-                    // We should only get called for associated items (impl/trait)
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
-                        unreachable!()
-                    }
-                };
-                check_that!(table.unify(&expect_self_ty, self_ty));
-                if let Some(receiver_ty) = receiver_ty {
-                    check_that!(data.has_self_param());
-
-                    let sig = db.callable_item_signature(m.into());
-                    let expected_receiver =
-                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &subst);
-
-                    check_that!(table.unify(&receiver_ty, &expected_receiver));
-                }
-                true
-            })
+            is_valid_fn_candidate(table, m, name, receiver_ty, self_ty, visible_from_module)
         }
         AssocItemId::ConstId(c) => {
             let data = db.const_data(c);
@@ -1101,6 +1114,94 @@ fn is_valid_candidate(
         }
         _ => false,
     }
+}
+
+fn is_valid_fn_candidate(
+    table: &mut InferenceTable<'_>,
+    fn_id: FunctionId,
+    name: Option<&Name>,
+    receiver_ty: Option<&Ty>,
+    self_ty: &Ty,
+    visible_from_module: Option<ModuleId>,
+) -> bool {
+    let db = table.db;
+    let data = db.function_data(fn_id);
+
+    check_that!(name.map_or(true, |n| n == &data.name));
+    check_that!(visible_from_module.map_or(true, |from_module| {
+        let v = db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module);
+        if !v {
+            cov_mark::hit!(autoderef_candidate_not_visible);
+        }
+        v
+    }));
+
+    table.run_in_snapshot(|table| {
+        let container = fn_id.lookup(db.upcast()).container;
+        let impl_subst = match container {
+            ItemContainerId::ImplId(it) => {
+                TyBuilder::subst_for_def(db, it).fill_with_inference_vars(table).build()
+            }
+            ItemContainerId::TraitId(it) => {
+                TyBuilder::subst_for_def(db, it).fill_with_inference_vars(table).build()
+            }
+            _ => unreachable!(),
+        };
+
+        let fn_subst = TyBuilder::subst_for_def(db, fn_id)
+            .use_parent_substs(&impl_subst)
+            .fill_with_inference_vars(table)
+            .build();
+
+        let expect_self_ty = match container {
+            ItemContainerId::TraitId(_) => fn_subst.at(Interner, 0).assert_ty_ref(Interner).clone(),
+            ItemContainerId::ImplId(impl_id) => {
+                fn_subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
+            }
+            // We should only get called for associated items (impl/trait)
+            ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                unreachable!()
+            }
+        };
+        check_that!(table.unify(&expect_self_ty, self_ty));
+
+        if let Some(receiver_ty) = receiver_ty {
+            check_that!(data.has_self_param());
+
+            let sig = db.callable_item_signature(fn_id.into());
+            let expected_receiver =
+                sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
+
+            check_that!(table.unify(&receiver_ty, &expected_receiver));
+        }
+
+        if let ItemContainerId::ImplId(impl_id) = container {
+            // We need to consider the bounds on the impl to distinguish functions of the same name
+            // for a type.
+            let predicates = db.generic_predicates(impl_id.into());
+            predicates
+                .iter()
+                .map(|predicate| {
+                    let (p, b) = predicate
+                        .clone()
+                        .substitute(Interner, &impl_subst)
+                        // Skipping the inner binders is ok, as we don't handle quantified where
+                        // clauses yet.
+                        .into_value_and_skipped_binders();
+                    stdx::always!(b.len(Interner) == 0);
+                    p
+                })
+                // It's ok to get ambiguity here, as we may not have enough information to prove
+                // obligations. We'll check if the user is calling the selected method properly
+                // later anyway.
+                .all(|p| table.try_obligation(p.cast(Interner)).is_some())
+        } else {
+            // For `ItemContainerId::TraitId`, we check if `self_ty` implements the trait in
+            // `iterate_trait_method_candidates()`.
+            // For others, this function shouldn't be called.
+            true
+        }
+    })
 }
 
 pub fn implements_trait(

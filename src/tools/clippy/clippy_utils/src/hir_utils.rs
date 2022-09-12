@@ -6,9 +6,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    ArrayLen, BinOpKind, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard,
-    HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath,
-    Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
+    GenericArgs, Guard, HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -201,8 +201,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.inner.cx.tcx.typeck_body(right),
         ));
         let res = self.eq_expr(
-            &self.inner.cx.tcx.hir().body(left).value,
-            &self.inner.cx.tcx.hir().body(right).value,
+            self.inner.cx.tcx.hir().body(left).value,
+            self.inner.cx.tcx.hir().body(right).value,
         );
         self.inner.maybe_typeck_results = old_maybe_typeck_results;
         res
@@ -282,8 +282,14 @@ impl HirEqInterExpr<'_, '_, '_> {
                             && self.eq_expr(l.body, r.body)
                     })
             },
-            (&ExprKind::MethodCall(l_path, l_args, _), &ExprKind::MethodCall(r_path, r_args, _)) => {
-                self.inner.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
+            (
+                &ExprKind::MethodCall(l_path, l_receiver, l_args, _),
+                &ExprKind::MethodCall(r_path, r_receiver, r_args, _),
+            ) => {
+                self.inner.allow_side_effects
+                    && self.eq_path_segment(l_path, r_path)
+                    && self.eq_expr(l_receiver, r_receiver)
+                    && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_array_length(ll, rl)
@@ -643,7 +649,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(&self.cx.tcx.hir().body(body).value);
+                self.hash_expr(self.cx.tcx.hir().body(body).value);
             },
             ExprKind::Field(e, ref f) => {
                 self.hash_expr(e);
@@ -743,8 +749,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprKind::MethodCall(path, args, ref _fn_span) => {
+            ExprKind::MethodCall(path, receiver, args, ref _fn_span) => {
                 self.hash_name(path.ident.name);
+                self.hash_expr(receiver);
                 self.hash_exprs(args);
             },
             ExprKind::ConstBlock(ref l_id) => {
@@ -815,8 +822,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
-            PatKind::Binding(ann, _, _, pat) => {
-                std::mem::discriminant(&ann).hash(&mut self.s);
+            PatKind::Binding(BindingAnnotation(by_ref, mutability), _, _, pat) => {
+                std::mem::discriminant(&by_ref).hash(&mut self.s);
+                std::mem::discriminant(&mutability).hash(&mut self.s);
                 if let Some(pat) = pat {
                     self.hash_pat(pat);
                 }
@@ -921,7 +929,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_lifetime(&mut self, lifetime: Lifetime) {
+    pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
         std::mem::discriminant(&lifetime.name).hash(&mut self.s);
         if let LifetimeName::Param(param_id, ref name) = lifetime.name {
             std::mem::discriminant(name).hash(&mut self.s);
@@ -979,8 +987,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(ref qpath) => self.hash_qpath(qpath),
-            TyKind::OpaqueDef(_, arg_list) => {
+            TyKind::OpaqueDef(_, arg_list, in_trait) => {
                 self.hash_generic_args(arg_list);
+                in_trait.hash(&mut self.s);
             },
             TyKind::TraitObject(_, lifetime, _) => {
                 self.hash_lifetime(*lifetime);
@@ -1002,7 +1011,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
-        self.hash_expr(&self.cx.tcx.hir().body(body_id).value);
+        self.hash_expr(self.cx.tcx.hir().body(body_id).value);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
@@ -1010,7 +1019,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
-                GenericArg::Type(ref ty) => self.hash_ty(ty),
+                GenericArg::Type(ty) => self.hash_ty(ty),
                 GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }

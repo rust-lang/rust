@@ -1,0 +1,15 @@
+### What it does
+Checks for explicit bounds checking when casting.
+
+### Why is this bad?
+Reduces the readability of statements & is error prone.
+
+### Example
+```
+foo <= i32::MAX as u32;
+```
+
+Use instead:
+```
+i32::try_from(foo).is_ok();
+```

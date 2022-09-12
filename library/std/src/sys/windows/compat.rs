@@ -7,51 +7,65 @@
 //! `GetModuleHandle` and `GetProcAddress` to look up DLL entry points at
 //! runtime.
 //!
-//! This implementation uses a static initializer to look up the DLL entry
-//! points. The CRT (C runtime) executes static initializers before `main`
-//! is called (for binaries) and before `DllMain` is called (for DLLs).
-//! This is the ideal time to look up DLL imports, because we are guaranteed
-//! that no other threads will attempt to call these entry points. Thus,
-//! we can look up the imports and store them in `static mut` fields
-//! without any synchronization.
+//! This is implemented simply by storing a function pointer in an atomic.
+//! Loading and calling this function will have little or no overhead
+//! compared with calling any other dynamically imported function.
 //!
-//! This has an additional advantage: Because the DLL import lookup happens
-//! at module initialization, the cost of these lookups is deterministic,
-//! and is removed from the code paths that actually call the DLL imports.
-//! That is, there is no unpredictable "cache miss" that occurs when calling
-//! a DLL import. For applications that benefit from predictable delays,
-//! this is a benefit. This also eliminates the comparison-and-branch
-//! from the hot path.
-//!
-//! Currently, the standard library uses only a small number of dynamic
-//! DLL imports. If this number grows substantially, then the cost of
-//! performing all of the lookups at initialization time might become
-//! substantial.
-//!
-//! The mechanism of registering a static initializer with the CRT is
-//! documented in
-//! [CRT Initialization](https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-160).
-//! It works by contributing a global symbol to the `.CRT$XCU` section.
-//! The linker builds a table of all static initializer functions.
-//! The CRT startup code then iterates that table, calling each
-//! initializer function.
-//!
-//! # **WARNING!!*
-//! The environment that a static initializer function runs in is highly
-//! constrained. There are **many** restrictions on what static initializers
-//! can safely do. Static initializer functions **MUST NOT** do any of the
-//! following (this list is not comprehensive):
-//! * touch any other static field that is used by a different static
-//!   initializer, because the order that static initializers run in
-//!   is not defined.
-//! * call `LoadLibrary` or any other function that acquires the DLL
-//!   loader lock.
-//! * call any Rust function or CRT function that touches any static
-//!   (global) state.
+//! The stored function pointer starts out as an importer function which will
+//! swap itself with the real function when it's called for the first time. If
+//! the real function can't be imported then a fallback function is used in its
+//! place. While this is low cost for the happy path (where the function is
+//! already loaded) it does mean there's some overhead the first time the
+//! function is called. In the worst case, multiple threads may all end up
+//! importing the same function unnecessarily.
 
 use crate::ffi::{c_void, CStr};
 use crate::ptr::NonNull;
+use crate::sync::atomic::Ordering;
 use crate::sys::c;
+
+// This uses a static initializer to preload some imported functions.
+// The CRT (C runtime) executes static initializers before `main`
+// is called (for binaries) and before `DllMain` is called (for DLLs).
+//
+// It works by contributing a global symbol to the `.CRT$XCT` section.
+// The linker builds a table of all static initializer functions.
+// The CRT startup code then iterates that table, calling each
+// initializer function.
+//
+// NOTE: User code should instead use .CRT$XCU to reliably run after std's initializer.
+// If you're reading this and would like a guarantee here, please
+// file an issue for discussion; currently we don't guarantee any functionality
+// before main.
+// See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
+#[used]
+#[link_section = ".CRT$XCT"]
+static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
+
+/// Preload some imported functions.
+///
+/// Note that any functions included here will be unconditionally loaded in
+/// the final binary, regardless of whether or not they're actually used.
+///
+/// Therefore, this should be limited to `compat_fn_optional` functions which
+/// must be preloaded or any functions where lazier loading demonstrates a
+/// negative performance impact in practical situations.
+///
+/// Currently we only preload `WaitOnAddress` and `WakeByAddressSingle`.
+unsafe extern "C" fn init() {
+    // In an exe this code is executed before main() so is single threaded.
+    // In a DLL the system's loader lock will be held thereby synchronizing
+    // access. So the same best practices apply here as they do to running in DllMain:
+    // https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
+    //
+    // DO NOT do anything interesting or complicated in this function! DO NOT call
+    // any Rust functions or CRT functions if those functions touch any global state,
+    // because this function runs during global initialization. For example, DO NOT
+    // do any dynamic allocation, don't call LoadLibrary, etc.
+
+    // Attempt to preload the synch functions.
+    load_synch_functions();
+}
 
 /// Helper macro for creating CStrs from literals and symbol names.
 macro_rules! ansi_str {
@@ -83,39 +97,6 @@ pub(crate) const fn const_cstr_from_bytes(bytes: &'static [u8]) -> &'static CStr
     }
     // SAFETY: The safety is ensured by the above checks.
     unsafe { crate::ffi::CStr::from_bytes_with_nul_unchecked(bytes) }
-}
-
-#[used]
-#[link_section = ".CRT$XCU"]
-static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
-
-/// This is where the magic preloading of symbols happens.
-///
-/// Note that any functions included here will be unconditionally included in
-/// the final binary, regardless of whether or not they're actually used.
-///
-/// Therefore, this is limited to `compat_fn_optional` functions which must be
-/// preloaded and any functions which may be more time sensitive, even for the first call.
-unsafe extern "C" fn init() {
-    // There is no locking here. This code is executed before main() is entered, and
-    // is guaranteed to be single-threaded.
-    //
-    // DO NOT do anything interesting or complicated in this function! DO NOT call
-    // any Rust functions or CRT functions if those functions touch any global state,
-    // because this function runs during global initialization. For example, DO NOT
-    // do any dynamic allocation, don't call LoadLibrary, etc.
-
-    if let Some(synch) = Module::new(c::SYNCH_API) {
-        // These are optional and so we must manually attempt to load them
-        // before they can be used.
-        c::WaitOnAddress::preload(synch);
-        c::WakeByAddressSingle::preload(synch);
-    }
-
-    if let Some(kernel32) = Module::new(c::KERNEL32) {
-        // Preloading this means getting a precise time will be as fast as possible.
-        c::GetSystemTimePreciseAsFileTime::preload(kernel32);
-    }
 }
 
 /// Represents a loaded module.
@@ -151,7 +132,7 @@ impl Module {
 macro_rules! compat_fn_with_fallback {
     (pub static $module:ident: &CStr = $name:expr; $(
         $(#[$meta:meta])*
-        pub fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
     )*) => (
         pub static $module: &CStr = $name;
     $(
@@ -196,11 +177,6 @@ macro_rules! compat_fn_with_fallback {
                 $fallback_body
             }
 
-            #[allow(unused)]
-            pub(in crate::sys) fn preload(module: Module) {
-                load_from_module(Some(module));
-            }
-
             #[inline(always)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
                 let func: F = mem::transmute(PTR.load(Ordering::Relaxed));
@@ -208,66 +184,60 @@ macro_rules! compat_fn_with_fallback {
             }
         }
         $(#[$meta])*
-        pub use $symbol::call as $symbol;
+        $vis use $symbol::call as $symbol;
     )*)
 }
 
-/// A function that either exists or doesn't.
+/// Optionally loaded functions.
 ///
-/// NOTE: Optional functions must be preloaded in the `init` function above, or they will always be None.
+/// Actual loading of the function defers to $load_functions.
 macro_rules! compat_fn_optional {
-    (pub static $module:ident: &CStr = $name:expr; $(
-        $(#[$meta:meta])*
-        pub fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty;
-    )*) => (
-        pub static $module: &CStr = $name;
+    ($load_functions:expr;
     $(
-        $(#[$meta])*
-        pub mod $symbol {
-            #[allow(unused_imports)]
-            use super::*;
-            use crate::mem;
-            use crate::sync::atomic::{AtomicPtr, Ordering};
-            use crate::sys::compat::Module;
-            use crate::ptr::{self, NonNull};
+        $(#[$meta:meta])*
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) $(-> $rettype:ty)?;
+    )+) => (
+        $(
+            pub mod $symbol {
+                use super::*;
+                use crate::ffi::c_void;
+                use crate::mem;
+                use crate::ptr::{self, NonNull};
+                use crate::sync::atomic::{AtomicPtr, Ordering};
 
-            type F = unsafe extern "system" fn($($argtype),*) -> $rettype;
+                pub(in crate::sys) static PTR: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 
-            /// `PTR` will either be `null()` or set to the loaded function.
-            static PTR: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
+                type F = unsafe extern "system" fn($($argtype),*) $(-> $rettype)?;
 
-            /// Only allow access to the function if it has loaded successfully.
-            #[inline(always)]
-            #[cfg(not(miri))]
-            pub fn option() -> Option<F> {
-                unsafe {
-                    NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| mem::transmute(f))
+                #[inline(always)]
+                pub fn option() -> Option<F> {
+                    // Miri does not understand the way we do preloading
+                    // therefore load the function here instead.
+                    #[cfg(miri)] $load_functions;
+                    NonNull::new(PTR.load(Ordering::Relaxed)).map(|f| unsafe { mem::transmute(f) })
                 }
             }
+        )+
+    )
+}
 
-            // Miri does not understand the way we do preloading
-            // therefore load the function here instead.
-            #[cfg(miri)]
-            pub fn option() -> Option<F> {
-                let mut func = NonNull::new(PTR.load(Ordering::Relaxed));
-                if func.is_none() {
-                    unsafe { Module::new($module).map(preload) };
-                    func = NonNull::new(PTR.load(Ordering::Relaxed));
-                }
-                unsafe {
-                    func.map(|f| mem::transmute(f))
-                }
-            }
+/// Load all needed functions from "api-ms-win-core-synch-l1-2-0".
+pub(super) fn load_synch_functions() {
+    fn try_load() -> Option<()> {
+        const MODULE_NAME: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
+        const WAIT_ON_ADDRESS: &CStr = ansi_str!("WaitOnAddress");
+        const WAKE_BY_ADDRESS_SINGLE: &CStr = ansi_str!("WakeByAddressSingle");
 
-            #[allow(unused)]
-            pub(in crate::sys) fn preload(module: Module) {
-                unsafe {
-                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
-                    if let Some(f) = module.proc_address(SYMBOL_NAME) {
-                        PTR.store(f.as_ptr(), Ordering::Relaxed);
-                    }
-                }
-            }
-        }
-    )*)
+        // Try loading the library and all the required functions.
+        // If any step fails, then they all fail.
+        let library = unsafe { Module::new(MODULE_NAME) }?;
+        let wait_on_address = library.proc_address(WAIT_ON_ADDRESS)?;
+        let wake_by_address_single = library.proc_address(WAKE_BY_ADDRESS_SINGLE)?;
+
+        c::WaitOnAddress::PTR.store(wait_on_address.as_ptr(), Ordering::Relaxed);
+        c::WakeByAddressSingle::PTR.store(wake_by_address_single.as_ptr(), Ordering::Relaxed);
+        Some(())
+    }
+
+    try_load();
 }

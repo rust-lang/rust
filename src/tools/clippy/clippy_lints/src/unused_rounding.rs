@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 1f32;
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub UNUSED_ROUNDING,
     nursery,
     "Uselessly rounding a whole number floating-point literal"
@@ -30,11 +30,10 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
 fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
-    if let ExprKind::MethodCall(name_ident, args, _) = &expr.kind
+    if let ExprKind::MethodCall(name_ident, receiver, _, _) = &expr.kind
         && let method_name = name_ident.ident.name.as_str()
         && (method_name == "ceil" || method_name == "round" || method_name == "floor")
-        && !args.is_empty()
-        && let ExprKind::Lit(spanned) = &args[0].kind
+        && let ExprKind::Lit(spanned) = &receiver.kind
         && let LitKind::Float(symbol, ty) = spanned.kind {
             let f = symbol.as_str().parse::<f64>().unwrap();
             let f_str = symbol.to_string() + if let LitFloatType::Suffixed(ty) = ty {

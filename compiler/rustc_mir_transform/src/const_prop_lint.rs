@@ -6,9 +6,9 @@ use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
 use crate::MirLint;
 use rustc_const_eval::const_eval::ConstEvalErr;
+use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
-    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar,
-    ScalarMaybeUninit, StackPopCleanup,
+    self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -106,7 +106,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
 
         let dummy_body = &Body::new(
             body.source,
-            body.basic_blocks().clone(),
+            (*body.basic_blocks).clone(),
             body.source_scopes.clone(),
             body.local_decls.clone(),
             Default::default(),
@@ -230,7 +230,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         let op = match self.ecx.eval_place_to_op(place, None) {
-            Ok(op) => op,
+            Ok(op) => {
+                if matches!(*op, interpret::Operand::Immediate(Immediate::Uninit)) {
+                    // Make sure nobody accidentally uses this value.
+                    return None;
+                }
+                op
+            }
             Err(e) => {
                 trace!("get_const failed: {}", e);
                 return None;
@@ -239,7 +245,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.read_immediate_raw(&op, /*force*/ false) {
+        Some(match self.ecx.read_immediate_raw(&op) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -401,8 +407,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let left_ty = left.ty(self.local_decls, self.tcx);
             let left_size = self.ecx.layout_of(left_ty).ok()?.size;
             let right_size = r.layout.size;
-            let r_bits = r.to_scalar().ok();
-            let r_bits = r_bits.and_then(|r| r.to_bits(right_size).ok());
+            let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", source_info);
                 self.report_assert_as_lint(
@@ -517,6 +522,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         if rvalue.needs_subst() {
             return None;
         }
+        if !rvalue
+            .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
+            .is_sized(self.ecx.tcx, self.param_env)
+        {
+            // the interpreter doesn't support unsized locals (only unsized arguments),
+            // but rustc does (in a kinda broken way), so we have to skip them here
+            return None;
+        }
 
         self.use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, place))
     }
@@ -524,7 +537,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        for (bb, data) in body.basic_blocks().iter_enumerated() {
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
             self.visit_basic_block_data(bb, data);
         }
     }
@@ -625,8 +638,12 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
                 if let Some(ref value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
-                    let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
-                    let value_const = self.ecx.read_scalar(&value).unwrap();
+                    let expected = Scalar::from_bool(*expected);
+                    let Ok(value_const) = self.ecx.read_scalar(&value) else {
+                        // FIXME should be used use_ecx rather than a local match... but we have
+                        // quite a few of these read_scalar/read_immediate that need fixing.
+                        return
+                    };
                     if expected != value_const {
                         enum DbgVal<T> {
                             Val(T),
@@ -643,9 +660,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         let mut eval_to_int = |op| {
                             // This can be `None` if the lhs wasn't const propagated and we just
                             // triggered the assert on the value of the rhs.
-                            self.eval_operand(op, source_info).map_or(DbgVal::Underscore, |op| {
-                                DbgVal::Val(self.ecx.read_immediate(&op).unwrap().to_const_int())
-                            })
+                            self.eval_operand(op, source_info)
+                                .and_then(|op| self.ecx.read_immediate(&op).ok())
+                                .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
                         };
                         let msg = match msg {
                             AssertKind::DivisionByZero(op) => {

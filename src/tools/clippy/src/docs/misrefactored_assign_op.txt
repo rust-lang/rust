@@ -1,0 +1,20 @@
+### What it does
+Checks for `a op= a op b` or `a op= b op a` patterns.
+
+### Why is this bad?
+Most likely these are bugs where one meant to write `a
+op= b`.
+
+### Known problems
+Clippy cannot know for sure if `a op= a op b` should have
+been `a = a op a op b` or `a = a op b`/`a op= b`. Therefore, it suggests both.
+If `a op= a op b` is really the correct behavior it should be
+written as `a = a op a op b` as it's less confusing.
+
+### Example
+```
+let mut a = 5;
+let b = 2;
+// ...
+a += a + b;
+```

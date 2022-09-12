@@ -36,7 +36,10 @@ impl<T: ?Sized> *const T {
     pub const fn is_null(self) -> bool {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        (self as *const u8).guaranteed_eq(null())
+        match (self as *const u8).guaranteed_eq(null()) {
+            None => false,
+            Some(res) => res,
+        }
     }
 
     /// Casts to a pointer of another type.
@@ -95,8 +98,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }
@@ -154,7 +157,7 @@ impl<T: ?Sized> *const T {
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
     /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// properly restore the lost information and obtain a dereferenceable pointer, use
     /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
@@ -249,7 +252,7 @@ impl<T: ?Sized> *const T {
         let offset = dest_addr.wrapping_sub(self_addr);
 
         // This is the canonical desugarring of this operation
-        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+        self.wrapping_byte_offset(offset)
     }
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
@@ -559,6 +562,21 @@ impl<T: ?Sized> *const T {
         from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
+    /// Masks out bits of the pointer according to a mask.
+    ///
+    /// This is convenience for `ptr.map_addr(|a| a & mask)`.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_mask", issue = "98290")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    pub fn mask(self, mask: usize) -> *const T {
+        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
+        from_raw_parts::<T>(this, metadata(self))
+    }
+
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
     ///
@@ -641,7 +659,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
@@ -740,9 +758,12 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        let this = self;
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
-        unsafe { assert_unsafe_precondition!(self >= origin) };
+        unsafe {
+            assert_unsafe_precondition!([T](this: *const T, origin: *const T) => this >= origin)
+        };
 
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
@@ -752,20 +773,16 @@ impl<T: ?Sized> *const T {
 
     /// Returns whether two pointers are guaranteed to be equal.
     ///
-    /// At runtime this function behaves like `self == other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine equality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be equal.
-    /// But when it returns `true`, the pointers are guaranteed to be equal.
+    /// spuriously return `None` for pointers that later actually turn out to have its equality known.
+    /// But when it returns `Some`, the pointers' equality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_ne`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_ne`]: #method.guaranteed_ne
-    ///
-    /// The return value may change depending on the compiler version and unsafe code must not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -774,29 +791,28 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_eq(self, other: *const T) -> bool
+    pub const fn guaranteed_eq(self, other: *const T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_eq(self, other)
+        match intrinsics::ptr_guaranteed_cmp(self as _, other as _) {
+            2 => None,
+            other => Some(other == 1),
+        }
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
-    /// At runtime this function behaves like `self != other`.
+    /// At runtime this function behaves like `Some(self == other)`.
     /// However, in some contexts (e.g., compile-time evaluation),
-    /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// it is not always possible to determine inequality of two pointers, so this function may
+    /// spuriously return `None` for pointers that later actually turn out to have its inequality known.
+    /// But when it returns `Some`, the pointers' inequality is guaranteed to be known.
     ///
-    /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
-    /// comparisons for which both functions return `false`.
-    ///
-    /// [`guaranteed_eq`]: #method.guaranteed_eq
-    ///
-    /// The return value may change depending on the compiler version and unsafe code must not
+    /// The return value may change from `Some` to `None` and vice versa depending on the compiler
+    /// version and unsafe code must not
     /// rely on the result of this function for soundness. It is suggested to only use this function
-    /// for performance optimizations where spurious `false` return values by this function do not
+    /// for performance optimizations where spurious `None` return values by this function do not
     /// affect the outcome, but just the performance.
     /// The consequences of using this method to make runtime and compile-time code behave
     /// differently have not been explored. This method should not be used to introduce such
@@ -805,11 +821,14 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    pub const fn guaranteed_ne(self, other: *const T) -> bool
+    pub const fn guaranteed_ne(self, other: *const T) -> Option<bool>
     where
         T: Sized,
     {
-        intrinsics::ptr_guaranteed_ne(self, other)
+        match self.guaranteed_eq(other) {
+            None => None,
+            Some(eq) => Some(!eq),
+        }
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
@@ -1267,20 +1286,21 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     assert!(*u16_ptr == u16::from_ne_bytes([5, 6]) || *u16_ptr == u16::from_ne_bytes([6, 7]));
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
@@ -1336,11 +1356,8 @@ impl<T: ?Sized> *const T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // SAFETY: `is_power_of_two()` will return `false` for zero.
-        unsafe { core::intrinsics::assume(align != 0) };
-
         // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() % align == 0
+        self.cast::<u8>().addr() & align - 1 == 0
     }
 }
 

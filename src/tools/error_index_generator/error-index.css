@@ -1,0 +1,38 @@
+code.compile_fail {
+	border-left: 2px solid red;
+}
+
+pre .tooltip {
+	position: absolute;
+	left: -25px;
+	top: 0;
+	z-index: 1;
+	color: red;
+	cursor: pointer;
+}
+pre .tooltip::after {
+	display: none;
+	content: "This example deliberately fails to compile";
+	background-color: #000;
+	color: #fff;
+	border-color: #000;
+	text-align: center;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+}
+pre .tooltip::before {
+	display: none;
+	border-color: transparent black transparent transparent;
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 16px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+}
+
+pre .tooltip:hover::before, pre .tooltip:hover::after {
+	display: inline;
+}

@@ -1,0 +1,22 @@
+# This is the template for reuse-requirements.txt.
+#
+# The pip-tools project is used to generate the file again. To install it, the
+# recommended way is to:
+#
+# - Install pipx from https://github.com/pypa/pipx
+# - Run `pipx install pip-tools`
+#
+# Once pip-tools is installed, run this command to regenerate the .txt file:
+#
+#    pip-compile --allow-unsafe --generate-hashes reuse-requirements.in
+#
+
+reuse
+
+# Some packages dropped support for Python 3.6, which is the version used in
+# this builder (due to Ubuntu 18.04). This should be removed once we bump the
+# Ubuntu version of the builder.
+jinja2 < 3.1
+markupsafe < 2.1
+requests < 2.28
+setuptools < 59.7

@@ -36,7 +36,7 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
 #[no_mangle]
 fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&TEST_LINT, &PLEASE_LINT]);
-    reg.lint_store.register_late_pass(|| Box::new(Pass));
+    reg.lint_store.register_late_pass(|_| Box::new(Pass));
     reg.lint_store.register_group(
         true,
         "lint_me",

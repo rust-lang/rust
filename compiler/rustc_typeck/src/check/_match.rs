@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -12,7 +12,7 @@ use rustc_trait_selection::traits::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     pub fn check_match(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -94,7 +94,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
-            let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
+            let opt_suggest_box_span = prior_arm.and_then(|(_, prior_arm_ty, _)| {
+                self.opt_suggest_box_span(prior_arm_ty, arm_ty, orig_expected)
+            });
 
             let (arm_block_id, arm_span) = if let hir::ExprKind::Block(blk, _) = arm.body.kind {
                 (Some(blk.hir_id), self.find_block_span(blk))
@@ -210,9 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We won't diverge unless the scrutinee or all arms diverge.
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
-        let match_ty = coercion.complete(self);
-        debug!(?match_ty);
-        match_ty
+        coercion.complete(self)
     }
 
     /// When the previously checked expression (the scrutinee) diverges,
@@ -473,43 +473,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
-        outer_ty: Ty<'tcx>,
+        first_ty: Ty<'tcx>,
+        second_ty: Ty<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
         match orig_expected {
             Expectation::ExpectHasType(expected)
                 if self.in_tail_expr
-                    && self.ret_coercion.as_ref()?.borrow().merged_ty().has_opaque_types()
-                    && self.can_coerce(outer_ty, expected) =>
+                    && self.return_type_has_opaque
+                    && self.can_coerce(first_ty, expected)
+                    && self.can_coerce(second_ty, expected) =>
             {
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
                 let mut suggest_box = !obligations.is_empty();
-                for o in obligations {
-                    match o.predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(t) => {
-                            let pred =
-                                ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
-                                    trait_ref: ty::TraitRef {
-                                        def_id: t.def_id(),
-                                        substs: self.tcx.mk_substs_trait(outer_ty, &[]),
+                'outer: for o in obligations {
+                    for outer_ty in &[first_ty, second_ty] {
+                        match o.predicate.kind().skip_binder() {
+                            ty::PredicateKind::Trait(t) => {
+                                let pred = ty::Binder::dummy(ty::PredicateKind::Trait(
+                                    ty::TraitPredicate {
+                                        trait_ref: ty::TraitRef {
+                                            def_id: t.def_id(),
+                                            substs: self.tcx.mk_substs_trait(*outer_ty, &[]),
+                                        },
+                                        constness: t.constness,
+                                        polarity: t.polarity,
                                     },
-                                    constness: t.constness,
-                                    polarity: t.polarity,
-                                }));
-                            let obl = Obligation::new(
-                                o.cause.clone(),
-                                self.param_env,
-                                pred.to_predicate(self.tcx),
-                            );
-                            suggest_box &= self.predicate_must_hold_modulo_regions(&obl);
-                            if !suggest_box {
-                                // We've encountered some obligation that didn't hold, so the
-                                // return expression can't just be boxed. We don't need to
-                                // evaluate the rest of the obligations.
-                                break;
+                                ));
+                                let obl = Obligation::new(
+                                    o.cause.clone(),
+                                    self.param_env,
+                                    pred.to_predicate(self.tcx),
+                                );
+                                suggest_box &= self.predicate_must_hold_modulo_regions(&obl);
+                                if !suggest_box {
+                                    // We've encountered some obligation that didn't hold, so the
+                                    // return expression can't just be boxed. We don't need to
+                                    // evaluate the rest of the obligations.
+                                    break 'outer;
+                                }
                             }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
                 // If all the obligations hold (or there are no obligations) the tail expression

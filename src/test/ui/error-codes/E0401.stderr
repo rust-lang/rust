@@ -4,9 +4,9 @@ error[E0401]: can't use generic parameters from outer function
 LL | fn foo<T>(x: T) {
    |        - type parameter from outer function
 LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
-   |        ---------------------------    ^ use of generic parameter from outer function
-   |        |
-   |        help: try using a local generic parameter instead: `bfnr<U, V: Baz<U>, W: Fn(), T>`
+   |             -                         ^ use of generic parameter from outer function
+   |             |
+   |             help: try using a local generic parameter instead: `T,`
 
 error[E0401]: can't use generic parameters from outer function
   --> $DIR/E0401.rs:9:16
@@ -15,7 +15,7 @@ LL | fn foo<T>(x: T) {
    |        - type parameter from outer function
 ...
 LL |     fn baz<U,
-   |        --- try adding a local generic parameter in this method instead
+   |            - help: try using a local generic parameter instead: `T,`
 ...
 LL |            (y: T) {
    |                ^ use of generic parameter from outer function

@@ -1,13 +1,11 @@
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
   --> $DIR/try-on-option.rs:5:6
    |
-LL | / fn foo() -> Result<u32, ()> {
-LL | |     let x: Option<u32> = None;
-LL | |     x?;
-   | |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<u32, ()>`
-LL | |     Ok(22)
-LL | | }
-   | |_- this function returns a `Result`
+LL | fn foo() -> Result<u32, ()> {
+   | --------------------------- this function returns a `Result`
+LL |     let x: Option<u32> = None;
+LL |     x?;
+   |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<u32, ()>`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
    = help: the following other types implement trait `FromResidual<R>`:
@@ -17,13 +15,11 @@ LL | | }
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option.rs:11:6
    |
-LL | / fn bar() -> u32 {
-LL | |     let x: Option<u32> = None;
-LL | |     x?;
-   | |      ^ cannot use the `?` operator in a function that returns `u32`
-LL | |     22
-LL | | }
-   | |_- this function should return `Result` or `Option` to accept `?`
+LL | fn bar() -> u32 {
+   | --------------- this function should return `Result` or `Option` to accept `?`
+LL |     let x: Option<u32> = None;
+LL |     x?;
+   |      ^ cannot use the `?` operator in a function that returns `u32`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
 

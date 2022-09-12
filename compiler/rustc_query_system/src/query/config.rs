@@ -2,12 +2,12 @@
 
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
+use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -19,15 +19,17 @@ pub trait QueryConfig {
     type Stored: Clone;
 }
 
+#[derive(Copy, Clone)]
 pub struct QueryVTable<CTX: QueryContext, K, V> {
     pub anon: bool,
     pub dep_kind: CTX::DepKind,
     pub eval_always: bool,
+    pub depth_limit: bool,
     pub cache_on_disk: bool,
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
+    pub handle_cycle_error: HandleCycleError,
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 
@@ -72,4 +74,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
     fn make_vtable(tcx: CTX, key: &Self::Key) -> QueryVTable<CTX, Self::Key, Self::Value>;
 
     fn cache_on_disk(tcx: CTX::DepContext, key: &Self::Key) -> bool;
+
+    // Don't use this method to compute query results, instead use the methods on TyCtxt
+    fn execute_query(tcx: CTX::DepContext, k: Self::Key) -> Self::Stored;
 }

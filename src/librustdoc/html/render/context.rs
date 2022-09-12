@@ -71,7 +71,7 @@ pub(crate) struct Context<'tcx> {
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Context<'_>, 128);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
@@ -301,13 +301,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()), true)
+        self.href_from_span(item.span(self.tcx())?, true)
     }
 
     pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
-        if span.is_dummy() {
-            return None;
-        }
         let mut root = self.root_path();
         let mut path = String::new();
         let cnum = span.cnum(self.sess());

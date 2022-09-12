@@ -2,9 +2,10 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/issue-83182.rs:5:1
    |
 LL | const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[&()]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.0: encountered a pointer in `str`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
    = note: the raw bytes of the constant (size: 8, align: 4) {
                ╾─alloc4──╼ 01 00 00 00                         │ ╾──╼....
            }

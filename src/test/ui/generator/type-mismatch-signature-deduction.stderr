@@ -11,6 +11,12 @@ note: return type inferred to be `Result<{integer}, _>` here
    |
 LL |             return Ok(6);
    |                    ^^^^^
+help: try wrapping the expression in a variant of `Result`
+   |
+LL |         Ok(5)
+   |         +++ +
+LL |         Err(5)
+   |         ++++ +
 
 error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:7:5: 7:7] as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13

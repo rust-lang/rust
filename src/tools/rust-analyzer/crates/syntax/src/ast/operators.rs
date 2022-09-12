@@ -111,10 +111,10 @@ impl fmt::Display for BinaryOp {
             BinaryOp::ArithOp(op) => fmt::Display::fmt(op, f),
             BinaryOp::CmpOp(op) => fmt::Display::fmt(op, f),
             BinaryOp::Assignment { op } => {
-                f.write_str("=")?;
                 if let Some(op) = op {
                     fmt::Display::fmt(op, f)?;
                 }
+                f.write_str("=")?;
                 Ok(())
             }
         }

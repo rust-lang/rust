@@ -8,7 +8,7 @@ use syntax::SmolStr;
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
     render::{
-        variant::{format_literal_label, visible_fields},
+        variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
     },
     CompletionItem, CompletionItemKind,
@@ -31,12 +31,13 @@ pub(crate) fn render_struct_pat(
     }
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
-    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
+    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let kind = strukt.kind(ctx.db());
     let label = format_literal_label(name.as_str(), kind);
+    let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, pat, strukt))
+    Some(build_completion(ctx, label, lookup, pat, strukt))
 }
 
 pub(crate) fn render_variant_pat(
@@ -53,18 +54,21 @@ pub(crate) fn render_variant_pat(
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
 
     let (name, escaped_name) = match path {
-        Some(path) => (path.to_string().into(), path.escaped().to_string().into()),
+        Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-            (name.to_smol_str(), name.escaped().to_smol_str())
+            (name.unescaped().to_smol_str(), name.to_smol_str())
         }
     };
 
-    let (label, pat) = match path_ctx {
-        Some(PathCompletionCtx { has_call_parens: true, .. }) => (name, escaped_name.to_string()),
+    let (label, lookup, pat) = match path_ctx {
+        Some(PathCompletionCtx { has_call_parens: true, .. }) => {
+            (name.clone(), name, escaped_name.to_string())
+        }
         _ => {
             let kind = variant.kind(ctx.db());
             let label = format_literal_label(name.as_str(), kind);
+            let lookup = format_literal_lookup(name.as_str(), kind);
             let pat = render_pat(
                 &ctx,
                 pattern_ctx,
@@ -73,16 +77,17 @@ pub(crate) fn render_variant_pat(
                 &visible_fields,
                 fields_omitted,
             )?;
-            (label, pat)
+            (label, lookup, pat)
         }
     };
 
-    Some(build_completion(ctx, label, pat, variant))
+    Some(build_completion(ctx, label, lookup, pat, variant))
 }
 
 fn build_completion(
     ctx: RenderContext<'_>,
     label: SmolStr,
+    lookup: SmolStr,
     pat: String,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
@@ -90,6 +95,7 @@ fn build_completion(
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat)
+        .lookup_by(lookup)
         .set_relevance(ctx.completion_relevance());
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
@@ -146,7 +152,7 @@ fn render_record_as_pat(
             format!(
                 "{name} {{ {}{} }}",
                 fields.enumerate().format_with(", ", |(idx, field), f| {
-                    f(&format_args!("{}${}", field.name(db).escaped(), idx + 1))
+                    f(&format_args!("{}${}", field.name(db), idx + 1))
                 }),
                 if fields_omitted { ", .." } else { "" },
                 name = name
@@ -155,7 +161,7 @@ fn render_record_as_pat(
         None => {
             format!(
                 "{name} {{ {}{} }}",
-                fields.map(|field| field.name(db).escaped().to_smol_str()).format(", "),
+                fields.map(|field| field.name(db).to_smol_str()).format(", "),
                 if fields_omitted { ", .." } else { "" },
                 name = name
             )

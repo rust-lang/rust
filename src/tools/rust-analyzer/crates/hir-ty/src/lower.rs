@@ -1,12 +1,12 @@
 //! Methods for lowering the HIR to types. There are two main cases here:
 //!
 //!  - Lowering a type reference like `&usize` or `Option<foo::bar::Baz>` to a
-//!    type: The entry point for this is `Ty::from_hir`.
-//!  - Building the type for an item: This happens through the `type_for_def` query.
+//!    type: The entry point for this is `TyLoweringContext::lower_ty`.
+//!  - Building the type for an item: This happens through the `ty` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, RefCell, RefMut},
     iter,
     sync::Arc,
 };
@@ -47,7 +47,7 @@ use crate::{
     consteval::{intern_const_scalar, path_to_const, unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     make_binders,
-    mapping::ToChalk,
+    mapping::{from_chalk_trait_id, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::Generics,
     utils::{all_super_trait_refs, associated_type_by_name_including_super_traits, generics},
@@ -238,18 +238,7 @@ impl<'a> TyLoweringContext<'a> {
                 })
                 .intern(Interner)
             }
-            TypeRef::DynTrait(bounds) => {
-                let self_ty =
-                    TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
-                let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    QuantifiedWhereClauses::from_iter(
-                        Interner,
-                        bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
-                    )
-                });
-                let bounds = crate::make_single_type_binders(bounds);
-                TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
-            }
+            TypeRef::DynTrait(bounds) => self.lower_dyn_trait(bounds),
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
                     ImplTraitLoweringMode::Opaque => {
@@ -341,26 +330,29 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             TypeRef::Macro(macro_call) => {
-                let (expander, recursion_start) = {
-                    let mut expander = self.expander.borrow_mut();
-                    if expander.is_some() {
-                        (Some(expander), false)
-                    } else {
-                        *expander = Some(Expander::new(
-                            self.db.upcast(),
-                            macro_call.file_id,
-                            self.resolver.module(),
-                        ));
-                        (Some(expander), true)
+                let (mut expander, recursion_start) = {
+                    match RefMut::filter_map(self.expander.borrow_mut(), Option::as_mut) {
+                        // There already is an expander here, this means we are already recursing
+                        Ok(expander) => (expander, false),
+                        // No expander was created yet, so we are at the start of the expansion recursion
+                        // and therefore have to create an expander.
+                        Err(expander) => (
+                            RefMut::map(expander, |it| {
+                                it.insert(Expander::new(
+                                    self.db.upcast(),
+                                    macro_call.file_id,
+                                    self.resolver.module(),
+                                ))
+                            }),
+                            true,
+                        ),
                     }
                 };
-                let ty = if let Some(mut expander) = expander {
-                    let expander_mut = expander.as_mut().unwrap();
+                let ty = {
                     let macro_call = macro_call.to_node(self.db.upcast());
-                    match expander_mut.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
+                    match expander.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
                         Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-                            let ctx =
-                                LowerCtx::new(self.db.upcast(), expander_mut.current_file_id());
+                            let ctx = LowerCtx::new(self.db.upcast(), expander.current_file_id());
                             let type_ref = TypeRef::from_ast(&ctx, expanded);
 
                             drop(expander);
@@ -373,11 +365,14 @@ impl<'a> TyLoweringContext<'a> {
                                 .exit(self.db.upcast(), mark);
                             Some(ty)
                         }
-                        _ => None,
+                        _ => {
+                            drop(expander);
+                            None
+                        }
                     }
-                } else {
-                    None
                 };
+
+                // drop the expander, resetting it to pre-recursion state
                 if recursion_start {
                     *self.expander.borrow_mut() = None;
                 }
@@ -468,29 +463,10 @@ impl<'a> TyLoweringContext<'a> {
                         }
                     }
                     0 => {
-                        let self_ty = Some(
-                            TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                                .intern(Interner),
-                        );
-                        let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                            ctx.lower_trait_ref_from_resolved_path(
-                                trait_,
-                                resolved_segment,
-                                self_ty,
-                            )
-                        });
-                        let dyn_ty = DynTy {
-                            bounds: crate::make_single_type_binders(
-                                QuantifiedWhereClauses::from_iter(
-                                    Interner,
-                                    Some(crate::wrap_empty_binders(WhereClause::Implemented(
-                                        trait_ref,
-                                    ))),
-                                ),
-                            ),
-                            lifetime: static_lifetime(),
-                        };
-                        TyKind::Dyn(dyn_ty).intern(Interner)
+                        // Trait object type without dyn; this should be handled in upstream. See
+                        // `lower_path()`.
+                        stdx::never!("unexpected fully resolved trait path");
+                        TyKind::Error.intern(Interner)
                     }
                     _ => {
                         // FIXME report error (ambiguous associated type)
@@ -509,7 +485,14 @@ impl<'a> TyLoweringContext<'a> {
                         TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
                     }
                     ParamLoweringMode::Variable => {
-                        let idx = generics.param_idx(param_id.into()).expect("matching generics");
+                        let idx = match generics.param_idx(param_id.into()) {
+                            None => {
+                                never!("no matching generics");
+                                return (TyKind::Error.intern(Interner), None);
+                            }
+                            Some(idx) => idx,
+                        };
+
                         TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
                     }
                 }
@@ -555,11 +538,20 @@ impl<'a> TyLoweringContext<'a> {
             let (ty, res) = self.lower_ty_ext(type_ref);
             return self.lower_ty_relative_path(ty, res, path.segments());
         }
+
         let (resolution, remaining_index) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
                 None => return (TyKind::Error.intern(Interner), None),
             };
+
+        if matches!(resolution, TypeNs::TraitId(_)) && remaining_index.is_none() {
+            // trait object type without dyn
+            let bound = TypeBound::Path(path.clone(), TraitBoundModifier::None);
+            let ty = self.lower_dyn_trait(&[Interned::new(bound)]);
+            return (ty, None);
+        }
+
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
                 path.segments().last().expect("resolved path has at least one element"),
@@ -987,6 +979,49 @@ impl<'a> TyLoweringContext<'a> {
             })
     }
 
+    fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
+        let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
+        let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+            let bounds =
+                bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false));
+
+            let mut auto_traits = SmallVec::<[_; 8]>::new();
+            let mut regular_traits = SmallVec::<[_; 2]>::new();
+            let mut other_bounds = SmallVec::<[_; 8]>::new();
+            for bound in bounds {
+                if let Some(id) = bound.trait_id() {
+                    if ctx.db.trait_data(from_chalk_trait_id(id)).is_auto {
+                        auto_traits.push(bound);
+                    } else {
+                        regular_traits.push(bound);
+                    }
+                } else {
+                    other_bounds.push(bound);
+                }
+            }
+
+            if regular_traits.len() > 1 {
+                return None;
+            }
+
+            auto_traits.sort_unstable_by_key(|b| b.trait_id().unwrap());
+            auto_traits.dedup();
+
+            Some(QuantifiedWhereClauses::from_iter(
+                Interner,
+                regular_traits.into_iter().chain(other_bounds).chain(auto_traits),
+            ))
+        });
+
+        if let Some(bounds) = bounds {
+            let bounds = crate::make_single_type_binders(bounds);
+            TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
+        } else {
+            // FIXME: report error (additional non-auto traits)
+            TyKind::Error.intern(Interner)
+        }
+    }
+
     fn lower_impl_trait(
         &self,
         bounds: &[Interned<TypeBound>],
@@ -1126,7 +1161,7 @@ pub(crate) fn field_types_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)))
+        res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)));
     }
     Arc::new(res)
 }

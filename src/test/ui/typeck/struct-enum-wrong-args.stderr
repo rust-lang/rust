@@ -12,7 +12,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 help: remove the extra argument
    |
 LL |     let _ = Some(3);
-   |             ~~~~~~~
+   |                 ~~~
 
 error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:7:13
@@ -30,7 +30,7 @@ LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
 help: remove the extra arguments
    |
 LL |     let _ = Ok(3);
-   |             ~~~~~
+   |               ~~~
 
 error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:8:13
@@ -46,7 +46,7 @@ LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
 help: provide the argument
    |
 LL |     let _ = Ok(/* value */);
-   |             ~~~~~~~~~~~~~~~
+   |               ~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 1 argument but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:9:13
@@ -62,7 +62,7 @@ LL | struct Wrapper(i32);
 help: provide the argument
    |
 LL |     let _ = Wrapper(/* i32 */);
-   |             ~~~~~~~~~~~~~~~~~~
+   |                    ~~~~~~~~~~~
 
 error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:10:13
@@ -78,7 +78,7 @@ LL | struct Wrapper(i32);
 help: remove the extra argument
    |
 LL |     let _ = Wrapper(5);
-   |             ~~~~~~~~~~
+   |                    ~~~
 
 error[E0061]: this struct takes 2 arguments but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:11:13
@@ -94,7 +94,7 @@ LL | struct DoubleWrapper(i32, i32);
 help: provide the arguments
    |
 LL |     let _ = DoubleWrapper(/* i32 */, /* i32 */);
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                          ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 2 arguments but 1 argument was supplied
   --> $DIR/struct-enum-wrong-args.rs:12:13
@@ -110,7 +110,7 @@ LL | struct DoubleWrapper(i32, i32);
 help: provide the argument
    |
 LL |     let _ = DoubleWrapper(5, /* i32 */);
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                          ~~~~~~~~~~~~~~
 
 error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:13:13
@@ -126,7 +126,7 @@ LL | struct DoubleWrapper(i32, i32);
 help: remove the extra argument
    |
 LL |     let _ = DoubleWrapper(5, 2);
-   |             ~~~~~~~~~~~~~~~~~~~
+   |                          ~~~~~~
 
 error: aborting due to 8 previous errors
 

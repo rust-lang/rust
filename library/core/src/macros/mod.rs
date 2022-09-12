@@ -350,10 +350,12 @@ macro_rules! matches {
 
 /// Unwraps a result or propagates its error.
 ///
-/// The `?` operator was added to replace `try!` and should be used instead.
-/// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
-/// it, you will need to use the [raw-identifier syntax][ris]: `r#try`.
+/// The [`?` operator][propagating-errors] was added to replace `try!`
+/// and should be used instead. Furthermore, `try` is a reserved word
+/// in Rust 2018, so if you must use it, you will need to use the
+/// [raw-identifier syntax][ris]: `r#try`.
 ///
+/// [propagating-errors]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
 /// [ris]: https://doc.rust-lang.org/nightly/rust-by-example/compatibility/raw_identifiers.html
 ///
 /// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
@@ -457,11 +459,12 @@ macro_rules! r#try {
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
 /// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
+/// avoid conflict between the trait names, such as by importing them as `_` or otherwise renaming
+/// them:
 ///
 /// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
+/// use std::fmt::Write as _;
+/// use std::io::Write as _;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut s = String::new();
@@ -471,6 +474,23 @@ macro_rules! r#try {
 ///     write!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
 ///     assert_eq!(v, b"s = \"abc 123\"");
 ///     Ok(())
+/// }
+/// ```
+///
+/// If you also need the trait names themselves, such as to implement one or both on your types,
+/// import the containing module and then name them with a prefix:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::fmt::{self, Write as _};
+/// use std::io::{self, Write as _};
+///
+/// struct Example;
+///
+/// impl fmt::Write for Example {
+///     fn write_str(&mut self, _s: &str) -> core::fmt::Result {
+///          unimplemented!();
+///     }
 /// }
 /// ```
 ///
@@ -523,25 +543,6 @@ macro_rules! write {
 ///     writeln!(&mut w, "formatted {}", "arguments")?;
 ///
 ///     assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
-///     Ok(())
-/// }
-/// ```
-///
-/// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
-/// implementing either, as objects do not typically implement both. However, the module must
-/// import the traits qualified so their names do not conflict:
-///
-/// ```
-/// use std::fmt::Write as FmtWrite;
-/// use std::io::Write as IoWrite;
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let mut s = String::new();
-///     let mut v = Vec::new();
-///
-///     writeln!(&mut s, "{} {}", "abc", 123)?; // uses fmt::Write::write_fmt
-///     writeln!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
-///     assert_eq!(v, b"s = \"abc 123\\n\"\n");
 ///     Ok(())
 /// }
 /// ```

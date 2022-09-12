@@ -2,8 +2,6 @@
 // pretty-expanded FIXME #23616
 #![allow(non_shorthand_field_patterns)]
 
-#![feature(box_syntax)]
-
 struct T { a: Box<isize> }
 
 trait U {
@@ -15,6 +13,6 @@ impl U for Box<isize> {
 }
 
 pub fn main() {
-    let T { a: a } = T { a: box 0 };
+    let T { a: a } = T { a: Box::new(0) };
     a.f();
 }

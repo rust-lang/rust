@@ -47,6 +47,8 @@ pub(super) enum UniqueTypeId<'tcx> {
     VariantPart(Ty<'tcx>, private::HiddenZst),
     /// The ID for the artificial struct type describing a single enum variant.
     VariantStructType(Ty<'tcx>, VariantIdx, private::HiddenZst),
+    /// The ID for the additional wrapper struct type describing an enum variant in CPP-like mode.
+    VariantStructTypeCppLikeWrapper(Ty<'tcx>, VariantIdx, private::HiddenZst),
     /// The ID of the artificial type we create for VTables.
     VTableTy(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>, private::HiddenZst),
 }
@@ -69,6 +71,15 @@ impl<'tcx> UniqueTypeId<'tcx> {
     ) -> Self {
         debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
+    }
+
+    pub fn for_enum_variant_struct_type_wrapper(
+        tcx: TyCtxt<'tcx>,
+        enum_ty: Ty<'tcx>,
+        variant_idx: VariantIdx,
+    ) -> Self {
+        debug_assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
+        UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
 
     pub fn for_vtable_ty(

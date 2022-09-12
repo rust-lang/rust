@@ -1,0 +1,18 @@
+### What it does
+Checks for conversions to owned values just for the sake
+of a comparison.
+
+### Why is this bad?
+The comparison can operate on a reference, so creating
+an owned value effectively throws it away directly afterwards, which is
+needlessly consuming code and heap space.
+
+### Example
+```
+if x.to_owned() == y {}
+```
+
+Use instead:
+```
+if x == y {}
+```

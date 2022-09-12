@@ -1,5 +1,6 @@
+use super::errors::{InvalidAbi, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
-use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
+use super::{Arena, AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
@@ -7,7 +8,6 @@ use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -25,6 +25,7 @@ use std::iter;
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut ResolverAstLowering,
+    pub(super) ast_arena: &'a Arena<'static>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
@@ -60,6 +61,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             tcx: self.tcx,
             resolver: self.resolver,
             arena: self.tcx.hir_arena,
+            ast_arena: self.ast_arena,
 
             // HirId handling.
             bodies: Vec::new(),
@@ -85,6 +87,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
+            generics_def_id_map: Default::default(),
         };
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
@@ -120,7 +123,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-            hir::OwnerNode::Crate(lctx.arena.alloc(module))
+            hir::OwnerNode::Crate(module)
         })
     }
 
@@ -158,14 +161,18 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(super) fn lower_mod(&mut self, items: &[P<Item>], spans: &ModSpans) -> hir::Mod<'hir> {
-        hir::Mod {
+    pub(super) fn lower_mod(
+        &mut self,
+        items: &[P<Item>],
+        spans: &ModSpans,
+    ) -> &'hir hir::Mod<'hir> {
+        self.arena.alloc(hir::Mod {
             spans: hir::ModSpans {
                 inner_span: self.lower_span(spans.inner_span),
                 inject_use_span: self.lower_span(spans.inject_use_span),
             },
             item_ids: self.arena.alloc_from_iter(items.iter().flat_map(|x| self.lower_item_ref(x))),
-        }
+        })
     }
 
     pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
@@ -259,10 +266,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let body_id =
                         this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
 
-                    let itctx = ImplTraitContext::Universal;
-                    let (generics, decl) = this.lower_generics(generics, id, itctx, |this| {
+                    let mut itctx = ImplTraitContext::Universal;
+                    let (generics, decl) = this.lower_generics(generics, id, &mut itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
-                        this.lower_fn_decl(&decl, Some(id), FnDeclKind::Fn, ret_id)
+                        this.lower_fn_decl(&decl, Some(id), fn_sig_span, FnDeclKind::Fn, ret_id)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -306,8 +313,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    |this| this.lower_ty(ty, &mut ImplTraitContext::TypeAliasesOpaqueTy),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
             }
@@ -319,7 +326,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.arena.alloc(this.ty(span, hir::TyKind::Err)),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -328,7 +335,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, variants) = self.lower_generics(
                     generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.arena.alloc_from_iter(
                             enum_definition.variants.iter().map(|x| this.lower_variant(x)),
@@ -341,7 +348,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, struct_def) = self.lower_generics(
                     generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, struct_def),
                 );
                 hir::ItemKind::Struct(struct_def, generics)
@@ -350,7 +357,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, vdata) = self.lower_generics(
                     generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, vdata),
                 );
                 hir::ItemKind::Union(vdata, generics)
@@ -378,18 +385,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let itctx = ImplTraitContext::Universal;
+                let mut itctx = ImplTraitContext::Universal;
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.lower_generics(ast_generics, id, itctx, |this| {
+                    self.lower_generics(ast_generics, id, &mut itctx, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
+                                &mut ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
                             )
                         });
 
-                        let lowered_ty = this
-                            .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                        let lowered_ty = this.lower_ty(
+                            ty,
+                            &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type),
+                        );
 
                         (trait_ref, lowered_ty)
                     });
@@ -428,11 +437,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (unsafety, items, bounds)) = self.lower_generics(
                     generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                            &mut ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         );
                         let items = this.arena.alloc_from_iter(
                             items.iter().map(|item| this.lower_trait_item_ref(item)),
@@ -447,11 +456,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, bounds) = self.lower_generics(
                     generics,
                     id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                            &mut ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
                 );
@@ -474,7 +483,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+        let ty = self.lower_ty(ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
         (ty, self.lower_const_body(span, body))
     }
 
@@ -647,12 +656,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: match i.kind {
                 ForeignItemKind::Fn(box Fn { ref sig, ref generics, .. }) => {
                     let fdec = &sig.decl;
-                    let itctx = ImplTraitContext::Universal;
+                    let mut itctx = ImplTraitContext::Universal;
                     let (generics, (fn_dec, fn_args)) =
-                        self.lower_generics(generics, i.id, itctx, |this| {
+                        self.lower_generics(generics, i.id, &mut itctx, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
-                                this.lower_fn_decl(fdec, None, FnDeclKind::ExternFn, None),
+                                this.lower_fn_decl(
+                                    fdec,
+                                    None,
+                                    sig.span,
+                                    FnDeclKind::ExternFn,
+                                    None,
+                                ),
                                 this.lower_fn_params_to_names(fdec),
                             )
                         });
@@ -660,8 +675,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
                 ForeignItemKind::Static(ref t, m, _) => {
-                    let ty =
-                        self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                    let ty = self
+                        .lower_ty(t, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                     hir::ForeignItemKind::Static(ty, m)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
@@ -729,11 +744,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 qself,
                 path,
                 ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
-                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                &mut ImplTraitContext::Disallowed(ImplTraitPosition::Path),
             );
             self.arena.alloc(t)
         } else {
-            self.lower_ty(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type))
+            self.lower_ty(&f.ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type))
         };
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);
@@ -756,14 +771,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind, has_default) = match i.kind {
             AssocItemKind::Const(_, ref ty, ref default) => {
-                let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                let ty =
+                    self.lower_ty(ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                 let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body), body.is_some())
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: None, .. }) => {
+                let asyncness = sig.header.asyncness;
                 let names = self.lower_fn_params_to_names(&sig.decl);
-                let (generics, sig) =
-                    self.lower_method_sig(generics, sig, i.id, FnDeclKind::Trait, None);
+                let (generics, sig) = self.lower_method_sig(
+                    generics,
+                    sig,
+                    i.id,
+                    FnDeclKind::Trait,
+                    asyncness.opt_return_id(),
+                );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: Some(ref body), .. }) => {
@@ -791,15 +813,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, kind) = self.lower_generics(
                     &generics,
                     i.id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = ty.as_ref().map(|x| {
-                            this.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Type))
+                            this.lower_ty(
+                                x,
+                                &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type),
+                            )
                         });
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                                &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
                         )
@@ -852,7 +877,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
-                let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                let ty =
+                    self.lower_ty(ty, &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                 (
                     hir::Generics::empty(),
                     hir::ImplItemKind::Const(ty, self.lower_const_body(i.span, expr.as_deref())),
@@ -879,14 +905,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(
                     &generics,
                     i.id,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
                         None => {
                             let ty = this.arena.alloc(this.ty(i.span, hir::TyKind::Err));
                             hir::ImplItemKind::TyAlias(ty)
                         }
                         Some(ty) => {
-                            let ty = this.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy);
+                            let ty = this.lower_ty(ty, &mut ImplTraitContext::TypeAliasesOpaqueTy);
                             hir::ImplItemKind::TyAlias(ty)
                         }
                     },
@@ -947,7 +973,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         params: &'hir [hir::Param<'hir>],
         value: hir::Expr<'hir>,
     ) -> hir::BodyId {
-        let body = hir::Body { generator_kind: self.generator_kind, params, value };
+        let body = hir::Body {
+            generator_kind: self.generator_kind,
+            params,
+            value: self.arena.alloc(value),
+        };
         let id = body.id();
         debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
         self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
@@ -1074,12 +1104,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
                 let (ident, is_simple_parameter) = match parameter.pat.kind {
-                    hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                        _,
-                        ident,
-                        _,
-                    ) => (ident, true),
+                    hir::PatKind::Binding(hir::BindingAnnotation(ByRef::No, _), _, ident, _) => {
+                        (ident, true)
+                    }
                     // For `ref mut` or wildcard arguments, we can't reuse the binding, but
                     // we can keep the same name for the parameter.
                     // This lets rustdoc render it correctly in documentation.
@@ -1144,7 +1171,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let (move_pat, move_id) = this.pat_ident_binding_mode(
                         desugared_span,
                         ident,
-                        hir::BindingAnnotation::Mutable,
+                        hir::BindingAnnotation::MUT,
                     );
                     let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(
@@ -1225,12 +1252,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig: &FnSig,
         id: NodeId,
         kind: FnDeclKind,
-        is_async: Option<NodeId>,
+        is_async: Option<(NodeId, Span)>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        let itctx = ImplTraitContext::Universal;
-        let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, Some(id), kind, is_async)
+        let mut itctx = ImplTraitContext::Universal;
+        let (generics, decl) = self.lower_generics(generics, id, &mut itctx, |this| {
+            this.lower_fn_decl(&sig.decl, Some(id), sig.span, kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1260,10 +1287,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn error_on_invalid_abi(&self, abi: StrLit) {
-        struct_span_err!(self.tcx.sess, abi.span, E0703, "invalid ABI: found `{}`", abi.symbol)
-            .span_label(abi.span, "invalid ABI")
-            .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-            .emit();
+        self.tcx.sess.emit_err(InvalidAbi {
+            span: abi.span,
+            abi: abi.symbol,
+            valid_abis: abi::all_names().join(", "),
+        });
     }
 
     fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
@@ -1294,7 +1322,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         parent_node_id: NodeId,
-        itctx: ImplTraitContext,
+        itctx: &mut ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
     ) -> (&'hir hir::Generics<'hir>, T) {
         debug_assert!(self.impl_trait_defs.is_empty());
@@ -1338,11 +1366,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 let is_param = *is_param.get_or_insert_with(compute_is_param);
                 if !is_param {
-                    self.diagnostic().span_err(
-                        bound.span(),
-                        "`?Trait` bounds are only permitted at the \
-                        point where a type parameter is declared",
-                    );
+                    self.tcx.sess.emit_err(MisplacedRelaxTraitBound { span: bound.span() });
                 }
             }
         }
@@ -1403,7 +1427,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: &GenericParamKind,
         bounds: &[GenericBound],
-        itctx: ImplTraitContext,
+        itctx: &mut ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
@@ -1434,10 +1458,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {
                 let def_id = self.local_def_id(id).to_def_id();
+                let hir_id = self.next_id();
+                let res = Res::Def(DefKind::TyParam, def_id);
                 let ty_path = self.arena.alloc(hir::Path {
                     span: param_span,
-                    res: Res::Def(DefKind::TyParam, def_id),
-                    segments: self.arena.alloc_from_iter([hir::PathSegment::from_ident(ident)]),
+                    res,
+                    segments: self
+                        .arena
+                        .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),
                 });
                 let ty_id = self.next_id();
                 let bounded_ty =
@@ -1474,12 +1502,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params: self.lower_generic_params(bound_generic_params),
-                bounded_ty: self
-                    .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                bounded_ty: self.lower_ty(
+                    bounded_ty,
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type),
+                ),
                 bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
                     self.lower_param_bound(
                         bound,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     )
                 })),
                 span: self.lower_span(span),
@@ -1494,17 +1524,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 lifetime: self.lower_lifetime(lifetime),
                 bounds: self.lower_param_bounds(
                     bounds,
-                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    &mut ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                 ),
                 in_where_clause: true,
             }),
-            WherePredicate::EqPredicate(WhereEqPredicate { id, ref lhs_ty, ref rhs_ty, span }) => {
+            WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, span }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    hir_id: self.lower_node_id(id),
-                    lhs_ty: self
-                        .lower_ty(lhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
-                    rhs_ty: self
-                        .lower_ty(rhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                    lhs_ty: self.lower_ty(
+                        lhs_ty,
+                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type),
+                    ),
+                    rhs_ty: self.lower_ty(
+                        rhs_ty,
+                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::Type),
+                    ),
                     span: self.lower_span(span),
                 })
             }

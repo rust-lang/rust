@@ -156,8 +156,7 @@ macro_rules! early_lint_methods {
             fn check_generic_arg(a: &ast::GenericArg);
             fn check_generic_param(a: &ast::GenericParam);
             fn check_generics(a: &ast::Generics);
-            fn check_poly_trait_ref(a: &ast::PolyTraitRef,
-                                    b: &ast::TraitBoundModifier);
+            fn check_poly_trait_ref(a: &ast::PolyTraitRef);
             fn check_fn(a: rustc_ast::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
             fn check_trait_item(a: &ast::AssocItem);
             fn check_impl_item(a: &ast::AssocItem);
@@ -244,6 +243,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
-pub type LateLintPassObject =
-    Box<dyn for<'tcx> LateLintPass<'tcx> + sync::Send + sync::Sync + 'static>;
+pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + 'static>;
+pub type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + sync::Send + 'tcx>;

@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                     check_map_error(cx, res, expr);
                 }
             },
-            hir::ExprKind::MethodCall(path, [ref arg_0, ..], _) => match path.ident.as_str() {
+            hir::ExprKind::MethodCall(path, arg_0, ..) => match path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_map_error(cx, arg_0, expr);
                 },
@@ -94,9 +94,9 @@ fn try_remove_await<'a>(expr: &'a hir::Expr<'a>) -> Option<&hir::Expr<'a>> {
 
 fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     let mut call = call;
-    while let hir::ExprKind::MethodCall(path, args, _) = call.kind {
+    while let hir::ExprKind::MethodCall(path, receiver, ..) = call.kind {
         if matches!(path.ident.as_str(), "or" | "or_else" | "ok") {
-            call = &args[0];
+            call = receiver;
         } else {
             break;
         }
@@ -110,7 +110,7 @@ fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<
 }
 
 fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>, is_await: bool) {
-    if let hir::ExprKind::MethodCall(path, _, _) = call.kind {
+    if let hir::ExprKind::MethodCall(path, ..) = call.kind {
         let symbol = path.ident.as_str();
         let read_trait = if is_await {
             match_trait_method(cx, call, &paths::FUTURES_IO_ASYNCREADEXT)

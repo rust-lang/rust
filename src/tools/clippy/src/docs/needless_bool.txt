@@ -1,0 +1,26 @@
+### What it does
+Checks for expressions of the form `if c { true } else {
+false }` (or vice versa) and suggests using the condition directly.
+
+### Why is this bad?
+Redundant code.
+
+### Known problems
+Maybe false positives: Sometimes, the two branches are
+painstakingly documented (which we, of course, do not detect), so they *may*
+have some value. Even then, the documentation can be rewritten to match the
+shorter code.
+
+### Example
+```
+if x {
+    false
+} else {
+    true
+}
+```
+
+Use instead:
+```
+!x
+```

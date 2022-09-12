@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	# Compile a `#![no_builtins]` rlib crate

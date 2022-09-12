@@ -133,7 +133,7 @@ There are 3 common ways to compile native C code for UEFI targets:
 - Use native Windows targets. This means compiling your C code for the Windows
   platform as if it was the UEFI platform. This works for static libraries, but
   needs adjustments when linking into an UEFI executable. You can, however,
-  link such static libraries seemlessly into rust code compiled for UEFI
+  link such static libraries seamlessly into rust code compiled for UEFI
   targets. Be wary of any includes that are not specifically suitable for UEFI
   targets (especially the C standard library includes are not always
   compatible). Freestanding compilations are recommended to avoid

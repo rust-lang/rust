@@ -27,6 +27,7 @@ Libraries
 - [Extend `ptr::null` and `null_mut` to all thin (including extern) types.][94954]
 - [`impl Read and Write for VecDeque<u8>`.][95632]
 - [STD support for the Nintendo 3DS.][95897]
+- [Use rounding in float to Duration conversion methods.][96051]
 - [Make write/print macros eagerly drop temporaries.][96455]
 - [Implement internal traits that enable `[OsStr]::join`.][96881]
 - [Implement `Hash` for `core::alloc::Layout`.][97034]
@@ -99,6 +100,8 @@ Compatibility Notes
 
 - [`#[link]` attributes are now checked more strictly,][96885] which may introduce
   errors for invalid attribute arguments that were previously ignored.
+- [Rounding is now used when converting a float to a `Duration`.][96051] The converted
+  duration can differ slightly from what it was.
 
 Internal Changes
 ----------------
@@ -118,6 +121,7 @@ and related tools.
 [95818]: https://github.com/rust-lang/rust/pull/95818/
 [95897]: https://github.com/rust-lang/rust/pull/95897/
 [95953]: https://github.com/rust-lang/rust/pull/95953/
+[96051]: https://github.com/rust-lang/rust/pull/96051/
 [96296]: https://github.com/rust-lang/rust/pull/96296/
 [96455]: https://github.com/rust-lang/rust/pull/96455/
 [96737]: https://github.com/rust-lang/rust/pull/96737/
@@ -213,6 +217,7 @@ Language
 - [Fix constants not getting dropped if part of a diverging expression][94775]
 - [Support unit struct/enum variant in destructuring assignment][95380]
 - [Remove mutable_borrow_reservation_conflict lint and allow the code pattern][96268]
+- [`const` functions may now specify `extern "C"` or `extern "Rust"`][95346]
 
 Compiler
 --------
@@ -302,6 +307,7 @@ and related tools.
 [94872]: https://github.com/rust-lang/rust/pull/94872/
 [95006]: https://github.com/rust-lang/rust/pull/95006/
 [95035]: https://github.com/rust-lang/rust/pull/95035/
+[95346]: https://github.com/rust-lang/rust/pull/95346/
 [95372]: https://github.com/rust-lang/rust/pull/95372/
 [95380]: https://github.com/rust-lang/rust/pull/95380/
 [95431]: https://github.com/rust-lang/rust/pull/95431/
@@ -1438,7 +1444,7 @@ Compatibility Notes
 - [Mixing Option and Result via `?` is no longer permitted in closures for inferred types.][86831]
 - [Previously unsound code is no longer permitted where different constructors in branches
   could require different lifetimes.][85574]
-- As previously mentioned the [`std::arch` instrinsics now uses stricter const checking][83278]
+- As previously mentioned the [`std::arch` intrinsics now uses stricter const checking][83278]
   than before and may reject some previously accepted code.
 - [`i128` multiplication on Cortex M0+ platforms currently unconditionally causes overflow
    when compiled with `codegen-units = 1`.][86063]
@@ -2516,7 +2522,7 @@ Compatibility Notes
 - [Fixed a regression parsing `{} && false` in tail expressions.][74650]
 - [Added changes to how proc-macros are expanded in `macro_rules!` that should
   help to preserve more span information.][73084] These changes may cause
-  compiliation errors if your macro was unhygenic or didn't correctly handle
+  compilation errors if your macro was unhygenic or didn't correctly handle
   `Delimiter::None`.
 - [Moved support for the CloudABI target to tier 3.][75568]
 - [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]

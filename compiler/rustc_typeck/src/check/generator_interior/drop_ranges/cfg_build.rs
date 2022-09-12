@@ -256,6 +256,8 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::TypeBinding(..)
                 | hir::Node::TraitRef(..)
                 | hir::Node::Pat(..)
+                | hir::Node::PatField(..)
+                | hir::Node::ExprField(..)
                 | hir::Node::Arm(..)
                 | hir::Node::Local(..)
                 | hir::Node::Ctor(..)
@@ -432,7 +434,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
                 self.handle_uninhabited_return(expr);
             }
-            ExprKind::MethodCall(_, exprs, _) => {
+            ExprKind::MethodCall(_, receiver, exprs, _) => {
+                self.visit_expr(receiver);
                 for expr in exprs {
                     self.visit_expr(expr);
                 }

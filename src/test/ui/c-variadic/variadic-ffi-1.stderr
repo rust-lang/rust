@@ -18,7 +18,7 @@ LL |     fn foo(f: isize, x: u8, ...);
 help: provide the arguments
    |
 LL |         foo(/* isize */, /* u8 */);
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |            ~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0060]: this function takes at least 2 arguments but 1 argument was supplied
   --> $DIR/variadic-ffi-1.rs:21:9
@@ -34,7 +34,7 @@ LL |     fn foo(f: isize, x: u8, ...);
 help: provide the argument
    |
 LL |         foo(1, /* u8 */);
-   |         ~~~~~~~~~~~~~~~~
+   |            ~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:23:56

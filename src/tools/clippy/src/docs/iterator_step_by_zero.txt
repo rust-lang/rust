@@ -1,0 +1,13 @@
+### What it does
+Checks for calling `.step_by(0)` on iterators which panics.
+
+### Why is this bad?
+This very much looks like an oversight. Use `panic!()` instead if you
+actually intend to panic.
+
+### Example
+```
+for x in (0..100).step_by(0) {
+    //..
+}
+```

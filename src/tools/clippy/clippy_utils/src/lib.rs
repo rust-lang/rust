@@ -2,7 +2,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -28,6 +28,7 @@ extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
+extern crate rustc_parse_format;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -39,6 +40,7 @@ pub mod sym_helper;
 
 pub mod ast_utils;
 pub mod attrs;
+mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
@@ -59,6 +61,7 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
+pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
@@ -85,6 +88,7 @@ use rustc_hir::{
     Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
     TraitRef, TyKind, UnOp,
 };
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
@@ -102,6 +106,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
+use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -187,7 +192,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     let hir = cx.tcx.hir();
     if_chain! {
         if let Some(Node::Pat(pat)) = hir.find(hir_id);
-        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
+        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
         let parent = hir.get_parent_node(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
         then {
@@ -332,7 +337,7 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         .map_or(&[][..], |a| a.args)
         .iter()
         .filter_map(|a| match a {
-            hir::GenericArg::Type(ty) => Some(ty),
+            hir::GenericArg::Type(ty) => Some(*ty),
             _ => None,
         })
 }
@@ -370,15 +375,19 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
 ///
-/// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
+/// Please use `is_path_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
 }
 
-/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
-/// diagnostic item.
-pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    path_def_id(cx, expr).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
+/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
+/// it matches the given diagnostic item.
+pub fn is_path_diagnostic_item<'tcx>(
+    cx: &LateContext<'_>,
+    maybe_path: &impl MaybePath<'tcx>,
+    diag_item: Symbol,
+) -> bool {
+    path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -1022,26 +1031,26 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
     v.allow_closure.then_some(v.captures)
 }
 
+/// Arguments of a method: the receiver and all the additional arguments.
+pub type MethodArguments<'tcx> = Vec<(&'tcx Expr<'tcx>, &'tcx [Expr<'tcx>])>;
+
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
-pub fn method_calls<'tcx>(
-    expr: &'tcx Expr<'tcx>,
-    max_depth: usize,
-) -> (Vec<Symbol>, Vec<&'tcx [Expr<'tcx>]>, Vec<Span>) {
+pub fn method_calls<'tcx>(expr: &'tcx Expr<'tcx>, max_depth: usize) -> (Vec<Symbol>, MethodArguments<'tcx>, Vec<Span>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
     let mut spans = Vec::with_capacity(max_depth);
 
     let mut current = expr;
     for _ in 0..max_depth {
-        if let ExprKind::MethodCall(path, args, _) = &current.kind {
-            if args.iter().any(|e| e.span.from_expansion()) {
+        if let ExprKind::MethodCall(path, receiver, args, _) = &current.kind {
+            if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                 break;
             }
             method_names.push(path.ident.name);
-            arg_lists.push(&**args);
+            arg_lists.push((*receiver, &**args));
             spans.push(path.ident.span);
-            current = &args[0];
+            current = receiver;
         } else {
             break;
         }
@@ -1056,18 +1065,18 @@ pub fn method_calls<'tcx>(
 /// `method_chain_args(expr, &["bar", "baz"])` will return a `Vec`
 /// containing the `Expr`s for
 /// `.bar()` and `.baz()`
-pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<&'a [Expr<'a>]>> {
+pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec<(&'a Expr<'a>, &'a [Expr<'a>])>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
-        if let ExprKind::MethodCall(path, args, _) = current.kind {
+        if let ExprKind::MethodCall(path, receiver, args, _) = current.kind {
             if path.ident.name.as_str() == *method_name {
-                if args.iter().any(|e| e.span.from_expansion()) {
+                if receiver.span.from_expansion() || args.iter().any(|e| e.span.from_expansion()) {
                     return None;
                 }
-                matched.push(args); // build up `matched` backwards
-                current = &args[0]; // go to parent expression
+                matched.push((receiver, args)); // build up `matched` backwards
+                current = receiver; // go to parent expression
             } else {
                 return None;
             }
@@ -1230,8 +1239,10 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
                                     ty_is_fn_once_param(cx.tcx, ty.skip_binder(), predicates).then_some(())
                                 })
                             },
-                            ExprKind::MethodCall(_, args, _) => {
-                                let i = args.iter().position(|arg| arg.hir_id == id)?;
+                            ExprKind::MethodCall(_, receiver, args, _) => {
+                                let i = std::iter::once(receiver)
+                                    .chain(args.iter())
+                                    .position(|arg| arg.hir_id == id)?;
                                 let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
                                 let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
                                 ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
@@ -1541,7 +1552,8 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl It
 pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     fn is_ok(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
         if_chain! {
-            if let PatKind::TupleStruct(ref path, pat, None) = arm.pat.kind;
+            if let PatKind::TupleStruct(ref path, pat, ddpos) = arm.pat.kind;
+            if ddpos.as_opt_usize().is_none();
             if is_lang_ctor(cx, path, ResultOk);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
             if path_to_local_id(arm.body, hir_id);
@@ -1803,7 +1815,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
             }
         };
 
-        let mut expr = &func.value;
+        let mut expr = func.value;
         loop {
             match expr.kind {
                 #[rustfmt::skip]
@@ -1892,8 +1904,8 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr.path == sym::no_std
+        if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            normal.item.path == sym::no_std
         } else {
             false
         }
@@ -1902,8 +1914,8 @@ pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr.path == sym::no_core
+        if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            normal.item.path == sym::no_core
         } else {
             false
         }
@@ -2270,6 +2282,18 @@ pub fn walk_to_expr_usage<'tcx, T>(
         }
     }
     None
+}
+
+/// Checks whether a given span has any comment token
+/// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
+pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
+    let Ok(snippet) = sm.span_to_snippet(span) else { return false };
+    return tokenize(&snippet).any(|token| {
+        matches!(
+            token.kind,
+            TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }
+        )
+    });
 }
 
 macro_rules! op_utils {

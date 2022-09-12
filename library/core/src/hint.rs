@@ -31,7 +31,7 @@ use crate::intrinsics;
 ///
 /// `unreachable_unchecked()` can be used in situations where the compiler
 /// can't prove invariants that were previously established. Such situations
-/// have a higher chance of occuring if those invariants are upheld by
+/// have a higher chance of occurring if those invariants are upheld by
 /// external code that the compiler can't analyze.
 /// ```
 /// fn prepare_inputs(divisors: &mut Vec<u32>) {
@@ -160,19 +160,16 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[inline]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
-    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+    #[cfg(target_arch = "x86")]
     {
-        #[cfg(target_arch = "x86")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() };
-        }
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
+        unsafe { crate::arch::x86::_mm_pause() };
+    }
 
-        #[cfg(target_arch = "x86_64")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() };
-        }
+    #[cfg(target_arch = "x86_64")]
+    {
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
+        unsafe { crate::arch::x86_64::_mm_pause() };
     }
 
     // RISC-V platform spin loop hint implementation

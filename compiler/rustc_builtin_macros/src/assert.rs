@@ -52,7 +52,7 @@ pub fn expand_assert<'cx>(
     let expr = if let Some(tokens) = custom_message {
         let then = cx.expr(
             call_site_span,
-            ExprKind::MacCall(MacCall {
+            ExprKind::MacCall(P(MacCall {
                 path: panic_path(),
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(call_site_span),
@@ -60,7 +60,7 @@ pub fn expand_assert<'cx>(
                     tokens,
                 )),
                 prior_type_ascription: None,
-            }),
+            })),
         );
         expr_if_not(cx, call_site_span, cond_expr, then, None)
     }

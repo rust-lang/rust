@@ -247,12 +247,12 @@ assert-css: (
 
 local-storage: {"rustdoc-theme": "light"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
 
 local-storage: {"rustdoc-theme": "dark"}
 reload:
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
 
 local-storage: {"rustdoc-theme": "ayu"}
 reload:
-assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)

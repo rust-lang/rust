@@ -66,7 +66,7 @@ Starting with an `expr`, you can check whether it is calling a specific method
 impl<'tcx> LateLintPass<'tcx> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         // Check our expr is calling a method
-        if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..]) = &expr.kind
+        if let hir::ExprKind::MethodCall(path, _, _self_arg, ..) = &expr.kind
             // Check the name of this method is `some_method`
             && path.ident.name == sym!(some_method)
             // Optionally, check the type of the self argument.

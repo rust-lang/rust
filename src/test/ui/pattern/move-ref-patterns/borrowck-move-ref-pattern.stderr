@@ -35,7 +35,7 @@ error[E0502]: cannot borrow `arr[..]` as mutable because it is also borrowed as 
   --> $DIR/borrowck-move-ref-pattern.rs:13:16
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
-   |                             ---------------- immutable borrow occurs here
+   |                             ----------- immutable borrow occurs here
 ...
 LL |     let [_, _, ref mut _x2, _x3, mut _x4] = arr;
    |                ^^^^^^^^^^^ mutable borrow occurs here
@@ -47,7 +47,7 @@ error[E0505]: cannot move out of `arr[..]` because it is borrowed
   --> $DIR/borrowck-move-ref-pattern.rs:13:29
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
-   |                             ---------------- borrow of `arr[..]` occurs here
+   |                             ----------- borrow of `arr[..]` occurs here
 ...
 LL |     let [_, _, ref mut _x2, _x3, mut _x4] = arr;
    |                             ^^^ move out of `arr[..]` occurs here
@@ -59,7 +59,7 @@ error[E0505]: cannot move out of `arr[..]` because it is borrowed
   --> $DIR/borrowck-move-ref-pattern.rs:13:34
    |
 LL |     let [ref _x0_hold, _x1, ref xs_hold @ ..] = arr;
-   |                             ---------------- borrow of `arr[..]` occurs here
+   |                             ----------- borrow of `arr[..]` occurs here
 ...
 LL |     let [_, _, ref mut _x2, _x3, mut _x4] = arr;
    |                                  ^^^^^^^ move out of `arr[..]` occurs here

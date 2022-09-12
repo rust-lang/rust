@@ -15,7 +15,7 @@ note: function defined here
   --> $DIR/fn-item-type.rs:7:4
    |
 LL | fn eq<T>(x: T, y: T) { }
-   |    ^^    ----  ----
+   |    ^^          ----
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:22:19
@@ -34,7 +34,7 @@ note: function defined here
   --> $DIR/fn-item-type.rs:7:4
    |
 LL | fn eq<T>(x: T, y: T) { }
-   |    ^^    ----  ----
+   |    ^^          ----
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:29:23
@@ -53,7 +53,7 @@ note: function defined here
   --> $DIR/fn-item-type.rs:7:4
    |
 LL | fn eq<T>(x: T, y: T) { }
-   |    ^^    ----  ----
+   |    ^^          ----
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:38:26
@@ -72,7 +72,7 @@ note: function defined here
   --> $DIR/fn-item-type.rs:7:4
    |
 LL | fn eq<T>(x: T, y: T) { }
-   |    ^^    ----  ----
+   |    ^^          ----
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:45:19
@@ -90,7 +90,7 @@ note: function defined here
   --> $DIR/fn-item-type.rs:7:4
    |
 LL | fn eq<T>(x: T, y: T) { }
-   |    ^^    ----  ----
+   |    ^^          ----
 
 error: aborting due to 5 previous errors
 

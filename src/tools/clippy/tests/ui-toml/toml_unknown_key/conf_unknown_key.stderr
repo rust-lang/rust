@@ -3,7 +3,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            allow-expect-in-tests
            allow-unwrap-in-tests
            allowed-scripts
-           arithmetic-allowed
+           arithmetic-side-effects-allowed
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
@@ -12,12 +12,14 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
            disallowed-methods
+           disallowed-names
            disallowed-types
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           large-error-threshold
            literal-representation-threshold
            max-fn-params-bools
            max-include-file-size

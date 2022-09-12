@@ -14,7 +14,7 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -32,7 +32,6 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
-use tracing::debug;
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -608,11 +607,7 @@ enum ExplainDocComment {
     },
 }
 
-fn annotate_doc_comment(
-    err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-    sm: &SourceMap,
-    span: Span,
-) {
+fn annotate_doc_comment(err: &mut Diagnostic, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
             err.subdiagnostic(ExplainDocComment::Outer { span });
@@ -980,7 +975,7 @@ impl<'tt> TokenSet<'tt> {
         self.maybe_empty = false;
     }
 
-    // Adds `tok` to the set for `self`, marking sequence as non-empy.
+    // Adds `tok` to the set for `self`, marking sequence as non-empty.
     fn add_one(&mut self, tt: TtHandle<'tt>) {
         if !self.tokens.contains(&tt) {
             self.tokens.push(tt);

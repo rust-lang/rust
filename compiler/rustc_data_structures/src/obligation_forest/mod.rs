@@ -117,6 +117,10 @@ pub trait ObligationProcessor {
 }
 
 /// The result type used by `process_obligation`.
+// `repr(C)` to inhibit the niche filling optimization. Otherwise, the `match` appearing
+// in `process_obligations` is significantly slower, which can substantially affect
+// benchmarks like `rustc-perf`'s inflate and keccak.
+#[repr(C)]
 #[derive(Debug)]
 pub enum ProcessResult<O, E> {
     Unchanged,

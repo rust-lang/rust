@@ -2,7 +2,7 @@ use crate::ffi::{CStr, CString, OsString};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
-use crate::io::{IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys::cvt;
@@ -40,6 +40,9 @@ pub struct OpenOptions {
     // system-specific
     mode: i32,
 }
+
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
 
 pub struct FilePermissions(!);
 
@@ -108,6 +111,11 @@ impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
     }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
 }
 
 impl FileType {
@@ -312,8 +320,8 @@ impl File {
         false
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), buf)
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        crate::io::default_read_buf(|buf| self.read(buf), cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -342,6 +350,10 @@ impl File {
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
+        Err(Error::from_raw_os_error(22))
+    }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
         Err(Error::from_raw_os_error(22))
     }
 }

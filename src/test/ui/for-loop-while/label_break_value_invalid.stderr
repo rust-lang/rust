@@ -1,5 +1,5 @@
 error[E0426]: use of undeclared label `'a`
-  --> $DIR/label_break_value_invalid.rs:7:19
+  --> $DIR/label_break_value_invalid.rs:6:19
    |
 LL |             break 'a $val;
    |                   ^^ undeclared label `'a`
@@ -10,7 +10,7 @@ LL |                 mac2!(2);
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0426]: use of undeclared label `'a`
-  --> $DIR/label_break_value_invalid.rs:29:19
+  --> $DIR/label_break_value_invalid.rs:28:19
    |
 LL |     let x: u8 = mac3!('b: {
    |                       -- a label with a similar name is reachable
@@ -22,7 +22,7 @@ LL |             break 'a 3;
    |                   help: try using similarly named label: `'b`
 
 error[E0426]: use of undeclared label `'a`
-  --> $DIR/label_break_value_invalid.rs:34:29
+  --> $DIR/label_break_value_invalid.rs:33:29
    |
 LL |     let x: u8 = mac3!(break 'a 4);
    |                             ^^ undeclared label `'a`

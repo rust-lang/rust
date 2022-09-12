@@ -19,7 +19,7 @@ pub struct MirPatch<'tcx> {
 impl<'tcx> MirPatch<'tcx> {
     pub fn new(body: &Body<'tcx>) -> Self {
         let mut result = MirPatch {
-            patch_map: IndexVec::from_elem(None, body.basic_blocks()),
+            patch_map: IndexVec::from_elem(None, &body.basic_blocks),
             new_blocks: vec![],
             new_statements: vec![],
             new_locals: vec![],
@@ -29,7 +29,7 @@ impl<'tcx> MirPatch<'tcx> {
         };
 
         // Check if we already have a resume block
-        for (bb, block) in body.basic_blocks().iter_enumerated() {
+        for (bb, block) in body.basic_blocks.iter_enumerated() {
             if let TerminatorKind::Resume = block.terminator().kind && block.statements.is_empty() {
                 result.resume_block = Some(bb);
                 break;
@@ -61,14 +61,14 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
-        let offset = match bb.index().checked_sub(body.basic_blocks().len()) {
+        let offset = match bb.index().checked_sub(body.basic_blocks.len()) {
             Some(index) => self.new_blocks[index].statements.len(),
             None => body[bb].statements.len(),
         };
         Location { block: bb, statement_index: offset }
     }
 
-    pub fn new_local_with_info(
+    pub fn new_internal_with_info(
         &mut self,
         ty: Ty<'tcx>,
         span: Span,
@@ -76,14 +76,17 @@ impl<'tcx> MirPatch<'tcx> {
     ) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        let mut new_decl = LocalDecl::new(ty, span);
+        let mut new_decl = LocalDecl::new(ty, span).internal();
         new_decl.local_info = local_info;
         self.new_locals.push(new_decl);
         Local::new(index as usize)
     }
 
     pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
-        self.new_local_with_info(ty, span, None)
+        let index = self.next_local;
+        self.next_local += 1;
+        self.new_locals.push(LocalDecl::new(ty, span));
+        Local::new(index as usize)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
@@ -126,7 +129,7 @@ impl<'tcx> MirPatch<'tcx> {
         debug!(
             "MirPatch: {} new blocks, starting from index {}",
             self.new_blocks.len(),
-            body.basic_blocks().len()
+            body.basic_blocks.len()
         );
         let bbs = if self.patch_map.is_empty() && self.new_blocks.is_empty() {
             body.basic_blocks.as_mut_preserves_cfg()
@@ -147,7 +150,6 @@ impl<'tcx> MirPatch<'tcx> {
 
         let mut delta = 0;
         let mut last_bb = START_BLOCK;
-        let mut stmts_and_targets: Vec<(Statement<'_>, BasicBlock)> = Vec::new();
         for (mut loc, stmt) in new_statements {
             if loc.block != last_bb {
                 delta = 0;
@@ -156,26 +158,10 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
-
-            // For mir-opt `Derefer` to work in all cases we need to
-            // get terminator's targets and apply the statement to all of them.
-            if loc.statement_index > body[loc.block].statements.len() {
-                let term = body[loc.block].terminator();
-                for i in term.successors() {
-                    stmts_and_targets.push((Statement { source_info, kind: stmt.clone() }, i));
-                }
-                delta += 1;
-                continue;
-            }
-
             body[loc.block]
                 .statements
                 .insert(loc.statement_index, Statement { source_info, kind: stmt });
             delta += 1;
-        }
-
-        for (stmt, target) in stmts_and_targets.into_iter().rev() {
-            body[target].statements.insert(0, stmt);
         }
     }
 
@@ -187,7 +173,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
-        let data = match loc.block.index().checked_sub(body.basic_blocks().len()) {
+        let data = match loc.block.index().checked_sub(body.basic_blocks.len()) {
             Some(new) => &self.new_blocks[new],
             None => &body[loc.block],
         };

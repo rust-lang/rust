@@ -1,0 +1,23 @@
+### What it does
+Checks for non-octal values used to set Unix file permissions.
+
+### Why is this bad?
+They will be converted into octal, creating potentially
+unintended file permissions.
+
+### Example
+```
+use std::fs::OpenOptions;
+use std::os::unix::fs::OpenOptionsExt;
+
+let mut options = OpenOptions::new();
+options.mode(644);
+```
+Use instead:
+```
+use std::fs::OpenOptions;
+use std::os::unix::fs::OpenOptionsExt;
+
+let mut options = OpenOptions::new();
+options.mode(0o644);
+```

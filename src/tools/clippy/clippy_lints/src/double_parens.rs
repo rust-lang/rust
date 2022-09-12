@@ -61,9 +61,8 @@ impl EarlyLintPass for DoubleParens {
                     }
                 }
             },
-            ExprKind::MethodCall(_, ref params, _) => {
-                if params.len() == 2 {
-                    let param = &params[1];
+            ExprKind::MethodCall(_, _, ref params, _) => {
+                if let [ref param] = params[..] {
                     if let ExprKind::Paren(_) = param.kind {
                         span_lint(cx, DOUBLE_PARENS, param.span, msg);
                     }

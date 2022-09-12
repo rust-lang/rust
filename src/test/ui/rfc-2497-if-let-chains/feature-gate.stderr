@@ -1,0 +1,114 @@
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:55:20
+   |
+LL |     #[cfg(FALSE)] (let 0 = 1);
+   |                    ^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:45:17
+   |
+LL |     noop_expr!((let 0 = 1));
+   |                 ^^^
+
+error: no rules expected the token `let`
+  --> $DIR/feature-gate.rs:58:15
+   |
+LL |     macro_rules! use_expr {
+   |     --------------------- when calling this macro
+...
+LL |     use_expr!(let 0 = 1);
+   |               ^^^ no rules expected this token in macro call
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:14:16
+   |
+LL |     if true && let 0 = 1 {}
+   |                ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:17:8
+   |
+LL |     if let 0 = 1 && true {}
+   |        ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:20:8
+   |
+LL |     if let Range { start: _, end: _ } = (true..true) && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:23:8
+   |
+LL |     if let 1 = 1 && let true = { true } && false {
+   |        ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:23:21
+   |
+LL |     if let 1 = 1 && let true = { true } && false {
+   |                     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:32:19
+   |
+LL |     while true && let 0 = 1 {}
+   |                   ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:35:11
+   |
+LL |     while let 0 = 1 && true {}
+   |           ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:38:11
+   |
+LL |     while let Range { start: _, end: _ } = (true..true) && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:55:20
+   |
+LL |     #[cfg(FALSE)] (let 0 = 1);
+   |                    ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are unstable
+  --> $DIR/feature-gate.rs:45:17
+   |
+LL |     noop_expr!((let 0 = 1));
+   |                 ^^^^^^^^^
+   |
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+   = help: add `#![feature(let_chains)]` to the crate attributes to enable
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

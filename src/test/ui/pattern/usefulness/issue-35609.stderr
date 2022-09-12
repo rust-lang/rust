@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `(Enum::B, _)`, `(Enum::C, _)`, `(Enum::D, _)` and 2 more not covered
   --> $DIR/issue-35609.rs:10:11
    |
 LL |     match (A, ()) {
-   |           ^^^^^^^ patterns `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
+   |           ^^^^^^^ patterns `(Enum::B, _)`, `(Enum::C, _)`, `(Enum::D, _)` and 2 more not covered
    |
    = note: the matched value is of type `(Enum, ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
@@ -11,11 +11,11 @@ LL ~         (A, _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `(_, Enum::B)`, `(_, Enum::C)`, `(_, Enum::D)` and 2 more not covered
   --> $DIR/issue-35609.rs:14:11
    |
 LL |     match (A, A) {
-   |           ^^^^^^ patterns `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
+   |           ^^^^^^ patterns `(_, Enum::B)`, `(_, Enum::C)`, `(_, Enum::D)` and 2 more not covered
    |
    = note: the matched value is of type `(Enum, Enum)`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
@@ -24,11 +24,11 @@ LL ~         (_, A) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:18:11
    |
 LL |     match ((A, ()), ()) {
-   |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+   |           ^^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
@@ -37,11 +37,11 @@ LL ~         ((A, ()), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:22:11
    |
 LL |     match ((A, ()), A) {
-   |           ^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+   |           ^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), Enum)`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
@@ -50,11 +50,11 @@ LL ~         ((A, ()), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:26:11
    |
 LL |     match ((A, ()), ()) {
-   |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
+   |           ^^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), ())`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
@@ -63,11 +63,11 @@ LL ~         ((A, _), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `S(Enum::B, _)`, `S(Enum::C, _)`, `S(Enum::D, _)` and 2 more not covered
   --> $DIR/issue-35609.rs:31:11
    |
 LL |     match S(A, ()) {
-   |           ^^^^^^^^ patterns `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
+   |           ^^^^^^^^ patterns `S(Enum::B, _)`, `S(Enum::C, _)`, `S(Enum::D, _)` and 2 more not covered
    |
 note: `S` defined here
   --> $DIR/issue-35609.rs:6:8
@@ -81,11 +81,11 @@ LL ~         S(A, _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `Sd { x: Enum::B, .. }`, `Sd { x: Enum::C, .. }`, `Sd { x: Enum::D, .. }` and 2 more not covered
   --> $DIR/issue-35609.rs:35:11
    |
 LL |     match (Sd { x: A, y: () }) {
-   |           ^^^^^^^^^^^^^^^^^^^^ patterns `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
+   |           ^^^^^^^^^^^^^^^^^^^^ patterns `Sd { x: Enum::B, .. }`, `Sd { x: Enum::C, .. }`, `Sd { x: Enum::D, .. }` and 2 more not covered
    |
 note: `Sd` defined here
   --> $DIR/issue-35609.rs:7:8
@@ -99,11 +99,11 @@ LL ~         Sd { x: A, y: _ } => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `Some(Enum::B)`, `Some(Enum::C)`, `Some(Enum::D)` and 2 more not covered
   --> $DIR/issue-35609.rs:39:11
    |
 LL |     match Some(A) {
-   |           ^^^^^^^ patterns `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
+   |           ^^^^^^^ patterns `Some(Enum::B)`, `Some(Enum::C)`, `Some(Enum::D)` and 2 more not covered
    |
 note: `Option<Enum>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL

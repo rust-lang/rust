@@ -176,8 +176,6 @@ define_handles! {
     FreeFunctions,
     TokenStream,
     SourceFile,
-    MultiSpan,
-    Diagnostic,
 
     'interned:
     Span,

@@ -1,0 +1,19 @@
+### What it does
+Checks for constants and statics with an explicit `'static` lifetime.
+
+### Why is this bad?
+Adding `'static` to every reference can create very
+complicated types.
+
+### Example
+```
+const FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
+&[...]
+static FOO: &'static [(&'static str, &'static str, fn(&Bar) -> bool)] =
+&[...]
+```
+This code can be rewritten as
+```
+ const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
+ static FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
+```

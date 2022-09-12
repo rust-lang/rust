@@ -1,7 +1,7 @@
 # only-windows
 # needs-rust-lld
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # Ensure that LLD can link
 all:

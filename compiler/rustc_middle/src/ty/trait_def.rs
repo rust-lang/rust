@@ -256,7 +256,6 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 }
 
 // Query provider for `incoherent_impls`.
-#[instrument(level = "debug", skip(tcx))]
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let mut impls = Vec::new();
 

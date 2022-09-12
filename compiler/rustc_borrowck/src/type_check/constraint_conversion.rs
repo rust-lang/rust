@@ -6,7 +6,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -109,22 +109,10 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 self.add_outlives(r1_vid, r2_vid);
             }
 
-            GenericArgKind::Type(mut t1) => {
+            GenericArgKind::Type(t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
                 let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
-
-                // Placeholder regions need to be converted now because it may
-                // create new region variables, which can't be done later when
-                // verifying these bounds.
-                if t1.has_placeholders() {
-                    t1 = tcx.fold_regions(t1, |r, _| match *r {
-                        ty::RePlaceholder(placeholder) => {
-                            self.constraints.placeholder_region(self.infcx, placeholder)
-                        }
-                        _ => r,
-                    });
-                }
 
                 TypeOutlives::new(
                     &mut *self,
@@ -143,6 +131,25 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
     }
 
+    /// Placeholder regions need to be converted eagerly because it may
+    /// create new region variables, which we must not do when verifying
+    /// our region bounds.
+    ///
+    /// FIXME: This should get removed once higher ranked region obligations
+    /// are dealt with during trait solving.
+    fn replace_placeholders_with_nll<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
+        if value.has_placeholders() {
+            self.tcx.fold_regions(value, |r, _| match *r {
+                ty::RePlaceholder(placeholder) => {
+                    self.constraints.placeholder_region(self.infcx, placeholder)
+                }
+                _ => r,
+            })
+        } else {
+            value
+        }
+    }
+
     fn verify_to_type_test(
         &mut self,
         generic_kind: GenericKind<'tcx>,
@@ -150,7 +157,6 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-
         TypeTest { generic_kind, lower_bound, locations: self.locations, verify_bound }
     }
 
@@ -198,6 +204,8 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
+        let kind = self.replace_placeholders_with_nll(kind);
+        let bound = self.replace_placeholders_with_nll(bound);
         let type_test = self.verify_to_type_test(kind, a, bound);
         self.add_type_test(type_test);
     }

@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-99914.rs:9:27
+   |
+LL |     t.and_then(|t| -> _ { bar(t) });
+   |                           ^^^^^^ expected enum `Result`, found opaque type
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/issue-99914.rs:13:23
+   |
+LL | async fn bar(t: Okay) {}
+   |                       ^ checked the `Output` of this `async fn`, found opaque type
+   = note:     expected enum `Result<_, Error>`
+           found opaque type `impl Future<Output = ()>`
+help: try wrapping the expression in `Ok`
+   |
+LL |     t.and_then(|t| -> _ { Ok(bar(t)) });
+   |                           +++      +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

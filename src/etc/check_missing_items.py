@@ -57,7 +57,7 @@ def check_generic_bound(bound):
     if "trait_bound" in bound:
         for param in bound["trait_bound"]["generic_params"]:
             check_generic_param(param)
-        check_type(bound["trait_bound"]["trait"])
+        check_path(bound["trait_bound"]["trait"])
 
 
 def check_decl(decl):
@@ -66,35 +66,35 @@ def check_decl(decl):
     if decl["output"]:
         check_type(decl["output"])
 
+def check_path(path):
+    args = path["args"]
+    if args:
+        if "angle_bracketed" in args:
+            for arg in args["angle_bracketed"]["args"]:
+                if "type" in arg:
+                    check_type(arg["type"])
+                elif "const" in arg:
+                    check_type(arg["const"]["type"])
+            for binding in args["angle_bracketed"]["bindings"]:
+                if "equality" in binding["binding"]:
+                    term = binding["binding"]["equality"]
+                    if "type" in term: check_type(term["type"])
+                    elif "const" in term: check_type(term["const"])
+                elif "constraint" in binding["binding"]:
+                    for bound in binding["binding"]["constraint"]:
+                        check_generic_bound(bound)
+        elif "parenthesized" in args:
+            for input_ty in args["parenthesized"]["inputs"]:
+                check_type(input_ty)
+            if args["parenthesized"]["output"]:
+                check_type(args["parenthesized"]["output"])
+    if not valid_id(path["id"]):
+        print("Type contained an invalid ID:", path["id"])
+        sys.exit(1)
 
 def check_type(ty):
     if ty["kind"] == "resolved_path":
-        for bound in ty["inner"]["param_names"]:
-            check_generic_bound(bound)
-        args = ty["inner"]["args"]
-        if args:
-            if "angle_bracketed" in args:
-                for arg in args["angle_bracketed"]["args"]:
-                    if "type" in arg:
-                        check_type(arg["type"])
-                    elif "const" in arg:
-                        check_type(arg["const"]["type"])
-                for binding in args["angle_bracketed"]["bindings"]:
-                    if "equality" in binding["binding"]:
-                        term = binding["binding"]["equality"]
-                        if "type" in term: check_type(term["type"])
-                        elif "const" in term: check_type(term["const"])
-                    elif "constraint" in binding["binding"]:
-                        for bound in binding["binding"]["constraint"]:
-                            check_generic_bound(bound)
-            elif "parenthesized" in args:
-                for ty in args["parenthesized"]["inputs"]:
-                    check_type(ty)
-                if args["parenthesized"]["output"]:
-                    check_type(args["parenthesized"]["output"])
-        if not valid_id(ty["inner"]["id"]):
-            print("Type contained an invalid ID:", ty["inner"]["id"])
-            sys.exit(1)
+        check_path(ty["inner"])
     elif ty["kind"] == "tuple":
         for ty in ty["inner"]:
             check_type(ty)
@@ -111,7 +111,7 @@ def check_type(ty):
         check_decl(ty["inner"]["decl"])
     elif ty["kind"] == "qualified_path":
         check_type(ty["inner"]["self_type"])
-        check_type(ty["inner"]["trait"])
+        check_path(ty["inner"]["trait"])
 
 
 work_list = set([crate["root"]])
@@ -132,9 +132,11 @@ while work_list:
         work_list |= set(item["inner"]["items"]) - visited
     elif item["kind"] == "struct":
         check_generics(item["inner"]["generics"])
-        work_list |= (
-            set(item["inner"]["fields"]) | set(item["inner"]["impls"])
-        ) - visited
+        work_list |= set(item["inner"]["impls"]) - visited
+        if "tuple" in item["inner"]["kind"]:
+            work_list |= set(filter(None, item["inner"]["kind"]["tuple"])) - visited
+        elif "plain" in item["inner"]["kind"]:
+            work_list |= set(item["inner"]["kind"]["plain"]["fields"]) - visited
     elif item["kind"] == "struct_field":
         check_type(item["inner"])
     elif item["kind"] == "enum":
@@ -144,10 +146,10 @@ while work_list:
         ) - visited
     elif item["kind"] == "variant":
         if item["inner"]["variant_kind"] == "tuple":
-            for ty in item["inner"]["variant_inner"]:
-                check_type(ty)
+            for field_id in filter(None, item["inner"]["variant_inner"]):
+                work_list.add(field_id)
         elif item["inner"]["variant_kind"] == "struct":
-            work_list |= set(item["inner"]["variant_inner"]) - visited
+            work_list |= set(item["inner"]["variant_inner"]["fields"]) - visited
     elif item["kind"] in ("function", "method"):
         check_generics(item["inner"]["generics"])
         check_decl(item["inner"]["decl"])
@@ -174,7 +176,7 @@ while work_list:
     elif item["kind"] == "impl":
         check_generics(item["inner"]["generics"])
         if item["inner"]["trait"]:
-            check_type(item["inner"]["trait"])
+            check_path(item["inner"]["trait"])
         if item["inner"]["blanket_impl"]:
             check_type(item["inner"]["blanket_impl"])
         check_type(item["inner"]["for"])
@@ -187,3 +189,9 @@ while work_list:
             check_generic_bound(bound)
         if item["inner"]["default"]:
             check_type(item["inner"]["default"])
+    elif item["kind"] == "import":
+        if item["inner"]["id"]:
+            inner_id = item["inner"]["id"]
+            assert valid_id(inner_id)
+            if inner_id in crate["index"] and inner_id not in visited:
+                work_list.add(inner_id)

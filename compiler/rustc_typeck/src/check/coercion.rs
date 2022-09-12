@@ -1479,20 +1479,25 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
             }
             Err(coercion_error) => {
+                // Mark that we've failed to coerce the types here to suppress
+                // any superfluous errors we might encounter while trying to
+                // emit or provide suggestions on how to fix the initial error.
+                fcx.set_tainted_by_errors();
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
                     // since it is implied by the syntax.
                     // (Note: not all force-units work this way.)"
-                    (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
+                    (expression_ty, self.merged_ty())
                 } else {
                     // Otherwise, the "expected" type for error
                     // reporting is the current unification type,
                     // which is basically the LUB of the expressions
                     // we've seen so far (combined with the expected
                     // type)
-                    (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
+                    (self.merged_ty(), expression_ty)
                 };
+                let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
 
                 let mut err;
                 let mut unsized_return = false;
@@ -1580,25 +1585,33 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
     }
-    fn note_unreachable_loop_return<'a>(
+    fn note_unreachable_loop_return(
         &self,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
         ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,
     ) {
         let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
         let mut span: MultiSpan = vec![loop_span].into();
-        span.push_span_label(loop_span, "this might have zero elements to iterate on".to_string());
-        for ret_expr in ret_exprs {
+        span.push_span_label(loop_span, "this might have zero elements to iterate on");
+        const MAXITER: usize = 3;
+        let iter = ret_exprs.iter().take(MAXITER);
+        for ret_expr in iter {
             span.push_span_label(
                 ret_expr.span,
-                "if the loop doesn't execute, this value would never get returned".to_string(),
+                "if the loop doesn't execute, this value would never get returned",
             );
         }
         err.span_note(
             span,
             "the function expects a value to always be returned, but loops might run zero times",
         );
+        if MAXITER < ret_exprs.len() {
+            err.note(&format!(
+                "if the loop doesn't execute, {} other values would never get returned",
+                ret_exprs.len() - MAXITER
+            ));
+        }
         err.help(
             "return a value for the case when the loop has zero elements to iterate on, or \
            consider changing the return type to account for that possibility",
@@ -1695,9 +1708,30 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             );
         }
 
-        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
+        let ret_coercion_span = fcx.ret_coercion_span.get();
+
+        if let Some(sp) = ret_coercion_span
+            // If the closure has an explicit return type annotation, or if
+            // the closure's return type has been inferred from outside
+            // requirements (such as an Fn* trait bound), then a type error
+            // may occur at the first return expression we see in the closure
+            // (if it conflicts with the declared return type). Skip adding a
+            // note in this case, since it would be incorrect.
+            && !fcx.return_type_pre_known
+        {
+            err.span_note(
+                sp,
+                &format!(
+                    "return type inferred to be `{}` here",
+                    expected
+                ),
+            );
+        }
+
+        if let (Some(sp), Some(fn_output)) = (ret_coercion_span, fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
+
         err
     }
 

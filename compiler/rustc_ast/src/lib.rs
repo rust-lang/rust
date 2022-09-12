@@ -13,16 +13,21 @@
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
-#![feature(label_break_value)]
-#![cfg_attr(bootstrap, feature(let_chains))]
+#![cfg_attr(bootstrap, feature(label_break_value))]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(slice_internals)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "256"]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
+
+#[macro_use]
+extern crate tracing;
 
 pub mod util {
     pub mod classify;

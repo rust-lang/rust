@@ -26,4 +26,6 @@ fn main() {
     let _ = a.unsigned_abs() as u32;
     let _ = a.unsigned_abs() as u64;
     let _ = a.unsigned_abs() as u128;
+
+    let _ = (x as i64 - y as i64).unsigned_abs() as u32;
 }

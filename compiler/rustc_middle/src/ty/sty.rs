@@ -11,6 +11,7 @@ use crate::ty::{
     TypeVisitor,
 };
 use crate::ty::{List, ParamEnv};
+use hir::def::DefKind;
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
@@ -324,6 +325,10 @@ impl<'tcx> ClosureSubsts<'tcx> {
             ty::FnPtr(sig) => *sig,
             _ => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {:?}", ty.kind()),
         }
+    }
+
+    pub fn print_as_impl_trait(self) -> ty::print::PrintClosureAsImpl<'tcx> {
+        ty::print::PrintClosureAsImpl { closure: self }
     }
 }
 
@@ -845,6 +850,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 /// An existential reference to a trait, where `Self` is erased.
 /// For example, the trait object `Trait<'a, 'b, X, Y>` is:
 /// ```ignore (illustrative)
@@ -1186,7 +1197,9 @@ pub struct ProjectionTy<'tcx> {
 
 impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        tcx.parent(self.item_def_id)
+        let parent = tcx.parent(self.item_def_id);
+        assert_eq!(tcx.def_kind(parent), DefKind::Trait);
+        parent
     }
 
     /// Extracts the underlying trait reference and own substs from this projection.
@@ -1501,7 +1514,6 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            ty::ReEmpty(_) => false,
             ty::ReErased => false,
         }
     }
@@ -1524,11 +1536,6 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn is_placeholder(self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
-    }
-
-    #[inline]
-    pub fn is_empty(self) -> bool {
-        matches!(*self, ty::ReEmpty(..))
     }
 
     #[inline]
@@ -1562,7 +1569,7 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
-            ty::ReEmpty(_) | ty::ReStatic => {
+            ty::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReLateBound(..) => {
@@ -1616,6 +1623,10 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => true,
             _ => self.is_free(),
         }
+    }
+
+    pub fn is_var(self) -> bool {
+        matches!(self.kind(), ty::ReVar(_))
     }
 }
 

@@ -12,7 +12,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use tracing::debug;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -52,7 +51,7 @@ fn typeck_results_of_method_fn<'tcx>(
     expr: &Expr<'_>,
 ) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
     match expr.kind {
-        ExprKind::MethodCall(segment, _, _)
+        ExprKind::MethodCall(segment, ..)
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
         {
             Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))
@@ -119,8 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         _: rustc_hir::HirId,
     ) {
         if let Some(segment) = path.segments.iter().nth_back(1)
-        && let Some(res) = &segment.res
-        && lint_ty_kind_usage(cx, res)
+        && lint_ty_kind_usage(cx, &segment.res)
         {
             let span = path.span.with_hi(
                 segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
@@ -393,8 +391,14 @@ impl LateLintPass<'_> for Diagnostics {
             return;
         }
 
+        let mut found_parent_with_attr = false;
         let mut found_impl = false;
-        for (_, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+        for (hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+            if let Some(owner_did) = hir_id.as_owner() {
+                found_parent_with_attr = found_parent_with_attr
+                    || cx.tcx.has_attr(owner_did.to_def_id(), sym::rustc_lint_diagnostics);
+            }
+
             debug!(?parent);
             if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent &&
                 let Impl { of_trait: Some(of_trait), .. } = impl_ &&
@@ -407,7 +411,7 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_impl);
-        if !found_impl {
+        if !found_parent_with_attr && !found_impl {
             cx.struct_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, |lint| {
                 lint.build(fluent::lint::diag_out_of_impl).emit();
             })
@@ -425,7 +429,7 @@ impl LateLintPass<'_> for Diagnostics {
             }
         }
         debug!(?found_diagnostic_message);
-        if !found_diagnostic_message {
+        if !found_parent_with_attr && !found_diagnostic_message {
             cx.struct_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, |lint| {
                 lint.build(fluent::lint::untranslatable_diag).emit();
             })

@@ -15,9 +15,9 @@ fn move_out_by_subslice() -> () {
     let mut _11: std::boxed::Box<i32>;   // in scope 0 at $DIR/uniform_array_move_out.rs:+1:21: +1:26
     scope 1 {
         debug a => _1;                   // in scope 1 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-        let _12: [std::boxed::Box<i32>; 2]; // in scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:17
+        let _12: [std::boxed::Box<i32>; 2]; // in scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
         scope 4 {
-            debug _y => _12;             // in scope 4 at $DIR/uniform_array_move_out.rs:+2:10: +2:17
+            debug _y => _12;             // in scope 4 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
         }
     }
     scope 2 {
@@ -77,8 +77,8 @@ fn move_out_by_subslice() -> () {
     bb6: {
         StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:+1:26: +1:27
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/uniform_array_move_out.rs:+1:9: +1:10
-        StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:17
-        _12 = move _1[0..2];             // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:17
+        StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
+        _12 = move _1[0..2];             // scope 1 at $DIR/uniform_array_move_out.rs:+2:10: +2:12
         _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:+0:27: +3:2
         drop(_12) -> [return: bb7, unwind: bb9]; // scope 1 at $DIR/uniform_array_move_out.rs:+3:1: +3:2
     }

@@ -12,7 +12,7 @@ LL | fn foo(a: isize, b: isize, c: isize, d:isize) {
 help: provide the argument
    |
 LL |   foo(1, 2, 3, /* isize */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~
+   |      ~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0061]: this function takes 6 arguments but 3 arguments were supplied
   --> $DIR/not-enough-arguments.rs:29:3
@@ -40,7 +40,7 @@ LL |     f: i32,
 help: provide the arguments
    |
 LL |   bar(1, 2, 3, /* i32 */, /* i32 */, /* i32 */);
-   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

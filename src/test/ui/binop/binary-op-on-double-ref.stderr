@@ -6,7 +6,7 @@ LL |         x % 2 == 0
    |         |
    |         &&{integer}
    |
-help: `%` can be used on `{integer}`, you can dereference `x`
+help: `%` can be used on `&{integer}` if you dereference the left-hand side
    |
 LL |         *x % 2 == 0
    |         +

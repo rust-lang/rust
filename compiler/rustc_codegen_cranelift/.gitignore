@@ -8,6 +8,8 @@ perf.data.old
 *.string*
 /y.bin
 /y.bin.dSYM
+/y.exe
+/y.pdb
 /build
 /build_sysroot/sysroot_src
 /build_sysroot/compiler-builtins
@@ -17,3 +19,4 @@ perf.data.old
 /regex
 /simple-raytracer
 /portable-simd
+/abi-checker

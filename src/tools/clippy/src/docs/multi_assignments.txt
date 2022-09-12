@@ -1,0 +1,17 @@
+### What it does
+Checks for nested assignments.
+
+### Why is this bad?
+While this is in most cases already a type mismatch,
+the result of an assignment being `()` can throw off people coming from languages like python or C,
+where such assignments return a copy of the assigned value.
+
+### Example
+```
+a = b = 42;
+```
+Use instead:
+```
+b = 42;
+a = b;
+```

@@ -10,12 +10,17 @@ use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_ON_REF_PTR;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
-    if !(args.len() == 1 && method_name == sym::clone) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    method_name: Symbol,
+    receiver: &hir::Expr<'_>,
+    args: &[hir::Expr<'_>],
+) {
+    if !(args.is_empty() && method_name == sym::clone) {
         return;
     }
-    let arg = &args[0];
-    let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
+    let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
     if let ty::Adt(_, subst) = obj_ty.kind() {
         let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
@@ -28,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Sym
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
+        let snippet = snippet_with_macro_callsite(cx, receiver.span, "..");
 
         span_lint_and_sugg(
             cx,

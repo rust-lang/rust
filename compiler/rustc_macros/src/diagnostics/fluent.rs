@@ -187,17 +187,41 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
         for entry in resource.entries() {
             let span = res.ident.span();
             if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
-                let _ = previous_defns.entry(name.to_string()).or_insert(ident_span);
+                let _ = previous_defns.entry(name.to_string()).or_insert(path_span);
 
-                // `typeck-foo-bar` => `foo_bar` (in `typeck.ftl`)
-                // `const-eval-baz` => `baz` (in `const_eval.ftl`)
-                let snake_name = Ident::new(
-                    // FIXME: should probably trim prefix, not replace all occurrences
-                    &name
-                        .replace(&format!("{}-", res.ident).replace('_', "-"), "")
-                        .replace('-', "_"),
-                    span,
-                );
+                if name.contains('-') {
+                    Diagnostic::spanned(
+                        path_span,
+                        Level::Error,
+                        format!("name `{name}` contains a '-' character"),
+                    )
+                    .help("replace any '-'s with '_'s")
+                    .emit();
+                }
+
+                // `typeck_foo_bar` => `foo_bar` (in `typeck.ftl`)
+                // `const_eval_baz` => `baz` (in `const_eval.ftl`)
+                // `const-eval-hyphen-having` => `hyphen_having` (in `const_eval.ftl`)
+                // The last case we error about above, but we want to fall back gracefully
+                // so that only the error is being emitted and not also one about the macro
+                // failing.
+                let crate_prefix = format!("{}_", res.ident);
+
+                let snake_name = name.replace('-', "_");
+                let snake_name = match snake_name.strip_prefix(&crate_prefix) {
+                    Some(rest) => Ident::new(rest, span),
+                    None => {
+                        Diagnostic::spanned(
+                            path_span,
+                            Level::Error,
+                            format!("name `{name}` does not start with the crate name"),
+                        )
+                        .help(format!("prepend `{crate_prefix}` to the slug name: `{crate_prefix}{snake_name}`"))
+                        .emit();
+                        Ident::new(&snake_name, span)
+                    }
+                };
+
                 constants.extend(quote! {
                     pub const #snake_name: crate::DiagnosticMessage =
                         crate::DiagnosticMessage::FluentIdentifier(
@@ -210,6 +234,16 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     let snake_name = Ident::new(&attr_name.replace('-', "_"), span);
                     if !previous_attrs.insert(snake_name.clone()) {
                         continue;
+                    }
+
+                    if attr_name.contains('-') {
+                        Diagnostic::spanned(
+                            path_span,
+                            Level::Error,
+                            format!("attribute `{attr_name}` contains a '-' character"),
+                        )
+                        .help("replace any '-'s with '_'s")
+                        .emit();
                     }
 
                     constants.extend(quote! {
@@ -227,7 +261,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 match e {
                     FluentError::Overriding { kind, id } => {
                         Diagnostic::spanned(
-                            ident_span,
+                            path_span,
                             Level::Error,
                             format!("overrides existing {}: `{}`", kind, id),
                         )

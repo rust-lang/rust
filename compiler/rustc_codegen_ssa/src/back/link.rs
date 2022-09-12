@@ -1,6 +1,6 @@
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorGuaranteed, Handler};
@@ -20,7 +20,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
-use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
@@ -764,15 +764,15 @@ fn link_natively<'a>(
                 "Linker does not support -static-pie command line option. Retrying with -static instead."
             );
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
-            let self_contained = crt_objects_fallback(sess, crate_type);
+            let self_contained = self_contained(sess, crate_type);
             let opts = &sess.target;
             let pre_objects = if self_contained {
-                &opts.pre_link_objects_fallback
+                &opts.pre_link_objects_self_contained
             } else {
                 &opts.pre_link_objects
             };
             let post_objects = if self_contained {
-                &opts.post_link_objects_fallback
+                &opts.post_link_objects_self_contained
             } else {
                 &opts.post_link_objects
             };
@@ -1173,13 +1173,6 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             // only the linker flavor is known; use the default linker for the selected flavor
             (None, Some(flavor)) => Some((
                 PathBuf::from(match flavor {
-                    LinkerFlavor::Em => {
-                        if cfg!(windows) {
-                            "emcc.bat"
-                        } else {
-                            "emcc"
-                        }
-                    }
                     LinkerFlavor::Gcc => {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
@@ -1194,11 +1187,17 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                         }
                     }
                     LinkerFlavor::Ld => "ld",
-                    LinkerFlavor::Msvc => "link.exe",
                     LinkerFlavor::Lld(_) => "lld",
-                    LinkerFlavor::PtxLinker => "rust-ptx-linker",
-                    LinkerFlavor::BpfLinker => "bpf-linker",
-                    LinkerFlavor::L4Bender => "l4-bender",
+                    LinkerFlavor::Msvc => "link.exe",
+                    LinkerFlavor::EmCc => {
+                        if cfg!(windows) {
+                            "emcc.bat"
+                        } else {
+                            "emcc"
+                        }
+                    }
+                    LinkerFlavor::Bpf => "bpf-linker",
+                    LinkerFlavor::Ptx => "rust-ptx-linker",
                 }),
                 flavor,
             )),
@@ -1208,7 +1207,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 });
 
                 let flavor = if stem == "emcc" {
-                    LinkerFlavor::Em
+                    LinkerFlavor::EmCc
                 } else if stem == "gcc"
                     || stem.ends_with("-gcc")
                     || stem == "clang"
@@ -1236,7 +1235,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
+    let linker_flavor = sess.opts.cg.linker_flavor.map(LinkerFlavor::from_cli);
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
 
@@ -1556,26 +1556,26 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
     true
 }
 
-/// Whether we link to our own CRT objects instead of relying on gcc to pull them.
+/// Various toolchain components used during linking are used from rustc distribution
+/// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
+fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
     if let Some(self_contained) = sess.opts.cg.link_self_contained {
         return self_contained;
     }
 
-    match sess.target.crt_objects_fallback {
+    match sess.target.link_self_contained {
+        LinkSelfContainedDefault::False => false,
+        LinkSelfContainedDefault::True => true,
         // FIXME: Find a better heuristic for "native musl toolchain is available",
         // based on host and linker path, for example.
         // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        Some(CrtObjectsFallback::Musl) => sess.crt_static(Some(crate_type)),
-        Some(CrtObjectsFallback::Mingw) => {
+        LinkSelfContainedDefault::Musl => sess.crt_static(Some(crate_type)),
+        LinkSelfContainedDefault::Mingw => {
             sess.host == sess.target
                 && sess.target.vendor != "uwp"
                 && detect_self_contained_mingw(&sess)
         }
-        // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
-        Some(CrtObjectsFallback::Wasm) => true,
-        None => false,
     }
 }
 
@@ -1583,12 +1583,21 @@ fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
 fn add_pre_link_objects(
     cmd: &mut dyn Linker,
     sess: &Session,
+    flavor: LinkerFlavor,
     link_output_kind: LinkOutputKind,
     self_contained: bool,
 ) {
+    // FIXME: we are currently missing some infra here (per-linker-flavor CRT objects),
+    // so Fuchsia has to be special-cased.
     let opts = &sess.target;
-    let objects =
-        if self_contained { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
+    let empty = Default::default();
+    let objects = if self_contained {
+        &opts.pre_link_objects_self_contained
+    } else if !(sess.target.os == "fuchsia" && flavor == LinkerFlavor::Gcc) {
+        &opts.pre_link_objects
+    } else {
+        &empty
+    };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
@@ -1601,9 +1610,11 @@ fn add_post_link_objects(
     link_output_kind: LinkOutputKind,
     self_contained: bool,
 ) {
-    let opts = &sess.target;
-    let objects =
-        if self_contained { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+    let objects = if self_contained {
+        &sess.target.post_link_objects_self_contained
+    } else {
+        &sess.target.post_link_objects
+    };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
@@ -1703,6 +1714,13 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 /// that are necessary for the linking. They are only present in symbol table but not actually
 /// used in any sections, so the linker will therefore pick relevant rlibs for linking, but
 /// unused `#[no_mangle]` or `#[used]` can still be discard by GC sections.
+///
+/// There's a few internal crates in the standard library (aka libcore and
+/// libstd) which actually have a circular dependence upon one another. This
+/// currently arises through "weak lang items" where libcore requires things
+/// like `rust_begin_unwind` but libstd ends up defining it. To get this
+/// circular dependence to work correctly we declare some of these things
+/// in this synthetic object.
 fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -1882,12 +1900,12 @@ fn linker_with_args<'a>(
     out_filename: &Path,
     codegen_results: &CodegenResults,
 ) -> Result<Command, ErrorGuaranteed> {
-    let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
+    let self_contained = self_contained(sess, crate_type);
     let cmd = &mut *super::linker::get_linker(
         sess,
         path,
         flavor,
-        crt_objects_fallback,
+        self_contained,
         &codegen_results.crate_info.target_cpu,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
@@ -1914,7 +1932,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Pre-link CRT objects.
-    add_pre_link_objects(cmd, sess, link_output_kind, crt_objects_fallback);
+    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained);
 
     add_linked_symbol_object(
         cmd,
@@ -1947,7 +1965,6 @@ fn linker_with_args<'a>(
     // Upstream rust libraries are not supposed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
-    // (The current implementation still doesn't prevent it though, see the FIXME below.)
     //
     // Note that upstream rust libraries may contain native dependencies as
     // well, but they also can't depend on what we just started to add to the
@@ -1968,15 +1985,16 @@ fn linker_with_args<'a>(
     // and move this option back to the top.
     cmd.add_as_needed();
 
-    // FIXME: Move this below to other native libraries
-    // (or alternatively link all native libraries after their respective crates).
-    // This change is somewhat breaking in practice due to local static libraries being linked
-    // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
+    // Local native libraries of all kinds.
+    //
+    // If `-Zlink-native-libraries=false` is set, then the assumption is that an
+    // external build system already has the native dependencies defined, and it
+    // will provide them to the linker itself.
     if sess.opts.unstable_opts.link_native_libraries {
         add_local_native_libraries(cmd, sess, codegen_results);
     }
 
-    // Upstream rust libraries and their non-bundled static libraries
+    // Upstream rust libraries and their (possibly bundled) static native libraries.
     add_upstream_rust_crates(
         cmd,
         sess,
@@ -1986,11 +2004,11 @@ fn linker_with_args<'a>(
         tmpdir,
     );
 
-    // Upstream dynamic native libraries linked with `#[link]` attributes at and `-l`
-    // command line options.
-    // If -Zlink-native-libraries=false is set, then the assumption is that an
-    // external build system already has the native dependencies defined, and it
-    // will provide them to the linker itself.
+    // Dynamic native libraries from upstream crates.
+    //
+    // FIXME: Merge this to `add_upstream_rust_crates` so that all native libraries are linked
+    // together with their respective upstream crates, and in their originally specified order.
+    // This may be slightly breaking due to our use of `--as-needed` and needs a crater run.
     if sess.opts.unstable_opts.link_native_libraries {
         add_upstream_native_libraries(cmd, sess, codegen_results);
     }
@@ -2024,7 +2042,7 @@ fn linker_with_args<'a>(
         cmd,
         sess,
         link_output_kind,
-        crt_objects_fallback,
+        self_contained,
         flavor,
         crate_type,
         codegen_results,
@@ -2040,7 +2058,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
-    add_post_link_objects(cmd, sess, link_output_kind, crt_objects_fallback);
+    add_post_link_objects(cmd, sess, link_output_kind, self_contained);
 
     // ------------ Late order-dependent options ------------
 
@@ -2057,7 +2075,7 @@ fn add_order_independent_options(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    crt_objects_fallback: bool,
+    self_contained: bool,
     flavor: LinkerFlavor,
     crate_type: CrateType,
     codegen_results: &CodegenResults,
@@ -2070,7 +2088,10 @@ fn add_order_independent_options(
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
-    if sess.target.os == "fuchsia" && crate_type == CrateType::Executable {
+    if sess.target.os == "fuchsia"
+        && crate_type == CrateType::Executable
+        && flavor != LinkerFlavor::Gcc
+    {
         let prefix = if sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
             "asan/"
         } else {
@@ -2086,7 +2107,7 @@ fn add_order_independent_options(
     // Make the binary compatible with data execution prevention schemes.
     cmd.add_no_exec();
 
-    if crt_objects_fallback {
+    if self_contained {
         cmd.no_crt_objects();
     }
 
@@ -2099,11 +2120,11 @@ fn add_order_independent_options(
         });
     }
 
-    if flavor == LinkerFlavor::PtxLinker {
+    if flavor == LinkerFlavor::Ptx {
         // Provide the linker with fallback to internal `target-cpu`.
         cmd.arg("--fallback-arch");
         cmd.arg(&codegen_results.crate_info.target_cpu);
-    } else if flavor == LinkerFlavor::BpfLinker {
+    } else if flavor == LinkerFlavor::Bpf {
         cmd.arg("--cpu");
         cmd.arg(&codegen_results.crate_info.target_cpu);
         cmd.arg("--cpu-features");
@@ -2115,7 +2136,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, crt_objects_fallback);
+    add_library_search_dirs(cmd, sess, self_contained);
 
     cmd.output_filename(out_filename);
 
@@ -2319,65 +2340,10 @@ fn add_upstream_rust_crates<'a>(
     // crates.
     let deps = &codegen_results.crate_info.used_crates;
 
-    // There's a few internal crates in the standard library (aka libcore and
-    // libstd) which actually have a circular dependence upon one another. This
-    // currently arises through "weak lang items" where libcore requires things
-    // like `rust_begin_unwind` but libstd ends up defining it. To get this
-    // circular dependence to work correctly in all situations we'll need to be
-    // sure to correctly apply the `--start-group` and `--end-group` options to
-    // GNU linkers, otherwise if we don't use any other symbol from the standard
-    // library it'll get discarded and the whole application won't link.
-    //
-    // In this loop we're calculating the `group_end`, after which crate to
-    // pass `--end-group` and `group_start`, before which crate to pass
-    // `--start-group`. We currently do this by passing `--end-group` after
-    // the first crate (when iterating backwards) that requires a lang item
-    // defined somewhere else. Once that's set then when we've defined all the
-    // necessary lang items we'll pass `--start-group`.
-    //
-    // Note that this isn't amazing logic for now but it should do the trick
-    // for the current implementation of the standard library.
-    let mut group_end = None;
-    let mut group_start = None;
-    // Crates available for linking thus far.
-    let mut available = FxHashSet::default();
-    // Crates required to satisfy dependencies discovered so far.
-    let mut required = FxHashSet::default();
-
-    let info = &codegen_results.crate_info;
-    for &cnum in deps.iter().rev() {
-        if let Some(missing) = info.missing_lang_items.get(&cnum) {
-            let missing_crates = missing.iter().map(|i| info.lang_item_to_crate.get(i).copied());
-            required.extend(missing_crates);
-        }
-
-        required.insert(Some(cnum));
-        available.insert(Some(cnum));
-
-        if required.len() > available.len() && group_end.is_none() {
-            group_end = Some(cnum);
-        }
-        if required.len() == available.len() && group_end.is_some() {
-            group_start = Some(cnum);
-            break;
-        }
-    }
-
-    // If we didn't end up filling in all lang items from upstream crates then
-    // we'll be filling it in with our crate. This probably means we're the
-    // standard library itself, so skip this for now.
-    if group_end.is_some() && group_start.is_none() {
-        group_end = None;
-    }
-
     let mut compiler_builtins = None;
     let search_path = OnceCell::new();
 
     for &cnum in deps.iter() {
-        if group_start == Some(cnum) {
-            cmd.group_start();
-        }
-
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
@@ -2401,7 +2367,7 @@ fn add_upstream_rust_crates<'a>(
                 // or is an rlib already included via some other dylib crate, the symbols from
                 // native libs will have already been included in that dylib.
                 //
-                // If -Zlink-native-libraries=false is set, then the assumption is that an
+                // If `-Zlink-native-libraries=false` is set, then the assumption is that an
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
                 if sess.opts.unstable_opts.link_native_libraries {
@@ -2437,6 +2403,14 @@ fn add_upstream_rust_crates<'a>(
                                 bundle: Some(false),
                                 whole_archive: Some(false) | None,
                             } => {
+                                // HACK/FIXME: Fixup a circular dependency between libgcc and libc
+                                // with glibc. This logic should be moved to the libc crate.
+                                if sess.target.os == "linux"
+                                    && sess.target.env == "gnu"
+                                    && name == "c"
+                                {
+                                    cmd.link_staticlib("gcc", false);
+                                }
                                 cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
                             }
                             NativeLibKind::LinkArg => {
@@ -2455,10 +2429,6 @@ fn add_upstream_rust_crates<'a>(
                 }
             }
             Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
-        }
-
-        if group_end == Some(cnum) {
-            cmd.group_end();
         }
     }
 
@@ -2674,11 +2644,16 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos")
+        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "macos")
         || (flavor != LinkerFlavor::Gcc && flavor != LinkerFlavor::Lld(LldFlavor::Ld64))
     {
         return;
     }
+
+    if os == "macos" && flavor != LinkerFlavor::Lld(LldFlavor::Ld64) {
+        return;
+    }
+
     let sdk_name = match (arch.as_ref(), os.as_ref()) {
         ("aarch64", "tvos") => "appletvos",
         ("x86_64", "tvos") => "appletvsimulator",
@@ -2694,6 +2669,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("aarch64", "watchos") if llvm_target.ends_with("-simulator") => "watchsimulator",
         ("aarch64", "watchos") => "watchos",
         ("arm", "watchos") => "watchos",
+        (_, "macos") => "macosx",
         _ => {
             sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
             return;
@@ -2777,20 +2753,24 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         if let LinkerFlavor::Gcc = flavor {
             match ld_impl {
                 LdImpl::Lld => {
-                    let tools_path = sess.get_tools_search_paths(false);
-                    let gcc_ld_dir = tools_path
-                        .into_iter()
-                        .map(|p| p.join("gcc-ld"))
-                        .find(|p| {
-                            p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists()
-                        })
-                        .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
-                    cmd.arg({
-                        let mut arg = OsString::from("-B");
-                        arg.push(gcc_ld_dir);
-                        arg
-                    });
-                    cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
+                    // Implement the "self-contained" part of -Zgcc-ld
+                    // by adding rustc distribution directories to the tool search path.
+                    for path in sess.get_tools_search_paths(false) {
+                        cmd.arg({
+                            let mut arg = OsString::from("-B");
+                            arg.push(path.join("gcc-ld"));
+                            arg
+                        });
+                    }
+                    // Implement the "linker flavor" part of -Zgcc-ld
+                    // by asking cc to use some kind of lld.
+                    cmd.arg("-fuse-ld=lld");
+                    if sess.target.lld_flavor != LldFlavor::Ld {
+                        // Tell clang to use a non-default LLD flavor.
+                        // Gcc doesn't understand the target option, but we currently assume
+                        // that gcc is not used for Apple and Wasm targets (#97402).
+                        cmd.arg(format!("--target={}", sess.target.llvm_target));
+                    }
                 }
             }
         } else {

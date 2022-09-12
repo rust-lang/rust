@@ -68,7 +68,7 @@ fn arrays_5() {
         arr[1] += 10;
     };
 
-    // c will capture `arr` completely, therefore we cannot borrow other indecies
+    // c will capture `arr` completely, therefore we cannot borrow other indices
     // into the array.
     println!("{:#?}", &arr[3..2]);
     //~^ ERROR: cannot borrow `arr` as immutable because it is also borrowed as mutable

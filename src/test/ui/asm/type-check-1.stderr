@@ -106,7 +106,7 @@ error[E0308]: mismatched types
   --> $DIR/type-check-1.rs:60:26
    |
 LL |         asm!("{}", const 0 as *mut u8);
-   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
+   |                          ^^^^^^^^^^^^ expected integer, found `*mut u8`
    |
    = note:     expected type `{integer}`
            found raw pointer `*mut u8`
@@ -133,7 +133,7 @@ error[E0308]: mismatched types
   --> $DIR/type-check-1.rs:78:25
    |
 LL | global_asm!("{}", const 0 as *mut u8);
-   |                         ^^^^^^^^^^^^ expected integer, found *-ptr
+   |                         ^^^^^^^^^^^^ expected integer, found `*mut u8`
    |
    = note:     expected type `{integer}`
            found raw pointer `*mut u8`

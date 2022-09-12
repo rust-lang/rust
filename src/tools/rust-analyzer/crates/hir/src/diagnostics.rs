@@ -14,6 +14,7 @@ use crate::{MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
+        #[derive(Debug)]
         pub enum AnyDiagnostic {$(
             $diag(Box<$diag>),
         )*}
@@ -123,6 +124,7 @@ pub struct NoSuchField {
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
     pub expr: InFile<AstPtr<ast::Expr>>,
+    pub is_break: bool,
 }
 
 #[derive(Debug)]

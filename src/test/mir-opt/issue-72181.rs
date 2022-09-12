@@ -11,14 +11,14 @@ union Foo {
     b: Never
 }
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // EMIT_MIR issue_72181.foo.mir_map.0.mir
 fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 }
 
 // EMIT_MIR issue_72181.bar.mir_map.0.mir
 fn bar([(_, x)]: [(Never, u32); 1]) -> u32 { x }
 
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // EMIT_MIR issue_72181.main.mir_map.0.mir
 fn main() {
     let _ = mem::size_of::<Foo>();

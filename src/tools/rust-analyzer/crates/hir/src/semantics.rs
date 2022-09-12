@@ -357,6 +357,26 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_method_call(call).map(Function::from)
     }
 
+    pub fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<Function> {
+        self.imp.resolve_await_to_poll(await_expr).map(Function::from)
+    }
+
+    pub fn resolve_prefix_expr(&self, prefix_expr: &ast::PrefixExpr) -> Option<Function> {
+        self.imp.resolve_prefix_expr(prefix_expr).map(Function::from)
+    }
+
+    pub fn resolve_index_expr(&self, index_expr: &ast::IndexExpr) -> Option<Function> {
+        self.imp.resolve_index_expr(index_expr).map(Function::from)
+    }
+
+    pub fn resolve_bin_expr(&self, bin_expr: &ast::BinExpr) -> Option<Function> {
+        self.imp.resolve_bin_expr(bin_expr).map(Function::from)
+    }
+
+    pub fn resolve_try_expr(&self, try_expr: &ast::TryExpr) -> Option<Function> {
+        self.imp.resolve_try_expr(try_expr).map(Function::from)
+    }
+
     pub fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         self.imp.resolve_method_call_as_callable(call)
     }
@@ -1064,6 +1084,26 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
         self.analyze(call.syntax())?.resolve_method_call(self.db, call)
+    }
+
+    fn resolve_await_to_poll(&self, await_expr: &ast::AwaitExpr) -> Option<FunctionId> {
+        self.analyze(await_expr.syntax())?.resolve_await_to_poll(self.db, await_expr)
+    }
+
+    fn resolve_prefix_expr(&self, prefix_expr: &ast::PrefixExpr) -> Option<FunctionId> {
+        self.analyze(prefix_expr.syntax())?.resolve_prefix_expr(self.db, prefix_expr)
+    }
+
+    fn resolve_index_expr(&self, index_expr: &ast::IndexExpr) -> Option<FunctionId> {
+        self.analyze(index_expr.syntax())?.resolve_index_expr(self.db, index_expr)
+    }
+
+    fn resolve_bin_expr(&self, bin_expr: &ast::BinExpr) -> Option<FunctionId> {
+        self.analyze(bin_expr.syntax())?.resolve_bin_expr(self.db, bin_expr)
+    }
+
+    fn resolve_try_expr(&self, try_expr: &ast::TryExpr) -> Option<FunctionId> {
+        self.analyze(try_expr.syntax())?.resolve_try_expr(self.db, try_expr)
     }
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {

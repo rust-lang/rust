@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # The ICE occurred in the following situation:
 # * `foo` declares `extern crate bar, baz`, depends only on `bar` (forgetting `baz` in `Cargo.toml`)

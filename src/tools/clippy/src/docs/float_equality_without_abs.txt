@@ -1,0 +1,26 @@
+### What it does
+Checks for statements of the form `(a - b) < f32::EPSILON` or
+`(a - b) < f64::EPSILON`. Notes the missing `.abs()`.
+
+### Why is this bad?
+The code without `.abs()` is more likely to have a bug.
+
+### Known problems
+If the user can ensure that b is larger than a, the `.abs()` is
+technically unnecessary. However, it will make the code more robust and doesn't have any
+large performance implications. If the abs call was deliberately left out for performance
+reasons, it is probably better to state this explicitly in the code, which then can be done
+with an allow.
+
+### Example
+```
+pub fn is_roughly_equal(a: f32, b: f32) -> bool {
+    (a - b) < f32::EPSILON
+}
+```
+Use instead:
+```
+pub fn is_roughly_equal(a: f32, b: f32) -> bool {
+    (a - b).abs() < f32::EPSILON
+}
+```

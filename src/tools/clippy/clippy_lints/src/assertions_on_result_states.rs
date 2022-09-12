@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
             && matches!(cx.tcx.get_diagnostic_name(macro_call.def_id), Some(sym::assert_macro))
             && let Some((condition, panic_expn)) = find_assert_args(cx, e, macro_call.expn)
             && matches!(panic_expn, PanicExpn::Empty)
-            && let ExprKind::MethodCall(method_segment, [recv], _) = condition.kind
+            && let ExprKind::MethodCall(method_segment, recv, [], _) = condition.kind
             && let result_type_with_refs = cx.typeck_results().expr_ty(recv)
             && let result_type = result_type_with_refs.peel_refs()
             && is_type_diagnostic_item(cx, result_type, sym::Result)
@@ -53,13 +53,14 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                 if result_type_with_refs != result_type {
                     return;
                 } else if let Res::Local(binding_id) = path_res(cx, recv)
-                    && local_used_after_expr(cx, binding_id, recv) {
+                    && local_used_after_expr(cx, binding_id, recv)
+                {
                     return;
                 }
             }
             let mut app = Applicability::MachineApplicable;
             match method_segment.ident.as_str() {
-                "is_ok" if has_debug_impl(cx, substs.type_at(1)) => {
+                "is_ok" if type_suitable_to_unwrap(cx, substs.type_at(1)) => {
                     span_lint_and_sugg(
                         cx,
                         ASSERTIONS_ON_RESULT_STATES,
@@ -73,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                         app,
                     );
                 }
-                "is_err" if has_debug_impl(cx, substs.type_at(0)) => {
+                "is_err" if type_suitable_to_unwrap(cx, substs.type_at(0)) => {
                     span_lint_and_sugg(
                         cx,
                         ASSERTIONS_ON_RESULT_STATES,
@@ -98,4 +99,8 @@ fn has_debug_impl<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx
         .get_diagnostic_item(sym::Debug)
         .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
+}
+
+fn type_suitable_to_unwrap<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    has_debug_impl(cx, ty) && !ty.is_unit() && !ty.is_never()
 }

@@ -1,3 +1,5 @@
+// unit-test: ConstGoto
+
 pub enum Foo {
     A,
     B,

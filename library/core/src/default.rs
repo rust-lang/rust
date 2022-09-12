@@ -1,4 +1,4 @@
-//! The `Default` trait for types which may have meaningful default values.
+//! The `Default` trait for types with a default value.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

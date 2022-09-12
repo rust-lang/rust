@@ -12,7 +12,7 @@ use crate::traits::*;
 use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 
 use rustc_data_structures::sync::par_iter;
@@ -21,10 +21,12 @@ use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::weak_lang_items::WEAK_ITEMS_SYMBOLS;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols;
+use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
@@ -34,6 +36,7 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, VariantIdx};
 
@@ -151,6 +154,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
+                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
                 return old_info;
             }
 
@@ -162,6 +166,11 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_i8p();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
+                let vtable_ptr_ty = cx.scalar_pair_element_backend_type(
+                    cx.layout_of(cx.tcx().mk_mut_ptr(target)),
+                    1,
+                    true,
+                );
                 let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
@@ -172,7 +181,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                new_vptr
+                bx.pointercast(new_vptr, vtable_ptr_ty)
             } else {
                 old_info
             }
@@ -388,15 +397,14 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    let use_start_lang_item = EntryFnType::Start != entry_type;
-    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
     return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         rust_main: Bx::Value,
         rust_main_def_id: DefId,
-        use_start_lang_item: bool,
+        entry_type: EntryFnType,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
@@ -441,7 +449,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
-        let (start_fn, start_ty, args) = if use_start_lang_item {
+        let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
@@ -453,8 +461,13 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 .unwrap()
                 .unwrap(),
             );
-            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty], isize_ty);
-            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv])
+
+            let i8_ty = cx.type_i8();
+            let arg_sigpipe = bx.const_u8(sigpipe);
+
+            let start_ty =
+                cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty, i8_ty], isize_ty);
+            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
         } else {
             debug!("using user-defined start fn");
             let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);
@@ -810,21 +823,16 @@ impl CrateInfo {
             crate_name: Default::default(),
             used_crates,
             used_crate_source: Default::default(),
-            lang_item_to_crate: Default::default(),
-            missing_lang_items: Default::default(),
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
         };
-        let lang_items = tcx.lang_items();
-
         let crates = tcx.crates(());
 
         let n_crates = crates.len();
         info.native_libraries.reserve(n_crates);
         info.crate_name.reserve(n_crates);
         info.used_crate_source.reserve(n_crates);
-        info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
             info.native_libraries
@@ -842,17 +850,37 @@ impl CrateInfo {
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
             }
-            let missing = tcx.missing_lang_items(cnum);
-            for &item in missing.iter() {
-                if let Ok(id) = lang_items.require(item) {
-                    info.lang_item_to_crate.insert(item, id.krate);
-                }
-            }
+        }
 
-            // No need to look for lang items that don't actually need to exist.
-            let missing =
-                missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
-            info.missing_lang_items.insert(cnum, missing);
+        // Handle circular dependencies in the standard library.
+        // See comment before `add_linked_symbol_object` function for the details.
+        // With msvc-like linkers it's both unnecessary (they support circular dependencies),
+        // and causes linking issues (when weak lang item symbols are "privatized" by LTO).
+        let target = &tcx.sess.target;
+        if !target.is_like_msvc {
+            let missing_weak_lang_items: FxHashSet<&Symbol> = info
+                .used_crates
+                .iter()
+                .flat_map(|cnum| {
+                    tcx.missing_lang_items(*cnum)
+                        .iter()
+                        .filter(|l| lang_items::required(tcx, **l))
+                        .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
+                })
+                .collect();
+            let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+            info.linked_symbols
+                .iter_mut()
+                .filter(|(crate_type, _)| {
+                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                })
+                .for_each(|(_, linked_symbols)| {
+                    linked_symbols.extend(
+                        missing_weak_lang_items
+                            .iter()
+                            .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
+                    )
+                });
         }
 
         let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
@@ -873,7 +901,7 @@ impl CrateInfo {
             }
         });
 
-        if tcx.sess.target.is_like_msvc && embed_visualizers {
+        if target.is_like_msvc && embed_visualizers {
             info.natvis_debugger_visualizers =
                 collect_debugger_visualizers_transitive(tcx, DebuggerVisualizerType::Natvis);
         }

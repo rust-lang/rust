@@ -1,0 +1,31 @@
+// This test ensures that the mobile sidebar preserves scroll position.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+// Switching to "mobile view" by reducing the width to 600px.
+size: (600, 600)
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Scroll down.
+scroll-to: "//h2[@id='blanket-implementations']"
+assert-window-property: {"pageYOffset": "702"}
+
+// Open the sidebar menu.
+click: ".sidebar-menu-toggle"
+wait-for-css: (".sidebar", {"left": "0px"})
+
+// We are no longer "scrolled". It's important that the user can't
+// scroll the body at all, but these test scripts are run only in Chrome,
+// and we need to use a more complicated solution to this problem because
+// of Mobile Safari...
+assert-window-property: {"pageYOffset": "0"}
+
+// Close the sidebar menu. Make sure the scroll position gets restored.
+click: ".sidebar-menu-toggle"
+wait-for-css: (".sidebar", {"left": "-1000px"})
+assert-window-property: {"pageYOffset": "702"}
+
+// Now test that scrollability returns when the browser window is just resized.
+click: ".sidebar-menu-toggle"
+wait-for-css: (".sidebar", {"left": "0px"})
+assert-window-property: {"pageYOffset": "0"}
+size: (900, 900)
+assert-window-property: {"pageYOffset": "702"}

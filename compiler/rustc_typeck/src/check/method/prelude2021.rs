@@ -160,7 +160,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if precise {
                         let args = args
                             .iter()
-                            .skip(1)
                             .map(|arg| {
                                 let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
                                 format!(

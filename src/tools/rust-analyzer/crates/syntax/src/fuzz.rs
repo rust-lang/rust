@@ -2,10 +2,7 @@
 //!
 //! We don't normally run fuzzying, so this is hopelessly bitrotten :(
 
-use std::{
-    convert::TryInto,
-    str::{self, FromStr},
-};
+use std::str::{self, FromStr};
 
 use text_edit::Indel;
 

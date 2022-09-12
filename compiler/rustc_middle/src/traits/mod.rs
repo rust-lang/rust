@@ -12,7 +12,7 @@ pub mod util;
 use crate::infer::canonical::Canonical;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, AdtKind, Predicate, Ty, TyCtxt};
+use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -234,12 +234,22 @@ pub enum ObligationCauseCode<'tcx> {
     /// This is the trait reference from the given projection.
     ProjectionWf(ty::ProjectionTy<'tcx>),
 
-    /// In an impl of trait `X` for type `Y`, type `Y` must
-    /// also implement all supertraits of `X`.
+    /// Must satisfy all of the where-clause predicates of the
+    /// given item.
     ItemObligation(DefId),
 
-    /// Like `ItemObligation`, but with extra detail on the source of the obligation.
+    /// Like `ItemObligation`, but carries the span of the
+    /// predicate when it can be identified.
     BindingObligation(DefId, Span),
+
+    /// Like `ItemObligation`, but carries the `HirId` of the
+    /// expression that caused the obligation, and the `usize`
+    /// indicates exactly which predicate it is in the list of
+    /// instantiated predicates.
+    ExprItemObligation(DefId, rustc_hir::HirId, usize),
+
+    /// Combines `ExprItemObligation` and `BindingObligation`.
+    ExprBindingObligation(DefId, Span, rustc_hir::HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -406,7 +416,7 @@ pub enum ObligationCauseCode<'tcx> {
     BinOp {
         rhs_span: Option<Span>,
         is_lit: bool,
-        output_pred: Option<Predicate<'tcx>>,
+        output_ty: Option<Ty<'tcx>>,
     },
 }
 
@@ -457,6 +467,13 @@ impl<'tcx> ObligationCauseCode<'tcx> {
                 Some((&derived.parent_code, Some(derived.parent_trait_pred)))
             }
             _ => None,
+        }
+    }
+
+    pub fn peel_match_impls(&self) -> &Self {
+        match self {
+            MatchImpl(cause, _) => cause.code(),
+            _ => self,
         }
     }
 }
@@ -1007,7 +1024,7 @@ pub enum MethodViolationCode {
     UndispatchableReceiver(Option<Span>),
 }
 
-/// These are the error cases for `codegen_fulfill_obligation`.
+/// These are the error cases for `codegen_select_candidate`.
 #[derive(Copy, Clone, Debug, Hash, HashStable, Encodable, Decodable)]
 pub enum CodegenObligationError {
     /// Ambiguity can happen when monomorphizing during trans

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `A: Trait` is not satisfied
   --> $DIR/suggest-imm-mut-trait-implementations.rs:20:9
    |
 LL |     foo(a);
-   |     --- ^ expected an implementor of trait `Trait`
+   |     --- ^ the trait `Trait` is not implemented for `A`
    |     |
    |     required by a bound introduced by this call
    |
@@ -22,7 +22,7 @@ error[E0277]: the trait bound `B: Trait` is not satisfied
   --> $DIR/suggest-imm-mut-trait-implementations.rs:21:9
    |
 LL |     foo(b);
-   |     --- ^ expected an implementor of trait `Trait`
+   |     --- ^ the trait `Trait` is not implemented for `B`
    |     |
    |     required by a bound introduced by this call
    |
@@ -40,7 +40,7 @@ error[E0277]: the trait bound `C: Trait` is not satisfied
   --> $DIR/suggest-imm-mut-trait-implementations.rs:22:9
    |
 LL |     foo(c);
-   |     --- ^ expected an implementor of trait `Trait`
+   |     --- ^ the trait `Trait` is not implemented for `C`
    |     |
    |     required by a bound introduced by this call
    |

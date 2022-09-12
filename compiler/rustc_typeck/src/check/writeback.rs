@@ -3,7 +3,6 @@
 // substitutions.
 
 use crate::check::FnCtxt;
-
 use hir::def_id::LocalDefId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
@@ -16,6 +15,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -192,6 +192,27 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    // (ouz-a 1005988): Normally `[T] : std::ops::Index<usize>` should be normalized
+    // into [T] but currently `Where` clause stops the normalization process for it,
+    // here we compare types of expr and base in a code without `Where` clause they would be equal
+    // if they are not we don't modify the expr, hence we bypass the ICE
+    fn is_builtin_index(
+        &mut self,
+        typeck_results: &TypeckResults<'tcx>,
+        e: &hir::Expr<'_>,
+        base_ty: Ty<'tcx>,
+        index_ty: Ty<'tcx>,
+    ) -> bool {
+        if let Some(elem_ty) = base_ty.builtin_index() {
+            let Some(exp_ty) = typeck_results.expr_ty_opt(e) else {return false;};
+            let resolved_exp_ty = self.resolve(exp_ty, &e.span);
+
+            elem_ty == resolved_exp_ty && index_ty == self.fcx.tcx.types.usize
+        } else {
+            false
+        }
+    }
+
     // Similar to operators, indexing is always assumed to be overloaded
     // Here, correct cases where an indexing expression can be simplified
     // to use builtin indexing because the index type is known to be
@@ -222,8 +243,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     )
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
+                let resolved_base_ty = self.resolve(*base_ty, &base.span);
 
-                if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
+                if self.is_builtin_index(&typeck_results, e, resolved_base_ty, index_ty) {
                     // Remove the method call record
                     typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     typeck_results.node_substs_mut().remove(e.hir_id);
@@ -290,6 +312,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
         intravisit::walk_expr(self, e);
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        match &p.kind {
+            hir::GenericParamKind::Lifetime { .. } => {
+                // Nothing to write back here
+            }
+            hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
+                self.tcx().sess.delay_span_bug(p.span, format!("unexpected generic param: {p:?}"));
+            }
+        }
     }
 
     fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
@@ -468,7 +501,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         if !errors_buffer.is_empty() {
             errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-            for mut diag in errors_buffer.drain(..) {
+            for mut diag in errors_buffer {
                 self.tcx().sess.diagnostic().emit_diagnostic(&mut diag);
             }
         }

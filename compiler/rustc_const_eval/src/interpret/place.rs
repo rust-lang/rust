@@ -2,8 +2,6 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
-use std::hash::Hash;
-
 use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -13,7 +11,7 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding, Vari
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Provenance, Scalar, ScalarMaybeUninit,
+    Pointer, Provenance, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -254,8 +252,6 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
 // These are defined here because they produce a place.
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
-    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
-    /// read from the resulting mplace, not to get its address back.
     pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         match **self {
             Operand::Indirect(mplace) => {
@@ -267,8 +263,6 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
-    /// read from the resulting mplace, not to get its address back.
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
         self.try_as_mplace().unwrap()
     }
@@ -294,7 +288,7 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
 // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
 impl<'mir, 'tcx: 'mir, Prov, M> InterpCx<'mir, 'tcx, M>
 where
-    Prov: Provenance + Eq + Hash + 'static,
+    Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
@@ -312,7 +306,7 @@ where
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
-            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta.check_init()?)),
+            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
             Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
         };
 
@@ -467,7 +461,7 @@ where
     #[inline(always)]
     pub fn write_scalar(
         &mut self,
-        val: impl Into<ScalarMaybeUninit<M::Provenance>>,
+        val: impl Into<Scalar<M::Provenance>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_immediate(Immediate::Scalar(val.into()), dest)
@@ -644,9 +638,9 @@ where
 
         // Let us see if the layout is simple so we take a shortcut,
         // avoid force_allocation.
-        let src = match self.read_immediate_raw(src, /*force*/ false)? {
+        let src = match self.read_immediate_raw(src)? {
             Ok(src_val) => {
-                assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
+                assert!(!src.layout.is_unsized(), "cannot copy unsized immediates");
                 assert!(
                     !dest.layout.is_unsized(),
                     "the src is sized, so the dest must also be sized"
@@ -823,7 +817,7 @@ where
             }
             abi::Variants::Multiple {
                 tag_encoding:
-                    TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start },
+                    TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
                 tag: tag_layout,
                 tag_field,
                 ..
@@ -831,7 +825,7 @@ where
                 // No need to validate that the discriminant here because the
                 // `TyAndLayout::for_variant()` call earlier already checks the variant is valid.
 
-                if variant_index != dataful_variant {
+                if variant_index != untagged_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index
                         .as_u32()
@@ -891,10 +885,13 @@ where
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
-    rustc_data_structures::static_assert_size!(MemPlace, 40);
-    rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
-    rustc_data_structures::static_assert_size!(Place, 48);
-    rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
+    static_assert_size!(MemPlaceMeta, 24);
+    static_assert_size!(MemPlace, 40);
+    static_assert_size!(MPlaceTy<'_>, 64);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(Place, 40);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(PlaceTy<'_>, 64);
 }

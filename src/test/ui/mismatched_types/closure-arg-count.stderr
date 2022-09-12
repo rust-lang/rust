@@ -56,8 +56,8 @@ LL |     f(|| panic!());
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
-LL | fn f<F: Fn<usize>>(_: F) {}
-   |         ^^^^^^^^^ required by this bound in `f`
+LL | fn f<F: Fn<(usize,)>>(_: F) {}
+   |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(|_| panic!());
@@ -74,8 +74,8 @@ LL |     f(  move    || panic!());
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
-LL | fn f<F: Fn<usize>>(_: F) {}
-   |         ^^^^^^^^^ required by this bound in `f`
+LL | fn f<F: Fn<(usize,)>>(_: F) {}
+   |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
 LL |     f(  move    |_| panic!());

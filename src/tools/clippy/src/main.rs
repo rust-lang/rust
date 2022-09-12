@@ -7,6 +7,8 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
+mod docs;
+
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
 Usage:
@@ -17,6 +19,7 @@ Common options:
     --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
     -h, --help               Print this message
     -V, --version            Print version info and exit
+    --explain LINT           Print the documentation for a given lint
 
 Other options are the same as `cargo check`.
 
@@ -51,6 +54,16 @@ pub fn main() {
 
     if env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
+        return;
+    }
+
+    if let Some(pos) = env::args().position(|a| a == "--explain") {
+        if let Some(mut lint) = env::args().nth(pos + 1) {
+            lint.make_ascii_lowercase();
+            docs::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
+        } else {
+            show_help();
+        }
         return;
     }
 

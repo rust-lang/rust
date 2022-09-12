@@ -4,7 +4,7 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
    |
-note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -38,7 +38,7 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ `T` cannot be sent between threads safely
    |
-note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -55,7 +55,7 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ the trait `Copy` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required for `S<T>` to implement `Gettable<T>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -73,7 +73,7 @@ LL |     let a = t as Box<dyn Gettable<String>>;
    |             ^ the trait `Copy` is not implemented for `String`
    |
    = help: the trait `Gettable<T>` is implemented for `S<T>`
-note: required because of the requirements on the impl of `Gettable<String>` for `S<String>`
+note: required for `S<String>` to implement `Gettable<String>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
@@ -87,7 +87,7 @@ LL |     let a: Box<dyn Gettable<Foo>> = t;
    |                                     ^ the trait `Copy` is not implemented for `Foo`
    |
    = help: the trait `Gettable<T>` is implemented for `S<T>`
-note: required because of the requirements on the impl of `Gettable<Foo>` for `S<Foo>`
+note: required for `S<Foo>` to implement `Gettable<Foo>`
   --> $DIR/kindck-impl-type-params.rs:12:32
    |
 LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}

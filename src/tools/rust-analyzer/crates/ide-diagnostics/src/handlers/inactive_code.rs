@@ -43,7 +43,7 @@ mod tests {
     use crate::{tests::check_diagnostics_with_config, DiagnosticsConfig};
 
     pub(crate) fn check(ra_fixture: &str) {
-        let config = DiagnosticsConfig::default();
+        let config = DiagnosticsConfig::test_sample();
         check_diagnostics_with_config(config, ra_fixture)
     }
 
@@ -106,18 +106,17 @@ fn f() {
 
     #[test]
     fn inactive_assoc_item() {
-        // FIXME these currently don't work, hence the *
         check(
             r#"
 struct Foo;
 impl Foo {
     #[cfg(any())] pub fn f() {}
-  //*************************** weak: code is inactive due to #[cfg] directives
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives
 }
 
 trait Bar {
     #[cfg(any())] pub fn f() {}
-  //*************************** weak: code is inactive due to #[cfg] directives
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives
 }
 "#,
         );

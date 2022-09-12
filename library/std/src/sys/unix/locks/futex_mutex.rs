@@ -20,9 +20,6 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         self.futex.compare_exchange(0, 1, Acquire, Relaxed).is_ok()
     }
@@ -53,7 +50,7 @@ impl Mutex {
             // We avoid an unnecessary write if it as already set to 2,
             // to be friendlier for the caches.
             if state != 2 && self.futex.swap(2, Acquire) == 0 {
-                // We changed it from 0 to 2, so we just succesfully locked it.
+                // We changed it from 0 to 2, so we just successfully locked it.
                 return;
             }
 

@@ -56,10 +56,6 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
-// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
-// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
-#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -77,6 +73,10 @@
 ))]
 #![no_std]
 #![needs_allocator]
+// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
+// able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
+// rustc itself never sets the feature, so this line has no affect there.
+#![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 //
 // Lints:
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -111,6 +111,8 @@
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
+#![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
@@ -127,10 +129,12 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
+#![cfg_attr(not(bootstrap), feature(provide_any))]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
 #![feature(receiver_trait)]
+#![feature(saturating_int_impl)]
 #![feature(set_ptr_value)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_group_by)]
@@ -145,6 +149,7 @@
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(utf8_chunks)]
 #![feature(std_internals)]
 //
 // Language features:
@@ -178,6 +183,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
+#![feature(with_negative_coherence)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

@@ -37,7 +37,7 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let mut conf = DiagnosticsConfig::default();
+    let mut conf = DiagnosticsConfig::test_sample();
     conf.expr_fill_default = ExprFillDefaultMode::Default;
     let diagnostic =
         super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
@@ -69,7 +69,7 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
     let diagnostic = super::diagnostics(
         &db,
-        &DiagnosticsConfig::default(),
+        &DiagnosticsConfig::test_sample(),
         &AssistResolveStrategy::All,
         file_position.file_id,
     )
@@ -82,7 +82,7 @@ pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
     let (db, file_id) = RootDatabase::with_single_file(ra_fixture);
     let diagnostics = super::diagnostics(
         &db,
-        &DiagnosticsConfig::default(),
+        &DiagnosticsConfig::test_sample(),
         &AssistResolveStrategy::All,
         file_id,
     );
@@ -91,7 +91,7 @@ pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
 
 #[track_caller]
 pub(crate) fn check_diagnostics(ra_fixture: &str) {
-    let mut config = DiagnosticsConfig::default();
+    let mut config = DiagnosticsConfig::test_sample();
     config.disabled.insert("inactive-code".to_string());
     check_diagnostics_with_config(config, ra_fixture)
 }
@@ -127,7 +127,7 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
 
 #[test]
 fn test_disabled_diagnostics() {
-    let mut config = DiagnosticsConfig::default();
+    let mut config = DiagnosticsConfig::test_sample();
     config.disabled.insert("unresolved-module".into());
 
     let (db, file_id) = RootDatabase::with_single_file(r#"mod foo;"#);
@@ -137,7 +137,7 @@ fn test_disabled_diagnostics() {
 
     let diagnostics = super::diagnostics(
         &db,
-        &DiagnosticsConfig::default(),
+        &DiagnosticsConfig::test_sample(),
         &AssistResolveStrategy::All,
         file_id,
     );

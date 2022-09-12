@@ -9,7 +9,7 @@
 /// that user code which wants to do reads from a `BufReader` via `buffer` + `consume` can do so
 /// without encountering any runtime bounds checks.
 use crate::cmp;
-use crate::io::{self, Read, ReadBuf};
+use crate::io::{self, BorrowedBuf, Read};
 use crate::mem::MaybeUninit;
 
 pub struct Buffer {
@@ -93,11 +93,15 @@ impl Buffer {
         if self.pos >= self.filled {
             debug_assert!(self.pos == self.filled);
 
-            let mut readbuf = ReadBuf::uninit(&mut self.buf);
+            let mut buf = BorrowedBuf::from(&mut *self.buf);
+            // SAFETY: `self.filled` bytes will always have been initialized.
+            unsafe {
+                buf.set_init(self.filled);
+            }
 
-            reader.read_buf(&mut readbuf)?;
+            reader.read_buf(buf.unfilled())?;
 
-            self.filled = readbuf.filled_len();
+            self.filled = buf.len();
             self.pos = 0;
         }
         Ok(self.buffer())

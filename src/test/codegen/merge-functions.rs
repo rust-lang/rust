@@ -1,3 +1,4 @@
+// min-llvm-version: 14.0
 // revisions: O Os
 //[Os] compile-flags: -Copt-level=s
 //[O] compile-flags: -O

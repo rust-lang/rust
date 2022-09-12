@@ -2,8 +2,6 @@
 // schedule cleanups when auto borrowing trait objects.
 // This program should be valgrind clean.
 
-#![feature(box_syntax)]
-
 static mut DROP_RAN: bool = false;
 
 struct Foo;
@@ -19,7 +17,7 @@ impl Trait for Foo {}
 
 pub fn main() {
     {
-        let _x: &Trait = &*(box Foo as Box<Trait>);
+        let _x: &Trait = &*(Box::new(Foo) as Box<Trait>);
     }
     unsafe {
         assert!(DROP_RAN);

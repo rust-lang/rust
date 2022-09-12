@@ -1,0 +1,14 @@
+### What it does
+Warns about calling `str::trim` (or variants) before `str::split_whitespace`.
+
+### Why is this bad?
+`split_whitespace` already ignores leading and trailing whitespace.
+
+### Example
+```
+" A B C ".trim().split_whitespace();
+```
+Use instead:
+```
+" A B C ".split_whitespace();
+```
