@@ -1464,12 +1464,12 @@ fn deny_equality_constraints(
                         if let Some(bound) = bound_opt {
                             err.assoc_constraint_suggestion.push(
                                 EqualityConstraintToAssocConstraintSuggestion {
-                                    assoc_ty: assoc_ty_ident.name.to_string(),
+                                    assoc_ty: assoc_ty_ident.to_string(),
                                     suggestion: vec![(
                                         predicate.span,
                                         format!(
                                             "{}: {}",
-                                            qself_ty_ident.name,
+                                            qself_ty_ident,
                                             pprust::path_to_string(&bound)
                                         ),
                                     )],
