@@ -349,7 +349,7 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
         Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
-            if it.parent.is_data_carrying(db) {
+            if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
                     Ok(x) => Some(format!("{}", x)),
                     Err(_) => it.value(db).map(|x| format!("{:?}", x)),

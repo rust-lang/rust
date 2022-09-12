@@ -954,7 +954,7 @@ impl Enum {
     }
 
     pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
-        self.variants(db).iter().all(|v| matches!(v.kind(db), StructKind::Unit))
+        self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
     }
 }
 
@@ -966,8 +966,8 @@ impl HasVisibility for Enum {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
-    pub parent: Enum,
-    pub id: LocalEnumVariantId,
+    pub(crate) parent: Enum,
+    pub(crate) id: LocalEnumVariantId,
 }
 
 impl Variant {

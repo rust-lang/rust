@@ -166,12 +166,11 @@ fn get_name(variant: EnumVariantId, ctx: &mut ConstEvalCtx<'_>) -> String {
 pub fn eval_const(
     expr_id: ExprId,
     ctx: &mut ConstEvalCtx<'_>,
-    variant: Option<EnumVariantId>,
 ) -> Result<ComputedExpr, ConstEvalError> {
     let expr = &ctx.exprs[expr_id];
     match expr {
-        Expr::Missing => match variant {
-            Some(variant) => {
+        Expr::Missing => match ctx.owner {
+            DefWithBodyId::VariantId(variant) => {
                 let prev_idx: u32 = variant.local_id.into_raw().into();
                 let prev_idx = prev_idx.checked_sub(1).map(|idx| Idx::from_raw(RawIdx::from(idx)));
                 let value = match prev_idx {
@@ -198,7 +197,7 @@ pub fn eval_const(
         Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
         &Expr::UnaryOp { expr, op } => {
             let ty = &ctx.expr_ty(expr);
-            let ev = eval_const(expr, ctx, None)?;
+            let ev = eval_const(expr, ctx)?;
             match op {
                 hir_def::expr::UnaryOp::Deref => Err(ConstEvalError::NotSupported("deref")),
                 hir_def::expr::UnaryOp::Not => {
@@ -254,8 +253,8 @@ pub fn eval_const(
         }
         &Expr::BinaryOp { lhs, rhs, op } => {
             let ty = &ctx.expr_ty(lhs);
-            let lhs = eval_const(lhs, ctx, None)?;
-            let rhs = eval_const(rhs, ctx, None)?;
+            let lhs = eval_const(lhs, ctx)?;
+            let rhs = eval_const(rhs, ctx)?;
             let op = op.ok_or(ConstEvalError::IncompleteExpr)?;
             let v1 = match lhs {
                 ComputedExpr::Literal(Literal::Int(v, _)) => v,
@@ -316,7 +315,7 @@ pub fn eval_const(
                             }
                         };
                         let value = match initializer {
-                            Some(x) => eval_const(x, ctx, None)?,
+                            Some(x) => eval_const(x, ctx)?,
                             None => continue,
                         };
                         if !prev_values.contains_key(&pat_id) {
@@ -332,7 +331,7 @@ pub fn eval_const(
                 }
             }
             let r = match tail {
-                &Some(x) => eval_const(x, ctx, None),
+                &Some(x) => eval_const(x, ctx),
                 None => Ok(ComputedExpr::Tuple(Box::new([]))),
             };
             // clean up local data, so caller will receive the exact map that passed to us
@@ -390,7 +389,7 @@ pub fn eval_const(
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
-        &Expr::Cast { expr, .. } => match eval_const(expr, ctx, None)? {
+        &Expr::Cast { expr, .. } => match eval_const(expr, ctx)? {
             ComputedExpr::Enum(_, _, lit) => Ok(ComputedExpr::Literal(lit)),
             _ => Err(ConstEvalError::NotSupported("Can't cast these types")),
         },
@@ -489,7 +488,6 @@ pub(crate) fn const_eval_query(
             local_data: HashMap::default(),
             infer,
         },
-        None,
     );
     result
 }
@@ -511,7 +509,6 @@ pub(crate) fn const_eval_query_variant(
             local_data: HashMap::default(),
             infer,
         },
-        Some(variant_id),
     )
 }
 
@@ -538,7 +535,7 @@ pub(crate) fn eval_to_const<'a>(
         local_data: HashMap::default(),
         infer: &ctx.result,
     };
-    let computed_expr = eval_const(expr, &mut ctx, None);
+    let computed_expr = eval_const(expr, &mut ctx);
     let const_scalar = match computed_expr {
         Ok(ComputedExpr::Literal(literal)) => literal.into(),
         _ => ConstScalar::Unknown,
