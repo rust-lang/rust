@@ -2672,7 +2672,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
-                let ty = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let ty_erased = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let ty = tcx.fold_regions(ty_erased, |r, _| {
+                    if r.is_erased() { tcx.lifetimes.re_static } else { r }
+                });
                 let span = ast_ty.span;
                 tcx.sess.emit_err(TypeofReservedKeywordUsed {
                     span,

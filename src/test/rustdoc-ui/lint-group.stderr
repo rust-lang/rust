@@ -1,18 +1,18 @@
 error: missing code example in this documentation
-  --> $DIR/lint-group.rs:16:1
+  --> $DIR/lint-group.rs:18:1
    |
 LL | /// wait, this doesn't have a doctest?
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/lint-group.rs:7:9
+  --> $DIR/lint-group.rs:9:9
    |
 LL | #![deny(rustdoc::all)]
    |         ^^^^^^^^^^^^
    = note: `#[deny(rustdoc::missing_doc_code_examples)]` implied by `#[deny(rustdoc::all)]`
 
 error: documentation test in private item
-  --> $DIR/lint-group.rs:19:1
+  --> $DIR/lint-group.rs:21:1
    |
 LL | / /// wait, this *does* have a doctest?
 LL | | ///
@@ -24,13 +24,13 @@ LL | | /// ```
    = note: `#[deny(rustdoc::private_doc_tests)]` implied by `#[deny(rustdoc::all)]`
 
 error: missing code example in this documentation
-  --> $DIR/lint-group.rs:26:1
+  --> $DIR/lint-group.rs:28:1
    |
 LL | /// <unknown>
    | ^^^^^^^^^^^^^
 
 error: unresolved link to `error`
-  --> $DIR/lint-group.rs:9:29
+  --> $DIR/lint-group.rs:11:29
    |
 LL | /// what up, let's make an [error]
    |                             ^^^^^ no item named `error` in scope
@@ -39,7 +39,7 @@ LL | /// what up, let's make an [error]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: unclosed HTML tag `unknown`
-  --> $DIR/lint-group.rs:26:5
+  --> $DIR/lint-group.rs:28:5
    |
 LL | /// <unknown>
    |     ^^^^^^^^^
