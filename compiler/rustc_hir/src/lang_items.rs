@@ -289,6 +289,8 @@ language_item_table! {
 
     Try,                     sym::Try,                 try_trait,                  Target::Trait,          GenericRequirement::None;
 
+    Tuple,                   sym::tuple_trait,         tuple_trait,                Target::Trait,          GenericRequirement::Exact(0);
+
     SliceLen,                sym::slice_len_fn,        slice_len_fn,               Target::Method(MethodKind::Inherent), GenericRequirement::None;
 
     // Language items from AST lowering
