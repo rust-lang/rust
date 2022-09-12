@@ -69,15 +69,12 @@ pub struct Flags {
 
     pub llvm_skip_rebuild: Option<bool>,
 
-    pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub rust_profile_use: Option<String>,
 
+    pub llvm_profile_generate: Option<String>,
     pub llvm_profile_use: Option<String>,
-    // LLVM doesn't support a custom location for generating profile
-    // information.
-    //
-    // llvm_out/build/profiles/ is the location this writes to.
-    pub llvm_profile_generate: bool,
+
     pub llvm_bolt_profile_generate: bool,
     pub llvm_bolt_profile_use: Option<String>,
 }
@@ -698,7 +695,7 @@ Arguments:
             rust_profile_use: matches.opt_str("rust-profile-use"),
             rust_profile_generate: matches.opt_str("rust-profile-generate"),
             llvm_profile_use: matches.opt_str("llvm-profile-use"),
-            llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
+            llvm_profile_generate: matches.opt_str("llvm-profile-generate"),
             llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
             llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
         }

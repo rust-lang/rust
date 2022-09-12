@@ -320,11 +320,9 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
-        if builder.config.llvm_profile_generate {
+        if let Some(path) = &builder.config.llvm_profile_generate {
             cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
-            if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
-            }
+            cfg.define("LLVM_PROFILE_DATA_DIR", &path);
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
@@ -822,7 +820,7 @@ impl Step for Lld {
         // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
-        if builder.config.llvm_profile_generate && target.contains("msvc") {
+        if builder.config.llvm_profile_generate.is_some() && target.contains("msvc") {
             if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
                 // Find clang's runtime library directory and push that as a search path to the
                 // cmake linker flags.

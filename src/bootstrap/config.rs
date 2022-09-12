@@ -140,6 +140,12 @@ pub struct Config {
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
 
+    pub llvm_profile_use: Option<String>,
+    pub llvm_profile_generate: Option<String>,
+    pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
+
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
@@ -167,11 +173,6 @@ pub struct Config {
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
-    pub llvm_profile_use: Option<String>,
-    pub llvm_profile_generate: bool,
-    pub llvm_libunwind_default: Option<LlvmLibunwind>,
-    pub llvm_bolt_profile_generate: bool,
-    pub llvm_bolt_profile_use: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -679,6 +680,10 @@ define_config! {
         clang: Option<bool> = "clang",
         download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
         build_config: Option<HashMap<String, String>> = "build-config",
+        profile_generate: Option<String> = "profile-generate",
+        profile_use: Option<String> = "profile-use",
+        bolt_profile_generate: Option<bool> = "bolt-profile-generate",
+        bolt_profile_use: Option<String> = "bolt-profile-use",
     }
 }
 
@@ -837,17 +842,6 @@ impl Config {
         config.color = flags.color;
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
-        }
-        config.llvm_profile_use = flags.llvm_profile_use;
-        config.llvm_profile_generate = flags.llvm_profile_generate;
-        config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
-        config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
-
-        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
-            eprintln!(
-                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
-            );
-            crate::detail_exit(1);
         }
 
         // Infer the rest of the configuration.
@@ -1141,6 +1135,25 @@ impl Config {
                 // the link step) with each stage.
                 config.llvm_link_shared.set(Some(true));
             }
+
+            config.llvm_profile_generate = flags.llvm_profile_generate.or(llvm.profile_generate);
+            config.llvm_profile_use = flags.llvm_profile_use.or(llvm.profile_use);
+
+            config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+            config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use.or(llvm.bolt_profile_use);
+        } else {
+            config.llvm_profile_generate = flags.llvm_profile_generate;
+            config.llvm_profile_use = flags.llvm_profile_use;
+
+            config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+            config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
+        }
+
+        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
+            eprintln!(
+                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
+            );
+            crate::detail_exit(1);
         }
 
         if let Some(rust) = toml.rust {

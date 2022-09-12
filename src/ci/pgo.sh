@@ -84,14 +84,14 @@ LLVM_PROFILE_DIRECTORY_ROOT=$PGO_TMP/llvm-pgo
 # separate phases. This increases build time -- though not by a huge amount --
 # but prevents any problems from arising due to different profiling runtimes
 # being simultaneously linked in.
-# LLVM IR PGO does not respect LLVM_PROFILE_FILE, so we have to set the profiling file
-# path through our custom environment variable. We include the PID in the directory path
-# to avoid updates to profile files being lost because of race conditions.
-LLVM_PROFILE_DIR=${LLVM_PROFILE_DIRECTORY_ROOT}/prof-%p python3 $CHECKOUT/x.py build \
+# LLVM IR PGO does not respect LLVM_PROFILE_FILE, so we have to set the profiling path
+# through the LLVM build system in src/bootstrap/native.rs. We include the PID in the
+# directory path to avoid updates to profile files being lost because of race conditions.
+python3 $CHECKOUT/x.py build \
     --target=$PGO_HOST \
     --host=$PGO_HOST \
     --stage 2 library/std \
-    --llvm-profile-generate
+    --llvm-profile-generate=${LLVM_PROFILE_DIRECTORY_ROOT}/prof-%p
 
 # Compile rustc-perf:
 # - get the expected commit source code: on linux, the Dockerfile downloads a source archive before
