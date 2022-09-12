@@ -835,7 +835,16 @@ impl<'tcx> OwnerNodes<'tcx> {
 impl fmt::Debug for OwnerNodes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OwnerNodes")
+            // Do not print all the pointers to all the nodes, as it would be unreadable.
             .field("node", &self.nodes[ItemLocalId::from_u32(0)])
+            .field(
+                "parents",
+                &self
+                    .nodes
+                    .iter_enumerated()
+                    .map(|(id, parented_node)| (id, parented_node.as_ref().map(|node| node.parent)))
+                    .collect::<Vec<_>>(),
+            )
             .field("bodies", &self.bodies)
             .field("local_id_to_def_id", &self.local_id_to_def_id)
             .field("hash_without_bodies", &self.hash_without_bodies)

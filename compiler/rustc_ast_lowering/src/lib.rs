@@ -1289,7 +1289,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
             }
             TyKind::ImplicitSelf => {
-                let hir_id = self.lower_node_id(t.id);
+                let hir_id = self.next_id();
                 let res = self.expect_full_res(t.id);
                 let res = self.lower_res(res);
                 hir::TyKind::Path(hir::QPath::Resolved(

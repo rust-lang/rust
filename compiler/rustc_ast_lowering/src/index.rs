@@ -69,6 +69,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
         debug_assert_eq!(self.owner, hir_id.owner);
         debug_assert_ne!(hir_id.local_id.as_u32(), 0);
+        debug_assert_ne!(hir_id.local_id, self.parent_node);
 
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
