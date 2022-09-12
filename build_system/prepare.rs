@@ -35,6 +35,11 @@ pub(crate) const SIMPLE_RAYTRACER: GitRepo = GitRepo::github(
 );
 
 pub(crate) fn prepare() {
+    if Path::new("download").exists() {
+        std::fs::remove_dir_all(Path::new("download")).unwrap();
+    }
+    std::fs::create_dir_all(Path::new("download")).unwrap();
+
     prepare_sysroot();
 
     // FIXME maybe install this only locally?
@@ -48,11 +53,15 @@ pub(crate) fn prepare() {
     SIMPLE_RAYTRACER.fetch();
 
     eprintln!("[LLVM BUILD] simple-raytracer");
-    let build_cmd = cargo_command("cargo", "build", None, Path::new("simple-raytracer"));
+    let build_cmd = cargo_command("cargo", "build", None, &SIMPLE_RAYTRACER.source_dir());
     spawn_and_wait(build_cmd);
     fs::copy(
-        Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin")),
-        Path::new("simple-raytracer").join(get_file_name("raytracer_cg_llvm", "bin")),
+        SIMPLE_RAYTRACER
+            .source_dir()
+            .join("target")
+            .join("debug")
+            .join(get_file_name("main", "bin")),
+        SIMPLE_RAYTRACER.source_dir().join(get_file_name("raytracer_cg_llvm", "bin")),
     )
     .unwrap();
 }
@@ -106,7 +115,9 @@ impl GitRepo {
 
     pub(crate) fn source_dir(&self) -> PathBuf {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => PathBuf::from(format!("{}", repo)),
+            GitRepoUrl::Github { user: _, repo } => {
+                std::env::current_dir().unwrap().join("download").join(repo)
+            }
         }
     }
 
@@ -142,9 +153,11 @@ fn clone_repo_shallow_github(download_dir: &Path, user: &str, repo: &str, rev: &
         return;
     }
 
+    let downloads_dir = std::env::current_dir().unwrap().join("download");
+
     let archive_url = format!("https://github.com/{}/{}/archive/{}.tar.gz", user, repo, rev);
-    let archive_file = format!("{}.tar.gz", rev);
-    let archive_dir = format!("{}-{}", repo, rev);
+    let archive_file = downloads_dir.join(format!("{}.tar.gz", rev));
+    let archive_dir = downloads_dir.join(format!("{}-{}", repo, rev));
 
     eprintln!("[DOWNLOAD] {}/{} from {}", user, repo, archive_url);
 
@@ -160,7 +173,7 @@ fn clone_repo_shallow_github(download_dir: &Path, user: &str, repo: &str, rev: &
 
     // Unpack tar archive
     let mut unpack_cmd = Command::new("tar");
-    unpack_cmd.arg("xf").arg(&archive_file);
+    unpack_cmd.arg("xf").arg(&archive_file).current_dir(downloads_dir);
     spawn_and_wait(unpack_cmd);
 
     // Rename unpacked dir to the expected name
