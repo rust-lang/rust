@@ -451,11 +451,6 @@ Join lines removes trailing commas.
 --
 Join lines unwraps trivial blocks.
 --
-[[rust-analyzer.lens.annotation.location]]rust-analyzer.lens.annotation.location (default: `above_name`)::
-+
---
-Where to render annotations.
---
 [[rust-analyzer.lens.debug.enable]]rust-analyzer.lens.debug.enable (default: `true`)::
 +
 --
@@ -478,6 +473,11 @@ client doesn't set the corresponding capability.
 --
 Whether to show `Implementations` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
+--
+[[rust-analyzer.lens.location]]rust-analyzer.lens.location (default: `"above_name"`)::
++
+--
+Where to render annotations.
 --
 [[rust-analyzer.lens.references.adt.enable]]rust-analyzer.lens.references.adt.enable (default: `false`)::
 +

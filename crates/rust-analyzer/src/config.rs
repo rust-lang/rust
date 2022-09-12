@@ -307,8 +307,7 @@ config_data! {
         /// Join lines unwraps trivial blocks.
         joinLines_unwrapTrivialBlock: bool = "true",
 
-        /// Where to render annotations.
-        lens_annotationLocation: AnnotationLocation = "\"above_name\"",
+
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_debug_enable: bool            = "true",
@@ -320,6 +319,8 @@ config_data! {
         /// Whether to show `Implementations` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_implementations_enable: bool  = "true",
+        /// Where to render annotations.
+        lens_location: AnnotationLocation = "\"above_name\"",
         /// Whether to show `References` lens for Struct, Enum, and Union.
         /// Only applies when `#rust-analyzer.lens.enable#` is set.
         lens_references_adt_enable: bool = "false",
@@ -498,7 +499,7 @@ pub struct LensConfig {
     pub enum_variant_refs: bool,
 
     // annotations
-    pub annotation_location: AnnotationLocation,
+    pub location: AnnotationLocation,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -1206,7 +1207,7 @@ impl Config {
             refs_trait: self.data.lens_enable && self.data.lens_references_trait_enable,
             enum_variant_refs: self.data.lens_enable
                 && self.data.lens_references_enumVariant_enable,
-            annotation_location: self.data.lens_annotationLocation,
+            location: self.data.lens_location,
         }
     }
 

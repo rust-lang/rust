@@ -41,7 +41,7 @@ pub struct AnnotationConfig {
     pub annotate_references: bool,
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
-    pub annotation_location: AnnotationLocation,
+    pub location: AnnotationLocation,
 }
 
 pub enum AnnotationLocation {
@@ -137,7 +137,7 @@ pub(crate) fn annotations(
         ) -> Option<TextRange> {
             if let Some(InFile { file_id, value }) = node.original_ast_node(db) {
                 if file_id == source_file_id.into() {
-                    return match config.annotation_location {
+                    return match config.location {
                         AnnotationLocation::AboveName => {
                             value.name().map(|name| name.syntax().text_range())
                         }
@@ -212,10 +212,10 @@ mod tests {
         annotate_references: true,
         annotate_method_references: true,
         annotate_enum_variant_references: true,
-        annotation_location: AnnotationLocation::AboveName,
+        location: AnnotationLocation::AboveName,
     };
 
-    fn check(ra_fixture: &str, expect: Expect, config: &AnnotationConfig) {
+    fn check_with_config(ra_fixture: &str, expect: Expect, config: &AnnotationConfig) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
         let annotations: Vec<Annotation> = analysis
@@ -226,6 +226,10 @@ mod tests {
             .collect();
 
         expect.assert_debug_eq(&annotations);
+    }
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        check_with_config(ra_fixture, expect, &DEFAULT_CONFIG);
     }
 
     #[test]
@@ -303,7 +307,6 @@ fn main() {
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -380,7 +383,6 @@ fn main() {
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -516,7 +518,6 @@ fn main() {
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -560,7 +561,6 @@ fn main() {}
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -675,7 +675,6 @@ fn main() {
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -772,7 +771,6 @@ mod tests {
                     },
                 ]
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -788,7 +786,6 @@ struct Foo;
             expect![[r#"
                 []
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
@@ -808,13 +805,12 @@ m!();
             expect![[r#"
                 []
             "#]],
-            &DEFAULT_CONFIG,
         );
     }
 
     #[test]
     fn test_annotations_appear_above_whole_item_when_configured_to_do_so() {
-        check(
+        check_with_config(
             r#"
 /// This is a struct named Foo, obviously.
 #[derive(Clone)]
@@ -844,10 +840,7 @@ struct Foo;
                     },
                 ]
             "#]],
-            &AnnotationConfig {
-                annotation_location: AnnotationLocation::AboveWholeItem,
-                ..DEFAULT_CONFIG
-            },
+            &AnnotationConfig { location: AnnotationLocation::AboveWholeItem, ..DEFAULT_CONFIG },
         );
     }
 }

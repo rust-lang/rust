@@ -943,19 +943,6 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.lens.annotationLocation": {
-                    "markdownDescription": "Where to render annotations.",
-                    "default": "above_name",
-                    "type": "string",
-                    "enum": [
-                        "above_name",
-                        "above_whole_item"
-                    ],
-                    "enumDescriptions": [
-                        "Render annotations above the name of the item.",
-                        "Render annotations above the whole item, including documentation comments and attributes."
-                    ]
-                },
                 "rust-analyzer.lens.debug.enable": {
                     "markdownDescription": "Whether to show `Debug` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
@@ -975,6 +962,19 @@
                     "markdownDescription": "Whether to show `Implementations` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
                     "type": "boolean"
+                },
+                "rust-analyzer.lens.location": {
+                    "markdownDescription": "Where to render annotations.",
+                    "default": "above_name",
+                    "type": "string",
+                    "enum": [
+                        "above_name",
+                        "above_whole_item"
+                    ],
+                    "enumDescriptions": [
+                        "Render annotations above the name of the item.",
+                        "Render annotations above the whole item, including documentation comments and attributes."
+                    ]
                 },
                 "rust-analyzer.lens.references.adt.enable": {
                     "markdownDescription": "Whether to show `References` lens for Struct, Enum, and Union.\nOnly applies when `#rust-analyzer.lens.enable#` is set.",
