@@ -177,11 +177,7 @@ impl fmt::Debug for CStr {
     }
 }
 
-/// Converts a string literal to a `&'static Cstr`.
-///
-/// # Panics
-///
-/// `cstr!` panics if the input contains any interior nul bytes.
+/// Converts a string or byte literal to a `&'static Cstr`.
 ///
 /// # Examples
 ///
@@ -193,18 +189,60 @@ impl fmt::Debug for CStr {
 /// const HELLO: &CStr = cstr!("Hello, world!");
 /// assert_eq!(HELLO.to_bytes_with_nul(), b"Hello, world!\0");
 /// ```
+///
+/// If the given expression contains any interior nul bytes this will
+/// result in a compilation error:
+///
+/// ```compile_fail
+/// #![feature(const_cstr_from_bytes)]
+///
+/// use core::ffi::CStr;
+///
+/// const HELLO: &CStr = cstr!("Hello, world!\0"); // compile fail!
+/// ```
 #[macro_export]
 #[unstable(feature = "cstr_macro", issue = "101607")]
 #[rustc_diagnostic_item = "core_cstr_macro"]
 macro_rules! cstr {
-    ($($s:expr),*) => {
-        $crate::ffi::__cstr_macro_impl(concat!($($s,)* "\0").as_bytes())
-    }
+    () => {
+        cstr!("")
+    };
+    ($s:literal) => {{
+        const BYTES: &[u8] = $crate::ffi::__cstr_macro_impl_as_bytes($s);
+        const BYTES_WITH_NUL: [u8; { BYTES.len() + 1 }] =
+            $crate::ffi::__cstr_macro_impl_to_bytes_with_nul(BYTES);
+        const CSTR: &$crate::ffi::CStr =
+            $crate::ffi::__cstr_macro_impl_from_bytes_with_nul(&BYTES_WITH_NUL);
+        CSTR
+    }};
 }
 
 #[unstable(feature = "cstr_macro", issue = "101607")]
 #[doc(hidden)]
-pub const fn __cstr_macro_impl(bytes: &[u8]) -> &CStr {
+pub const fn __cstr_macro_impl_as_bytes<T>(v: &T) -> &[u8]
+where
+    T: ?Sized + ~const AsRef<[u8]> + ~const crate::marker::Destruct,
+{
+    v.as_ref()
+}
+
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[doc(hidden)]
+pub const fn __cstr_macro_impl_to_bytes_with_nul<const N: usize>(bytes: &[u8]) -> [u8; N] {
+    let mut bytes_with_nul = [0; N];
+
+    let mut i = 0;
+    while i < bytes.len() {
+        bytes_with_nul[i] = bytes[i];
+        i += 1;
+    }
+
+    bytes_with_nul
+}
+
+#[unstable(feature = "cstr_macro", issue = "101607")]
+#[doc(hidden)]
+pub const fn __cstr_macro_impl_from_bytes_with_nul(bytes: &[u8]) -> &CStr {
     match CStr::from_bytes_with_nul(bytes) {
         Ok(cstr) => cstr,
         Err(err) => panic!("{}", err.__description()),

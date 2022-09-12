@@ -21,7 +21,10 @@ mod c_str;
 
 #[unstable(feature = "cstr_macro", issue = "101607")]
 #[doc(hidden)]
-pub use self::c_str::__cstr_macro_impl;
+pub use self::c_str::{
+    __cstr_macro_impl_as_bytes, __cstr_macro_impl_from_bytes_with_nul,
+    __cstr_macro_impl_to_bytes_with_nul,
+};
 
 macro_rules! type_alias_no_nz {
     {
