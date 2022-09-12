@@ -321,30 +321,6 @@ export function serverVersion(ctx: Ctx): Cmd {
     };
 }
 
-export function toggleInlayHints(_ctx: Ctx): Cmd {
-    return async () => {
-        const config = vscode.workspace.getConfiguration("editor.inlayHints", {
-            languageId: "rust",
-        });
-
-        const value = config.get("enabled");
-        let stringValue;
-        if (typeof value === "string") {
-            stringValue = value;
-        } else {
-            stringValue = value ? "on" : "off";
-        }
-        const nextValues: Record<string, string> = {
-            on: "off",
-            off: "on",
-            onUnlessPressed: "offUnlessPressed",
-            offUnlessPressed: "onUnlessPressed",
-        };
-        const nextValue = nextValues[stringValue] ?? "on";
-        await config.update("enabled", nextValue, vscode.ConfigurationTarget.Global);
-    };
-}
-
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`

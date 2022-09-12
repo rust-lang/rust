@@ -207,11 +207,6 @@
                 "category": "rust-analyzer"
             },
             {
-                "command": "rust-analyzer.toggleInlayHints",
-                "title": "Toggle inlay hints",
-                "category": "rust-analyzer"
-            },
-            {
                 "command": "rust-analyzer.openDocs",
                 "title": "Open docs under cursor",
                 "category": "rust-analyzer"
@@ -1641,10 +1636,6 @@
                 },
                 {
                     "command": "rust-analyzer.serverVersion",
-                    "when": "inRustProject"
-                },
-                {
-                    "command": "rust-analyzer.toggleInlayHints",
                     "when": "inRustProject"
                 },
                 {
