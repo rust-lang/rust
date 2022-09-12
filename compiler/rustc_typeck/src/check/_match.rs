@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Subst, ToPredicate, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -137,9 +137,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&arm.body),
                 arm_ty,
                 Some(&mut |err| {
-                    let Some(ret) = self.ret_type_span else {
-                        return;
-                    };
+                    let Some(ret) = self
+                        .tcx
+                        .hir()
+                        .find_by_def_id(self.body_id.owner)
+                        .and_then(|owner| owner.fn_decl())
+                        .map(|decl| decl.output.span())
+                    else { return; };
                     let Expectation::IsLast(stmt) = orig_expected else {
                         return
                     };
@@ -468,58 +472,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
-    // we check if the different arms would work with boxed trait objects instead and
-    // provide a structured suggestion in that case.
+    /// When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
+    /// we check if the different arms would work with boxed trait objects instead and
+    /// provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
         first_ty: Ty<'tcx>,
         second_ty: Ty<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
+        // FIXME(compiler-errors): This really shouldn't need to be done during the
+        // "good" path of typeck, but here we are.
         match orig_expected {
-            Expectation::ExpectHasType(expected)
-                if self.in_tail_expr
-                    && self.return_type_has_opaque
-                    && self.can_coerce(first_ty, expected)
-                    && self.can_coerce(second_ty, expected) =>
-            {
-                let obligations = self.fulfillment_cx.borrow().pending_obligations();
-                let mut suggest_box = !obligations.is_empty();
-                'outer: for o in obligations {
-                    for outer_ty in &[first_ty, second_ty] {
-                        match o.predicate.kind().skip_binder() {
-                            ty::PredicateKind::Trait(t) => {
-                                let pred = ty::Binder::dummy(ty::PredicateKind::Trait(
-                                    ty::TraitPredicate {
-                                        trait_ref: ty::TraitRef {
-                                            def_id: t.def_id(),
-                                            substs: self.tcx.mk_substs_trait(*outer_ty, &[]),
-                                        },
-                                        constness: t.constness,
-                                        polarity: t.polarity,
-                                    },
-                                ));
-                                let obl = Obligation::new(
-                                    o.cause.clone(),
-                                    self.param_env,
-                                    pred.to_predicate(self.tcx),
-                                );
-                                suggest_box &= self.predicate_must_hold_modulo_regions(&obl);
-                                if !suggest_box {
-                                    // We've encountered some obligation that didn't hold, so the
-                                    // return expression can't just be boxed. We don't need to
-                                    // evaluate the rest of the obligations.
-                                    break 'outer;
-                                }
+            Expectation::ExpectHasType(expected) => {
+                let TypeVariableOrigin {
+                    span,
+                    kind: TypeVariableOriginKind::OpaqueTypeInference(rpit_def_id),
+                    ..
+                } = self.type_var_origin(expected)? else { return None; };
+
+                let sig = *self
+                    .typeck_results
+                    .borrow()
+                    .liberated_fn_sigs()
+                    .get(hir::HirId::make_owner(self.body_id.owner))?;
+
+                let substs = sig.output().walk().find_map(|arg| {
+                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                        && let ty::Opaque(def_id, substs) = *ty.kind()
+                        && def_id == rpit_def_id
+                    {
+                        Some(substs)
+                    } else {
+                        None
+                    }
+                })?;
+                let opaque_ty = self.tcx.mk_opaque(rpit_def_id, substs);
+
+                if !self.can_coerce(first_ty, expected) || !self.can_coerce(second_ty, expected) {
+                    return None;
+                }
+
+                for ty in [first_ty, second_ty] {
+                    for pred in self.tcx.bound_explicit_item_bounds(rpit_def_id).transpose_iter() {
+                        let pred = pred.map_bound(|(pred, _)| *pred).subst(self.tcx, substs);
+                        let pred = match pred.kind().skip_binder() {
+                            ty::PredicateKind::Trait(mut trait_pred) => {
+                                assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
+                                trait_pred.trait_ref.substs =
+                                    self.tcx.mk_substs_trait(ty, &trait_pred.trait_ref.substs[1..]);
+                                pred.kind().rebind(trait_pred).to_predicate(self.tcx)
                             }
-                            _ => {}
+                            ty::PredicateKind::Projection(mut proj_pred) => {
+                                assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
+                                proj_pred.projection_ty.substs = self
+                                    .tcx
+                                    .mk_substs_trait(ty, &proj_pred.projection_ty.substs[1..]);
+                                pred.kind().rebind(proj_pred).to_predicate(self.tcx)
+                            }
+                            _ => continue,
+                        };
+                        if !self.predicate_must_hold_modulo_regions(&Obligation::new(
+                            ObligationCause::misc(span, self.body_id),
+                            self.param_env,
+                            pred,
+                        )) {
+                            return None;
                         }
                     }
                 }
-                // If all the obligations hold (or there are no obligations) the tail expression
-                // we can suggest to return a boxed trait object instead of an opaque type.
-                if suggest_box { self.ret_type_span } else { None }
+
+                Some(span)
             }
             _ => None,
         }

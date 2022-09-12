@@ -68,8 +68,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
 
-    pub(super) ret_type_span: Option<Span>,
-
     /// Used exclusively to reduce cost of advanced evaluation used for
     /// more helpful diagnostics.
     pub(super) in_tail_expr: bool,
@@ -142,7 +140,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            ret_type_span: None,
             in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
