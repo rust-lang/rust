@@ -1816,6 +1816,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
 ///
+/// `UnsafeCell<T>` has the same in-memory representation as its inner type `T`.
+///
 /// # Examples
 ///
 /// Here is an example showcasing how to soundly mutate the contents of an `UnsafeCell<_>` despite
