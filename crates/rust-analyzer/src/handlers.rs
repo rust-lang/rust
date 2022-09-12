@@ -1012,7 +1012,9 @@ pub(crate) fn handle_references(
     let _p = profile::span("handle_references");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    let refs = match snap.analysis.find_all_refs(position, None)? {
+    let exclude_imports = snap.config.find_all_refs_exclude_imports();
+
+    let refs = match snap.analysis.find_all_refs(position, None, exclude_imports)? {
         None => return Ok(None),
         Some(refs) => refs,
     };
@@ -1652,7 +1654,9 @@ fn show_ref_command_link(
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover_actions().references && snap.config.client_commands().show_reference {
-        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
+        if let Some(ref_search_res) =
+            snap.analysis.find_all_refs(*position, None, false).unwrap_or(None)
+        {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);

@@ -425,8 +425,11 @@ impl Analysis {
         &self,
         position: FilePosition,
         search_scope: Option<SearchScope>,
+        exclude_imports: bool,
     ) -> Cancellable<Option<Vec<ReferenceSearchResult>>> {
-        self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, search_scope))
+        self.with_db(|db| {
+            references::find_all_refs(&Semantics::new(db), position, search_scope, exclude_imports)
+        })
     }
 
     /// Finds all methods and free functions for the file. Does not return tests!

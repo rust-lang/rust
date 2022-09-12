@@ -1041,6 +1041,11 @@
                         "string"
                     ]
                 },
+                "rust-analyzer.references.excludeImports": {
+                    "markdownDescription": "Exclude imports from find-all-references.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.runnables.command": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                     "default": null,

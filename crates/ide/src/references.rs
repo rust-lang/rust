@@ -54,6 +54,7 @@ pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
+    exclude_imports: bool,
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
@@ -77,6 +78,10 @@ pub(crate) fn find_all_refs(
 
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
+            }
+
+            if exclude_imports {
+                filter_import_references(&mut usages);
             }
 
             let references = usages
@@ -109,6 +114,17 @@ pub(crate) fn find_all_refs(
             let search = make_searcher(false);
             Some(find_defs(sema, &syntax, position.offset)?.map(search).collect())
         }
+    }
+}
+
+fn filter_import_references(usages: &mut UsageSearchResult) {
+    for (_file_id, refs) in &mut usages.references {
+        refs.retain(|it| match it.name.as_name_ref() {
+            Some(name_ref) => {
+                !name_ref.syntax().ancestors().any(|it_ref| matches!(it_ref.kind(), USE))
+            }
+            None => true,
+        });
     }
 }
 
@@ -1094,7 +1110,7 @@ impl Foo {
 
     fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
-        let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
+        let refs = analysis.find_all_refs(pos, search_scope, false).unwrap().unwrap();
 
         let mut actual = String::new();
         for refs in refs {
