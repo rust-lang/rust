@@ -1,0 +1,11 @@
+error: unable to use constant with a hidden value in the type system
+  --> $DIR/array-len-size-of.rs:11:11
+   |
+LL |     data: [mem::MaybeUninit<u8>; size_of_fut(returns_opaque)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this most often happens when trying to look into an opaque type
+   = note: the type system cannot access the hidden type of opaque types
+
+error: aborting due to previous error
+
