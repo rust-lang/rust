@@ -473,6 +473,7 @@ impl Token {
                 kw::Extern,
                 kw::Impl,
                 kw::Unsafe,
+                kw::Const,
                 kw::Static,
                 kw::Union,
                 kw::Macro,
