@@ -373,7 +373,7 @@ You can find more discussion about sysroots in:
 ## Passing flags to commands invoked by `bootstrap`
 
 `x.py` allows you to pass stage-specific flags to `rustc` and `cargo` when bootstrapping.
-The `RUSTFLAGS_BOOTSTRAP` environment variable is passed as RUSTFLAGS to the bootstrap stage
+The `RUSTFLAGS_BOOTSTRAP` environment variable is passed as `RUSTFLAGS` to the bootstrap stage
 (stage0), and `RUSTFLAGS_NOT_BOOTSTRAP` is passed when building artifacts for later stages.
 `RUSTFLAGS` will work, but also affects the build of `bootstrap` itself, so it will be rare to want
 to use it.
@@ -384,7 +384,7 @@ recompiling all dependencies.
 `RUSTFLAGS`, but for rustdoc.
 
 `CARGOFLAGS` will pass arguments to cargo itself (e.g. `--timings`). `CARGOFLAGS_BOOTSTRAP` and
-`CARGOFLAGS_NOT_BOOTSTRAP` work anologously to `RUSTFLAGS_BOOTSTRAP`.
+`CARGOFLAGS_NOT_BOOTSTRAP` work analogously to `RUSTFLAGS_BOOTSTRAP`.
 
 `--test-args` will pass arguments through to the test runner. For `src/test/ui`, this is
 compiletest; for unit tests and doctests this is the `libtest` runner. Most test runner accept
