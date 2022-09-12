@@ -1891,11 +1891,6 @@ in storage.js plus the media query with (min-width: 701px)
 		margin-top: 10px;
 	}
 
-	#search {
-		margin-left: 0;
-		padding: 0;
-	}
-
 	.anchor {
 		display: none !important;
 	}
