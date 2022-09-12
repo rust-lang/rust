@@ -1346,16 +1346,12 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
         }
 
-        fn visit_poly_trait_ref(
-            &mut self,
-            tr: &'tcx hir::PolyTraitRef<'tcx>,
-            m: hir::TraitBoundModifier,
-        ) {
+        fn visit_poly_trait_ref(&mut self, tr: &'tcx hir::PolyTraitRef<'tcx>) {
             if self.has_late_bound_regions.is_some() {
                 return;
             }
             self.outer_index.shift_in(1);
-            intravisit::walk_poly_trait_ref(self, tr, m);
+            intravisit::walk_poly_trait_ref(self, tr);
             self.outer_index.shift_out(1);
         }
 

@@ -388,8 +388,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_param_bound(&mut self, bounds: &'v GenericBound<'v>) {
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>, m: TraitBoundModifier) {
-        walk_poly_trait_ref(self, t, m)
+    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>) {
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &'v VariantData<'v>) {
         walk_struct_def(self, s)
@@ -495,11 +495,7 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
     }
 }
 
-pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    trait_ref: &'v PolyTraitRef<'v>,
-    _modifier: TraitBoundModifier,
-) {
+pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v PolyTraitRef<'v>) {
     walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
@@ -681,7 +677,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
             for bound in bounds {
-                visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
+                visitor.visit_poly_trait_ref(bound);
             }
             visitor.visit_lifetime(lifetime);
         }
@@ -807,8 +803,8 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
 
 pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericBound<'v>) {
     match *bound {
-        GenericBound::Trait(ref typ, modifier) => {
-            visitor.visit_poly_trait_ref(typ, modifier);
+        GenericBound::Trait(ref typ, _modifier) => {
+            visitor.visit_poly_trait_ref(typ);
         }
         GenericBound::LangItemTrait(_, _span, hir_id, args) => {
             visitor.visit_id(hir_id);

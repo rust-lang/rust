@@ -258,13 +258,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(
-        &mut self,
-        t: &'tcx hir::PolyTraitRef<'tcx>,
-        m: hir::TraitBoundModifier,
-    ) {
-        lint_callback!(self, check_poly_trait_ref, t, m);
-        hir_visit::walk_poly_trait_ref(self, t, m);
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+        lint_callback!(self, check_poly_trait_ref, t);
+        hir_visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {

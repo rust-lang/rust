@@ -91,7 +91,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             hir::TyKind::TraitObject(bounds, ..) => {
                 for bound in bounds {
                     self.current_index.shift_in(1);
-                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    self.visit_poly_trait_ref(bound);
                     self.current_index.shift_out(1);
                 }
             }
