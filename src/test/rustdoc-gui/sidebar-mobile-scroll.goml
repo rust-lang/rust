@@ -6,7 +6,7 @@ assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
 // Scroll down.
 scroll-to: "//h2[@id='blanket-implementations']"
-assert-window-property: {"pageYOffset": "702"}
+assert-window-property: {"pageYOffset": "643"}
 
 // Open the sidebar menu.
 click: ".sidebar-menu-toggle"
@@ -21,11 +21,11 @@ assert-window-property: {"pageYOffset": "0"}
 // Close the sidebar menu. Make sure the scroll position gets restored.
 click: ".sidebar-menu-toggle"
 wait-for-css: (".sidebar", {"left": "-1000px"})
-assert-window-property: {"pageYOffset": "702"}
+assert-window-property: {"pageYOffset": "643"}
 
 // Now test that scrollability returns when the browser window is just resized.
 click: ".sidebar-menu-toggle"
 wait-for-css: (".sidebar", {"left": "0px"})
 assert-window-property: {"pageYOffset": "0"}
-size: (900, 900)
-assert-window-property: {"pageYOffset": "702"}
+size: (900, 600)
+assert-window-property: {"pageYOffset": "643"}

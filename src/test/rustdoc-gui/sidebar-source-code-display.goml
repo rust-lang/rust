@@ -224,14 +224,14 @@ click: "#sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
-assert-window-property: {"pageYOffset": "2519"}
+assert-window-property: {"pageYOffset": "2542"}
 // Expanding the sidebar...
 click: "#sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "500px"})
 click: "#sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // The "scrollTop" property should be the same.
-assert-window-property: {"pageYOffset": "2519"}
+assert-window-property: {"pageYOffset": "2542"}
 
 // We now check that the scroll position is restored if the window is resized.
 size: (500, 700)
@@ -239,7 +239,7 @@ click: "#sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-window-property: {"pageYOffset": "0"}
 size: (900, 900)
-assert-window-property: {"pageYOffset": "2519"}
+assert-window-property: {"pageYOffset": "2542"}
 size: (500, 700)
 click: "#sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
