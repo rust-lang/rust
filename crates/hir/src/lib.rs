@@ -63,10 +63,9 @@ use hir_ty::{
     primitive::UintTy,
     subst_prefix,
     traits::FnTrait,
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    ClosureId, DebruijnIndex, GenericArgData, InEnvironment, Interner, ParamKind,
-    QuantifiedWhereClause, Scalar, Solution, Substitution, TraitEnvironment, TraitRefExt, Ty,
-    TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
+    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -2880,28 +2879,8 @@ impl Type {
                 }
             })
             .build();
-        let goal = hir_ty::make_canonical(
-            InEnvironment::new(
-                &self.env.env,
-                AliasEq {
-                    alias: AliasTy::Projection(projection),
-                    ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                        .intern(Interner),
-                }
-                .cast(Interner),
-            ),
-            [TyVariableKind::General].into_iter(),
-        );
 
-        match db.trait_solve(self.env.krate, goal)? {
-            Solution::Unique(s) => s
-                .value
-                .subst
-                .as_slice(Interner)
-                .first()
-                .map(|ty| self.derived(ty.assert_ty_ref(Interner).clone())),
-            Solution::Ambig(_) => None,
-        }
+        db.normalize_projection(projection, self.env.clone()).map(|ty| self.derived(ty))
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
