@@ -22,10 +22,8 @@ struct InvalidHtmlTagsLinter<'a, 'tcx> {
 }
 
 pub(crate) fn check_invalid_html_tags(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    if cx.tcx.sess.is_nightly_build() {
-        let mut coll = InvalidHtmlTagsLinter { cx };
-        coll.visit_crate(&krate);
-    }
+    let mut coll = InvalidHtmlTagsLinter { cx };
+    coll.visit_crate(&krate);
     krate
 }
 
