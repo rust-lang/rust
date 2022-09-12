@@ -478,6 +478,15 @@ impl<'tcx> InferCtxt<'tcx> {
                         opt_values[b] = Some(*original_value);
                     }
                 }
+                GenericArgKind::Effect(result_value) => {
+                    if let ty::EffectValue::Bound(debrujin, b) = result_value.val {
+                        // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
+
+                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        assert_eq!(debrujin, ty::INNERMOST);
+                        opt_values[b] = Some(*original_value);
+                    }
+                }
             }
         }
 
@@ -582,6 +591,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 // Consts cannot outlive one another, so we don't expect to
                 // encounter this branch.
                 span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
+            }
+            GenericArgKind::Effect(..) => {
+                // Effects cannot outlive one another, so we don't expect to
+                // encounter this branch.
+                span_bug!(cause.span, "unexpected effect outlives {:?}", predicate);
             }
         };
         let predicate = predicate.0.rebind(atom);

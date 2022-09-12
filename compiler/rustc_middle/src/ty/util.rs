@@ -448,6 +448,11 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a const param
                         _ => false,
                     },
+                    GenericArgKind::Effect(e) => match e.val {
+                        ty::EffectValue::Param { .. } => true,
+                        // Error: not an effect param
+                        _ => false,
+                    },
                 }
             })
             .map(|(item_param, _)| item_param)
@@ -490,6 +495,14 @@ impl<'tcx> TyCtxt<'tcx> {
                         }
                     }
                     _ => return Err(NotUniqueParam::NotParam(c.into())),
+                },
+                GenericArgKind::Effect(e) => match e.val {
+                    ty::EffectValue::Param { index } => {
+                        if !seen.insert(index) {
+                            return Err(NotUniqueParam::DuplicateParam(arg));
+                        }
+                    }
+                    _ => return Err(NotUniqueParam::NotParam(arg)),
                 },
             }
         }

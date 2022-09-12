@@ -23,6 +23,12 @@ impl<'tcx> fmt::Debug for Effect<'tcx> {
     }
 }
 
+impl<'tcx> Effect<'tcx> {
+    pub fn is_e_infer(self) -> bool {
+        matches!(self.val, ty::EffectValue::Infer(_))
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
 pub struct EffectData<'tcx> {
     pub val: EffectValue<'tcx>,

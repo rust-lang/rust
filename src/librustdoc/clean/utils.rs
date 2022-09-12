@@ -101,6 +101,8 @@ pub(crate) fn substs_to_args<'tcx>(
         GenericArgKind::Const(ct) => {
             Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
         }
+        // FIXME(oli-obk,keyword-generics): teach rustdoc about effects
+        GenericArgKind::Effect(_) => None,
     }));
     ret_val
 }

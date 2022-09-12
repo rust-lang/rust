@@ -18,6 +18,9 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::EffectVarValue;
+use rustc_middle::infer::unify_key::EffectVariableOrigin;
+use rustc_middle::infer::unify_key::EffectVariableValue;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
@@ -1085,6 +1088,35 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
+    pub fn next_effect_var(
+        &self,
+        kind: ty::EffectKind,
+        origin: EffectVariableOrigin,
+    ) -> ty::Effect<'tcx> {
+        self.tcx.mk_effect(self.next_effect_var_id(origin), kind)
+    }
+
+    pub fn next_effect_var_in_universe(
+        &self,
+        kind: ty::EffectKind,
+        origin: EffectVariableOrigin,
+        universe: ty::UniverseIndex,
+    ) -> ty::Effect<'tcx> {
+        let vid = self
+            .inner
+            .borrow_mut()
+            .effect_unification_table()
+            .new_key(EffectVarValue { origin, val: EffectVariableValue::Unknown { universe } });
+        self.tcx.mk_effect(vid, kind)
+    }
+
+    pub fn next_effect_var_id(&self, origin: EffectVariableOrigin) -> ty::EffectVid<'tcx> {
+        self.inner.borrow_mut().effect_unification_table().new_key(EffectVarValue {
+            origin,
+            val: EffectVariableValue::Unknown { universe: self.universe() },
+        })
+    }
+
     fn next_int_var_id(&self) -> IntVid {
         self.inner.borrow_mut().int_unification_table().new_key(None)
     }
@@ -1691,6 +1723,17 @@ impl<'tcx> InferCtxt<'tcx> {
                     ConstVariableValue::Known { .. } => true,
                 }
             }
+
+            TyOrConstInferVar::Effect(v) => {
+                // If `probe_value` returns a `Known` value, it never equals
+                // `ty::EffectValue::Infer(ty::InferEffect::Var(v))`.
+                //
+                // Not `inlined_probe_value(v)` because this call site is colder.
+                match self.inner.borrow_mut().effect_unification_table().probe_value(v).val {
+                    EffectVariableValue::Unknown { .. } => false,
+                    EffectVariableValue::Known { .. } => true,
+                }
+            }
         }
     }
 }
@@ -1797,6 +1840,9 @@ pub enum TyOrConstInferVar<'tcx> {
 
     /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
     Const(ConstVid<'tcx>),
+
+    /// Equivalent to `ty::EffectValue::Infer(ty::InferEffect::Var(_))`.
+    Effect(ty::EffectVid<'tcx>),
 }
 
 impl<'tcx> TyOrConstInferVar<'tcx> {
@@ -1808,6 +1854,12 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Effect(e) => match e.val {
+                ty::EffectValue::Infer(ty::InferEffect::Var(v)) => {
+                    Some(TyOrConstInferVar::Effect(v))
+                }
+                _ => None,
+            },
         }
     }
 

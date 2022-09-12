@@ -203,6 +203,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
         },
         GenericArgKind::Lifetime(_) => {}
+        GenericArgKind::Effect(_) => {}
         GenericArgKind::Const(parent_ct) => {
             stack.push(parent_ct.ty().into());
             match parent_ct.kind() {

@@ -56,6 +56,9 @@ pub fn obligations<'tcx>(
         }
         // There is nothing we have to do for lifetimes.
         GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+
+        // There is nothing we have to do for effects.
+        GenericArgKind::Effect(..) => return Some(Vec::new()),
     };
 
     let mut wf = WfPredicates {
@@ -447,6 +450,9 @@ impl<'tcx> WfPredicates<'tcx> {
                 // No WF constraints for lifetimes being present, any outlives
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
+
+                // No WF constraints for effects being present
+                GenericArgKind::Effect(_) => continue,
 
                 GenericArgKind::Const(ct) => {
                     match ct.kind() {

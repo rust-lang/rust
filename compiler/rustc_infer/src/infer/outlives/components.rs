@@ -88,6 +88,7 @@ fn compute_components<'tcx>(
                             compute_components(tcx, ty, out, visited);
                         }
                         GenericArgKind::Lifetime(_) => {}
+                        GenericArgKind::Effect(_) => {}
                         GenericArgKind::Const(_) => {
                             compute_components_recursive(tcx, child, out, visited);
                         }
@@ -227,6 +228,8 @@ pub(super) fn compute_components_recursive<'tcx>(
             GenericArgKind::Const(_) => {
                 compute_components_recursive(tcx, child, out, visited);
             }
+            // Effects have no components
+            GenericArgKind::Effect(_) => {}
         }
     }
 }

@@ -612,6 +612,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 (
                     GenericArgKind::Lifetime(_)
                     | GenericArgKind::Type(_)
+                    | GenericArgKind::Effect(_)
                     | GenericArgKind::Const(_),
                     _,
                 ) => {

@@ -326,6 +326,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+            GenericArgKind::Effect(_) => bug!("unexpected effect"),
         }
     }
 
@@ -481,6 +482,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                             match arg.unpack() {
                                 GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                                GenericArgKind::Effect(_) => bug!("unexpected effect"),
                                 GenericArgKind::Type(_) => self
                                     .next_ty_var(TypeVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
@@ -753,6 +755,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     GenericArgKind::Lifetime(_) => 0, // erased
                     GenericArgKind::Type(ty) => self.ty_cost(ty),
                     GenericArgKind::Const(_) => 3, // some non-zero value
+                    GenericArgKind::Effect(_) => 3, // some non-zero value
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
@@ -878,6 +881,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             }
             match inner.unpack() {
                 GenericArgKind::Lifetime(_) => {}
+                GenericArgKind::Effect(_) => {}
                 GenericArgKind::Type(ty) => {
                     if matches!(
                         ty.kind(),

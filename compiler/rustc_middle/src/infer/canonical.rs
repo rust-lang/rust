@@ -358,6 +358,12 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                             ct.ty(),
                         )
                         .into(),
+                    GenericArgKind::Effect(e) => tcx
+                        .mk_effect(
+                            ty::EffectValue::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
+                            e.kind,
+                        )
+                        .into(),
                 })
                 .collect(),
         }

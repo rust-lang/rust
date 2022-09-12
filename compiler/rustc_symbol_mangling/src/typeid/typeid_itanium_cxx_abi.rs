@@ -35,6 +35,7 @@ enum DictKey<'tcx> {
     Ty(Ty<'tcx>, TyQ),
     Region(Region<'tcx>),
     Const(Const<'tcx>),
+    Effect(ty::Effect<'tcx>),
     Predicate(ExistentialPredicate<'tcx>),
 }
 
@@ -158,6 +159,36 @@ fn encode_const<'tcx>(
     s.push('E');
 
     compress(dict, DictKey::Const(c), &mut s);
+
+    s
+}
+
+/// Encodes an effect using the Itanium C++ ABI as a literal argument (see
+/// <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling.literal>).
+fn encode_effect<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    e: ty::Effect<'tcx>,
+    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
+    _options: EncodeTyOptions,
+) -> String {
+    // L<element-kind>[n]<element-value>E as literal argument
+    let mut s = String::from('L');
+    match e.kind {
+        ty::EffectKind::Host => write!(s, "h").unwrap(),
+    }
+    match e.val {
+        ty::EffectValue::Rigid { on } => write!(s, "{}", on as usize).unwrap(),
+        ty::EffectValue::Param { .. }
+        | ty::EffectValue::Infer(_)
+        | ty::EffectValue::Err(_)
+        | ty::EffectValue::Bound(_, _)
+        | ty::EffectValue::Placeholder(_) => bug!("encode_effect: unexpected effect {e:?}"),
+    }
+
+    // Close the "L..E" pair
+    s.push('E');
+
+    compress(dict, DictKey::Effect(e), &mut s);
 
     s
 }
@@ -330,6 +361,9 @@ fn encode_substs<'tcx>(
                 }
                 GenericArgKind::Const(c) => {
                     s.push_str(&encode_const(tcx, c, dict, options));
+                }
+                GenericArgKind::Effect(e) => {
+                    s.push_str(&encode_effect(tcx, e, dict, options));
                 }
             }
         }

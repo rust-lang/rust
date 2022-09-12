@@ -97,6 +97,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
                 0xF5u8.hash_stable(hcx, hasher);
                 lt.hash_stable(hcx, hasher);
             }
+            ty::subst::GenericArgKind::Effect(e) => e.hash_stable(hcx, hasher),
         }
     }
 }

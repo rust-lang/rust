@@ -133,6 +133,7 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(
             TypeFlags::HAS_RE_PLACEHOLDER
                 | TypeFlags::HAS_TY_PLACEHOLDER
+                | TypeFlags::HAS_EFFECT_PLACEHOLDER
                 | TypeFlags::HAS_CT_PLACEHOLDER,
         )
     }

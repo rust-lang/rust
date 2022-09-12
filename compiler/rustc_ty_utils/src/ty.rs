@@ -326,6 +326,9 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
 
             // FIXME(eddyb) support const generics in Chalk
             GenericArgKind::Const(_) => None,
+
+            // FIXME(oli-obk) support effects in Chalk
+            GenericArgKind::Effect(_) => None,
         }
     });
 

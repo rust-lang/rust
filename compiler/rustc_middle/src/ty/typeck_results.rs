@@ -668,6 +668,15 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             }
                             _ => false,
                         },
+
+                        GenericArgKind::Effect(e) => match e.val {
+                            ty::EffectValue::Bound(debruijn, b) => {
+                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                assert_eq!(debruijn, ty::INNERMOST);
+                                cvar == b
+                            }
+                            _ => false,
+                        },
                     }
                 })
             }

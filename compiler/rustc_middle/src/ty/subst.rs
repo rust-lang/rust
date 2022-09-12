@@ -40,12 +40,14 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
+const EFFECT_TAG: usize = 0b11;
 
 #[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
+    Effect(ty::Effect<'tcx>),
 }
 
 /// This function goes from `&'a [Ty<'tcx>]` to `&'a [GenericArg<'tcx>]`
@@ -92,6 +94,11 @@ impl<'tcx> GenericArgKind<'tcx> {
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
             }
+            GenericArgKind::Effect(e) => {
+                // Ensure we can use the tag bits.
+                assert_eq!(mem::align_of_val(&*e.0.0) & TAG_MASK, 0);
+                (EFFECT_TAG, e.0.0 as *const ty::EffectData<'tcx> as usize)
+            }
         };
 
         GenericArg { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
@@ -104,6 +111,7 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
+            GenericArgKind::Effect(e) => e.fmt(f),
         }
     }
 }
@@ -150,6 +158,13 @@ impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::Effect<'tcx>> for GenericArg<'tcx> {
+    #[inline]
+    fn from(e: ty::Effect<'tcx>) -> GenericArg<'tcx> {
+        GenericArgKind::Effect(e).pack()
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -167,6 +182,9 @@ impl<'tcx> GenericArg<'tcx> {
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
+                ))),
+                EFFECT_TAG => GenericArgKind::Effect(ty::Effect(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::EffectData<'tcx>),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -204,6 +222,15 @@ impl<'tcx> GenericArg<'tcx> {
             GenericArgKind::Lifetime(_) => false,
             GenericArgKind::Type(ty) => ty.is_ty_infer(),
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
+            GenericArgKind::Effect(e) => e.is_e_infer(),
+        }
+    }
+
+    /// Unpack the `GenericArg` as an effect when it is known certainly to be an effect.
+    pub fn expect_effect(self) -> ty::Effect<'tcx> {
+        match self.unpack() {
+            GenericArgKind::Effect(e) => e,
+            _ => bug!("expected an effect, but found another kind"),
         }
     }
 }
@@ -216,6 +243,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
             GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
             GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
+            GenericArgKind::Effect(e) => tcx.lift(e).map(|e| e.into()),
         }
     }
 }
@@ -226,6 +254,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+            GenericArgKind::Effect(e) => e.try_fold_with(folder).map(Into::into),
         }
     }
 }
@@ -236,6 +265,7 @@ impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
+            GenericArgKind::Effect(e) => e.visit_with(visitor),
         }
     }
 }
@@ -801,6 +831,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
             c.super_fold_with(self)
         }
     }
+
+    fn fold_effect(&mut self, e: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        // FIXME(keyword_generics): handle other effects
+        if let ty::EffectValue::Param { index } = e.val {
+            self.effect_for_param(index, e)
+        } else {
+            e.super_fold_with(self)
+        }
+    }
 }
 
 impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
@@ -879,6 +918,41 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
             p,
             ct,
             p.index,
+            self.substs,
+        )
+    }
+
+    fn effect_for_param(&self, p: u32, source_fx: ty::Effect<'tcx>) -> ty::Effect<'tcx> {
+        // Look up the effect in the substitutions. It really should be in there.
+        let opt_ct = self.substs.get(p as usize).map(|k| k.unpack());
+        let ct = match opt_ct {
+            Some(GenericArgKind::Effect(fx)) => fx,
+            Some(kind) => self.effect_param_expected(p, source_fx, kind),
+            None => self.effect_param_out_of_range(p, source_fx),
+        };
+
+        self.shift_vars_through_binders(ct)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn effect_param_expected(&self, p: u32, fx: ty::Effect<'tcx>, kind: GenericArgKind<'tcx>) -> ! {
+        bug!(
+            "expected effect for {:?}/{} but found {:?} when substituting substs={:?}",
+            fx,
+            p,
+            kind,
+            self.substs,
+        )
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn effect_param_out_of_range(&self, p: u32, fx: ty::Effect<'tcx>) -> ! {
+        bug!(
+            "effect parameter {:?}/{} out of range when substituting substs={:?}",
+            fx,
+            p,
             self.substs,
         )
     }

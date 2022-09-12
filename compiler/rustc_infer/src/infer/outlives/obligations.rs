@@ -521,6 +521,9 @@ where
                 GenericArgKind::Const(_) => {
                     // Const parameters don't impose constraints.
                 }
+                GenericArgKind::Effect(_) => {
+                    // Effect parameters don't impose constraints.
+                }
             }
         }
     }

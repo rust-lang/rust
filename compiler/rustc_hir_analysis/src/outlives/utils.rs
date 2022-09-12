@@ -145,6 +145,10 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
         GenericArgKind::Const(_) => {
             // Generic consts don't impose any constraints.
         }
+
+        GenericArgKind::Effect(_) => {
+            // Effect don't impose any constraints.
+        }
     }
 }
 

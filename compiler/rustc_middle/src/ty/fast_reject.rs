@@ -177,6 +177,9 @@ impl DeepRejectCtxt {
             (GenericArgKind::Const(obl), GenericArgKind::Const(imp)) => {
                 self.consts_may_unify(obl, imp)
             }
+            (GenericArgKind::Effect(obl), GenericArgKind::Effect(imp)) => {
+                self.effects_may_unify(obl, imp)
+            }
             _ => bug!("kind mismatch: {obligation_arg} {impl_arg}"),
         }
     }

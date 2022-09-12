@@ -844,6 +844,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     self.push("K");
                     self = c.print(self)?;
                 }
+                GenericArgKind::Effect(e) => {
+                    self = e.print(self)?;
+                }
             }
         }
         self.push("E");

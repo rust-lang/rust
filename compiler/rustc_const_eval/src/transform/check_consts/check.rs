@@ -344,9 +344,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             let ty = match ty.unpack() {
                 GenericArgKind::Type(ty) => ty,
 
-                // No constraints on lifetimes or constants, except potentially
+                // No constraints on lifetimes, effects or constants, except potentially
                 // constants' types, but `walk` will get to them as well.
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+                GenericArgKind::Effect(_)
+                | GenericArgKind::Lifetime(_)
+                | GenericArgKind::Const(_) => continue,
             };
 
             match *ty.kind() {

@@ -59,6 +59,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
+        GenericArgKind::Effect(_) |
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
 }
@@ -121,7 +122,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
 
                 false
             },
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Effect(_) | GenericArgKind::Const(_) => false,
         })
     }
 

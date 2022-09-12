@@ -388,6 +388,7 @@ fn has_matching_substs(kind: FnKind, substs: SubstsRef<'_>) -> bool {
             GenericArgKind::Lifetime(_) => true,
             GenericArgKind::Type(ty) => matches!(*ty.kind(), ty::Param(ty) if ty.index as usize == idx),
             GenericArgKind::Const(c) => matches!(c.kind(), ConstKind::Param(c) if c.index as usize == idx),
+            GenericArgKind::Effect(e) => matches!(e.val, ty::EffectValue::Param { index } if index as usize == idx),
         }),
         #[allow(trivial_casts)]
         FnKind::ImplTraitFn(expected_substs) => substs as *const _ as usize == expected_substs,
