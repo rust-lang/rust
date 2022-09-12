@@ -1160,8 +1160,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // and if not maybe suggest doing something else? If we kept the expression around we
                     // could also check if it is an fn call (very likely) and suggest changing *that*, if
                     // it is from the local crate.
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_hi().with_hi(span.hi()),
+                    err.span_suggestion(
+                        span,
                         "remove the `.await`",
                         "",
                         Applicability::MachineApplicable,
