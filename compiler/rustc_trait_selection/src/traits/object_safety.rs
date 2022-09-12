@@ -13,6 +13,7 @@ use super::elaborate_predicates;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
+use hir::def::DefKind;
 use rustc_errors::{FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -431,6 +432,9 @@ fn virtual_call_violation_for_method<'tcx>(
     if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
         return Some(MethodViolationCode::ReferencesSelfOutput);
     }
+    if contains_illegal_impl_trait_in_trait(tcx, sig.output()) {
+        return Some(MethodViolationCode::ReferencesImplTraitInTrait);
+    }
 
     // We can't monomorphize things like `fn foo<A>(...)`.
     let own_counts = tcx.generics_of(method.def_id).own_counts();
@@ -793,6 +797,12 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
                         ControlFlow::CONTINUE
                     }
                 }
+                ty::Projection(ref data)
+                    if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                {
+                    // We'll deny these later in their own pass
+                    ControlFlow::CONTINUE
+                }
                 ty::Projection(ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.
 
@@ -859,6 +869,22 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
     value
         .visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
         .is_break()
+}
+
+pub fn contains_illegal_impl_trait_in_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: ty::Binder<'tcx, Ty<'tcx>>,
+) -> bool {
+    // FIXME(RPITIT): Perhaps we should use a visitor here?
+    ty.skip_binder().walk().any(|arg| {
+        if let ty::GenericArgKind::Type(ty) = arg.unpack()
+            && let ty::Projection(proj) = ty.kind()
+        {
+            tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+        } else {
+            false
+        }
+    })
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
