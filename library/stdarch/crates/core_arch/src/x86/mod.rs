@@ -306,7 +306,7 @@ types! {
 
     /// 256-bit wide set of 16 'u16' types, x86-specific
     ///
-    /// This type is the same as the `__m128bh` type defined by Intel,
+    /// This type is the same as the `__m256bh` type defined by Intel,
     /// representing a 256-bit SIMD register which internally is consisted of
     /// 16 packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
@@ -317,7 +317,7 @@ types! {
 
     /// 512-bit wide set of 32 'u16' types, x86-specific
     ///
-    /// This type is the same as the `__m128bh` type defined by Intel,
+    /// This type is the same as the `__m512bh` type defined by Intel,
     /// representing a 512-bit SIMD register which internally is consisted of
     /// 32 packed `u16` instances. Its purpose is for bf16 related intrinsic
     /// implementations.
