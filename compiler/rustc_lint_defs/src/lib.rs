@@ -658,18 +658,21 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
+        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
+        $(, @feature_gate = $gate:expr;)?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -680,8 +683,9 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_plugin: true,
-            feature_gate: None,
+            $(feature_gate: Some($gate),)?
             crate_level_only: false,
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
 }

@@ -221,6 +221,8 @@ declare_features! (
     (active, rustc_private, "1.0.0", Some(27812), None),
     /// Allows using internal rustdoc features like `doc(primitive)` or `doc(keyword)`.
     (active, rustdoc_internals, "1.58.0", Some(90418), None),
+    /// Allows using the `rustdoc::missing_doc_code_examples` lint
+    (active, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730), None),
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
     (active, start, "1.0.0", Some(29633), None),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.

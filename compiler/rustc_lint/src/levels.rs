@@ -440,8 +440,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                     sp,
                                     reason,
                                 );
-                                for id in ids {
-                                    self.insert_spec(*id, (level, src));
+                                for &id in ids {
+                                    if self.check_gated_lint(id, attr.span) {
+                                        self.insert_spec(id, (level, src));
+                                    }
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations.push((
